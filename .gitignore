@@ -10,3 +10,20 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+/.idea/.gitignore
+/uv_inexus/.idea/.gitignore
+/.idea/compiler.xml
+/uv_inexus/.idea/compiler.xml
+/.idea/encodings.xml
+/uv_inexus/.idea/encodings.xml
+/.idea/jarRepositories.xml
+/uv_inexus/.idea/jarRepositories.xml
+/.idea/material_theme_project_new.xml
+/uv_inexus/.idea/material_theme_project_new.xml
+/.idea/misc.xml
+/uv_inexus/.idea/misc.xml
+/.idea/modules.xml
+/uv_inexus/target/classes/mapper/TestMapper.xml
+/.idea/vcs.xml
+/uv_inexus/.idea/vcs.xml
+/.idea/ws_plat_inexus.iml
