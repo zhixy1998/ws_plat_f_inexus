@@ -20,7 +20,7 @@ public class SwaggerConfig {
                 .groupName("webApi")
                 .apiInfo(webApiInfo())
                 .select()
-                .apis(RequestHandlerSelectors.basePackage("com.px.workstation.controller"))
+                .apis(RequestHandlerSelectors.basePackage("com.persee.workstation.uv_inexus.controller"))
                 .paths(Predicates.not(PathSelectors.regex("/error.*")))
                 .build();
     }

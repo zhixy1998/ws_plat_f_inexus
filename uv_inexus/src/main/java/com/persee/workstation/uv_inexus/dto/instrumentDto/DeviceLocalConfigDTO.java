@@ -1,0 +1,20 @@
+package com.persee.workstation.uv_inexus.dto.instrumentDto;
+
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+
+@Data
+public class DeviceLocalConfigDTO {
+
+    @ApiModelProperty("通讯端口")
+    private Integer messagePort;
+
+    @ApiModelProperty("附件设置")
+    private Integer annexSetting;
+
+    @ApiModelProperty("光谱带宽设置")
+    private String bandWidth;
+
+    @ApiModelProperty("是否恢复出厂设置")
+    private Boolean restoreFactorySetting;
+}
