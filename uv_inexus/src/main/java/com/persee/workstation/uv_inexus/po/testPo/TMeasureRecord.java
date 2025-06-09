@@ -1,11 +1,12 @@
-package com.persee.workstation.uv_inexus.model;
+package com.persee.workstation.uv_inexus.po.testPo;
 
 
-public class TMeasureParam {
+public class TMeasureRecord {
 
   private String id;
+  private String projectId;
   private String measurementType;
-  private String measurementData;
+  private java.sql.Timestamp createdAt;
   private String field1;
   private String field2;
   private String field3;
@@ -22,6 +23,15 @@ public class TMeasureParam {
   }
 
 
+  public String getProjectId() {
+    return projectId;
+  }
+
+  public void setProjectId(String projectId) {
+    this.projectId = projectId;
+  }
+
+
   public String getMeasurementType() {
     return measurementType;
   }
@@ -31,12 +41,12 @@ public class TMeasureParam {
   }
 
 
-  public String getMeasurementData() {
-    return measurementData;
+  public java.sql.Timestamp getCreatedAt() {
+    return createdAt;
   }
 
-  public void setMeasurementData(String measurementData) {
-    this.measurementData = measurementData;
+  public void setCreatedAt(java.sql.Timestamp createdAt) {
+    this.createdAt = createdAt;
   }
 
 

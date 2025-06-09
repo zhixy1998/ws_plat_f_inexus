@@ -1,12 +1,13 @@
-package com.persee.workstation.uv_inexus.model;
+package com.persee.workstation.uv_inexus.po.testPo;
 
 
-public class TMeasureRecord {
+public class TMeasureProject {
 
   private String id;
-  private String projectId;
-  private String measurementType;
-  private java.sql.Timestamp createdAt;
+  private java.sql.Timestamp createTime;
+  private String creatorKey;
+  private String projectName;
+  private String remarks;
   private String field1;
   private String field2;
   private String field3;
@@ -23,30 +24,39 @@ public class TMeasureRecord {
   }
 
 
-  public String getProjectId() {
-    return projectId;
+  public java.sql.Timestamp getCreateTime() {
+    return createTime;
   }
 
-  public void setProjectId(String projectId) {
-    this.projectId = projectId;
-  }
-
-
-  public String getMeasurementType() {
-    return measurementType;
-  }
-
-  public void setMeasurementType(String measurementType) {
-    this.measurementType = measurementType;
+  public void setCreateTime(java.sql.Timestamp createTime) {
+    this.createTime = createTime;
   }
 
 
-  public java.sql.Timestamp getCreatedAt() {
-    return createdAt;
+  public String getCreatorKey() {
+    return creatorKey;
   }
 
-  public void setCreatedAt(java.sql.Timestamp createdAt) {
-    this.createdAt = createdAt;
+  public void setCreatorKey(String creatorKey) {
+    this.creatorKey = creatorKey;
+  }
+
+
+  public String getProjectName() {
+    return projectName;
+  }
+
+  public void setProjectName(String projectName) {
+    this.projectName = projectName;
+  }
+
+
+  public String getRemarks() {
+    return remarks;
+  }
+
+  public void setRemarks(String remarks) {
+    this.remarks = remarks;
   }
 
 

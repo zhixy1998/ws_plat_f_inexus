@@ -1,11 +1,11 @@
-package com.persee.workstation.uv_inexus.model;
+package com.persee.workstation.uv_inexus.po.testPo;
 
 
-public class TMeasurePreprocessInfo {
+public class TMeasureParam {
 
   private String id;
-  private String uuid;
-  private String preprocessDescription;
+  private String measurementType;
+  private String measurementData;
   private String field1;
   private String field2;
   private String field3;
@@ -22,21 +22,21 @@ public class TMeasurePreprocessInfo {
   }
 
 
-  public String getUuid() {
-    return uuid;
+  public String getMeasurementType() {
+    return measurementType;
   }
 
-  public void setUuid(String uuid) {
-    this.uuid = uuid;
+  public void setMeasurementType(String measurementType) {
+    this.measurementType = measurementType;
   }
 
 
-  public String getPreprocessDescription() {
-    return preprocessDescription;
+  public String getMeasurementData() {
+    return measurementData;
   }
 
-  public void setPreprocessDescription(String preprocessDescription) {
-    this.preprocessDescription = preprocessDescription;
+  public void setMeasurementData(String measurementData) {
+    this.measurementData = measurementData;
   }
 
 

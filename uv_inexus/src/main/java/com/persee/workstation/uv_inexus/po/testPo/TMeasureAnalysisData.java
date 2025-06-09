@@ -1,4 +1,4 @@
-package com.persee.workstation.uv_inexus.model;
+package com.persee.workstation.uv_inexus.po.testPo;
 
 
 public class TMeasureAnalysisData {

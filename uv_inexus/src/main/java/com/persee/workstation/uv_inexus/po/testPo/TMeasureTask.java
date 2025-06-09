@@ -1,13 +1,16 @@
-package com.persee.workstation.uv_inexus.model;
+package com.persee.workstation.uv_inexus.po.testPo;
 
 
-public class TMeasureProject {
+public class TMeasureTask {
 
   private String id;
+  private String userId;
+  private String projectId;
+  private String projectItemKey;
   private java.sql.Timestamp createTime;
-  private String creatorKey;
-  private String projectName;
-  private String remarks;
+  private String methodId;
+  private String methodKey;
+  private String taskName;
   private String field1;
   private String field2;
   private String field3;
@@ -24,6 +27,33 @@ public class TMeasureProject {
   }
 
 
+  public String getUserId() {
+    return userId;
+  }
+
+  public void setUserId(String userId) {
+    this.userId = userId;
+  }
+
+
+  public String getProjectId() {
+    return projectId;
+  }
+
+  public void setProjectId(String projectId) {
+    this.projectId = projectId;
+  }
+
+
+  public String getProjectItemKey() {
+    return projectItemKey;
+  }
+
+  public void setProjectItemKey(String projectItemKey) {
+    this.projectItemKey = projectItemKey;
+  }
+
+
   public java.sql.Timestamp getCreateTime() {
     return createTime;
   }
@@ -33,30 +63,30 @@ public class TMeasureProject {
   }
 
 
-  public String getCreatorKey() {
-    return creatorKey;
+  public String getMethodId() {
+    return methodId;
   }
 
-  public void setCreatorKey(String creatorKey) {
-    this.creatorKey = creatorKey;
-  }
-
-
-  public String getProjectName() {
-    return projectName;
-  }
-
-  public void setProjectName(String projectName) {
-    this.projectName = projectName;
+  public void setMethodId(String methodId) {
+    this.methodId = methodId;
   }
 
 
-  public String getRemarks() {
-    return remarks;
+  public String getMethodKey() {
+    return methodKey;
   }
 
-  public void setRemarks(String remarks) {
-    this.remarks = remarks;
+  public void setMethodKey(String methodKey) {
+    this.methodKey = methodKey;
+  }
+
+
+  public String getTaskName() {
+    return taskName;
+  }
+
+  public void setTaskName(String taskName) {
+    this.taskName = taskName;
   }
 
 
