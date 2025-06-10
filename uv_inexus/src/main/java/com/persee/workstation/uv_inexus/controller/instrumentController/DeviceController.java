@@ -6,6 +6,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,12 @@ public class DeviceController {
 
     @Autowired
     private DeviceMonitorService monitorService;
+
+    @GetMapping("/findDevice")
+    public Result<List<FindDeviceVO>> findDevice(){
+        List<FindDeviceVO> device = deviceManageService.findDevice();
+        return Result.ok(device);
+    }
 
     @GetMapping("/query")
     @ApiOperation("仪器管理查询接口")
@@ -66,6 +73,13 @@ public class DeviceController {
     public Result<DeviceComponentMonitorVO> componentMonitor(@RequestBody DeviceQueryDTO dto){
         monitorService.componentQuery(dto);
         return null;
+    }
+
+    @PostMapping("/deviceConfig")
+    @ApiOperation("仪器配置接口")
+    public Result<Boolean> deviceConfig(@RequestBody DeviceLocalConfigDTO configDTO){
+        Boolean b = deviceManageService.deviceConfig(configDTO);
+        return Result.ok(b);
     }
 
     @GetMapping("/usageStatistics")

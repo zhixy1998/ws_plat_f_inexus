@@ -3,6 +3,9 @@ package com.persee.workstation.uv_inexus.service.instrumentService;
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
+
+import java.util.List;
 
 public interface DeviceManageService {
 
@@ -14,18 +17,14 @@ public interface DeviceManageService {
 
     Boolean softClose(DeviceSoftCloseDTO closeDTO);
 
+    List<FindDeviceVO> findDevice();
+
     /**
      * 仪器激活接口
      * 参数暂时未知 @param
      * @return
      */
     Boolean deviceActivation(String name);
-
-    /**
-     * 仪器配置
-     * 1，定时开关机
-     * 2，基础配置
-     */
 
     /**
      * 仪器配置接口
@@ -39,7 +38,7 @@ public interface DeviceManageService {
      * @param closeTime
      * @return
      */
-    Boolean timedShutdown(String closeTime);
+    Boolean timedShutdown(String deviceSerialNumber, String closeTime);
 
 
 

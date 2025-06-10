@@ -4,10 +4,13 @@ package com.persee.workstation.uv_inexus.service.instrumentService.impl;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.service.instrumentService.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
+import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 @Slf4j
@@ -51,6 +54,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public List<FindDeviceVO> findDevice() {
+        log.info("发送广播查找设备");
+
+        log.info("查找到设备");
+        FindDeviceVO vo = new FindDeviceVO();
+        vo.setDeviceSerialNumber("111111");
+        vo.setInitStatus(0);
+        List<FindDeviceVO> list = new ArrayList<>();
+        list.add(vo);
+        return list;
+    }
+
+    @Override
     public Boolean deviceActivation(String name) {
         return null;
     }
@@ -65,7 +81,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public Boolean timedShutdown(String closeTime) {
+    public Boolean timedShutdown(String deviceSerialNumber, String closeTime) {
         log.info("定时关机");
         return null;
     }
