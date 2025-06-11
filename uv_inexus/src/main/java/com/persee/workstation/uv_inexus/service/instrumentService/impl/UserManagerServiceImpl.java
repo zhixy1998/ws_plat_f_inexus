@@ -4,7 +4,6 @@ package com.persee.workstation.uv_inexus.service.instrumentService.impl;
 import com.persee.workstation.uv_inexus.dao.userConfigDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.instrumentService.UserManagerService;
 import lombok.extern.slf4j.Slf4j;
