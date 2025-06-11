@@ -9,6 +9,6 @@ public class FindDeviceVO {
     @ApiModelProperty("序列号")
     private String deviceSerialNumber;
 
-    @ApiModelProperty(value = "自检状态值",example = "0-未自检， 1-自检中，2-自检成功，3-自检失败")
-    private Integer initStatus;
+    @ApiModelProperty(value = "自检状态值",example = "0：未完成；1：自检成功； 2：自检失败； 3：自检进行中")
+    private Integer isInited;
 }

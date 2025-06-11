@@ -2,8 +2,10 @@ package com.persee.workstation.uv_inexus.service.instrumentService.impl;
 
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitInfoEnum;
 import com.persee.workstation.uv_inexus.service.instrumentService.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInitInfo;
 import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,14 +19,35 @@ import java.util.Random;
 @Service
 public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
-    public DeviceInfoVO queryDeviceInfo(DeviceQueryDTO queryDTO) {
+    public DeviceInfoVO queryDeviceInfo(String deviceSerialNumber, String updateBy) {
         log.info("查询仪器信息");
+        DeviceInfoVO vo = new DeviceInfoVO();
 
-        DeviceInfoVO infoVO = new DeviceInfoVO();
+        vo.setDeviceSerialNumber("PX-DEVICE-T800-001");
+        vo.setIsInited(0);
+        vo.setConnectMessage("connect to device：ip=1.1.1.2 port=30500，连接中");
+        vo.setConnectStatus(1);
+        List<DeviceInitInfo> list  = new ArrayList<>();
+        Integer length = DeviceInitInfoEnum.getLength();
 
-        infoVO.setIsInited("1");
+        for (int i = 1; i < length + 1; i++) {
+            DeviceInitInfo info = new DeviceInitInfo();
+            info.setInitTaskNum(i);
+            info.setInitProject(DeviceInitInfoEnum.getName(i));
+            Random rand = new Random();
+            int randomNumber = rand.nextInt(3);
+            info.setInitStatus(randomNumber);
 
-        return null;
+            list.add(info);
+
+        }
+
+        vo.setIntMessage(list);
+        vo.setUserName(updateBy);
+        vo.setIsDevOpened(1);
+        vo.setAppendMessage("附件信息");
+
+        return vo;
     }
 
     @Override
@@ -60,7 +83,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         log.info("查找到设备");
         FindDeviceVO vo = new FindDeviceVO();
         vo.setDeviceSerialNumber("111111");
-        vo.setInitStatus(0);
+        vo.setIsInited(0);
         List<FindDeviceVO> list = new ArrayList<>();
         list.add(vo);
         return list;

@@ -68,6 +68,10 @@ public class Result<T> {
         return Result.fail(null);
     }
 
+    public static<T> Result<T> fail(String message){
+        return Result.fail(ResultCodeEnum.FAIL.getCode(), message);
+    }
+
     /**
      * 操作失败
      * @param data
