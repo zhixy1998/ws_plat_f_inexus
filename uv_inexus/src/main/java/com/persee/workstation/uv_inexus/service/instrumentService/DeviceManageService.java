@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.instrumentService;
 
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.po.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
 
@@ -26,12 +27,16 @@ public interface DeviceManageService {
      */
     Boolean deviceActivation(String name);
 
+    QueryDeviceConfigVO queryDeviceConfig(String deviceSerialNumber);
+
+    List<Double> getBandWidth();
+
     /**
      * 仪器配置接口
-     * @param dto
+     * @param po
      * @return
      */
-    Boolean deviceConfig(DeviceLocalConfigDTO dto);
+    Boolean deviceConfig(InsConfigPO po);
 
     /**
      * 定时关机设置
@@ -40,14 +45,20 @@ public interface DeviceManageService {
      */
     Boolean timedShutdown(String deviceSerialNumber, String closeTime);
 
-
-
     /**
      * 仪器校准接口
      * @param calibrationDTO
      * @return
      */
     Boolean deviceCalibration(DeviceCalibrationDTO calibrationDTO);
+
+
+    /**
+     * 查询仪器校准方法接口
+     * @param deviceSerialNumber
+     * @return
+     */
+    List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber);
 
 
 }

@@ -5,12 +5,11 @@ import lombok.Builder;
 import lombok.Data;
 
 @Data
-@Builder
 public class DataNameValue {
 
     @ApiModelProperty("键")
-    private String key;
+    private String dataKey;
 
     @ApiModelProperty("值")
-    private String value;
+    private String dataValue;
 }

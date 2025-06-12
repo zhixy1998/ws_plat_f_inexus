@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.controller.instrumentController;
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
@@ -76,10 +77,39 @@ public class DeviceController {
         return null;
     }
 
+    @GetMapping("/getDeviceConfig")
+    @ApiOperation("查询仪器配置")
+    public Result<QueryDeviceConfigVO> getDeviceConfig(@RequestParam String deviceSerialNumber) {
+        QueryDeviceConfigVO vo = deviceManageService.queryDeviceConfig(deviceSerialNumber);
+        return Result.ok(vo);
+    }
+
+    @GetMapping("/getBandWidth")
+    @ApiOperation("查询光谱带宽")
+    public Result<List<Double>> getBandWidth(){
+        List<Double> bandWidth = deviceManageService.getBandWidth();
+        return Result.ok(bandWidth);
+    }
+
     @PostMapping("/deviceConfig")
     @ApiOperation("仪器配置接口")
-    public Result<Boolean> deviceConfig(@RequestBody DeviceLocalConfigDTO configDTO){
-        Boolean b = deviceManageService.deviceConfig(configDTO);
+    public Result<Boolean> deviceConfig(@RequestBody InsConfigPO po ){
+        Boolean b = deviceManageService.deviceConfig(po);
+        return Result.ok(b);
+    }
+
+    @GetMapping("/getCalibrationInfo")
+    @ApiOperation("查询仪器校准信息")
+    public Result<List<DeviceCalibrationVO>> getCalibrationInfo(@RequestParam String deviceSerialNumber) {
+        List<DeviceCalibrationVO> list = deviceManageService.queryCalibrationInfo(deviceSerialNumber);
+        return Result.ok(list);
+
+    }
+
+    @PostMapping("/calibration")
+    @ApiOperation("仪器校准")
+    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
+        Boolean b = deviceManageService.deviceCalibration(dto);
         return Result.ok(b);
     }
 

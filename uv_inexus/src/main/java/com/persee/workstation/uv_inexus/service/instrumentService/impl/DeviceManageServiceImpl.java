@@ -1,23 +1,34 @@
 package com.persee.workstation.uv_inexus.service.instrumentService.impl;
 
 
+import com.persee.workstation.uv_inexus.dao.instrumentDao.InsConfigDAO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitInfoEnum;
+import com.persee.workstation.uv_inexus.po.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.service.instrumentService.*;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInitInfo;
+import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
 @Slf4j
 @Service
 public class DeviceManageServiceImpl implements DeviceManageService {
+
+    @Autowired
+    InsConfigDAO configDAO;
+
+    @Autowired
+    DeviceMessageUtils messageUtils;
+
     @Override
     public DeviceInfoVO queryDeviceInfo(String deviceSerialNumber, String updateBy) {
         log.info("查询仪器信息");
@@ -80,12 +91,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     public List<FindDeviceVO> findDevice() {
         log.info("发送广播查找设备");
 
+
+
         log.info("查找到设备");
         FindDeviceVO vo = new FindDeviceVO();
-        vo.setDeviceSerialNumber("111111");
+        vo.setDeviceSerialNumber("01-1850-01-0000");
         vo.setIsInited(0);
+        vo.setIsDevOpened(2);
         List<FindDeviceVO> list = new ArrayList<>();
         list.add(vo);
+
+        new Thread(()-> {messageUtils.connectDevice();}).start();
         return list;
     }
 
@@ -95,12 +111,37 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public Boolean deviceConfig(DeviceLocalConfigDTO dto) {
-        if (dto.getRestoreFactorySetting()) {
-            log.info("恢复出厂设置");
-        }
+    public QueryDeviceConfigVO queryDeviceConfig(String deviceSerialNumber) {
+
+        QueryDeviceConfigVO vo = new QueryDeviceConfigVO();
+
+        vo.setAnnexSetting(0);
+        vo.setBandWidth(0.2);
+        vo.setMessagePort(1);
+        return vo;
+    }
+
+    @Override
+    public List<Double> getBandWidth() {
+        List<Double> result = new ArrayList<>();
+        result.add(0.2);
+        result.add(0.5);
+        result.add(1.0);
+        result.add(2.0);
+        return result;
+    }
+
+    @Override
+    public Boolean deviceConfig(InsConfigPO po) {
+//        if (po.getRestoreFactorySetting()) {
+//            log.info("恢复出厂设置");
+//        }
         log.info("设置仪器配置");
-        return null;
+
+
+        log.info("设置仪器配置成功！");
+
+        return configDAO.insert(po) > 0;
     }
 
     @Override
@@ -112,6 +153,27 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public Boolean deviceCalibration(DeviceCalibrationDTO calibrationDTO) {
         return null;
+    }
+
+    @Override
+    public List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber) {
+
+        //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
+        log.info("检测仪器类型");
+        String type = "T600"; //暂时默认用T600
+        List<DeviceCalibrationVO> info = configDAO.getCalibrationInfo(type);
+        for (DeviceCalibrationVO vo : info) {
+            List<DeviceCalibrationParams> params = configDAO.getCalibrationParams(vo.getCalibrationType());
+            for (DeviceCalibrationParams param : params) {
+                List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
+                param.setData(value);
+                param.setLastValue("6");
+            }
+            vo.setParams(params);
+        }
+
+
+        return info;
     }
 
     private Boolean checkUser(String userName, String password){

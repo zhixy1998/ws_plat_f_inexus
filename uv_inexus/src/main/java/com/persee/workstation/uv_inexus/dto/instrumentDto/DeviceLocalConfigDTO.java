@@ -15,8 +15,10 @@ public class DeviceLocalConfigDTO {
     private Integer annexSetting;
 
     @ApiModelProperty("光谱带宽设置")
-    private String bandWidth;
+    private Double bandWidth;
 
     @ApiModelProperty("是否恢复出厂设置")
     private Boolean restoreFactorySetting;
+
+    private String updateBy;
 }

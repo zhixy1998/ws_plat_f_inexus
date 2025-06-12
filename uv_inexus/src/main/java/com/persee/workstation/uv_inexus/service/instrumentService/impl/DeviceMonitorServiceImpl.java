@@ -20,7 +20,9 @@ public class DeviceMonitorServiceImpl implements DeviceMonitorService {
 
         DeviceMonitorVO vo = new DeviceMonitorVO();
         vo.setType(DeviceMonitorEnum.getName("1"));
-        DataNameValue value = DataNameValue.builder().key("s").value("09").build();
+        DataNameValue value =new DataNameValue();
+        value.setDataValue("09");
+        value.setDataKey("s");
 
         List<DataNameValue> neeList = new ArrayList<>();
         neeList.add(value);
