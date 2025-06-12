@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface DeviceManageService {
 
-    DeviceInfoVO queryDeviceInfo(DeviceQueryDTO queryDTO);
+    DeviceInfoVO queryDeviceInfo(String deviceSerialNumber, String updateBy);
 
     Boolean init(DeviceInitDTO initDTO);
 

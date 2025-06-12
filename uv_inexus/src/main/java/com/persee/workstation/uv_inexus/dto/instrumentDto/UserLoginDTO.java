@@ -11,7 +11,7 @@ public class UserLoginDTO {
     @ApiModelProperty(value = "用户名", example = "admin")
     private String userName;
 
-    @ApiModelProperty(value = "密码", example = "123456")
+    @ApiModelProperty(value = "密码", example = "px123456")
     private String password;
 
     @ApiModelProperty(value = "是否快捷登录, 0-普通登录，1-快捷登录")

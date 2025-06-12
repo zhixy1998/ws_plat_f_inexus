@@ -26,6 +26,7 @@ public class DeviceController {
     private DeviceMonitorService monitorService;
 
     @GetMapping("/findDevice")
+    @ApiOperation("查找仪器的接口")
     public Result<List<FindDeviceVO>> findDevice(){
         List<FindDeviceVO> device = deviceManageService.findDevice();
         return Result.ok(device);
@@ -33,8 +34,8 @@ public class DeviceController {
 
     @GetMapping("/query")
     @ApiOperation("仪器管理查询接口")
-    public Result<DeviceInfoVO> query(@RequestBody DeviceQueryDTO queryDTO){
-        DeviceInfoVO infoVO = deviceManageService.queryDeviceInfo(queryDTO);
+    public Result<DeviceInfoVO> query(@RequestParam String deviceSerialNumber, @RequestParam String updateBy){
+        DeviceInfoVO infoVO = deviceManageService.queryDeviceInfo(deviceSerialNumber, updateBy);
 
         return Result.ok(infoVO);
     }

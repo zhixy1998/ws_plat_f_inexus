@@ -2,16 +2,20 @@ package com.persee.workstation.uv_inexus.controller.instrumentController;
 
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.instrumentService.UserManagerService;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.LoginUserInfoVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/system")
 @ApiModel("系统配置")
+@Slf4j
 public class SystemctlController {
 
     @Autowired
@@ -19,11 +23,16 @@ public class SystemctlController {
 
     @PostMapping("/login")
     @ApiModelProperty("用户登录接口")
-    public Result<String> login(@RequestBody UserLoginDTO loginDTO){
+    public Result<LoginUserInfoVO> login(@RequestBody UserLoginDTO loginDTO){
 
-        userManagerService.login(loginDTO);
-        System.out.println("1111");
-        return Result.ok("成功");
+        R<LoginUserInfoVO> login = userManagerService.login(loginDTO);
+        if (login.getSuccess()) {
+            log.info("登陆成功");
+            return Result.ok(login.getData());
+        } else {
+            log.info("登陆失败");
+            return Result.fail(login.getMessage());
+        }
     }
 
 
