@@ -1,8 +1,11 @@
 package com.persee.workstation.uv_inexus.util;
 
 public class ByteUse {
+
+    public final static Integer first = 1;
+
     public final static byte[][] SearchMachineSend = {
-            {(byte) 0xB5 ,(byte) 0xFE, (byte) 0xF1 ,(byte) 0x03 ,(byte) 0x01 ,(byte) 0x40 ,(byte) 0xC2 ,(byte) 0xBA ,(byte) 0xA9 ,(byte) 0x08 ,(byte) 0x64 , (byte)0x78, 2},
+            {(byte) 0xB5 ,(byte) 0xFE, (byte) 0xF1 ,(byte) 0x03 ,(byte) 0x00 ,(byte) 0x40 ,(byte) 0xC2 ,(byte) 0xBA ,(byte) 0xA9 ,(byte) 0x08 ,(byte) 0x64 , (byte)0x78, 2},
     };
     public final static byte[][] SearchMachineReceive = {
             {(byte) 0xFE, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
@@ -22,6 +25,7 @@ public class ByteUse {
     };
     public final static byte[][] LinkMachineSend = {{(byte) 0xB5, (byte) 0xFF, (byte) 0xF0, (byte) 0x01,
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xA5,2}
     };
     public final static byte[][] LinkMachineReceive = {
