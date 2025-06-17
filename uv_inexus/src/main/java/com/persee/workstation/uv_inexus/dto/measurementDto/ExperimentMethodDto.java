@@ -5,10 +5,14 @@ import lombok.Data;
 
 @Data
 public class ExperimentMethodDto {
+    // 项目ID
+    private String projectId;
     // 测量类型
     private String measureType;
     // 方法名称
     private String methodName;
+    // 是否共享
+    private String isShare;
     // 光度模式
     private String luminosity;
     // 开始波长

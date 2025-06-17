@@ -1,38 +1,59 @@
 package com.persee.workstation.uv_inexus.po.measurementPo;
 
-import com.baomidou.mybatisplus.extension.activerecord.Model;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 项目表(TMeasureProject)表实体类
  *
  * @author makejava
- * @since 2025-06-11 09:14:55
+ * @since 2025-06-12 10:05:08
  */
 @Data
-@SuppressWarnings("serial")
-public class TMeasureProject extends Model<TMeasureProject> {
-//项目uuid
+@TableName("t_measure_project")
+public class TMeasureProject{
+    // 项目id
+    @TableId(value = "id", type = IdType.NONE) // 主键字段
     private String id;
-//项目名称
+
+    // 项目名称
+    @TableField("project_name")
     private String projectName;
-//创建时间
-    private Date createTime;
-//创建人Key
+
+    // 创建时间
+    @TableField("create_time")
+    private LocalDateTime createTime;
+
+    // 创建人Key
+    @TableField("creator_key")
     private String creatorKey;
-//备注
+
+    // 备注
+    @TableField("remark")
     private String remark;
-//预留字段1
-    private String field1;
-//预留字段2
-    private String field2;
-//预留字段3
+
+    // 最近更新人
+    @TableField("Last_updated_by")
+    private String lastUpdatedBy;
+
+    // 最近更新时间
+    @TableField("Last_updated_time")
+    private LocalDateTime lastUpdatedTime;
+
+    // 预留字段3 ~ 预留字段5
+    @TableField("field3")
     private String field3;
-//预留字段4
+
+    @TableField("field4")
     private String field4;
-//预留字段5
+
+    @TableField("field5")
     private String field5;
+
 }
 

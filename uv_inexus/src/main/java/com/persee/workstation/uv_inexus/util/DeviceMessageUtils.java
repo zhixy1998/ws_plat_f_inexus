@@ -49,6 +49,7 @@ public class DeviceMessageUtils {
 
     }
 
+
     private String dealData(byte[][] data, Integer dealType){
         String result = null;
         switch (dealType) {
@@ -92,6 +93,50 @@ public class DeviceMessageUtils {
 
     }
 
+
+    public String spectrumMeasurement() {
+        /*
+        1，发送配置
+        2，发送数据
+        3，返回数据
+        4，处理数据
+         */
+        try {
+//            for (byte[] bytes : ByteUse.configurationSend) {
+//                InetAddress ip = InetAddress.getByName(DEFAULT_IP);
+//                byte[][] receive1 = send(ip, bytes, DEFAULT_PORT);
+//                measurementDealData(receive1, 1);
+//            }
+
+        }catch (Exception e) {
+            log.info(e.getMessage());
+        }
+        return DEFAULT_IP;
+    }
+
+    private String measurementDealData(byte[][] data, Integer dealType){
+        switch (dealType){
+            case 1: {
+
+                return "";
+            }
+            case 2: {
+
+                return "";
+            }
+            case 3: {
+
+                return "";
+            }
+            case 4: {
+
+                return "";
+            }
+            default:
+                return "";
+        }
+    }
+
     public byte[][] send(InetAddress ip, byte[] data, int port){
         try{
             DatagramSocket socket = new DatagramSocket();
@@ -113,7 +158,6 @@ public class DeviceMessageUtils {
             int num = data[length-1];
 
             int i = 0;
-            //创建对象
 
             //返回结果类
             byte[][] result = new byte[num][4096];

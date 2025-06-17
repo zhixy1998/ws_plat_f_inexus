@@ -1,64 +1,96 @@
 package com.persee.workstation.uv_inexus.po.measurementPo;
 
-import com.baomidou.mybatisplus.extension.activerecord.Model;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 /**
  * 计算公式表(TMeasureCalculationFormula)表实体类
  *
  * @author makejava
- * @since 2025-06-11 09:14:55
+ * @since 2025-06-12 10:05:08
  */
 @Data
-@SuppressWarnings("serial")
-public class TMeasureCalculationFormula extends Model<TMeasureCalculationFormula> {
-//计算公式ID
+@TableName("t_measure_calculation_formula")
+public class TMeasureCalculationFormula {
+    // 计算公式id
+    @TableId(value = "id", type = IdType.NONE) // 主键字段
     private String id;
-//测量标准uuid
+
+    // 测量标准uuid
+    @TableField("standard_id")
     private String standardId;
-//结果名称
+
+    // 结果名称
+    @TableField("result_name")
     private String resultName;
-//输入参数1
+
+    // 输入参数1 ~ 输入参数10
+    @TableField("input_param1")
     private String inputParam1;
-//输入参数2
+
+    @TableField("input_param2")
     private String inputParam2;
-//输入参数3
+
+    @TableField("input_param3")
     private String inputParam3;
-//输入参数4
+
+    @TableField("input_param4")
     private String inputParam4;
-//输入参数5
+
+    @TableField("input_param5")
     private String inputParam5;
-//输入参数6
+
+    @TableField("input_param6")
     private String inputParam6;
-//输入参数7
+
+    @TableField("input_param7")
     private String inputParam7;
-//输入参数8
+
+    @TableField("input_param8")
     private String inputParam8;
-//输入参数9
+
+    @TableField("input_param9")
     private String inputParam9;
-//输入参数10
+
+    @TableField("input_param10")
     private String inputParam10;
-//计算公式
+
+    // 计算公式
+    @TableField("calculation_formula")
     private String calculationFormula;
-//预留字段1
+
+    // 预留字段1 ~ 预留字段10
+    @TableField("field1")
     private String field1;
-//预留字段2
+
+    @TableField("field2")
     private String field2;
-//预留字段3
+
+    @TableField("field3")
     private String field3;
-//预留字段4
+
+    @TableField("field4")
     private String field4;
-//预留字段5
+
+    @TableField("field5")
     private String field5;
-//预留字段6
+
+    @TableField("field6")
     private String field6;
-//预留字段7
+
+    @TableField("field7")
     private String field7;
-//预留字段8
+
+    @TableField("field8")
     private String field8;
-//预留字段9
+
+    @TableField("field9")
     private String field9;
-//预留字段10
+
+    @TableField("field10")
     private String field10;
 }
 

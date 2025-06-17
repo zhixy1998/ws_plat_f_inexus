@@ -189,6 +189,21 @@ public class ByteUse {
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xBA}
     };
 
+    public final static byte [][] SpectrumMeasurementSend={
+            {(byte) 0xb5, (byte) 0xff, 0x13, 0x05,
+                    0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, (byte) 0xcc},
+
+    };
+    public final static byte [][] SpectrumMeasurementReceive={
+            {(byte)0xff, (byte)0xb5, (byte)0xff, (byte)0x07,
+             (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+             (byte)0x00, (byte)0x00, (byte)0x00, (byte)0xba},
+
+    };
+
+
+
 //    byte [][] CheckWuPowerSend = {
 //            {(byte) 0xB5, (byte) 0xFF, (byte) 0x00, (byte) 0x0B,
 //                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
@@ -198,5 +213,6 @@ public class ByteUse {
 //    byte [][] CheckWuPowerReceive = {
 //
 //    };
+
 }
 
