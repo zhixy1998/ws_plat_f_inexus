@@ -1,14 +1,14 @@
 server:
-  port: 8081
-
+  port: 20800
+  address: 0.0.0.0
 spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
   datasource:
-    url: jdbc:mysql://192.168.202.128:3309/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://192.168.32.83:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
     username: root
-    password: 1234
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
 mybatis:
   mapper-locations:

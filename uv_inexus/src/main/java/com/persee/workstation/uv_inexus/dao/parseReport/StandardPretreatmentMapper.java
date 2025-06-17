@@ -1,0 +1,62 @@
+package com.persee.workstation.uv_inexus.dao.parseReport;
+
+import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
+import org.apache.ibatis.annotations.*;
+// import org.apache.ibatis.annotations.Mapper;
+// import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+
+@Mapper
+public interface StandardPretreatmentMapper {
+
+    @Insert("INSERT INTO t_report_standard_pretreatment (standard_identity, pretreatment_description) " +
+            "VALUES (#{standardIdentity}, #{pretreatmentDescription})")
+    void insert(StandardPretreatment standardPretreatment);
+
+    // 如果需要批量插入，可以添加以下方法
+    void batchInsert(@Param("list") List<StandardPretreatment> list);
+    // 手动实现 selectList 方法
+
+    @Select("SELECT * FROM t_report_standard_pretreatment")
+    List<StandardPretreatment> selectAll();
+}
+
+// package com.persee.workstation.uv_inexus.dao.parseReport;
+
+// import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
+// import org.apache.ibatis.annotations.*;
+
+// import java.util.List;
+
+// @Mapper
+// public interface StandardPretreatmentMapper {
+
+//     // 插入
+//     @Insert("INSERT INTO treportstandardpretreatment (standardidentity, pretreatmentdescription) " +
+//             "VALUES (#{standardIdentity}, #{pretreatmentDescription})")
+//     void insert(StandardPretreatment standardPretreatment);
+
+//     // 查询所有
+//     @Select("SELECT * FROM treportstandardpretreatment")
+//     List<StandardPretreatment> findAll();
+    
+//     // 根据标准身份标识查询
+//     @Select("SELECT * FROM treportstandardpretreatment WHERE standardidentity = #{standardIdentity}")
+//     StandardPretreatment findById(@Param("standardIdentity") String standardIdentity);
+
+//     // 更新
+//     @Update("UPDATE treportstandardpretreatment " +
+//             "SET pretreatmentdescription = #{pretreatmentDescription} " +
+//             "WHERE standardidentity = #{standardIdentity}")
+//     void update(StandardPretreatment standardPretreatment);
+
+//     // 根据标准身份标识删除
+//     @Delete("DELETE FROM treportstandardpretreatment WHERE standardidentity = #{standardIdentity}")
+//     void deleteById(@Param("standardIdentity") String standardIdentity);
+
+//     // 手动实现 selectList 方法
+//     @Select("SELECT * FROM treportstandardpretreatment")
+//     List<StandardPretreatment> selectAll();
+// }
+
