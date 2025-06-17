@@ -5,7 +5,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.instrumentService.UserManagerService;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.LoginUserInfoVO;
+import com.persee.workstation.uv_inexus.vo.systemConfigVo.LoginUserInfoVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.extern.slf4j.Slf4j;

@@ -11,12 +11,15 @@ import java.util.Map;
 @Getter
 public enum DeviceInitInfoEnum {
 
-    WAVELENGTH_LIST(1,"读取波长列表"),
-    INITIALIZATION_STATUS(2, "读取初始化状态"),
-    DEUTERIUM_LAMP_MAXIMUM_ENERGY(3,"氘灯最高能量值"),
-    TUNGSTEN_LAMP_MAXIMUM_ENERGY_VALUE(4,"钨灯最高能量值"),
-    DEUTERIUM_LAMP_WORKING_TIME(5,"氘灯已工作时长"),
-    TUNGSTEN_LAMP_WORKING_TIME(6,"钨灯已工作时长");
+    WAVELENGTH_LIST(1,"附件初始化(T600五联100mm长样池)"),
+    COLOR_FILTER(2, "滤色片电机初始化"),
+    INIT_SLIT_MOTOR(3,"狭缝电机初始化"),
+    SCANNING_MOTOR(4,"扫描电机初始化"),
+    LIGHT_SOURCE_MOTOR(5,"光源电机初始化"),
+    TUNGSTEN_LAMP_ENERGY(6,"钨灯能量检查"),
+    DEUTERIUM_LAMP_ENERGY(7,"氘灯能量检查"),
+    WAVELENGTH(8,"波长检查");
+
 
     private final Integer code;
 
