@@ -163,7 +163,7 @@ public class DeviceMessageUtils {
             }
 
             case 2:{//设置起始波长
-                if ((data[0][11] & 0xff) == 0xBA && (data[1][11] & 0xff) == 0x2D){
+                if ((data[0][11] & 0xff) == 0xBA && (data[1][11] & 0xff) == 0xCE){
                     result = "true";
                 }else
                     result = "false";
@@ -171,7 +171,7 @@ public class DeviceMessageUtils {
             }
 
             case 3:{//设置结束波长
-                if ((data[0][11] & 0xff) == 0xBA && (data[1][11] & 0xff) == 0x24){
+                if ((data[0][11] & 0xff) == 0xBA && (data[1][11] & 0xff) == 0x11){
                     result = "true";
                 }else
                     result = "false";

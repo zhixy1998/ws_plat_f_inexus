@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.annotation.PreDestroy;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
