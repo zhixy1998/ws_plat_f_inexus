@@ -7,6 +7,8 @@ import com.persee.workstation.uv_inexus.model.Result;
  * 光谱扫描服务
  */
 public interface SpectrumService {
+    Result queryMeasuredData(String taskId);
+
     Result newMethod(ExperimentMethodDto methodDto);
 
     Result queryProjectTaskMethod(String updateBy);
@@ -20,5 +22,7 @@ public interface SpectrumService {
     Result saveMethodParameter(ExperimentMethodDto methodDto);
 
     Result measurement();
+
+    void testPythonProt();
 //    public boolean newMethod(ExperimentMethodDto methodDto) throws JsonProcessingException;
 }

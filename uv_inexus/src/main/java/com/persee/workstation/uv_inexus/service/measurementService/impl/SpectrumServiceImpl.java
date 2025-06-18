@@ -14,14 +14,23 @@ import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureProject;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureStandard;
 import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +39,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service("spectrumService")
 public class SpectrumServiceImpl implements SpectrumService {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private TMeasureStandardService tMeasureStandardService;
@@ -46,6 +57,46 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Autowired
     private TMeasureTaskService tMeasureTaskService;
 
+    @Autowired
+    private TMeasureDataService tMeasureDataService;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+
+    /**
+     * 查询测量数据
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result queryMeasuredData(String taskId) {
+        // 根据任务id查询测量数据表中的数据
+        TMeasureData tMeasureData = tMeasureDataService.getOne(Wrappers.lambdaQuery(TMeasureData.class).eq(TMeasureData::getTaskId, taskId));
+        // 将测量的数据从json转换为OriginalMeasuredDataVo对象
+        OriginalMeasuredDataVo originalMeasuredDataVo = new OriginalMeasuredDataVo();
+        try {
+            originalMeasuredDataVo = objectMapper.readValue(tMeasureData.getInstrumentData(), OriginalMeasuredDataVo.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        // 调用python接口
+        String pythonUrl = "http://localhost:5000/process";
+        // 创建请求头
+        HttpHeaders headers = new HttpHeaders();
+        // 设置请求头类型为json
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        // 创建请求体
+        Map<String, Object> body = new HashMap<>();
+        // 将参数添加到请求体中
+        body.put("x_data", Arrays.asList(originalMeasuredDataVo.getX()));
+        body.put("y_data", Arrays.asList(originalMeasuredDataVo.getY()));
+        // 创建请求对象
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        // 发送请求获取返回结果 postForEntity方法传入参数分别是:调用路径，请求体，返回结果类型
+        ResponseEntity<String> response = restTemplate.postForEntity(pythonUrl, request, String.class);
+        return null;
+    }
 
     @Override
     // 重写父类方法
@@ -171,6 +222,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(projects);
     }
 
+    /**
+     * 查询方法的参数
+     * @param methodId
+     * @return
+     */
     @Override
     public Result queryMethodParameter(String methodId) {
         // 根据方法id查询方法
@@ -222,6 +278,25 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         // 将测量出来的结果存入测量数据表中
         return null;
+    }
+
+    @Override
+    public void testPythonProt() {
+        int[] x={5, 19, 3, 7, 12, 8, 2, 15, 9, 4};
+        double[] y = {1.5, 2.3, 3.7, 4.1, 5.9, 6.2, 7.8, 8.4, 9.0, 0.6};
+        String pythonUrl = "http://192.168.32.82:8002/get_peak/find_peaks"; // Python接口地址
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("x_data", Arrays.asList(5, 19, 3, 7, 12, 8, 2, 15, 9, 4));
+        body.put("y_data", Arrays.asList(1.5, 2.3, 3.7, 4.1, 5.9, 6.2, 7.8, 8.4, 9.0, 0.6));
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(pythonUrl, request, String.class);
+        System.err.println(response.getBody());
     }
 
 
