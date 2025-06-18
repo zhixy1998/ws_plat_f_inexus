@@ -1,4 +1,4 @@
-package com.persee.workstation.uv_inexus.vo.instrumentVo;
+package com.persee.workstation.uv_inexus.vo.systemConfigVo;
 
 
 import io.swagger.annotations.ApiModel;

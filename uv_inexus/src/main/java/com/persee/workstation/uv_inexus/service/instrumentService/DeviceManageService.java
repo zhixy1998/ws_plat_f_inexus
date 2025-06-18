@@ -2,17 +2,18 @@ package com.persee.workstation.uv_inexus.service.instrumentService;
 
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
-import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 
 import java.util.List;
 
 public interface DeviceManageService {
 
-    DeviceInfoVO queryDeviceInfo(String deviceSerialNumber, String updateBy);
+    R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy);
 
-    Boolean init(DeviceInitDTO initDTO);
+    R<Boolean> init(DeviceInitDTO initDTO);
 
     Boolean startDevice(DeviceStartDTO startDTO);
 
@@ -59,6 +60,8 @@ public interface DeviceManageService {
      * @return
      */
     List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber);
+
+    void test();
 
 
 }

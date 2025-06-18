@@ -73,6 +73,11 @@ public class R<T> {
         return build(data, false);
     }
 
+    public static<T> R<T> fail(String message) {
+        R<T> R = build(false,message);
+        return R;
+    }
+
     public static<T> R<T> fail(Boolean success, String message) {
         R<T> R = build(success,message);
         return R;

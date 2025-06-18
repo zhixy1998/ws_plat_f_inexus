@@ -2,12 +2,13 @@ package com.persee.workstation.uv_inexus.controller.instrumentController;
 
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
-import com.persee.workstation.uv_inexus.vo.systemConfigVo.FindDeviceVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,22 +31,35 @@ public class DeviceController {
     @ApiOperation("查找仪器的接口")
     public Result<List<FindDeviceVO>> findDevice(){
         List<FindDeviceVO> device = deviceManageService.findDevice();
-        return Result.ok(device);
+        if (device == null) {
+            return Result.fail("查找设备异常");
+        } else {
+            return Result.ok(device);
+        }
+
     }
 
     @GetMapping("/query")
     @ApiOperation("仪器管理查询接口")
     public Result<DeviceInfoVO> query(@RequestParam String deviceSerialNumber, @RequestParam String updateBy){
-        DeviceInfoVO infoVO = deviceManageService.queryDeviceInfo(deviceSerialNumber, updateBy);
-
-        return Result.ok(infoVO);
+        R<DeviceInfoVO> infoVO = deviceManageService.queryDeviceInfo(deviceSerialNumber, updateBy);
+        if (infoVO.getSuccess()) {
+            return Result.ok(infoVO.getData());
+        } else {
+            return Result.fail(infoVO.getMessage());
+        }
     }
 
     @PostMapping("/init")
     @ApiOperation("仪器初始化接口")
     public Result<Boolean> deviceInit(@RequestBody DeviceInitDTO initDTO){
-        Boolean init = deviceManageService.init(initDTO);
-        return Result.ok(init);
+        R<Boolean> init = deviceManageService.init(initDTO);
+        if (init.getSuccess()) {
+            return Result.ok(init.getData());
+        }else {
+            return Result.fail(init.getMessage());
+        }
+
     }
 
 
@@ -120,6 +134,11 @@ public class DeviceController {
         monitorService.countUsageInfo(dto);
         return null;
 
+    }
+
+    @PostMapping("/test")
+    public void test(){
+        deviceManageService.test();
     }
 
 
