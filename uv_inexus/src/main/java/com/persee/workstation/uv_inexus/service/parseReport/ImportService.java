@@ -24,12 +24,14 @@ import org.springframework.web.multipart.MultipartFile;
 import com.persee.workstation.uv_inexus.excel.ImageToBase64;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 // import com.alibaba.fastjson.JSON;
 // import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import java.util.Objects;
 
 @Service
 public class ImportService {
@@ -242,6 +244,63 @@ public class ImportService {
                     throw new IllegalArgumentException("输入参数1标识不能为空");
                 }
 
+                // 提取所有参数标识
+                List<String> paramIdentities = new ArrayList<>();
+                paramIdentities.add(model.getInputParam1Identity());
+                paramIdentities.add(model.getInputParam2Identity());
+                paramIdentities.add(model.getInputParam3Identity());
+                paramIdentities.add(model.getInputParam4Identity());
+                paramIdentities.add(model.getInputParam5Identity());
+                paramIdentities.add(model.getInputParam6Identity());
+                paramIdentities.add(model.getInputParam7Identity());
+                paramIdentities.add(model.getInputParam8Identity());
+                paramIdentities.add(model.getInputParam9Identity());
+                paramIdentities.add(model.getInputParam10Identity());
+
+                // 过滤掉空值
+                paramIdentities.removeIf(Objects::isNull);
+
+                // 校验公式文本
+                String formulaText = model.getFormulaText();
+                if (formulaText == null || formulaText.isEmpty()) {
+                    throw new IllegalArgumentException("公式文本不能为空");
+                }
+
+                // 检查是否是等式
+                if (!formulaText.contains("=")) {
+                    throw new IllegalArgumentException("不是等式");
+                }
+
+                // 分割等式
+                String[] parts = formulaText.split("=", 2);
+                String leftSide = parts[0].trim();
+                String rightSide = parts[1].trim();
+                
+                // 校验结果标识
+                String resultIdentity = model.getResultIdentity();
+                if (resultIdentity == null || resultIdentity.isEmpty()) {
+                    throw new IllegalArgumentException("结果标识不能为空");
+                }
+
+                // 检查等式左边是否包含结果标识
+                if (!leftSide.contains(resultIdentity)) {
+                    throw new IllegalArgumentException("结果标识有误，与公式文本不符！");
+                }
+
+                // 记录不在公式文本中的参数标识
+                List<String> invalidParams = new ArrayList<>();
+
+                for (int i = 0; i < paramIdentities.size(); i++) {
+                    String paramIdentity = paramIdentities.get(i);
+                    if (!rightSide.contains(paramIdentity)) {
+                        invalidParams.add("参数" + (i + 1) + "标识: " + paramIdentity);
+                    }
+                }
+
+                if (!invalidParams.isEmpty()) {
+                    throw new IllegalArgumentException("以下参数标识有误，不在公式文本中: " + String.join(", ", invalidParams));
+                }
+                    
                 CalculationFormula calculationFormula = new CalculationFormula();
                 calculationFormula.setStandardIdentity(model.getStandardIdentity());
                 calculationFormula.setResultIdentity(model.getResultIdentity());
