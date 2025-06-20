@@ -22,7 +22,7 @@ public class DeviceInfoPO extends BasePO {
     @TableField("is_inited")
     private Integer isInited;
 
-    @ApiModelProperty("是否开机")
+    @ApiModelProperty("是否开机,0-未开机,1-已开机,2-软关机")
     @TableField("is_dev_opened")
     private Integer isDevOpened;
 

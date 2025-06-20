@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.po.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.service.instrumentService.*;
 import com.persee.workstation.uv_inexus.util.ByteUse;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
+import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
@@ -459,9 +460,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public void test(){
         String ip = "169.254.110.254";
+        ScanParamInfo info = new ScanParamInfo();
+        info.setWaveLengthInterval("0.5");
+        info.setStartWaveLength("400");
+        info.setEndWaveLength("700");
 //        messageUtils.searchDevice();
 //        messageUtils.initUtil(ip, sendPort, ByteUse.LinkMachineSend, 2);
-        messageUtils.setScanParam(ip, sendPort, ByteUse.SpectrumScanAllConfig);
+        messageUtils.setScanParam(ip, sendPort, ByteUse.SpectrumScanAllConfig,  info);
+
     }
 
 }

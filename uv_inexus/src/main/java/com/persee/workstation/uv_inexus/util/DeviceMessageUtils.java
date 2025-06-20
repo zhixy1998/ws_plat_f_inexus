@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.util;
 
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -124,13 +125,91 @@ public class DeviceMessageUtils {
 
     }
 
-    public void setScanParam(String deviceIp, Integer port, byte[][] data){
+    public byte[] changeParam(byte[] data, ScanParamInfo realData) {
+        int length = data.length;
+        int dealType = data[length - 1];
+        byte[] newdata = data;
+        switch (dealType) {
+            case 1:{ //扫描间隔
+                String s = realData.getWaveLengthInterval();
+                double v = Double.valueOf(s) * 50;
+                v = (byte) v;
+                newdata[4] = (byte) v;
+                break;
+            }
+            case 2: { //起始波长
+                String s = realData.getStartWaveLength();
+                double v = Double.valueOf(s) * 50 / 256;
+                int v1 = (int)v;
+                v1 = (byte) v1;
+                newdata[4] = (byte) v1;
+
+                int v2 = (int)(v - v1) * 100;
+                v2 = (byte) v2;
+                newdata[5] = (byte) v2;
+                break;
+            }
+            case 3: { //结束波长
+                String s = realData.getEndWaveLength();
+                double v = Double.valueOf(s) * 50 / 256;
+                int v1 = (int)v;
+                v1 = (byte) v1;
+                newdata[4] = (byte) v1;
+
+                int v2 = (int)(v - v1) * 100;
+                v2 = (byte) v2;
+                newdata[5] = (byte) v2;
+                break;
+            }
+//            case 4: { //扫描速度
+//                String s = realData.getWaveLengthInterval();
+//
+//            }
+            case 5: { //光度模式
+                String s = realData.getLuminosity();
+                int v = Integer.valueOf(s);
+                newdata[4] = (byte) v;
+                break;
+            }
+            case 6: { //设置灯位置
+                String s = realData.getEnergyLamp();
+                int v = Integer.valueOf(s);
+                newdata[4] = (byte) v;
+                break;
+
+            }
+            case 7: { //设置增益
+                String s = realData.getGain();
+                int v = Integer.valueOf(s);
+                newdata[4] = (byte) v;
+                break;
+
+            }
+//            case 8: {
+//
+//            }
+            default:
+        }
+        newdata[length - 3] = ans(newdata);
+        return newdata;
+    }
+
+    public byte ans(byte[] data){
+        int sum = 0;
+        for (int i = 0; i < data.length - 1; i++) {
+            sum += data[i] & 0xFF;
+        }
+        return (byte)sum;
+    }
+
+    public void setScanParam(String deviceIp, Integer port, byte[][] data, ScanParamInfo realData){
         String s = "";
 
         try{
             InetAddress ip = InetAddress.getByName(deviceIp);
 
             for (byte[] bytes : data) {
+                bytes = changeParam(bytes, realData);
                 log.info("连接设备");
                 int length = bytes.length;
                 int dealType = bytes[length - 1];
