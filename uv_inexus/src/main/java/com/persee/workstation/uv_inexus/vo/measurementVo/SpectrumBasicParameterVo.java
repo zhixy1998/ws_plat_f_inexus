@@ -7,5 +7,8 @@ import lombok.Data;
 public class SpectrumBasicParameterVo extends SpectrumParameter {
     private String projectId;
     private String projectName;
+    private String taskId;
+    private String taskName;
+    private String methodId;
     private String methodName;
 }

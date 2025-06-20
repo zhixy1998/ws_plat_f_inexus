@@ -1,5 +1,9 @@
 package com.persee.workstation.uv_inexus.constant;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 public class Constants {
     public Constants() {
     }
@@ -36,6 +40,16 @@ public class Constants {
     public final static Integer CONNECT_DEVICE_SUCCESS = 2;
     public final static Integer CONNECT_DEVICE_FALSE = 3;
 
+    public static volatile LocalDateTime startTime;
+    public static volatile LocalDateTime endTime = null;
+
+    public static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
+    // 存储原始的数据
+    public static volatile List<String> field2Values = new CopyOnWriteArrayList<>();
+    // 存储处理后的数据
+    public static volatile List<String> field3Values = new CopyOnWriteArrayList<>();
+
+    public static final String EndData = "0D0A,000";
 
 
     /**

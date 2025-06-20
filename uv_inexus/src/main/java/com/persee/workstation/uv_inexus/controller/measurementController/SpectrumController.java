@@ -77,7 +77,7 @@ public class SpectrumController {
 
 
     @GetMapping("queryMeasuredData")
-    @ApiModelProperty("查询测量数据接口")
+    @ApiModelProperty("查询测量数据列表接口")
     public Result queryMeasuredData(@RequestParam String task_id) {
         return spectrumService.queryMeasuredData(task_id);
     }

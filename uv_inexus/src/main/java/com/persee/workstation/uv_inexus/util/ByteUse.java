@@ -226,6 +226,9 @@ public class ByteUse {
             {(byte) 0xB5, (byte) 0xFF, (byte) 0x06, (byte) 0x06,
                     (byte) 0x19, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xD9, 2,1},
+//            {(byte) 0xB5, (byte) 0xFF, (byte) 0x06, (byte) 0x06,
+//                    (byte) 0xFA, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+//                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0XBA, 2,1},
 
             {(byte) 0xB5, (byte) 0xFF, (byte) 0x0A, (byte) 0x02,
                     (byte) 0x9C, (byte) 0x72, (byte) 0x00, (byte) 0x00,

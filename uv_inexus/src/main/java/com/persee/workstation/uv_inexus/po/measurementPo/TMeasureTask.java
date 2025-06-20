@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 /**
  * 测量任务表(TMeasureTask)表实体类
@@ -36,7 +35,7 @@ public class TMeasureTask{
 
     // 采集起始时间
     @TableField("collection_start_time")
-    private LocalTime collectionStartTime;
+    private LocalDateTime collectionStartTime;
 
     // 方法Key
     @TableField("method_key")

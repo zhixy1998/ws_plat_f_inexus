@@ -1,13 +1,17 @@
 package com.persee.workstation.uv_inexus.util;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import org.springframework.stereotype.Service;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+
 
 @Service("SpectrumScan")
 public class SpectrumScan {
@@ -22,34 +26,38 @@ public class SpectrumScan {
     private static final int TARGET_PORT = 5000;
 
     // 存储接收到的消息
-    private static final List<byte[]> receivedMessages = new CopyOnWriteArrayList<>();
-    // 存储解析出的字段1值
-    private static final List<String> field1Values = new CopyOnWriteArrayList<>();
-    // 存储解析出的字段2值
-//    private static final List<Float> field2Values = new CopyOnWriteArrayList<>();
+    private static volatile  List<byte[]> receivedMessages = new CopyOnWriteArrayList<>();
+    // 存储解析出的数据
+//    private static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
+//    // 存储原始的数据
+//    private static volatile List<String> field2Values = new CopyOnWriteArrayList<>();
 
     // 有效报文计数
     private static int validPacketCount = 0;
-    private static volatile boolean receiving = true;
+    private static boolean receiving = true;
 
     // 定义终止报文
-    private static final byte[] END_FRAME = new byte[]{
-            (byte) 0xFF, (byte) 0xB5, (byte) 0x13, (byte) 0x02,
-            (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
-            (byte) 0x00, (byte) 0x3B, (byte) 0x68, (byte) 0x80
-    };
-    public List<String> scanStart() {
+//    private static final byte[] END_FRAME = new byte[]{
+//            (byte) 0xFF, (byte) 0xB5, (byte) 0x13, (byte) 0x0C,
+//            (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
+//            (byte) 0x00, (byte) 0x02, (byte) 0xE2, (byte) 0xCB
+//    };
+    public void scanStart() {
         try {
+            validPacketCount = 0;
             // 获取本地IP地址
             InetAddress localAddr = InetAddress.getByName(LOCAL_IP);
             // 创建UDP套接字，绑定本地IP地址和端口号
             DatagramSocket socket = new DatagramSocket(LOCAL_PORT, localAddr);
+            // 设置接收超时时间为2秒
+            socket.setSoTimeout(2000);
             System.out.println("[主线程] Socket 创建成功，绑定 IP：" + LOCAL_IP + "，端口：" + LOCAL_PORT);
-
-            // 启动发送线程
-            new Thread(() -> sendLoop(socket)).start();
+            Constants.startTime = LocalDateTime.now();
             // 启动接收线程
             new Thread(() -> receiveLoop(socket)).start();
+            // 启动发送线程
+            new Thread(() -> sendLoop(socket)).start();
+
 
             // 延迟打印解析值
 //            new Thread(() -> {
@@ -63,8 +71,6 @@ public class SpectrumScan {
         } catch (Exception e) {
             System.err.println("Socket 初始化失败: " + e.getMessage());
         }
-
-        return field1Values;
 
     }
 
@@ -85,13 +91,18 @@ public class SpectrumScan {
             System.out.println("[发送线程] 第一条配置报文已发送");
 
             // 等待4秒
-            Thread.sleep(4000);
+//            Thread.sleep(4000);
 
             // 开始扫描报文
             byte[] scanCmd = new byte[]{
-                    (byte) 0xB5, (byte) 0xFF, (byte) 0x13, (byte) 0x01,
+                    // 极快扫描
+                    (byte) 0xB5, (byte) 0xFF, (byte) 0x13, (byte) 0x64,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xC8
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x2B
+                    // 慢扫
+//                    (byte) 0xB5, (byte) 0xFF, (byte) 0x13, (byte) 0x01,
+//                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+//                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xC8
             };
             System.out.println("[发送线程] 即将发送第二条开始扫描报文...");
             socket.send(new DatagramPacket(scanCmd, scanCmd.length, targetAddr, TARGET_PORT));
@@ -127,19 +138,13 @@ public class SpectrumScan {
                 }
                 System.out.println();
 
-                if (Arrays.equals(data, END_FRAME)) {
-                    System.out.println("[终止] 收到终止指令报文，停止接收。");
-                    receiving = false;
-                    break;
-                }
+//                if (Arrays.equals(data, END_FRAME)) {
+//                    System.out.println("[终止] 收到终止指令报文，停止接收。");
+//                    receiving = false;
+//                }
 
-                if (data.length < 12) {
+                if (data.length < 11) {
                     System.out.println("[跳过] 数据长度不足，忽略本报文。");
-                    continue;
-                }
-
-                if ((data[4] & 0xFF) == 0x00) {
-                    System.out.println("[跳过] 第五位为 0x00，忽略本报文。");
                     continue;
                 }
 
@@ -156,7 +161,12 @@ public class SpectrumScan {
                     Double field2 = (field2Raw / 8388607) * 100;
 
                     // 存储解析出的字段值.2
-                    field1Values.add(field1+","+field2);
+//                    synchronized (Constants.field1Values){
+                        Constants.field1Values.add(field1+","+field2);
+                        Constants.field2Values.add(field1Raw+","+field2Raw);
+//                    }
+
+
 
                     System.out.printf("[解析] 字段1 = %.2f，字段2 = %.2f\n", field1, field2);
                 } else {
@@ -165,10 +175,18 @@ public class SpectrumScan {
 
                 System.out.println("---------------------------");
             }
+            socket.close();
 
         } catch (Exception e) {
             System.err.println("接收线程异常: " + e.getMessage());
+            socket.close();
+            e.printStackTrace();
+            // 存储解析出的字段值.2
+//            synchronized (Constants.field1Values){
+                Constants.field1Values.add(Constants.EndData);
+//            }
         }
+        Constants.endTime = LocalDateTime.now();
     }
 
     // ========== 打印解析出的字段数组 ==========

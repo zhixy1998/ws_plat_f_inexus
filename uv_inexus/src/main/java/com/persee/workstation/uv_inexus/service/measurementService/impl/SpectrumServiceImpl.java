@@ -80,8 +80,24 @@ public class SpectrumServiceImpl implements SpectrumService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+        if (originalMeasuredDataVo.getX() != null && originalMeasuredDataVo.getX().length > 0) {
+            String[] newX = Arrays.copyOf(originalMeasuredDataVo.getX(), originalMeasuredDataVo.getX().length - 1);
+            originalMeasuredDataVo.setX(newX);
+        }
+        if (originalMeasuredDataVo.getY() != null && originalMeasuredDataVo.getY().length > 0) {
+            String[] newY = Arrays.copyOf(originalMeasuredDataVo.getY(), originalMeasuredDataVo.getY().length - 1);
+            originalMeasuredDataVo.setY(newY);
+        }
+        double[] y_data = new double[originalMeasuredDataVo.getY().length];
+        for (int i = 0; i < originalMeasuredDataVo.getY().length; i++) {
+            y_data[i]= Double.parseDouble(originalMeasuredDataVo.getY()[i]);
+        }
+
+        double max = Arrays.stream(y_data).max().orElse(0);
+        double height = max * 0.2;
+
         // 调用python接口
-        String pythonUrl = "http://localhost:5000/process";
+        String pythonUrl = "http://192.168.32.62:8002/docs/get_peak/find_peaks";
         // 创建请求头
         HttpHeaders headers = new HttpHeaders();
         // 设置请求头类型为json
@@ -91,10 +107,13 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 将参数添加到请求体中
         body.put("x_data", Arrays.asList(originalMeasuredDataVo.getX()));
         body.put("y_data", Arrays.asList(originalMeasuredDataVo.getY()));
+        body.put("height", height);
+        body.put("distance", 0);
+
         // 创建请求对象
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         // 发送请求获取返回结果 postForEntity方法传入参数分别是:调用路径，请求体，返回结果类型
-        ResponseEntity<String> response = restTemplate.postForEntity(pythonUrl, request, String.class);
+        String response = String.valueOf(restTemplate.postForEntity(pythonUrl, request, String.class));
         return null;
     }
 
@@ -177,12 +196,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 查询所有项目下最近创建的方法
         TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>()
                 .in("project_item_key", projectList.stream().map(TMeasureProject::getId).collect(Collectors.toList()))
+                .eq("measurement_type","光谱扫描")
                 .orderByDesc("method_create_time")
                 .last("LIMIT 1"));
-
-//        // 根据方法id查询方法
-//        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-//        // 根据方法中的项目id查询项目
+        // 根据方法中的项目id查询项目
         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
         // 根据方法中的测量标准表id查询测量数据
         TMeasureStandard standard = tMeasureStandardService.getById(method.getStandardKey());
@@ -284,7 +301,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     public void testPythonProt() {
         int[] x={5, 19, 3, 7, 12, 8, 2, 15, 9, 4};
         double[] y = {1.5, 2.3, 3.7, 4.1, 5.9, 6.2, 7.8, 8.4, 9.0, 0.6};
-        String pythonUrl = "http://192.168.32.82:8002/get_peak/find_peaks"; // Python接口地址
+        String pythonUrl = "http://192.168.32.62:8002/get_peak/find_peaks"; // Python接口地址
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
