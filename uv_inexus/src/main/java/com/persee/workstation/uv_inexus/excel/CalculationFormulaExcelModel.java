@@ -1,8 +1,9 @@
 package com.persee.workstation.uv_inexus.excel;
 
-import com.alibaba.excel.annotation.ExcelProperty;
-import lombok.Data;
 import com.alibaba.excel.annotation.ExcelIgnore;
+import com.alibaba.excel.annotation.ExcelProperty;
+
+import lombok.Data;
 
 @Data
 public class CalculationFormulaExcelModel {

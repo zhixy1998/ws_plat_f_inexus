@@ -21,7 +21,7 @@ import com.persee.workstation.uv_inexus.dao.parseReport.QualityControlMapper;
 import com.persee.workstation.uv_inexus.dao.parseReport.RoundingRulesMapper;
 import com.persee.workstation.uv_inexus.dao.parseReport.StandardPretreatmentMapper;
 import com.persee.workstation.uv_inexus.excel.CalculationFormulaExcelModel;
-import com.persee.workstation.uv_inexus.excel.ImageToBase64;
+import com.persee.workstation.uv_inexus.excel.ExcelImageImportUtils;
 import com.persee.workstation.uv_inexus.excel.QualityControlExcelModel;
 import com.persee.workstation.uv_inexus.excel.RoundingRulesExcelModel;
 import com.persee.workstation.uv_inexus.excel.StandardDetectionExcelModel;
@@ -362,18 +362,30 @@ public class ImportService {
                 calculationFormula.setFormulaText(model.getFormulaText());
                 // calculationFormula.setFormulaImage(model.getFormulaImage());
                 // calculationFormula.setFormulaImage(null);
-                try {
-                    if (model.getFormulaImage() == null || model.getFormulaImage().isEmpty()) {
-                        calculationFormula.setFormulaImage(null);
-                    } else {
-                        String base64Image = ImageToBase64.convertImageToBase64(model.getFormulaImage());
-                        calculationFormula.setFormulaImage(base64Image);
+                String imageData = model.getFormulaImage();
+                String base64Image = null;
+                System.out.println("第 " + (i+2) + " 行图片----------------------------: " + imageData);
+                
+                if (imageData != null && !imageData.isEmpty()) {
+                    try {
+                        if (imageData.startsWith("=DISPIMG")) {
+                            // 传入行号用于图片定位
+                            base64Image = ExcelImageImportUtils.extractImageToBase64(
+                                file, 
+                                imageData,
+                                i + 2
+                            );
+                            System.out.println("图片提取结果长度: " + 
+                                (base64Image != null ? base64Image.length() : "null"));
+                        } else {
+                            base64Image = imageData;
+                        }
+                    } catch (Exception e) {
+                        System.out.println("第 " + i + 2 + " 行图片处理失败: " + e.getMessage());
                     }
-                } catch (IOException e) {
-                    System.out.println("转换图片为Base64时发生IO异常: " + e.getMessage());
-                    // calculationFormula.setFormulaImage(null); // 确保formulaImage字段有值
                 }
-    
+                calculationFormula.setFormulaImage(base64Image);
+                
                 calculationFormulaMapper.insert(calculationFormula);
             }
         } catch (IOException e) {
