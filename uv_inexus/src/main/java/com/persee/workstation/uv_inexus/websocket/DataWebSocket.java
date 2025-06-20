@@ -14,10 +14,12 @@ import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureDataService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureProjectService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.SpectrumScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
@@ -39,6 +41,7 @@ public class DataWebSocket {
     private UserConfigDAO userConfigDAO = BeanUtils.getBean(UserConfigDAO.class);
     private TMeasureTaskService taskService = BeanUtils.getBean(TMeasureTaskService.class);
     private TMeasureDataService dataService = BeanUtils.getBean(TMeasureDataService.class);
+    private DeviceMessageUtils messageUtils =  BeanUtils.getBean(DeviceMessageUtils.class);
     // 日志记录器
     private static final Logger log = LoggerFactory.getLogger(DataWebSocket.class);
     // 单线程执行器，用于执行数据推送任务
@@ -60,6 +63,7 @@ public class DataWebSocket {
         String methodId = null;
         String taskId = null;
         String projectId = null;
+        String deviceSerialNumber=null;
         for (String param : query.split("&")) {
             String[] split = param.split("=");
             if (split.length == 2) {
@@ -73,12 +77,24 @@ public class DataWebSocket {
                     case "project_id":
                         projectId = split[1];
                         break;
+                    case "device_serial_number":
+                        deviceSerialNumber = split[1];
+                        break;
                 }
             }
         }
-
+        // 判断deviceSerialNumber是否为空
+        if(!StringUtils.hasText(deviceSerialNumber)){
+            try {
+                session.getBasicRemote().sendText("device_serial_number为空");
+                session.close();
+                return;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
         // 开始推送数据
-        startDataPush(sessionId, methodId, taskId, projectId);
+        startDataPush(sessionId, methodId, taskId, projectId,deviceSerialNumber);
     }
 
     @OnMessage
@@ -102,13 +118,13 @@ public class DataWebSocket {
     }
 
     // 逐点推送数据
-    private void startDataPush(String sessionId, String methodId, String taskId, String projectId) {
+    private void startDataPush(String sessionId, String methodId, String taskId, String projectId,String deviceSerialNumber) {
         // 创建测量数据对象
         TMeasureData tMeasureData = new TMeasureData();
         Constants.field1Values.clear();
 
         // 调用仪器
-        spectrumScan.scanStart();
+        spectrumScan.scanStart(deviceSerialNumber);
 
         new Thread(() -> {
             try {
@@ -131,7 +147,6 @@ public class DataWebSocket {
                         continue;
                     }
                     if (Constants.field1Values.get(size - 1).equals(Constants.EndData)) {
-                        System.err.println("0000000000000");
                         size = size - 1;
                         last = true;
                     }

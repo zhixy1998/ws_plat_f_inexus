@@ -72,7 +72,11 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public Result queryMeasuredData(String taskId) {
         // 根据任务id查询测量数据表中的数据
-        TMeasureData tMeasureData = tMeasureDataService.getOne(Wrappers.lambdaQuery(TMeasureData.class).eq(TMeasureData::getTaskId, taskId));
+        TMeasureData tMeasureData = tMeasureDataService
+                .getOne(Wrappers.lambdaQuery(TMeasureData.class)
+                        .eq(TMeasureData::getTaskId, taskId)
+                        .orderByDesc(TMeasureData::getMeasurementEndTime)
+                        .last("limit 1"));
         // 将测量的数据从json转换为OriginalMeasuredDataVo对象
         OriginalMeasuredDataVo originalMeasuredDataVo = new OriginalMeasuredDataVo();
         try {

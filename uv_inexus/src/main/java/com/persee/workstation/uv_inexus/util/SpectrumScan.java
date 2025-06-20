@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.util;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.net.DatagramPacket;
@@ -21,12 +23,14 @@ public class SpectrumScan {
     // 本地端口号
     private static final int LOCAL_PORT = 6000;
     // 目标IP地址
-    private static final String TARGET_IP = "169.254.110.254";
+    private static volatile String TARGET_IP = "169.254.110.254";
     // 目标端口号
     private static final int TARGET_PORT = 5000;
 
     // 存储接收到的消息
     private static volatile  List<byte[]> receivedMessages = new CopyOnWriteArrayList<>();
+    @Autowired
+    private DeviceInfoService deviceInfoService;
     // 存储解析出的数据
 //    private static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
 //    // 存储原始的数据
@@ -42,7 +46,8 @@ public class SpectrumScan {
 //            (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
 //            (byte) 0x00, (byte) 0x02, (byte) 0xE2, (byte) 0xCB
 //    };
-    public void scanStart() {
+    public void scanStart(String deviceSerialNumber) {
+        TARGET_IP=deviceInfoService.getIp(deviceSerialNumber);
         try {
             validPacketCount = 0;
             // 获取本地IP地址
@@ -50,7 +55,7 @@ public class SpectrumScan {
             // 创建UDP套接字，绑定本地IP地址和端口号
             DatagramSocket socket = new DatagramSocket(LOCAL_PORT, localAddr);
             // 设置接收超时时间为2秒
-            socket.setSoTimeout(2000);
+            socket.setSoTimeout(1000);
             System.out.println("[主线程] Socket 创建成功，绑定 IP：" + LOCAL_IP + "，端口：" + LOCAL_PORT);
             Constants.startTime = LocalDateTime.now();
             // 启动接收线程

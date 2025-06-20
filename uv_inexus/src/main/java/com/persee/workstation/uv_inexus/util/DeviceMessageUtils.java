@@ -554,21 +554,17 @@ public class DeviceMessageUtils {
     private boolean isEndFrame(byte[] data, Integer b) {
 
         if (data.length < 4) return false;
-        log.info(b.toString());
         if (b == 13) {
-            log.info("钨灯");
             return (data[0] == (byte) 0xFF &&
                     data[1] == (byte) 0xB5 &&
                     data[2] == (byte) 0x00 &&
                     data[3] == (byte) 0x0b);
         }else if (b == 14){
-            log.info("氘灯");
             return  (data[0] == (byte) 0xFF &&
                     data[1] == (byte) 0xB5 &&
                     data[2] == (byte) 0x00 &&
                     data[3] == (byte) 0x0C);
         } else if (b == 15) {
-            log.info("波长");
             return (data[0] == (byte) 0xFF &&
                     data[1] == (byte) 0xB5 &&
                     data[2] == (byte) 0x00 &&
