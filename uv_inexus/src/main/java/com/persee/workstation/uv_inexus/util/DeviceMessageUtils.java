@@ -31,7 +31,7 @@ public class DeviceMessageUtils {
 
     private final String check = "校验数据";
 
-    private final Integer timeOut = 60000; //60s
+    private final Integer timeOut = 15000; //10s
 
 
     public FindDeviceVO searchDevice(){
@@ -101,7 +101,7 @@ public class DeviceMessageUtils {
                     log.info(check);
                     s = dealData(receive, dealType);
                 }
-            }else {
+            } else {
                 for (byte[] bytes : data) {
                     log.info("连接设备");
                     byte[][] receive = send(ip, bytes, port);

@@ -27,3 +27,4 @@ hs_err_pid*
 /.idea/vcs.xml
 /uv_inexus/.idea/vcs.xml
 /.idea/ws_plat_inexus.iml
+/uv_inexus/target/

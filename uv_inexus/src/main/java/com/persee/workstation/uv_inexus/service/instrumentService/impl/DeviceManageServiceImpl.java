@@ -109,6 +109,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         initRecordService.initAllTask(initDTO.getDeviceSerialNumber(), infoPO.getId());
 
         infoPO.setIsInited(Constants.INIT_STATUS_RUNNING);
+        infoService.saveOrUpdateInfo(infoPO);
 
         new Thread(()->{startInit(infoPO);}).start();
 
@@ -154,6 +155,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
             log.info("获取初始化状态");
             ret = messageUtils.initUtil(ip, sendPort, ByteUse.InitStatusSend, 5);
+
+            /*
+            未知指令，uvwin7发送的初始化有，不过excel里未记录
+            ret = messageUtils.initUtil(ip, sendPort, ByteUse.BeforeInit, 999);
+             */
+
 //            if (!ret.getSuccess()) {
 //                log.info("获取初始化状态异常");
 //                log.info(ret.getMessage());
@@ -452,7 +459,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public void test(){
         String ip = "169.254.110.254";
+//        messageUtils.searchDevice();
+//        messageUtils.initUtil(ip, sendPort, ByteUse.LinkMachineSend, 2);
         messageUtils.setScanParam(ip, sendPort, ByteUse.SpectrumScanAllConfig);
-    };
+    }
 
 }

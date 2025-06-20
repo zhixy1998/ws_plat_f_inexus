@@ -84,6 +84,12 @@ public class ByteUse {
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xC0}
     };
 
+    public final static byte[][] BeforeInit = {
+            {(byte) 0xB5, (byte) 0xFF, (byte) 0x06, (byte) 0x0A,
+                    (byte) 0x05, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xC9, 2}
+    };
+
     public final static byte[][] InitSamplepoolSend = {
             {(byte) 0xB5, (byte) 0xFF, (byte) 0x00, (byte) 0x0D,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
