@@ -21,6 +21,19 @@ public class ExperimentTestController {
     private SpectrumService spectrumService;
 
 
+    @GetMapping("queryProjectAllMethods/{projectId}/{measureForm}")
+    @ApiModelProperty("查询项目下的所有方法")
+    public Result queryProjectAllMethods(@PathVariable String projectId, @PathVariable String measureForm) {
+        return spectrumService.queryProjectAllMethods(projectId,measureForm);
+    }
+
+    @GetMapping("recentlyAccomplishTask/{quantity}")
+    @ApiModelProperty("最近完成的任务")
+    public Result queryAllTask(@RequestParam String updateBy,@PathVariable Integer quantity) {
+        return experimentTestService.queryAllTask(updateBy,quantity);
+    }
+
+
     @PostMapping("newProject")
     @ApiModelProperty("新建项目接口")
     public Result newProject(@RequestBody ProjectParamDto paramDto) {
@@ -33,19 +46,6 @@ public class ExperimentTestController {
         return experimentTestService.createTask(paramDto);
     }
 
-    @GetMapping("queryProjectAllMethods/{projectId}/{measureForm}")
-    @ApiModelProperty("查询项目下的所有方法")
-    public Result queryProjectAllMethods(@PathVariable String projectId, @PathVariable String measureForm) {
-        return spectrumService.queryProjectAllMethods(projectId,measureForm);
-    }
-
-
-
-    @GetMapping("recentlyAccomplishTask/{quantity}")
-    @ApiModelProperty("最近完成的任务")
-    public Result queryAllTask(@RequestParam String updateBy,@PathVariable Integer quantity) {
-        return experimentTestService.queryAllTask(updateBy,quantity);
-    }
 
 //    @GetMapping("prpductStatistics")
 //    public Result productStatistics(@RequestParam String updateBy) {

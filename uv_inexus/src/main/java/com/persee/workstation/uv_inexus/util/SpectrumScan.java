@@ -2,6 +2,8 @@ package com.persee.workstation.uv_inexus.util;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,10 @@ public class SpectrumScan {
     private static volatile  List<byte[]> receivedMessages = new CopyOnWriteArrayList<>();
     @Autowired
     private DeviceInfoService deviceInfoService;
+    @Autowired
+    private DeviceManageService deviceManageService;
+    @Autowired
+    private DeviceMessageUtils deviceMessageUtils;
     // 存储解析出的数据
 //    private static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
 //    // 存储原始的数据
@@ -46,8 +52,13 @@ public class SpectrumScan {
 //            (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
 //            (byte) 0x00, (byte) 0x02, (byte) 0xE2, (byte) 0xCB
 //    };
-    public void scanStart(String deviceSerialNumber) {
+    public void scanStart(String deviceSerialNumber, ScanParamInfo scanParamInfo) {
         TARGET_IP=deviceInfoService.getIp(deviceSerialNumber);
+//        Boolean b = deviceMessageUtils.setScanParam(TARGET_IP, TARGET_PORT, ByteUse.SpectrumScanAllConfig, scanParamInfo);
+//        if (b) {
+//            System.out.println("参数配置成功");
+//        }
+        deviceMessageUtils.setScanParam(TARGET_IP,TARGET_PORT,ByteUse.SpectrumScanAllConfig);
         try {
             validPacketCount = 0;
             // 获取本地IP地址
@@ -120,7 +131,10 @@ public class SpectrumScan {
 
     // ========== 接收并按条件处理UDP数据 ==========
     private static void receiveLoop(DatagramSocket socket) {
+
         try {
+            Thread.sleep(100);
+
             // 创建缓冲区
             byte[] buffer = new byte[1024];
             System.out.println("[接收线程] 启动成功，监听中...");

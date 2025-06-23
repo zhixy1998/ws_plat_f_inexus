@@ -7,6 +7,8 @@ import lombok.Data;
 public class ExperimentMethodDto {
     // 项目ID
     private String projectId;
+    // 方法id
+    private String methodId;
     // 测量类型
     private String measureType;
     // 方法名称

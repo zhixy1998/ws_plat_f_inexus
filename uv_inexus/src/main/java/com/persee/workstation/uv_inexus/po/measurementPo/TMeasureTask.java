@@ -53,10 +53,11 @@ public class TMeasureTask{
     @TableField("end_time")
     private String endTime;
 
-    // 预留字段3 ~ 预留字段5
-    @TableField("field3")
-    private String field3;
+    // 序列号
+    @TableField("device_serial_number")
+    private String deviceSerialNumber;
 
+    // 预留字段4 ~ 预留字段5
     @TableField("field4")
     private String field4;
 

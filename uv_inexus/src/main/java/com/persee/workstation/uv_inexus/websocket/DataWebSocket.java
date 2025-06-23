@@ -7,15 +7,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.userConfigDao.UserConfigDAO;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureProject;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureDataService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.SpectrumScan;
+import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -42,6 +39,8 @@ public class DataWebSocket {
     private TMeasureTaskService taskService = BeanUtils.getBean(TMeasureTaskService.class);
     private TMeasureDataService dataService = BeanUtils.getBean(TMeasureDataService.class);
     private DeviceMessageUtils messageUtils =  BeanUtils.getBean(DeviceMessageUtils.class);
+    private TMeasureMethodService methodService = BeanUtils.getBean(TMeasureMethodService.class);
+    private TMeasureStandardService standardService = BeanUtils.getBean(TMeasureStandardService.class);
     // 日志记录器
     private static final Logger log = LoggerFactory.getLogger(DataWebSocket.class);
     // 单线程执行器，用于执行数据推送任务
@@ -122,9 +121,18 @@ public class DataWebSocket {
         // 创建测量数据对象
         TMeasureData tMeasureData = new TMeasureData();
         Constants.field1Values.clear();
-
+        TMeasureMethod method = methodService.getById(methodId);
+        TMeasureStandard standard = standardService.getById(method.getStandardKey());
+        String measurementParamInfo = standard.getMeasurementParamInfo();
+        ObjectMapper objectMapper = new ObjectMapper();
+        ScanParamInfo ScanParamInfo=new ScanParamInfo();
+        try {
+            ScanParamInfo = objectMapper.readValue(measurementParamInfo, ScanParamInfo.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
         // 调用仪器
-        spectrumScan.scanStart(deviceSerialNumber);
+        spectrumScan.scanStart(deviceSerialNumber,ScanParamInfo);
 
         new Thread(() -> {
             try {
@@ -208,6 +216,7 @@ public class DataWebSocket {
                 tMeasureTask.setProjectItemKey(project.getId());
                 tMeasureTask.setMethodKey(methodId);
                 tMeasureTask.setUserId(userConfigPO.getId());
+                tMeasureTask.setDeviceSerialNumber(deviceSerialNumber);
                 taskService.save(tMeasureTask);
                 tMeasureData.setMeasurementStartTime(Constants.startTime);
                 tMeasureData.setMeasurementEndTime(Constants.endTime);
@@ -221,6 +230,7 @@ public class DataWebSocket {
                     throw new RuntimeException(e);
                 }
                 tMeasureData.setTaskId(tMeasureTask.getId());
+                taskResultId = tMeasureTask.getId();
                 dataService.save(tMeasureData);
             } else {
                 tMeasureData.setMeasurementStartTime(Constants.startTime);
@@ -236,9 +246,9 @@ public class DataWebSocket {
                 }
                 tMeasureData.setTaskId(taskId);
                 dataService.save(tMeasureData);
+                taskResultId = taskId;
             }
             System.err.println(tMeasureData);
-            taskResultId = tMeasureData.getId();
         }).start();
     }
 }

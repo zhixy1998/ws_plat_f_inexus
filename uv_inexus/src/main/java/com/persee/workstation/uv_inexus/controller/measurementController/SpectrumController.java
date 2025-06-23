@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.controller.measurementController;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ExperimentMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.measurementService.SpectrumService;
@@ -78,8 +79,26 @@ public class SpectrumController {
 
     @GetMapping("queryMeasuredData")
     @ApiModelProperty("查询测量数据列表接口")
-    public Result queryMeasuredData(@RequestParam String task_id) {
-        return spectrumService.queryMeasuredData(task_id);
+    public Result queryMeasuredData(@RequestParam Integer pageNum,
+                                    @RequestParam Integer pageSize,
+                                    @RequestParam String taskId) {
+        QueryMeasuredDataVo dataVo = new QueryMeasuredDataVo();
+        dataVo.setPageNum(pageNum);
+        dataVo.setPageSize(pageSize);
+        dataVo.setTaskId(taskId);
+        return spectrumService.queryMeasuredData(dataVo);
+    }
+
+    @GetMapping("queryMethodProt")
+    @ApiModelProperty("查找方法接口")
+    public Result queryMethodProt(@RequestParam String projectId) {
+        return spectrumService.queryMethodProt(projectId);
+    }
+
+    @GetMapping("queryTaskProt")
+    @ApiModelProperty("查看任务接口")
+    public Result queryTaskProt(@RequestParam String projectId,@RequestParam String methodId,@RequestParam Integer pageNum, @RequestParam Integer pageSize) {
+        return spectrumService.queryTaskProt(projectId,methodId,pageNum,pageSize);
     }
 
     @GetMapping("testPythonProt")

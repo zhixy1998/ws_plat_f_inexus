@@ -2,16 +2,16 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.userConfigDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ExperimentMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureProject;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureStandard;
+import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
@@ -26,11 +26,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -66,42 +65,43 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 查询测量数据
-     * @param taskId
+     * @param dataVo
      * @return
      */
     @Override
-    public Result queryMeasuredData(String taskId) {
+    public Result queryMeasuredData(QueryMeasuredDataVo dataVo) {
         // 根据任务id查询测量数据表中的数据
         TMeasureData tMeasureData = tMeasureDataService
                 .getOne(Wrappers.lambdaQuery(TMeasureData.class)
-                        .eq(TMeasureData::getTaskId, taskId)
+                        .eq(TMeasureData::getTaskId, dataVo.getTaskId())
                         .orderByDesc(TMeasureData::getMeasurementEndTime)
                         .last("limit 1"));
         // 将测量的数据从json转换为OriginalMeasuredDataVo对象
         OriginalMeasuredDataVo originalMeasuredDataVo = new OriginalMeasuredDataVo();
+        List<String> list = new ArrayList<>();
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+
         try {
-            originalMeasuredDataVo = objectMapper.readValue(tMeasureData.getInstrumentData(), OriginalMeasuredDataVo.class);
+            list = objectMapper.readValue(tMeasureData.getOriginalCalculationData(), ArrayList.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        if (originalMeasuredDataVo.getX() != null && originalMeasuredDataVo.getX().length > 0) {
-            String[] newX = Arrays.copyOf(originalMeasuredDataVo.getX(), originalMeasuredDataVo.getX().length - 1);
-            originalMeasuredDataVo.setX(newX);
+        for (String s : list) {
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
         }
-        if (originalMeasuredDataVo.getY() != null && originalMeasuredDataVo.getY().length > 0) {
-            String[] newY = Arrays.copyOf(originalMeasuredDataVo.getY(), originalMeasuredDataVo.getY().length - 1);
-            originalMeasuredDataVo.setY(newY);
-        }
-        double[] y_data = new double[originalMeasuredDataVo.getY().length];
-        for (int i = 0; i < originalMeasuredDataVo.getY().length; i++) {
-            y_data[i]= Double.parseDouble(originalMeasuredDataVo.getY()[i]);
+        double[] y_data = new double[yList.size()];
+        for (int i = 0; i < yList.size(); i++) {
+            y_data[i]= Double.parseDouble(yList.get(i));
         }
 
         double max = Arrays.stream(y_data).max().orElse(0);
         double height = max * 0.2;
 
         // 调用python接口
-        String pythonUrl = "http://192.168.32.62:8002/docs/get_peak/find_peaks";
+        String pythonUrl = "http://192.168.32.62:8002/get_peak/find_peaks";
         // 创建请求头
         HttpHeaders headers = new HttpHeaders();
         // 设置请求头类型为json
@@ -109,16 +109,53 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 创建请求体
         Map<String, Object> body = new HashMap<>();
         // 将参数添加到请求体中
-        body.put("x_data", Arrays.asList(originalMeasuredDataVo.getX()));
-        body.put("y_data", Arrays.asList(originalMeasuredDataVo.getY()));
-        body.put("height", height);
-        body.put("distance", 0);
+        body.put("x_data", xList);
+        body.put("y_data", yList);
+        body.put("height", 0.5);
+        body.put("distance", 1);
 
         // 创建请求对象
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         // 发送请求获取返回结果 postForEntity方法传入参数分别是:调用路径，请求体，返回结果类型
-        String response = String.valueOf(restTemplate.postForEntity(pythonUrl, request, String.class));
-        return null;
+        // 使用getBody方法获取返回结果
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonUrl, request, Map.class).getBody();
+        List<Double> peak_y = (List<Double>) resultMap.get("peak_y");
+        List<OriginalMeasuredDataVo> resultList = new ArrayList<>();
+        // 将xList和yList转换为OriginalMeasuredDataVo对象
+        for (int i = 0; i < xList.size(); i++) {
+            OriginalMeasuredDataVo vo = new OriginalMeasuredDataVo();
+            vo.setId(i + 1);
+            vo.setX(xList.get(i));
+            Double y = Double.valueOf(yList.get(i));
+            double value = BigDecimal.valueOf(y).setScale(3, RoundingMode.HALF_UP).doubleValue();
+            vo.setY(String.valueOf(value));
+            vo.setFeature("false");
+            vo.setTag("-"); // 或其他逻辑判断
+            resultList.add(vo);
+        }
+        // 遍历resultList，将peak_y中的数据与resultList中的数据进行匹配
+        for (OriginalMeasuredDataVo measuredDataVo : resultList) {
+            for (Double str : peak_y) {
+                // 将measuredDataVo.getY()转换成 double类型和 str比较
+                Double parsed = Double.parseDouble(measuredDataVo.getY());
+                if (parsed.equals(str)) {
+                    measuredDataVo.setFeature("true");
+                }
+            }
+        }
+
+        // 分页
+        // 获取所有数据
+        int total = resultList.size();
+        // fromIndex 开始，toIndex 结束
+        int fromIndex = (dataVo.getPageNum() - 1) * dataVo.getPageSize();
+        int toIndex = Math.min(fromIndex + dataVo.getPageSize(), total);
+        if (fromIndex >= total || fromIndex < 0) {
+            return Result.ok(resultList);
+        }
+        // 截取分页数据
+        List<OriginalMeasuredDataVo> pagedList = resultList.subList(fromIndex, toIndex);
+        return Result.ok(pagedList);
     }
 
     @Override
@@ -155,8 +192,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         BeanUtils.copyProperties(methodDto, spectrumParameter);
         // 将需要的字段转成json
         ObjectMapper objectMapper = new ObjectMapper();
+        String s=null;
         try {
-            String s = objectMapper.writeValueAsString(spectrumParameter);
+            s = objectMapper.writeValueAsString(spectrumParameter);
             tMeasureStandard.setMeasurementParamInfo(s);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -175,6 +213,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 将测量参数表的id存入方法表中
         tMethod.setStandardKey(tMeasureStandard.getId());
         tMethod.setMethodCreateTime(LocalDateTime.now());
+        tMethod.setMeasurementParamInfo(s);
         // 将项目id存入方法表中
         tMethod.setProjectItemKey(defaultProject.getId());
         tMeasureMethodService.save(tMethod);
@@ -216,6 +255,9 @@ public class SpectrumServiceImpl implements SpectrumService {
             throw new RuntimeException(e);
         }
         // 将项目,方法名称存入返回对象中
+        spectrumBasicParameterVo.setMethodId(method.getId());
+        spectrumBasicParameterVo.setTaskName(method.getMethodName());
+        spectrumBasicParameterVo.setTaskId(method.getId());
         spectrumBasicParameterVo.setProjectId(project.getId());
         spectrumBasicParameterVo.setProjectName(project.getProjectName());
         spectrumBasicParameterVo.setMethodName(method.getMethodName());
@@ -267,9 +309,8 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Override
     public Result saveMethodParameter(ExperimentMethodDto methodDto) {
-        // 根据项目id查询当前方法
-        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("project_item_key", methodDto.getProjectId()));
-        // 根据当前方法中的测量标准表id查询测量数据
+        // 根据方法id查询当前方法
+        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("id",methodDto.getMethodId()));        // 根据当前方法中的测量标准表id查询测量数据
         TMeasureStandard standard = tMeasureStandardService.getById(method.getStandardKey());
         // 将ExperimentMethodDto中的值转入SpectrumParameter对象中
         SpectrumParameter spectrumParameter=  new SpectrumParameter();
@@ -281,6 +322,10 @@ public class SpectrumServiceImpl implements SpectrumService {
             throw new RuntimeException(e);
         }
         boolean update = tMeasureStandardService.updateById(standard);
+        if (!methodDto.getMethodName().equals(method.getMethodName())){
+            method.setMethodName(methodDto.getMethodName());
+            tMeasureMethodService.updateById(method);
+        }
         return Result.ok(update);
     }
 
@@ -320,6 +365,36 @@ public class SpectrumServiceImpl implements SpectrumService {
         System.err.println(response.getBody());
     }
 
+    @Override
+    public Result queryMethodProt(String projectId) {
+        // 根据项目id和测量类型查询方法
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", MeasureTypeEnum.SPECTRAL_SCAN));
+        if (list==null){
+            return Result.fail("未查询到数据");
+        }
+        return Result.ok(list);
+    }
+
+    @Override
+    public Result queryTaskProt(String projectId, String methodId, Integer pageNum, Integer pageSize) {
+        // 判断方法id是all还是id
+        Page<TMeasureTask> page = null;
+        if (methodId.equals("all")){
+            // 分页查询所有当前项目id的任务
+            page = tMeasureTaskService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureTask>().eq("project_item_key", projectId));
+            if (page==null||page.getRecords().size() == 0){
+                return Result.fail("未查询到数据");
+            }
+        }else{
+            // 根据项目id和方法id分页查询任务
+            page = tMeasureTaskService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureTask>().eq("project_item_key", projectId).eq("method_id", methodId));
+            if (page==null||page.getRecords().size() == 0){
+                return Result.fail("未查询到数据");
+            }
+        }
+        return Result.ok(page);
+    }
+
 
 //    @Override
 //    public boolean newMethod(ExperimentMethodDto methodDto) throws JsonProcessingException {
@@ -340,5 +415,29 @@ public class SpectrumServiceImpl implements SpectrumService {
 //        return false;
 //    }
 
+
+    /**
+     * 处理Python返回的json数据
+     * @param rawStr
+     * @return
+     */
+    public Map<String, Object> parseJsonResponse(String rawStr) {
+        if (rawStr == null || rawStr.trim().isEmpty()) {
+            throw new RuntimeException("响应数据为空");
+        }
+
+        int jsonStart = rawStr.indexOf("{");
+        if (jsonStart == -1) {
+            throw new RuntimeException("不是合法的JSON字符串: " + rawStr);
+        }
+
+        String cleanJson = rawStr.substring(jsonStart);
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readValue(cleanJson, Map.class);
+        } catch (Exception e) {
+            throw new RuntimeException("JSON解析失败: " + e.getMessage(), e);
+        }
+    }
 
 }

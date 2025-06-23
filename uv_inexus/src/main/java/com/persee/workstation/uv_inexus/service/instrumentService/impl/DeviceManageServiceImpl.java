@@ -466,7 +466,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         info.setEndWaveLength("700");
 //        messageUtils.searchDevice();
 //        messageUtils.initUtil(ip, sendPort, ByteUse.LinkMachineSend, 2);
-        messageUtils.setScanParam(ip, sendPort, ByteUse.SpectrumScanAllConfig,  info);
+        messageUtils.setScanParam(ip, sendPort, ByteUse.SpectrumScanAllConfig);
 
     }
 

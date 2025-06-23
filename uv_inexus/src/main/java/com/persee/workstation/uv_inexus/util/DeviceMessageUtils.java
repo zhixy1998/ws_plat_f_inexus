@@ -139,24 +139,26 @@ public class DeviceMessageUtils {
             }
             case 2: { //起始波长
                 String s = realData.getStartWaveLength();
-                double v = Double.valueOf(s) * 50 / 256;
+                double v = (Double.valueOf(s) * 50) / 256;
                 int v1 = (int)v;
+                int v2 = (int)(((Double.valueOf(s)+1) * 50) % 256);
+
                 v1 = (byte) v1;
                 newdata[4] = (byte) v1;
 
-                int v2 = (int)(v - v1) * 100;
                 v2 = (byte) v2;
                 newdata[5] = (byte) v2;
                 break;
             }
             case 3: { //结束波长
                 String s = realData.getEndWaveLength();
-                double v = Double.valueOf(s) * 50 / 256;
+                double v = (Double.valueOf(s) * 50) / 256;
                 int v1 = (int)v;
+                int v2 = (int)(((Double.valueOf(s)-1) * 50) % 256);
+
                 v1 = (byte) v1;
                 newdata[4] = (byte) v1;
 
-                int v2 = (int)(v - v1) * 100;
                 v2 = (byte) v2;
                 newdata[5] = (byte) v2;
                 break;
@@ -196,24 +198,53 @@ public class DeviceMessageUtils {
 
     public byte ans(byte[] data){
         int sum = 0;
-        for (int i = 0; i < data.length - 1; i++) {
+        for (int i = 0; i < data.length - 3; i++) {
             sum += data[i] & 0xFF;
         }
         return (byte)sum;
     }
 
-    public void setScanParam(String deviceIp, Integer port, byte[][] data, ScanParamInfo realData){
+//    public Boolean setScanParam(String deviceIp, Integer port, byte[][] data, ScanParamInfo realData){
+//        String s = "aaa";
+//
+//        try{
+//            InetAddress ip = InetAddress.getByName(deviceIp);
+//
+//            for (byte[] bytes : data) {
+//                bytes = changeParam(bytes, realData);
+//                log.info("连接设备");
+//                int length = bytes.length;
+//                int dealType = bytes[length - 1];
+////                bytes[length - 1] = 0;
+//                byte[] newData = Arrays.copyOf(bytes, length - 1);
+//                byte[][] receive = send(ip, newData, port);
+//                log.info(check);
+////                s = scanDealData(receive, dealType);
+//            }
+//            if (s.equals("false")){
+//                log.info("接收的数据有问题");
+//                return false;
+//
+//            }
+//            return true;
+//        } catch (Exception e) {
+//            log.info("出现异常");
+//            log.info(e.getMessage());
+//            return false;
+//        }
+//    }
+
+    public void setScanParam(String deviceIp, Integer port, byte[][] data){
         String s = "";
 
         try{
             InetAddress ip = InetAddress.getByName(deviceIp);
 
             for (byte[] bytes : data) {
-                bytes = changeParam(bytes, realData);
                 log.info("连接设备");
                 int length = bytes.length;
                 int dealType = bytes[length - 1];
-//                bytes[length - 1] = 0;
+
                 byte[] newData = Arrays.copyOf(bytes, length - 1);
                 byte[][] receive = send(ip, newData, port);
                 log.info(check);
