@@ -1,18 +1,26 @@
-    package com.persee.workstation.uv_inexus.service.parseReport;
+package com.persee.workstation.uv_inexus.service.parseReport;
 
-    import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
-    import java.util.List;
+import java.util.List;
+import java.util.Map;
 
-    public interface CalculationFormulaService {
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
 
-        List<CalculationFormula> findAll();
+public interface CalculationFormulaService {
 
-        CalculationFormula findById(Integer id);
+    List<CalculationFormula> findAll();
 
-        void insert(CalculationFormula CalculationFormula);
+    CalculationFormula findById(Integer id);
 
-        void update(CalculationFormula CalculationFormula);
+    void insert(CalculationFormula CalculationFormula);
 
-        void deleteById(Integer id);
-    }
+    void update(CalculationFormula CalculationFormula);
+
+    void deleteById(Integer id);
+    // 新增分页方法
+    // IPage<CalculationFormula> findPage(Page<CalculationFormula> page, String keyword);
+
+    IPage<CalculationFormula> findPage(Page<CalculationFormula> page, Map<String, String> params);
+}
     

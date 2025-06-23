@@ -1,14 +1,20 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
-import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Delete;
 import java.util.List;
 
-@Mapper // MyBatis注解，标记这是一个MyBatis的Mapper接口
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
+
+@Mapper
 public interface CalculationFormulaDao {
 
     // 查询所有
@@ -58,4 +64,13 @@ public interface CalculationFormulaDao {
     // 根据ID删除记录
     @Delete("DELETE FROM t_report_calculation_formulas WHERE id = #{id}")
     void deleteById(Integer id);
+
+    // 分页查询
+    @Select("<script>" +
+        "SELECT * FROM t_report_calculation_formulas " +
+        "<where>" +
+        "${ew.sqlSegment}" +
+        "</where>" +
+        "</script>")
+    IPage<CalculationFormula> selectPage(Page<CalculationFormula> page, @Param("ew") QueryWrapper<CalculationFormula> queryWrapper);
 }
