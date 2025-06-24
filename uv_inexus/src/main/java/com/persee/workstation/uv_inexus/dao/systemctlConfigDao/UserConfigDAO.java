@@ -1,4 +1,4 @@
-package com.persee.workstation.uv_inexus.dao.userConfigDao;
+package com.persee.workstation.uv_inexus.dao.systemctlConfigDao;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;

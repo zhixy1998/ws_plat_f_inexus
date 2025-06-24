@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.userConfigDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dao.systemctlConfigDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;

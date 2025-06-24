@@ -2,7 +2,7 @@ package com.persee.workstation.uv_inexus.service.systemctlConfigService.impl;
 
 
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.userConfigDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dao.systemctlConfigDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.service.systemctlConfigService.UserManagerService;

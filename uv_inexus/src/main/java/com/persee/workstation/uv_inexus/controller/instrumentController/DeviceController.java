@@ -4,7 +4,10 @@ package com.persee.workstation.uv_inexus.controller.instrumentController;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.instrumentPo.DeviceAutoInjectorPO;
+import com.persee.workstation.uv_inexus.po.instrumentPo.InjectionTrayParamPO;
 import com.persee.workstation.uv_inexus.po.instrumentPo.InsConfigPO;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceAutoInjectorService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
@@ -26,6 +29,9 @@ public class DeviceController {
 
     @Autowired
     private DeviceMonitorService monitorService;
+
+    @Autowired
+    private DeviceAutoInjectorService injectorService;
 
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
@@ -116,6 +122,51 @@ public class DeviceController {
         }
 
     }
+
+    @ApiOperation("设置进样器参数配置")
+    @PostMapping("/setInjectorConf")
+    public Result<Boolean> setInjectorConf(@RequestBody DeviceAutoInjectorPO injectorPO){
+        R<Boolean> r = injectorService.setInjectorConf(injectorPO);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @ApiOperation("设置进样器托盘参数配置")
+    @PostMapping("/setInjectorTray")
+    public Result<Boolean> setInjectorTray(@RequestBody List<InjectionTrayParamPO> poList){
+        R<Boolean> r = injectorService.setInjectorTray(poList);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/getInjectorConf")
+    @ApiOperation("查询进样器参数配置")
+    public Result<DeviceAutoInjectorPO> getInjectorConf(@RequestParam String deviceSerialNumber){
+        R<DeviceAutoInjectorPO> r = injectorService.queryInjectorConf(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/checkConnect")
+    @ApiOperation("联机")
+    public Result<Integer> checkConnect(@RequestParam String deviceSerialNumber){
+        R<Integer> r = injectorService.checkConnectStatus(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
 
     @GetMapping("/getCalibrationInfo")
     @ApiOperation("查询仪器校准信息")

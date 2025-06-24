@@ -1,7 +1,7 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.persee.workstation.uv_inexus.dao.userConfigDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dao.systemctlConfigDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumSpecimenDto;

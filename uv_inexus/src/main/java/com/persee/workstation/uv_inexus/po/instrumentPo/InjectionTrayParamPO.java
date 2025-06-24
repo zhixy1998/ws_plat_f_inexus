@@ -12,19 +12,19 @@ import lombok.EqualsAndHashCode;
 @Data
 @TableName(value = "t_int_injection_tray_param")
 @ApiModel("进样盘参数设置")
-public class InjectionTrayParam extends BasePO {
+public class InjectionTrayParamPO extends BasePO {
 
     @TableField(value = "device_serial_number")
     @ApiModelProperty("序列号")
     private String deviceSerialNumber;
 
-    @TableField(value = "injection_id")
-    @ApiModelProperty("进样器配置id")
-    private String injectionId;
-
-    @ApiModelProperty("盘区设置")
+    @ApiModelProperty("盘区设置, L,M,R")
     @TableField(value = "panel")
-    private Integer panel;
+    private String panel;
+
+    @ApiModelProperty("选中盘架与否，0-否，1-是")
+    @TableField(value = "is_selected")
+    private Integer isSelected;
 
     @ApiModelProperty("盘架设定")
     @TableField(value = "plate_rail")

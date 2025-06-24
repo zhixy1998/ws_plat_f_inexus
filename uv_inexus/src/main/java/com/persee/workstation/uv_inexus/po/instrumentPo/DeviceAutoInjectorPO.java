@@ -16,7 +16,7 @@ import java.util.List;
 @TableName("t_ins_auto_injector")
 public class DeviceAutoInjectorPO extends BasePO {
 
-    @ApiModelProperty("仪器序列号")
+    @ApiModelProperty(value = "仪器序列号",required = true)
     @TableField("device_serial_number")
     private String deviceSerialNumber;
 
@@ -54,6 +54,6 @@ public class DeviceAutoInjectorPO extends BasePO {
 
     @ApiModelProperty("进样盘参数列表")
     @TableField(value = "param_list",exist = false)
-    List<InjectionTrayParam> paramList;
+    List<InjectionTrayParamPO> paramList;
 
 }

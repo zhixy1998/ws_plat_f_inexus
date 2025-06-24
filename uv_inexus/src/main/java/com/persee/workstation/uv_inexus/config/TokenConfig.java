@@ -10,7 +10,7 @@ import java.util.List;
 
 @Configuration
 public class TokenConfig implements WebMvcConfigurer {
-    private TokenInterceptor tokenInterceptor;
+    private final TokenInterceptor tokenInterceptor;
 
     //构造方法
     public TokenConfig(TokenInterceptor tokenInterceptor){
@@ -27,10 +27,8 @@ public class TokenConfig implements WebMvcConfigurer {
         excludePath.add("/assets/**");  //静态资源
 
         registry.addInterceptor(tokenInterceptor)
-                .addPathPatterns("/**")
+                .addPathPatterns("/com/persee/workstation/uv-inexus/**")
                 .excludePathPatterns(excludePath);
         WebMvcConfigurer.super.addInterceptors(registry);
-
-
     }
 }
