@@ -66,7 +66,7 @@ import lombok.extern.slf4j.Slf4j;
             }
             
             // 确保分页稳定，按 ID 排序
-            queryWrapper.orderByAsc("id");
+            // queryWrapper.orderByAsc("id");
             
             // 打印 SQL（调试用）
             System.out.println("执行的 SQL: " + queryWrapper.getCustomSqlSegment());

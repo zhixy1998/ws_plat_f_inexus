@@ -71,6 +71,7 @@ public interface CalculationFormulaDao {
         "<where>" +
         "${ew.sqlSegment}" +
         "</where>" +
+        "ORDER BY id DESC" +  // 固定倒序
         "</script>")
     IPage<CalculationFormula> selectPage(Page<CalculationFormula> page, @Param("ew") QueryWrapper<CalculationFormula> queryWrapper);
 }
