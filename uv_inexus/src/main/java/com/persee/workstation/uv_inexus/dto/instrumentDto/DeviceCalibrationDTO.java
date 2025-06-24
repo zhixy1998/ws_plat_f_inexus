@@ -20,4 +20,10 @@ public class DeviceCalibrationDTO {
 
     @ApiModelProperty("校准名称")
     private String calibrationName;
+
+    @ApiModelProperty("仪器序列号")
+    private String deviceSerialNumber;
+
+    @ApiModelProperty("操作人")
+    private String updateBy;
 }

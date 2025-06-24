@@ -28,8 +28,17 @@ public interface DeviceManageService {
      */
     Boolean deviceActivation(String name);
 
+    /**
+     * 查询仪器配置接口
+     * @param deviceSerialNumber
+     * @return
+     */
     QueryDeviceConfigVO queryDeviceConfig(String deviceSerialNumber);
 
+    /**
+     * 查询光谱带宽接口
+     * @return
+     */
     List<Double> getBandWidth();
 
     /**
@@ -37,7 +46,12 @@ public interface DeviceManageService {
      * @param po
      * @return
      */
-    Boolean deviceConfig(InsConfigPO po);
+    R<Boolean> deviceConfig(InsConfigPO po);
+
+    /**
+     * 自动进样器配置
+     */
+//    R<Boolean> autoInjectorConfig();
 
     /**
      * 定时关机设置
@@ -51,7 +65,7 @@ public interface DeviceManageService {
      * @param calibrationDTO
      * @return
      */
-    Boolean deviceCalibration(DeviceCalibrationDTO calibrationDTO);
+    R<Boolean> deviceCalibration(DeviceCalibrationDTO calibrationDTO);
 
 
     /**

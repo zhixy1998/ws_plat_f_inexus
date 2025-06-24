@@ -4,10 +4,10 @@ package com.persee.workstation.uv_inexus.controller.instrumentController;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.service.instrumentService.UserManagerService;
+import com.persee.workstation.uv_inexus.service.systemctlConfigService.UserManagerService;
 import com.persee.workstation.uv_inexus.vo.systemConfigVo.LoginUserInfoVO;
 import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +22,7 @@ public class SystemctlController {
     UserManagerService userManagerService;
 
     @PostMapping("/login")
-    @ApiModelProperty("用户登录接口")
+    @ApiOperation("用户登录接口")
     public Result<LoginUserInfoVO> login(@RequestBody UserLoginDTO loginDTO){
 
         R<LoginUserInfoVO> login = userManagerService.login(loginDTO);
@@ -33,6 +33,12 @@ public class SystemctlController {
             log.info("登陆失败");
             return Result.fail(login.getMessage());
         }
+    }
+
+    @PostMapping("/logout")
+    @ApiOperation("用户登出接口")
+    public Result<Boolean> loginOut(@RequestParam String updateBy){
+        return Result.ok(true);
     }
 
 

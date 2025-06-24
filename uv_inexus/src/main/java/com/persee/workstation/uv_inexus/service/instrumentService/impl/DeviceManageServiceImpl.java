@@ -381,36 +381,75 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public Boolean deviceConfig(InsConfigPO po) {
+    public R<Boolean> deviceConfig(InsConfigPO po) {
 //        if (po.getRestoreFactorySetting()) {
 //            log.info("恢复出厂设置");
 //        }
+        if(!StringUtils.hasText(po.getDeviceSerialNumber())) {
+            log.info("设置系统配置--缺少序列号");
+            return R.fail("缺少序列号");
+        }
         log.info("设置仪器配置");
 
 
         log.info("设置仪器配置成功！");
 
-        return configDAO.insert(po) > 0;
+        LambdaQueryWrapper<InsConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(InsConfigPO::getDeviceSerialNumber, po.getDeviceSerialNumber());
+        if (configDAO.selectCount(query) == 0) {
+            configDAO.insert(po);
+        } else {
+            configDAO.update(po, query);
+        }
+        return R.ok(true);
     }
 
     @Override
     public Boolean timedShutdown(String deviceSerialNumber, String closeTime) {
-        log.info("定时关机");
+        log.info("定时开机");
         return null;
     }
 
     @Override
-    public Boolean deviceCalibration(DeviceCalibrationDTO dto) {
+    public R<Boolean> deviceCalibration(DeviceCalibrationDTO dto) {
 
-        for (DataNameValue data : dto.getData()) {
-            CalibrationTempPO po = new CalibrationTempPO();
-            po.setCalibrationType(dto.getCalibrationType());
-            po.setParam(data.getDataKey());
-            po.setParamValue(data.getDataValue());
-            tempDao.insert(po);
+        if(!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            log.info("缺少序列号");
+            return R.fail("缺少序列号");
+        }
+        String ip = infoService.getIp(dto.getDeviceSerialNumber());
+        log.info("调用校准");
+
+
+
+
+        LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+
+        List<CalibrationTempPO> poList = tempDao.selectList(queryWrapper);
+        if (poList.isEmpty()) {
+            for (DataNameValue data : dto.getData()) {
+                CalibrationTempPO po = new CalibrationTempPO();
+                po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+                po.setCreateBy(dto.getUpdateBy());
+                po.setCalibrationType(dto.getCalibrationType());
+                po.setParam(data.getDataKey());
+                po.setParamValue(data.getDataValue());
+                tempDao.insert(po);
+            }
+        } else {
+            for (DataNameValue data : dto.getData()) {
+
+                CalibrationTempPO po = new CalibrationTempPO();
+                po.setUpdateBy(dto.getUpdateBy());
+                po.setParamValue(data.getDataValue());
+                queryWrapper.eq(CalibrationTempPO::getParam, data.getDataKey());
+                tempDao.update(po, queryWrapper);
+            }
         }
 
-        return true;
+        return R.ok();
     }
 
     @Override
@@ -427,13 +466,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 param.setData(value);
                 LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(CalibrationTempPO::getCalibrationType, vo.getCalibrationType())
+                        .eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
                         .eq(CalibrationTempPO::getParam, param.getParam()).orderByDesc(CalibrationTempPO::getId);
 
-                List<CalibrationTempPO> pos = tempDao.selectList(queryWrapper);
-                if (!pos.isEmpty()) {
-                    String paramValue = pos.get(0).getParamValue();
-                    param.setLastValue(paramValue);
-                }
+                CalibrationTempPO tempPO = tempDao.selectOne(queryWrapper);
+                param.setLastValue(tempPO.getParamValue());
+
 
             }
 
@@ -443,18 +481,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
         return info;
-    }
-
-    private Boolean checkUser(String userName, String password){
-        if (!StringUtils.hasLength(userName)){
-            log.info("用户信息为空，使用默认用户");
-            userName = "default";
-            password = "123456";
-            return true;
-        }
-        log.info("检测用户信息");
-        //具体方法检测用户信息；
-        return false;
     }
 
     @Override

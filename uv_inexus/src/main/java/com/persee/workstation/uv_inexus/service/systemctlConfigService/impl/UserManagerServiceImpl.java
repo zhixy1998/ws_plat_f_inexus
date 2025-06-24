@@ -1,20 +1,17 @@
-package com.persee.workstation.uv_inexus.service.instrumentService.impl;
+package com.persee.workstation.uv_inexus.service.systemctlConfigService.impl;
 
 
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.userConfigDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.service.instrumentService.UserManagerService;
-import com.persee.workstation.uv_inexus.util.JWTUtils;
+import com.persee.workstation.uv_inexus.service.systemctlConfigService.UserManagerService;
+import com.persee.workstation.uv_inexus.util.tokenUtil.JWTUtils;
 import com.persee.workstation.uv_inexus.vo.systemConfigVo.LoginUserInfoVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -44,13 +41,23 @@ public class UserManagerServiceImpl implements UserManagerService {
         }
 
         if (loginDTO.getPassword().equals(password)) {
-            log.info("登录成功");
-            Map<String, Object> map = new HashMap<>();
-            map.put("userName", loginDTO.getUserName());
-            String token = JWTUtils.getToken(map);
+            log.info("查找到用户，检验token是否还可用");
+            String oldToken = userConfigDAO.getToken(loginDTO.getUserName());
+
             LoginUserInfoVO vo = new LoginUserInfoVO();
             vo.setUserName(loginDTO.getUserName());
-            vo.setToken(token);
+
+            if (StringUtils.hasText(oldToken) && JWTUtils.verify(oldToken)) {
+                log.info("token可用，使用旧token");
+                vo.setToken(oldToken);
+
+            } else {
+                log.info("token不可用生成新token");
+                String newToken = JWTUtils.getToken(loginDTO.getUserName());
+                vo.setToken(newToken);
+                userConfigDAO.updateToken(loginDTO.getUserName(), newToken);
+            }
+
             return R.ok(vo);
         } else {
             log.info("用户名密码错误！");

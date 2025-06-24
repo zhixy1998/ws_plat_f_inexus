@@ -1,4 +1,4 @@
-package com.persee.workstation.uv_inexus.service.instrumentService;
+package com.persee.workstation.uv_inexus.service.systemctlConfigService;
 
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;

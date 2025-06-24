@@ -108,8 +108,13 @@ public class DeviceController {
     @PostMapping("/deviceConfig")
     @ApiOperation("仪器配置接口")
     public Result<Boolean> deviceConfig(@RequestBody InsConfigPO po ){
-        Boolean b = deviceManageService.deviceConfig(po);
-        return Result.ok(b);
+        R<Boolean> r = deviceManageService.deviceConfig(po);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+
     }
 
     @GetMapping("/getCalibrationInfo")
@@ -123,8 +128,12 @@ public class DeviceController {
     @PostMapping("/calibration")
     @ApiOperation("仪器校准")
     public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
-        Boolean b = deviceManageService.deviceCalibration(dto);
-        return Result.ok(b);
+        R<Boolean> r = deviceManageService.deviceCalibration(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
     @GetMapping("/usageStatistics")
