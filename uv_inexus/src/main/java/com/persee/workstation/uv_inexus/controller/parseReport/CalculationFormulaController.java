@@ -30,11 +30,11 @@ public class CalculationFormulaController {
 
     @GetMapping("/")
     public Result<PageView<CalculationFormula>> findPage(
-        @RequestParam(defaultValue = "1") int current,
-        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize,
         @RequestParam Map<String, String> params) {
         
-        Page<CalculationFormula> page = new Page<>(current, size);
+        Page<CalculationFormula> page = new Page<>(pageNum, pageSize);
         IPage<CalculationFormula> resultPage = calculationFormulaService.findPage(page, params);
         return Result.ok(new PageView<>(resultPage)); // 转换为 PageView
     }
