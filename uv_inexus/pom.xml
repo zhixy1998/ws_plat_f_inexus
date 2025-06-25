@@ -118,7 +118,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
                 <configuration>
-                    <mainClass>com.px.workstation.InstrumentApplication</mainClass>
+                    <mainClass>com.persee.workstation.uv_inexus.Application</mainClass>
                     <skip>true</skip>
                 </configuration>
                 <executions>
