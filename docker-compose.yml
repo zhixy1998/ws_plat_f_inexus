@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  doc_backend:
+    build:
+      context: ./doc_backend
+      dockerfile: Dockerfile
+    container_name: doc_backend
+    env_file:
+      - ./doc_backend/.env
+    ports:
+      - "8003:8003"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: 123456
+      DB_NAME: mydb
+    volumes:
+      - ./doc_backend:/app
+
+  db:
+    image: mysql:5.7
+    platform: linux/amd64
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: mydb
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # 挂载初始化脚本
+volumes:
+  mysql_data:
