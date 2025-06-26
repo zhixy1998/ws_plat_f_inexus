@@ -24,32 +24,39 @@ public class ExcelImageImportUtils {
             // 1. 获取所有图片
             XSSFPictureData[] pictures = workbook.getAllPictures().toArray(new XSSFPictureData[0]);
             System.out.println("发现图片数量: " + pictures.length);
+            System.out.println("发现图片-=======: " + pictures);
             
             // 2. 根据行号获取图片（假设图片顺序与行号对应）
             // 注意：这里需要根据实际情况调整行号偏移量
-            int imageIndex = rowNum - 1; // 假设数据从第2行开始
+            int imageIndex = rowNum; // 假设数据从第2行开始
             
             if (imageIndex >= 0 && imageIndex < pictures.length) {
                 System.out.println("使用图片索引: " + imageIndex + " 对应行号: " + rowNum);
+                System.out.println("使用图片为: " + imageIndex + " 对应行号: " + pictures[imageIndex]);
                 return encodeToBase64(pictures[imageIndex]);
             }
             
             // 3. 如果行号匹配失败，尝试按ID匹配
             String imageId = parseImageId(imageRef);
-            System.out.println("尝试ID匹配: " + imageId);
+            System.out.println("尝试ID匹配: " + imageId + "传过来的id：" + imageRef);
+            // 精确匹配
             for (XSSFPictureData pic : pictures) {
                 try {
                     PackagePart part = pic.getPackagePart();
                     String partName = part.getPartName().getName();
-                    if (partName.contains(imageId)) {
-                        System.out.println("通过ID匹配成功: " + partName);
+                    System.out.println("part: " + part);
+                    System.out.println("partName: " + partName);
+                    
+                    // 更精确的匹配逻辑
+                    if (partName.endsWith("/" + imageId) || partName.equals(imageId)) {
+                        System.out.println("精确匹配成功: " + partName);
                         return encodeToBase64(pic);
                     }
                 } catch (Exception e) {
                     System.out.println("图片处理异常: " + e.getMessage());
+                    e.printStackTrace(); // 打印完整堆栈
                 }
             }
-            
             // 4. 如果都失败，返回第一张图片或null
             if (pictures.length > 0) {
                 System.out.println("使用第一张图片作为备用");

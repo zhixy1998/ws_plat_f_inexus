@@ -241,6 +241,8 @@ public class ImportService {
                 System.out.println("计算公式表数据为空，请检查Excel文件是否正确");
                 return;
             }
+            System.out.println("++++++++" + list);
+            int picIdx = 0;
     
             for (int i = 0; i < list.size(); i++) {
                 CalculationFormulaExcelModel model = list.get(i);
@@ -369,12 +371,15 @@ public class ImportService {
                 if (imageData != null && !imageData.isEmpty()) {
                     try {
                         if (imageData.startsWith("=DISPIMG")) {
+                            System.out.println("当前第 " + (i+2) + " 行图片88888: " + imageData);
                             // 传入行号用于图片定位
                             base64Image = ExcelImageImportUtils.extractImageToBase64(
                                 file, 
                                 imageData,
-                                i + 2
+                                picIdx
                             );
+                            picIdx++;
+
                             System.out.println("图片提取结果长度: " + 
                                 (base64Image != null ? base64Image.length() : "null"));
                         } else {
