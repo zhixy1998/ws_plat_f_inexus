@@ -1,7 +1,7 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.persee.workstation.uv_inexus.dao.systemctlConfigDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumSpecimenDto;
@@ -9,7 +9,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureProject;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
+import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureProjectService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;

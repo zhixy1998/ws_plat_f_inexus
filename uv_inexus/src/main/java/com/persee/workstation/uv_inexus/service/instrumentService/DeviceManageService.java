@@ -33,7 +33,7 @@ public interface DeviceManageService {
      * @param deviceSerialNumber
      * @return
      */
-    QueryDeviceConfigVO queryDeviceConfig(String deviceSerialNumber);
+    R<QueryDeviceConfigVO> queryDeviceConfig(String deviceSerialNumber);
 
     /**
      * 查询光谱带宽接口
@@ -58,7 +58,7 @@ public interface DeviceManageService {
      * @param closeTime
      * @return
      */
-    Boolean timedShutdown(String deviceSerialNumber, String closeTime);
+    Boolean timedStart(String deviceSerialNumber, String closeTime);
 
     /**
      * 仪器校准接口

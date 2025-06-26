@@ -360,14 +360,25 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public QueryDeviceConfigVO queryDeviceConfig(String deviceSerialNumber) {
+    public R<QueryDeviceConfigVO> queryDeviceConfig(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info("查询仪器配置--缺少序列号");
+            return R.fail("缺少序列号");
+        }
 
         QueryDeviceConfigVO vo = new QueryDeviceConfigVO();
 
-        vo.setAnnexSetting(0);
-        vo.setBandWidth(0.2);
-        vo.setMessagePort(1);
-        return vo;
+        LambdaQueryWrapper<InsConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(InsConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        InsConfigPO po = configDAO.selectOne(query);
+        if (po == null) {
+            log.info("查询仪器配置--未找到配置");
+            return R.fail("未找到配置");
+        }
+        vo.setMessagePort(po.getMessagePort());
+        vo.setAnnexSetting(po.getAnnexSetting());
+        vo.setBandWidth(po.getBandWidth());
+        return R.ok(vo);
     }
 
     @Override
@@ -405,7 +416,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public Boolean timedShutdown(String deviceSerialNumber, String closeTime) {
+    public Boolean timedStart(String deviceSerialNumber, String closeTime) {
         log.info("定时开机");
         return null;
     }

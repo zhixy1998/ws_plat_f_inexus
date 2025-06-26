@@ -100,8 +100,12 @@ public class DeviceController {
     @GetMapping("/getDeviceConfig")
     @ApiOperation("查询仪器配置")
     public Result<QueryDeviceConfigVO> getDeviceConfig(@RequestParam String deviceSerialNumber) {
-        QueryDeviceConfigVO vo = deviceManageService.queryDeviceConfig(deviceSerialNumber);
-        return Result.ok(vo);
+        R<QueryDeviceConfigVO> r = deviceManageService.queryDeviceConfig(deviceSerialNumber);
+        if (r.getSuccess()){
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
     @GetMapping("/getBandWidth")
