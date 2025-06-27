@@ -16,12 +16,12 @@ import lombok.Data;
 @TableName("t_measure_sample")
 public class TMeasureSample{
     // 样品id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
-    // 任务id
-    @TableField("task_id")
-    private String taskId;
+    // 样品编号
+    @TableField("sample_number")
+    private String sampleNumber;
 
     // 样品类型
     @TableField("sample_type")

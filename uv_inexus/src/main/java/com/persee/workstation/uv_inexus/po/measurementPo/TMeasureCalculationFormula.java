@@ -16,7 +16,7 @@ import lombok.Data;
 @TableName("t_measure_calculation_formula")
 public class TMeasureCalculationFormula {
     // 计算公式id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 测量标准uuid

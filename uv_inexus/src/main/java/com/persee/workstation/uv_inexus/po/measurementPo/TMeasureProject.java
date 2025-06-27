@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @TableName("t_measure_project")
 public class TMeasureProject{
     // 项目id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 项目名称

@@ -7,6 +7,8 @@ import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -178,6 +180,11 @@ public class SpectrumScan {
                     // 解析字段2
                     Double field2Raw = (double) (((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF));
                     Double field2 = (field2Raw / 8388607) * 100;
+
+                    int index = 2;
+                    // 将field1和field2转换为bigdecimal类型 根据index的值保留小数的位数
+                    field1 = BigDecimal.valueOf(field1).setScale(index, RoundingMode.HALF_UP).doubleValue();
+                    field2 = BigDecimal.valueOf(field2).setScale(index, RoundingMode.HALF_UP).doubleValue();
 
                     // 存储解析出的字段值.2
 //                    synchronized (Constants.field1Values){

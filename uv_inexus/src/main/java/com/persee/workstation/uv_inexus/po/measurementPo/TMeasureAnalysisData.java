@@ -16,7 +16,7 @@ import lombok.Data;
 @TableName("t_measure_analysis_data")
 public class TMeasureAnalysisData {
     // 分析数据id
-    @TableId(value = "id", type = IdType.NONE) // 假设id是主键
+    @TableId(value = "id",type = IdType.ASSIGN_UUID)// 假设id是主键
     private String id;
 
     // 测量任务id

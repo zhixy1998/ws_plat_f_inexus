@@ -4,7 +4,7 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 import lombok.Data;
 
 @Data
-public class ExperimentMethodDto {
+public class SpectralMethodParameterDto {
     // 项目ID
     private String projectId;
     // 方法id

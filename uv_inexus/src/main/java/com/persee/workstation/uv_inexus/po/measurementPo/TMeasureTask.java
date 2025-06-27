@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @TableName("t_measure_task")
 public class TMeasureTask{
     // 任务id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 用户id
@@ -40,6 +40,10 @@ public class TMeasureTask{
     // 方法Key
     @TableField("method_key")
     private String methodKey;
+
+    // 样品Key
+    @TableField("sample_key")
+    private String sampleKey;
 
     // 所属项目Key
     @TableField("project_item_key")

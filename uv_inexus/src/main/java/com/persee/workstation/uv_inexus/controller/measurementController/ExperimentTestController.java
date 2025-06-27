@@ -1,12 +1,10 @@
 package com.persee.workstation.uv_inexus.controller.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
-import com.persee.workstation.uv_inexus.service.measurementService.SpectrumService;
 import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,39 +15,60 @@ public class ExperimentTestController {
     @Autowired
     private ExperimentTestService experimentTestService;
 
-    @Autowired
-    private SpectrumService spectrumService;
 
-
-    @GetMapping("queryProjectAllMethods/{projectId}/{measureForm}")
-    @ApiModelProperty("查询项目下的所有方法")
-    public Result queryProjectAllMethods(@PathVariable String projectId, @PathVariable String measureForm) {
-        return spectrumService.queryProjectAllMethods(projectId,measureForm);
+    @GetMapping("recentlyAccomplishTask")
+    @ApiOperation("最近完成的任务")
+    public Result recentlyAccomplishTask(@RequestParam String updateBy) {
+       return experimentTestService.recentlyAccomplishTask(updateBy);
     }
 
-    @GetMapping("recentlyAccomplishTask/{quantity}")
-    @ApiModelProperty("最近完成的任务")
-    public Result queryAllTask(@RequestParam String updateBy,@PathVariable Integer quantity) {
-        return experimentTestService.queryAllTask(updateBy,quantity);
+    @GetMapping("queryAllProject")
+    @ApiOperation("查询所有项目接口")
+    public Result queryAllProject(@RequestParam String updateBy) {
+        return experimentTestService.queryAllProject(updateBy);
     }
 
 
     @PostMapping("newProject")
-    @ApiModelProperty("新建项目接口")
+    @ApiOperation("新建项目接口")
     public Result newProject(@RequestBody ProjectParamDto paramDto) {
         return experimentTestService.newProject(paramDto);
     }
 
+    @PostMapping("createMethodPort")
+    @ApiOperation("新建方法接口")
+    public Result createMethodPort(@RequestBody MethodParamRequestDto methodDto, @RequestParam String updateBy) {
+            return experimentTestService.createMethodPort(methodDto, updateBy);
+    }
+
     @PostMapping("createTask")
-    @ApiModelProperty("新建任务接口")
+    @ApiOperation("新建任务接口")
     public Result createTask(@RequestBody CreateTaskParamDto paramDto) {
         return experimentTestService.createTask(paramDto);
     }
 
+    @GetMapping("queryProjectStatistics")
+    @ApiOperation("查询项目统计接口")
+    public Result queryProjectStatistics(@RequestParam String updateBy) {
+        return experimentTestService.queryProjectStatistics(updateBy);
+    }
 
-//    @GetMapping("prpductStatistics")
-//    public Result productStatistics(@RequestParam String updateBy) {
-//        return experimentTestService.productStatistics(updateBy);
-//    }
+    @PostMapping("queryTaskPort")
+    @ApiOperation("查看任务接口")
+    public Result queryTaskPort(@RequestBody QueryTaskDto queryTask) {
+        return experimentTestService.queryTaskPort(queryTask);
+    }
+
+    @GetMapping("queryMethodProt")
+    @ApiOperation("查找方法接口")
+    public Result queryMethodProt(@RequestParam String projectId,@RequestParam String measureType) {
+        return experimentTestService.queryMethodProt(projectId,measureType);
+    }
+
+    @GetMapping("continueMeasuringPort")
+    @ApiOperation("继续测量接口")
+    public Result continueMeasuringPort(@RequestParam String projectId,@RequestParam String methodId){
+        return experimentTestService.continueMeasuringPort(projectId, methodId);
+    }
 
 }

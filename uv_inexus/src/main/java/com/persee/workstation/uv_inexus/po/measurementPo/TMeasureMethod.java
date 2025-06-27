@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @TableName("t_measure_method")
 public class TMeasureMethod {
     // 方法id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 测量标准Key
@@ -84,6 +84,10 @@ public class TMeasureMethod {
     //  方法创建时间
     @TableField("method_create_time")
     private LocalDateTime methodCreateTime;
+
+    // 方法创建人
+    @TableField("method_creator")
+    private String methodCreator;
 
     // 预留字段2 ~ 预留字段5
     @TableField("field2")

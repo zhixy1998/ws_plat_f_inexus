@@ -131,7 +131,7 @@ public class DataWebSocket {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        // 调用仪器
+        // 调用仪器 TODO 差前端传过来的小数位数参数
         spectrumScan.scanStart(deviceSerialNumber,ScanParamInfo);
 
         new Thread(() -> {

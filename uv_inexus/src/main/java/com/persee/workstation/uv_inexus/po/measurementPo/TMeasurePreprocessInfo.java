@@ -17,7 +17,7 @@ import lombok.Data;
 public class TMeasurePreprocessInfo{
 
     // 前处理信息id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 测量标准uuid

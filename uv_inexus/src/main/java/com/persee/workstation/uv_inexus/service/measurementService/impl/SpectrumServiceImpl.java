@@ -1,20 +1,20 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.ExperimentMethodDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.ReportParametersVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -26,8 +26,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -61,6 +59,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private TMeasureSampleService tMeasureSampleService;
 
 
     /**
@@ -126,10 +127,8 @@ public class SpectrumServiceImpl implements SpectrumService {
             OriginalMeasuredDataVo vo = new OriginalMeasuredDataVo();
             vo.setId(i + 1);
             vo.setX(xList.get(i));
-            Double y = Double.valueOf(yList.get(i));
-            double value = BigDecimal.valueOf(y).setScale(3, RoundingMode.HALF_UP).doubleValue();
-            vo.setY(String.valueOf(value));
-            vo.setFeature("false");
+            vo.setY(yList.get(i));
+            vo.setFeature("0");
             vo.setTag("-"); // 或其他逻辑判断
             resultList.add(vo);
         }
@@ -139,7 +138,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 // 将measuredDataVo.getY()转换成 double类型和 str比较
                 Double parsed = Double.parseDouble(measuredDataVo.getY());
                 if (parsed.equals(str)) {
-                    measuredDataVo.setFeature("true");
+                    measuredDataVo.setFeature("1");
                 }
             }
         }
@@ -149,87 +148,17 @@ public class SpectrumServiceImpl implements SpectrumService {
         int total = resultList.size();
         // fromIndex 开始，toIndex 结束
         int fromIndex = (dataVo.getPageNum() - 1) * dataVo.getPageSize();
+        // 计算结束索引
         int toIndex = Math.min(fromIndex + dataVo.getPageSize(), total);
         if (fromIndex >= total || fromIndex < 0) {
             return Result.ok(resultList);
         }
         // 截取分页数据
         List<OriginalMeasuredDataVo> pagedList = resultList.subList(fromIndex, toIndex);
-        return Result.ok(pagedList);
-    }
-
-    @Override
-    // 重写父类方法
-    public Result newMethod(ExperimentMethodDto methodDto) {
-        // 查询所有方法的名称
-        List<TMeasureMethod> list = tMeasureMethodService.list();
-        for (TMeasureMethod tMeasureMethod : list) {
-            if (tMeasureMethod.getMethodName().equals(methodDto.getMethodName())) {
-                return Result.fail("方法名称重复");
-            }
-        }
-        TMeasureProject defaultProject = null;
-        if (methodDto.getProjectId().equals("")){
-            // 获取默认项目的id
-            defaultProject = tMeasureProjectService.getOne(Wrappers.lambdaQuery(TMeasureProject.class).eq(TMeasureProject::getProjectName, "default"));
-            if (defaultProject == null){
-                defaultProject = new TMeasureProject();
-                defaultProject.setProjectName("default");
-                defaultProject.setCreateTime(LocalDateTime.now());
-                defaultProject.setCreatorKey("admin");
-                defaultProject.setRemark("默认项目");
-                tMeasureProjectService.save(defaultProject);
-            }
-        }else{
-            defaultProject = tMeasureProjectService.getById(methodDto.getProjectId());
-        }
-        // 根据项目中的用户名查询用户
-        UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getUserName, defaultProject.getCreatorKey()));
-        // 创建测量参数表
-        TMeasureStandard tMeasureStandard = new TMeasureStandard();
-        // 创建光谱参数对象
-        SpectrumParameter spectrumParameter = new SpectrumParameter();
-        BeanUtils.copyProperties(methodDto, spectrumParameter);
-        // 将需要的字段转成json
-        ObjectMapper objectMapper = new ObjectMapper();
-        String s=null;
-        try {
-            s = objectMapper.writeValueAsString(spectrumParameter);
-            tMeasureStandard.setMeasurementParamInfo(s);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        // 添加其他字段
-        tMeasureStandard.setTestType("紫外-光谱");
-        // 调用方法存储测量标准表的内容
-        tMeasureStandardService.save(tMeasureStandard);
-
-
-        // 创建TMethod对象
-        TMeasureMethod tMethod = new TMeasureMethod();
-        tMethod.setMethodName(methodDto.getMethodName());
-        tMethod.setMeasurementType(methodDto.getMeasureType());
-        tMethod.setIsSharingMethod(methodDto.getIsShare());
-        // 将测量参数表的id存入方法表中
-        tMethod.setStandardKey(tMeasureStandard.getId());
-        tMethod.setMethodCreateTime(LocalDateTime.now());
-        tMethod.setMeasurementParamInfo(s);
-        // 将项目id存入方法表中
-        tMethod.setProjectItemKey(defaultProject.getId());
-        tMeasureMethodService.save(tMethod);
-
-//        // 创建一个任务对象
-//        TMeasureTask tMeasureTask = new TMeasureTask();
-//        // UUID一个随机的任务名称
-//        Random random = new Random();
-//        long randomNumber = 1000000000L + random.nextLong() % 9000000000L;
-//        tMeasureTask.setTaskName("任务: "+randomNumber);
-//        tMeasureTask.setUserId(userConfigPO.getId());
-//        tMeasureTask.setCreateTime(new Date());
-//        tMeasureTask.setMethodKey(tMethod.getId());
-//        tMeasureTask.setProjectItemKey(defaultProject.getId());
-//        tMeasureTaskService.save(tMeasureTask);
-        return Result.ok(defaultProject.getId()+","+tMethod.getId());
+        Map<String, Object> map = new HashMap<>();
+        map.put("total", total);
+        map.put("data", pagedList);
+        return Result.ok(map);
     }
 
     @Override
@@ -273,17 +202,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(methods);
     }
 
-    /**
-     * 查询当前用户的所有项目
-     * @param updateBy
-     * @return
-     */
-    @Override
-    public Result queryAllProject(String updateBy) {
-        // 根据用户名查询项目
-        List<TMeasureProject> projects = tMeasureProjectService.list(new QueryWrapper<TMeasureProject>().eq("creator_key", updateBy));
-        return Result.ok(projects);
-    }
+
 
     /**
      * 查询方法的参数
@@ -308,7 +227,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
-    public Result saveMethodParameter(ExperimentMethodDto methodDto) {
+    public Result saveMethodParameter(SpectralMethodParameterDto methodDto) {
         // 根据方法id查询当前方法
         TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("id",methodDto.getMethodId()));        // 根据当前方法中的测量标准表id查询测量数据
         TMeasureStandard standard = tMeasureStandardService.getById(method.getStandardKey());
@@ -327,23 +246,6 @@ public class SpectrumServiceImpl implements SpectrumService {
             tMeasureMethodService.updateById(method);
         }
         return Result.ok(update);
-    }
-
-    @Override
-    public Result measurement() {
-        // 创建测量数据表对象
-        TMeasureData tMeasureData = new TMeasureData();
-        log.info("开始测量");
-        tMeasureData.setMeasurementStartTime(LocalDateTime.now());
-        // 填充测量数据对象数据
-
-
-        log.info("测量结束");
-        tMeasureData.setMeasurementEndTime(LocalDateTime.now());
-        // 将数据进行json转换
-
-        // 将测量出来的结果存入测量数据表中
-        return null;
     }
 
     @Override
@@ -366,78 +268,117 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
-    public Result queryMethodProt(String projectId) {
+    public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter) {
+        // 创建测量参数表
+        TMeasureStandard tMeasureStandard = new TMeasureStandard();
+        tMeasureStandard.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
+        tMeasureStandard.setTestType("紫外-光谱");
+        tMeasureStandardService.save(tMeasureStandard);
+        // 创建测量方法表
+        TMeasureMethod tMeasureMethod = new TMeasureMethod();
+        tMeasureMethod.setStandardKey(tMeasureStandard.getId());
+        tMeasureMethod.setProjectItemKey(methodDto.getProjectId());
+        tMeasureMethod.setMethodName(methodDto.getMethodName());
+        tMeasureMethod.setMeasurementType(methodDto.getMethodType());
+        tMeasureMethod.setTestType("紫外-光谱");
+        tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
+        tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        tMeasureMethod.setMethodCreator(updateBy);
+        boolean save = tMeasureMethodService.save(tMeasureMethod);
+        if ( save){
+            return Result.ok("创建成功");
+        }else {
+            return Result.fail("创建失败");
+        }
+    }
+
+    @Override
+    public Result queryMethodProt(String projectId,String measureType) {
+        String type = MeasureTypeEnum.SPECTRAL_SCAN.toString();
+        if (!measureType.equals(type)){
+            return Result.fail("请选择光谱扫描");
+        }
         // 根据项目id和测量类型查询方法
-        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", MeasureTypeEnum.SPECTRAL_SCAN));
-        if (list==null){
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
+        if (list==null||list.size() == 0){
             return Result.fail("未查询到数据");
         }
         return Result.ok(list);
     }
 
     @Override
-    public Result queryTaskProt(String projectId, String methodId, Integer pageNum, Integer pageSize) {
+    public Result queryTaskPort(QueryTaskDto queryTask) {
         // 判断方法id是all还是id
-        Page<TMeasureTask> page = null;
-        if (methodId.equals("all")){
-            // 分页查询所有当前项目id的任务
-            page = tMeasureTaskService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureTask>().eq("project_item_key", projectId));
-            if (page==null||page.getRecords().size() == 0){
-                return Result.fail("未查询到数据");
-            }
-        }else{
-            // 根据项目id和方法id分页查询任务
-            page = tMeasureTaskService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureTask>().eq("project_item_key", projectId).eq("method_id", methodId));
-            if (page==null||page.getRecords().size() == 0){
-                return Result.fail("未查询到数据");
-            }
+        QueryWrapper<TMeasureTask> wrapper =  new QueryWrapper<>();
+        wrapper.eq("project_item_key", queryTask.getProjectId());
+        if (!queryTask.getMethodIds().isEmpty()){
+            wrapper.in("method_key", queryTask.getMethodIds());
         }
+        if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
+            wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
+        }
+        Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
+        if (page==null||page.getRecords().size() == 0){
+            return Result.fail("未查询到数据");
+        }
+        page.getRecords().forEach(task -> {
+            // 根据任务中的用户id查询用户
+            UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getId, task.getUserId()));
+            task.setUserId(userConfigPO.getUserName());
+        });
         return Result.ok(page);
     }
 
-
-//    @Override
-//    public boolean newMethod(ExperimentMethodDto methodDto) throws JsonProcessingException {
-//        // 绑定默认项目
-//        TMeasureProject defaultProject =tMeasureProjectService.defaultProject();
-//        TMeasureMethod tMeasureMethod = new TMeasureMethod();
-//        // 创建对应参数表的记录
-//        TMeasureStandard tMeasureStandard = new TMeasureStandard();
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        Json json = objectMapper.readValue(s, Json.class);
-//        tMeasureStandard.setMeasurementParamInfo(json);
-//
-//        // 根据方法名称对参数表进行查询
-//        // 创建任务
-//        tMeasureMethod.setProjectItemKey(defaultProject.getId());
-//        tMeasureMethod.setMethodName(methodDto.getMethodName());
-//
-//        return false;
-//    }
-
-
-    /**
-     * 处理Python返回的json数据
-     * @param rawStr
-     * @return
-     */
-    public Map<String, Object> parseJsonResponse(String rawStr) {
-        if (rawStr == null || rawStr.trim().isEmpty()) {
-            throw new RuntimeException("响应数据为空");
-        }
-
-        int jsonStart = rawStr.indexOf("{");
-        if (jsonStart == -1) {
-            throw new RuntimeException("不是合法的JSON字符串: " + rawStr);
-        }
-
-        String cleanJson = rawStr.substring(jsonStart);
-        ObjectMapper mapper = new ObjectMapper();
+    @Override
+    public Result obtainReportParameters(String methodId, String updateBy) {
+        // 根据方法id查询方法
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        // 获取测量参数信息 使用ObjectMapper将json转换成对象
+        SpectrumParameter spectrumParameter = null;
         try {
-            return mapper.readValue(cleanJson, Map.class);
-        } catch (Exception e) {
-            throw new RuntimeException("JSON解析失败: " + e.getMessage(), e);
+            spectrumParameter=objectMapper.readValue(method.getMeasurementParamInfo(), SpectrumParameter.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
+        // TODO 补充报告参数
+        // 存入Vo返回对象
+        // 获取报告参数将spectrumParameter中的值存入reportParametersVo中
+
+        ReportParametersVo reportParametersVo = new ReportParametersVo();
+        BeanUtils.copyProperties(spectrumParameter,reportParametersVo);
+        reportParametersVo.setTestAPerson(updateBy);
+        return Result.ok(reportParametersVo);
+    }
+
+    @Override
+    public Result createTask(CreateTaskParamDto paramDto) {
+        // 根据项目id查询项目
+        TMeasureProject project = tMeasureProjectService.getById(paramDto.getProjectId());
+        //根据项目中的用户名称查询用户
+        UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getUserName, project.getCreatorKey()));
+        // 创建任务类
+        TMeasureTask tMeasureTask = new TMeasureTask();
+        tMeasureTask.setUserId(userConfigPO.getId());
+        tMeasureTask.setTaskName(paramDto.getTaskName());
+        tMeasureTask.setCreateTime(LocalDateTime.now());
+        tMeasureTask.setMethodKey(paramDto.getMethodId());
+        tMeasureTask.setProjectItemKey(project.getId());
+        tMeasureTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
+        List<String> list = new ArrayList<>();
+        // 遍历CreateTaskParamDto中的样品list
+        for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+            // 创建样品表
+            TMeasureSample sample = new TMeasureSample();
+            sample.setSampleNumber(specimen.getSampleNumber());
+            sample.setSampleName(specimen.getSampleName());
+            sample.setSampleLocation(specimen.getSampleLocation());
+            tMeasureSampleService.save(sample);
+            list.add(sample.getId());
+        }
+        String join = String.join(",", list);
+        tMeasureTask.setSampleKey(join);
+        boolean save = tMeasureTaskService.save(tMeasureTask);
+        return Result.ok(save);
     }
 
 }

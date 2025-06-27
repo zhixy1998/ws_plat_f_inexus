@@ -22,4 +22,16 @@ public enum MeasureTypeEnum {
     public String toString() {
         return description;
     }
+
+    // 根据 description 查找对应的枚举值
+    public static MeasureTypeEnum fromDescription(String description) {
+        for (MeasureTypeEnum type : MeasureTypeEnum.values()) {
+            if (type.getDescription().equals(description)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("未知的测量类型: " + description);
+    }
+
+
 }

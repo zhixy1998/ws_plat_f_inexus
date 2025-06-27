@@ -16,7 +16,7 @@ import lombok.Data;
 @TableName("t_measure_standard")
 public class TMeasureStandard{
     // 标准id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 标准名称

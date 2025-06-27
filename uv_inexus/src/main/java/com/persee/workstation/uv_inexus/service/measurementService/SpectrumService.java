@@ -1,7 +1,6 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.ExperimentMethodDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 
 /**
@@ -10,24 +9,23 @@ import com.persee.workstation.uv_inexus.model.Result;
 public interface SpectrumService {
     Result queryMeasuredData(QueryMeasuredDataVo dataVo);
 
-    Result newMethod(ExperimentMethodDto methodDto);
-
     Result queryProjectTaskMethod(String updateBy);
 
     Result queryProjectAllMethods(String projectId,  String measureForm);
 
-    Result queryAllProject(String updateBy);
-
     Result queryMethodParameter(String methodId);
 
-    Result saveMethodParameter(ExperimentMethodDto methodDto);
+    Result saveMethodParameter(SpectralMethodParameterDto methodDto);
 
-    Result measurement();
+    Result queryMethodProt(String projectId,String measureType);
+
+    Result queryTaskPort(QueryTaskDto queryTask);
+
+    Result obtainReportParameters(String methodId, String updateBy);
+
+    Result createTask(CreateTaskParamDto paramDto);
 
     void testPythonProt();
 
-    Result queryMethodProt(String projectId);
-
-    Result queryTaskProt(String projectId, String methodId,Integer pageNum,Integer pageSize);
-//    public boolean newMethod(ExperimentMethodDto methodDto) throws JsonProcessingException;
+    Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
 }

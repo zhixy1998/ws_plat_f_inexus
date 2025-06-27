@@ -12,5 +12,6 @@ import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
  */
 public interface TMeasureMethodService extends IService<TMeasureMethod> {
 
+
 }
 
