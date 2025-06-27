@@ -43,7 +43,7 @@ public class SpectrumController {
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
     public Result saveMethodParameter(@RequestBody SpectralMethodParameterDto methodDto) {
-        return spectrumService.saveMethodParameter(methodDto);
+        return spectrumService.updateMethodParameter(methodDto);
     }
 
 

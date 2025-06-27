@@ -15,17 +15,12 @@ public interface SpectrumService {
 
     Result queryMethodParameter(String methodId);
 
-    Result saveMethodParameter(SpectralMethodParameterDto methodDto);
-
-    Result queryMethodProt(String projectId,String measureType);
-
-    Result queryTaskPort(QueryTaskDto queryTask);
+    Result updateMethodParameter(SpectralMethodParameterDto methodDto);
 
     Result obtainReportParameters(String methodId, String updateBy);
-
-    Result createTask(CreateTaskParamDto paramDto);
 
     void testPythonProt();
 
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
+
 }

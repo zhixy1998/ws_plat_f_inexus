@@ -71,4 +71,10 @@ public class ExperimentTestController {
         return experimentTestService.continueMeasuringPort(projectId, methodId);
     }
 
+    @GetMapping("assignMethodPort")
+    @ApiOperation("指定方法接口")
+    public Result assignMethodPort(@RequestParam String methodType,@RequestParam String projectId ){
+        return experimentTestService.assignMethodPort(methodType,projectId);
+    }
+
 }

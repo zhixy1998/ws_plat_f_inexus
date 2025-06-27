@@ -2,15 +2,13 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureProject;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectStatisticsVo;
@@ -46,6 +44,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private SpectrumService spectrumService;
     @Autowired
     private PhotometricService photometricService;
+    @Autowired
+    private RationService rationService;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -201,39 +201,105 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result createTask(CreateTaskParamDto paramDto) {
+        // 根据项目id查询项目
+        TMeasureProject project = tMeasureProjectService.getById(paramDto.getProjectId());
+        //根据项目中的用户名称查询用户
+        UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getUserName, project.getCreatorKey()));
+        // 创建任务类
+        TMeasureTask tMeasureTask = new TMeasureTask();
+        tMeasureTask.setUserId(userConfigPO.getId());
+        tMeasureTask.setTaskName(paramDto.getTaskName());
+        tMeasureTask.setCreateTime(LocalDateTime.now());
+        tMeasureTask.setMethodKey(paramDto.getMethodId());
+        tMeasureTask.setProjectItemKey(project.getId());
+        tMeasureTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
+        List<String> list = new ArrayList<>();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(paramDto.getMeasurementType());
         // TODO 所有测量的创建任务需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
-                return photometricService.createTask(paramDto);
+                // 遍历CreateTaskParamDto中的样品list
+                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                    // 创建样品表
+                    TMeasureSample sample = new TMeasureSample();
+                    sample.setSampleNumber(specimen.getSampleNumber());
+                    sample.setSampleName(specimen.getSampleName());
+                    sample.setSampleType(specimen.getSampleType());
+                    sample.setDilutionRatio(specimen.getDilutionRatio());
+                    sample.setSampleVolume(specimen.getSampleVolume());
+                    sample.setSampleLocation(specimen.getSampleLocation());
+                    tMeasureSampleService.save(sample);
+                    list.add(sample.getId());
+                }
+                break;
             case QUANTITATIVE_MEASUREMENT:
-
+                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                    // 创建样品表
+                    TMeasureSample sample = new TMeasureSample();
+                    sample.setSampleNumber(specimen.getSampleNumber());
+                    sample.setSampleName(specimen.getSampleName());
+                    sample.setSampleType(specimen.getSampleType());
+                    sample.setNormalConcentration(specimen.getNormalConcentration());
+                    sample.setSampleLocation(specimen.getSampleLocation());
+                    tMeasureSampleService.save(sample);
+                    list.add(sample.getId());
+                }
+            break;
             case SPECTRAL_SCAN:
-                return spectrumService.createTask(paramDto);
+                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                    // 创建样品表
+                    TMeasureSample sample = new TMeasureSample();
+                    sample.setSampleNumber(specimen.getSampleNumber());
+                    sample.setSampleName(specimen.getSampleName());
+                    sample.setSampleLocation(specimen.getSampleLocation());
+                    tMeasureSampleService.save(sample);
+                    list.add(sample.getId());
+                }
+                break;
             case TIME_SCAN:
-
+                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                    // 创建样品表
+                    TMeasureSample sample = new TMeasureSample();
+                    sample.setSampleNumber(specimen.getSampleNumber());
+                    sample.setSampleName(specimen.getSampleName());
+                    sample.setSampleLocation(specimen.getSampleLocation());
+                    tMeasureSampleService.save(sample);
+                    list.add(sample.getId());
+                }
+                break;
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
+                break;
         }
-        return Result.fail("创建失败");
+        String join = String.join(",", list);
+        tMeasureTask.setSampleKey(join);
+        boolean save = tMeasureTaskService.save(tMeasureTask);
+        if (!save) {
+            return Result.fail("保存失败");
+        }
+        return Result.ok(save);
     }
 
     @Override
     public Result queryTaskPort(QueryTaskDto queryTask) {
-        MeasureTypeEnum type = MeasureTypeEnum.fromDescription(queryTask.getMeasurementType());
-        // TODO 所有测量的查看任务查询需要完善
-        switch (type){
-            case PHOTOMETRIC_MEASUREMENT:
-                return photometricService.queryTaskPort(queryTask);
-            case QUANTITATIVE_MEASUREMENT:
-                return Result.fail("暂不支持");
-            case SPECTRAL_SCAN:
-                return spectrumService.queryTaskPort(queryTask);
-            case TIME_SCAN:
-                return Result.fail("暂不支持");
-            case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
-                return Result.fail("暂不支持");
+        // 判断方法id是all还是id
+        QueryWrapper<TMeasureTask> wrapper =  new QueryWrapper<>();
+        wrapper.eq("project_item_key", queryTask.getProjectId());
+        if (!queryTask.getMethodIds().isEmpty()){
+            wrapper.in("method_key", queryTask.getMethodIds());
         }
-        return Result.fail("暂不支持");
+        if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
+            wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
+        }
+        Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
+        if (page==null||page.getRecords().size() == 0){
+            return Result.fail("未查询到数据");
+        }
+        page.getRecords().forEach(task -> {
+            // 根据任务中的用户id查询用户
+            UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getId, task.getUserId()));
+            task.setUserId(userConfigPO.getUserName());
+        });
+        return Result.ok(page);
     }
 
     @Override
@@ -267,17 +333,45 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // TODO 所有测量的查看任务查询需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
-                return photometricService.queryMethodProt(projectId, measureType);
+                if (measureType.equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())){
+                    return Result.fail("请选择光度测量");
+                }
+                break;
             case QUANTITATIVE_MEASUREMENT:
-                return Result.fail("暂不支持");
+                if (measureType.equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())){
+                    return Result.fail("请选择定量测量");
+                }
+                break;
             case SPECTRAL_SCAN:
-                return spectrumService.queryMethodProt(projectId, measureType);
+                if (measureType.equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())){
+                    return Result.fail("请选择光谱扫描");
+                }
+                break;
             case TIME_SCAN:
-                return Result.fail("暂不支持");
+                if (measureType.equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
+                    return Result.fail("请选择时间扫描");
+                }
+                break;
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
-                return Result.fail("暂不支持");
+                if (measureType.equals(MeasureTypeEnum.TWO_COMPONENT_QUANTITATIVE_ANALYSIS.getDescription())){
+                    return Result.fail("请选择双组份定量分析");
+                }
+                break;
         }
-        return Result.fail("暂不支持");
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
+        if (list==null||list.size() == 0){
+            return Result.fail("未查询到数据");
+        }
+        return Result.ok(list);
+    }
+
+    @Override
+    public Result assignMethodPort(String methodType, String projectId) {
+        // 根据方法判定是否是测量方法
+        MeasureTypeEnum.fromDescription(methodType);
+        // 根据项目id和方法类型查询方法表数据
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType));
+        return Result.ok(list);
     }
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {

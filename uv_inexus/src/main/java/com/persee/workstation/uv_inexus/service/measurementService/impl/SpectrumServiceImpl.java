@@ -3,15 +3,18 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectralMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureProject;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureStandard;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.ReportParametersVo;
@@ -227,7 +230,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
-    public Result saveMethodParameter(SpectralMethodParameterDto methodDto) {
+    public Result updateMethodParameter(SpectralMethodParameterDto methodDto) {
         // 根据方法id查询当前方法
         TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("id",methodDto.getMethodId()));        // 根据当前方法中的测量标准表id查询测量数据
         TMeasureStandard standard = tMeasureStandardService.getById(method.getStandardKey());
@@ -236,6 +239,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         BeanUtils.copyProperties(methodDto,spectrumParameter);
         try {
             String s = new ObjectMapper().writeValueAsString(spectrumParameter);
+            method.setMeasurementParamInfo(s);
             standard.setMeasurementParamInfo(s);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -243,8 +247,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         boolean update = tMeasureStandardService.updateById(standard);
         if (!methodDto.getMethodName().equals(method.getMethodName())){
             method.setMethodName(methodDto.getMethodName());
-            tMeasureMethodService.updateById(method);
         }
+        tMeasureMethodService.updateById(method);
         return Result.ok(update);
     }
 
@@ -293,43 +297,6 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
-    public Result queryMethodProt(String projectId,String measureType) {
-        String type = MeasureTypeEnum.SPECTRAL_SCAN.toString();
-        if (!measureType.equals(type)){
-            return Result.fail("请选择光谱扫描");
-        }
-        // 根据项目id和测量类型查询方法
-        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
-        if (list==null||list.size() == 0){
-            return Result.fail("未查询到数据");
-        }
-        return Result.ok(list);
-    }
-
-    @Override
-    public Result queryTaskPort(QueryTaskDto queryTask) {
-        // 判断方法id是all还是id
-        QueryWrapper<TMeasureTask> wrapper =  new QueryWrapper<>();
-        wrapper.eq("project_item_key", queryTask.getProjectId());
-        if (!queryTask.getMethodIds().isEmpty()){
-            wrapper.in("method_key", queryTask.getMethodIds());
-        }
-        if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
-            wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
-        }
-        Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
-        if (page==null||page.getRecords().size() == 0){
-            return Result.fail("未查询到数据");
-        }
-        page.getRecords().forEach(task -> {
-            // 根据任务中的用户id查询用户
-            UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getId, task.getUserId()));
-            task.setUserId(userConfigPO.getUserName());
-        });
-        return Result.ok(page);
-    }
-
-    @Override
     public Result obtainReportParameters(String methodId, String updateBy) {
         // 根据方法id查询方法
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
@@ -350,35 +317,5 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(reportParametersVo);
     }
 
-    @Override
-    public Result createTask(CreateTaskParamDto paramDto) {
-        // 根据项目id查询项目
-        TMeasureProject project = tMeasureProjectService.getById(paramDto.getProjectId());
-        //根据项目中的用户名称查询用户
-        UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getUserName, project.getCreatorKey()));
-        // 创建任务类
-        TMeasureTask tMeasureTask = new TMeasureTask();
-        tMeasureTask.setUserId(userConfigPO.getId());
-        tMeasureTask.setTaskName(paramDto.getTaskName());
-        tMeasureTask.setCreateTime(LocalDateTime.now());
-        tMeasureTask.setMethodKey(paramDto.getMethodId());
-        tMeasureTask.setProjectItemKey(project.getId());
-        tMeasureTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
-        List<String> list = new ArrayList<>();
-        // 遍历CreateTaskParamDto中的样品list
-        for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
-            // 创建样品表
-            TMeasureSample sample = new TMeasureSample();
-            sample.setSampleNumber(specimen.getSampleNumber());
-            sample.setSampleName(specimen.getSampleName());
-            sample.setSampleLocation(specimen.getSampleLocation());
-            tMeasureSampleService.save(sample);
-            list.add(sample.getId());
-        }
-        String join = String.join(",", list);
-        tMeasureTask.setSampleKey(join);
-        boolean save = tMeasureTaskService.save(tMeasureTask);
-        return Result.ok(save);
-    }
 
 }

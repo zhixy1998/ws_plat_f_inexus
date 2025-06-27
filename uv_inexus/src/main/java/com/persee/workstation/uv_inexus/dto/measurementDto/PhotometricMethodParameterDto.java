@@ -1,4 +1,9 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
-public class PhotometricMethodParameterDto {
+import lombok.Data;
+
+@Data
+public class PhotometricMethodParameterDto extends PhotometricParameter{
+    private String methodId;
+    private String methodName;
 }

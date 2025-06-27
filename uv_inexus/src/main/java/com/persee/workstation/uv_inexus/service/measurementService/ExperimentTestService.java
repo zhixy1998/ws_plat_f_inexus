@@ -24,4 +24,6 @@ public interface ExperimentTestService {
     Result queryAllProject(String updateBy);
 
     Result queryMethodProt(String projectId, String measureType);
+
+    Result assignMethodPort(String methodType, String projectId);
 }
