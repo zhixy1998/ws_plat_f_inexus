@@ -1,12 +1,18 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
-import com.persee.workstation.uv_inexus.po.parseReport.Detection;
+import java.util.List;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Delete;
-import java.util.List;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
 @Mapper // MyBatis注解，标记这是一个MyBatis的Mapper接口
 public interface DetectionDao {
@@ -35,4 +41,14 @@ public interface DetectionDao {
     // 根据ID删除记录
     @Delete("DELETE FROM t_report_standard_detection WHERE id = #{id}")
     void deleteById(Integer id);
+
+    // 分页查询
+    @Select("<script>" +
+        "SELECT * FROM t_report_standard_detection " +
+        "<where>" +
+        "${ew.sqlSegment}" +
+        "</where>" +
+        "ORDER BY id DESC" +  // 固定倒序
+        "</script>")
+    IPage<Detection> selectPage(Page<Detection> page, @Param("ew") QueryWrapper<Detection> queryWrapper);
 }

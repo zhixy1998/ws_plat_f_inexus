@@ -1,7 +1,11 @@
     package com.persee.workstation.uv_inexus.service.parseReport;
 
-    import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
     import java.util.List;
+import java.util.Map;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
 
     public interface RoundingRulesService {
 
@@ -14,5 +18,8 @@
         void update(RoundingRules RoundingRules);
 
         void deleteById(Integer id);
+
+        IPage<RoundingRules> findPage(Page<RoundingRules> page, Map<String, String> params);
+
     }
     

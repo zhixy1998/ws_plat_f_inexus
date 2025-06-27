@@ -1,8 +1,18 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
-import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
-import org.apache.ibatis.annotations.*;
 import java.util.List;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
 
 /**
  * 标准前处理表 DAO 接口
@@ -31,4 +41,14 @@ public interface StandardPretreatmentDao {
     // 根据ID删除记录
     @Delete("DELETE FROM t_report_standard_pretreatment WHERE id = #{id}")
     void deleteById(Integer id);
+
+    // 分页查询
+    @Select("<script>" +
+        "SELECT * FROM t_report_standard_pretreatment " +
+        "<where>" +
+        "${ew.sqlSegment}" +
+        "</where>" +
+        "ORDER BY id DESC" +  // 固定倒序
+        "</script>")
+    IPage<StandardPretreatment> selectPage(Page<StandardPretreatment> page, @Param("ew") QueryWrapper<StandardPretreatment> queryWrapper);
 }

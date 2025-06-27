@@ -1,14 +1,25 @@
 package com.persee.workstation.uv_inexus.controller.parseReport;
 
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.model.Result;
 // import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
 import com.persee.workstation.uv_inexus.service.parseReport.QualityControlService;
-
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 @RestController
 @RequestMapping("/api/qualityControl") // 使用与实体相关的路径
@@ -18,10 +29,16 @@ public class QualityControlController {
     private QualityControlService qualityControlService; // 注入服务层
 
     // 查询所有质控记录
-    @GetMapping
-    public Result<List<QualityControl>> findAllQualityControls() {
-        List<QualityControl> qualityControls = qualityControlService.findAll();
-        return Result.ok(qualityControls);
+    
+    @GetMapping("/")
+    public Result<PageView<QualityControl>> findPage(
+        @RequestParam(defaultValue = "1") int pageNum,
+        @RequestParam(defaultValue = "10") int pageSize,
+        @RequestParam Map<String, String> params) {
+        
+        Page<QualityControl> page = new Page<>(pageNum, pageSize);
+        IPage<QualityControl> resultPage = qualityControlService.findPage(page, params);
+        return Result.ok(new PageView<>(resultPage)); // 转换为 PageView
     }
 
     // 根据ID查询质控记录

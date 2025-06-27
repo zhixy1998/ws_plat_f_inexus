@@ -1,12 +1,18 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
-import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules; // 修改了导入的PO类
+import java.util.List;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Delete;
-import java.util.List;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules; // 修改了导入的PO类
 
 @Mapper // MyBatis注解，标记这是一个MyBatis的Mapper接口
 public interface RoundingRulesDao { // 修改了接口名
@@ -33,4 +39,15 @@ public interface RoundingRulesDao { // 修改了接口名
     // 根据ID删除记录
     @Delete("DELETE FROM t_report_rounding_rules WHERE id = #{id}") // 修改了表名
     void deleteById(Integer id);
+
+    
+    // 分页查询
+    @Select("<script>" +
+        "SELECT * FROM t_report_quality_control " +
+        "<where>" +
+        "${ew.sqlSegment}" +
+        "</where>" +
+        "ORDER BY id DESC" +  // 固定倒序
+        "</script>")
+    IPage<RoundingRules> selectPage(Page<RoundingRules> page, @Param("ew") QueryWrapper<RoundingRules> queryWrapper);
 }
