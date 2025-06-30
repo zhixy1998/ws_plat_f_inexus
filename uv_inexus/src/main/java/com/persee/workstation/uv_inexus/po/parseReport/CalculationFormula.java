@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.po.parseReport;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -93,5 +94,8 @@ public class CalculationFormula extends BasePO {
 
     @TableField("formula_image") // 映射到 formula_image 列
     private String formulaImage; // 使用 byte[] 存储 BLOB 类型
+
+    @TableField("detection_limit") // 映射到 detection_limit 列
+    private String detectionLimit;
 
 }

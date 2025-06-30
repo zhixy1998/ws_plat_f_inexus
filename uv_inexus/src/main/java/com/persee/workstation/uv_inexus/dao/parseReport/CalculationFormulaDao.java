@@ -26,8 +26,8 @@ public interface CalculationFormulaDao {
     CalculationFormula findById(Integer id);
 
     // 插入新记录
-    @Insert("INSERT INTO t_report_calculation_formulas (standard_identity, result_identity, result_name, unit, input_param1_name, input_param1_identity, input_param2_name, input_param2_identity, input_param3_name, input_param3_identity, input_param4_name, input_param4_identity, input_param5_name, input_param5_identity, input_param6_name, input_param6_identity, input_param7_name, input_param7_identity, input_param8_name, input_param8_identity, input_param9_name, input_param9_identity, input_param10_name, input_param10_identity, formula_text, formula_image) " +
-            "VALUES (#{standardIdentity}, #{resultIdentity}, #{resultName}, #{unit}, #{inputParam1Name}, #{inputParam1Identity}, #{inputParam2Name}, #{inputParam2Identity}, #{inputParam3Name}, #{inputParam3Identity}, #{inputParam4Name}, #{inputParam4Identity}, #{inputParam5Name}, #{inputParam5Identity}, #{inputParam6Name}, #{inputParam6Identity}, #{inputParam7Name}, #{inputParam7Identity}, #{inputParam8Name}, #{inputParam8Identity}, #{inputParam9Name}, #{inputParam9Identity}, #{inputParam10Name}, #{inputParam10Identity}, #{formulaText}, #{formulaImage})")
+    @Insert("INSERT INTO t_report_calculation_formulas (standard_identity, result_identity, result_name, unit, input_param1_name, input_param1_identity, input_param2_name, input_param2_identity, input_param3_name, input_param3_identity, input_param4_name, input_param4_identity, input_param5_name, input_param5_identity, input_param6_name, input_param6_identity, input_param7_name, input_param7_identity, input_param8_name, input_param8_identity, input_param9_name, input_param9_identity, input_param10_name, input_param10_identity, formula_text, formula_image, detection_limit) " +
+            "VALUES (#{standardIdentity}, #{resultIdentity}, #{resultName}, #{unit}, #{inputParam1Name}, #{inputParam1Identity}, #{inputParam2Name}, #{inputParam2Identity}, #{inputParam3Name}, #{inputParam3Identity}, #{inputParam4Name}, #{inputParam4Identity}, #{inputParam5Name}, #{inputParam5Identity}, #{inputParam6Name}, #{inputParam6Identity}, #{inputParam7Name}, #{inputParam7Identity}, #{inputParam8Name}, #{inputParam8Identity}, #{inputParam9Name}, #{inputParam9Identity}, #{inputParam10Name}, #{inputParam10Identity}, #{formulaText}, #{formulaImage}, #{detectionLimit})")
     void insert(CalculationFormula calculationFormula);
 
     // 更新记录
@@ -58,6 +58,7 @@ public interface CalculationFormulaDao {
             "input_param10_identity=#{inputParam10Identity}, " +
             "formula_text=#{formulaText}, " +
             "formula_image=#{formulaImage} " +
+            "detection_limit=#{detectionLimit}, " +
             "WHERE id = #{id}")
     void update(CalculationFormula calculationFormula);
 

@@ -1,21 +1,21 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
-import com.persee.workstation.uv_inexus.po.parseReport.Detection;
+import java.util.List;
 
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import java.util.List;
+import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
 @Mapper
 public interface DetectionMapper {
 
     @Insert("INSERT INTO t_report_standard_detection (standard_identity, industry, detection_type, detection_instrument, " +
-            "standard_number, standard_name, detection_item, method_number, remark, detection_parameters) " +
+            "standard_number, standard_name, detection_item, method_number, remark, detection_parameters,release_date,expiration_date,effective_date,release_status) " +
             "VALUES (#{standardIdentity}, #{industry}, #{detectionType}, #{detectionInstrument}, " +
-            "#{standardNumber}, #{standardName}, #{detectionItem}, #{methodNumber}, #{remark}, #{detectionParameters})")
+            "#{standardNumber}, #{standardName}, #{detectionItem}, #{methodNumber}, #{remark}, #{detectionParameters}, #{releaseDate}, #{expirationDate}, #{effectiveDate}, #{releaseStatus})")
     void insert(Detection detection);
 
     // 如果需要批量插入，可以添加以下方法

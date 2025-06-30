@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.po.parseReport;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -43,6 +44,18 @@ public class Detection extends BasePO {
     @TableField("detection_parameters")
     private String detectionParameters;
 
+    @TableField("release_date")
+    private String releaseDate;
+
+    @TableField("expiration_date")
+    private String expirationDate;
+
+    @TableField("effective_date")
+    private String effectiveDate;
+
+    @TableField("release_status")
+    private String releaseStatus;
+    
     // 如果 BasePO 类已经包含 create_time 和 update_time 字段，可以移除以下字段
     // @TableField("create_time")
     // private LocalDateTime createTime;

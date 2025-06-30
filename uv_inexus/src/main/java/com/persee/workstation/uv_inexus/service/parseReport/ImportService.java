@@ -155,6 +155,10 @@ public class ImportService {
                 detection.setDetectionItem(model.getDetectionItem());
                 detection.setMethodNumber(model.getMethodNumber());
                 detection.setRemark(model.getRemark());
+                detection.setReleaseDate(model.getReleaseDate());
+                detection.setExpirationDate(model.getExpirationDate());
+                detection.setEffectiveDate(model.getEffectiveDate());
+                detection.setReleaseStatus(model.getReleaseStatus());
     
                 // 设置检测参数
                 if (detectionParametersMap.containsKey(model.getStandardIdentity())) {
@@ -365,6 +369,8 @@ public class ImportService {
                 // calculationFormula.setFormulaImage(model.getFormulaImage());
                 // calculationFormula.setFormulaImage(null);
                 String imageData = model.getFormulaImage();
+                calculationFormula.setDetectionLimit(model.getDetectionLimit());
+
                 String base64Image = null;
                 System.out.println("第 " + (i+2) + " 行图片----------------------------: " + imageData);
                 

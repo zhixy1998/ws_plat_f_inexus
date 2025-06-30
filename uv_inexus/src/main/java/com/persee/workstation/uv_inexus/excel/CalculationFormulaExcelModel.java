@@ -88,6 +88,9 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("公式图片")
     private String formulaImage;
 
+    @ExcelProperty("检出限")
+    private String detectionLimit;
+
     public String getStandardIdentity() {
         return standardIdentity;
     }
@@ -293,5 +296,13 @@ public class CalculationFormulaExcelModel {
 
     public void setFormulaImage(String formulaImage) {
         this.formulaImage = formulaImage;
+    }
+
+    public String getDetectionLimit() {
+        return detectionLimit;
+    }
+
+    public void setDetectionLimit(String detectionLimit) {
+        this.detectionLimit = detectionLimit;
     }
 }

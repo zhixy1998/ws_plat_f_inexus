@@ -26,20 +26,20 @@ public interface DetectionDao {
     Detection findById(Integer id);
 
     // 插入新记录
-    @Insert("INSERT INTO t_report_standard_detection (standard_identity, industry, detection_type, detection_instrument, standard_number, standard_name, detection_item, method_number, remark, detection_parameters) " +
-            "VALUES (#{standardIdentity}, #{industry}, #{detectionType}, #{detectionInstrument}, #{standardNumber}, #{standardName}, #{detectionItem}, #{methodNumber}, #{remark}, #{detectionParameters})")
+    @Insert("INSERT INTO t_report_standard_detection (standard_identity, industry, detection_type, detection_instrument, standard_number, standard_name, detection_item, method_number, remark, detection_parameters,release_date,expiration_date,effective_date,release_status) " +
+            "VALUES (#{standardIdentity}, #{industry}, #{detectionType}, #{detectionInstrument}, #{standardNumber}, #{standardName}, #{detectionItem}, #{methodNumber}, #{remark}, #{detectionParameters}, #{releaseDate}, #{expirationDate}, #{effectiveDate}, #{releaseStatus})")
     void insert(Detection detection);
 
     // 更新记录
     @Update("UPDATE t_report_standard_detection SET standard_identity=#{standardIdentity}, industry=#{industry}, detection_type=#{detectionType}, " +
             "detection_instrument=#{detectionInstrument}, standard_number=#{standardNumber}, standard_name=#{standardName}, " +
             "detection_item=#{detectionItem}, method_number=#{methodNumber}, remark=#{remark}, detection_parameters=#{detectionParameters} " +
-            
+            "release_date=#{releaseDate}, expiration_date=#{expirationDate}, effective_date=#{effectiveDate}, release_status=#{releaseStatus} " +
             "WHERE id = #{id}")
     void update(Detection detection);
 
     // 根据ID删除记录
-    @Delete("DELETE FROM t_report_standard_detection WHERE id = #{id}")
+    @Delete("DELETE FROM t_report_standardDetection WHERE id = #{id}")
     void deleteById(Integer id);
 
     // 分页查询

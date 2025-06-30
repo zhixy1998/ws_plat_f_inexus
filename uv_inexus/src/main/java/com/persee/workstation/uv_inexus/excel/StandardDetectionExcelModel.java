@@ -36,6 +36,19 @@ public class StandardDetectionExcelModel {
 
     @ExcelProperty("检测参数")
     private String detectionParameters;
+
+    @ExcelProperty("发布时间")
+    private String releaseDate;
+
+    @ExcelProperty("失效时间")
+    private String expirationDate;
+
+    @ExcelProperty("实施时间")
+    private String effectiveDate;
+    
+    @ExcelProperty("状态")
+    private String releaseStatus;
+
     // Getters and Setters
     public String getStandardIdentity() {
         return standardIdentity;
@@ -115,5 +128,37 @@ public class StandardDetectionExcelModel {
 
     public void setDetectionParameters(String detectionParameters) {
         this.detectionParameters = detectionParameters;
+    }
+
+    public String getReleaseDate() {
+        return releaseDate;
+    }
+
+    public void setReleaseDate(String releaseDate) {
+        this.releaseDate = releaseDate;
+    }
+
+    public String getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(String expirationDate) {
+        this.expirationDate = expirationDate;
+    }
+
+    public String getEffectiveDate() {
+        return effectiveDate;
+    }
+
+    public void setEffectiveDate(String effectiveDate) {
+        this.effectiveDate = effectiveDate;
+    }
+
+    public String getReleaseStatus() {
+        return releaseStatus;
+    }
+
+    public void setReleaseStatus(String releaseStatus) {
+        this.releaseStatus = releaseStatus;
     }
 }
