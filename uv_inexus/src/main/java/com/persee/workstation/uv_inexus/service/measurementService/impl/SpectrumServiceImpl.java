@@ -80,6 +80,9 @@ public class SpectrumServiceImpl implements SpectrumService {
                         .eq(TMeasureData::getTaskId, dataVo.getTaskId())
                         .orderByDesc(TMeasureData::getMeasurementEndTime)
                         .last("limit 1"));
+        if (tMeasureData == null) {
+            return Result.fail("没有数据");
+        }
         // 将测量的数据从json转换为OriginalMeasuredDataVo对象
         OriginalMeasuredDataVo originalMeasuredDataVo = new OriginalMeasuredDataVo();
         List<String> list = new ArrayList<>();
@@ -89,7 +92,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         try {
             list = objectMapper.readValue(tMeasureData.getOriginalCalculationData(), ArrayList.class);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return Result.fail("数据转换失败");
         }
         for (String s : list) {
             String[] split = s.split(",");

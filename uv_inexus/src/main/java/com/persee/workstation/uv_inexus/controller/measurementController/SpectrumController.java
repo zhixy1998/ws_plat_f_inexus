@@ -28,9 +28,9 @@ public class SpectrumController {
         return spectrumService.queryProjectTaskMethod(updateBy);
     }
 
-    @GetMapping("queryProjectAllMethods/{projectId}/{measureForm}")
+    @PostMapping("queryProjectAllMethods")
     @ApiOperation("查询项目下的所有方法")
-    public Result queryProjectAllMethods(@PathVariable String projectId, @PathVariable String measureForm) {
+    public Result queryProjectAllMethods(@RequestParam String projectId, @RequestParam String measureForm) {
         return spectrumService.queryProjectAllMethods(projectId,measureForm);
     }
 

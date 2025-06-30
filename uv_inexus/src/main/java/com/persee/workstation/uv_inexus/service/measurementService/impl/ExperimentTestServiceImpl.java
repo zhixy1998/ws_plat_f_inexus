@@ -13,7 +13,9 @@ import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectStatisticsVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.RecentlyAccomplishTaskVo;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -361,12 +363,30 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
                 break;
         }
-//        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
         Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
-//        if (list==null||list.size() == 0){
-//            return Result.fail("未查询到数据");
-//        }
-        return Result.ok(page);
+        if (page==null||page.getRecords().size() == 0){
+            return Result.fail("未查询到数据");
+        }
+        ArrayList<QueryMethodVO> records = new ArrayList<>();
+        for (TMeasureMethod method : page.getRecords()) {
+            QueryMethodVO vo = new QueryMethodVO();
+            BeanUtils.copyProperties(method, vo);
+            // 查询当前方法id的所有任务的数量
+            Long count = tMeasureTaskService.count(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()));
+            vo.setTaskCount(count);
+            if (count > 0){
+                // 查询当前方法id的所有任务中最近采集的任务时间,最近采集任务的时间字段是collection_start_time
+                TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()).orderByDesc("collection_start_time").last("limit 1"));
+                vo.setLastTaskTime(task.getCollectionStartTime());
+            }
+            records.add(vo);
+        }
+        Page<QueryMethodVO> finalPage = new Page<>();
+        finalPage.setRecords(records);
+        finalPage.setCurrent(page.getCurrent());
+        finalPage.setSize(page.getSize());
+        finalPage.setTotal(page.getTotal());
+        return Result.ok(finalPage);
     }
 
     @Override
