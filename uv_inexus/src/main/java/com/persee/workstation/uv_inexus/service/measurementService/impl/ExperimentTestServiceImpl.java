@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
@@ -46,6 +47,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private PhotometricService photometricService;
     @Autowired
     private RationService rationService;
+    @Autowired
+    private TMeasureDataMapper tMeasureDataMapper;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -328,41 +331,42 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result queryMethodProt(String projectId, String measureType) {
+    public Result queryMethodProt(String projectId, String measureType, Integer pageNum, Integer pageSize) {
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(measureType);
         // TODO 所有测量的查看任务查询需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
-                if (measureType.equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())){
                     return Result.fail("请选择光度测量");
                 }
                 break;
             case QUANTITATIVE_MEASUREMENT:
-                if (measureType.equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())){
                     return Result.fail("请选择定量测量");
                 }
                 break;
             case SPECTRAL_SCAN:
-                if (measureType.equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())){
                     return Result.fail("请选择光谱扫描");
                 }
                 break;
             case TIME_SCAN:
-                if (measureType.equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
                     return Result.fail("请选择时间扫描");
                 }
                 break;
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
-                if (measureType.equals(MeasureTypeEnum.TWO_COMPONENT_QUANTITATIVE_ANALYSIS.getDescription())){
+                if (!measureType.equals(MeasureTypeEnum.TWO_COMPONENT_QUANTITATIVE_ANALYSIS.getDescription())){
                     return Result.fail("请选择双组份定量分析");
                 }
                 break;
         }
-        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
-        if (list==null||list.size() == 0){
-            return Result.fail("未查询到数据");
-        }
-        return Result.ok(list);
+//        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
+        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
+//        if (list==null||list.size() == 0){
+//            return Result.fail("未查询到数据");
+//        }
+        return Result.ok(page);
     }
 
     @Override
