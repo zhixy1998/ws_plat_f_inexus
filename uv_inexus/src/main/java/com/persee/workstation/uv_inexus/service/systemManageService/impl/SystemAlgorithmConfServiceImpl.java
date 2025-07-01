@@ -1,17 +1,20 @@
 package com.persee.workstation.uv_inexus.service.systemManageService.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.systemManageDao.SystemAlgorithmConfDAO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemAlgorithmConfDTO;
 import com.persee.workstation.uv_inexus.po.systemManagePo.SystemAlgorithmConfPO;
 import com.persee.workstation.uv_inexus.service.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -20,51 +23,74 @@ public class SystemAlgorithmConfServiceImpl implements SystemAlgorithmConfServic
     @Autowired
     SystemAlgorithmConfDAO dao;
 
+    @Value("${sys-manage-default.defaultId}")
+    String defaultId;
+
+    @Value("${sys-manage-default.userId}")
+    String userId;
+
+
     @Override
-    public List<SystemAlgorithmConfVO> queryAlgorithmConf() {
-        List<SystemAlgorithmConfPO> poList = dao.selectList(null);
-        List<SystemAlgorithmConfVO> voList = new ArrayList<>();
-        for (SystemAlgorithmConfPO po : poList) {
-            SystemAlgorithmConfVO vo = new SystemAlgorithmConfVO();
-            vo.setAlgorithmName(po.getAlgorithmName());
-            vo.setAlgorithmType(po.getAlgorithmType());
-            vo.setConfParam(po.getConfParam());
-            vo.setConfParamName(po.getConfParamName());
-            if (po.getConfUserValue() == null) {
-                vo.setConfValue(po.getConfDefaultValue());
-            }else {
-                vo.setConfValue(po.getConfUserValue());
-            }
-            vo.setMaxValue(po.getMaxValue());
-            vo.setMinValue(po.getMinValue());
-            voList.add(vo);
+    public SystemAlgorithmConfVO queryAlgorithmConf() {
+        SystemAlgorithmConfPO po = dao.selectById(userId);
+        SystemAlgorithmConfPO defPo = dao.selectById(defaultId);
+        SystemAlgorithmConfVO vo = new SystemAlgorithmConfVO();
+
+        BeanUtils.copyProperties(defPo, vo);
+        if (po != null) {
+            BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
         }
-        return voList;
+        return vo;
+    }
+
+    private static String[] getNullPropertyNames(Object source) {
+        final BeanWrapper src = new BeanWrapperImpl(source);
+        java.beans.PropertyDescriptor[] pds = src.getPropertyDescriptors();
+        Set<String> emptyNames = new HashSet<>();
+        for (java.beans.PropertyDescriptor pd : pds) {
+            Object srcValue = src.getPropertyValue(pd.getName());
+            if (srcValue == null) emptyNames.add(pd.getName());
+        }
+        return emptyNames.toArray(new String[0]);
     }
 
     @Override
-    public Boolean saveAlgorithmConf(List<SystemAlgorithmConfDTO> list) {
-        for (SystemAlgorithmConfDTO dto : list) {
-            LambdaQueryWrapper<SystemAlgorithmConfPO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(SystemAlgorithmConfPO::getAlgorithmType, dto.getAlgorithmType())
-                    .eq(SystemAlgorithmConfPO::getConfParam, dto.getConfParam());
-            SystemAlgorithmConfPO po = dao.selectOne(queryWrapper);
+    public Boolean saveAlgorithmConf(SystemAlgorithmConfDTO dto) {
 
+        SystemAlgorithmConfPO po = dao.selectById(userId);
+        if (po == null) {
+            po = new SystemAlgorithmConfPO();
+            po.setId(userId);
+            po.setCreateBy(dto.getUpdateBy());
             po.setUpdateBy(dto.getUpdateBy());
-            po.setConfUserValue(dto.getConfValue());
-            dao.update(po, queryWrapper);
+            po.setTransmittance(dto.getTransmittance());
+            po.setIntegratingSphere(dto.getIntegratingSphere());
+            po.setAbs(dto.getAbs());
+
+            dao.insert(po);
+        } else {
+            po.setAbs(dto.getAbs());
+            po.setIntegratingSphere(dto.getIntegratingSphere());
+            po.setTransmittance(dto.getTransmittance());
+            po.setUpdateBy(dto.getUpdateBy());
+
+            dao.updateById(po);
         }
+
         return true;
     }
 
 
     @Override
     public Boolean resetAlgorithmConf() {
-        List<SystemAlgorithmConfPO> poList = dao.selectList(null);
-        for (SystemAlgorithmConfPO po : poList) {
-            po.setConfUserValue(po.getConfDefaultValue());
-            dao.updateById(po);
+
+        SystemAlgorithmConfPO po = dao.selectById(userId);
+        if (po != null) {
+            log.info("删除用户记录");
+            return dao.deleteById(po) > 0;
+        } else {
+            log.info("没有用户记录");
+            return true;
         }
-        return true;
     }
 }

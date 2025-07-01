@@ -9,6 +9,9 @@ public class SystemDataBaseVO {
     @ApiModelProperty("全局端口")
     private String globalPort;
 
+    @ApiModelProperty("快捷登录开关")
+    private Boolean fastLoginSwitch;
+
     @ApiModelProperty("主数据库ip")
     private String mainDatabaseIp;
 

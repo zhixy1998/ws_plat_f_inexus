@@ -2,23 +2,16 @@ package com.persee.workstation.uv_inexus.controller.systemManageController;
 
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemAlgorithmConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemBusinessParamDTO;
+import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
+import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelConfDTO;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.systemManagePo.SystemDatabaseConfPO;
 import com.persee.workstation.uv_inexus.po.systemManagePo.SystemLogSwitchPO;
-import com.persee.workstation.uv_inexus.service.systemManageService.SystemAlgorithmConfService;
-import com.persee.workstation.uv_inexus.service.systemManageService.SystemBusinessParamService;
-import com.persee.workstation.uv_inexus.service.systemManageService.SystemLogSwitchService;
-import com.persee.workstation.uv_inexus.service.systemManageService.SystemctlDatabaseConfService;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemDataBaseVO;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemLogSwitchVO;
+import com.persee.workstation.uv_inexus.service.systemManageService.*;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.*;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/systemManage")
@@ -37,10 +30,13 @@ public class SystemManageController {
     @Autowired
     SystemAlgorithmConfService systemAlgorithmConfService;
 
+    @Autowired
+    SystemPanelConfService systemPanelConfService;
+
     @ApiOperation(value = "保存数据库配置")
     @PostMapping("/saveDatabaseConf")
-    public Result<Boolean> saveDatabaseConf(@RequestBody SystemDatabaseConfPO systemDatabaseConfPO) {
-        Boolean b = databaseConfService.saveDatabaseConf(systemDatabaseConfPO);
+    public Result<Boolean> saveDatabaseConf(@RequestBody SystemDataBaseConfDTO dto) {
+        Boolean b = databaseConfService.saveDatabaseConf(dto);
         if (b) {
             return Result.ok();
         } else {
@@ -54,6 +50,61 @@ public class SystemManageController {
         SystemDataBaseVO vo = databaseConfService.queryDatabaseConf();
         if (vo != null) {
             return Result.ok(vo);
+        } else {
+            return Result.fail();
+        }
+    }
+
+    @ApiOperation(value = "数据库配置恢复出厂设置")
+    @PostMapping("/resetDatabaseConf")
+    public Result<Boolean> resetDatabaseConf(@RequestParam String updateBy) {
+        Boolean flag = databaseConfService.resetDatabaseConf(updateBy);
+        if (flag) {
+            return Result.ok();
+        } else {
+            return Result.fail();
+        }
+    }
+
+    @ApiOperation(value = "快捷登录开关保存")
+    @PostMapping("/changeFastLoginSwitch")
+    public Result<Boolean> changeFastLoginSwitch(@RequestParam Boolean switchStatus, @RequestParam String updateBy) {
+        Boolean flag = databaseConfService.changeFastLoginSwitch(switchStatus, updateBy);
+        if (flag) {
+            return Result.ok();
+        } else {
+            return Result.fail();
+        }
+    }
+
+    @ApiOperation(value = "保存系统面板配置")
+    @PostMapping("/savePanelConf")
+    public Result<Boolean> savePanelConf(@RequestBody SystemPanelConfDTO dto) {
+        Boolean flag = systemPanelConfService.savePanelConf(dto);
+        if (flag) {
+            return Result.ok();
+        } else {
+            return Result.fail();
+        }
+    }
+
+    @ApiOperation(value = "查询系统面板配置")
+    @GetMapping("/queryPanelConf")
+    public Result<SystemPanelConfVO> queryPanelConf() {
+        SystemPanelConfVO vo = systemPanelConfService.queryPanelConf();
+        if (vo != null) {
+            return Result.ok(vo);
+        } else {
+            return Result.fail();
+        }
+    }
+
+    @ApiOperation(value = "系统面板配置恢复出厂设置")
+    @PostMapping("/resetPanelConf")
+    public Result<Boolean> resetPanelConf(@RequestParam String updateBy) {
+        Boolean flag = systemPanelConfService.resetPanelConf(updateBy);
+        if (flag) {
+            return Result.ok();
         } else {
             return Result.fail();
         }
@@ -83,7 +134,7 @@ public class SystemManageController {
 
     @ApiOperation(value = "保存业务参数")
     @PostMapping("/saveBusinessParam")
-    public Result<Boolean> saveBusinessParam(@RequestBody List<SystemBusinessParamDTO> list) {
+    public Result<Boolean> saveBusinessParam(@RequestBody SystemBusinessParamDTO list) {
         Boolean b = systemBusinessParamService.saveBusinessParam(list);
         if (b) {
             return Result.ok();
@@ -94,8 +145,8 @@ public class SystemManageController {
 
     @ApiOperation(value = "查询业务参数")
     @GetMapping("/queryBusinessParam")
-    public Result<List<SystemBusinessParamVO>> queryBusinessParam() {
-        List<SystemBusinessParamVO> vo = systemBusinessParamService.queryBusinessParam();
+    public Result<SystemBusinessParamVO> queryBusinessParam() {
+        SystemBusinessParamVO vo = systemBusinessParamService.queryBusinessParam();
         if (vo != null) {
             return Result.ok(vo);
         } else {
@@ -116,8 +167,8 @@ public class SystemManageController {
 
     @ApiOperation(value = "算法参数保存")
     @PostMapping("/saveAlgorithmConf")
-    public Result<Boolean> saveAlgorithmConf(@RequestBody List<SystemAlgorithmConfDTO> list) {
-        Boolean flag = systemAlgorithmConfService.saveAlgorithmConf(list);
+    public Result<Boolean> saveAlgorithmConf(@RequestBody SystemAlgorithmConfDTO dto) {
+        Boolean flag = systemAlgorithmConfService.saveAlgorithmConf(dto);
         if (flag) {
             return Result.ok();
         } else {
@@ -136,11 +187,10 @@ public class SystemManageController {
         }
     }
 
-
     @ApiOperation(value = "查询算法配置参数")
     @GetMapping("/queryAlgorithmConf")
-    public Result<List<SystemAlgorithmConfVO>> queryAlgorithmConf() {
-        List<SystemAlgorithmConfVO> list = systemAlgorithmConfService.queryAlgorithmConf();
+    public Result<SystemAlgorithmConfVO> queryAlgorithmConf() {
+        SystemAlgorithmConfVO list = systemAlgorithmConfService.queryAlgorithmConf();
 
         return Result.ok(list);
     }

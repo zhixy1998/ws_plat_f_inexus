@@ -5,14 +5,15 @@ import lombok.Data;
 
 @Data
 public class SystemAlgorithmConfDTO {
-    @ApiModelProperty(value = "算法类型", required = true)
-    private Integer algorithmType;
 
-    @ApiModelProperty(value = "参数，配置对应的参，后端查询使用",required = true)
-    private String confParam;
+    @ApiModelProperty("透过率门限系数k")
+    private String Transmittance;
 
-    @ApiModelProperty(value = "用户值", required = true)
-    private String confValue;
+    @ApiModelProperty("积分球门限系数k")
+    private String IntegratingSphere;
+
+    @ApiModelProperty("Abs门限系数k")
+    private String Abs;
 
     @ApiModelProperty(value = "用户")
     private String updateBy;

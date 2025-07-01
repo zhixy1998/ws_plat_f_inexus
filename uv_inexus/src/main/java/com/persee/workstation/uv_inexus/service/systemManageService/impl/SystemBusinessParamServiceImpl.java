@@ -1,17 +1,21 @@
 package com.persee.workstation.uv_inexus.service.systemManageService.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.systemManageDao.SystemBusinessParamDAO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemBusinessParamDTO;
 import com.persee.workstation.uv_inexus.po.systemManagePo.SystemBusinessParamPO;
 import com.persee.workstation.uv_inexus.service.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+
 
 @Service
 @Slf4j
@@ -20,39 +24,52 @@ public class SystemBusinessParamServiceImpl implements SystemBusinessParamServic
     @Autowired
     SystemBusinessParamDAO dao;
 
+    @Value("${sys-manage-default.defaultId}")
+    String defaultId;
+
+    @Value("${sys-manage-default.userId}")
+    String userId;
+
     @Override
-    public List<SystemBusinessParamVO> queryBusinessParam() {
-        List<SystemBusinessParamPO> poList = dao.selectList(null);
-        List<SystemBusinessParamVO> voList = new ArrayList<>();
-        for (SystemBusinessParamPO po : poList) {
-            SystemBusinessParamVO vo = new SystemBusinessParamVO();
-            vo.setBusinessName(po.getBusinessName());
-            vo.setBusinessType(po.getBusinessType());
-            vo.setConfParam(po.getConfParam());
-            vo.setParamName(po.getParamName());
-            vo.setParamType(po.getParamType());
-            vo.setParamMinValue(po.getParamMinValue());
-            vo.setParamMaxValue(po.getParamMaxValue());
-            if (po.getParamUserValue() == null) {
-                vo.setParamValue(po.getParamDefaultValue());
-            } else {
-                vo.setParamValue(po.getParamUserValue());
-            }
-            voList.add(vo);
+    public SystemBusinessParamVO queryBusinessParam() {
+        SystemBusinessParamPO po = dao.selectById(userId);
+        SystemBusinessParamPO defPo = dao.selectById(defaultId);
+        SystemBusinessParamVO vo = new SystemBusinessParamVO();
+        BeanUtils.copyProperties(defPo, vo);
+        if (po != null) {
+            BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
         }
-        return voList;
+
+        return vo;
+    }
+
+    private static String[] getNullPropertyNames(Object source) {
+        final BeanWrapper src = new BeanWrapperImpl(source);
+        java.beans.PropertyDescriptor[] pds = src.getPropertyDescriptors();
+        Set<String> emptyNames = new HashSet<>();
+        for (java.beans.PropertyDescriptor pd : pds) {
+            Object srcValue = src.getPropertyValue(pd.getName());
+            if (srcValue == null) emptyNames.add(pd.getName());
+        }
+        return emptyNames.toArray(new String[0]);
     }
 
     @Override
-    public Boolean saveBusinessParam(List<SystemBusinessParamDTO> list) {
-        for (SystemBusinessParamDTO dto : list) {
-            LambdaQueryWrapper<SystemBusinessParamPO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(SystemBusinessParamPO::getBusinessType, dto.getBusinessType())
-                    .eq(SystemBusinessParamPO::getConfParam, dto.getConfParam());
-            SystemBusinessParamPO po = dao.selectOne(queryWrapper);
+    public Boolean saveBusinessParam(SystemBusinessParamDTO dto) {
+        SystemBusinessParamPO po = dao.selectById(userId);
+        if (po == null) {
+            po = new SystemBusinessParamPO();
+            po.setId(userId);
+            po.setCreateBy(dto.getUpdateBy());
             po.setUpdateBy(dto.getUpdateBy());
-            po.setParamUserValue(dto.getParamValue());
-            dao.update(po, queryWrapper);
+            po.setPeakInterval(dto.getPeakInterval());
+            po.setPeakValleyDiff(dto.getPeakValleyDiff());
+            dao.insert(po);
+        } else {
+            po.setUpdateBy(dto.getUpdateBy());
+            po.setPeakInterval(dto.getPeakInterval());
+            po.setPeakValleyDiff(dto.getPeakValleyDiff());
+            dao.updateById(po);
         }
 
         return true;
@@ -60,12 +77,13 @@ public class SystemBusinessParamServiceImpl implements SystemBusinessParamServic
 
     @Override
     public Boolean resetBusinessParam() {
-        List<SystemBusinessParamPO> poList = dao.selectList(null);
-        for (SystemBusinessParamPO po : poList) {
-            po.setParamUserValue(po.getParamDefaultValue());
-            dao.updateById(po);
+        SystemBusinessParamPO po = dao.selectById(userId);
+        if (po != null) {
+            return dao.deleteById(po) > 0;
+        } else {
+            log.info("没有用户记录");
+            return true;
         }
-        return true;
     }
 
 

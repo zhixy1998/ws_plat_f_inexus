@@ -16,6 +16,10 @@ public class SystemDatabaseConfPO extends BasePO {
     @TableField(value = "global_port")
     private String globalPort;
 
+    @ApiModelProperty("快捷登录开关")
+    @TableField(value = "fast_login_switch")
+    private Boolean fastLoginSwitch;
+
     @ApiModelProperty("主数据库ip")
     @TableField(value = "main_database_ip")
     private String mainDatabaseIp;

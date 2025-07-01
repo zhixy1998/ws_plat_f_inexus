@@ -3,13 +3,11 @@ package com.persee.workstation.uv_inexus.service.systemManageService;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemBusinessParamDTO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 
-import java.util.List;
-
 public interface SystemBusinessParamService {
 
-    List<SystemBusinessParamVO> queryBusinessParam();
+    SystemBusinessParamVO queryBusinessParam();
 
-    Boolean saveBusinessParam(List<SystemBusinessParamDTO> list);
+    Boolean saveBusinessParam(SystemBusinessParamDTO dto);
 
     Boolean resetBusinessParam();
 

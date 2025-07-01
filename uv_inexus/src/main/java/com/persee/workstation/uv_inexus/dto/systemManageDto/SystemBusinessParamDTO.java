@@ -6,14 +6,11 @@ import lombok.Data;
 @Data
 public class SystemBusinessParamDTO {
 
-    @ApiModelProperty("参数配置类型")
-    private Integer businessType;
+    @ApiModelProperty("峰间距")
+    private String peakInterval;
 
-    @ApiModelProperty("配置参数")
-    private String confParam;
-
-    @ApiModelProperty("配置参数值")
-    private String paramValue;
+    @ApiModelProperty("峰谷差")
+    private String peakValleyDiff;
 
     @ApiModelProperty("用户")
     private String updateBy;

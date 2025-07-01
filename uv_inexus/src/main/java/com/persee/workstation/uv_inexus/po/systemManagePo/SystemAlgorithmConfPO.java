@@ -14,35 +14,15 @@ import lombok.EqualsAndHashCode;
 @TableName("t_system_algorithm_conf")
 public class SystemAlgorithmConfPO extends BasePO {
 
-    @ApiModelProperty("算法类型")
-    @TableField(value = "algorithm_type")
-    private Integer algorithmType;
+    @ApiModelProperty("透过率门限系数k")
+    @TableField("transmittance_k")
+    private String Transmittance;
 
-    @ApiModelProperty("算法名称")
-    @TableField(value = "algorithm_name")
-    private String algorithmName;
+    @ApiModelProperty("积分球门限系数k")
+    @TableField("integrating_sphere_k")
+    private String IntegratingSphere;
 
-    @ApiModelProperty("参数，配置对应的参，后端查询使用")
-    @TableField(value = "conf_param")
-    private String confParam;
-
-    @ApiModelProperty("参数名，中文名，供前端参考")
-    @TableField(value = "conf_param_name")
-    private String confParamName;
-
-    @ApiModelProperty("默认值")
-    @TableField(value = "conf_default_value")
-    private String confDefaultValue;
-
-    @ApiModelProperty("用户值")
-    @TableField(value = "conf_user_value")
-    private String confUserValue;
-
-    @ApiModelProperty("最小值")
-    @TableField(value = "min_value")
-    private String minValue;
-
-    @ApiModelProperty("最大值")
-    @TableField(value = "max_value")
-    private String maxValue;
+    @ApiModelProperty("Abs门限系数k")
+    @TableField("abs_k")
+    private String Abs;
 }

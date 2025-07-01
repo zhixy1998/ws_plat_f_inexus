@@ -1,16 +1,21 @@
 package com.persee.workstation.uv_inexus.service.systemManageService.impl;
 
 import com.persee.workstation.uv_inexus.dao.systemManageDao.SystemDatabaseConfDAO;
+import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
 import com.persee.workstation.uv_inexus.po.systemManagePo.SystemDatabaseConfPO;
 import com.persee.workstation.uv_inexus.service.systemManageService.SystemctlDatabaseConfService;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemDataBaseVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+
 
 @Slf4j
 @Service
@@ -26,15 +31,22 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
     String userId;
 
     @Override
-    public Boolean saveDatabaseConf(SystemDatabaseConfPO po) {
+    public Boolean saveDatabaseConf(SystemDataBaseConfDTO dto) {
 
-        SystemDatabaseConfPO confPO = dao.selectById(userId);
+        SystemDatabaseConfPO po = dao.selectById(userId);
 
-        po.setId(userId);
-        if (confPO == null) {
-            po.setCreateBy(po.getUpdateBy());
+        if (po == null) {
+            po = new SystemDatabaseConfPO();
+
+            BeanUtils.copyProperties(dto, po);
+
+            po.setId(userId);
+            po.setCreateBy(dto.getUpdateBy());
+
             return dao.insert(po) > 0;
         } else {
+            BeanUtils.copyProperties(dto, po);
+            po.setId(userId);
             return dao.updateById(po) > 0;
         }
     }
@@ -43,15 +55,52 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
     public SystemDataBaseVO queryDatabaseConf() {
 
         SystemDatabaseConfPO userDataPO = dao.selectById(userId);
-        if (userDataPO == null) {
-            SystemDatabaseConfPO confPO = dao.selectById(defaultId);
-            SystemDataBaseVO vo = new SystemDataBaseVO();
-            BeanUtils.copyProperties(confPO, vo);
-            return vo;
+        SystemDatabaseConfPO confPO = dao.selectById(defaultId);
+        SystemDataBaseVO vo = new SystemDataBaseVO();
+
+        BeanUtils.copyProperties(confPO, vo);
+        if (userDataPO != null) {
+            BeanUtils.copyProperties(userDataPO, vo, getNullPropertyNames(userDataPO));
+        }
+        return vo;
+    }
+
+    private static String[] getNullPropertyNames(Object source) {
+        final BeanWrapper src = new BeanWrapperImpl(source);
+        java.beans.PropertyDescriptor[] pds = src.getPropertyDescriptors();
+        Set<String> emptyNames = new HashSet<>();
+        for (java.beans.PropertyDescriptor pd : pds) {
+            Object srcValue = src.getPropertyValue(pd.getName());
+            if (srcValue == null) emptyNames.add(pd.getName());
+        }
+        return emptyNames.toArray(new String[0]);
+    }
+
+    @Override
+    public Boolean resetDatabaseConf(String updateBy) {
+        SystemDatabaseConfPO po = dao.selectById(userId);
+        if (po != null) {
+            return dao.deleteById(po) > 0;
         } else {
-            SystemDataBaseVO vo = new SystemDataBaseVO();
-            BeanUtils.copyProperties(userDataPO, vo);
-            return vo;
+            log.info("没有用户记录");
+        }
+        return true;
+    }
+
+    @Override
+    public Boolean changeFastLoginSwitch(Boolean switchStatus, String updateBy) {
+        SystemDatabaseConfPO po = dao.selectById(userId);
+        if (po == null) {
+            po = new SystemDatabaseConfPO();
+            po.setId(userId);
+            po.setCreateBy(updateBy);
+            po.setUpdateBy(updateBy);
+            po.setFastLoginSwitch(switchStatus);
+            return dao.insert(po) > 0;
+        } else {
+            po.setUpdateBy(updateBy);
+            po.setFastLoginSwitch(switchStatus);
+            return dao.updateById(po) > 0;
         }
     }
 }
