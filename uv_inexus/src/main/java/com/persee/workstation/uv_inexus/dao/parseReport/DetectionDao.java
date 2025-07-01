@@ -26,15 +26,15 @@ public interface DetectionDao {
     Detection findById(Integer id);
 
     // 插入新记录
-    @Insert("INSERT INTO t_report_standard_detection (standard_identity, industry, detection_type, detection_instrument, standard_number, standard_name, detection_item, method_number, remark, detection_parameters,release_date,expiration_date,effective_date,release_status) " +
-            "VALUES (#{standardIdentity}, #{industry}, #{detectionType}, #{detectionInstrument}, #{standardNumber}, #{standardName}, #{detectionItem}, #{methodNumber}, #{remark}, #{detectionParameters}, #{releaseDate}, #{expirationDate}, #{effectiveDate}, #{releaseStatus})")
+    @Insert("INSERT INTO t_report_standard_detection (standard_identity, industry, detection_type, detection_instrument, standard_number, standard_name, detection_item, method_number, remark, detection_parameters,release_date,expiration_date,effective_date,release_status,industry_type) " +
+            "VALUES (#{standardIdentity}, #{industry}, #{detectionType}, #{detectionInstrument}, #{standardNumber}, #{standardName}, #{detectionItem}, #{methodNumber}, #{remark}, #{detectionParameters}, #{releaseDate}, #{expirationDate}, #{effectiveDate}, #{releaseStatus}, #{industryType})")
     void insert(Detection detection);
 
     // 更新记录
     @Update("UPDATE t_report_standard_detection SET standard_identity=#{standardIdentity}, industry=#{industry}, detection_type=#{detectionType}, " +
             "detection_instrument=#{detectionInstrument}, standard_number=#{standardNumber}, standard_name=#{standardName}, " +
             "detection_item=#{detectionItem}, method_number=#{methodNumber}, remark=#{remark}, detection_parameters=#{detectionParameters} " +
-            "release_date=#{releaseDate}, expiration_date=#{expirationDate}, effective_date=#{effectiveDate}, release_status=#{releaseStatus} " +
+            "release_date=#{releaseDate}, expiration_date=#{expirationDate}, effective_date=#{effectiveDate}, release_status=#{releaseStatus} , industry_type=#{industryType}" +
             "WHERE id = #{id}")
     void update(Detection detection);
 

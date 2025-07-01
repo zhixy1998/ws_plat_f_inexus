@@ -49,6 +49,9 @@ public class StandardDetectionExcelModel {
     @ExcelProperty("状态")
     private String releaseStatus;
 
+    @ExcelProperty("类型")
+    private String industryType;
+
     // Getters and Setters
     public String getStandardIdentity() {
         return standardIdentity;
@@ -160,5 +163,13 @@ public class StandardDetectionExcelModel {
 
     public void setReleaseStatus(String releaseStatus) {
         this.releaseStatus = releaseStatus;
+    }
+
+    public String getIndustryType() {
+        return industryType;
+    }
+
+    public void setIndustryType(String industryType) {
+        this.industryType = industryType;
     }
 }

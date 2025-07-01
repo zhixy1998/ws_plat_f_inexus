@@ -159,6 +159,7 @@ public class ImportService {
                 detection.setExpirationDate(model.getExpirationDate());
                 detection.setEffectiveDate(model.getEffectiveDate());
                 detection.setReleaseStatus(model.getReleaseStatus());
+                detection.setIndustryType(model.getIndustryType());
     
                 // 设置检测参数
                 if (detectionParametersMap.containsKey(model.getStandardIdentity())) {

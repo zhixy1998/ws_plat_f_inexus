@@ -56,6 +56,9 @@ public class Detection extends BasePO {
     @TableField("release_status")
     private String releaseStatus;
     
+    @TableField("industry_type") // 如果这个字段不存储在数据库，可以不加这个注解，或者加 value="industry_type" 指定列名
+    private String industryType; // 标准类型
+    
     // 如果 BasePO 类已经包含 create_time 和 update_time 字段，可以移除以下字段
     // @TableField("create_time")
     // private LocalDateTime createTime;
