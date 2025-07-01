@@ -60,11 +60,18 @@ public class DetectionServiceImpl implements DetectionService {
                 continue;
             }
             
+            
             if (StringUtils.isNotBlank(value)) {
-                queryWrapper.like(key, value);
+                // 处理日期区间查询
+                if ("startDate".equals(key)) {
+                    queryWrapper.ge("release_date", value); // 大于等于 startDate
+                } else if ("endDate".equals(key)) {
+                    queryWrapper.le("release_date", value); // 小于等于 endDate
+                } else {
+                    queryWrapper.like(key, value); // 其他字段模糊查询
+                }
             }
         }
-        
         // 确保分页稳定，按 ID 排序
         // queryWrapper.orderByAsc("id");
         
