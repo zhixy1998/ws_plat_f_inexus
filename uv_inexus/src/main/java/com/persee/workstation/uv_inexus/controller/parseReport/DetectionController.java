@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.controller.parseReport;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,18 @@ public class DetectionController {
         } else {
             return Result.ok(detection);
         }
+    }
+
+    @GetMapping("/industryType")
+    public Result<List<Map<String, Object>>> countIndustryType() {
+        List<Map<String, Object>> result = detectionService.countIndustryType();
+        return Result.ok(result);
+    }
+    
+    @GetMapping("/industry")
+    public Result<List<Map<String, Object>>> countIndustry() {
+        List<Map<String, Object>> result = detectionService.countIndustry();
+        return Result.ok(result);
     }
 
     @PostMapping

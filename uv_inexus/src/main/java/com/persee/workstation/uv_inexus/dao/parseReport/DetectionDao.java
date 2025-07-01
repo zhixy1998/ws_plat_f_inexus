@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
@@ -51,4 +52,13 @@ public interface DetectionDao {
         "ORDER BY id DESC" +  // 固定倒序
         "</script>")
     IPage<Detection> selectPage(Page<Detection> page, @Param("ew") QueryWrapper<Detection> queryWrapper);
+
+    // 统计 industry_type 字段的不同值及其数量
+    @Select("SELECT industry_type AS name, COUNT(*) AS num FROM t_report_standard_detection GROUP BY industry_type")
+    List<Map<String, Object>> countIndustryType();
+
+    // 统计 industry 字段的不同值及其数量
+    @Select("SELECT industry AS name, COUNT(*) AS num FROM t_report_standard_detection GROUP BY industry")
+    List<Map<String, Object>> countIndustry();
+     
 }

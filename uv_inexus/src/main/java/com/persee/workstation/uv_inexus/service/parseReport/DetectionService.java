@@ -7,19 +7,24 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
-    public interface DetectionService {
+public interface DetectionService {
 
-        List<Detection> findAll();
+    List<Detection> findAll();
 
-        Detection findById(Integer id);
+    Detection findById(Integer id);
 
-        void insert(Detection detection);
+    void insert(Detection detection);
 
-        void update(Detection detection);
+    void update(Detection detection);
 
-        void deleteById(Integer id);
-        
-        IPage<Detection> findPage(Page<Detection> page, Map<String, String> params);
+    void deleteById(Integer id);
+    
+    IPage<Detection> findPage(Page<Detection> page, Map<String, String> params);
 
-    }
+    // 新增方法：统计 industry_type 的不同值及其数量
+    List<Map<String, Object>> countIndustryType();
+
+    List<Map<String, Object>> countIndustry();
+
+}
     

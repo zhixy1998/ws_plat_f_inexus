@@ -88,6 +88,18 @@ public class DetectionServiceImpl implements DetectionService {
                 
         return resultPage;
     }
+
+    // 在服务层调用该方法
+    @Override
+    public List<Map<String, Object>> countIndustryType() {
+        return detectionDao.countIndustryType();
+    }
+
+    @Override
+    public List<Map<String, Object>> countIndustry() {
+        return detectionDao.countIndustry();
+    }
+
 }
 
 // package com.persee.workstation.uv_inexus.service.parseReport.impl;
