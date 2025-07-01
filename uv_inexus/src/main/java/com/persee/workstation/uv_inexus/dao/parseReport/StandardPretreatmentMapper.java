@@ -1,11 +1,16 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
-import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
-import org.apache.ibatis.annotations.*;
+import java.util.List;
+
 // import org.apache.ibatis.annotations.Mapper;
 // import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
-import java.util.List;
+import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
 
 @Mapper
 public interface StandardPretreatmentMapper {
@@ -20,6 +25,17 @@ public interface StandardPretreatmentMapper {
 
     @Select("SELECT * FROM t_report_standard_pretreatment")
     List<StandardPretreatment> selectAll();
+
+    // 检查是否存在指定 standardIdentity 的记录
+    @Select("SELECT COUNT(*) FROM t_report_standard_pretreatment WHERE standard_identity = #{standardIdentity}")
+    boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
+
+    // 根据标准标识更新记录
+    @Update("UPDATE t_report_standard_pretreatment " +
+        "SET pretreatment_description = #{pretreatmentDescription} " + // 第一个字段
+        "WHERE standard_identity = #{standardIdentity}")
+    void updateByStandardIdentity(StandardPretreatment standardPretreatment);
+
 }
 
 // package com.persee.workstation.uv_inexus.dao.parseReport;

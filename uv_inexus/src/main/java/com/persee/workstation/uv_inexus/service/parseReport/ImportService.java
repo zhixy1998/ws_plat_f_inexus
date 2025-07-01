@@ -192,15 +192,15 @@ public class ImportService {
     public void importStandardPretreatment(MultipartFile file) throws IOException {
         try {
             List<StandardPretreatmentExcelModel> list = EasyExcel.read(file.getInputStream())
-                .head(StandardPretreatmentExcelModel.class)
-                .sheet("前处理信息表")
-                .doReadSync();
-    
+                    .head(StandardPretreatmentExcelModel.class)
+                    .sheet("前处理信息表")
+                    .doReadSync();
+
             if (list == null || list.isEmpty()) {
-                System.out.println("前处理信息表数据为空，请检查Excel文件是否正确");
+                // System.out.println("前处理信息表数据为空，请检查Excel文件是否正确");
                 return;
             }
-    
+
             // 从第二行开始计数，假设第一行是标题行
             int currentRow = 2;
             for (StandardPretreatmentExcelModel model : list) {
@@ -208,11 +208,24 @@ public class ImportService {
                     if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
-    
+
+                    // 1. 检查记录是否存在
+                    boolean exists = standardPretreatmentMapper.existsByStandardIdentity(model.getStandardIdentity());
+
                     StandardPretreatment standardPretreatment = new StandardPretreatment();
                     standardPretreatment.setStandardIdentity(model.getStandardIdentity());
                     standardPretreatment.setPretreatmentDescription(model.getPretreatmentDescription());
-                    standardPretreatmentMapper.insert(standardPretreatment);
+                    // 设置其他需要导入的字段...
+
+                    if (exists) {
+                        // 2. 如果存在，执行更新
+                        standardPretreatmentMapper.updateByStandardIdentity(standardPretreatment);
+                        // System.out.println("第 " + currentRow + " 行: 更新前处理信息，标准标识 " + model.getStandardIdentity());
+                    } else {
+                        // 3. 如果不存在，执行插入
+                        standardPretreatmentMapper.insert(standardPretreatment);
+                        // System.out.println("第 " + currentRow + " 行: 插入前处理信息，标准标识 " + model.getStandardIdentity());
+                    }
                 } catch (IllegalArgumentException e) {
                     // 捕获并重新抛出，包含行号信息
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
@@ -232,7 +245,8 @@ public class ImportService {
             System.out.println("导入前处理信息表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入前处理信息表时发生异常: " + e.getMessage(), e);
         }
-    }    
+    }
+
 
     // 导入计算公式表
     public void importCalculationFormula(MultipartFile file) {
@@ -246,7 +260,7 @@ public class ImportService {
                 System.out.println("计算公式表数据为空，请检查Excel文件是否正确");
                 return;
             }
-            System.out.println("++++++++" + list);
+            System.out.println("++++++++" + list.size());
             int picIdx = 0;
     
             for (int i = 0; i < list.size(); i++) {
@@ -340,6 +354,9 @@ public class ImportService {
                 if (!invalidParams.isEmpty()) {
                     throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：以下参数标识有误，不在公式文本中: " + String.join(", ", invalidParams));
                 }
+
+                boolean exists = calculationFormulaMapper.existsByStandardIdentity(model.getStandardIdentity());
+                // System.out.println(" 查询到了+----------: " + exists);
                 
                 CalculationFormula calculationFormula = new CalculationFormula();
                 calculationFormula.setStandardIdentity(model.getStandardIdentity());
@@ -398,7 +415,18 @@ public class ImportService {
                 }
                 calculationFormula.setFormulaImage(base64Image);
                 
-                calculationFormulaMapper.insert(calculationFormula);
+                // calculationFormulaMapper.insert(calculationFormula);
+
+                
+                if (exists) {
+                    // System.out.println("第 " + picIdx + " 行: 更新质量控制信息，标准标识 " + model.getStandardIdentity());
+                    calculationFormulaMapper.updateByStandardIdentity(calculationFormula);
+
+                } else {
+                    // System.out.println("第 " + picIdx + " 行: 插入质量控制信息，标准标识 " + model.getStandardIdentity());
+                    calculationFormulaMapper.insert(calculationFormula);
+
+                }
             }
         } catch (IOException e) {
             System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
@@ -411,50 +439,70 @@ public class ImportService {
     
     
     // 导入质量控制表
-    public void importQualityControl(MultipartFile file) {
+    public void importQualityControl(MultipartFile file) throws IOException {
         try {
             List<QualityControlExcelModel> list = EasyExcel.read(file.getInputStream())
                     .head(QualityControlExcelModel.class)
                     .sheet("质量控制表")
                     .doReadSync();
-    
+
             if (list == null || list.isEmpty()) {
-                System.out.println("质量控制表数据为空，请检查Excel文件是否正确");
+                // System.out.println("质量控制表数据为空，请检查Excel文件是否正确");
                 return;
             }
-    
+
             // 从第二行开始计数，假设第一行是标题行
             int currentRow = 2;
             for (QualityControlExcelModel model : list) {
                 try {
-                    // 打印读取到的数据
-                    System.out.println("读取到质量控制表数据: " + model);
-    
+                    // 打印读取到的数据 (可选，用于调试)
+                    // System.out.println("读取到质量控制表数据: " + model);
+
                     if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
-    
+
+                    // 1. 检查记录是否存在
+                    boolean exists = qualityControlMapper.existsByStandardIdentity(model.getStandardIdentity());
+
                     QualityControl qualityControl = new QualityControl();
                     qualityControl.setStandardIdentity(model.getStandardIdentity());
                     qualityControl.setControlType(model.getControlType());
                     qualityControl.setControlDescription(model.getControlDescription());
                     qualityControl.setControlFormula(model.getControlFormula());
-                    qualityControlMapper.insert(qualityControl);
+
+                    // 根据实际需求选择打印插入或更新信息
+                    if (exists) {
+                        // System.out.println("第 " + currentRow + " 行: 更新质量控制信息，标准标识 " + model.getStandardIdentity());
+                        qualityControlMapper.updateByStandardIdentity(qualityControl);
+
+                    } else {
+                        // System.out.println("第 " + currentRow + " 行: 插入质量控制信息，标准标识 " + model.getStandardIdentity());
+                        qualityControlMapper.insert(qualityControl);
+
+                    }
+
                 } catch (IllegalArgumentException e) {
-                    System.out.println("导入质量控制表时发生异常: 第 " + currentRow + " 行数据错误：" + e.getMessage());
-                    throw new IllegalArgumentException("导入质量控制表时发生异常: 第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
+                    // 捕获并重新抛出，包含行号信息
+                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
+                } catch (Exception e) {
+                    // 捕获其他可能的异常，包含行号信息
+                    throw new RuntimeException("第 " + currentRow + " 行数据处理失败：" + e.getMessage(), e);
                 } finally {
+                    // 无论成功失败，都递增行号
                     currentRow++;
                 }
             }
+            System.out.println("质量控制表导入完成。");
         } catch (IOException e) {
             System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
             throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
         } catch (Exception e) {
+            // 捕获外层循环可能抛出的异常，包含行号信息
             System.out.println("导入质量控制表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入质量控制表时发生异常: " + e.getMessage(), e);
         }
-    }    
+    }
 
     // 导入修约表
     public void importRoundingRules(MultipartFile file) {
@@ -465,7 +513,7 @@ public class ImportService {
                     .doReadSync();
     
             if (list == null || list.isEmpty()) {
-                System.out.println("修约表数据为空，请检查Excel文件是否正确");
+                // System.out.println("修约表数据为空，请检查Excel文件是否正确");
                 return;
             }
     
@@ -474,7 +522,7 @@ public class ImportService {
             for (RoundingRulesExcelModel model : list) {
                 try {
                     // 打印读取到的数据
-                    System.out.println("读取到修约表数据: " + model);
+                    // System.out.println("读取到修约表数据: " + model);
     
                     if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
@@ -485,14 +533,26 @@ public class ImportService {
                     if (model.getDecimalPlaces() == null) {
                         throw new IllegalArgumentException("位数不能为空");
                     }
-    
+
+                    boolean exists = roundingRulesMapper.existsByStandardIdentity(model.getStandardIdentity());
+                    
                     RoundingRules roundingRules = new RoundingRules();
                     roundingRules.setStandardIdentity(model.getStandardIdentity());
                     roundingRules.setResultIdentity(model.getResultIdentity());
                     roundingRules.setRoundingType(model.getRoundingType());
                     roundingRules.setRoundingCondition(model.getRoundingCondition());
                     roundingRules.setDecimalPlaces(model.getDecimalPlaces());
-                    roundingRulesMapper.insert(roundingRules);
+                    // roundingRulesMapper.insert(roundingRules);
+                    // 根据实际需求选择打印插入或更新信息
+                    if (exists) {
+                        System.out.println("第 " + currentRow + " 行: 更新质量控制信息，标准标识 " + model.getStandardIdentity());
+                        roundingRulesMapper.updateByStandardIdentity(roundingRules);
+
+                    } else {
+                        System.out.println("第 " + currentRow + " 行: 插入质量控制信息，标准标识 " + model.getStandardIdentity());
+                        roundingRulesMapper.insert(roundingRules);
+
+                    }
                 } catch (IllegalArgumentException e) {
                     System.out.println("导入修约表时发生异常: 第 " + currentRow + " 行数据错误：" + e.getMessage());
                     throw new IllegalArgumentException("导入修约表时发生异常: 第 " + currentRow + " 行数据错误：" + e.getMessage(), e);

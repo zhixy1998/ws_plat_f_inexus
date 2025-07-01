@@ -6,11 +6,16 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
 
 @Mapper
 public interface CalculationFormulaMapper {
+
+    // 检查记录是否存在（根据 standard_identity 和 result_identity）
+    @Select("SELECT COUNT(*) FROM t_report_calculation_formulas WHERE standard_identity = #{standardIdentity}")
+    boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
 
     // 插入单条记录
     @Insert("INSERT INTO t_report_calculation_formulas " +
@@ -30,6 +35,23 @@ public interface CalculationFormulaMapper {
             "#{inputParam9Name}, #{inputParam9Identity}, #{inputParam10Name}, #{inputParam10Identity}, " +
             "#{formulaText}, #{formulaImage}, #{detectionLimit})")
     void insert(CalculationFormula calculationFormula);
+
+    // 更新记录（根据 standard_identity 和 result_identity）
+    @Update("UPDATE t_report_calculation_formulas SET " +
+            "result_identity = #{resultIdentity},result_name = #{resultName}, unit = #{unit}, " +
+            "input_param1_name = #{inputParam1Name}, input_param1_identity = #{inputParam1Identity}, " +
+            "input_param2_name = #{inputParam2Name}, input_param2_identity = #{inputParam2Identity}, " +
+            "input_param3_name = #{inputParam3Name}, input_param3_identity = #{inputParam3Identity}, " +
+            "input_param4_name = #{inputParam4Name}, input_param4_identity = #{inputParam4Identity}, " +
+            "input_param5_name = #{inputParam5Name}, input_param5_identity = #{inputParam5Identity}, " +
+            "input_param6_name = #{inputParam6Name}, input_param6_identity = #{inputParam6Identity}, " +
+            "input_param7_name = #{inputParam7Name}, input_param7_identity = #{inputParam7Identity}, " +
+            "input_param8_name = #{inputParam8Name}, input_param8_identity = #{inputParam8Identity}, " +
+            "input_param9_name = #{inputParam9Name}, input_param9_identity = #{inputParam9Identity}, " +
+            "input_param10_name = #{inputParam10Name}, input_param10_identity = #{inputParam10Identity}, " +
+            "formula_text = #{formulaText}, formula_image = #{formulaImage}, detection_limit = #{detectionLimit} " +
+            "WHERE standard_identity = #{standardIdentity}")
+    void updateByStandardIdentity(CalculationFormula calculationFormula);
 
     // 批量插入记录（可选，如果数据量大建议使用）
     @Insert("<script>" +
