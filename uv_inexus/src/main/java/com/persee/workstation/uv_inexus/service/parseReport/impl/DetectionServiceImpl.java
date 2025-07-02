@@ -116,6 +116,13 @@ public class DetectionServiceImpl implements DetectionService {
         return detectionDao.countIndustry();
     }
 
+    // 实现批量删除方法
+    @Override
+    public int deleteBatchIds(List<Integer> ids) {
+        return detectionDao.deleteBatchIds(ids);
+    }
+
+
 }
 
 // package com.persee.workstation.uv_inexus.service.parseReport.impl;

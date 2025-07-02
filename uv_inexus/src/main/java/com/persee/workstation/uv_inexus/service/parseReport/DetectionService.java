@@ -25,6 +25,8 @@ public interface DetectionService {
     List<Map<String, Object>> countIndustryType();
 
     List<Map<String, Object>> countIndustry();
-
+    
+    // 新增方法：批量删除
+    int deleteBatchIds(List<Integer> ids);
 }
     

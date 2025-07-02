@@ -96,4 +96,15 @@ public class DetectionController {
         detectionService.deleteById(id);
         return Result.ok();
     }
+    
+    @DeleteMapping("/batch")
+    @ApiOperation("批量删除")
+    public Result<Void> deleteBatch(@RequestBody List<Integer> ids) {
+        int result = detectionService.deleteBatchIds(ids);
+        if (result > 0) {
+            return Result.ok();
+        } else {
+            return Result.fail(500, "批量删除失败");
+        }
+    }
 }

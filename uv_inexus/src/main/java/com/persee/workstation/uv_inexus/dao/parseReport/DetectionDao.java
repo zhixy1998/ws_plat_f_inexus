@@ -60,5 +60,13 @@ public interface DetectionDao {
     // 统计 industry 字段的不同值及其数量
     @Select("SELECT industry AS name, COUNT(*) AS num FROM t_report_standard_detection GROUP BY industry")
     List<Map<String, Object>> countIndustry();
+    
+    @Delete("<script>" +
+            "DELETE FROM t_report_standard_detection WHERE id IN " +
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    int deleteBatchIds(@Param("ids") List<Integer> ids);
      
 }
