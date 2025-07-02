@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.controller.parseReport;
 
-import com.persee.workstation.uv_inexus.service.parseReport.ExportService;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -8,9 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.service.parseReport.ExportService;
+
+import io.swagger.annotations.ApiOperation;
 
 @RestController
 public class ExportController {
@@ -19,6 +22,7 @@ public class ExportController {
     private ExportService exportService;
 
     @GetMapping("/api/parseReport/export")
+    @ApiOperation("导出")
     public Object exportAllTables() {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

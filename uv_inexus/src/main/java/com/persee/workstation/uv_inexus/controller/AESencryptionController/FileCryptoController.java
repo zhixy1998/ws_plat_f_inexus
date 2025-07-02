@@ -18,6 +18,8 @@ import com.persee.workstation.uv_inexus.controller.parseReport.ImportController;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.utils.AESencryption.AESEncryptionUtil;
 
+import io.swagger.annotations.ApiOperation;
+
 @RestController
 @RequestMapping("/api/crypto")
 public class FileCryptoController {
@@ -41,6 +43,7 @@ public class FileCryptoController {
 
     // 修改后的解密方法，解密后直接调用导入接口
     @PostMapping("/upgrade")
+    @ApiOperation("升级")
     public ResponseEntity<Result<String>> decryptAndImport(
             @RequestParam("file") MultipartFile encryptedFile,
             @RequestParam(value = "key", required = false) String key) throws Exception {

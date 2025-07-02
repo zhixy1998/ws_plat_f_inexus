@@ -1,8 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.parseReport;
 
-// import com.alibaba.excel.EasyExcel;
-// import com.persee.workstation.uv_inexus.excel.StandardPretreatmentExcelModel;
-import com.persee.workstation.uv_inexus.service.parseReport.ImportService;
+import java.io.IOException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,9 +9,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import com.persee.workstation.uv_inexus.model.Result;
 
-import java.io.IOException;
+import com.persee.workstation.uv_inexus.model.Result;
+// import com.alibaba.excel.EasyExcel;
+// import com.persee.workstation.uv_inexus.excel.StandardPretreatmentExcelModel;
+import com.persee.workstation.uv_inexus.service.parseReport.ImportService;
+
+import io.swagger.annotations.ApiOperation;
 
 @RestController
 public class ImportController {
@@ -21,6 +24,7 @@ public class ImportController {
     private ImportService importService;
 
     @PostMapping("/api/parseReport/import")
+    @ApiOperation("导入")
     public ResponseEntity<Result<String>> importExcel(@RequestParam("file") MultipartFile file) {
         try {
             importService.importExcel(file);

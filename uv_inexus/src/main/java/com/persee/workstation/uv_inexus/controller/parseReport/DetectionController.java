@@ -22,14 +22,19 @@ import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+
 @RestController
 @RequestMapping("/api/detection")
+@Api("标准管理接口文档")
 public class DetectionController {
 
     @Autowired
     private DetectionService detectionService;
 
     @GetMapping("/")
+    @ApiOperation("列表页+分页+查询")
     public Result<PageView<Detection>> findPage(
         @RequestParam(defaultValue = "1") int pageNum,
         @RequestParam(defaultValue = "10") int pageSize,
@@ -41,6 +46,7 @@ public class DetectionController {
     }
 
     @GetMapping("/{id}")
+    @ApiOperation("查询某一条")
     public Result<Detection> findById(@PathVariable Integer id) {
         Detection detection = detectionService.findById(id);
         if (detection == null) {
@@ -51,30 +57,35 @@ public class DetectionController {
     }
 
     @GetMapping("/industryType")
+    @ApiOperation("类型饼图")
     public Result<List<Map<String, Object>>> countIndustryType() {
         List<Map<String, Object>> result = detectionService.countIndustryType();
         return Result.ok(result);
     }
     
     @GetMapping("/industry")
+    @ApiOperation("行业饼图")
     public Result<List<Map<String, Object>>> countIndustry() {
         List<Map<String, Object>> result = detectionService.countIndustry();
         return Result.ok(result);
     }
 
     @PostMapping
+    @ApiOperation("新增")
     public Result<Void> insert(@RequestBody Detection detection) {
         detectionService.insert(detection);
         return Result.ok();
     }
 
     @PutMapping
+    @ApiOperation("修改")
     public Result<Void> update(@RequestBody Detection detection) {
         detectionService.update(detection);
         return Result.ok();
     }
 
     @DeleteMapping("/{id}")
+    @ApiOperation("删除")
     public Result<Void> deleteById(@PathVariable Integer id) {
         detectionService.deleteById(id);
         return Result.ok();
