@@ -60,24 +60,19 @@ public class SystemAlgorithmConfServiceImpl implements SystemAlgorithmConfServic
         SystemAlgorithmConfPO po = dao.selectById(userId);
         if (po == null) {
             po = new SystemAlgorithmConfPO();
+            BeanUtils.copyProperties(dto, po);
             po.setId(userId);
             po.setCreateBy(dto.getUpdateBy());
-            po.setUpdateBy(dto.getUpdateBy());
-            po.setTransmittance(dto.getTransmittance());
-            po.setIntegratingSphere(dto.getIntegratingSphere());
-            po.setAbs(dto.getAbs());
 
-            dao.insert(po);
+            return dao.insert(po) > 0;
         } else {
-            po.setAbs(dto.getAbs());
-            po.setIntegratingSphere(dto.getIntegratingSphere());
-            po.setTransmittance(dto.getTransmittance());
-            po.setUpdateBy(dto.getUpdateBy());
 
-            dao.updateById(po);
+            BeanUtils.copyProperties(dto, po);
+            po.setUpdateBy(dto.getUpdateBy());
+            po.setId(userId);
+            return dao.updateById(po) > 0;
         }
 
-        return true;
     }
 
 

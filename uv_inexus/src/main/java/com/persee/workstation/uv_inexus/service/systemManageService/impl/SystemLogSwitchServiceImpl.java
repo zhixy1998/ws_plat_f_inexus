@@ -29,12 +29,9 @@ public class SystemLogSwitchServiceImpl implements SystemLogSwitchService {
         SystemLogSwitchVO vo = new SystemLogSwitchVO();
         if (po == null) {
             po = dao.selectById(defaultId);
-            BeanUtils.copyProperties(po, vo);
-            return vo;
-        } else {
-            BeanUtils.copyProperties(po, vo);
-            return vo;
         }
+        BeanUtils.copyProperties(po, vo);
+        return vo;
     }
 
     @Override
@@ -56,5 +53,16 @@ public class SystemLogSwitchServiceImpl implements SystemLogSwitchService {
         } else {
             return dao.updateById(po) > 0;
         }
+    }
+
+    @Override
+    public Boolean resetLogSwitch(String updateBy) {
+        SystemLogSwitchPO po = dao.selectById(userId);
+        if (po != null) {
+            return dao.deleteById(po) > 0;
+        } else {
+            log.info("没有用户记录");
+        }
+        return true;
     }
 }

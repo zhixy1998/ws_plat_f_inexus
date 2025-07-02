@@ -13,7 +13,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @ApiModel("用户组配置")
 @Data
-@TableName("t_system_user_group")
+@TableName("t_gmp_user_group")
 public class UserGroupConfPO extends BasePO {
 
     @ApiModelProperty("组名称")

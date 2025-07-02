@@ -38,6 +38,10 @@ public class UserConfigPO extends BasePO {
     @ApiModelProperty("用户备注")
     private String remark;
 
+    @ApiModelProperty("组名")
+    @TableField(value = "group_name")
+    private String groupName;
+
     @TableField("group_id")
     @ApiModelProperty("用户组id")
     private String groupId;

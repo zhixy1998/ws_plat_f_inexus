@@ -8,4 +8,6 @@ public interface SystemLogSwitchService {
     SystemLogSwitchVO querySystemLogSwitch();
 
     Boolean changeSwitch(SystemLogSwitchPO po);
+
+    Boolean resetLogSwitch(String updateBy);
 }

@@ -11,8 +11,7 @@ import com.persee.workstation.uv_inexus.service.instrumentService.DeviceAutoInje
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
-import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/dev/ins")
-@ApiModel("仪器管理接口")
+@Api("仪器管理接口")
 public class DeviceController {
 
     @Autowired

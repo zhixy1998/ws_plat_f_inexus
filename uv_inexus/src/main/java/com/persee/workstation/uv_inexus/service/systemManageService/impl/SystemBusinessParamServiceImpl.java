@@ -59,20 +59,18 @@ public class SystemBusinessParamServiceImpl implements SystemBusinessParamServic
         SystemBusinessParamPO po = dao.selectById(userId);
         if (po == null) {
             po = new SystemBusinessParamPO();
+            BeanUtils.copyProperties(dto, po);
             po.setId(userId);
+
             po.setCreateBy(dto.getUpdateBy());
             po.setUpdateBy(dto.getUpdateBy());
-            po.setPeakInterval(dto.getPeakInterval());
-            po.setPeakValleyDiff(dto.getPeakValleyDiff());
-            dao.insert(po);
+            return dao.insert(po) > 0;
         } else {
-            po.setUpdateBy(dto.getUpdateBy());
-            po.setPeakInterval(dto.getPeakInterval());
-            po.setPeakValleyDiff(dto.getPeakValleyDiff());
-            dao.updateById(po);
-        }
 
-        return true;
+            BeanUtils.copyProperties(dto, po);
+            po.setId(userId);
+            return dao.updateById(po) > 0;
+        }
     }
 
     @Override
