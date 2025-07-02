@@ -40,7 +40,7 @@ public interface DetectionDao {
     void update(Detection detection);
 
     // 根据ID删除记录
-    @Delete("DELETE FROM t_report_standardDetection WHERE id = #{id}")
+    @Delete("DELETE FROM t_report_standard_detection WHERE id = #{id}")
     void deleteById(Integer id);
 
     // 分页查询
