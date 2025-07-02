@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.controller.parseReport;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,6 +21,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 // import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
+import com.persee.workstation.uv_inexus.service.parseReport.impl.DetectionServiceImpl;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import io.swagger.annotations.Api;
@@ -29,7 +31,6 @@ import io.swagger.annotations.ApiOperation;
 @RequestMapping("/api/detection")
 @Api("标准管理接口文档")
 public class DetectionController {
-
     @Autowired
     private DetectionService detectionService;
 
@@ -40,9 +41,14 @@ public class DetectionController {
         @RequestParam(defaultValue = "10") int pageSize,
         @RequestParam Map<String, String> params) {
         
+        // 过滤非法参数
+        Map<String, String> filteredParams = params.entrySet().stream()
+            .filter(entry -> DetectionServiceImpl.ALLOWED_QUERY_FIELDS.contains(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        
         Page<Detection> page = new Page<>(pageNum, pageSize);
-        IPage<Detection> resultPage = detectionService.findPage(page, params);
-        return Result.ok(new PageView<>(resultPage)); // 转换为 PageView
+        IPage<Detection> resultPage = detectionService.findPage(page, filteredParams);
+        return Result.ok(new PageView<>(resultPage));
     }
 
     @GetMapping("/{id}")

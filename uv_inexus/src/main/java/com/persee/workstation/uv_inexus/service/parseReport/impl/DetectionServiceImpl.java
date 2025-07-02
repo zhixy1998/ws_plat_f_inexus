@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.parseReport.impl;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,12 @@ public class DetectionServiceImpl implements DetectionService {
     public void deleteById(Integer id) {
         detectionDao.deleteById(id);
     }
+
+     // 允许查询的字段名
+    public  static final Set<String> ALLOWED_QUERY_FIELDS = Set.of(
+        "standard_identity", "industry", "release_date", "startDate", "endDate"
+    );
+
     @Override
     public IPage<Detection> findPage(Page<Detection> page, Map<String, String> params) {
         QueryWrapper<Detection> queryWrapper = new QueryWrapper<>();
@@ -56,27 +63,35 @@ public class DetectionServiceImpl implements DetectionService {
             String key = entry.getKey();
             String value = entry.getValue();
             
+            // 跳过分页参数
             if ("pageNum".equals(key) || "pageSize".equals(key)) {
                 continue;
             }
             
+            // 检查字段是否合法
+            if (!ALLOWED_QUERY_FIELDS.contains(key)) {
+                log.warn("忽略非法查询字段: {}", key);
+                continue;
+            }
             
-            if (StringUtils.isNotBlank(value)) {
-                // 处理日期区间查询
-                if ("startDate".equals(key)) {
-                    queryWrapper.ge("release_date", value); // 大于等于 startDate
-                } else if ("endDate".equals(key)) {
-                    queryWrapper.le("release_date", value); // 小于等于 endDate
-                } else {
-                    queryWrapper.like(key, value); // 其他字段模糊查询
+            // System.out.println("时间: " + "startDate".equals(key) + "endDate".equals(key));
+            
+            // 处理日期区间查询
+            if ("startDate".equals(key)) {
+                if (StringUtils.isNotBlank(value)) {
+                    queryWrapper.ge("release_date", value);
                 }
+            } else if ("endDate".equals(key)) {
+                if (StringUtils.isNotBlank(value)) {
+                    queryWrapper.le("release_date", value);
+                }
+            } else {
+                queryWrapper.like(key, value);
             }
         }
-        // 确保分页稳定，按 ID 排序
-        // queryWrapper.orderByAsc("id");
         
         // 打印 SQL（调试用）
-        System.out.println("执行的 SQL: " + queryWrapper.getCustomSqlSegment());
+        // System.out.println("执行的 SQL: " + queryWrapper.getCustomSqlSegment());
         
         IPage<Detection> resultPage = detectionDao.selectPage(page, queryWrapper);
         
@@ -88,6 +103,7 @@ public class DetectionServiceImpl implements DetectionService {
                 
         return resultPage;
     }
+
 
     // 在服务层调用该方法
     @Override
