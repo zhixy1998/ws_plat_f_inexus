@@ -13,5 +13,5 @@ public class MeasurePublicParameters {
     // 能量灯
     private String energyLamp;
     // 增益
-    private String gain;
+    private Integer gain;
 }

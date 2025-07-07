@@ -21,10 +21,6 @@ public class TMeasureMethod {
     @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
-    // 测量标准Key
-    @TableField("standard_key")
-    private String standardKey;
-
     // 前处理Key
     @TableField("preprocess_key")
     private String preprocessKey;
@@ -44,34 +40,6 @@ public class TMeasureMethod {
     // 测量类型
     @TableField("measurement_type")
     private String measurementType;
-
-    // 标准名称
-    @TableField("standard_name")
-    private String standardName;
-
-    // 标准类型（内置/自定义）
-    @TableField("standard_type")
-    private String standardType;
-
-    // 行业
-    @TableField("industry")
-    private String industry;
-
-    // 测试类型（如：紫外-定量）
-    @TableField("test_type")
-    private String testType;
-
-    // 标准号
-    @TableField("standard_code")
-    private String standardCode;
-
-    // 检测方法全称
-    @TableField("detection_method_name")
-    private String detectionMethodName;
-
-    // 检测项目
-    @TableField("detection_item")
-    private String detectionItem;
 
     // 测量参数信息
     @TableField("measurement_param_info")

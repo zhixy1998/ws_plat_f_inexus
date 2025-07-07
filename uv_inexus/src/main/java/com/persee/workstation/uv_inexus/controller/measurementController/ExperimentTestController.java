@@ -77,4 +77,18 @@ public class ExperimentTestController {
         return experimentTestService.assignMethodPort(methodType,projectId);
     }
 
+    @GetMapping("queryReferenceStandard")
+    @ApiOperation("查询参考标准接口")
+    public Result queryReferenceStandard(@RequestParam String standardName,@RequestParam String testType){
+        return experimentTestService.queryReferenceStandard(standardName,testType);
+    }
+
+    @GetMapping("preprocessTheData")
+    @ApiOperation("前处理数据接口")
+    public Result preprocessTheData(@RequestParam String standardId){
+        return experimentTestService.preprocessTheData(standardId);
+    }
+
+
+
 }

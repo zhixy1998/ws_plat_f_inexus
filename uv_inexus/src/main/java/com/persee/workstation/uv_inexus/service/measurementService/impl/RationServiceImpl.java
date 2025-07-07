@@ -1,13 +1,18 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 ("rationService")
@@ -23,6 +28,8 @@ public class RationServiceImpl implements RationService {
     private TMeasureTaskService tMeasureTaskService;
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
+    @Autowired
+    private TMeasureStandardService tMeasureStandardService;
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
@@ -34,5 +41,22 @@ public class RationServiceImpl implements RationService {
         // 更新方法
         boolean update = tMeasureMethodService.updateById(method);
         return Result.ok(update);
+    }
+
+    @Override
+    public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, RationParameter rationParameter) {
+        // 创建测量方法表
+        TMeasureMethod tMeasureMethod = new TMeasureMethod();
+        tMeasureMethod.setMethodName(methodDto.getMethodName());
+        tMeasureMethod.setMeasurementType(methodDto.getMethodType());
+        tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(rationParameter));
+        tMeasureMethod.setMethodCreator(updateBy);
+        tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        boolean save = tMeasureMethodService.save(tMeasureMethod);
+        if ( save){
+            return Result.ok("创建成功");
+        }else {
+            return Result.fail("创建失败");
+        }
     }
 }

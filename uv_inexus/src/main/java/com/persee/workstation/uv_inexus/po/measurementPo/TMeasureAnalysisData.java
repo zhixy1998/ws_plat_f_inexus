@@ -19,6 +19,10 @@ public class TMeasureAnalysisData {
     @TableId(value = "id",type = IdType.ASSIGN_UUID)// 假设id是主键
     private String id;
 
+    // 分析名称
+    @TableField("analysis_name")
+    private String analysisName;
+
     // 测量任务id
     @TableField("task_id")
     private String taskId;
@@ -30,10 +34,6 @@ public class TMeasureAnalysisData {
     // 分析结果
     @TableField("analysis_result")
     private String analysisResult;
-
-    // 预留字段1
-    @TableField("field1")
-    private String field1;
 
     // 预留字段2
     @TableField("field2")

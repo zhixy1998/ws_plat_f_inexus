@@ -51,6 +51,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private RationService rationService;
     @Autowired
     private TMeasureDataMapper tMeasureDataMapper;
+    @Autowired
+    private TMeasurePreprocessInfoService tMeasurePreprocessInfoService;
+    @Autowired
+    private TimeSweepService timeSweepService;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -77,7 +81,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 .in(TMeasureData::getTaskId, taskIds)
                 .orderByDesc(TMeasureData::getMeasurementStartTime)
                 .last("LIMIT 3"));
-
         ArrayList<RecentlyAccomplishTaskVo> list = new ArrayList<>();
         for (TMeasureData tMeasureData : measureData) {
             RecentlyAccomplishTaskVo vo = new RecentlyAccomplishTaskVo();
@@ -181,27 +184,24 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         Map<String, Object> params = methodDto.getParams();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(methodDto.getMethodType());
-        boolean save = false;
         // TODO 实验测试的创建方法需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
                 PhotometricParameter photometricParameter = convertParams(params, PhotometricParameter.class);
                 return photometricService.createMethodPort(methodDto, updateBy, photometricParameter);
             case QUANTITATIVE_MEASUREMENT:
-                break;
+                RationParameter rationParameter = convertParams(params, RationParameter.class);
+                return rationService.createMethodPort(methodDto, updateBy, rationParameter);
             case SPECTRAL_SCAN:
                 SpectrumParameter spectrumParameter = convertParams(params, SpectrumParameter.class);
                 return spectrumService.createMethodPort(methodDto, updateBy, spectrumParameter);
             case TIME_SCAN:
-                break;
+                TimeSweepParamter timeSweepParamter = convertParams(params, TimeSweepParamter.class);
+                return timeSweepService.createMethodPort(methodDto, updateBy, timeSweepParamter);
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
                 break;
         }
-        if (save){
-            return Result.ok("创建成功");
-        } else {
-            return Result.fail("创建失败");
-        }
+        return Result.fail("创建方法失败");
     }
 
     @Override
@@ -396,6 +396,25 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 根据项目id和方法类型查询方法表数据
         List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType));
         return Result.ok(list);
+    }
+
+    @Override
+    public Result queryReferenceStandard(String standardName,String testType) {
+        // 根据标准名称模糊查询标准表数据
+        List<TMeasureStandard> list = tMeasureStandardService.list(new QueryWrapper<TMeasureStandard>().like("standard_name", standardName).eq("test_type", testType));
+        if (list == null || list.size() == 0){
+            return Result.fail("未查询到数据");
+        }
+        return Result.ok(list);
+    }
+
+    @Override
+    public Result preprocessTheData(String standardId) {
+        TMeasurePreprocessInfo info = tMeasurePreprocessInfoService.getById(standardId);
+        if (info == null){
+            return Result.fail("未查询到前处理信息");
+        }
+        return Result.ok(info);
     }
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {

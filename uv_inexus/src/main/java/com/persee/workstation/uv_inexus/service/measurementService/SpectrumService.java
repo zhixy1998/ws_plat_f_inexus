@@ -23,4 +23,15 @@ public interface SpectrumService {
 
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
 
+    Result queryMeasurementParameters(String taskId);
+
+    Result fourOperationsPort(FourOperationsParamDto paramDto);
+
+    Result advancedOperationsPort(AdvancedOperationsDto paramDto);
+
+    Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
+
+    Result sampleListPort(String taskId);
+
+    Result changeTheListPort(String taskId);
 }

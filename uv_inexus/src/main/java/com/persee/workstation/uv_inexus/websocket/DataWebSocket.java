@@ -122,8 +122,7 @@ public class DataWebSocket {
         TMeasureData tMeasureData = new TMeasureData();
         Constants.field1Values.clear();
         TMeasureMethod method = methodService.getById(methodId);
-        TMeasureStandard standard = standardService.getById(method.getStandardKey());
-        String measurementParamInfo = standard.getMeasurementParamInfo();
+        String measurementParamInfo = method.getMeasurementParamInfo();
         ObjectMapper objectMapper = new ObjectMapper();
         ScanParamInfo ScanParamInfo=new ScanParamInfo();
         try {

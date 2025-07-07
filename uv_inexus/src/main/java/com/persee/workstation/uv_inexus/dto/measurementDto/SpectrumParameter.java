@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class SpectrumParameter extends MeasurePublicParameters {
-    // 光度模式
+    // 光度模式(1.abs 2.T% 3.R%)
     private String luminosity;
     // 开始波长
     private String startWaveLength;
