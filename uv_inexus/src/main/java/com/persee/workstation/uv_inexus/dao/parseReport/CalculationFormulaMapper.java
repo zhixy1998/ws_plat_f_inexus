@@ -79,4 +79,39 @@ public interface CalculationFormulaMapper {
     // 手动实现 selectList 方法
     @Select("SELECT * FROM t_report_calculation_formulas")
     List<CalculationFormula> selectAll();
+
+    // 新增：联表查询，转换 standard_identity 为文字，直接返回Excel模型类
+    @Select("SELECT " +
+        "c.id, " +
+        "d.standard_identity AS standardIdentity, " +
+        "c.result_identity AS resultIdentity, " +
+        "c.result_name AS resultName, " +
+        "c.unit AS unit, " +
+        "c.input_param1_name AS inputParam1Name, " +
+        "c.input_param1_identity AS inputParam1Identity, " +
+        "c.input_param2_name AS inputParam2Name, " +
+        "c.input_param2_identity AS inputParam2Identity, " +
+        "c.input_param3_name AS inputParam3Name, " +
+        "c.input_param3_identity AS inputParam3Identity, " +
+        "c.input_param4_name AS inputParam4Name, " +
+        "c.input_param4_identity AS inputParam4Identity, " +
+        "c.input_param5_name AS inputParam5Name, " +
+        "c.input_param5_identity AS inputParam5Identity, " +
+        "c.input_param6_name AS inputParam6Name, " +
+        "c.input_param6_identity AS inputParam6Identity, " +
+        "c.input_param7_name AS inputParam7Name, " +
+        "c.input_param7_identity AS inputParam7Identity, " +
+        "c.input_param8_name AS inputParam8Name, " +
+        "c.input_param8_identity AS inputParam8Identity, " +
+        "c.input_param9_name AS inputParam9Name, " +
+        "c.input_param9_identity AS inputParam9Identity, " +
+        "c.input_param10_name AS inputParam10Name, " +
+        "c.input_param10_identity AS inputParam10Identity, " +
+        "c.formula_text AS formulaText, " +
+        "c.formula_image AS formulaImage, " +
+        "c.detection_limit AS detectionLimit " +
+        "FROM t_report_calculation_formulas c " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON c.standard_identity = d.id")
+    List<CalculationFormula> selectAllForExport();
 }

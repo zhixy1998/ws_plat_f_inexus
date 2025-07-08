@@ -42,4 +42,16 @@ public interface QualityControlMapper {
             "control_formula = #{controlFormula} " +
             "WHERE standard_identity = #{standardIdentity}")
     void updateByStandardIdentity(QualityControl qualityControl);
+
+    // 新增：联表查询，转换 standard_identity 为文字，直接返回Excel模型类
+    @Select("SELECT " +
+        "q.id, " +
+        "d.standard_identity AS standardIdentity, " +
+        "q.control_type AS controlType, " +
+        "q.control_description AS controlDescription, " +
+        "q.control_formula AS controlFormula " +  
+        "FROM t_report_quality_control q " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON q.standard_identity = d.id")
+        List<QualityControl> selectAllForExport();  
 }

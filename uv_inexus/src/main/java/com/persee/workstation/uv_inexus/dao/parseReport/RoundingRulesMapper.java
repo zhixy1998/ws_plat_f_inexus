@@ -47,4 +47,16 @@ public interface RoundingRulesMapper {
     @Select("SELECT * FROM t_report_rounding_rules")
     List<RoundingRules> selectAll();
 
+    // 新增：联表查询，将 standard_identity（ID）转换为对应的文字，直接返回Excel模型类
+    @Select("SELECT " +
+            "r.id, " +
+            "r.result_identity AS resultIdentity, " +
+            "d.standard_identity AS standardIdentity," +
+            "r.rounding_type AS roundingType, " +
+            "r.rounding_condition AS roundingCondition," +
+            "r.decimal_places AS decimalPlaces " +
+            "FROM t_report_rounding_rules r " +
+            "LEFT JOIN t_report_standard_detection d " +  
+            "ON r.standard_identity = d.id")  
+    List<RoundingRules> selectAllForExport();
 }

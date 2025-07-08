@@ -52,11 +52,11 @@ public class ExportServiceImpl implements ExportService {
     @Override
     public void exportAllTables(OutputStream outputStream) throws IOException {
         // 查询所有表的数据
-        List<CalculationFormula> calculationFormulas = calculationFormulaMapper.selectAll();
-        List<QualityControl> qualityControls = qualityControlMapper.selectAll();
-        List<RoundingRules> roundingRules = roundingRulesMapper.selectAll();
         List<Detection> standardDetections = standardDetectionMapper.selectAll();
-        List<StandardPretreatment> standardPretreatments = standardPretreatmentMapper.selectAll();
+        List<CalculationFormula> calculationFormulas = calculationFormulaMapper.selectAllForExport();
+        List<QualityControl> qualityControls = qualityControlMapper.selectAllForExport();
+        List<RoundingRules> roundingRules = roundingRulesMapper.selectAllForExport();
+        List<StandardPretreatment> standardPretreatments = standardPretreatmentMapper.selectAllForExport();
 
         // 创建Excel写入器，注册图片处理器
         ExcelWriter excelWriter = EasyExcel.write(outputStream)

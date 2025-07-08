@@ -35,43 +35,17 @@ public interface StandardPretreatmentMapper {
             "WHERE standard_identity = #{standardIdentity}")
     void updateByDetectionId(StandardPretreatment pretreatment);
 
+    /**
+     * 联表查询：将 standard_identity（ID）转换为对应的文字
+     * 关联标准信息表（t_report_standard_detection），通过 ID 匹配原始文字
+     */
+    // 新增联表查询方法，使用别名映射到 Excel 模型类的字段
+    @Select("SELECT " +
+            "p.id, " +
+            "d.standard_identity AS standard_identity," +
+            "p.pretreatment_description " +
+            "FROM t_report_standard_pretreatment p " +
+            "LEFT JOIN t_report_standard_detection d " +
+            "ON p.standard_identity = d.id")
+    List<StandardPretreatment> selectAllForExport();  // 直接返回 Excel 模型类
 }
-
-// package com.persee.workstation.uv_inexus.dao.parseReport;
-
-// import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
-// import org.apache.ibatis.annotations.*;
-
-// import java.util.List;
-
-// @Mapper
-// public interface StandardPretreatmentMapper {
-
-//     // 插入
-//     @Insert("INSERT INTO treportstandardpretreatment (standardidentity, pretreatmentdescription) " +
-//             "VALUES (#{standardIdentity}, #{pretreatmentDescription})")
-//     void insert(StandardPretreatment standardPretreatment);
-
-//     // 查询所有
-//     @Select("SELECT * FROM treportstandardpretreatment")
-//     List<StandardPretreatment> findAll();
-    
-//     // 根据标准身份标识查询
-//     @Select("SELECT * FROM treportstandardpretreatment WHERE standardidentity = #{standardIdentity}")
-//     StandardPretreatment findById(@Param("standardIdentity") String standardIdentity);
-
-//     // 更新
-//     @Update("UPDATE treportstandardpretreatment " +
-//             "SET pretreatmentdescription = #{pretreatmentDescription} " +
-//             "WHERE standardidentity = #{standardIdentity}")
-//     void update(StandardPretreatment standardPretreatment);
-
-//     // 根据标准身份标识删除
-//     @Delete("DELETE FROM treportstandardpretreatment WHERE standardidentity = #{standardIdentity}")
-//     void deleteById(@Param("standardIdentity") String standardIdentity);
-
-//     // 手动实现 selectList 方法
-//     @Select("SELECT * FROM treportstandardpretreatment")
-//     List<StandardPretreatment> selectAll();
-// }
-
