@@ -23,7 +23,7 @@ public class CreateSystemUserDTO {
     @ApiModelProperty("用户邮箱")
     private String email;
 
-    @ApiModelProperty("用户职位，暂用组名称")
+    @ApiModelProperty("用户职位")
     private String userPosition;
 
     @ApiModelProperty("用户备注")
@@ -32,8 +32,8 @@ public class CreateSystemUserDTO {
     @ApiModelProperty("组名")
     private String groupName;
 
-    @ApiModelProperty("用户组id")
-    private String groupId;
+    @ApiModelProperty("用户组编号")
+    private String groupNo;
 
     @ApiModelProperty("系统标识id")
     private String systemIdentityId;

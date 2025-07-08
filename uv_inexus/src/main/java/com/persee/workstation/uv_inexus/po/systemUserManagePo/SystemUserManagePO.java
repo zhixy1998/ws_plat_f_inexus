@@ -53,8 +53,8 @@ public class SystemUserManagePO extends BasePO {
     private String groupName;
 
     @ApiModelProperty("用户组id")
-    @TableField("group_id")
-    private String groupId;
+    @TableField("group_no")
+    private String groupNo;
 
     @ApiModelProperty("系统标识id")
     @TableField("system_identity_id")

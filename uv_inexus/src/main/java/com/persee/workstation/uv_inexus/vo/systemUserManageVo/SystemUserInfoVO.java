@@ -24,8 +24,8 @@ public class SystemUserInfoVO {
     @ApiModelProperty("组名")
     private String groupName;
 
-    @ApiModelProperty("用户组id")
-    private String groupId;
+    @ApiModelProperty("用户组编号")
+    private String groupNo;
 
     @ApiModelProperty("系统角色")
     private String systemIdentityName;

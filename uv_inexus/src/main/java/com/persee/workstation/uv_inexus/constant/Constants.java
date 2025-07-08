@@ -53,7 +53,12 @@ public class Constants {
 
 
     /**
-     * 接收数据字节码类型：
+     * 查询用户时，权限校验结果
      */
+    public static final String GET_ALL_USER = "all";
+
+    public static final String GET_CURRENT_ROLE = "current_role";
+
+    public static final String GET_CURRENT_GROUP = "current_group";
 
 }
