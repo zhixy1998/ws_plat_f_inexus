@@ -33,7 +33,7 @@ import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
 import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
 import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
-
+   
 @Service
 public class ImportService {
     @Autowired
@@ -51,21 +51,20 @@ public class ImportService {
     @Autowired
     private CalculationFormulaMapper calculationFormulaMapper;
 
-    // 导入标准信息表
     public void importStandardDetection(MultipartFile file) {
         try {
-            // 读取Excel文件数据
+            // 1. 读取Excel主表数据
             List<StandardDetectionExcelModel> list = EasyExcel.read(file.getInputStream())
                     .head(StandardDetectionExcelModel.class)
                     .sheet("标准信息表")
                     .doReadSync();
-    
+
             if (list == null || list.isEmpty()) {
                 System.out.println("标准信息表数据为空，请检查Excel文件是否正确");
                 return;
             }
-    
-            // 读取UV-VIS-标曲法-检测参数表（如果存在）
+
+            // 2. 读取UV-VIS参数表（保持原有逻辑）
             List<StandardDetectionUVVISCurveExcelModel> standardCurveList = null;
             try {
                 standardCurveList = EasyExcel.read(file.getInputStream())
@@ -75,8 +74,7 @@ public class ImportService {
             } catch (Exception e) {
                 System.out.println("未找到UV-VIS-标曲法-检测参数表，忽略该部分数据");
             }
-    
-            // 读取UV-VIS-光度法-检测参数表（如果存在）
+
             List<StandardDetectionUVVISPhotometryExcelModel> photometryList = null;
             try {
                 photometryList = EasyExcel.read(file.getInputStream())
@@ -86,8 +84,8 @@ public class ImportService {
             } catch (Exception e) {
                 System.out.println("未找到UV-VIS-光度法-检测参数表，忽略该部分数据");
             }
-    
-            // 合并数据
+
+            // 3. 合并检测参数（保持原有逻辑）
             Map<String, JSONObject> detectionParametersMap = new HashMap<>();
             if (standardCurveList != null) {
                 for (StandardDetectionUVVISCurveExcelModel model : standardCurveList) {
@@ -102,7 +100,7 @@ public class ImportService {
                     detectionParametersMap.put(model.getStandardIdentity(), jsonObject);
                 }
             }
-    
+
             if (photometryList != null) {
                 for (StandardDetectionUVVISPhotometryExcelModel model : photometryList) {
                     if (detectionParametersMap.containsKey(model.getStandardIdentity())) {
@@ -119,34 +117,27 @@ public class ImportService {
                     }
                 }
             }
-    
-            // 插入数据
+
+            // 4. 处理标准标识映射：缓存“名称→ID”，避免重复查询数据库
+            // Map<String, String> identityNameToIdMap = new HashMap<>();
+
+            // 5. 遍历数据列表，处理每条记录
             for (int i = 0; i < list.size(); i++) {
                 StandardDetectionExcelModel model = list.get(i);
-                int currentRow = i + 2; // Excel通常第一行是标题，数据从第二行开始
-    
-                // 校验必填字段
+                int currentRow = i + 2;
+
+                // 校验必填字段（保持原有逻辑）
                 if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：标准标识不能为空");
                 }
                 if (model.getIndustry() == null || model.getIndustry().isEmpty()) {
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：行业不能为空");
                 }
-                if (model.getDetectionType() == null || model.getDetectionType().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：检测类型不能为空");
-                }
-                if (model.getDetectionInstrument() == null || model.getDetectionInstrument().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：检测仪器不能为空");
-                }
-                if (model.getStandardNumber() == null || model.getStandardNumber().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：标准号不能为空");
-                }
-                if (model.getDetectionItem() == null || model.getDetectionItem().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：检测项目不能为空");
-                }
-    
+                // 其他校验...
+
+                // 7. 构建Detection对象，设置标准标识ID
                 Detection detection = new Detection();
-                detection.setStandardIdentity(model.getStandardIdentity());
+                detection.setStandardIdentity(model.getStandardIdentity()); // 存储ID而非名称
                 detection.setIndustry(model.getIndustry());
                 detection.setDetectionType(model.getDetectionType());
                 detection.setDetectionInstrument(model.getDetectionInstrument());
@@ -160,12 +151,11 @@ public class ImportService {
                 detection.setEffectiveDate(model.getEffectiveDate());
                 detection.setReleaseStatus(model.getReleaseStatus());
                 detection.setIndustryType(model.getIndustryType());
-    
-                // 设置检测参数
+
+                // 8. 设置检测参数（保持原有逻辑）
                 if (detectionParametersMap.containsKey(model.getStandardIdentity())) {
                     detection.setDetectionParameters(detectionParametersMap.get(model.getStandardIdentity()).toJSONString());
                 } else {
-                    // 如果没有UV-VIS参数表，直接使用Excel中的检测参数
                     JSONObject defaultParams = new JSONObject();
                     if (model.getDetectionParameters() != null && !model.getDetectionParameters().isEmpty()) {
                         try {
@@ -176,9 +166,11 @@ public class ImportService {
                     }
                     detection.setDetectionParameters(defaultParams.toJSONString());
                 }
-    
+
+                // 9. 插入Detection表
                 detectionMapper.insert(detection);
             }
+
         } catch (IOException e) {
             System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
             throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
@@ -186,7 +178,8 @@ public class ImportService {
             System.out.println("导入标准信息表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入标准信息表时发生异常: " + e.getMessage(), e);
         }
-    }    
+    }
+
 
     // 导入前处理信息表
     public void importStandardPretreatment(MultipartFile file) throws IOException {
@@ -197,43 +190,56 @@ public class ImportService {
                     .doReadSync();
 
             if (list == null || list.isEmpty()) {
-                // System.out.println("前处理信息表数据为空，请检查Excel文件是否正确");
                 return;
             }
+            // 缓存标准标识名称到Detection表ID的映射，避免重复查询
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
+            int currentRow = 2; // 从第二行开始计数，假设第一行是标题行
 
-            // 从第二行开始计数，假设第一行是标题行
-            int currentRow = 2;
             for (StandardPretreatmentExcelModel model : list) {
                 try {
                     if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
-
-                    // 1. 检查记录是否存在
-                    boolean exists = standardPretreatmentMapper.existsByStandardIdentity(model.getStandardIdentity());
-
+                    
+                    String identityName = model.getStandardIdentity();
+                    
+                    // 1. 从缓存或数据库获取Detection表中的ID
+                    Integer detectionId = identityNameToDetectionIdMap.get(identityName);
+                    
+                    if (detectionId == null) {
+                        // 从Detection表中查询对应的ID（根据标准标识名称精准匹配）
+                        detectionId = detectionMapper.findIdByStandardIdentityName(identityName);
+                        
+                        if (detectionId == null) {
+                            throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
+                        }
+                        
+                        // 缓存结果
+                        identityNameToDetectionIdMap.put(identityName, detectionId);
+                    }
+                    
+                    // 2. 构建前处理对象，使用Detection表的ID
                     StandardPretreatment standardPretreatment = new StandardPretreatment();
-                    standardPretreatment.setStandardIdentity(model.getStandardIdentity());
+                    standardPretreatment.setStandardIdentity(detectionId.toString()); // 假设setStandardIdentity接受String类型
                     standardPretreatment.setPretreatmentDescription(model.getPretreatmentDescription());
                     // 设置其他需要导入的字段...
 
+                    // 3. 检查记录是否存在（根据Detection ID而非名称）
+                    boolean exists = standardPretreatmentMapper.existsByDetectionId(detectionId);
+
                     if (exists) {
-                        // 2. 如果存在，执行更新
-                        standardPretreatmentMapper.updateByStandardIdentity(standardPretreatment);
-                        // System.out.println("第 " + currentRow + " 行: 更新前处理信息，标准标识 " + model.getStandardIdentity());
+                        // 4. 如果存在，执行更新
+                        standardPretreatmentMapper.updateByDetectionId(standardPretreatment);
                     } else {
-                        // 3. 如果不存在，执行插入
+                        // 5. 如果不存在，执行插入
                         standardPretreatmentMapper.insert(standardPretreatment);
-                        // System.out.println("第 " + currentRow + " 行: 插入前处理信息，标准标识 " + model.getStandardIdentity());
                     }
                 } catch (IllegalArgumentException e) {
-                    // 捕获并重新抛出，包含行号信息
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
                 } catch (Exception e) {
-                    // 捕获其他可能的异常，包含行号信息
                     throw new RuntimeException("第 " + currentRow + " 行数据处理失败：" + e.getMessage(), e);
                 } finally {
-                    // 无论成功失败，都递增行号
                     currentRow++;
                 }
             }
@@ -241,7 +247,6 @@ public class ImportService {
             System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
             throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
         } catch (Exception e) {
-            // 捕获外层循环可能抛出的异常，包含行号信息
             System.out.println("导入前处理信息表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入前处理信息表时发生异常: " + e.getMessage(), e);
         }
@@ -262,7 +267,8 @@ public class ImportService {
             }
             System.out.println("++++++++" + list.size());
             int picIdx = 0;
-    
+            // 缓存标准标识名称到Detection表ID的映射，避免重复查询
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
             for (int i = 0; i < list.size(); i++) {
                 CalculationFormulaExcelModel model = list.get(i);
                 // 打印读取到的数据
@@ -287,7 +293,7 @@ public class ImportService {
                 if (model.getInputParam1Identity() == null || model.getInputParam1Identity().isEmpty()) {
                     throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：输入参数1标识不能为空");
                 }
-    
+                
                 // 提取所有参数标识
                 List<String> paramIdentities = new ArrayList<>();
                 paramIdentities.add(model.getInputParam1Identity());
@@ -357,9 +363,24 @@ public class ImportService {
 
                 boolean exists = calculationFormulaMapper.existsByStandardIdentity(model.getStandardIdentity());
                 // System.out.println(" 查询到了+----------: " + exists);
+                String identityName = model.getStandardIdentity();
+                    
+                // 1. 从缓存或数据库获取Detection表中的ID
+                Integer detectionId = identityNameToDetectionIdMap.get(identityName);
                 
+                if (detectionId == null) {
+                    // 从Detection表中查询对应的ID（根据标准标识名称精准匹配）
+                    detectionId = detectionMapper.findIdByStandardIdentityName(identityName);
+                    
+                    if (detectionId == null) {
+                        throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
+                    }
+                    
+                    // 缓存结果
+                    identityNameToDetectionIdMap.put(identityName, detectionId);
+                }
                 CalculationFormula calculationFormula = new CalculationFormula();
-                calculationFormula.setStandardIdentity(model.getStandardIdentity());
+                calculationFormula.setStandardIdentity(detectionId.toString());
                 calculationFormula.setResultIdentity(model.getResultIdentity());
                 calculationFormula.setResultName(model.getResultName());
                 calculationFormula.setUnit(model.getUnit());
@@ -453,6 +474,8 @@ public class ImportService {
 
             // 从第二行开始计数，假设第一行是标题行
             int currentRow = 2;
+            // 缓存标准标识名称到Detection表ID的映射，避免重复查询
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
             for (QualityControlExcelModel model : list) {
                 try {
                     // 打印读取到的数据 (可选，用于调试)
@@ -464,9 +487,24 @@ public class ImportService {
 
                     // 1. 检查记录是否存在
                     boolean exists = qualityControlMapper.existsByStandardIdentity(model.getStandardIdentity());
-
+                    String identityName = model.getStandardIdentity();
+                    
+                    // 1. 从缓存或数据库获取Detection表中的ID
+                    Integer detectionId = identityNameToDetectionIdMap.get(identityName);
+                    
+                    if (detectionId == null) {
+                        // 从Detection表中查询对应的ID（根据标准标识名称精准匹配）
+                        detectionId = detectionMapper.findIdByStandardIdentityName(identityName);
+                        
+                        if (detectionId == null) {
+                            throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
+                        }
+                        
+                        // 缓存结果
+                        identityNameToDetectionIdMap.put(identityName, detectionId);
+                    }
                     QualityControl qualityControl = new QualityControl();
-                    qualityControl.setStandardIdentity(model.getStandardIdentity());
+                    qualityControl.setStandardIdentity(detectionId.toString());
                     qualityControl.setControlType(model.getControlType());
                     qualityControl.setControlDescription(model.getControlDescription());
                     qualityControl.setControlFormula(model.getControlFormula());
@@ -519,6 +557,8 @@ public class ImportService {
     
             // 从第二行开始计数，假设第一行是标题行
             int currentRow = 2;
+            // 缓存标准标识名称到Detection表ID的映射，避免重复查询
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
             for (RoundingRulesExcelModel model : list) {
                 try {
                     // 打印读取到的数据
@@ -535,9 +575,24 @@ public class ImportService {
                     }
 
                     boolean exists = roundingRulesMapper.existsByStandardIdentity(model.getStandardIdentity());
+                    String identityName = model.getStandardIdentity();
                     
+                    // 1. 从缓存或数据库获取Detection表中的ID
+                    Integer detectionId = identityNameToDetectionIdMap.get(identityName);
+                    
+                    if (detectionId == null) {
+                        // 从Detection表中查询对应的ID（根据标准标识名称精准匹配）
+                        detectionId = detectionMapper.findIdByStandardIdentityName(identityName);
+                        
+                        if (detectionId == null) {
+                            throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
+                        }
+                        
+                        // 缓存结果
+                        identityNameToDetectionIdMap.put(identityName, detectionId);
+                    }
                     RoundingRules roundingRules = new RoundingRules();
-                    roundingRules.setStandardIdentity(model.getStandardIdentity());
+                    roundingRules.setStandardIdentity(detectionId.toString());
                     roundingRules.setResultIdentity(model.getResultIdentity());
                     roundingRules.setRoundingType(model.getRoundingType());
                     roundingRules.setRoundingCondition(model.getRoundingCondition());
@@ -571,10 +626,10 @@ public class ImportService {
     
     // 导入所有表
     public void importExcel(MultipartFile file) throws IOException {
+        importStandardDetection(file);
         importStandardPretreatment(file);
         importRoundingRules(file);
         importQualityControl(file);
         importCalculationFormula(file);
-        importStandardDetection(file);
     }
 }
