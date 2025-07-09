@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.model.Result;
-// import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
 import com.persee.workstation.uv_inexus.service.parseReport.impl.DetectionServiceImpl;
@@ -35,19 +35,19 @@ public class DetectionController {
     private DetectionService detectionService;
 
     @GetMapping("/")
-    @ApiOperation("列表页+分页+查询")
-    public Result<PageView<Detection>> findPage(
-        @RequestParam(defaultValue = "1") int pageNum,
-        @RequestParam(defaultValue = "10") int pageSize,
-        @RequestParam Map<String, String> params) {
+    @ApiOperation("列表页+分页+查询（按standard_number去重）")
+    public Result<PageView<DetectionListDTO>> findPage(
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam Map<String, String> params) {
         
         // 过滤非法参数
         Map<String, String> filteredParams = params.entrySet().stream()
-            .filter(entry -> DetectionServiceImpl.ALLOWED_QUERY_FIELDS.contains(entry.getKey()))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .filter(entry -> DetectionServiceImpl.ALLOWED_QUERY_FIELDS.contains(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         
-        Page<Detection> page = new Page<>(pageNum, pageSize);
-        IPage<Detection> resultPage = detectionService.findPage(page, filteredParams);
+        Page<DetectionListDTO> page = new Page<>(pageNum, pageSize);
+        IPage<DetectionListDTO> resultPage = detectionService.findDistinctPage(page, filteredParams);
         return Result.ok(new PageView<>(resultPage));
     }
 
@@ -56,7 +56,7 @@ public class DetectionController {
     public Result<Detection> findById(@PathVariable Integer id) {
         Detection detection = detectionService.findById(id);
         if (detection == null) {
-            return Result.fail(404, "未找到ID为" + id + "的检测记录"); // 使用自定义的错误代码和消息
+            return Result.fail(404, "未找到ID为" + id + "的检测记录");
         } else {
             return Result.ok(detection);
         }
