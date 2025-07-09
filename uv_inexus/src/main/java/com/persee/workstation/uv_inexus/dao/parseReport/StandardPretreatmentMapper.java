@@ -31,7 +31,7 @@ public interface StandardPretreatmentMapper {
     boolean existsByDetectionId(Integer detectionId);
     
     // 修改update方法，根据Detection ID而非标准标识名称
-    @Update("UPDATE t_report_standard_pretreatment SET pretreatment_description = #{pretreatmentDescription}, ... " +
+    @Update("UPDATE t_report_standard_pretreatment SET pretreatment_description = #{pretreatmentDescription} " +
             "WHERE standard_identity = #{standardIdentity}")
     void updateByDetectionId(StandardPretreatment pretreatment);
 

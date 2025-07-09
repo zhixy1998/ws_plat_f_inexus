@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
@@ -71,4 +72,29 @@ public interface DetectionMapper {
 
     @Select("SELECT id FROM t_report_standard_detection WHERE standard_identity = #{standardIdentityName}")
     Integer findIdByStandardIdentityName(String standardIdentityName);
+
+    @Select("SELECT COUNT(*) > 0 FROM t_report_standard_detection WHERE standard_identity = #{standardIdentity}")
+    boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
+
+    /**
+     * 修正：根据标准标识ID更新检测表记录
+     * 表名改为检测表 t_report_standard_detection，参数改为Detection实体
+     */
+    @Update("UPDATE t_report_standard_detection SET " +
+            "industry = #{industry}, " +
+            "detection_type = #{detectionType}, " +
+            "detection_instrument = #{detectionInstrument}, " +
+            "standard_number = #{standardNumber}, " +
+            "standard_name = #{standardName}, " +
+            "detection_item = #{detectionItem}, " +
+            "method_number = #{methodNumber}, " +
+            "remark = #{remark}, " +
+            "detection_parameters = #{detectionParameters}, " +
+            "release_date = #{releaseDate}, " +
+            "expiration_date = #{expirationDate}, " +
+            "effective_date = #{effectiveDate}, " +
+            "release_status = #{releaseStatus}, " +
+            "industry_type = #{industryType} " +
+            "WHERE standard_identity = #{standardIdentity}")
+    void updateByStandardIdentity(Detection detection);
 }
