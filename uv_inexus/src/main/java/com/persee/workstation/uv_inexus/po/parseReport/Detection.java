@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.po.parseReport;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
 
@@ -14,7 +16,10 @@ import lombok.EqualsAndHashCode;
 @Data
 @TableName("t_report_standard_detection")
 public class Detection extends BasePO {
-
+    @TableId(type = IdType.AUTO) // 自增主键
+    @ApiModelProperty("ID")
+    private String id; // 原类型可能是String，改为Integer
+    
     @TableField("standard_identity")
     @ApiModelProperty("标准标识")
     private String standardIdentity;

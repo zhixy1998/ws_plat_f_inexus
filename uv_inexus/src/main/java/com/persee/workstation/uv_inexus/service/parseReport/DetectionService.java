@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
@@ -30,4 +31,6 @@ public interface DetectionService {
 
     // 新增：去重分页查询
     IPage<DetectionListDTO> findDistinctPage(Page<DetectionListDTO> page, Map<String, String> params);
+
+    DetectionDetailDTO getDetailById(Integer id);
 }

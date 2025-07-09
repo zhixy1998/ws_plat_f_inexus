@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
@@ -31,6 +31,7 @@ import io.swagger.annotations.ApiOperation;
 @RequestMapping("/api/detection")
 @Api("标准管理接口文档")
 public class DetectionController {
+
     @Autowired
     private DetectionService detectionService;
 
@@ -41,39 +42,40 @@ public class DetectionController {
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam Map<String, String> params) {
         
-        // 过滤非法参数
         Map<String, String> filteredParams = params.entrySet().stream()
                 .filter(entry -> DetectionServiceImpl.ALLOWED_QUERY_FIELDS.contains(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         
         Page<DetectionListDTO> page = new Page<>(pageNum, pageSize);
-        IPage<DetectionListDTO> resultPage = detectionService.findDistinctPage(page, filteredParams);
-        return Result.ok(new PageView<>(resultPage));
+        return Result.ok(new PageView<>(detectionService.findDistinctPage(page, filteredParams)));
+    }
+
+    @GetMapping("/detail/{id}")
+    @ApiOperation("详情接口（通过id查询去重前的所有数据）")
+    public Result<DetectionDetailDTO> getDetail(@PathVariable Integer id) {
+        DetectionDetailDTO detailDTO = detectionService.getDetailById(id);
+        if (detailDTO == null) {
+            return Result.fail(404, "未找到ID为" + id + "的记录");
+        }
+        return Result.ok(detailDTO);
     }
 
     @GetMapping("/{id}")
     @ApiOperation("查询某一条")
     public Result<Detection> findById(@PathVariable Integer id) {
-        Detection detection = detectionService.findById(id);
-        if (detection == null) {
-            return Result.fail(404, "未找到ID为" + id + "的检测记录");
-        } else {
-            return Result.ok(detection);
-        }
+        return Result.ok(detectionService.findById(id));
     }
 
     @GetMapping("/industryType")
     @ApiOperation("类型饼图")
     public Result<List<Map<String, Object>>> countIndustryType() {
-        List<Map<String, Object>> result = detectionService.countIndustryType();
-        return Result.ok(result);
+        return Result.ok(detectionService.countIndustryType());
     }
     
     @GetMapping("/industry")
     @ApiOperation("行业饼图")
     public Result<List<Map<String, Object>>> countIndustry() {
-        List<Map<String, Object>> result = detectionService.countIndustry();
-        return Result.ok(result);
+        return Result.ok(detectionService.countIndustry());
     }
 
     @PostMapping
@@ -101,10 +103,6 @@ public class DetectionController {
     @ApiOperation("批量删除")
     public Result<Void> deleteBatch(@RequestBody List<Integer> ids) {
         int result = detectionService.deleteBatchIds(ids);
-        if (result > 0) {
-            return Result.ok();
-        } else {
-            return Result.fail(500, "批量删除失败");
-        }
+        return result > 0 ? Result.ok() : Result.fail(500, "批量删除失败");
     }
 }

@@ -10,7 +10,7 @@ import lombok.Data;
 @Data
 @ApiModel("检测报告列表返回DTO")
 public class DetectionListDTO {
-    private Integer id;
+    private String id;
     
     @ApiModelProperty("行业")
     private String industry;

@@ -51,9 +51,7 @@ public interface DetectionDao {
 
     @Select("<script>" +
             "SELECT * FROM t_report_standard_detection " +
-            "<where>" +
-            "${ew.sqlSegment}" +
-            "</where>" +
+            "<where>${ew.sqlSegment}</where>" +
             "ORDER BY id DESC" +
             "</script>")
     IPage<Detection> selectPage(Page<Detection> page, @Param("ew") QueryWrapper<Detection> queryWrapper);
@@ -72,36 +70,39 @@ public interface DetectionDao {
             "</script>")
     int deleteBatchIds(@Param("ids") List<Integer> ids);
 
-    // 新增：去重分页查询
+    @Select("SELECT * FROM t_report_standard_detection WHERE standard_number = #{standardNumber} ORDER BY id DESC")
+    List<Detection> findByStandardNumber(String standardNumber);
+
     @Select("<script>" +
-        "SELECT " +
-        "sub.industry, " +
-        "sub.standardName, " +
-        "sub.standardNumber, " +
-        "sub.releaseDate, " +
-        "sub.expirationDate, " +
-        "sub.effectiveDate, " +
-        "sub.industryType, " +
-        "sub.count " +
-        "FROM ( " +
-        "    SELECT " +
-        "    MAX(id) AS id, " +  // 取每组最大ID（最新记录）
-        "    MAX(industry) AS industry, " +  // 用聚合函数包裹非分组字段
-        "    MAX(standard_name) AS standardName, " +
-        "    standard_number AS standardNumber, " +  // 分组字段
-        "    MAX(release_date) AS releaseDate, " +
-        "    MAX(expiration_date) AS expirationDate, " +
-        "    MAX(effective_date) AS effectiveDate, " +
-        "    MAX(industry_type) AS industryType, " +
-        "    COUNT(*) AS count " +  // 统计出现次数
-        "    FROM t_report_standard_detection " +
-        "    <where> ${ew.sqlSegment} </where> " +
-        "    GROUP BY standard_number " +  // 仅按标准号去重
-        ") sub " +
-        "ORDER BY sub.id DESC" +  // 按最新记录排序
-        "</script>")
-IPage<DetectionListDTO> selectDistinctPage(
-        Page<DetectionListDTO> page,
-        @Param("ew") QueryWrapper<Detection> queryWrapper
-);
+            "SELECT " +
+            "sub.id, " +
+            "sub.industry, " +
+            "sub.standardName, " +
+            "sub.standardNumber, " +
+            "sub.releaseDate, " +
+            "sub.expirationDate, " +
+            "sub.effectiveDate, " +
+            "sub.industryType, " +
+            "sub.count " +
+            "FROM ( " +
+            "    SELECT " +
+            "    MAX(id) AS id, " +
+            "    MAX(industry) AS industry, " +
+            "    MAX(standard_name) AS standardName, " +
+            "    standard_number AS standardNumber, " +
+            "    MAX(release_date) AS releaseDate, " +
+            "    MAX(expiration_date) AS expirationDate, " +
+            "    MAX(effective_date) AS effectiveDate, " +
+            "    MAX(industry_type) AS industryType, " +
+            "    COUNT(*) AS count " +
+            "    FROM t_report_standard_detection " +
+            "    <where> ${ew.sqlSegment} </where> " +
+            "    GROUP BY standard_number " +
+            ") sub " +
+            "ORDER BY sub.id DESC" +
+            "</script>")
+    IPage<DetectionListDTO> selectDistinctPage(
+            Page<DetectionListDTO> page,
+            @Param("ew") QueryWrapper<Detection> queryWrapper
+    );
 }
