@@ -595,6 +595,6 @@ public class ImportService {
         importStandardPretreatment(file);
         importRoundingRules(file);
         importQualityControl(file);
-        // importCalculationFormula(file);
+        importCalculationFormula(file);
     }
 }
