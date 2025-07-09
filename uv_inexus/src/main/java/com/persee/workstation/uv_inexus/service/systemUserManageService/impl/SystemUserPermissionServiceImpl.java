@@ -120,7 +120,7 @@ public class SystemUserPermissionServiceImpl implements SystemUserPermissionServ
             log.info("开发人员可查全部");
             return Constants.GET_ALL_USER;
         }
-        if (systemIdentityId.equals(SystemGroupEnum.PRODUCTION_LINE_ADMIN.getGroupNo())) {
+        if (groupId.equals(SystemGroupEnum.PRODUCTION_LINE_ADMIN.getGroupNo())) {
             log.info("产线管理员可查所有产线人员");
             return Constants.GET_CURRENT_ROLE;
         }

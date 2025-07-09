@@ -12,6 +12,8 @@ import com.persee.workstation.uv_inexus.service.systemUserManageService.SystemUs
 import com.persee.workstation.uv_inexus.service.systemUserManageService.SystemUserPermissionService;
 import com.persee.workstation.uv_inexus.service.systemUserManageService.factory.UserFactoryRoute;
 import com.persee.workstation.uv_inexus.util.tokenUtil.JWTUtils;
+import com.persee.workstation.uv_inexus.vo.systemUserManageVo.GroupVO;
+import com.persee.workstation.uv_inexus.vo.systemUserManageVo.QueryUserVO;
 import com.persee.workstation.uv_inexus.vo.systemUserManageVo.SystemUserGroupInfo;
 import com.persee.workstation.uv_inexus.vo.systemUserManageVo.SystemUserInfoVO;
 import com.persee.workstation.uv_inexus.vo.userManageVo.LoginUserInfoVO;
@@ -99,6 +101,15 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
 
     @Override
     public R<Boolean> deleteUser(String updateBy, String deleteUserName) {
+
+        if (deleteUserName.equals(Constants.SUPER_USER_NAME)) {
+            log.info("管理员不允许删除");
+            return R.fail("管理员不允许删除");
+        }
+
+        if (updateBy.equals(deleteUserName)) {
+            return R.fail("不能删除自己");
+        }
         Boolean b = permissionService.checkDeleteUserPermission(updateBy, deleteUserName);
         if (!b) {
             log.info("删除权限不足");
@@ -115,10 +126,10 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
     }
 
     @Override
-    public R<List<SystemUserInfoVO>> getUserInfo(String currentUserName) {
+    public R<List<SystemUserInfoVO>> getUserInfo(String updateBy) {
 
         LambdaQueryWrapper<SystemUserManagePO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemUserManagePO::getUserName, currentUserName);
+        wrapper.eq(SystemUserManagePO::getUserName, updateBy);
         SystemUserManagePO po = dao.selectOne(wrapper);
 
         List<SystemUserInfoVO> result = new ArrayList<>();
@@ -150,10 +161,86 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
     }
 
     @Override
-    public R<List<SystemUserGroupInfo>> getGroupInfo(String currentUserName) {
+    public R<List<QueryUserVO>> queryUserInfo(String updateBy) {
         LambdaQueryWrapper<SystemUserManagePO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemUserManagePO::getUserName, currentUserName);
+        wrapper.eq(SystemUserManagePO::getUserName, updateBy);
         SystemUserManagePO po = dao.selectOne(wrapper);
+
+        List<QueryUserVO> result;
+
+
+        String s = permissionService.checkQueryPermission(po.getSystemIdentityId(), po.getGroupNo());
+        if (s.equals(Constants.GET_ALL_USER)) {
+            result = dao.queryRoleInfo(null);
+
+            for (QueryUserVO vo : result) {
+                List<GroupVO> voList = dao.queryGroupInfo(vo.getSystemIdentityId(), null);
+                for (GroupVO groupVO : voList) {
+                    wrapper.clear();
+                    wrapper.eq(SystemUserManagePO::getGroupNo, groupVO.getGroupNo());
+                    List<SystemUserManagePO> poList = dao.selectList(wrapper);
+                    List<SystemUserInfoVO> userInfoVOS = new ArrayList<>();
+                    for (SystemUserManagePO userManagePO : poList) {
+                        SystemUserInfoVO infoVO = new SystemUserInfoVO();
+                        BeanUtils.copyProperties(userManagePO, infoVO);
+                        userInfoVOS.add(infoVO);
+                    }
+                    groupVO.setList(userInfoVOS);
+                }
+                vo.setList(voList);
+            }
+
+        } else if (s.equals(Constants.GET_CURRENT_ROLE)) {
+            result = dao.queryRoleInfo(po.getSystemIdentityId());
+
+            for (QueryUserVO vo : result) {
+                List<GroupVO> voList = dao.queryGroupInfo(vo.getSystemIdentityId(), null);
+                for (GroupVO groupVO : voList) {
+                    wrapper.clear();
+                    wrapper.eq(SystemUserManagePO::getGroupNo, groupVO.getGroupNo());
+                    List<SystemUserManagePO> poList = dao.selectList(wrapper);
+                    List<SystemUserInfoVO> userInfoVOS = new ArrayList<>();
+                    for (SystemUserManagePO userManagePO : poList) {
+                        SystemUserInfoVO infoVO = new SystemUserInfoVO();
+                        BeanUtils.copyProperties(userManagePO, infoVO);
+                        userInfoVOS.add(infoVO);
+                    }
+                    groupVO.setList(userInfoVOS);
+                }
+                vo.setList(voList);
+            }
+
+        } else {
+            result = dao.queryRoleInfo(po.getSystemIdentityId());
+
+            for (QueryUserVO vo : result) {
+                List<GroupVO> voList = dao.queryGroupInfo(vo.getSystemIdentityId(), po.getGroupNo());
+                for (GroupVO groupVO : voList) {
+                    wrapper.clear();
+                    wrapper.eq(SystemUserManagePO::getGroupNo, groupVO.getGroupNo());
+                    List<SystemUserManagePO> poList = dao.selectList(wrapper);
+                    List<SystemUserInfoVO> userInfoVOS = new ArrayList<>();
+                    for (SystemUserManagePO userManagePO : poList) {
+                        SystemUserInfoVO infoVO = new SystemUserInfoVO();
+                        BeanUtils.copyProperties(userManagePO, infoVO);
+                        userInfoVOS.add(infoVO);
+                    }
+                    groupVO.setList(userInfoVOS);
+                }
+                vo.setList(voList);
+            }
+        }
+        return R.ok(result);
+    }
+
+    @Override
+    public R<List<SystemUserGroupInfo>> getGroupInfo(String updateBy) {
+        LambdaQueryWrapper<SystemUserManagePO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SystemUserManagePO::getUserName, updateBy);
+        SystemUserManagePO po = dao.selectOne(wrapper);
+        if (po == null) {
+            return R.fail("用户不存在");
+        }
 
         List<SystemUserGroupInfo> result;
         wrapper.clear();

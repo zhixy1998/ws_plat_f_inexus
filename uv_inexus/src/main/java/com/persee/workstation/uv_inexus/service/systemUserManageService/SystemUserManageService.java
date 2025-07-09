@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.systemUserManageService;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.dto.systemUserManageDto.CreateSystemUserDTO;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.vo.systemUserManageVo.QueryUserVO;
 import com.persee.workstation.uv_inexus.vo.systemUserManageVo.SystemUserGroupInfo;
 import com.persee.workstation.uv_inexus.vo.systemUserManageVo.SystemUserInfoVO;
 import com.persee.workstation.uv_inexus.vo.userManageVo.LoginUserInfoVO;
@@ -17,9 +18,11 @@ public interface SystemUserManageService {
 
     R<Boolean> deleteUser(String updateBy, String deleteUserName);
 
-    R<List<SystemUserInfoVO>> getUserInfo(String currentUserName);
+    R<List<SystemUserInfoVO>> getUserInfo(String updateBy);
 
-    R<List<SystemUserGroupInfo>> getGroupInfo(String currentUserName);
+    R<List<QueryUserVO>> queryUserInfo(String updateBy);
+
+    R<List<SystemUserGroupInfo>> getGroupInfo(String updateBy);
 
     R<LoginUserInfoVO> login(UserLoginDTO loginDTO);
 

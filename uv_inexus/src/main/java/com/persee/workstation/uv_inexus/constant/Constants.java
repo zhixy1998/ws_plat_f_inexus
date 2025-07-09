@@ -8,6 +8,8 @@ public class Constants {
     public Constants() {
     }
 
+    public static final String SUPER_USER_NAME = "admin";
+
     public final static String DEFAULT_USER_NAME = "default";
 
     public final static String DEFAULT_USER_PASSWORD = "123456";

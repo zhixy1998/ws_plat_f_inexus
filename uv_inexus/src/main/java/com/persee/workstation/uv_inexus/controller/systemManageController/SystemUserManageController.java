@@ -3,10 +3,9 @@ package com.persee.workstation.uv_inexus.controller.systemManageController;
 import com.persee.workstation.uv_inexus.dto.systemUserManageDto.CreateSystemUserDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.service.systemUserManageService.SystemUserGroupManageService;
 import com.persee.workstation.uv_inexus.service.systemUserManageService.SystemUserManageService;
+import com.persee.workstation.uv_inexus.vo.systemUserManageVo.QueryUserVO;
 import com.persee.workstation.uv_inexus.vo.systemUserManageVo.SystemUserGroupInfo;
-import com.persee.workstation.uv_inexus.vo.systemUserManageVo.SystemUserInfoVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,11 +20,6 @@ public class SystemUserManageController {
 
     @Autowired
     SystemUserManageService userManageService;
-
-    @Autowired
-    SystemUserGroupManageService groupManageService;
-
-
 
     @PostMapping("/createNewUser")
     @ApiOperation("添加用户")
@@ -63,11 +57,23 @@ public class SystemUserManageController {
         }
     }
 
+//    @GetMapping("/getUserInfo")
+//    @ApiOperation("获取用户信息")
+//    public Result<List<SystemUserInfoVO>> getUserInfo(@RequestParam String updateBy){
+//
+//        R<List<SystemUserInfoVO>> userInfo = userManageService.getUserInfo(updateBy);
+//        if(userInfo.getSuccess()) {
+//            return Result.ok(userInfo.getData());
+//        } else {
+//            return Result.fail(userInfo.getMessage());
+//        }
+//    }
+
     @GetMapping("/getUserInfo")
     @ApiOperation("获取用户信息")
-    public Result<List<SystemUserInfoVO>> getUserInfo(@RequestParam String currentUserName){
+    public Result<List<QueryUserVO>> getUserInfo(@RequestParam String updateBy){
 
-        R<List<SystemUserInfoVO>> userInfo = userManageService.getUserInfo(currentUserName);
+        R<List<QueryUserVO>> userInfo = userManageService.queryUserInfo(updateBy);
         if(userInfo.getSuccess()) {
             return Result.ok(userInfo.getData());
         } else {
@@ -77,9 +83,9 @@ public class SystemUserManageController {
 
     @GetMapping("/getGroupInfo")
     @ApiOperation("获取用户组信息")
-    public Result<List<SystemUserGroupInfo>> getGroupInfo(@RequestParam String currentUserName){
+    public Result<List<SystemUserGroupInfo>> getGroupInfo(@RequestParam String updateBy){
 
-        R<List<SystemUserGroupInfo>> userInfo = userManageService.getGroupInfo(currentUserName);
+        R<List<SystemUserGroupInfo>> userInfo = userManageService.getGroupInfo(updateBy);
         if(userInfo.getSuccess()) {
             return Result.ok(userInfo.getData());
         } else {
