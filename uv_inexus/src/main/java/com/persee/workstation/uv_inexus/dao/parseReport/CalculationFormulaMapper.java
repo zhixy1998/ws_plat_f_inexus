@@ -114,4 +114,39 @@ public interface CalculationFormulaMapper {
         "LEFT JOIN t_report_standard_detection d " +
         "ON c.standard_identity = d.id")
     List<CalculationFormula> selectAllForExport();
+
+    // 新增：查询某主表ID下的所有公式记录
+    @Select("SELECT * FROM t_report_calculation_formulas WHERE standard_identity = #{standardIdentity}")
+    List<CalculationFormula> selectByStandardIdentity(String standardIdentity);
+
+    // 新增：根据ID更新
+    @Update("UPDATE t_report_calculation_formulas SET " +
+            "result_identity = #{resultIdentity}, " +
+            "result_name = #{resultName}, " +
+            "unit = #{unit}, " +
+            "formula_text = #{formulaText}, " +
+            "formula_image = #{formulaImage}, " +
+            "detection_limit = #{detectionLimit}, " +
+            "input_param1_name = #{inputParam1Name}, " +
+            "input_param1_identity = #{inputParam1Identity}, " +
+            "input_param2_name = #{inputParam2Name}, " +
+            "input_param2_identity = #{inputParam2Identity}, " +
+            "input_param3_name = #{inputParam3Name}, " +
+            "input_param3_identity = #{inputParam3Identity}, " +
+            "input_param4_name = #{inputParam4Name}, " +
+            "input_param4_identity = #{inputParam4Identity}, " +
+            "input_param5_name = #{inputParam5Name}, " +
+            "input_param5_identity = #{inputParam5Identity}, " +
+            "input_param6_name = #{inputParam6Name}, " +
+            "input_param6_identity = #{inputParam6Identity}, " +
+            "input_param7_name = #{inputParam7Name}, " +
+            "input_param7_identity = #{inputParam7Identity}, " +
+            "input_param8_name = #{inputParam8Name}, " +
+            "input_param8_identity = #{inputParam8Identity}, " +
+            "input_param9_name = #{inputParam9Name}, " +
+            "input_param9_identity = #{inputParam9Identity}, " +
+            "input_param10_name = #{inputParam10Name}, " +
+            "input_param10_identity = #{inputParam10Identity} " +
+            "WHERE id = #{id}")
+    void updateById(CalculationFormula formula);
 }

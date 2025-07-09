@@ -11,14 +11,13 @@ import org.apache.ibatis.annotations.Update;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
 /**
- * 检测表DAO层，处理检测数据的CRUD
+ * 检测表DAO层，处理检测数据的CRUD（适配哈希对比逻辑）
  */
 @Mapper
 public interface DetectionMapper {
 
     /**
-     * 插入单条检测数据（标准标识字段存储的是ID）
-     * @param detection 检测实体
+     * 插入单条检测数据
      */
     @Insert("INSERT INTO t_report_standard_detection (" +
             "standard_identity, industry, detection_type, detection_instrument, " +
@@ -34,8 +33,7 @@ public interface DetectionMapper {
     void insert(Detection detection);
 
     /**
-     * 批量插入检测数据（可选，用于优化大量数据导入）
-     * @param list 检测数据列表
+     * 批量插入检测数据
      */
     @Insert("<script>" +
             "INSERT INTO t_report_standard_detection (" +
@@ -56,29 +54,32 @@ public interface DetectionMapper {
     void batchInsert(@Param("list") List<Detection> list);
 
     /**
-     * 查询所有检测数据（包含标准标识ID）
-     * @return 检测数据列表
+     * 查询所有检测数据
      */
     @Select("SELECT * FROM t_report_standard_detection")
     List<Detection> selectAll();
 
     /**
-     * 根据标准标识ID查询检测数据（新增：用于关联查询）
-     * @param standardIdentity 标准标识ID
-     * @return 对应的检测数据列表
+     * 根据标准标识查询单条检测数据（适配哈希对比：返回单条记录）
+     * 修正参数类型为String（因为standard_identity存储的是标识字符串）
      */
     @Select("SELECT * FROM t_report_standard_detection WHERE standard_identity = #{standardIdentity}")
-    List<Detection> selectByStandardIdentity(Integer standardIdentity);
+    Detection selectByStandardIdentity(String standardIdentity);
 
+    /**
+     * 根据标准标识名称查询记录ID（用于子表关联主表）
+     */
     @Select("SELECT id FROM t_report_standard_detection WHERE standard_identity = #{standardIdentityName}")
     Integer findIdByStandardIdentityName(String standardIdentityName);
 
+    /**
+     * 检查记录是否存在（用于主表新增/更新判断）
+     */
     @Select("SELECT COUNT(*) > 0 FROM t_report_standard_detection WHERE standard_identity = #{standardIdentity}")
     boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
 
     /**
-     * 修正：根据标准标识ID更新检测表记录
-     * 表名改为检测表 t_report_standard_detection，参数改为Detection实体
+     * 根据标准标识更新检测表记录（全字段更新，适配哈希对比后的数据更新）
      */
     @Update("UPDATE t_report_standard_detection SET " +
             "industry = #{industry}, " +

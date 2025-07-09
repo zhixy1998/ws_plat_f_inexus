@@ -13,11 +13,11 @@ import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
 @Mapper
 public interface RoundingRulesMapper {
 
-    // 检查记录是否存在（根据 standardidentity 和 resultidentity）
+    // 检查记录是否存在（根据 standard_identity）
     @Select("SELECT COUNT(*) FROM t_report_rounding_rules WHERE standard_identity = #{standardIdentity}")
     boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
 
-    // 根据唯一标识更新记录
+    // 根据 standard_identity 更新记录
     @Update("UPDATE t_report_rounding_rules SET " +
             "rounding_type = #{roundingType}, " +
             "rounding_condition = #{roundingCondition}, " +
@@ -30,8 +30,7 @@ public interface RoundingRulesMapper {
             "VALUES (#{resultIdentity}, #{standardIdentity}, #{roundingType}, #{roundingCondition}, #{decimalPlaces})")
     void insert(RoundingRules roundingRules);
 
-    // 批量插入记录（可选，如果数据量大建议使用）
-    // 这里使用注解方式实现简单的批量插入，实际可能需要更复杂的逻辑或XML
+    // 批量插入记录
     @Insert({
             "<script>",
             "INSERT INTO t_report_rounding_rules (result_identity, standard_identity, rounding_type, rounding_condition, decimal_places)",
@@ -43,11 +42,11 @@ public interface RoundingRulesMapper {
     })
     void batchInsert(@Param("list") List<RoundingRules> list);
 
-    // 根据主键查询记录 - 假设主键是某种组合或单独的字段，这里只是查询所有
+    // 查询所有记录
     @Select("SELECT * FROM t_report_rounding_rules")
     List<RoundingRules> selectAll();
 
-    // 新增：联表查询，将 standard_identity（ID）转换为对应的文字，直接返回Excel模型类
+    // 联表查询（导出用）
     @Select("SELECT " +
             "r.id, " +
             "r.result_identity AS resultIdentity, " +
@@ -59,4 +58,17 @@ public interface RoundingRulesMapper {
             "LEFT JOIN t_report_standard_detection d " +  
             "ON r.standard_identity = d.id")  
     List<RoundingRules> selectAllForExport();
+
+    // 新增：查询某主表ID下的所有修约记录
+    @Select("SELECT * FROM t_report_rounding_rules WHERE standard_identity = #{standardIdentity}")
+    List<RoundingRules> selectByStandardIdentity(String standardIdentity);
+
+    // 新增：根据ID更新修约记录
+    @Update("UPDATE t_report_rounding_rules SET " +
+            "result_identity = #{resultIdentity}, " +
+            "rounding_type = #{roundingType}, " +
+            "rounding_condition = #{roundingCondition}, " +
+            "decimal_places = #{decimalPlaces} " +
+            "WHERE id = #{id}")
+    void updateById(RoundingRules roundingRules);
 }

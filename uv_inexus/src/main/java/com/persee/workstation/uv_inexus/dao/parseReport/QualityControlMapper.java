@@ -2,8 +2,6 @@ package com.persee.workstation.uv_inexus.dao.parseReport;
 
 import java.util.List;
 
-// import org.apache.ibatis.annotations.Mapper;
-// import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -53,5 +51,17 @@ public interface QualityControlMapper {
         "FROM t_report_quality_control q " +
         "LEFT JOIN t_report_standard_detection d " +
         "ON q.standard_identity = d.id")
-        List<QualityControl> selectAllForExport();  
+    List<QualityControl> selectAllForExport();  
+
+    // 新增：查询某主表ID下的所有质控记录
+    @Select("SELECT * FROM t_report_quality_control WHERE standard_identity = #{standardIdentity}")
+    List<QualityControl> selectByStandardIdentity(String standardIdentity);
+
+    // 新增：根据ID更新
+    @Update("UPDATE t_report_quality_control SET " +
+            "control_type = #{controlType}, " +
+            "control_description = #{controlDescription}, " +
+            "control_formula = #{controlFormula} " +
+            "WHERE id = #{id}")
+    void updateById(QualityControl qualityControl);
 }
