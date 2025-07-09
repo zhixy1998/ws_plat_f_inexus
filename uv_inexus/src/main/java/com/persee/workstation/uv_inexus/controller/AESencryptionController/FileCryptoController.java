@@ -73,8 +73,8 @@ public class FileCryptoController {
         // 4. 返回加密后的ZIP包
         String originalName = file.getOriginalFilename();
         String encryptedFileName = originalName != null 
-                ? originalName.replace(".zip", "encrypted_folder.enc.zip") 
-                : "encrypted_folder.enc.zip";
+                ? originalName.replace(".zip", "encrypted_folder.enc") 
+                : "encrypted_folder.enc";
         
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encryptedFileName + "\"")
