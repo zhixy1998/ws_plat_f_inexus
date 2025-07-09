@@ -256,42 +256,61 @@ public class ImportService {
     // 导入计算公式表
     public void importCalculationFormula(MultipartFile file) {
         try {
+            // 提前提取Excel中所有工作表的图片（关键改进）
+            Map<String, List<ExcelImageImportUtils.ImageInfo>> allImages = 
+                ExcelImageImportUtils.extractAllImages(file);
+            
+            // 获取"计算公式表"的图片列表
+            List<ExcelImageImportUtils.ImageInfo> formulaSheetImages = 
+                allImages.getOrDefault("计算公式表", new ArrayList<>());
+            
+            // 打印图片提取结果（用于调试）
+            System.out.println("提取到计算公式表的图片数量: " + formulaSheetImages.size());
+            for (ExcelImageImportUtils.ImageInfo img : formulaSheetImages) {
+                System.out.println("图片位置: 行=" + img.getRow() + ", 列=" + img.getCol() + 
+                                ", 大小=" + img.getSize() + "字节, MIME=" + img.getMimeType());
+            }
+
+            // 读取Excel主数据
             List<CalculationFormulaExcelModel> list = EasyExcel.read(file.getInputStream())
                     .head(CalculationFormulaExcelModel.class)
                     .sheet("计算公式表")
                     .doReadSync();
-    
+
             if (list == null || list.isEmpty()) {
                 System.out.println("计算公式表数据为空，请检查Excel文件是否正确");
                 return;
             }
-            System.out.println("++++++++" + list.size());
-            int picIdx = 0;
-            // 缓存标准标识名称到Detection表ID的映射，避免重复查询
+
+            System.out.println("++++++++ 读取到 " + list.size() + " 条计算公式数据 ++++++++");
+
+            // 缓存标准标识与DetectionID的映射
             Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
+
+            // 遍历数据行处理
             for (int i = 0; i < list.size(); i++) {
                 CalculationFormulaExcelModel model = list.get(i);
-                // 打印读取到的数据
-                System.out.println("读取到第 " + (i + 2) + " 行数据: " + model);
-    
+                int excelRowNum = i + 2;  // Excel中的实际行号（从2开始）
+                System.out.println("\n处理第 " + excelRowNum + " 行数据: " + model);
+
                 // 校验必填字段
                 if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：标准标识不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：标准标识不能为空");
                 }
                 if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果标识不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：结果标识不能为空");
                 }
                 if (model.getResultName() == null || model.getResultName().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果名称不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：结果名称不能为空");
                 }
                 if (model.getUnit() == null || model.getUnit().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：单位不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：单位不能为空");
                 }
                 if (model.getInputParam1Name() == null || model.getInputParam1Name().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：输入参数1名称不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：输入参数1名称不能为空");
                 }
                 if (model.getInputParam1Identity() == null || model.getInputParam1Identity().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：输入参数1标识不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：输入参数1标识不能为空");
                 }
                 
                 // 提取所有参数标识
@@ -306,21 +325,21 @@ public class ImportService {
                 paramIdentities.add(model.getInputParam8Identity());
                 paramIdentities.add(model.getInputParam9Identity());
                 paramIdentities.add(model.getInputParam10Identity());
-    
+
                 // 过滤掉空值
                 paramIdentities.removeIf(Objects::isNull);
-    
+
                 // 校验公式文本
                 String formulaText = model.getFormulaText();
                 if (formulaText == null || formulaText.isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：公式文本不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：公式文本不能为空");
                 }
-    
+
                 // 检查是否是等式
                 if (!formulaText.contains("=")) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：不是等式");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：公式文本不是等式");
                 }
-    
+
                 // 分割等式
                 String[] parts = formulaText.split("=", 2);
                 String leftSide = parts[0].trim();
@@ -329,7 +348,7 @@ public class ImportService {
                 // 校验结果标识
                 String resultIdentity = model.getResultIdentity();
                 if (resultIdentity == null || resultIdentity.isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果标识不能为空");
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：结果标识不能为空");
                 }
 
                 // 处理左边内容和结果标识，去除括号及其内容
@@ -338,47 +357,70 @@ public class ImportService {
 
                 // 比较处理后的字符串
                 if (!processedLeftSide.equals(processedResultIdentity)) {
-                    System.out.println("调试信息 - 第 " + (i + 2) + " 行:");
+                    System.out.println("调试信息 - 第 " + excelRowNum + " 行:");
                     System.out.println("  原始左边: " + leftSide);
                     System.out.println("  处理后左边: " + processedLeftSide);
                     System.out.println("  原始结果标识: " + resultIdentity);
                     System.out.println("  处理后结果标识: " + processedResultIdentity);
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果标识有误，与公式文本左边不匹配！处理后左边: " 
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：结果标识有误，与公式文本左边不匹配！处理后左边: " 
                         + processedLeftSide + "，处理后结果标识: " + processedResultIdentity);
                 }
-    
+
                 // 记录不在公式文本中的参数标识
                 List<String> invalidParams = new ArrayList<>();
-    
+
                 for (int j = 0; j < paramIdentities.size(); j++) {
                     String paramIdentity = paramIdentities.get(j);
                     if (!rightSide.contains(paramIdentity)) {
                         invalidParams.add("参数" + (j + 1) + "标识: " + paramIdentity);
                     }
                 }
-    
+
                 if (!invalidParams.isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：以下参数标识有误，不在公式文本中: " + String.join(", ", invalidParams));
+                    throw new IllegalArgumentException("第 " + excelRowNum + " 行数据错误：以下参数标识有误，不在公式文本中: " + String.join(", ", invalidParams));
                 }
 
-                boolean exists = calculationFormulaMapper.existsByStandardIdentity(model.getStandardIdentity());
-                // System.out.println(" 查询到了+----------: " + exists);
+                // 处理标准标识ID映射
                 String identityName = model.getStandardIdentity();
-                    
-                // 1. 从缓存或数据库获取Detection表中的ID
                 Integer detectionId = identityNameToDetectionIdMap.get(identityName);
-                
                 if (detectionId == null) {
-                    // 从Detection表中查询对应的ID（根据标准标识名称精准匹配）
                     detectionId = detectionMapper.findIdByStandardIdentityName(identityName);
-                    
                     if (detectionId == null) {
                         throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
                     }
-                    
-                    // 缓存结果
                     identityNameToDetectionIdMap.put(identityName, detectionId);
+                    System.out.println("缓存标准标识映射: " + identityName + " -> " + detectionId);
                 }
+
+                // 提取当前行对应的图片（关键改进）
+                String base64Image = null;
+                
+                // 使用Excel实际行号进行图片匹配
+                base64Image = ExcelImageImportUtils.findImageByRow(formulaSheetImages, excelRowNum-1);
+
+                // 打印图片匹配结果
+                if (base64Image != null) {
+                    System.out.println("成功为第 " + excelRowNum + " 行匹配到图片，长度: " + base64Image.length() + " 字节");
+                } else {
+                    System.out.println("未为第 " + excelRowNum + " 行匹配到图片，尝试使用单元格中的图片引用");
+                }
+                
+                // 如果没匹配到，尝试使用模型中的图片引用
+                if (base64Image == null && model.getFormulaImage() != null && !model.getFormulaImage().isEmpty()) {
+                    try {
+                        // 检查是否已经是Base64
+                        if (model.getFormulaImage().startsWith("data:image/")) {
+                            base64Image = model.getFormulaImage();
+                            System.out.println("使用单元格中的Base64图片，长度: " + base64Image.length() + " 字节");
+                        } else {
+                            System.out.println("单元格中的图片引用不是Base64格式: " + model.getFormulaImage());
+                        }
+                    } catch (Exception e) {
+                        System.out.println("第 " + excelRowNum + " 行图片引用处理失败: " + e.getMessage());
+                    }
+                }
+
+                // 构建CalculationFormula对象
                 CalculationFormula calculationFormula = new CalculationFormula();
                 calculationFormula.setStandardIdentity(detectionId.toString());
                 calculationFormula.setResultIdentity(model.getResultIdentity());
@@ -405,58 +447,31 @@ public class ImportService {
                 calculationFormula.setInputParam10Name(model.getInputParam10Name());
                 calculationFormula.setInputParam10Identity(model.getInputParam10Identity());
                 calculationFormula.setFormulaText(model.getFormulaText());
-                // calculationFormula.setFormulaImage(model.getFormulaImage());
-                // calculationFormula.setFormulaImage(null);
-                String imageData = model.getFormulaImage();
+                calculationFormula.setFormulaImage(base64Image);  // 设置提取的Base64图片
                 calculationFormula.setDetectionLimit(model.getDetectionLimit());
 
-                String base64Image = null;
-                System.out.println("第 " + (i+2) + " 行图片----------------------------: " + imageData);
-                
-                if (imageData != null && !imageData.isEmpty()) {
-                    try {
-                        if (imageData.startsWith("=DISPIMG")) {
-                            System.out.println("当前第 " + (i+2) + " 行图片88888: " + imageData);
-                            // 传入行号用于图片定位
-                            base64Image = ExcelImageImportUtils.extractImageToBase64(
-                                file, 
-                                imageData,
-                                picIdx
-                            );
-                            picIdx++;
-
-                            System.out.println("图片提取结果长度: " + 
-                                (base64Image != null ? base64Image.length() : "null"));
-                        } else {
-                            base64Image = imageData;
-                        }
-                    } catch (Exception e) {
-                        System.out.println("第 " + i + 2 + " 行图片处理失败: " + e.getMessage());
-                    }
-                }
-                calculationFormula.setFormulaImage(base64Image);
-                
-                // calculationFormulaMapper.insert(calculationFormula);
-
-                
+                // 保存到数据库
+                boolean exists = calculationFormulaMapper.existsByStandardIdentity(model.getStandardIdentity());
                 if (exists) {
-                    // System.out.println("第 " + picIdx + " 行: 更新质量控制信息，标准标识 " + model.getStandardIdentity());
+                    System.out.println("更新第 " + excelRowNum + " 行数据，标准标识: " + model.getStandardIdentity());
                     calculationFormulaMapper.updateByStandardIdentity(calculationFormula);
-
                 } else {
-                    // System.out.println("第 " + picIdx + " 行: 插入质量控制信息，标准标识 " + model.getStandardIdentity());
+                    System.out.println("插入第 " + excelRowNum + " 行数据，标准标识: " + model.getStandardIdentity());
                     calculationFormulaMapper.insert(calculationFormula);
-
                 }
             }
+
         } catch (IOException e) {
             System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
             throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
+        } catch (IllegalArgumentException e) {
+            System.out.println("数据校验失败: " + e.getMessage());
+            throw e;
         } catch (Exception e) {
             System.out.println("导入计算公式表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入计算公式表时发生异常: " + e.getMessage(), e);
         }
-    }    
+    }
     
     
     // 导入质量控制表
@@ -627,9 +642,9 @@ public class ImportService {
     // 导入所有表
     public void importExcel(MultipartFile file) throws IOException {
         importStandardDetection(file);
-        importStandardPretreatment(file);
-        importRoundingRules(file);
-        importQualityControl(file);
+        // importStandardPretreatment(file);
+        // importRoundingRules(file);
+        // importQualityControl(file);
         importCalculationFormula(file);
     }
 }
