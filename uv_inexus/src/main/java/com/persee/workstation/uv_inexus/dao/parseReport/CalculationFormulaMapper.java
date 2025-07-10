@@ -13,13 +13,13 @@ import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
 @Mapper
 public interface CalculationFormulaMapper {
 
-    // 检查记录是否存在（根据 standard_identity 和 result_identity）
-    @Select("SELECT COUNT(*) FROM t_report_calculation_formulas WHERE standard_identity = #{standardIdentity}")
-    boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
+    // 检查记录是否存在（根据 detection_id 和 result_identity）
+    @Select("SELECT COUNT(*) FROM t_report_calculation_formulas WHERE detection_id = #{detectionId}")
+    boolean existsByDetectionId(@Param("detectionId") String detectionId);
 
     // 插入单条记录
     @Insert("INSERT INTO t_report_calculation_formulas " +
-            "(standard_identity, result_identity, result_name, unit, " +
+            "(detection_id, result_identity, result_name, unit, " +
             "input_param1_name, input_param1_identity, input_param2_name, input_param2_identity, " +
             "input_param3_name, input_param3_identity, input_param4_name, input_param4_identity, " +
             "input_param5_name, input_param5_identity, input_param6_name, input_param6_identity, " +
@@ -27,7 +27,7 @@ public interface CalculationFormulaMapper {
             "input_param9_name, input_param9_identity, input_param10_name, input_param10_identity, " +
             "formula_text, formula_image, detection_limit) " +
             "VALUES " +
-            "(#{standardIdentity}, #{resultIdentity}, #{resultName}, #{unit}, " +
+            "(#{detectionId}, #{resultIdentity}, #{resultName}, #{unit}, " +
             "#{inputParam1Name}, #{inputParam1Identity}, #{inputParam2Name}, #{inputParam2Identity}, " +
             "#{inputParam3Name}, #{inputParam3Identity}, #{inputParam4Name}, #{inputParam4Identity}, " +
             "#{inputParam5Name}, #{inputParam5Identity}, #{inputParam6Name}, #{inputParam6Identity}, " +
@@ -36,7 +36,7 @@ public interface CalculationFormulaMapper {
             "#{formulaText}, #{formulaImage}, #{detectionLimit})")
     void insert(CalculationFormula calculationFormula);
 
-    // 更新记录（根据 standard_identity 和 result_identity）
+    // 更新记录（根据 detection_id 和 result_identity）
     @Update("UPDATE t_report_calculation_formulas SET " +
             "result_identity = #{resultIdentity},result_name = #{resultName}, unit = #{unit}, " +
             "input_param1_name = #{inputParam1Name}, input_param1_identity = #{inputParam1Identity}, " +
@@ -50,13 +50,13 @@ public interface CalculationFormulaMapper {
             "input_param9_name = #{inputParam9Name}, input_param9_identity = #{inputParam9Identity}, " +
             "input_param10_name = #{inputParam10Name}, input_param10_identity = #{inputParam10Identity}, " +
             "formula_text = #{formulaText}, formula_image = #{formulaImage}, detection_limit = #{detectionLimit} " +
-            "WHERE standard_identity = #{standardIdentity}")
-    void updateByStandardIdentity(CalculationFormula calculationFormula);
+            "WHERE detection_id = #{detectionId}")
+    void updateByDetectionId(CalculationFormula calculationFormula);
 
     // 批量插入记录（可选，如果数据量大建议使用）
     @Insert("<script>" +
             "INSERT INTO t_report_calculation_formulas " +
-            "(standard_identity, result_identity, result_name, unit, " +
+            "(detection_id, result_identity, result_name, unit, " +
             "input_param1_name, input_param1_identity, input_param2_name, input_param2_identity, " +
             "input_param3_name, input_param3_identity, input_param4_name, input_param4_identity, " +
             "input_param5_name, input_param5_identity, input_param6_name, input_param6_identity, " +
@@ -65,7 +65,7 @@ public interface CalculationFormulaMapper {
             "formula_text, formula_image, detection_limit) " +
             "VALUES " +
             "<foreach collection='list' item='item' separator=','>" +
-            "(#{item.standardIdentity}, #{item.resultIdentity}, #{item.resultName}, #{item.unit}, " +
+            "(#{item.detectionId}, #{item.resultIdentity}, #{item.resultName}, #{item.unit}, " +
             "#{item.inputParam1Name}, #{item.inputParam1Identity}, #{item.inputParam2Name}, #{item.inputParam2Identity}, " +
             "#{item.inputParam3Name}, #{item.inputParam3Identity}, #{item.inputParam4Name}, #{item.inputParam4Identity}, " +
             "#{item.inputParam5Name}, #{item.inputParam5Identity}, #{item.inputParam6Name}, #{item.inputParam6Identity}, " +
@@ -80,7 +80,7 @@ public interface CalculationFormulaMapper {
     @Select("SELECT * FROM t_report_calculation_formulas")
     List<CalculationFormula> selectAll();
 
-    // 新增：联表查询，转换 standard_identity 为文字，直接返回Excel模型类
+    // 新增：联表查询，转换 detection_id 为文字，直接返回Excel模型类
     @Select("SELECT " +
         "c.id, " +
         "d.standard_identity AS standardIdentity, " +
@@ -112,12 +112,12 @@ public interface CalculationFormulaMapper {
         "c.detection_limit AS detectionLimit " +
         "FROM t_report_calculation_formulas c " +
         "LEFT JOIN t_report_standard_detection d " +
-        "ON c.standard_identity = d.id")
+        "ON c.detection_id = d.id")
     List<CalculationFormula> selectAllForExport();
 
     // 新增：查询某主表ID下的所有公式记录
-    @Select("SELECT * FROM t_report_calculation_formulas WHERE standard_identity = #{standardIdentity}")
-    List<CalculationFormula> selectByStandardIdentity(String standardIdentity);
+    @Select("SELECT * FROM t_report_calculation_formulas WHERE detection_id = #{detectionId}")
+    List<CalculationFormula> selectByDetectionId(String detectionId);
 
     // 新增：根据ID更新
     @Update("UPDATE t_report_calculation_formulas SET " +

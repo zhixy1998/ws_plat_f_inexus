@@ -222,22 +222,22 @@ public class DetectionServiceImpl implements DetectionService {
             return null;
         }
         // 修正：使用standard_identity关联子表（原代码误用了id）
-        String standardIdentity = detection.getStandardIdentity(); 
+        String standardIdentity = detection.getId(); 
 
         // 2. 转换主表的detectionParameters（JSON字符串转对象）
         String detectionParameters = formatJsonToText(detection.getDetectionParameters());
 
         // 3. 查询前处理表（通过standard_identity）
-        StandardPretreatment pretreatment = standardPretreatmentDao.findByStandardIdentity(standardIdentity);
+        StandardPretreatment pretreatment = standardPretreatmentDao.findByDetectionId(standardIdentity);
         String preTreatmentDesc = pretreatment != null ? pretreatment.getPretreatmentDescription() : null;
         log.info("前处理描述: {}, 关联标识: {}", preTreatmentDesc, standardIdentity);
 
         // 4. 查询质量控制表（通过standard_identity）
-        QualityControl qualityControl = qualityControlDao.findByStandardIdentity(standardIdentity);
+        QualityControl qualityControl = qualityControlDao.findByDetectionId(standardIdentity);
         String qcType = qualityControl != null ? qualityControl.getControlType() : null;
 
         // 5. 查询计算公式表（通过standard_identity）
-        CalculationFormula formula = calculationFormulaDao.findByStandardIdentity(standardIdentity);
+        CalculationFormula formula = calculationFormulaDao.findByDetectionId(standardIdentity);
         String resultIdentity = formula != null ? formula.getResultIdentity() : null;
 
         // 6. 封装返回DTO

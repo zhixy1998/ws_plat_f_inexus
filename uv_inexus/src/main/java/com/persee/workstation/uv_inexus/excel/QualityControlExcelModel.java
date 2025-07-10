@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.excel;
 
 import com.alibaba.excel.annotation.ExcelIgnore;
 import com.alibaba.excel.annotation.ExcelProperty;
+
 import lombok.Data;
 
 @Data
@@ -10,7 +11,7 @@ public class QualityControlExcelModel {
     private Long id;
 
     @ExcelProperty("标准标识")
-    private String standardIdentity;
+    private String detectionId;
 
     @ExcelProperty("质控类型")
     private String controlType;
@@ -21,12 +22,12 @@ public class QualityControlExcelModel {
     @ExcelProperty("质控公式")
     private String controlFormula;
 
-    public String getStandardIdentity() {
-        return standardIdentity;
+    public String getDetectionId() {
+        return detectionId;
     }
 
-    public void setStandardIdentity(String standardIdentity) {
-        this.standardIdentity = standardIdentity;
+    public void setDetectionId(String detectionId) {
+        this.detectionId = detectionId;
     }
 
     public String getControlType() {

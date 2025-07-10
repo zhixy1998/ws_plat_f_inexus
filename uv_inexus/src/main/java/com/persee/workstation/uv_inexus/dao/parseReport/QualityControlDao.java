@@ -25,13 +25,13 @@ public interface QualityControlDao {
     QualityControl findById(Integer id);
 
     @Insert("INSERT INTO t_report_quality_control " +
-            "(standard_identity, control_type, control_description, control_formula, create_datetime, update_datetime) " +
+            "(detection_id, control_type, control_description, control_formula, create_datetime, update_datetime) " +
             "VALUES " +
-            "(#{standardIdentity}, #{controlType}, #{controlDescription}, #{controlFormula}, #{createDatetime}, #{updateDatetime})")
+            "(#{detectionId}, #{controlType}, #{controlDescription}, #{controlFormula}, #{createDatetime}, #{updateDatetime})")
     void insert(QualityControl qualityControl);
 
     @Update("UPDATE t_report_quality_control SET " +
-            "standard_identity = #{standardIdentity}, " +
+            "detection_id = #{detectionId}, " +
             "control_type = #{controlType}, " +
             "control_description = #{controlDescription}, " +
             "control_formula = #{controlFormula}, " +
@@ -51,7 +51,7 @@ public interface QualityControlDao {
             "</script>")
     IPage<QualityControl> selectPage(Page<QualityControl> page, @Param("ew") QueryWrapper<QualityControl> queryWrapper);
 
-    // 新增：根据standard_identity查询（关键）
-    @Select("SELECT * FROM t_report_quality_control WHERE standard_identity = #{standardIdentity} LIMIT 1")
-    QualityControl findByStandardIdentity(String standardIdentity);
+    // 新增：根据detection_id查询（关键）
+    @Select("SELECT * FROM t_report_quality_control WHERE detection_id = #{detectionId} LIMIT 1")
+    QualityControl findByDetectionId(String detectionId);
 }

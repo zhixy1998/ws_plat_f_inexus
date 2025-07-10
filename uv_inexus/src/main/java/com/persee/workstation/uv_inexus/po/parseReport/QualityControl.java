@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.po.parseReport;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,8 +14,8 @@ import lombok.EqualsAndHashCode;
 @TableName("t_report_quality_control") // 修改表名为 t_report_quality_control
 public class QualityControl extends BasePO { // 修改类名为 QualityControl
 
-    @TableField("standard_identity") // 映射到 standard_identity 字段
-    private String standardIdentity;
+    @TableField("detection_id") // 映射到 detection_id 字段
+    private String detectionId;
 
     @TableField("controltype") // 映射到 controltype 字段
     private String controlType; // 修改变量名为驼峰命名法

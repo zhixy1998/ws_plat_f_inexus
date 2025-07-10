@@ -25,13 +25,13 @@ public interface CalculationFormulaDao {
     CalculationFormula findById(Integer id);
 
     @Insert("INSERT INTO t_report_calculation_formulas (" +
-            "standard_identity, result_identity, result_name, unit, input_param1_name, input_param1_identity, " +
+            "detection_id, result_identity, result_name, unit, input_param1_name, input_param1_identity, " +
             "input_param2_name, input_param2_identity, input_param3_name, input_param3_identity, input_param4_name, " +
             "input_param4_identity, input_param5_name, input_param5_identity, input_param6_name, input_param6_identity, " +
             "input_param7_name, input_param7_identity, input_param8_name, input_param8_identity, input_param9_name, " +
             "input_param9_identity, input_param10_name, input_param10_identity, formula_text, formula_image, detection_limit" +
             ") VALUES (" +
-            "#{standardIdentity}, #{resultIdentity}, #{resultName}, #{unit}, #{inputParam1Name}, #{inputParam1Identity}, " +
+            "#{detectionId}, #{resultIdentity}, #{resultName}, #{unit}, #{inputParam1Name}, #{inputParam1Identity}, " +
             "#{inputParam2Name}, #{inputParam2Identity}, #{inputParam3Name}, #{inputParam3Identity}, #{inputParam4Name}, " +
             "#{inputParam4Identity}, #{inputParam5Name}, #{inputParam5Identity}, #{inputParam6Name}, #{inputParam6Identity}, " +
             "#{inputParam7Name}, #{inputParam7Identity}, #{inputParam8Name}, #{inputParam8Identity}, #{inputParam9Name}, " +
@@ -40,7 +40,7 @@ public interface CalculationFormulaDao {
     void insert(CalculationFormula calculationFormula);
 
     @Update("UPDATE t_report_calculation_formulas SET " +
-            "standard_identity=#{standardIdentity}, result_identity=#{resultIdentity}, result_name=#{resultName}, " +
+            "detectionId=#{detectionId}, result_identity=#{resultIdentity}, result_name=#{resultName}, " +
             "unit=#{unit}, input_param1_name=#{inputParam1Name}, input_param1_identity=#{inputParam1Identity}, " +
             "input_param2_name=#{inputParam2Name}, input_param2_identity=#{inputParam2Identity}, " +
             "input_param3_name=#{inputParam3Name}, input_param3_identity=#{inputParam3Identity}, " +
@@ -67,7 +67,7 @@ public interface CalculationFormulaDao {
             "</script>")
     IPage<CalculationFormula> selectPage(Page<CalculationFormula> page, @Param("ew") QueryWrapper<CalculationFormula> queryWrapper);
 
-    // 新增：根据standard_identity查询（关键）
-    @Select("SELECT * FROM t_report_calculation_formulas WHERE standard_identity = #{standardIdentity} LIMIT 1")
-    CalculationFormula findByStandardIdentity(String standardIdentity);
+    // 新增：根据detection_id查询（关键）
+    @Select("SELECT * FROM t_report_calculation_formulas WHERE detection_id = #{detectionId} LIMIT 1")
+    CalculationFormula findByDetectionId(String detectionId);
 }

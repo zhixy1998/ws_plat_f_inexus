@@ -9,7 +9,7 @@ public class StandardDetectionUVVISCurveExcelModel {
     private Long id;
 
     @ExcelProperty("标准标识")
-    private String standardIdentity;
+    private String detectionId;
 
     @ExcelProperty("波长1")
     private String wavelength1;
@@ -33,12 +33,12 @@ public class StandardDetectionUVVISCurveExcelModel {
     private String recommendedUnits;
 
     // Getters and Setters
-    public String getStandardIdentity() {
-        return standardIdentity;
+    public String getDetectionId() {
+        return detectionId;
     }
 
-    public void setStandardIdentity(String standardIdentity) {
-        this.standardIdentity = standardIdentity;
+    public void setDetectionId(String detectionId) {
+        this.detectionId = detectionId;
     }
 
     public String getWavelength1() {

@@ -13,30 +13,30 @@ import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
 @Mapper
 public interface RoundingRulesMapper {
 
-    // 检查记录是否存在（根据 standard_identity）
-    @Select("SELECT COUNT(*) FROM t_report_rounding_rules WHERE standard_identity = #{standardIdentity}")
-    boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
+    // 检查记录是否存在（根据 detection_id）
+    @Select("SELECT COUNT(*) FROM t_report_rounding_rules WHERE detection_id = #{detectionId}")
+    boolean existsByDetectionId(@Param("detectionId") String detectionId);
 
-    // 根据 standard_identity 更新记录
+    // 根据 detection_id 更新记录
     @Update("UPDATE t_report_rounding_rules SET " +
             "rounding_type = #{roundingType}, " +
             "rounding_condition = #{roundingCondition}, " +
             "decimal_places = #{decimalPlaces} " +
-            "WHERE standard_identity = #{standardIdentity}" )
-    void updateByStandardIdentity(RoundingRules roundingRules);
+            "WHERE detection_id = #{detectionId}" )
+    void updateByDetectionId(RoundingRules roundingRules);
 
     // 插入单条记录
-    @Insert("INSERT INTO t_report_rounding_rules (result_identity, standard_identity, rounding_type, rounding_condition, decimal_places) " +
-            "VALUES (#{resultIdentity}, #{standardIdentity}, #{roundingType}, #{roundingCondition}, #{decimalPlaces})")
+    @Insert("INSERT INTO t_report_rounding_rules (result_identity, detection_id, rounding_type, rounding_condition, decimal_places) " +
+            "VALUES (#{resultIdentity}, #{detectionId}, #{roundingType}, #{roundingCondition}, #{decimalPlaces})")
     void insert(RoundingRules roundingRules);
 
     // 批量插入记录
     @Insert({
             "<script>",
-            "INSERT INTO t_report_rounding_rules (result_identity, standard_identity, rounding_type, rounding_condition, decimal_places)",
+            "INSERT INTO t_report_rounding_rules (result_identity, detection_id, rounding_type, rounding_condition, decimal_places)",
             "VALUES",
             "<foreach collection='list' item='item' separator=','>",
-            "    (#{item.resultIdentity}, #{item.standardIdentity}, #{item.roundingType}, #{item.roundingCondition}, #{item.decimalPlaces})",
+            "    (#{item.resultIdentity}, #{item.detectionId}, #{item.roundingType}, #{item.roundingCondition}, #{item.decimalPlaces})",
             "</foreach>",
             "</script>"
     })
@@ -56,12 +56,12 @@ public interface RoundingRulesMapper {
             "r.decimal_places AS decimalPlaces " +
             "FROM t_report_rounding_rules r " +
             "LEFT JOIN t_report_standard_detection d " +  
-            "ON r.standard_identity = d.id")  
+            "ON r.detection_id = d.id")  
     List<RoundingRules> selectAllForExport();
 
     // 新增：查询某主表ID下的所有修约记录
-    @Select("SELECT * FROM t_report_rounding_rules WHERE standard_identity = #{standardIdentity}")
-    List<RoundingRules> selectByStandardIdentity(String standardIdentity);
+    @Select("SELECT * FROM t_report_rounding_rules WHERE detection_id = #{detectionId}")
+    List<RoundingRules> selectByDetectionId(String detectionId);
 
     // 新增：根据ID更新修约记录
     @Update("UPDATE t_report_rounding_rules SET " +

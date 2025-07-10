@@ -13,13 +13,13 @@ import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
 @Mapper
 public interface QualityControlMapper {
 
-    // 检查指定 standardIdentity 是否已存在
-    @Select("SELECT COUNT(*) FROM t_report_quality_control WHERE standard_identity = #{standardIdentity}")
-    boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
+    // 检查指定 detectionId 是否已存在
+    @Select("SELECT COUNT(*) FROM t_report_quality_control WHERE detection_id = #{detectionId}")
+    boolean existsBydetectionId(@Param("detectionId") String detectionId);
 
     // 使用 INSERT ... ON DUPLICATE KEY UPDATE 实现 Upsert
-    @Insert("INSERT INTO t_report_quality_control (standard_identity, control_type, control_description, control_formula) " +
-            "VALUES (#{standardIdentity}, #{controlType}, #{controlDescription}, #{controlFormula}) " +
+    @Insert("INSERT INTO t_report_quality_control (detection_id, control_type, control_description, control_formula) " +
+            "VALUES (#{detectionId}, #{controlType}, #{controlDescription}, #{controlFormula}) " +
             "ON DUPLICATE KEY UPDATE " +
             "control_type = #{controlType}, " +
             "control_description = #{controlDescription}, " +
@@ -38,10 +38,10 @@ public interface QualityControlMapper {
             "SET control_type = #{controlType}, " +
             "control_description = #{controlDescription}, " +
             "control_formula = #{controlFormula} " +
-            "WHERE standard_identity = #{standardIdentity}")
-    void updateByStandardIdentity(QualityControl qualityControl);
+            "WHERE detection_id = #{detectionId}")
+    void updateByDetectionId(QualityControl qualityControl);
 
-    // 新增：联表查询，转换 standard_identity 为文字，直接返回Excel模型类
+    // 新增：联表查询，转换 detection_id 为文字，直接返回Excel模型类
     @Select("SELECT " +
         "q.id, " +
         "d.standard_identity AS standardIdentity, " +
@@ -50,12 +50,12 @@ public interface QualityControlMapper {
         "q.control_formula AS controlFormula " +  
         "FROM t_report_quality_control q " +
         "LEFT JOIN t_report_standard_detection d " +
-        "ON q.standard_identity = d.id")
+        "ON q.detection_id = d.id")
     List<QualityControl> selectAllForExport();  
 
     // 新增：查询某主表ID下的所有质控记录
-    @Select("SELECT * FROM t_report_quality_control WHERE standard_identity = #{standardIdentity}")
-    List<QualityControl> selectByStandardIdentity(String standardIdentity);
+    @Select("SELECT * FROM t_report_quality_control WHERE detection_id = #{detectionId}")
+    List<QualityControl> selectByDetectionId(String detectionId);
 
     // 新增：根据ID更新
     @Update("UPDATE t_report_quality_control SET " +

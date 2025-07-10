@@ -26,12 +26,12 @@ public interface RoundingRulesDao { // 修改了接口名
     RoundingRules findById(Integer id); // 修改了返回类型
 
     // 插入新记录
-    @Insert("INSERT INTO t_report_rounding_rules (standard_identity, result_identity, rounding_type, rounding_condition, decimal_places) " + // 修改了表名和列名
-            "VALUES (#{standardIdentity}, #{resultIdentity}, #{roundingType}, #{roundingCondition}, #{decimalPlaces})") // 修改了参数名
+    @Insert("INSERT INTO t_report_rounding_rules (detection_id, result_identity, rounding_type, rounding_condition, decimal_places) " + // 修改了表名和列名
+            "VALUES (#{detectionId}, #{resultIdentity}, #{roundingType}, #{roundingCondition}, #{decimalPlaces})") // 修改了参数名
     void insert(RoundingRules roundingRules); // 修改了参数类型和变量名
 
     // 更新记录
-    @Update("UPDATE t_report_rounding_rules SET standard_identity=#{standardIdentity}, result_identity=#{resultIdentity}, " + // 修改了表名和列名
+    @Update("UPDATE t_report_rounding_rules SET detection_id=#{detectionId}, result_identity=#{resultIdentity}, " + // 修改了表名和列名
             "rounding_type=#{roundingType}, rounding_condition=#{roundingCondition}, decimal_places=#{decimalPlaces} " + // 修改了列名和参数名
             "WHERE id = #{id}") // 修改了表名
     void update(RoundingRules roundingRules); // 修改了参数类型和变量名

@@ -100,14 +100,14 @@ public class ImportService {
                     jsonObject.put("拟合公式", model.getFittingFormula());
                     jsonObject.put("推荐标样浓度", model.getRecommendedStandardConcentration());
                     jsonObject.put("推荐单位", model.getRecommendedUnits());
-                    detectionParametersMap.put(model.getStandardIdentity(), jsonObject);
+                    detectionParametersMap.put(model.getDetectionId(), jsonObject);
                 }
             }
 
             if (photometryList != null) {
                 for (StandardDetectionUVVISPhotometryExcelModel model : photometryList) {
-                    if (detectionParametersMap.containsKey(model.getStandardIdentity())) {
-                        JSONObject jsonObject = detectionParametersMap.get(model.getStandardIdentity());
+                    if (detectionParametersMap.containsKey(model.getDetectionId())) {
+                        JSONObject jsonObject = detectionParametersMap.get(model.getDetectionId());
                         jsonObject.put("波长1", model.getWavelength1());
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
@@ -116,7 +116,7 @@ public class ImportService {
                         jsonObject.put("波长1", model.getWavelength1());
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
-                        detectionParametersMap.put(model.getStandardIdentity(), jsonObject);
+                        detectionParametersMap.put(model.getDetectionId(), jsonObject);
                     }
                 }
             }
@@ -233,14 +233,14 @@ public class ImportService {
             for (StandardPretreatmentExcelModel model : list) {
                 try {
                     // 校验必填字段
-                    if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
                     if (model.getPretreatmentDescription() == null || model.getPretreatmentDescription().isEmpty()) {
                         throw new IllegalArgumentException("前处理描述不能为空");
                     }
                     
-                    String identityName = model.getStandardIdentity();
+                    String identityName = model.getDetectionId();
                     Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
                     if (detectionId == null) {
                         throw new IllegalArgumentException("标准标识在关联表中不存在: " + identityName);
@@ -248,7 +248,7 @@ public class ImportService {
 
                     // 构建前处理对象
                     StandardPretreatment pretreatment = new StandardPretreatment();
-                    pretreatment.setStandardIdentity(detectionId.toString()); // 主表ID
+                    pretreatment.setDetectionId(detectionId.toString()); // 主表ID
                     pretreatment.setPretreatmentDescription(model.getPretreatmentDescription());
                     // 若有其他字段，此处需从Excel获取
 
@@ -256,7 +256,7 @@ public class ImportService {
                     String currentHash = generatePretreatmentHash(pretreatment);
 
                     // 查询数据库中该主表ID下的所有记录
-                    List<StandardPretreatment> dbRecords = standardPretreatmentMapper.selectByStandardIdentity(detectionId.toString());
+                    List<StandardPretreatment> dbRecords = standardPretreatmentMapper.selectByDetectionId(detectionId.toString());
                     Map<String, StandardPretreatment> hashToRecordMap = new HashMap<>();
                     for (StandardPretreatment record : dbRecords) {
                         hashToRecordMap.put(generatePretreatmentHash(record), record);
@@ -298,7 +298,7 @@ public class ImportService {
     private String generatePretreatmentHash(StandardPretreatment pretreatment) {
         String combined = 
             (pretreatment.getId() != null ? pretreatment.getId().toString() : "") + "|" +  // 包含ID
-            pretreatment.getStandardIdentity() + "|" +  // 主表ID
+            pretreatment.getDetectionId() + "|" +  // 主表ID
             pretreatment.getPretreatmentDescription();  // 描述
         return generateHash(combined);
     }
@@ -328,7 +328,7 @@ public class ImportService {
             for (CalculationFormulaExcelModel model : list) {
                 try {
                     // 校验必填字段
-                    if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
                     if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
@@ -339,7 +339,7 @@ public class ImportService {
                     }
 
                     // 获取主表ID
-                    String identityName = model.getStandardIdentity();
+                    String identityName = model.getDetectionId();
                     Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
                     if (detectionId == null) {
                         throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
@@ -353,7 +353,7 @@ public class ImportService {
 
                     // 构建计算公式对象
                     CalculationFormula formula = new CalculationFormula();
-                    formula.setStandardIdentity(detectionId.toString()); // 主表ID
+                    formula.setDetectionId(detectionId.toString()); // 主表ID
                     formula.setResultIdentity(model.getResultIdentity());
                     formula.setResultName(model.getResultName());
                     formula.setUnit(model.getUnit());
@@ -385,7 +385,7 @@ public class ImportService {
                     String currentHash = generateFormulaHash(formula);
 
                     // 查询数据库中该主表ID下的所有公式
-                    List<CalculationFormula> dbFormulas = calculationFormulaMapper.selectByStandardIdentity(detectionId.toString());
+                    List<CalculationFormula> dbFormulas = calculationFormulaMapper.selectByDetectionId(detectionId.toString());
                     Map<String, CalculationFormula> hashToFormulaMap = new HashMap<>();
                     for (CalculationFormula dbFormula : dbFormulas) {
                         hashToFormulaMap.put(generateFormulaHash(dbFormula), dbFormula);
@@ -426,7 +426,7 @@ public class ImportService {
     private String generateFormulaHash(CalculationFormula formula) {
         String combined = 
             (formula.getId() != null ? formula.getId().toString() : "") + "|" +  // ID
-            formula.getStandardIdentity() + "|" +  // 主表ID
+            formula.getDetectionId() + "|" +  // 主表ID
             formula.getResultIdentity() + "|" +
             (formula.getResultName() != null ? formula.getResultName() : "") + "|" +
             (formula.getUnit() != null ? formula.getUnit() : "") + "|" +
@@ -474,7 +474,7 @@ public class ImportService {
 
             for (QualityControlExcelModel model : list) {
                 try {
-                    if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
                     if (model.getControlType() == null || model.getControlType().isEmpty()) {
@@ -482,7 +482,7 @@ public class ImportService {
                     }
 
                     // 获取主表ID
-                    String identityName = model.getStandardIdentity();
+                    String identityName = model.getDetectionId();
                     Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
                     if (detectionId == null) {
                         throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
@@ -490,7 +490,7 @@ public class ImportService {
 
                     // 构建质量控制对象
                     QualityControl control = new QualityControl();
-                    control.setStandardIdentity(detectionId.toString()); // 主表ID
+                    control.setDetectionId(detectionId.toString()); // 主表ID
                     control.setControlType(model.getControlType());
                     control.setControlDescription(model.getControlDescription());
                     control.setControlFormula(model.getControlFormula());
@@ -499,7 +499,7 @@ public class ImportService {
                     String currentHash = generateControlHash(control);
 
                     // 查询数据库中该主表ID下的所有记录
-                    List<QualityControl> dbControls = qualityControlMapper.selectByStandardIdentity(detectionId.toString());
+                    List<QualityControl> dbControls = qualityControlMapper.selectByDetectionId(detectionId.toString());
                     Map<String, QualityControl> hashToControlMap = new HashMap<>();
                     for (QualityControl dbControl : dbControls) {
                         hashToControlMap.put(generateControlHash(dbControl), dbControl);
@@ -540,7 +540,7 @@ public class ImportService {
     private String generateControlHash(QualityControl control) {
         String combined = 
             (control.getId() != null ? control.getId().toString() : "") + "|" +  // ID
-            control.getStandardIdentity() + "|" +  // 主表ID
+            control.getDetectionId() + "|" +  // 主表ID
             control.getControlType() + "|" +
             (control.getControlDescription() != null ? control.getControlDescription() : "") + "|" +
             (control.getControlFormula() != null ? control.getControlFormula() : "");
@@ -566,7 +566,7 @@ public class ImportService {
             for (RoundingRulesExcelModel model : list) {
                 try {
                     // 校验必填字段
-                    if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
                     if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
@@ -580,7 +580,7 @@ public class ImportService {
                     }
 
                     // 获取主表ID
-                    String identityName = model.getStandardIdentity();
+                    String identityName = model.getDetectionId();
                     Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
                     if (detectionId == null) {
                         throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
@@ -588,7 +588,7 @@ public class ImportService {
 
                     // 构建修约规则对象
                     RoundingRules rules = new RoundingRules();
-                    rules.setStandardIdentity(detectionId.toString()); // 主表ID
+                    rules.setDetectionId(detectionId.toString()); // 主表ID
                     rules.setResultIdentity(model.getResultIdentity());
                     rules.setRoundingType(model.getRoundingType());
                     rules.setRoundingCondition(model.getRoundingCondition());
@@ -598,7 +598,7 @@ public class ImportService {
                     String currentHash = generateRoundingHash(rules);
 
                     // 查询数据库中该主表ID下的所有记录
-                    List<RoundingRules> dbRules = roundingRulesMapper.selectByStandardIdentity(detectionId.toString());
+                    List<RoundingRules> dbRules = roundingRulesMapper.selectByDetectionId(detectionId.toString());
                     Map<String, RoundingRules> hashToRulesMap = new HashMap<>();
                     for (RoundingRules dbRule : dbRules) {
                         hashToRulesMap.put(generateRoundingHash(dbRule), dbRule);
@@ -639,7 +639,7 @@ public class ImportService {
     private String generateRoundingHash(RoundingRules rules) {
         String combined = 
             (rules.getId() != null ? rules.getId().toString() : "") + "|" +  // ID
-            rules.getStandardIdentity() + "|" +  // 主表ID
+            rules.getDetectionId() + "|" +  // 主表ID
             rules.getResultIdentity() + "|" +
             rules.getRoundingType() + "|" +
             (rules.getRoundingCondition() != null ? rules.getRoundingCondition() : "") + "|" +

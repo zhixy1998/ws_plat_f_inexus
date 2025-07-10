@@ -24,11 +24,11 @@ public interface StandardPretreatmentDao {
     @Select("SELECT * FROM t_report_standard_pretreatment WHERE id = #{id}")
     StandardPretreatment findById(Integer id);
 
-    @Insert("INSERT INTO t_report_standard_pretreatment (standard_identity, pretreatment_description) " +
-            "VALUES (#{standardIdentity}, #{pretreatmentDescription})")
+    @Insert("INSERT INTO t_report_standard_pretreatment (detection_id, pretreatment_description) " +
+            "VALUES (#{detectionId}, #{pretreatmentDescription})")
     void insert(StandardPretreatment standardPretreatment);
 
-    @Update("UPDATE t_report_standard_pretreatment SET standard_identity=#{standardIdentity}, pretreatment_description=#{pretreatmentDescription} WHERE id = #{id}")
+    @Update("UPDATE t_report_standard_pretreatment SET detection_id=#{detectionId}, pretreatment_description=#{pretreatmentDescription} WHERE id = #{id}")
     void update(StandardPretreatment standardPretreatment);
 
     @Delete("DELETE FROM t_report_standard_pretreatment WHERE id = #{id}")
@@ -43,7 +43,7 @@ public interface StandardPretreatmentDao {
             "</script>")
     IPage<StandardPretreatment> selectPage(Page<StandardPretreatment> page, @Param("ew") QueryWrapper<StandardPretreatment> queryWrapper);
 
-    // 新增：根据standard_identity查询（关键）
-    @Select("SELECT * FROM t_report_standard_pretreatment WHERE standard_identity = #{standardIdentity} LIMIT 1")
-    StandardPretreatment findByStandardIdentity(String standardIdentity);
+    // 新增：根据detection_id查询（关键）
+    @Select("SELECT * FROM t_report_standard_pretreatment WHERE detection_id = #{detectionId} LIMIT 1")
+    StandardPretreatment findByDetectionId(String detectionId);
 }

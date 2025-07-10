@@ -8,7 +8,7 @@ public class StandardPretreatmentExcelModel {
     private Long id;
 
     @ExcelProperty("标准标识")
-    private String standardIdentity;
+    private String detectionId;
 
     @ExcelProperty("前处理描述")
     private String pretreatmentDescription;
@@ -16,18 +16,18 @@ public class StandardPretreatmentExcelModel {
     public StandardPretreatmentExcelModel() {
     }
 
-    // public StandardPretreatmentExcelModel(String standardIdentity, String pretreatmentDescription) {
-    //     this.standardIdentity = standardIdentity;
+    // public StandardPretreatmentExcelModel(String detectionId, String pretreatmentDescription) {
+    //     this.detectionId = detectionId;
     //     this.pretreatmentDescription = pretreatmentDescription;
     // }
 
     // getters and setters
-    public String getStandardIdentity() {
-        return standardIdentity;
+    public String getDetectionId() {
+        return detectionId;
     }
 
-    public void setStandardIdentity(String standardIdentity) {
-        this.standardIdentity = standardIdentity;
+    public void setDetectionId(String detectionId) {
+        this.detectionId = detectionId;
     }
 
     public String getPretreatmentDescription() {
