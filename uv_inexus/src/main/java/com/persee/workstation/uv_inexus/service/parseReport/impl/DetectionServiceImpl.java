@@ -194,6 +194,7 @@ public class DetectionServiceImpl implements DetectionService {
         mainData.setExpirationDate(detection.getExpirationDate());
         mainData.setEffectiveDate(detection.getEffectiveDate());
         mainData.setIndustryType(detection.getIndustryType());
+        mainData.setReleaseStatus(detection.getReleaseStatus());
         mainData.setCount(originalDataList.size());
         
         List<Map<String, Object>> identityTypeList = originalDataList.stream()

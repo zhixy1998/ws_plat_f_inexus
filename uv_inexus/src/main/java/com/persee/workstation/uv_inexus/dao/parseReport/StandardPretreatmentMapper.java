@@ -5,6 +5,8 @@ import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -35,13 +37,18 @@ public interface StandardPretreatmentMapper {
 
     // 联表查询（导出用，保持原有逻辑）
     @Select("SELECT " +
-            "p.id, " +
-            "d.standard_identity AS standardIdentity," +
-            "p.pretreatment_description " +
-            "FROM t_report_standard_pretreatment p " +
-            "LEFT JOIN t_report_standard_detection d " +
-            "ON p.detection_id = d.id")
-    List<StandardPretreatment> selectAllForExport();
+        "p.id, " +
+        "p.detection_id AS detectionId," +  // SQL中的detectionId（前处理表的外键）
+        "d.standard_identity AS standardIdentity," +  // SQL中的standardIdentity（主表的标识）
+        "p.pretreatment_description " +
+        "FROM t_report_standard_pretreatment p " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON p.detection_id = d.id")
+        // 关键：通过@Results映射，让实体的detectionId接收SQL的standardIdentity
+        @Results({
+        @Result(column = "standardIdentity", property = "detectionId"),
+        })
+        List<StandardPretreatment> selectAllForExport();
 
     // 新增：查询某主表ID下的所有前处理记录（用于哈希对比）
     @Select("SELECT * FROM t_report_standard_pretreatment WHERE detection_id = #{detectionId}")

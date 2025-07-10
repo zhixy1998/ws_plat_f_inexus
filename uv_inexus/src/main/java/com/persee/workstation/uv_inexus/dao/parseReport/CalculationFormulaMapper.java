@@ -5,6 +5,8 @@ import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -83,7 +85,7 @@ public interface CalculationFormulaMapper {
     // 新增：联表查询，转换 detection_id 为文字，直接返回Excel模型类
     @Select("SELECT " +
         "c.id, " +
-        "d.standard_identity AS standardIdentity, " +
+        "d.standard_identity AS standardIdentity, " +  // 主表的standard_identity
         "c.result_identity AS resultIdentity, " +
         "c.result_name AS resultName, " +
         "c.unit AS unit, " +
@@ -113,7 +115,13 @@ public interface CalculationFormulaMapper {
         "FROM t_report_calculation_formulas c " +
         "LEFT JOIN t_report_standard_detection d " +
         "ON c.detection_id = d.id")
-    List<CalculationFormula> selectAllForExport();
+        @Results({
+        @Result(column = "id", property = "id"),
+        // 核心：将主表的standardIdentity映射到实体的detectionId字段（用于Excel导出“标准标识”）
+        @Result(column = "standardIdentity", property = "detectionId"),
+        
+        })
+        List<CalculationFormula> selectAllForExport();
 
     // 新增：查询某主表ID下的所有公式记录
     @Select("SELECT * FROM t_report_calculation_formulas WHERE detection_id = #{detectionId}")

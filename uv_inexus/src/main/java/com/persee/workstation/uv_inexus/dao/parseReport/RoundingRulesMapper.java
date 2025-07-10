@@ -5,6 +5,8 @@ import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -48,16 +50,21 @@ public interface RoundingRulesMapper {
 
     // 联表查询（导出用）
     @Select("SELECT " +
-            "r.id, " +
-            "r.result_identity AS resultIdentity, " +
-            "d.standard_identity AS standardIdentity," +
-            "r.rounding_type AS roundingType, " +
-            "r.rounding_condition AS roundingCondition," +
-            "r.decimal_places AS decimalPlaces " +
-            "FROM t_report_rounding_rules r " +
-            "LEFT JOIN t_report_standard_detection d " +  
-            "ON r.detection_id = d.id")  
-    List<RoundingRules> selectAllForExport();
+        "r.id, " +
+        "r.result_identity AS resultIdentity, " +
+        "d.standard_identity AS standardIdentity, " +  // 主表的standard_identity
+        "r.rounding_type AS roundingType, " +
+        "r.rounding_condition AS roundingCondition, " +
+        "r.decimal_places AS decimalPlaces, " +
+        "r.detection_id AS detectionId  " +  // 保留原detection_id（用于映射覆盖）
+        "FROM t_report_rounding_rules r " +
+        "LEFT JOIN t_report_standard_detection d " +  
+        "ON r.detection_id = d.id")  
+        @Results({
+        // 核心：将主表的standardIdentity映射到实体的detectionId字段
+        @Result(column = "standardIdentity", property = "detectionId"),
+        })
+        List<RoundingRules> selectAllForExport();
 
     // 新增：查询某主表ID下的所有修约记录
     @Select("SELECT * FROM t_report_rounding_rules WHERE detection_id = #{detectionId}")

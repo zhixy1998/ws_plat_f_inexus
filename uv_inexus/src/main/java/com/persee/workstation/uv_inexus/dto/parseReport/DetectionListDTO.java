@@ -33,6 +33,9 @@ public class DetectionListDTO {
     @ApiModelProperty("行业类型")
     private String industryType;
 
+    @ApiModelProperty("状态")
+    private String releaseStatus;
+
     @ApiModelProperty("标准号出现次数（统计字段）")
     private Integer count;
 }

@@ -88,6 +88,7 @@ public interface DetectionDao {
             "sub.expirationDate, " +
             "sub.effectiveDate, " +
             "sub.industryType, " +
+            "sub.releaseStatus, " +
             "sub.count " +
             "FROM ( " +
             "    SELECT " +
@@ -99,6 +100,7 @@ public interface DetectionDao {
             "    MAX(expiration_date) AS expirationDate, " +
             "    MAX(effective_date) AS effectiveDate, " +
             "    MAX(industry_type) AS industryType, " +
+            "    MAX(release_status) AS releaseStatus, " +
             "    COUNT(*) AS count " +
             "    FROM t_report_standard_detection " +
             "    <where> ${ew.sqlSegment} </where> " +

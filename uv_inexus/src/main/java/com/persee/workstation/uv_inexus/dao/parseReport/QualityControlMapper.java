@@ -5,6 +5,8 @@ import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -51,9 +53,12 @@ public interface QualityControlMapper {
         "FROM t_report_quality_control q " +
         "LEFT JOIN t_report_standard_detection d " +
         "ON q.detection_id = d.id")
-    List<QualityControl> selectAllForExport();  
+        @Results({
+        @Result(column = "standardIdentity", property = "detectionId"), // 将standard_identity映射到detectionId字段
+        })
+        List<QualityControl> selectAllForExport();
 
-    // 新增：查询某主表ID下的所有质控记录
+        // 新增：查询某主表ID下的所有质控记录
     @Select("SELECT * FROM t_report_quality_control WHERE detection_id = #{detectionId}")
     List<QualityControl> selectByDetectionId(String detectionId);
 
