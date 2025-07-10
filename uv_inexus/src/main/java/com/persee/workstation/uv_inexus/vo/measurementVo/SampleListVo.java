@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.vo.measurementVo;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class SampleListVo {
@@ -13,9 +14,7 @@ public class SampleListVo {
     // 颜色
     private String color;
     // 数据
-    private List<FourOperationsVo> data;
-    // 0. 测量中 1. 测量完成
-    private String measureType;
-    // 0. 正常 1. 删除
+    private List<Map<String, Object>> data;
+    // deleteType
     private String deleteType;
 }

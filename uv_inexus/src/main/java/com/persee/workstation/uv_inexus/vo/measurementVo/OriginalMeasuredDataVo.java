@@ -8,5 +8,6 @@ public class OriginalMeasuredDataVo {
     private String x;
     private String y;
     private String feature;   // 特征描述，如“峰值”或“无”
+    private String grain;     // 谷值
     private String tag;       // 标记，如“未处理”
 }

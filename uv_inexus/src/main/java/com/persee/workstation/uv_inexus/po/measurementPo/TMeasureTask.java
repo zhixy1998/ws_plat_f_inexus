@@ -61,11 +61,8 @@ public class TMeasureTask{
     @TableField("device_serial_number")
     private String deviceSerialNumber;
 
-    // 预留字段4 ~ 预留字段5
-    @TableField("field4")
-    private String field4;
-
-    @TableField("field5")
-    private String field5;
+    // 是否删除
+    @TableField("is_delete")
+    private Integer isDelete;
 }
 

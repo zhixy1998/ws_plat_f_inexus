@@ -45,35 +45,22 @@ public class TMeasureData {
     @TableField("measurement_end_time")
     private LocalDateTime measurementEndTime;
 
-    // 预留字段1 ~ 预留字段10
-    @TableField("field1")
-    private String field1;
+    // 标记点
+    @TableField("gauge_point")
+    private String gaugePoint;
 
-    @TableField("field2")
-    private String field2;
+    // 峰
+    @TableField("peak")
+    private String peak;
 
-    @TableField("field3")
-    private String field3;
+    // 谷
+    @TableField("grain")
+    private String grain;
 
-    @TableField("field4")
-    private String field4;
-
-    @TableField("field5")
-    private String field5;
-
-    @TableField("field6")
-    private String field6;
-
-    @TableField("field7")
-    private String field7;
-
-    @TableField("field8")
-    private String field8;
-
-    @TableField("field9")
-    private String field9;
-
-    @TableField("field10")
-    private String field10;
+    // 是否删除
+    @TableField("is_delete")
+    private String isDelete;
 }
+
+
 

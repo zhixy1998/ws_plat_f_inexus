@@ -7,7 +7,6 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureStandardService;
 import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,8 +17,6 @@ import java.time.LocalDateTime;
 ("timeSweepService")
 public class TimeSweepServiceImpl implements TimeSweepService {
 
-    @Autowired
-    private TMeasureStandardService tMeasureStandardService;
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
     @Override

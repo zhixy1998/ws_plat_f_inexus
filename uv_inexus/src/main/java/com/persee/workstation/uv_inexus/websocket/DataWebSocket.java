@@ -40,7 +40,6 @@ public class DataWebSocket {
     private TMeasureDataService dataService = BeanUtils.getBean(TMeasureDataService.class);
     private DeviceMessageUtils messageUtils =  BeanUtils.getBean(DeviceMessageUtils.class);
     private TMeasureMethodService methodService = BeanUtils.getBean(TMeasureMethodService.class);
-    private TMeasureStandardService standardService = BeanUtils.getBean(TMeasureStandardService.class);
     // 日志记录器
     private static final Logger log = LoggerFactory.getLogger(DataWebSocket.class);
     // 单线程执行器，用于执行数据推送任务

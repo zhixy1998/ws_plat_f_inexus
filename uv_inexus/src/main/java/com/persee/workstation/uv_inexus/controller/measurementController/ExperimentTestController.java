@@ -37,8 +37,8 @@ public class ExperimentTestController {
 
     @PostMapping("createMethodPort")
     @ApiOperation("新建方法接口")
-    public Result createMethodPort(@RequestBody MethodParamRequestDto methodDto, @RequestParam String updateBy) {
-            return experimentTestService.createMethodPort(methodDto, updateBy);
+    public Result createMethodPort(@RequestBody MethodParamRequestDto methodDto) {
+            return experimentTestService.createMethodPort(methodDto);
     }
 
     @PostMapping("createTask")

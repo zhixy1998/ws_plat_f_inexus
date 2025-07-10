@@ -13,7 +13,7 @@ public interface ExperimentTestService {
 
     Result queryProjectStatistics(String updateBy);
 
-    Result createMethodPort(MethodParamRequestDto methodDto, String updateBy);
+    Result createMethodPort(MethodParamRequestDto methodDto);
 
     Result createTask(CreateTaskParamDto paramDto);
 

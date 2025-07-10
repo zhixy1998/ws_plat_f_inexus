@@ -31,7 +31,27 @@ public interface SpectrumService {
 
     Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
 
-    Result sampleListPort(String taskId);
+    Result sampleListPort(String taskId,String type);
 
     Result changeTheListPort(String taskId);
+
+    Result smoothnessPort(SmoothnessDto paramDto);
+
+    Result differentialPort(DifferentialDto paramDto);
+
+    Result queryMeasureGaugePoint(String measureId);
+
+    Result peakSearchingPort(String measureDataId);
+
+    Result conversionPeakSearching(String dataId);
+
+    Result valleySearchingPort(String measureDataId);
+
+    Result conversionValleySearching(String measureDataId);
+
+    Result addMeasureDataGaugePointPort(MeasureDataGaugePointDto paramDto);
+
+    Result queryAnalysisGaugePoint(String analysisId);
+
+    Result addAnalysisDataGaugePointPort(AnalysisDataGaugePointDto paramDto);
 }

@@ -28,8 +28,6 @@ public class RationServiceImpl implements RationService {
     private TMeasureTaskService tMeasureTaskService;
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
-    @Autowired
-    private TMeasureStandardService tMeasureStandardService;
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {

@@ -35,40 +35,28 @@ public class TMeasureAnalysisData {
     @TableField("analysis_result")
     private String analysisResult;
 
-    // 预留字段2
-    @TableField("field2")
-    private String field2;
+    // 变换类型
+    @TableField("analysis_type")
+    private String analysis_type;
 
-    // 预留字段3
-    @TableField("field3")
-    private String field3;
+    // 标记点
+    @TableField("gauge_point")
+    private String gaugePoint;
 
-    // 预留字段4
-    @TableField("field4")
-    private String field4;
+    // 峰
+    @TableField("peak")
+    private String peak;
 
-    // 预留字段5
-    @TableField("field5")
-    private String field5;
+    // 谷
+    @TableField("grain")
+    private String grain;
 
-    // 预留字段6
-    @TableField("field6")
-    private String field6;
+    // 颜色
+    @TableField("color")
+    private String color;
 
-    // 预留字段7
-    @TableField("field7")
-    private String field7;
-
-    // 预留字段8
-    @TableField("field8")
-    private String field8;
-
-    // 预留字段9
-    @TableField("field9")
-    private String field9;
-
-    // 预留字段10
-    @TableField("field10")
-    private String field10;
+    // 是否删除 (0:未删除 1:已删除)
+    @TableField("is_delete")
+    private String isDelete;
 }
 

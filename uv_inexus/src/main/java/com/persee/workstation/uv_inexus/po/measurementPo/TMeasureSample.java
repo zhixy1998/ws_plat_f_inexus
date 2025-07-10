@@ -59,21 +59,8 @@ public class TMeasureSample{
     @TableField("input_data")
     private String inputData;
 
-    // 预留字段1 ~ 预留字段5
-    @TableField("field1")
-    private String field1;
-
-    @TableField("field2")
-    private String field2;
-
-    @TableField("field3")
-    private String field3;
-
-    @TableField("field4")
-    private String field4;
-
-    @TableField("field5")
-    private String field5;
-
+    // 颜色
+    @TableField("color")
+    private String color;
 }
 

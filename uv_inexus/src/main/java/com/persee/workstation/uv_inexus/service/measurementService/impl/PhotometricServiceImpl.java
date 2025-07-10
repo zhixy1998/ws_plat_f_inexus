@@ -30,8 +30,6 @@ public class PhotometricServiceImpl implements PhotometricService {
     private UserConfigDAO userConfigDAO;
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
-    @Autowired
-    private TMeasureStandardService tMeasureStandardService;
 
 
     @Override

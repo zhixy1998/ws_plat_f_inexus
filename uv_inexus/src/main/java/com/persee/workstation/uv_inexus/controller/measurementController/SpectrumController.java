@@ -83,6 +83,18 @@ public class SpectrumController {
         return spectrumService.advancedOperationsPort(paramDto);
     }
 
+    @PostMapping("smoothnessPort")
+    @ApiOperation("平滑接口")
+    public Result smoothnessPort(@RequestBody SmoothnessDto paramDto){
+        return spectrumService.smoothnessPort(paramDto);
+    }
+
+    @PostMapping("differentialPort")
+    @ApiOperation("微分接口")
+    public Result differentialPort(@RequestBody DifferentialDto paramDto){
+        return spectrumService.differentialPort(paramDto);
+    }
+
     @PostMapping("luminanceModeConversionPort")
     @ApiOperation("光度模式转换")
     public Result luminanceModeConversionPort(@RequestBody LuminosityConversionDto paramDto){
@@ -91,14 +103,62 @@ public class SpectrumController {
 
     @GetMapping("sampleListPort")
     @ApiOperation("获取样本列表接口")
-    public Result sampleListPort(@RequestParam String taskId) {
-        return spectrumService.sampleListPort(taskId);
+    public Result sampleListPort(@RequestParam String taskId,@RequestParam String type) {
+        return spectrumService.sampleListPort(taskId,type);
     }
 
     @GetMapping("changeTheListPort")
     @ApiOperation("获取变换列表接口")
     public Result changeTheListPort(@RequestParam String taskId) {
         return spectrumService.changeTheListPort(taskId);
+    }
+    @GetMapping("queryMeasureGaugePoint")
+    @ApiOperation("获取测量标记点接口")
+    public Result queryMeasureGaugePoint(@RequestParam String measureId) {
+        return spectrumService.queryMeasureGaugePoint(measureId);
+    }
+
+    @GetMapping("queryAnalysisGaugePoint")
+    @ApiOperation("获取分析标记点接口")
+    public Result queryAnalysisGaugePoint(@RequestParam String analysisId) {
+        return spectrumService.queryAnalysisGaugePoint(analysisId);
+    }
+
+    @PostMapping("addMeasureDataGaugePointPort")
+    @ApiOperation("添加测量标记点接口")
+    public Result addMeasureDataGaugePointPort(@RequestBody MeasureDataGaugePointDto paramDto){
+        return spectrumService.addMeasureDataGaugePointPort(paramDto);
+    }
+
+    @PostMapping("addAnalysisDataGaugePointPort")
+    @ApiOperation("添加分析标记点接口")
+    public Result addAnalysisDataGaugePointPort(@RequestBody AnalysisDataGaugePointDto paramDto){
+        return spectrumService.addAnalysisDataGaugePointPort(paramDto);
+    }
+
+
+    @GetMapping("peakSearchingPort")
+    @ApiOperation("寻峰接口")
+    public Result peakSearchingPort(@RequestParam String DataId,@RequestParam String type){
+        if (type.equals("0")){
+        return spectrumService.peakSearchingPort(DataId);
+         } if (type.equals("1")){
+            return spectrumService.conversionPeakSearching(DataId);
+        }else{
+            return Result.fail("未知数据类型");
+        }
+    }
+
+    @GetMapping("valleySearchingPort")
+    @ApiOperation("寻谷接口")
+    public Result valleySearchingPort(@RequestParam String measureDataId,@RequestParam String type){
+        if (type.equals("0")){
+            return spectrumService.valleySearchingPort(measureDataId);
+        } if (type.equals("1")){
+            return spectrumService.conversionValleySearching(measureDataId);
+        }else{
+            return Result.fail("未知数据类型");
+        }
     }
 
     @GetMapping("testPythonProt")

@@ -10,8 +10,12 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardDetection;
+import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
+import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectStatisticsVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.RecentlyAccomplishTaskVo;
@@ -40,8 +44,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
     @Autowired
-    private TMeasureStandardService tMeasureStandardService;
-    @Autowired
     private TMeasureSampleService tMeasureSampleService;
     @Autowired
     private SpectrumService spectrumService;
@@ -52,9 +54,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureDataMapper tMeasureDataMapper;
     @Autowired
-    private TMeasurePreprocessInfoService tMeasurePreprocessInfoService;
-    @Autowired
     private TimeSweepService timeSweepService;
+    @Autowired
+    private TReportStandardDetectionService tReportStandardDetectionService;
+    @Autowired
+    private TReportStandardPretreatmentService tReportStandardPretreatmentService;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -175,7 +179,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result createMethodPort(MethodParamRequestDto methodDto,String updateBy) {
+    public Result createMethodPort(MethodParamRequestDto methodDto) {
         // 根据方法名称去方法表中进行查询,查看是否有重复
         List<TMeasureMethod> list = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class)
                 .eq(TMeasureMethod::getMethodName, methodDto.getMethodName()));
@@ -188,16 +192,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
                 PhotometricParameter photometricParameter = convertParams(params, PhotometricParameter.class);
-                return photometricService.createMethodPort(methodDto, updateBy, photometricParameter);
+                return photometricService.createMethodPort(methodDto, methodDto.getUpdateBy(), photometricParameter);
             case QUANTITATIVE_MEASUREMENT:
                 RationParameter rationParameter = convertParams(params, RationParameter.class);
-                return rationService.createMethodPort(methodDto, updateBy, rationParameter);
+                return rationService.createMethodPort(methodDto, methodDto.getUpdateBy(), rationParameter);
             case SPECTRAL_SCAN:
                 SpectrumParameter spectrumParameter = convertParams(params, SpectrumParameter.class);
-                return spectrumService.createMethodPort(methodDto, updateBy, spectrumParameter);
+                return spectrumService.createMethodPort(methodDto, methodDto.getUpdateBy(), spectrumParameter);
             case TIME_SCAN:
                 TimeSweepParamter timeSweepParamter = convertParams(params, TimeSweepParamter.class);
-                return timeSweepService.createMethodPort(methodDto, updateBy, timeSweepParamter);
+                return timeSweepService.createMethodPort(methodDto, methodDto.getUpdateBy(), timeSweepParamter);
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
                 break;
         }
@@ -206,6 +210,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result createTask(CreateTaskParamDto paramDto) {
+        // 根据任务名称查询任务,如果为空则继续,如果有值的话则返回错误
+        List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName()));
+        if (taskList.size()>0){
+            return Result.fail("任务名称重复");
+        }
         // 根据项目id查询项目
         TMeasureProject project = tMeasureProjectService.getById(paramDto.getProjectId());
         //根据项目中的用户名称查询用户
@@ -400,8 +409,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result queryReferenceStandard(String standardName,String testType) {
-        // 根据标准名称模糊查询标准表数据
-        List<TMeasureStandard> list = tMeasureStandardService.list(new QueryWrapper<TMeasureStandard>().like("standard_name", standardName).eq("test_type", testType));
+//         根据标准名称模糊查询标准表数据
+        List<TReportStandardDetection> list = tReportStandardDetectionService.list(new QueryWrapper<TReportStandardDetection>().like("standard_name", standardName).eq("release_status", "有效"));
         if (list == null || list.size() == 0){
             return Result.fail("未查询到数据");
         }
@@ -410,7 +419,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result preprocessTheData(String standardId) {
-        TMeasurePreprocessInfo info = tMeasurePreprocessInfoService.getById(standardId);
+        // 根据标准id查询前处理信息表数据
+        TReportStandardPretreatment info = tReportStandardPretreatmentService.getOne(new QueryWrapper<TReportStandardPretreatment>().eq("detection_id", standardId));
         if (info == null){
             return Result.fail("未查询到前处理信息");
         }

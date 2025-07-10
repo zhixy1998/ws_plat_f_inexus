@@ -10,6 +10,7 @@ import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +35,6 @@ import java.util.stream.Collectors;
 public class SpectrumServiceImpl implements SpectrumService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Autowired
-    private TMeasureStandardService tMeasureStandardService;
 
     @Autowired
     private TMeasureProjectService tMeasureProjectService;
@@ -119,7 +117,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 发送请求获取返回结果 postForEntity方法传入参数分别是:调用路径，请求体，返回结果类型
         // 使用getBody方法获取返回结果
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-        List<Double> peak_y = (List<Double>) resultMap.get("peak_y");
+        List<String> peakX = (List<String>) resultMap.get("peak_x");
+        List<String> peakY = (List<String>) resultMap.get("peak_y");
+        List<String> valleyX = (List<String>) resultMap.get("valley_x");
+        List<String> valleyY = (List<String>) resultMap.get("valley_y");
         List<OriginalMeasuredDataVo> resultList = new ArrayList<>();
         // 将xList和yList转换为OriginalMeasuredDataVo对象
         for (int i = 0; i < xList.size(); i++) {
@@ -127,19 +128,26 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setId(i + 1);
             vo.setX(xList.get(i));
             vo.setY(yList.get(i));
-            vo.setFeature("0");
-            vo.setTag("-"); // 或其他逻辑判断
-            resultList.add(vo);
-        }
-        // 遍历resultList，将peak_y中的数据与resultList中的数据进行匹配
-        for (OriginalMeasuredDataVo measuredDataVo : resultList) {
-            for (Double str : peak_y) {
-                // 将measuredDataVo.getY()转换成 double类型和 str比较
-                Double parsed = Double.parseDouble(measuredDataVo.getY());
-                if (parsed.equals(str)) {
-                    measuredDataVo.setFeature("1");
+            for (int j = 0; j < peakX.size(); j++) {
+                if (xList.get(i).equals(peakX.get(j))&&yList.get(i).equals(peakY.get(j))){
+                    vo.setFeature("1");
                 }
             }
+            if (vo.getFeature()==null){
+                vo.setFeature("0");
+            }
+            // 遍历谷的长度,如果谷的x坐标和y坐标都相等,则说明是谷
+            for (int j = 0; j < valleyX.size(); j++) {
+                if (xList.get(i).equals(valleyX.get(j))&&yList.get(i).equals(valleyY.get(j))){
+                    vo.setGrain("1");
+                }
+            }
+            // 如果对象中的谷属性为null,则说明不是谷,则设置为0
+            if (vo.getGrain()==null){
+                vo.setGrain("0");
+            }
+            vo.setTag("-"); // 或其他逻辑判断
+            resultList.add(vo);
         }
 
         // 分页
@@ -250,7 +258,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
-        ResponseEntity<String> response = restTemplate.postForEntity("http://192.168.32.62:8002/get_peak/find_peaks_and_valleys", request, String.class);
+        ResponseEntity<String> response = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, String.class);
         System.err.println(response.getBody());
     }
 
@@ -282,6 +290,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(list);
     }
 
+    /**
+     * 四则运算接口
+     * @param paramDto
+     * @return
+     */
     @Override
     public Result fourOperationsPort(FourOperationsParamDto paramDto) {
         // 根据测量数据id查询测量数据
@@ -323,7 +336,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                     double result = Double.parseDouble(yList1.get(i)) / Double.parseDouble(paramDto.getMeasureDataId2());
                     yList2.add(String.valueOf(result));
                 }
-             }else {
+            }else {
                 return Result.fail("未知运算符");
             }
         }else if (paramDto.getDataType().equals("1")){
@@ -357,66 +370,35 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (resultMap == null){
             return Result.fail("python接口调用失败");
         }
-
         // 将结果数据中的x_data和y_data取出来并存入List<String>中
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
         List<Double> y_data = (List<Double>) resultMap.get("y_data");
-        Map<String, Object> body1 = new HashMap<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         // 将分析数据存储到分析数据表中
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setTaskId(measureData1.getTaskId());
         tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
         List<String> listData = new ArrayList<>();
         for (int i = 0; i < x_data.size(); i++) {
+            Map<String, Object> body1 = new HashMap<>();
             String s = x_data.get(i) + "," + y_data.get(i);
             listData.add(s);
+            body1.put("x", x_data.get(i));
+            body1.put("y", y_data.get(i));
+            dataList.add(body1);
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        // 将参数添加到请求体中
-        body1.put("x_data", x_data);
-        body1.put("y_data", y_data);
-        body1.put("height", 0.5);
-        body1.put("distance", 1);
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
-        List<FourOperationsVo> voList = new ArrayList<>();
-        List<String> xData = x_data.stream().map(String::valueOf).collect(Collectors.toList());
-        List<String> yData = y_data.stream().map(String::valueOf).collect(Collectors.toList());
-        for (int i = 0; i < xData.size(); i++) {
-            FourOperationsVo vo = new FourOperationsVo();
-            vo.setX(xData.get(i));
-            vo.setY(yData.get(i));
-            // TODO 光谱扫描四则运算中的标记点未完成(暂未找到标记点的存取逻辑)
-            vo.setMarked("0");
-            List<String> peakX = (List<String>) resultMap1.get("peak_x");
-            List<String> peakY = (List<String>) resultMap1.get("peak_y");
-            List<String> valleyX = (List<String>) resultMap.get("valley_x");
-            List<String> valleyY = (List<String>) resultMap.get("valley_y");
-            for (int j = 0; j < peakX.size(); j++) {
-                if (xData.get(i).equals(peakX.get(j))&&yData.get(i).equals(peakY.get(j))){
-                    vo.setFeng("1");
-                }
-            }
-            if (vo.getFeng()== null){
-                vo.setFeng("0");
-            }
-            // 遍历谷的长度,如果谷的x坐标和y坐标都相等,则说明是谷
-            for (int j = 0; j < valleyX.size(); j++) {
-                if (xData.get(i).equals(valleyX.get(j))&&yData.get(i).equals(valleyY.get(j))){
-                    vo.setGu("1");
-                }
-            }
-            // 如果对象中的谷属性为null,则说明不是谷,则设置为0
-            if (vo.getGu()==null){
-                vo.setGu("0");
-            }
-            voList.add(vo);
-        }
-        return Result.ok(voList);
+        return Result.ok(dataList);
     }
 
+
+    /**
+     * 高级运算接口
+     * @param paramDto
+     * @return
+     */
     @Override
     public Result advancedOperationsPort(AdvancedOperationsDto paramDto) {
         // 根据测量数据id查询测量数据
@@ -443,61 +425,21 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
         body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
-        // 创建分析数据对象
-        TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
-        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
-        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
-        tMeasureAnalysisData.setTaskId(measureData.getTaskId());
-        List<String> listData = new ArrayList<>();
+        List<Map<String,Object>> resultList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            String s = xList.get(i) + "," + y_data.get(i);
-            listData.add(s);
+            Map<String,Object> map = new HashMap<>();
+            map.put("x",xList.get(i));
+            map.put("y",y_data.get(i));
+            resultList.add(map);
         }
-        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
-        tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        Map<String, Object> body1 = new HashMap<>();
-        // 将参数添加到请求体中
-        body1.put("x_data", xList);
-        body1.put("y_data", y_data);
-        body1.put("height", 0.5);
-        body1.put("distance", 1);
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
-        List<FourOperationsVo> voList = new ArrayList<>();
-        List<String> xData = xList.stream().map(String::valueOf).collect(Collectors.toList());
-        List<String> yData = y_data.stream().map(String::valueOf).collect(Collectors.toList());
-        for (int i = 0; i < xData.size(); i++) {
-            FourOperationsVo vo = new FourOperationsVo();
-            vo.setX(xData.get(i));
-            vo.setY(yData.get(i));
-            vo.setMarked("0");
-            List<String> peakX = (List<String>) resultMap1.get("peak_x");
-            List<String> peakY = (List<String>) resultMap1.get("peak_y");
-            List<String> valleyX = (List<String>) resultMap.get("valley_x");
-            List<String> valleyY = (List<String>) resultMap.get("valley_y");
-            for (int j = 0; j < peakX.size(); j++) {
-                if (xData.get(i).equals(peakX.get(j))&&yData.get(i).equals(peakY.get(j))){
-                    vo.setFeng("1");
-                }
-            }
-            if (vo.getFeng()==null){
-                vo.setFeng("0");
-            }
-            // 遍历谷的长度,如果谷的x坐标和y坐标都相等,则说明是谷
-            for (int j = 0; j < valleyX.size(); j++) {
-                if (xData.get(i).equals(valleyX.get(j))&&yData.get(i).equals(valleyY.get(j))){
-                    vo.setGu("1");
-                }
-            }
-            // 如果对象中的谷属性为null,则说明不是谷,则设置为0
-            if (vo.getGu()==null){
-                vo.setGu("0");
-            }
-            voList.add(vo);
-        }
-        return Result.ok(voList);
+        return Result.ok(resultList);
     }
 
+    /**
+     * 光度模式转换
+     * @param paramDto
+     * @return
+     */
     @Override
     public Result luminanceModeConversionPort(LuminosityConversionDto paramDto) {
         // 根据方法id查询方法表的数据
@@ -552,142 +494,72 @@ public class SpectrumServiceImpl implements SpectrumService {
         body.put("transform_type",type);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
-        body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
-        // 创建分析数据对象
-        TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
-        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
-        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
-        tMeasureAnalysisData.setTaskId(measureData.getTaskId());
-        List<String> listData = new ArrayList<>();
-        for (int i = 0; i < xList.size(); i++) {
-            String s = xList.get(i) + "," + y_data.get(i);
-            listData.add(s);
+        List<Map<String,Object>> resultList = new ArrayList<>();
+        for (int i = 0; i < y_data.size(); i++) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("x",xList.get(i));
+            map.put("y",y_data.get(i));
+            resultList.add(map);
         }
-        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
-        tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        Map<String, Object> body1 = new HashMap<>();
-        // 将参数添加到请求体中
-        body1.put("x_data", xList);
-        body1.put("y_data", y_data);
-        body1.put("height", 0.5);
-        body1.put("distance", 1);
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
-        List<FourOperationsVo> voList = new ArrayList<>();
-        List<String> xData = xList.stream().map(String::valueOf).collect(Collectors.toList());
-        List<String> yData = y_data.stream().map(String::valueOf).collect(Collectors.toList());
-        for (int i = 0; i < xData.size(); i++) {
-            FourOperationsVo vo = new FourOperationsVo();
-            vo.setX(xData.get(i));
-            vo.setY(yData.get(i));
-            vo.setMarked("0");
-            List<String> peakX = (List<String>) resultMap1.get("peak_x");
-            List<String> peakY = (List<String>) resultMap1.get("peak_y");
-            List<String> valleyX = (List<String>) resultMap1.get("valley_x");
-            List<String> valleyY = (List<String>) resultMap1.get("valley_y");
-            for (int j = 0; j < peakX.size(); j++) {
-                if (xData.get(i).equals(peakX.get(j))&&yData.get(i).equals(peakY.get(j))){
-                    vo.setFeng("1");
-                }
-            }
-            if (vo.getFeng()== null){
-                vo.setFeng("0");
-            }
-            // 遍历谷的长度,如果谷的x坐标和y坐标都相等,则说明是谷
-            for (int j = 0; j < valleyX.size(); j++) {
-                if (xData.get(i).equals(valleyX.get(j))&&yData.get(i).equals(valleyY.get(j))){
-                    vo.setGu("1");
-                }
-            }
-            // 如果对象中的谷属性为null,则说明不是谷,则设置为0
-            if (vo.getGu()==null){
-                vo.setGu("0");
-            }
-            voList.add(vo);
-        }
-        return Result.ok(voList);
+        return Result.ok(resultList);
     }
 
     @Override
-    public Result sampleListPort(String taskId) {
-        // 根据任务id查询测量数据
-        List<TMeasureData> list = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId));
+    public Result sampleListPort(String taskId,String type) {
+        // 根据任务id查询任务数据
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
-        for (TMeasureData tMeasureData : list) {
+        for (TaskSpecimen taskSpeciman : taskSpecimen) {
+            // 如果type为1则跳过
+            if (taskSpeciman.getDeleteType().equals("1")&&type.equals("")) continue;
             SampleListVo vo = new SampleListVo();
-            // 根据样品的key去样品表中查询数据
-            TMeasureSample byId = tMeasureSampleService.getById(tMeasureData.getSampleKey());
-            if (byId == null){
-                return Result.fail("样品不存在");
-            }
-            vo.setKey(tMeasureData.getId());
+            TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+            // 根据样品id和任务id两个条件去查询测量数据
+            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId()));
+            vo.setKey(byId.getId());
             vo.setTitle(byId.getSampleName());
-            vo.setColor("#000000");
-            // 拆分重组测量数据
-            ArrayList<String> dataList = new ArrayList<>();
-            List<String> xList = new ArrayList<>();
-            List<String> yList = new ArrayList<>();
-            try {
-                dataList = objectMapper.readValue(tMeasureData.getOriginalCalculationData(), ArrayList.class);
-            } catch (JsonProcessingException e) {
-                return Result.fail("数据转换失败");
-            }
-            for (String s : dataList) {
-                String[] split = s.split(",");
-                xList.add(split[0]);
-                yList.add(split[1]);
-            }
-            // 创建请求头
-            HttpHeaders headers = new HttpHeaders();
-            // 设置请求头类型为json
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            // 创建请求体
-            Map<String, Object> body = new HashMap<>();
-            // 将参数添加到请求体中
-            body.put("x_data", xList);
-            body.put("y_data", yList);
-            body.put("height", 0.5);
-            body.put("distance", 1);
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-            List<FourOperationsVo> voList = new ArrayList<>();
-            for (int i = 0; i < xList.size(); i++) {
-                FourOperationsVo fourVo = new FourOperationsVo();
-                fourVo.setX(xList.get(i));
-                fourVo.setY(yList.get(i));
-                fourVo.setMarked("0");
-                List<String> peakX = (List<String>) resultMap.get("peak_x");
-                List<String> peakY = (List<String>) resultMap.get("peak_y");
-                List<String> valleyX = (List<String>) resultMap.get("valley_x");
-                List<String> valleyY = (List<String>) resultMap.get("valley_y");
-                for (int j = 0; j < peakX.size(); j++) {
-                    if (xList.get(i).equals(peakX.get(j))&&yList.get(i).equals(peakY.get(j))){
-                        fourVo.setFeng("1");
+            if (measureData== null){
+                vo.setData(null);
+            }else {
+                List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+                List<Double> gauges = JSON.parseArray(measureData.getGaugePoint(), Double.class);
+                List<Double> peaks = JSON.parseArray(measureData.getPeak(), Double.class);
+                List<Double> grades = JSON.parseArray(measureData.getGrain(), Double.class);
+                List<Map<String, Object>> resultList = new ArrayList<>();
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("x", split[0]);
+                    map.put("y", split[1]);
+                    for (Double gauge : gauges) {
+                        if (split[0].equals(String.valueOf(gauge))){
+                            map.put("marked","1");
+                        }else{
+                            map.put("marked","0");
+                        }
                     }
-                }
-                if (fourVo.getFeng()==null){
-                    fourVo.setFeng("0");
-                }
-                // 遍历谷的长度,如果谷的x坐标和y坐标都相等,则说明是谷
-                for (int j = 0; j < valleyX.size(); j++) {
-                    if (xList.get(i).equals(valleyX.get(j))&&yList.get(i).equals(valleyY.get(j))){
-                        fourVo.setGu("1");
+                    for (Double peak : peaks) {
+                        if (split[0].equals(String.valueOf(peak))){
+                            map.put("feng","1");
+                        }else{
+                            map.put("feng","0");
+                        }
                     }
+                    for (Double grade : grades){
+                        if (split[0].equals(String.valueOf(grade))){
+                            map.put("gu","1");
+                        }else{
+                            map.put("gu","0");
+                        }
+                    }
+                    resultList.add(map);
                 }
-                // 如果对象中的谷属性为null,则说明不是谷,则设置为0
-                if (fourVo.getGu()==null){
-                    fourVo.setGu("0");
-                }
-                voList.add(fourVo);
+                vo.setData(resultList);
             }
-            vo.setData(voList);
-            if (tMeasureData.getMeasurementEndTime()== null||tMeasureData.getMeasurementEndTime().equals("")){
-                vo.setMeasureType("0");
-            }else{
-                vo.setMeasureType("1");
-            }
-            vo.setDeleteType("0");
+            vo.setColor(byId.getColor());
+            vo.setDeleteType(taskSpeciman.getDeleteType());
             listVos.add(vo);
         }
         return Result.ok(listVos);
@@ -695,79 +567,354 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Override
     public Result changeTheListPort(String taskId) {
-        // 根据任务id去分析数据表中查询数据
-        List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId));
+        // 根据任务id去查询分析数据
+        List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(
+                new QueryWrapper<TMeasureAnalysisData>()
+                        .eq("task_id", taskId)
+                        .eq("is_delete", "0"));
         List<SampleListVo> listVos = new ArrayList<>();
         for (TMeasureAnalysisData tMeasureAnalysisData : list) {
             SampleListVo vo = new SampleListVo();
             vo.setKey(tMeasureAnalysisData.getId());
             vo.setTitle(tMeasureAnalysisData.getAnalysisName());
-            vo.setColor("#000000");
-            // 拆分重组测量数据
-            ArrayList<String> dataList = new ArrayList<>();
-            List<String> xList = new ArrayList<>();
-            List<String> yList = new ArrayList<>();
-            try {
-                dataList = objectMapper.readValue(tMeasureAnalysisData.getAnalysisResult(), ArrayList.class);
-            } catch (JsonProcessingException e) {
-                return Result.fail("数据转换失败");
-            }
-            for (String s : dataList) {
-                String[] split = s.split(",");
-                xList.add(split[0]);
-                yList.add(split[1]);
-            }
-            // 创建请求头
-            HttpHeaders headers = new HttpHeaders();
-            // 设置请求头类型为json
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            // 创建请求体
-            Map<String, Object> body = new HashMap<>();
-            // 将参数添加到请求体中
-            body.put("x_data", xList);
-            body.put("y_data", yList);
-            body.put("height", 0.5);
-            body.put("distance", 1);
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-            List<FourOperationsVo> voList = new ArrayList<>();
-            for (int i = 0; i < xList.size(); i++) {
-                FourOperationsVo fourVo = new FourOperationsVo();
-                fourVo.setX(xList.get(i));
-                fourVo.setY(yList.get(i));
-                fourVo.setMarked("0");
-                List<String> peakX = (List<String>) resultMap.get("peak_x");
-                List<String> peakY = (List<String>) resultMap.get("peak_y");
-                List<String> valleyX = (List<String>) resultMap.get("valley_x");
-                List<String> valleyY = (List<String>) resultMap.get("valley_y");
-                // 遍历峰的长度,如果峰的x坐标和y坐标都相等,则说明是峰
-                for (int j = 0; j < peakX.size(); j++) {
-                    if (xList.get(i).equals(peakX.get(j))&&yList.get(i).equals(peakY.get(j))){
-                        fourVo.setFeng("1");
-                    }
-                }
-                // 如果对象中的峰属性为null,则说明不是峰,则设置为0
-                if (fourVo.getFeng()==null){
-                    fourVo.setFeng("0");
-                }
-                // 遍历谷的长度,如果谷的x坐标和y坐标都相等,则说明是谷
-                for (int j = 0; j < valleyX.size(); j++) {
-                    if (xList.get(i).equals(valleyX.get(j))&&yList.get(i).equals(valleyY.get(j))){
-                        fourVo.setGu("1");
-                    }
-                }
-                // 如果对象中的谷属性为null,则说明不是谷,则设置为0
-                if (fourVo.getGu()==null){
-                    fourVo.setGu("0");
-                }
-                voList.add(fourVo);
-            }
-            vo.setData(voList);
-            vo.setMeasureType("1");
+            vo.setColor(tMeasureAnalysisData.getColor());
             vo.setDeleteType("0");
-            listVos.add(vo);
+        }
+        return null;
+    }
+
+    /**
+     * 平滑接口
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result smoothnessPort(SmoothnessDto paramDto) {
+        // 根据测量数据的id查询出测量数据
+        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        // 将测量数据中的原始计算数据转换成List
+        List<String> list = new ArrayList<>();
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), ArrayList.class);
+        } catch (JsonProcessingException e) {
+            return Result.fail("数据转换失败");
+        }
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("y_data", yList);
+        body.put("window_length", paramDto.getPointNum());
+        body.put("polyorder", paramDto.getCoefficient());
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SMOOTHED, request, Map.class).getBody();
+        Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
+        List<String> smoothedY = (List<String>) data.get("smoothed_y");
+        List<Map<String, Object>> listVos = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", smoothedY.get(i));
+            listVos.add(map);
         }
         return Result.ok(listVos);
+    }
+
+    /**
+     * 微分接口
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result differentialPort(DifferentialDto paramDto) {
+        // 根据测量数据的id查询出测量数据
+        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        // 将测量数据中的原始计算数据转换成List
+        List<String> list = new ArrayList<>();
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), ArrayList.class);
+        } catch (JsonProcessingException e) {
+            return Result.fail("数据转换失败");
+        }
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("y_data", yList);
+        body.put("window_length", paramDto.getPointNum());
+        body.put("polyorder", paramDto.getCoefficient());
+        body.put("deriv", paramDto.getDifferentialNum());
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.DIFFERENTIATED, request, Map.class).getBody();
+        Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
+        List<String> differentiatedY = (List<String>) data.get("differentiated_y");
+        List<Map<String, Object>> listVos = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", differentiatedY.get(i));
+            listVos.add(map);
+        }
+        return Result.ok(listVos);
+    }
+
+    /**
+     * 查询测量标记点接口
+     * @param measureId
+     * @return
+     */
+    @Override
+    public Result queryMeasureGaugePoint(String measureId) {
+        // 根据测量id去测量数据表中查询数据
+        TMeasureData byId = tMeasureDataService.getById(measureId);
+        // 将测量数据中的标记点转换成List集合
+        List<String> list = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(byId.getGaugePoint(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        return Result.ok(list);
+    }
+
+    @Override
+    public Result peakSearchingPort(String measureDataId) {
+        // 根据测量数据id查询出测量数据
+        TMeasureData tMeasureData = tMeasureDataService.getById(measureDataId);
+        // 校验一下测量数据
+        if (tMeasureData==null){
+            return Result.fail("测量数据不存在");
+        }
+        List<String> list = new ArrayList<>();
+       // 将测量数据中的原始计算数据转换成List
+        try {
+            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        // 分割测量数据
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("x_data", xList);
+        body.put("y_data", yList);
+        body.put("height", 0.5);
+        body.put("distance", 1);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
+        List<Map<String, Object>> listVos = new ArrayList<>();
+        List<String> xData = (List<String>) resultMap.get("peak_x");
+        List<String> yData = (List<String>) resultMap.get("peak_y");
+        for (int i = 0; i < xData.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xData.get(i));
+            map.put("y", yData.get(i));
+            listVos.add(map);
+        }
+        return Result.ok(listVos);
+    }
+
+    @Override
+    public Result conversionPeakSearching(String dataId) {
+        // 根据分析数据id查询出分析数据
+        TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(dataId);
+        // 校验一下数据
+        if (byId==null){
+            return Result.fail("测量数据不存在");
+        }
+        List<String> list = new ArrayList<>();
+        // 将数据中的结果数据转换成List
+        try {
+            list=objectMapper.readValue(byId.getAnalysisResult(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        // 分割数据
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("x_data", xList);
+        body.put("y_data", yList);
+        body.put("height", 0.5);
+        body.put("distance", 1);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
+        List<Map<String, Object>> listVos = new ArrayList<>();
+        List<String> xData = (List<String>) resultMap.get("peak_x");
+        List<String> yData = (List<String>) resultMap.get("peak_y");
+        for (int i = 0; i < xData.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xData.get(i));
+            map.put("y", yData.get(i));
+            listVos.add(map);
+        }
+        return Result.ok(listVos);
+    }
+
+    @Override
+    public Result valleySearchingPort(String measureDataId) {
+        // 根据测量数据id查询出测量数据
+        TMeasureData tMeasureData = tMeasureDataService.getById(measureDataId);
+        if (tMeasureData==null){
+            return Result.fail("测量数据不存在");
+        }
+        // 将数据转换成List
+        List<String> list = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        // 分割数据
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("x_data", xList);
+        body.put("y_data", yList);
+        body.put("height", 0.5);
+        body.put("distance", 10);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+        List<Map<String, Object>> listVos = new ArrayList<>();
+        List<String> xData = (List<String>) resultMap.get("valley_x");
+        List<String> yData = (List<String>) resultMap.get("valley_y");
+        for (int i = 0; i < xData.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xData.get(i));
+            map.put("y", yData.get(i));
+            listVos.add(map);
+        }
+        return Result.ok(resultMap);
+    }
+
+    @Override
+    public Result conversionValleySearching(String measureDataId) {
+        // 根据分析数据id查询出分析数据
+        TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(measureDataId);
+        if (byId==null){
+            return Result.fail("测量数据不存在");
+        }
+        // 将数据转换成List
+        List<String> list = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(byId.getAnalysisResult(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        // 分割数据
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("x_data", xList);
+        body.put("y_data", yList);
+        body.put("height", 0.5);
+        body.put("distance", 1);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+        List<Map<String, Object>> listVos = new ArrayList<>();
+        List<String> xData = (List<String>) resultMap.get("valley_x");
+        List<String> yData = (List<String>) resultMap.get("valley_y");
+        for (int i = 0; i < xData.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xData.get(i));
+            map.put("y", yData.get(i));
+            listVos.add(map);
+        }
+        return Result.ok(resultMap);
+    }
+
+    @Override
+    public Result addMeasureDataGaugePointPort(MeasureDataGaugePointDto paramDto) {
+        // 根据测量数据id查询出测量数据
+        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        if (tMeasureData==null){
+            return Result.fail("测量数据不存在");
+        }
+        // 将标记点转换成List
+        List<String> list = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(tMeasureData.getGaugePoint(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        list.add(paramDto.getGaugePoint());
+        tMeasureData.setGaugePoint(JSON.toJSONString(list));
+        boolean update = tMeasureDataService.updateById(tMeasureData);
+        return Result.ok(update);
+    }
+
+    @Override
+    public Result queryAnalysisGaugePoint(String analysisId) {
+        // 根据测量id去测量数据表中查询数据
+        TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(analysisId);
+        // 将测量数据中的标记点转换成List集合
+        List<String> list = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(byId.getGaugePoint(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        return Result.ok(list);
+    }
+
+    @Override
+    public Result addAnalysisDataGaugePointPort(AnalysisDataGaugePointDto paramDto) {
+        // 根据测量数据id查询出测量数据
+        TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(paramDto.getAnalysisId());
+        if (byId==null){
+            return Result.fail("测量数据不存在");
+        }
+        // 将标记点转换成List
+        List<String> list = new ArrayList<>();
+        try {
+            list=objectMapper.readValue(byId.getGaugePoint(), List.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        list.add(paramDto.getGaugePoint());
+        byId.setGaugePoint(JSON.toJSONString(list));
+        boolean update = tMeasureAnalysisDataService.updateById(byId);
+        return Result.ok(update);
     }
 
     @Override
@@ -790,6 +937,5 @@ public class SpectrumServiceImpl implements SpectrumService {
         reportParametersVo.setTestAPerson(updateBy);
         return Result.ok(reportParametersVo);
     }
-
 
 }
