@@ -3,7 +3,9 @@ package com.persee.workstation.uv_inexus.service.parseReport.impl;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,13 +23,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.parseReport.CalculationFormulaDao;
 import com.persee.workstation.uv_inexus.dao.parseReport.DetectionDao;
 import com.persee.workstation.uv_inexus.dao.parseReport.QualityControlDao;
+import com.persee.workstation.uv_inexus.dao.parseReport.RoundingRulesDao;
 import com.persee.workstation.uv_inexus.dao.parseReport.StandardPretreatmentDao;
+import com.persee.workstation.uv_inexus.dto.parseReport.CalculationResultDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.InputParamDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.PretreatmentDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.QualityControlDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.RoundingSettingDTO;
 import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
+import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
 import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
 
@@ -48,6 +58,9 @@ public class DetectionServiceImpl implements DetectionService {
 
     @Autowired
     private CalculationFormulaDao calculationFormulaDao; // 计算公式表DAO
+
+    @Autowired
+    private RoundingRulesDao roundingRulesDao; // 计算公式表DAO
 
     private final ObjectMapper objectMapper = new ObjectMapper(); // JSON转换工具
     // 日期格式转换器（支持多种常见格式）
@@ -222,33 +235,185 @@ public class DetectionServiceImpl implements DetectionService {
         if (detection == null) {
             return null;
         }
-        // 修正：使用standard_identity关联子表（原代码误用了id）
-        String standardIdentity = detection.getId(); 
+        // 关联字段：使用detection_id（主表id）关联子表
+        String detectionId = detection.getId().toString(); 
+        log.info("关联的detection_id: {}", detectionId);
 
-        // 2. 转换主表的detectionParameters（JSON字符串转对象）
+        // 2. 格式化主表测量参数（原有逻辑不变）
         String detectionParameters = formatJsonToText(detection.getDetectionParameters());
 
-        // 3. 查询前处理表（通过standard_identity）
-        StandardPretreatment pretreatment = standardPretreatmentDao.findByDetectionId(standardIdentity);
-        String preTreatmentDesc = pretreatment != null ? pretreatment.getPretreatmentDescription() : null;
-        log.info("前处理描述: {}, 关联标识: {}", preTreatmentDesc, standardIdentity);
+        // 3. 优化前处理字段：返回个数 + "种前处理方式"
+        List<StandardPretreatment> pretreatmentList = standardPretreatmentDao.findByDetectionId(detectionId);
+        int pretreatmentCount = pretreatmentList.size();
+        String preTreatmentDesc = pretreatmentCount + "种前处理方式";
 
-        // 4. 查询质量控制表（通过standard_identity）
-        QualityControl qualityControl = qualityControlDao.findByDetectionId(standardIdentity);
-        String qcType = qualityControl != null ? qualityControl.getControlType() : null;
+        // 4. 优化质控类型：多个用分号隔开
+        List<QualityControl> qualityControlList = qualityControlDao.findByDetectionId(detectionId);
+        String qcType = qualityControlList.stream()
+                .map(QualityControl::getControlType)
+                .filter(controlType -> controlType != null && !controlType.isEmpty())
+                .collect(Collectors.joining("；")); // 分号隔开
 
-        // 5. 查询计算公式表（通过standard_identity）
-        CalculationFormula formula = calculationFormulaDao.findByDetectionId(standardIdentity);
-        String resultIdentity = formula != null ? formula.getResultIdentity() : null;
+        // 5. 优化结果表示：多个用顿号隔开
+        List<CalculationFormula> formulaList = calculationFormulaDao.findByDetectionId(detectionId);
+        String resultExpression = formulaList.stream()
+                .map(CalculationFormula::getResultIdentity)
+                .filter(expr -> expr != null && !expr.isEmpty())
+                .collect(Collectors.joining("、")); // 顿号隔开
 
         // 6. 封装返回DTO
         DetectionParametersDTO dto = new DetectionParametersDTO();
         dto.setDetectionParameters(detectionParameters);
         dto.setPreTreatmentDesc(preTreatmentDesc);
         dto.setQcType(qcType);
-        dto.setResultExpression(resultIdentity);
+        dto.setResultExpression(resultExpression);
 
         return dto;
+    }
+
+    @Override
+    public MultiTableDataDTO getMultiTablesData(Integer id) {
+        // 1. 查询主表记录
+        Detection detection = detectionDao.findById(id);
+        if (detection == null) {
+            return null;
+        }
+        String detectionId = detection.getId(); // 获取detection_id用于关联子表
+
+        // 2. 格式化主表测量参数
+        String detectionParameters = formatJsonToText(detection.getDetectionParameters());
+
+        // 3. 查询计算公式表数据（待计算结果）
+        List<CalculationFormula> formulas = calculationFormulaDao.findByDetectionIdList(detectionId);
+        List<CalculationResultDTO> calculationResults = formulas.stream().map(formula -> {
+            CalculationResultDTO dto = new CalculationResultDTO();
+            dto.setResultIdentity(formula.getResultIdentity());
+            dto.setResultName(formula.getResultName());
+            dto.setUnit(formula.getUnit());
+            dto.setFormulaText(formula.getFormulaText());
+            return dto;
+        }).collect(Collectors.toList());
+
+        // 4. 查询修约表数据
+        List<RoundingRules> roundingRules = roundingRulesDao.findByDetectionIdList(detectionId);
+        List<RoundingSettingDTO> roundingSettings = roundingRules.stream().map(rule -> {
+            RoundingSettingDTO dto = new RoundingSettingDTO();
+            dto.setResultIdentity(rule.getResultIdentity());
+            dto.setRoundingType(rule.getRoundingType());
+            dto.setRoundingCondition(rule.getRoundingCondition());
+            dto.setDecimalPlaces(rule.getDecimalPlaces());
+            return dto;
+        }).collect(Collectors.toList());
+
+        // 5. 处理输入参数（10个参数）
+        Set<InputParamDTO> inputParamsSet = new HashSet<>();
+        for (CalculationFormula formula : formulas) {
+            String unit = formula.getUnit();
+            String resultIdentity = formula.getResultIdentity();
+            
+            // 处理10个参数
+            if (formula.getInputParam1Name() != null && !formula.getInputParam1Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam1Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam2Name() != null && !formula.getInputParam2Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam2Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam3Name() != null && !formula.getInputParam3Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam3Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam4Name() != null && !formula.getInputParam4Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam4Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam5Name() != null && !formula.getInputParam5Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam5Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam6Name() != null && !formula.getInputParam6Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam6Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam7Name() != null && !formula.getInputParam7Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam7Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam8Name() != null && !formula.getInputParam8Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam8Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam9Name() != null && !formula.getInputParam9Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam9Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+            if (formula.getInputParam10Name() != null && !formula.getInputParam10Name().isEmpty()) {
+                InputParamDTO dto = new InputParamDTO();
+                dto.setParamName(formula.getInputParam10Name());
+                dto.setUnit(unit);
+                dto.setResultIdentity(resultIdentity);
+                inputParamsSet.add(dto);
+            }
+        }
+        // 转换为List并保持顺序
+        List<InputParamDTO> inputParams = new ArrayList<>(inputParamsSet);
+
+        // 6. 查询前处理表数据
+        List<StandardPretreatment> pretreatments = standardPretreatmentDao.findByDetectionIdList(detectionId);
+        List<PretreatmentDTO> pretreatmentDTOs = pretreatments.stream().map(pretreatment -> {
+            PretreatmentDTO dto = new PretreatmentDTO();
+            dto.setPretreatmentDescription(pretreatment.getPretreatmentDescription());
+            return dto;
+        }).collect(Collectors.toList());
+
+        // 7. 查询质量控制表数据
+        List<QualityControl> qualityControls = qualityControlDao.findByDetectionIdList(detectionId);
+        List<QualityControlDTO> qualityControlDTOs = qualityControls.stream().map(qualityControl -> {
+            QualityControlDTO dto = new QualityControlDTO();
+            dto.setControlFormula(qualityControl.getControlFormula());
+            dto.setControlType(qualityControl.getControlType());
+            // 超限操作默认空
+            return dto;
+        }).collect(Collectors.toList());
+
+        // 8. 组装返回DTO
+        MultiTableDataDTO result = new MultiTableDataDTO();
+        result.setDetectionParameters(detectionParameters);
+        result.setCalculationResults(calculationResults); // 待计算结果
+        result.setRoundingSettings(roundingSettings); // 修约设置
+        result.setInputParams(inputParams); // 输入参数
+        result.setPretreatments(pretreatmentDTOs);
+        result.setQualityControls(qualityControlDTOs);
+
+        return result;
     }
 
     /**
@@ -265,7 +430,13 @@ public class DetectionServiceImpl implements DetectionService {
             
             // 1. 波长（对应JSON中的"波长1"）
             if (jsonNode.has("波长1")) {
-                sb.append("波长：").append(jsonNode.get("波长1").asText()).append("；");
+                sb.append("波长1：").append(jsonNode.get("波长1").asText()).append("；");
+            }
+            if (jsonNode.has("波长2")) {
+                sb.append("波长2：").append(jsonNode.get("波长2").asText()).append("；");
+            }
+            if (jsonNode.has("波长3")) {
+                sb.append("波长3：").append(jsonNode.get("波长3").asText()).append("；");
             }
             // 2. 拟合类型（对应JSON中的"拟合公式"）
             if (jsonNode.has("拟合公式")) {

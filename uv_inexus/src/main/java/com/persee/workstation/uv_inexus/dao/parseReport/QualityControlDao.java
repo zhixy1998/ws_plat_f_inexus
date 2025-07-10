@@ -52,6 +52,9 @@ public interface QualityControlDao {
     IPage<QualityControl> selectPage(Page<QualityControl> page, @Param("ew") QueryWrapper<QualityControl> queryWrapper);
 
     // 新增：根据detection_id查询（关键）
-    @Select("SELECT * FROM t_report_quality_control WHERE detection_id = #{detectionId} LIMIT 1")
-    QualityControl findByDetectionId(String detectionId);
+    @Select("SELECT * FROM t_report_quality_control WHERE detection_id = #{detectionId}")
+    List<QualityControl> findByDetectionId(@Param("detectionId") String detectionId);
+
+    @Select("SELECT * FROM t_report_quality_control WHERE detection_id = #{detectionId}")
+    List<QualityControl> findByDetectionIdList(@Param("detectionId") String detectionId);
 }

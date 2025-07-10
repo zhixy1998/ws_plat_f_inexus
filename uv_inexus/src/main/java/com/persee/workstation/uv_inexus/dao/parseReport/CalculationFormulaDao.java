@@ -68,6 +68,9 @@ public interface CalculationFormulaDao {
     IPage<CalculationFormula> selectPage(Page<CalculationFormula> page, @Param("ew") QueryWrapper<CalculationFormula> queryWrapper);
 
     // 新增：根据detection_id查询（关键）
-    @Select("SELECT * FROM t_report_calculation_formulas WHERE detection_id = #{detectionId} LIMIT 1")
-    CalculationFormula findByDetectionId(String detectionId);
+    @Select("SELECT * FROM t_report_calculation_formulas WHERE detection_id = #{detectionId}")
+    List<CalculationFormula> findByDetectionId(@Param("detectionId") String detectionId);
+
+    @Select("SELECT * FROM t_report_calculation_formulas WHERE detection_id = #{detectionId}")
+    List<CalculationFormula> findByDetectionIdList(@Param("detectionId") String detectionId);
 }

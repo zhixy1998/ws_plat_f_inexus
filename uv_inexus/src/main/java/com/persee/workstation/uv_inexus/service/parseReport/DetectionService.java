@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
 public interface DetectionService {
@@ -37,4 +38,9 @@ public interface DetectionService {
 
     // 新增：查询参数及子表字段
     DetectionParametersDTO getParametersById(Integer id);
+
+    /**
+     * 查询主表及多子表的多条数据
+     */
+    MultiTableDataDTO getMultiTablesData(Integer id);
 }

@@ -44,6 +44,9 @@ public interface StandardPretreatmentDao {
     IPage<StandardPretreatment> selectPage(Page<StandardPretreatment> page, @Param("ew") QueryWrapper<StandardPretreatment> queryWrapper);
 
     // 新增：根据detection_id查询（关键）
-    @Select("SELECT * FROM t_report_standard_pretreatment WHERE detection_id = #{detectionId} LIMIT 1")
-    StandardPretreatment findByDetectionId(String detectionId);
+    @Select("SELECT * FROM t_report_standard_pretreatment WHERE detection_id = #{detectionId}")
+    List<StandardPretreatment> findByDetectionId(@Param("detectionId") String detectionId);
+
+    @Select("SELECT * FROM t_report_standard_pretreatment WHERE detection_id = #{detectionId}")
+    List<StandardPretreatment> findByDetectionIdList(@Param("detectionId") String detectionId);
 }

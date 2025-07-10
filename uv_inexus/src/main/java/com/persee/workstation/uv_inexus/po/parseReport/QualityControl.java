@@ -17,13 +17,13 @@ public class QualityControl extends BasePO { // 修改类名为 QualityControl
     @TableField("detection_id") // 映射到 detection_id 字段
     private String detectionId;
 
-    @TableField("controltype") // 映射到 controltype 字段
+    @TableField("control_type") // 映射到 controltype 字段
     private String controlType; // 修改变量名为驼峰命名法
 
-    @TableField("controldescription") // 映射到 controldescription 字段
+    @TableField("control_description") // 映射到 controldescription 字段
     private String controlDescription; // 修改变量名为驼峰命名法
 
-    @TableField("controlformula") // 映射到 controlformula 字段
+    @TableField("control_formula") // 映射到 controlformula 字段
     private String controlFormula; // 修改变量名为驼峰命名法
 
     // @TableField("create_datetime") // 映射到 create_datetime 字段

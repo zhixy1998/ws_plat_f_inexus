@@ -19,6 +19,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
@@ -68,6 +69,13 @@ public class DetectionController {
         return paramsDTO != null ? Result.ok(paramsDTO) : Result.fail(404, "未找到ID为" + id + "的记录");
     }
 
+    @GetMapping("/detail/multi_tables/{id}")
+    @ApiOperation("标准公用查询")
+    public Result<MultiTableDataDTO> getMultiTablesData(@PathVariable Integer id) {
+        MultiTableDataDTO dataDTO = detectionService.getMultiTablesData(id);
+        return dataDTO != null ? Result.ok(dataDTO) : Result.fail(404, "未找到ID为" + id + "的记录");
+    }
+    
     // 其他原有接口保持不变...
     @GetMapping("/{id}")
     @ApiOperation("查询单条记录")

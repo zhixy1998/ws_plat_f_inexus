@@ -43,11 +43,14 @@ public interface RoundingRulesDao { // 修改了接口名
     
     // 分页查询
     @Select("<script>" +
-        "SELECT * FROM t_report_quality_control " +
+        "SELECT * FROM t_report_rounding_rules " +
         "<where>" +
         "${ew.sqlSegment}" +
         "</where>" +
         "ORDER BY id DESC" +  // 固定倒序
         "</script>")
     IPage<RoundingRules> selectPage(Page<RoundingRules> page, @Param("ew") QueryWrapper<RoundingRules> queryWrapper);
+
+    @Select("SELECT * FROM t_report_rounding_rules WHERE detection_id = #{detectionId}")
+    List<RoundingRules> findByDetectionIdList(@Param("detectionId") String detectionId);
 }
