@@ -27,7 +27,7 @@ public interface ExperimentTestService {
 
     Result assignMethodPort(String methodType, String projectId);
 
-    Result queryReferenceStandard(String standardName,String testType);
+    Result queryReferenceStandard(String standardName);
 
     Result preprocessTheData(String standardId);
 }

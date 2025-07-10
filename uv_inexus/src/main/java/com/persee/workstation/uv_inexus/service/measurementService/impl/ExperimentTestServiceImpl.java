@@ -408,7 +408,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result queryReferenceStandard(String standardName,String testType) {
+    public Result queryReferenceStandard(String standardName) {
 //         根据标准名称模糊查询标准表数据
         List<TReportStandardDetection> list = tReportStandardDetectionService.list(new QueryWrapper<TReportStandardDetection>().like("standard_name", standardName).eq("release_status", "有效"));
         if (list == null || list.size() == 0){

@@ -12,7 +12,15 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
-import com.persee.workstation.uv_inexus.vo.measurementVo.*;
+import com.persee.workstation.uv_inexus.util.nettyUtil.CmdConstant;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.ReportParametersVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -297,6 +305,11 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result fourOperationsPort(FourOperationsParamDto paramDto) {
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
         // 根据测量数据id查询测量数据
         TMeasureData measureData1 = tMeasureDataService.getById(paramDto.getMeasureDataId1());
         List<String> list = new ArrayList<>();
@@ -370,27 +383,41 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (resultMap == null){
             return Result.fail("python接口调用失败");
         }
-        // 将结果数据中的x_data和y_data取出来并存入List<String>中
+        // 对结果进行寻峰计算
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
         List<Double> y_data = (List<Double>) resultMap.get("y_data");
-        List<Map<String, Object>> dataList = new ArrayList<>();
+        Map<String, Object> body1 = new HashMap<>();
+        body1.put("x_data", x_data);
+        body1.put("y_data", y_data);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        // 直接拿寻峰数据进行一次寻谷
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
         // 将分析数据存储到分析数据表中
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisData.setTaskId(measureData1.getTaskId());
         tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
         List<String> listData = new ArrayList<>();
         for (int i = 0; i < x_data.size(); i++) {
-            Map<String, Object> body1 = new HashMap<>();
             String s = x_data.get(i) + "," + y_data.get(i);
             listData.add(s);
-            body1.put("x", x_data.get(i));
-            body1.put("y", y_data.get(i));
-            dataList.add(body1);
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
-        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
-        tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        return Result.ok(dataList);
+        tMeasureAnalysisData.setAnalysisType("0");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("保存失败");
+        }
+        return Result.ok(save);
     }
 
 
@@ -401,6 +428,11 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result advancedOperationsPort(AdvancedOperationsDto paramDto) {
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
         // 根据测量数据id查询测量数据
         TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
         List<String> list = new ArrayList<>();
@@ -425,14 +457,38 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
         body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
-        List<Map<String,Object>> resultList = new ArrayList<>();
+        Map<String, Object> body1 = new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", y_data);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        // 直接拿寻峰数据进行一次寻谷
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        // 将分析数据存储到分析数据表中
+        TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(measureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",y_data.get(i));
-            resultList.add(map);
+            String s = xList.get(i) + "," + y_data.get(i);
+            listData.add(s);
         }
-        return Result.ok(resultList);
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("1");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        return Result.ok(save);
     }
 
     /**
@@ -442,6 +498,11 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result luminanceModeConversionPort(LuminosityConversionDto paramDto) {
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
         // 根据方法id查询方法表的数据
         TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
         // 获取方法表中的方法参数信息
@@ -495,14 +556,36 @@ public class SpectrumServiceImpl implements SpectrumService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
-        List<Map<String,Object>> resultList = new ArrayList<>();
-        for (int i = 0; i < y_data.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",y_data.get(i));
-            resultList.add(map);
+        Map<String, Object> body1 = new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", y_data);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(measureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            String s = xList.get(i) + "," + y_data.get(i);
+            listData.add(s);
         }
-        return Result.ok(resultList);
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("4");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        return Result.ok(save);
     }
 
     @Override
@@ -513,12 +596,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<SampleListVo> listVos = new ArrayList<>();
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
             // 如果type为1则跳过
-            if (taskSpeciman.getDeleteType().equals("1")&&type.equals("")) continue;
+            if (type==null&&taskSpeciman.getDeleteType().equals("1")) continue;
             SampleListVo vo = new SampleListVo();
             TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
             // 根据样品id和任务id两个条件去查询测量数据
             TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId()));
-            vo.setKey(byId.getId());
+            vo.setKey(measureData.getId());
             vo.setTitle(byId.getSampleName());
             if (measureData== null){
                 vo.setData(null);
@@ -533,54 +616,123 @@ public class SpectrumServiceImpl implements SpectrumService {
                     Map<String, Object> map = new HashMap<>();
                     map.put("x", split[0]);
                     map.put("y", split[1]);
-                    for (Double gauge : gauges) {
-                        if (split[0].equals(String.valueOf(gauge))){
-                            map.put("marked","1");
-                        }else{
-                            map.put("marked","0");
+                    if (gauges!=null){
+                        for (Double gauge : gauges) {
+                            if (split[0].equals(String.valueOf(gauge))){
+                                map.put("marked","1");
+                                break;
+                            }else{
+                                map.put("marked","0");
+                            }
                         }
+                    }else{
+                        map.put("marked","0");
                     }
-                    for (Double peak : peaks) {
-                        if (split[0].equals(String.valueOf(peak))){
-                            map.put("feng","1");
-                        }else{
-                            map.put("feng","0");
-                        }
-                    }
-                    for (Double grade : grades){
-                        if (split[0].equals(String.valueOf(grade))){
-                            map.put("gu","1");
-                        }else{
-                            map.put("gu","0");
-                        }
-                    }
+                   if (peaks!=null){
+                       for (Double peak : peaks) {
+                           if (split[0].equals(String.valueOf(peak))){
+                               map.put("feng","1");
+                               break;
+                           }else{
+                               map.put("feng","0");
+                           }
+                       }
+                   }else{
+                       map.put("feng","0");
+                   }
+                   if (grades!=null){
+                       for (Double grade : grades){
+                           if (split[0].equals(String.valueOf(grade))){
+                               map.put("gu","1");
+                               break;
+                           }else{
+                               map.put("gu","0");
+                           }
+                       }
+                   }else{
+                       map.put("gu","0");
+                   }
                     resultList.add(map);
                 }
                 vo.setData(resultList);
             }
             vo.setColor(byId.getColor());
             vo.setDeleteType(taskSpeciman.getDeleteType());
+            vo.setType("0");
             listVos.add(vo);
         }
         return Result.ok(listVos);
     }
 
     @Override
-    public Result changeTheListPort(String taskId) {
+    public Result changeTheListPort(String taskId,String type) {
         // 根据任务id去查询分析数据
-        List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(
-                new QueryWrapper<TMeasureAnalysisData>()
-                        .eq("task_id", taskId)
-                        .eq("is_delete", "0"));
+        QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("task_id", taskId);
+        if(type==null||type.equals("")){
+            queryWrapper.eq("is_delete", "0");
+        }
+        List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(queryWrapper);
         List<SampleListVo> listVos = new ArrayList<>();
         for (TMeasureAnalysisData tMeasureAnalysisData : list) {
             SampleListVo vo = new SampleListVo();
             vo.setKey(tMeasureAnalysisData.getId());
             vo.setTitle(tMeasureAnalysisData.getAnalysisName());
             vo.setColor(tMeasureAnalysisData.getColor());
-            vo.setDeleteType("0");
+            vo.setDeleteType(tMeasureAnalysisData.getIsDelete());
+            List<String> results = JSON.parseArray(tMeasureAnalysisData.getAnalysisResult(), String.class);
+            List<Double> gauges = JSON.parseArray(tMeasureAnalysisData.getGaugePoint(), Double.class);
+            List<Double> peaks = JSON.parseArray(tMeasureAnalysisData.getPeak(), Double.class);
+            List<Double> grades = JSON.parseArray(tMeasureAnalysisData.getGrain(), Double.class);
+            List<Map<String, Object>> resultList = new ArrayList<>();
+            for (String s : results){
+                String[] split = s.split(",");
+                Map<String, Object> map = new HashMap<>();
+                map.put("x", split[0]);
+                map.put("y", split[1]);
+                if (gauges != null){
+                    for (Double gauge : gauges) {
+                        if (split[0].equals(String.valueOf(gauge))){
+                            map.put("marked","1");
+                            break;
+                        }else{
+                            map.put("marked","0");
+                        }
+                    }
+                }else{
+                    map.put("marked","0");
+                }
+                if (grades != null){
+                    for (Double peak : peaks) {
+                        if (split[0].equals(String.valueOf(peak))){
+                            map.put("feng","1");
+                            break;
+                        }else{
+                            map.put("feng","0");
+                        }
+                    }
+                }else{
+                    map.put("feng","0");
+                }
+                if (grades != null){
+                    for (Double grade : grades){
+                        if (split[0].equals(String.valueOf(grade))){
+                            map.put("gu","1");
+                            break;
+                        }else{
+                            map.put("gu","0");
+                        }
+                    }
+                }else{
+                    map.put("gu","0");
+                }
+                resultList.add(map);
+            }
+            vo.setData(resultList);
+            vo.setType("1");
+            listVos.add(vo);
         }
-        return null;
+        return Result.ok(listVos);
     }
 
     /**
@@ -590,6 +742,14 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result smoothnessPort(SmoothnessDto paramDto) {
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
+        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+            return Result.fail("系数不能大于点数");
+        }
         // 根据测量数据的id查询出测量数据
         TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
@@ -615,15 +775,37 @@ public class SpectrumServiceImpl implements SpectrumService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SMOOTHED, request, Map.class).getBody();
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
-        List<String> smoothedY = (List<String>) data.get("smoothed_y");
-        List<Map<String, Object>> listVos = new ArrayList<>();
+        List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
+        Map<String, Object> body1 =  new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", smoothedY);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("x", xList.get(i));
-            map.put("y", smoothedY.get(i));
-            listVos.add(map);
+            String s = xList.get(i) + "," + smoothedY.get(i);
+            listData.add(s);
         }
-        return Result.ok(listVos);
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("2");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        return Result.ok(save);
     }
 
     /**
@@ -633,6 +815,14 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result differentialPort(DifferentialDto paramDto) {
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
+        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+            return Result.fail("系数不能大于点数");
+        }
         // 根据测量数据的id查询出测量数据
         TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
@@ -659,15 +849,37 @@ public class SpectrumServiceImpl implements SpectrumService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.DIFFERENTIATED, request, Map.class).getBody();
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
-        List<String> differentiatedY = (List<String>) data.get("differentiated_y");
-        List<Map<String, Object>> listVos = new ArrayList<>();
+        List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
+        Map<String, Object> body1 =  new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", differentiatedY);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("x", xList.get(i));
-            map.put("y", differentiatedY.get(i));
-            listVos.add(map);
+            String s = xList.get(i) + "," + differentiatedY.get(i);
+            listData.add(s);
         }
-        return Result.ok(listVos);
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("3");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        return Result.ok(save);
     }
 
     /**
@@ -915,6 +1127,153 @@ public class SpectrumServiceImpl implements SpectrumService {
         byId.setGaugePoint(JSON.toJSONString(list));
         boolean update = tMeasureAnalysisDataService.updateById(byId);
         return Result.ok(update);
+    }
+
+    @Override
+    public Result addGaugePoint(AddGaugePointDto paramDto) {
+        // 根据类型判断是测量数据还是分析数据
+        if (paramDto.getType().equals("0")){
+            // 根据数据id去测量数据中进行查询
+            TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            tMeasureData.setGaugePoint(JSON.toJSONString(paramDto.getGaugePoints()));
+            boolean update = tMeasureDataService.updateById(tMeasureData);
+            return Result.ok(update);
+        }else if (paramDto.getType().equals("1")){
+            // 根据数据id去分析数据中进行查询
+            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
+            if (analysisData==null){
+                return Result.fail("分析数据不存在");
+            }
+            analysisData.setGaugePoint(JSON.toJSONString(paramDto.getGaugePoints()));
+            boolean update = tMeasureAnalysisDataService.updateById(analysisData);
+            return Result.ok(update);
+        }else {
+            return Result.fail("type参数错误");
+        }
+    }
+
+    @Override
+    public void testSetUpParameters() {
+        // 设置参数
+        ScanParamInfo scanParamInfo = new ScanParamInfo();
+        scanParamInfo.setWaveLengthInterval("1");
+        scanParamInfo.setStartWaveLength("800");
+        scanParamInfo.setEndWaveLength("400");
+        scanParamInfo.setLuminosity("3");
+        scanParamInfo.setRepetitionPattern("不重复");
+        scanParamInfo.setRepetitionTime("3");
+        scanParamInfo.setTimeInterval("1");
+        scanParamInfo.setSpectralBandwidth("2");
+        scanParamInfo.setResponseTime("0");
+        scanParamInfo.setChangeLampWaveLength("361.00");
+        scanParamInfo.setEnergyLamp("1");
+        scanParamInfo.setGain("46");
+
+        CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
+        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+
+        // 光度模式
+        CommandRequestDTO.CommandDTO com1 = new CommandRequestDTO.CommandDTO();
+        com1.setCmdId(SetParamEnum.SetPhotoMode.getComId());
+        com1.setParams(new Object[]{scanParamInfo.getLuminosity()});
+        commands.add(com1);
+        // 开始波长
+        CommandRequestDTO.CommandDTO com2 = new CommandRequestDTO.CommandDTO();
+        com2.setCmdId(SetParamEnum.SetStartWl.getComId());
+        com2.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
+        commands.add(com2);
+        // 结束波长
+        CommandRequestDTO.CommandDTO com3 = new CommandRequestDTO.CommandDTO();
+        com3.setCmdId(SetParamEnum.SetEndWl.getComId());
+        com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
+        commands.add(com3);
+        // 波长间隔
+        CommandRequestDTO.CommandDTO com4 = new CommandRequestDTO.CommandDTO();
+        com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
+        com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
+        commands.add(com4);
+        // 响应时间
+        CommandRequestDTO.CommandDTO com5 = new CommandRequestDTO.CommandDTO();
+        com5.setCmdId(SetParamEnum.SetResponseTime.getComId());
+        com5.setParams(new Object[]{scanParamInfo.getResponseTime()});
+        commands.add(com5);
+        // 换灯波长
+        CommandRequestDTO.CommandDTO com6 = new CommandRequestDTO.CommandDTO();
+        com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
+        com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        commands.add(com6);
+        // 能量灯
+        CommandRequestDTO.CommandDTO com7 = new CommandRequestDTO.CommandDTO();
+        com7.setCmdId(SetParamEnum.SetLampPos.getComId());
+        com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
+        commands.add(com7);
+        // 增益
+        CommandRequestDTO.CommandDTO com8 = new CommandRequestDTO.CommandDTO();
+        com8.setCmdId(SetParamEnum.SetGain.getComId());
+        com8.setParams(new Object[]{scanParamInfo.getGain()});
+        commands.add(com8);
+
+        commandRequestDTO.setCommands(commands);
+
+        TestUtil.connect(commandRequestDTO);
+    }
+
+    @Override
+    public void testZeroCalibration() {
+        CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
+        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+
+        CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+        com.setCmdId(SetParamEnum.Zero.getComId());
+        com.setParams(new Object[]{});
+        commands.add(com);
+        commandRequestDTO.setCommands(commands);
+        TestUtil.connect(commandRequestDTO);
+
+    }
+
+    @Override
+    public void testScan() {
+        CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
+        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+
+        CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+        com.setCmdId(SetParamEnum.Scan.getComId());
+        com.setParams(new Object[]{});
+        commands.add(com);
+        commandRequestDTO.setCommands(commands);
+        TestUtil.connect(commandRequestDTO);
+    }
+
+    @Override
+    public void testStart() {
+        CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
+        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+        CmdConstant.connect.forEach(comId -> {
+            CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+            com.setCmdId(comId);
+            if (comId.equals("NewIP")) {
+                com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 110, 253});
+            }
+            commands.add(com);
+        });
+        commandRequestDTO.setCommands(commands);
+        TestUtil.connect(commandRequestDTO);
+        commands.clear();
+        CmdConstant.init.forEach(comId -> {
+            CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+            com.setCmdId(comId);
+            if (comId.equals("SetSlit1")) {
+                com.setParams(new Object[]{20});
+            }
+            commands.add(com);
+        });
+        commandRequestDTO.setCommands(commands);
+        TestUtil.connect(commandRequestDTO);
+
     }
 
     @Override

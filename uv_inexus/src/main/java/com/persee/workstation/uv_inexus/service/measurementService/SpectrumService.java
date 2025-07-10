@@ -33,7 +33,7 @@ public interface SpectrumService {
 
     Result sampleListPort(String taskId,String type);
 
-    Result changeTheListPort(String taskId);
+    Result changeTheListPort(String taskId,String type);
 
     Result smoothnessPort(SmoothnessDto paramDto);
 
@@ -54,4 +54,14 @@ public interface SpectrumService {
     Result queryAnalysisGaugePoint(String analysisId);
 
     Result addAnalysisDataGaugePointPort(AnalysisDataGaugePointDto paramDto);
+
+    Result addGaugePoint(AddGaugePointDto paramDto);
+
+    void testSetUpParameters();
+
+    void testZeroCalibration();
+
+    void testScan();
+
+    void testStart();
 }

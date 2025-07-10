@@ -35,9 +35,9 @@ public class TMeasureAnalysisData {
     @TableField("analysis_result")
     private String analysisResult;
 
-    // 变换类型
+    // 变换类型 (0.四则运算 1.高级运算 2.平滑 3.微分 4.光度模式转换)
     @TableField("analysis_type")
-    private String analysis_type;
+    private String analysisType;
 
     // 标记点
     @TableField("gauge_point")

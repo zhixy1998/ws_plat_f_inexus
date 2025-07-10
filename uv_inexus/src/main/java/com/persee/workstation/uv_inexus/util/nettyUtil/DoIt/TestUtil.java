@@ -9,13 +9,13 @@ import java.util.Map;
 
 public class TestUtil {
 
-    private static String path = "D:\\Projects\\IdeaProjects\\T800\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\nettyUtil\\DoIt\\T600.1.xml";
+    private static String path = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\nettyUtil\\DoIt\\T600.1.xml";
 
     public static String connect(CommandRequestDTO dto) {
         // 创建 DynamicCommandService 实例
         try {
             DynamicCommandService service = new DynamicCommandService(
-                    "169.254.118.200", 6000, 5000, path);
+                    "169.254.110.67", 6000, 5000, path);
 
             // 存储所有指令的执行结果
             Map<String, Object> resultMap = new HashMap<>();
@@ -34,7 +34,7 @@ public class TestUtil {
             }
 
             // 打印所有指令的执行结果
-            System.out.println("所有执行结果：" + resultMap);
+            System.err.println("所有执行结果：" + resultMap);
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -18,4 +18,6 @@ public class SpectrumParameter extends MeasurePublicParameters {
     private String repetitionTime;
     // 时间间隔
     private String timeInterval;
+    // 阶梯校正(0.不启用 1.启用)
+    private String ladderCorrection;
 }

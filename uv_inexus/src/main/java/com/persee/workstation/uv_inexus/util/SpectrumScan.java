@@ -3,6 +3,9 @@ package com.persee.workstation.uv_inexus.util;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,6 +16,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -39,27 +43,65 @@ public class SpectrumScan {
     private DeviceManageService deviceManageService;
     @Autowired
     private DeviceMessageUtils deviceMessageUtils;
-    // 存储解析出的数据
-//    private static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
-//    // 存储原始的数据
-//    private static volatile List<String> field2Values = new CopyOnWriteArrayList<>();
 
     // 有效报文计数
     private static int validPacketCount = 0;
     private static boolean receiving = true;
-
-    // 定义终止报文
-//    private static final byte[] END_FRAME = new byte[]{
-//            (byte) 0xFF, (byte) 0xB5, (byte) 0x13, (byte) 0x0C,
-//            (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
-//            (byte) 0x00, (byte) 0x02, (byte) 0xE2, (byte) 0xCB
-//    };
     public void scanStart(String deviceSerialNumber, ScanParamInfo scanParamInfo) {
+        // 根据设备序列号获取目标IP地址
         TARGET_IP=deviceInfoService.getIp(deviceSerialNumber);
-//        Boolean b = deviceMessageUtils.setScanParam(TARGET_IP, TARGET_PORT, ByteUse.SpectrumScanAllConfig, scanParamInfo);
-//        if (b) {
-//            System.out.println("参数配置成功");
-//        }
+
+        CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
+        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+
+        // 光度模式
+        CommandRequestDTO.CommandDTO com1 = new CommandRequestDTO.CommandDTO();
+        com1.setCmdId(SetParamEnum.SetPhotoMode.getComId());
+        com1.setParams(new Object[]{scanParamInfo.getLuminosity()});
+        commands.add(com1);
+        // 开始波长
+        CommandRequestDTO.CommandDTO com2 = new CommandRequestDTO.CommandDTO();
+        com2.setCmdId(SetParamEnum.SetStartWl.getComId());
+        com2.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
+        commands.add(com2);
+        // 结束波长
+        CommandRequestDTO.CommandDTO com3 = new CommandRequestDTO.CommandDTO();
+        com3.setCmdId(SetParamEnum.SetEndWl.getComId());
+        com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
+        commands.add(com3);
+        // 波长间隔
+        CommandRequestDTO.CommandDTO com4 = new CommandRequestDTO.CommandDTO();
+        com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
+        com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
+        commands.add(com4);
+        // 响应时间
+        CommandRequestDTO.CommandDTO com5 = new CommandRequestDTO.CommandDTO();
+        com5.setCmdId(SetParamEnum.SetResponseTime.getComId());
+        com5.setParams(new Object[]{scanParamInfo.getResponseTime()});
+        commands.add(com5);
+        // 换灯波长
+        CommandRequestDTO.CommandDTO com6 = new CommandRequestDTO.CommandDTO();
+        com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
+        com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        commands.add(com6);
+        // 能量灯
+        CommandRequestDTO.CommandDTO com7 = new CommandRequestDTO.CommandDTO();
+        com7.setCmdId(SetParamEnum.SetLampPos.getComId());
+        com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
+        commands.add(com7);
+        // 增益
+        CommandRequestDTO.CommandDTO com8 = new CommandRequestDTO.CommandDTO();
+        com8.setCmdId(SetParamEnum.SetGain.getComId());
+        com8.setParams(new Object[]{scanParamInfo.getGain()});
+        commands.add(com8);
+
+        commandRequestDTO.setCommands(commands);
+
+        TestUtil.connect(commandRequestDTO);
+
+
+
+        // 设置扫描参数
         deviceMessageUtils.setScanParam(TARGET_IP,TARGET_PORT,ByteUse.SpectrumScanAllConfig);
         try {
             validPacketCount = 0;
@@ -75,17 +117,6 @@ public class SpectrumScan {
             new Thread(() -> receiveLoop(socket)).start();
             // 启动发送线程
             new Thread(() -> sendLoop(socket)).start();
-
-
-            // 延迟打印解析值
-//            new Thread(() -> {
-//                try {
-//                    Thread.sleep(10000);
-//                    printParsedValues();
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }).start();
         } catch (Exception e) {
             System.err.println("Socket 初始化失败: " + e.getMessage());
         }
@@ -108,9 +139,6 @@ public class SpectrumScan {
             socket.send(new DatagramPacket(configCmd, configCmd.length, targetAddr, TARGET_PORT));
             System.out.println("[发送线程] 第一条配置报文已发送");
 
-            // 等待4秒
-//            Thread.sleep(4000);
-
             // 开始扫描报文
             byte[] scanCmd = new byte[]{
                     // 极快扫描
@@ -118,9 +146,9 @@ public class SpectrumScan {
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x2B
                     // 慢扫
-//                    (byte) 0xB5, (byte) 0xFF, (byte) 0x13, (byte) 0x01,
-//                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-//                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xC8
+                    //  (byte) 0xB5, (byte) 0xFF, (byte) 0x13, (byte) 0x01,
+                    //  (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                    //  (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xC8
             };
             System.out.println("[发送线程] 即将发送第二条开始扫描报文...");
             socket.send(new DatagramPacket(scanCmd, scanCmd.length, targetAddr, TARGET_PORT));
@@ -159,11 +187,6 @@ public class SpectrumScan {
                 }
                 System.out.println();
 
-//                if (Arrays.equals(data, END_FRAME)) {
-//                    System.out.println("[终止] 收到终止指令报文，停止接收。");
-//                    receiving = false;
-//                }
-
                 if (data.length < 11) {
                     System.out.println("[跳过] 数据长度不足，忽略本报文。");
                     continue;
@@ -187,10 +210,8 @@ public class SpectrumScan {
                     field2 = BigDecimal.valueOf(field2).setScale(index, RoundingMode.HALF_UP).doubleValue();
 
                     // 存储解析出的字段值.2
-//                    synchronized (Constants.field1Values){
-                        Constants.field1Values.add(field1+","+field2);
-                        Constants.field2Values.add(field1Raw+","+field2Raw);
-//                    }
+                    Constants.field1Values.add(field1+","+field2);
+                    Constants.field2Values.add(field1Raw+","+field2Raw);
 
 
 
@@ -207,19 +228,8 @@ public class SpectrumScan {
             System.err.println("接收线程异常: " + e.getMessage());
             socket.close();
             e.printStackTrace();
-            // 存储解析出的字段值.2
-//            synchronized (Constants.field1Values){
-                Constants.field1Values.add(Constants.EndData);
-//            }
+            Constants.field1Values.add(Constants.EndData);
         }
         Constants.endTime = LocalDateTime.now();
     }
-
-    // ========== 打印解析出的字段数组 ==========
-//    public static void printParsedValues() {
-//        System.out.println("\n【字段解析结果汇总】");
-//        for (int i = 0; i < field1Values.size(); i++) {
-//            System.out.printf("[%d] 字段1 = %.2f, 字段2 = %.2f\n", i + 1, field1Values.get(i), field2Values.get(i));
-//        }
-//    }
 }

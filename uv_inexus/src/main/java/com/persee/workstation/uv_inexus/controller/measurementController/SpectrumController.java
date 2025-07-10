@@ -103,14 +103,14 @@ public class SpectrumController {
 
     @GetMapping("sampleListPort")
     @ApiOperation("获取样本列表接口")
-    public Result sampleListPort(@RequestParam String taskId,@RequestParam String type) {
+    public Result sampleListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
         return spectrumService.sampleListPort(taskId,type);
     }
 
     @GetMapping("changeTheListPort")
     @ApiOperation("获取变换列表接口")
-    public Result changeTheListPort(@RequestParam String taskId) {
-        return spectrumService.changeTheListPort(taskId);
+    public Result changeTheListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
+        return spectrumService.changeTheListPort(taskId,type);
     }
     @GetMapping("queryMeasureGaugePoint")
     @ApiOperation("获取测量标记点接口")
@@ -161,11 +161,43 @@ public class SpectrumController {
         }
     }
 
+    @PostMapping("addGaugePoint")
+    @ApiOperation("添加标记点接口")
+    public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto){
+        return spectrumService.addGaugePoint(paramDto);
+    }
+
+    @GetMapping("testStart")
+    @ApiOperation("开始测试")
+    public void testStart() {
+        spectrumService.testStart();
+    }
+
     @GetMapping("testPythonProt")
     @ApiOperation("测试python接口")
     public void testPythonProt() {
         spectrumService.testPythonProt();
     }
+
+    @GetMapping("testSetUpParameters")
+    @ApiOperation("测试设置参数")
+    public void testSetUpParameters() {
+        spectrumService.testSetUpParameters();
+    }
+
+    @GetMapping("testZeroCalibration")
+    @ApiOperation("测试校零")
+    public void testZeroCalibration() {
+        spectrumService.testZeroCalibration();
+    }
+
+
+    @GetMapping("testScan")
+    @ApiOperation("测试扫描")
+    public void testScan() {
+        spectrumService.testScan();
+    }
+
 
 
 

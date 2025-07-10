@@ -79,8 +79,8 @@ public class ExperimentTestController {
 
     @GetMapping("queryReferenceStandard")
     @ApiOperation("查询参考标准接口")
-    public Result queryReferenceStandard(@RequestParam String standardName,@RequestParam String testType){
-        return experimentTestService.queryReferenceStandard(standardName,testType);
+    public Result queryReferenceStandard(@RequestParam String standardName){
+        return experimentTestService.queryReferenceStandard(standardName);
     }
 
     @GetMapping("preprocessTheData")

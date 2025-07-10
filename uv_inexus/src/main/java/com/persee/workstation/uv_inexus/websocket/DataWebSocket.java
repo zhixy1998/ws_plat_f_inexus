@@ -132,6 +132,7 @@ public class DataWebSocket {
         // 调用仪器 TODO 差前端传过来的小数位数参数
         spectrumScan.scanStart(deviceSerialNumber,ScanParamInfo);
 
+        // 新建一个线程用于获取数据
         new Thread(() -> {
             try {
                 while (Constants.field1Values.size() == 0) {
@@ -174,26 +175,16 @@ public class DataWebSocket {
                     }
                     // 推送数据点
                     session.getBasicRemote().sendText(payload.toJSONString());
-//                        if ( last){
-//                            session.close();
-//                        }
                     // 模拟数据推送速度（500ms/点）
                     TimeUnit.MILLISECONDS.sleep(100);
                 }
                 session.close();
-//                sessions.get(sessionId);
-//                log.info("-----"+ session.getId());
-//                JSONObject data = new JSONObject();
-//                data.put("result","finish");
-//                data.put("task_id",taskResultId);
-//                session.getBasicRemote().sendText(data.toJSONString());
-//                session.close();
             } catch (IOException | InterruptedException e) {
                 log.error("数据推送异常: {}", e.getMessage());
             }
         }).start();
 
-
+        // 等待测量结束,然后对数据对象进行创建
         new Thread(() -> {
             while (Constants.endTime == null) {
                 try {
