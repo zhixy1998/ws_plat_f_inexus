@@ -38,7 +38,7 @@ public class DetectionController {
 
     // 列表接口
     @GetMapping("/")
-    @ApiOperation("列表页+分页+查询（按standard_number去重）")
+    @ApiOperation("列表页+分页+查询")
     public Result<PageView<DetectionListDTO>> findPage(
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -62,7 +62,7 @@ public class DetectionController {
 
     // 新增：参数及子表字段接口
     @GetMapping("/detail/parameters/{id}")
-    @ApiOperation("查询测量参数及子表字段（带JSON转换）")
+    @ApiOperation("查询测量参数及子表字段详情（id）")
     public Result<DetectionParametersDTO> getParametersById(@PathVariable Integer id) {
         DetectionParametersDTO paramsDTO = detectionService.getParametersById(id);
         return paramsDTO != null ? Result.ok(paramsDTO) : Result.fail(404, "未找到ID为" + id + "的记录");

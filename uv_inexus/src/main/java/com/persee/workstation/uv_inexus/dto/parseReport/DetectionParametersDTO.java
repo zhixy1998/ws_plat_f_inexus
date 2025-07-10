@@ -10,7 +10,7 @@ import lombok.Data;
 @ApiModel("检测参数及子表字段DTO")
 @Data
 public class DetectionParametersDTO {
-    @ApiModelProperty("测量参数（JSON对象）")
+    @ApiModelProperty("测量参数")
     private String detectionParameters; // 主表JSON参数
 
     @ApiModelProperty("前处理描述（前处理表）")
