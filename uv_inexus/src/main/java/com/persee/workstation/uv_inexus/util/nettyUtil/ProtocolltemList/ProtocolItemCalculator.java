@@ -1,0 +1,236 @@
+package com.persee.workstation.uv_inexus.util.nettyUtil.ProtocolltemList;/*
+    报文中公式的转换
+* */
+
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+public class ProtocolItemCalculator {
+
+    private static byte[] getNewBytes(byte[] source, byte[] lastByte, int length) {
+        int startIndex = source.length - length;
+        for (int i = 0; i < lastByte.length; i++) {
+            if ((startIndex + i) < source.length) {
+                lastByte[i] = source[startIndex + i];
+            } else {
+                lastByte[i] = 0;
+            }
+        }
+        return lastByte;
+    }
+
+    public static byte[] toBytes(String inputValue, int bytesLength, String objType) {
+        byte[] lastByte = new byte[bytesLength];
+        if (objType == null) {
+            System.err.println("[错误] objType 为 null，inputValue = " + inputValue);
+            return lastByte;
+        }
+
+        switch (objType) {
+            case "0":
+                lastByte = new byte[]{(byte) Double.parseDouble(inputValue)};
+                break;
+            case "1":
+                int num1 = Integer.parseInt(inputValue);
+                byte[] getting1 = ByteBuffer.allocate(4).putInt(num1).array();
+                getNewBytes(getting1, lastByte, bytesLength);
+                break;
+            case "2":
+                float num2 = Float.parseFloat(inputValue);
+                byte[] getting2 = ByteBuffer.allocate(4).putFloat(num2).array();
+                getNewBytes(getting2, lastByte, bytesLength);
+                break;
+            case "3":
+                byte[] getting3 = inputValue.getBytes(StandardCharsets.UTF_8);
+                getNewBytes(getting3, lastByte, bytesLength);
+                break;
+            default:
+                System.err.println("[错误] 未识别的 objType: " + objType);
+                break;
+        }
+        return lastByte;
+    }
+
+    public static Object parseBytes(byte[] readBytes, Object objType) {
+        switch (objType.toString()) {
+            case "4":
+                if (readBytes.length == 1) {
+                    return (int) readBytes[0];
+                } else {
+                    byte[] buffer = Arrays.copyOf(readBytes, 4);
+                    return ByteBuffer.wrap(buffer).getInt();
+                }
+            case "5":
+                return ByteBuffer.wrap(readBytes).getFloat();
+            case "6":
+                return new String(readBytes, StandardCharsets.UTF_8);
+            case "7":
+                byte[] buffer7 = new byte[4];
+                for (int i = 0; i < readBytes.length; i++) {
+                    buffer7[2 - i - 1] = readBytes[i];
+                }
+                return ByteBuffer.wrap(buffer7).getInt();
+            case "8":
+                if (readBytes.length == 2) {
+                    String out;
+                    if (readBytes[0] == 0) {
+                        out = readBytes[0] + "0" + readBytes[1];
+                    } else if (readBytes[1] == 0) {
+                        out = readBytes[0] + readBytes[1] + "0";
+                    } else {
+                        out = readBytes[0] + "" + readBytes[1];
+                    }
+                    return Integer.parseInt(out);
+                }
+                break;
+        }
+        return "";
+    }
+
+    public static String getEquationValue(String equationStr, Map<String, String> dicInput, String[] keyOut) {
+        String strResult = equationStr;
+        for (String func : new String[]{"TRUNC", "MOD"}) {
+            if (equationStr.contains(func)) {
+                for (String item : dicInput.keySet()) {
+                    if (equationStr.contains(item)) {
+                        double result = func.equals("TRUNC")
+                                ? trunc(getTerm(func, strResult), dicInput, item)
+                                : mod(getTerm(func, strResult), dicInput, item);
+                        strResult = strResult.replace(getTerm(func, strResult), String.valueOf(result));
+                        String finalResult = String.valueOf(eval(strResult));
+                        keyOut[0] = item;
+                        return finalResult;
+                    }
+                }
+            }
+        }
+
+        for (String item : dicInput.keySet()) {
+            if (equationStr.contains(item)) {
+                strResult = strResult.replace(item, dicInput.get(item));
+                keyOut[0] = item;
+                return String.valueOf(eval(strResult));
+            }
+        }
+
+        keyOut[0] = null; // 明确无变量匹配
+        return "";
+    }
+
+    public static double trunc(String str, Map<String, String> dicInput, String item) {
+        String inside = str.substring(6, str.length() - 1);
+        String strResult = inside.replace(item, dicInput.get(item));
+        Object value = eval(strResult);
+        return value == null ? 0 : Math.floor(Double.parseDouble(value.toString()));
+    }
+
+    public static double mod(String str, Map<String, String> dicInput, String item) {
+        String inside = str.substring(4, str.length() - 1);
+        String strResult = inside.replace(item, dicInput.get(item));
+        String[] term = strResult.split(",");
+        Object left = eval(term[0]);
+        Object right = eval(term[1]);
+        double l = left == null ? 0 : Double.parseDouble(left.toString());
+        double r = right == null ? 1 : Double.parseDouble(right.toString());
+        return l % r;
+    }
+
+    public static String getTerm(String key, String str) {
+        int index = str.indexOf(key);
+        String strLast = str.substring(index);
+        int p = 0, q = 0, pos = 0;
+        for (int i = 0; i < strLast.length(); i++) {
+            if (strLast.charAt(i) == '(') p++;
+            if (strLast.charAt(i) == ')') {
+                q++;
+                if (p == q) {
+                    pos = i + 1;
+                    break;
+                }
+            }
+        }
+        return strLast.substring(0, pos);
+    }
+
+    public static Object getElementValue(String equation, Object totalValue) {
+        String resultExp = null;
+        if (equation.contains("+")) {
+            String[] parts = equation.split("\\+");
+            resultExp = isNumeric(parts[1]) ? totalValue + "-" + parts[1] : totalValue + "-" + parts[0];
+        } else if (equation.contains("-")) {
+            String[] parts = equation.split("-");
+            resultExp = isNumeric(parts[1]) ? totalValue + "+" + parts[1] : parts[0] + "-" + totalValue;
+        } else if (equation.contains("*")) {
+            String[] parts = equation.split("\\*");
+            resultExp = isNumeric(parts[1]) ? totalValue + "/" + parts[1] : totalValue + "/" + parts[0];
+        } else if (equation.contains("/")) {
+            String[] parts = equation.split("/");
+            resultExp = isNumeric(parts[1]) ? totalValue + "*" + parts[1] : parts[0] + "/" + totalValue;
+        } else {
+            return totalValue;
+        }
+        return eval(resultExp);
+    }
+
+    public static boolean isNumeric(String str) {
+        try {
+            Double.parseDouble(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    public static Object eval(String expression) {
+        try {
+            ScriptEngineManager manager = new ScriptEngineManager();
+            ScriptEngine engine = manager.getEngineByName("JavaScript");
+            return engine.eval(expression);
+        } catch (Exception e) {
+            System.err.println("[表达式错误] " + expression + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static Object evalExcelExpression(String expr, Map<String, Integer> context) {
+        try {
+            expr = expr.trim();
+
+            if (expr.matches("\\d+")) {
+                return Integer.parseInt(expr);
+            }
+
+            if (context.containsKey(expr)) {
+                return context.get(expr);
+            }
+
+            if (expr.startsWith("MOD(") || expr.startsWith("TRUNC(")) {
+                return getEquationValue(expr, toStringMap(context), new String[1]);
+            }
+
+            String replaced = expr;
+            for (Map.Entry<String, Integer> entry : context.entrySet()) {
+                replaced = replaced.replaceAll(entry.getKey(), entry.getValue().toString());
+            }
+            return eval(replaced);
+
+        } catch (Exception ex) {
+            System.err.println("[表达式求值失败] " + expr + ": " + ex.getMessage());
+            return 0;
+        }
+    }
+
+    private static Map<String, String> toStringMap(Map<String, Integer> context) {
+        Map<String, String> strMap = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : context.entrySet()) {
+            strMap.put(entry.getKey(), String.valueOf(entry.getValue()));
+        }
+        return strMap;
+    }
+}
