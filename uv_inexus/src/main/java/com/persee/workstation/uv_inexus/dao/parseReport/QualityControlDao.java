@@ -12,49 +12,46 @@ import org.apache.ibatis.annotations.Update;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.po.parseReport.QualityControl; // 替换为你的 QualityControl 实体类路径
+import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
 
-@Mapper // MyBatis注解，标记这是一个MyBatis的Mapper接口
+@Mapper
 public interface QualityControlDao {
 
-    // 查询所有
-    @Select("SELECT * FROM t_report_quality_control") // 使用实体类上的 @TableName 指定的表名
+    // 原有方法保持不变...
+    @Select("SELECT * FROM t_report_quality_control")
     List<QualityControl> findAll();
 
-    // 根据ID查询
-    @Select("SELECT * FROM t_report_quality_control WHERE id = #{id}") // 使用 #{id} 占位符，MyBatis 会处理类型转换
+    @Select("SELECT * FROM t_report_quality_control WHERE id = #{id}")
     QualityControl findById(Integer id);
 
-    // 插入记录
     @Insert("INSERT INTO t_report_quality_control " +
             "(standard_identity, control_type, control_description, control_formula, create_datetime, update_datetime) " +
             "VALUES " +
             "(#{standardIdentity}, #{controlType}, #{controlDescription}, #{controlFormula}, #{createDatetime}, #{updateDatetime})")
-    // 确保列名与 @TableField 指定的值一致，变量名与实体类中的字段名一致
-    void insert(QualityControl qualityControl); // 参数类型改为 QualityControl
+    void insert(QualityControl qualityControl);
 
-    // 更新记录
     @Update("UPDATE t_report_quality_control SET " +
             "standard_identity = #{standardIdentity}, " +
             "control_type = #{controlType}, " +
             "control_description = #{controlDescription}, " +
             "control_formula = #{controlFormula}, " +
-            "update_datetime = #{updateDatetime} " + // 假设 updateDatetime 需要更新
+            "update_datetime = #{updateDatetime} " +
             "WHERE id = #{id}")
-    // 确保列名与 @TableField 指定的值一致，变量名与实体类中的字段名一致
-    void update(QualityControl qualityControl); // 参数类型改为 QualityControl
+    void update(QualityControl qualityControl);
 
-    // 根据ID删除记录
-    @Delete("DELETE FROM t_report_quality_control WHERE id = #{id}") // 使用 #{id} 占位符
+    @Delete("DELETE FROM t_report_quality_control WHERE id = #{id}")
     void deleteById(Integer id);
 
-    // 分页查询
     @Select("<script>" +
-        "SELECT * FROM t_report_quality_control " +
-        "<where>" +
-        "${ew.sqlSegment}" +
-        "</where>" +
-        "ORDER BY id DESC" +  // 固定倒序
-        "</script>")
+            "SELECT * FROM t_report_quality_control " +
+            "<where>" +
+            "${ew.sqlSegment}" +
+            "</where>" +
+            "ORDER BY id DESC" +
+            "</script>")
     IPage<QualityControl> selectPage(Page<QualityControl> page, @Param("ew") QueryWrapper<QualityControl> queryWrapper);
+
+    // 新增：根据standard_identity查询（关键）
+    @Select("SELECT * FROM t_report_quality_control WHERE standard_identity = #{standardIdentity} LIMIT 1")
+    QualityControl findByStandardIdentity(String standardIdentity);
 }

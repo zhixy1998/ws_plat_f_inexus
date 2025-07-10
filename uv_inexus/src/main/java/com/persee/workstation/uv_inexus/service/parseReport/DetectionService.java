@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
 public interface DetectionService {
@@ -33,4 +34,7 @@ public interface DetectionService {
     IPage<DetectionListDTO> findDistinctPage(Page<DetectionListDTO> page, Map<String, String> params);
 
     DetectionDetailDTO getDetailById(Integer id);
+
+    // 新增：查询参数及子表字段
+    DetectionParametersDTO getParametersById(Integer id);
 }

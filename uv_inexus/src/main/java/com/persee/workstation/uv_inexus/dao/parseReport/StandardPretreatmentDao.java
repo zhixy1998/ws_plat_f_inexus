@@ -14,41 +14,36 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
 
-/**
- * 标准前处理表 DAO 接口
- */
-@Mapper // MyBatis注解，标记这是一个MyBatis的Mapper接口
+@Mapper
 public interface StandardPretreatmentDao {
 
-    // 查询所有
+    // 原有方法保持不变...
     @Select("SELECT * FROM t_report_standard_pretreatment")
     List<StandardPretreatment> findAll();
 
-    // 根据ID查询
     @Select("SELECT * FROM t_report_standard_pretreatment WHERE id = #{id}")
     StandardPretreatment findById(Integer id);
 
-    // 插入新记录
     @Insert("INSERT INTO t_report_standard_pretreatment (standard_identity, pretreatment_description) " +
             "VALUES (#{standardIdentity}, #{pretreatmentDescription})")
     void insert(StandardPretreatment standardPretreatment);
 
-    // 更新记录
     @Update("UPDATE t_report_standard_pretreatment SET standard_identity=#{standardIdentity}, pretreatment_description=#{pretreatmentDescription} WHERE id = #{id}")
-
     void update(StandardPretreatment standardPretreatment);
 
-    // 根据ID删除记录
     @Delete("DELETE FROM t_report_standard_pretreatment WHERE id = #{id}")
     void deleteById(Integer id);
 
-    // 分页查询
     @Select("<script>" +
-        "SELECT * FROM t_report_standard_pretreatment " +
-        "<where>" +
-        "${ew.sqlSegment}" +
-        "</where>" +
-        "ORDER BY id DESC" +  // 固定倒序
-        "</script>")
+            "SELECT * FROM t_report_standard_pretreatment " +
+            "<where>" +
+            "${ew.sqlSegment}" +
+            "</where>" +
+            "ORDER BY id DESC" +
+            "</script>")
     IPage<StandardPretreatment> selectPage(Page<StandardPretreatment> page, @Param("ew") QueryWrapper<StandardPretreatment> queryWrapper);
+
+    // 新增：根据standard_identity查询（关键）
+    @Select("SELECT * FROM t_report_standard_pretreatment WHERE standard_identity = #{standardIdentity} LIMIT 1")
+    StandardPretreatment findByStandardIdentity(String standardIdentity);
 }

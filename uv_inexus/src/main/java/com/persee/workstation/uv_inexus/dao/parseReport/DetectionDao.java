@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 @Mapper
 public interface DetectionDao {
 
+    // 原有方法保持不变...
     @Select("SELECT * FROM t_report_standard_detection")
     List<Detection> findAll();
 
@@ -51,7 +52,9 @@ public interface DetectionDao {
 
     @Select("<script>" +
             "SELECT * FROM t_report_standard_detection " +
-            "<where>${ew.sqlSegment}</where>" +
+            "<where>" +
+            "${ew.sqlSegment}" +
+            "</where>" +
             "ORDER BY id DESC" +
             "</script>")
     IPage<Detection> selectPage(Page<Detection> page, @Param("ew") QueryWrapper<Detection> queryWrapper);
@@ -70,9 +73,11 @@ public interface DetectionDao {
             "</script>")
     int deleteBatchIds(@Param("ids") List<Integer> ids);
 
+    // 新增：根据standard_number查询原始数据（详情接口用）
     @Select("SELECT * FROM t_report_standard_detection WHERE standard_number = #{standardNumber} ORDER BY id DESC")
     List<Detection> findByStandardNumber(String standardNumber);
 
+    // 去重分页查询（带id）
     @Select("<script>" +
             "SELECT " +
             "sub.id, " +
