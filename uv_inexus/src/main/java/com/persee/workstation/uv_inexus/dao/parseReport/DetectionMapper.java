@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -98,4 +99,25 @@ public interface DetectionMapper {
             "industry_type = #{industryType} " +
             "WHERE standard_identity = #{standardIdentity}")
     void updateByStandardIdentity(Detection detection);
+
+    // 新增：根据ID列表查询
+    @Select("<script>" +  // 关键：添加 <script> 标签包裹动态SQL
+            "SELECT * FROM t_report_standard_detection " +  // 表名正确
+            "WHERE id IN " +  // 按id查询
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +  // 临时变量id，与item='id'对应
+            "</foreach>" +
+            "</script>")
+    List<Detection> selectByIds(@Param("ids") List<String> ids);
+
+    // 关键：添加 selectByStandardNumbers 方法的 SQL 注解
+    @Select("<script>" +  // 必须用 <script> 包裹动态 SQL
+            "SELECT * FROM t_report_standard_detection " +  // 替换为你的 Detection 表实际表名
+            "WHERE standard_number IN " +  // 匹配 Detection 表中的 standard_number 字段
+            "<foreach collection='standardNumbers' item='num' open='(' separator=',' close=')'>" +
+            "#{num}" +  // 临时变量 num 对应 item='num'
+            "</foreach>" +
+            "</script>")
+    List<Detection> selectByStandardNumbers(@Param("standardNumbers") Set<String> standardNumbers);
+
 }

@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -78,4 +79,16 @@ public interface RoundingRulesMapper {
             "decimal_places = #{decimalPlaces} " +
             "WHERE id = #{id}")
     void updateById(RoundingRules roundingRules);
+
+    @Select("<script>" +
+        "SELECT " +
+        "r.*, " +
+        "d.standard_identity AS detectionId " +
+        "FROM t_report_rounding_rules r " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON r.detection_id = d.id " +
+        "WHERE r.detection_id IN " +
+        "<foreach collection='detectionIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>" +
+        "</script>")
+        List<RoundingRules> selectByDetectionIds(@Param("detectionIds") Set<String> detectionIds);
 }

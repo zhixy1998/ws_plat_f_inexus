@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -157,4 +158,18 @@ public interface CalculationFormulaMapper {
             "input_param10_identity = #{inputParam10Identity} " +
             "WHERE id = #{id}")
     void updateById(CalculationFormula formula);
+
+    // 新增：根据detection_id列表查询
+    // 关键：添加 @Select 注解，直接编写 SQL
+        @Select("<script>" +
+        "SELECT " +
+        "f.*, " +
+        "d.standard_identity AS detectionId " +
+        "FROM t_report_calculation_formulas f " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON f.detection_id = d.id " +
+        "WHERE f.detection_id IN " +
+        "<foreach collection='detectionIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>" +
+        "</script>")
+        List<CalculationFormula> selectByDetectionIds(@Param("detectionIds") Set<String> detectionIds);
 }

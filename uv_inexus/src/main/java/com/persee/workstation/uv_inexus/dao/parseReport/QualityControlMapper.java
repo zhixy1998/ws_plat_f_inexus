@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -69,4 +70,17 @@ public interface QualityControlMapper {
             "control_formula = #{controlFormula} " +
             "WHERE id = #{id}")
     void updateById(QualityControl qualityControl);
+
+    // 关键补充：批量查询（多ID）
+    @Select("<script>" +
+        "SELECT " +
+        "q.*, " +
+        "d.standard_identity AS detectionId " +
+        "FROM t_report_quality_control q " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON q.detection_id = d.id " +
+        "WHERE q.detection_id IN " +
+        "<foreach collection='detectionIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>" +
+        "</script>")
+        List<QualityControl> selectByDetectionIds(@Param("detectionIds") Set<String> detectionIds);
 }
