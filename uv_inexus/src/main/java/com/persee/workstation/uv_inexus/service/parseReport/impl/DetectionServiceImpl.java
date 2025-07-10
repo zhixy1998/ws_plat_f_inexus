@@ -1,5 +1,8 @@
 package com.persee.workstation.uv_inexus.service.parseReport.impl;
 
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,13 +50,15 @@ public class DetectionServiceImpl implements DetectionService {
     private CalculationFormulaDao calculationFormulaDao; // 计算公式表DAO
 
     private final ObjectMapper objectMapper = new ObjectMapper(); // JSON转换工具
+    // 日期格式转换器（支持多种常见格式）
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final SimpleDateFormat shortDateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     public static final Set<String> ALLOWED_QUERY_FIELDS = Set.of(
             "standard_identity", "industry", "release_date", "startDate", "endDate",
             "standard_number", "industry_type"
     );
 
-    // 原有方法保持不变...
     @Override
     public List<Detection> findAll() {
         return detectionDao.findAll();
@@ -83,17 +88,34 @@ public class DetectionServiceImpl implements DetectionService {
     public IPage<Detection> findPage(Page<Detection> page, Map<String, String> params) {
         QueryWrapper<Detection> queryWrapper = new QueryWrapper<>();
         params.forEach((key, value) -> {
-            if ("pageNum".equals(key) || "pageSize".equals(key)) return;
+            // 跳过分页参数
+            if ("pageNum".equals(key) || "pageSize".equals(key)) {
+                return;
+            }
+            // 过滤非法字段
             if (!ALLOWED_QUERY_FIELDS.contains(key)) {
                 log.warn("忽略非法查询字段: {}", key);
                 return;
             }
-            if ("startDate".equals(key)) {
-                queryWrapper.ge("release_date", value);
-            } else if ("endDate".equals(key)) {
-                queryWrapper.le("release_date", value);
+            // 处理日期参数（startDate和endDate）
+            if ("startDate".equals(key) || "endDate".equals(key)) {
+                // 转换日期字符串为Timestamp（空值或格式错误时跳过）
+                Timestamp timestamp = parseDateToTimestamp(value);
+                if (timestamp == null) {
+                    log.info("日期参数格式错误或为空，跳过查询条件: {}={}", key, value);
+                    return;
+                }
+                // 添加日期条件
+                if ("startDate".equals(key)) {
+                    queryWrapper.ge("release_date", timestamp);
+                } else {
+                    queryWrapper.le("release_date", timestamp);
+                }
             } else {
-                queryWrapper.like(key, value);
+                // 非日期字段：仅当值非空时添加like条件
+                if (value != null && !value.trim().isEmpty()) {
+                    queryWrapper.like(key, value);
+                }
             }
         });
         return detectionDao.selectPage(page, queryWrapper);
@@ -118,17 +140,34 @@ public class DetectionServiceImpl implements DetectionService {
     public IPage<DetectionListDTO> findDistinctPage(Page<DetectionListDTO> page, Map<String, String> params) {
         QueryWrapper<Detection> queryWrapper = new QueryWrapper<>();
         params.forEach((key, value) -> {
-            if ("pageNum".equals(key) || "pageSize".equals(key)) return;
+            // 跳过分页参数
+            if ("pageNum".equals(key) || "pageSize".equals(key)) {
+                return;
+            }
+            // 过滤非法字段
             if (!ALLOWED_QUERY_FIELDS.contains(key)) {
                 log.warn("忽略非法查询字段: {}", key);
                 return;
             }
-            if ("startDate".equals(key)) {
-                queryWrapper.ge("release_date", value);
-            } else if ("endDate".equals(key)) {
-                queryWrapper.le("release_date", value);
+            // 处理日期参数（startDate和endDate）
+            if ("startDate".equals(key) || "endDate".equals(key)) {
+                // 转换日期字符串为Timestamp（空值或格式错误时跳过）
+                Timestamp timestamp = parseDateToTimestamp(value);
+                if (timestamp == null) {
+                    log.info("日期参数格式错误或为空，跳过查询条件: {}={}", key, value);
+                    return;
+                }
+                // 添加日期条件
+                if ("startDate".equals(key)) {
+                    queryWrapper.ge("release_date", timestamp);
+                } else {
+                    queryWrapper.le("release_date", timestamp);
+                }
             } else {
-                queryWrapper.like(key, value);
+                // 非日期字段：仅当值非空时添加like条件
+                if (value != null && !value.trim().isEmpty()) {
+                    queryWrapper.like(key, value);
+                }
             }
         });
         return detectionDao.selectDistinctPage(page, queryWrapper);
@@ -175,7 +214,6 @@ public class DetectionServiceImpl implements DetectionService {
         return detailDTO;
     }
 
-    // 核心：查询参数及子表字段（修正版）
     @Override
     public DetectionParametersDTO getParametersById(Integer id) {
         // 1. 查询主表记录
@@ -183,7 +221,8 @@ public class DetectionServiceImpl implements DetectionService {
         if (detection == null) {
             return null;
         }
-        String standardIdentity = detection.getId(); // 关键：用standard_identity关联子表
+        // 修正：使用standard_identity关联子表（原代码误用了id）
+        String standardIdentity = detection.getStandardIdentity(); 
 
         // 2. 转换主表的detectionParameters（JSON字符串转对象）
         String detectionParameters = formatJsonToText(detection.getDetectionParameters());
@@ -191,8 +230,7 @@ public class DetectionServiceImpl implements DetectionService {
         // 3. 查询前处理表（通过standard_identity）
         StandardPretreatment pretreatment = standardPretreatmentDao.findByStandardIdentity(standardIdentity);
         String preTreatmentDesc = pretreatment != null ? pretreatment.getPretreatmentDescription() : null;
-        System.out.println("999999999999999" + preTreatmentDesc+standardIdentity);
-        System.out.println("88888888888888" + pretreatment);
+        log.info("前处理描述: {}, 关联标识: {}", preTreatmentDesc, standardIdentity);
 
         // 4. 查询质量控制表（通过standard_identity）
         QualityControl qualityControl = qualityControlDao.findByStandardIdentity(standardIdentity);
@@ -214,7 +252,6 @@ public class DetectionServiceImpl implements DetectionService {
 
     /**
      * 将JSON字符串解析为自定义格式文本
-     * 例如：{"波长1":"620","拟合公式":"一次拟合"} → "波长：620；拟合类型：一次拟合；"
      */
     private String formatJsonToText(String jsonStr) {
         if (jsonStr == null || jsonStr.trim().isEmpty()) {
@@ -222,11 +259,9 @@ public class DetectionServiceImpl implements DetectionService {
         }
 
         try {
-            // 解析JSON为JsonNode
             JsonNode jsonNode = objectMapper.readTree(jsonStr);
-
-            // 定义JSON字段与目标文本的映射关系（根据你的需求调整）
             StringBuilder sb = new StringBuilder();
+            
             // 1. 波长（对应JSON中的"波长1"）
             if (jsonNode.has("波长1")) {
                 sb.append("波长：").append(jsonNode.get("波长1").asText()).append("；");
@@ -244,7 +279,7 @@ public class DetectionServiceImpl implements DetectionService {
                 sb.append("浓度单位：").append(jsonNode.get("推荐单位").asText()).append("；");
             }
 
-            // 去除最后一个分号（可选）
+            // 去除最后一个分号（如果有）
             if (sb.length() > 0) {
                 sb.setLength(sb.length() - 1);
             }
@@ -252,7 +287,31 @@ public class DetectionServiceImpl implements DetectionService {
 
         } catch (JsonProcessingException e) {
             log.error("解析测量参数JSON失败: {}", e.getMessage());
-            return "测量参数格式错误"; // 解析失败时返回提示
+            return "测量参数格式错误";
+        }
+    }
+
+    /**
+     * 工具方法：将日期字符串转换为Timestamp
+     * 支持格式：yyyy-MM-dd HH:mm:ss 或 yyyy-MM-dd
+     * @param dateStr 日期字符串（可能为空或格式错误）
+     * @return 转换后的Timestamp，失败则返回null
+     */
+    private Timestamp parseDateToTimestamp(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            // 尝试完整时间格式
+            return new Timestamp(dateFormat.parse(dateStr).getTime());
+        } catch (ParseException e1) {
+            try {
+                // 尝试短日期格式（自动补全时间为00:00:00）
+                return new Timestamp(shortDateFormat.parse(dateStr).getTime());
+            } catch (ParseException e2) {
+                log.error("日期格式错误，支持格式为 yyyy-MM-dd HH:mm:ss 或 yyyy-MM-dd，输入值: {}", dateStr);
+                return null;
+            }
         }
     }
 }
