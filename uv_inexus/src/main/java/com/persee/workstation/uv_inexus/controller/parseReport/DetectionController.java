@@ -31,7 +31,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
 @RestController
-@RequestMapping("/api/detection")
+@RequestMapping("/com/persee/workstation/uv-inexus/detection")
 @Api("标准管理接口文档")
 public class DetectionController {
 

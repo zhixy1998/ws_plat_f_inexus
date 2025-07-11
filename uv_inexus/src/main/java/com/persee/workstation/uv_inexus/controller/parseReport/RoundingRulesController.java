@@ -22,7 +22,7 @@ import com.persee.workstation.uv_inexus.service.parseReport.RoundingRulesService
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 @RestController
-@RequestMapping("/api/roundingRules") // 修改了请求路径
+@RequestMapping("/com/persee/workstation/uv-inexus/roundingRules") // 修改了请求路径
 public class RoundingRulesController { // 修改了控制器类名
 
     @Autowired
