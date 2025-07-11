@@ -12,8 +12,12 @@ import lombok.Data;
 @ApiModel("多子表多条数据查询DTO")
 @Data
 public class MultiTableDataDTO {
-    @ApiModelProperty("测量参数（格式化文本）")
-    private String detectionParameters;
+
+    @ApiModelProperty("波长列表（波长1、波长2、波长3的值）")
+    private List<String> detectionParameters; // 原detectionParameters改造为波长列表
+
+    @ApiModelProperty("波长参数列表（波长参数1、波长参数2的值）")
+    private List<String> wavelengthParamList; // 新增字段
 
     @ApiModelProperty("待计算结果列表（计算公式表）")
     private List<CalculationResultDTO> calculationResults;

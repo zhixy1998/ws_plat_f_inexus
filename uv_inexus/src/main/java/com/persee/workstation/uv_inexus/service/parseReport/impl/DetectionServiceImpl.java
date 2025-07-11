@@ -279,9 +279,27 @@ public class DetectionServiceImpl implements DetectionService {
             return null;
         }
         String detectionId = detection.getId(); // 获取detection_id用于关联子表
-
+        String jsonStr = detection.getDetectionParameters(); // 获取原始JSON字符串
         // 2. 格式化主表测量参数
-        String detectionParameters = formatJsonToText(detection.getDetectionParameters());
+        List<String> detectionParameters = new ArrayList<>(); // 波长1、2、3列表
+        List<String> wavelengthParamList = new ArrayList<>(); // 波长参数1、2列表
+        try {
+            JsonNode jsonNode = objectMapper.readTree(jsonStr);
+            
+            // 提取波长1、波长2、波长3（按顺序添加）
+            if (jsonNode.has("波长1")) detectionParameters.add(jsonNode.get("波长1").asText());
+            if (jsonNode.has("波长2")) detectionParameters.add(jsonNode.get("波长2").asText());
+            if (jsonNode.has("波长3")) detectionParameters.add(jsonNode.get("波长3").asText());
+            
+            // 提取波长参数1、波长参数2（按顺序添加）
+            if (jsonNode.has("波长参数1")) wavelengthParamList.add(jsonNode.get("波长参数1").asText());
+            if (jsonNode.has("波长参数2")) wavelengthParamList.add(jsonNode.get("波长参数2").asText());
+        } catch (Exception e) {
+            log.error("解析波长JSON失败: {}", e.getMessage());
+            // 解析失败时返回空列表（避免null）
+            detectionParameters = new ArrayList<>();
+            wavelengthParamList = new ArrayList<>();
+        }
 
         // 3. 查询计算公式表数据（待计算结果）
         List<CalculationFormula> formulas = calculationFormulaDao.findByDetectionIdList(detectionId);
@@ -406,7 +424,8 @@ public class DetectionServiceImpl implements DetectionService {
 
         // 8. 组装返回DTO
         MultiTableDataDTO result = new MultiTableDataDTO();
-        result.setDetectionParameters(detectionParameters);
+        result.setDetectionParameters(detectionParameters); // 波长列表
+        result.setWavelengthParamList(wavelengthParamList); // 波长参数列表
         result.setCalculationResults(calculationResults); // 待计算结果
         result.setRoundingSettings(roundingSettings); // 修约设置
         result.setInputParams(inputParams); // 输入参数
