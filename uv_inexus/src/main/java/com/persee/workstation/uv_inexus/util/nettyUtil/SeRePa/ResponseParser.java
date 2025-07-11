@@ -1,12 +1,11 @@
-package com.persee.workstation.uv_inexus.util.nettyUtil.SeRePa;/*
+/*
     分不同的情况，解析报文
 * */
-
+package com.persee.workstation.uv_inexus.util.nettyUtil.SeRePa;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 
 public class ResponseParser {
 
@@ -32,8 +31,6 @@ public class ResponseParser {
             case "SetGain":
             case "SetResponseTime":
             case "SetPhotoMode":
-            case "SetSlit1":
-            case "SetCellPos":
             case "SetPadModeTrue":
             case "SetPadModeFalse":
             case "SetPCModeTrue":
@@ -41,7 +38,8 @@ public class ResponseParser {
             case "SetProgrammeModeTrue":
             case "SetProgrammeModeFalse":
             case "SetInitStatus":
-                return parseCompare345Bytes(responses, sendBytes);
+            case "Zero":
+                return parseCompareBytes(responses, sendBytes);
 
             case "InitSampleCell":
             case "InitFilterMotor":
@@ -115,42 +113,50 @@ public class ResponseParser {
         yList.clear();
 
         for (int i = 0; i < responses.size(); i++) {
-            if (i % 2 == 0) { // 奇数条（0-based）
-                byte[] data = responses.get(i);
-                if (data.length >= 12) {
-                    int x = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
-                    int y = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
-                    xList.add(x / 50.0);
-                    yList.add(y / 8388607.0 * 100);
-                } else {
-                    System.out.println("第 " + (i + 1) + " 条回应太短，跳过");
-                }
+            byte[] data = responses.get(i);
+
+            // 只处理 第5位 != 0 的回应
+            if (data.length >= 12 && (data[4] & 0xFF) != 0) {
+                int x = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
+                int y = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                xList.add(x / 50.0);
+                yList.add(y / 8388607.0 * 100);
+            } else {
+                System.out.println("第 " + (i + 1) + " 条回应不满足条件，跳过");
             }
         }
+
 
         return Arrays.asList(xList, yList); // [0] 是 xList， [1] 是 yList
     }
 
-    /*设置参数的解析规则*/
-    public static Boolean parseCompare345Bytes(List<byte[]> responses, byte[] sendBytes) {
-        if (responses == null || responses.isEmpty() || sendBytes.length < 6) {
+    private static Boolean parseCompareBytes(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
             result = "false";
             return false;
         }
 
-        byte[] last = responses.get(responses.size() - 1);
-        if (last.length < 6) {
+        if (sendBytes == null || sendBytes.length < 5) {
+            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
             result = "false";
             return false;
         }
 
-        boolean isEqual =
-                last[2] == sendBytes[2] &&
-                        last[3] == sendBytes[3] &&
-                        last[4] == sendBytes[4];
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+        boolean isEqual = lastResponse[2] == sendBytes[2] &&
+                lastResponse[3] == sendBytes[3] &&
+                lastResponse[4] == sendBytes[4];
 
         result = isEqual ? "true" : "false";
         return isEqual;
     }
+
 
 }

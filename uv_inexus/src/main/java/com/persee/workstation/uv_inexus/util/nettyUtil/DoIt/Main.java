@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.util.nettyUtil.DoIt;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequest;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SeRePa.DynamicCommandService;
@@ -35,7 +36,7 @@ public class Main {
                 Map<String, Object> resultMap = new HashMap<>();
 
                 // 遍历接收到的指令
-                for (CommandRequestDTO.CommandDTO command : dto.getCommands()) {
+                for (CommandDTO command : dto.getCommands()) {
                     // 创建 CommandRequest 对象
                     CommandRequest request = new CommandRequest(command.getCmdId(), command.getParams());
 

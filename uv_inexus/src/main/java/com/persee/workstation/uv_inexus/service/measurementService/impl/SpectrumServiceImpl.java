@@ -14,6 +14,7 @@ import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.util.nettyUtil.CmdConstant;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
@@ -1182,62 +1183,60 @@ public class SpectrumServiceImpl implements SpectrumService {
         scanParamInfo.setGain("46");
 
         CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
-        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+        List<CommandDTO> commands = new ArrayList<>();
 
         // 光度模式
-        CommandRequestDTO.CommandDTO com1 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com1 = new CommandDTO();
         com1.setCmdId(SetParamEnum.SetPhotoMode.getComId());
         com1.setParams(new Object[]{scanParamInfo.getLuminosity()});
         commands.add(com1);
         // 开始波长
-        CommandRequestDTO.CommandDTO com2 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com2 = new CommandDTO();
         com2.setCmdId(SetParamEnum.SetStartWl.getComId());
         com2.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
         commands.add(com2);
         // 结束波长
-        CommandRequestDTO.CommandDTO com3 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com3 = new CommandDTO();
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
         commands.add(com3);
         // 波长间隔
-        CommandRequestDTO.CommandDTO com4 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com4 = new CommandDTO();
         com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
         com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
         commands.add(com4);
         // 响应时间
-        CommandRequestDTO.CommandDTO com5 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com5 = new CommandDTO();
         com5.setCmdId(SetParamEnum.SetResponseTime.getComId());
         com5.setParams(new Object[]{scanParamInfo.getResponseTime()});
         commands.add(com5);
         // 换灯波长
-        CommandRequestDTO.CommandDTO com6 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com6 = new CommandDTO();
         com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
         com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
         commands.add(com6);
         // 能量灯
-        CommandRequestDTO.CommandDTO com7 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com7 = new CommandDTO();
         com7.setCmdId(SetParamEnum.SetLampPos.getComId());
         com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
         commands.add(com7);
         // 增益
-        CommandRequestDTO.CommandDTO com8 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com8 = new CommandDTO();
         com8.setCmdId(SetParamEnum.SetGain.getComId());
         com8.setParams(new Object[]{scanParamInfo.getGain()});
         commands.add(com8);
 
         commandRequestDTO.setCommands(commands);
-
         TestUtil.connect(commandRequestDTO);
     }
 
     @Override
     public void testZeroCalibration() {
         CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
-        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+        List<CommandDTO> commands = new ArrayList<>();
 
-        CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+        CommandDTO com = new CommandDTO();
         com.setCmdId(SetParamEnum.Zero.getComId());
-        com.setParams(new Object[]{});
         commands.add(com);
         commandRequestDTO.setCommands(commands);
         TestUtil.connect(commandRequestDTO);
@@ -1247,9 +1246,9 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public void testScan() {
         CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
-        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+        List<CommandDTO> commands = new ArrayList<>();
 
-        CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+        CommandDTO com = new CommandDTO();
         com.setCmdId(SetParamEnum.Scan.getComId());
         com.setParams(new Object[]{});
         commands.add(com);
@@ -1260,9 +1259,9 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public void testStart() {
         CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
-        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+        List<CommandDTO> commands = new ArrayList<>();
         CmdConstant.connect.forEach(comId -> {
-            CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+            CommandDTO com = new CommandDTO();
             com.setCmdId(comId);
             if (comId.equals("NewIP")) {
                 com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 118, 253});
@@ -1273,7 +1272,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         TestUtil.connect(commandRequestDTO);
         commands.clear();
         CmdConstant.init.forEach(comId -> {
-            CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
+            CommandDTO com = new CommandDTO();
             com.setCmdId(comId);
             if (comId.equals("SetSlit1")) {
                 com.setParams(new Object[]{20});
@@ -1285,12 +1284,20 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     }
 
+    /**
+     * 查询样品列表
+     * @param taskId
+     * @return
+     */
     @Override
     public Result querySampleList(String taskId) {
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             return Result.fail("任务不存在");
+        }
+        if (task.getSampleKey() == null) {
+            return Result.ok(null);
         }
         // 分割任务中的样品数据
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -1310,6 +1317,82 @@ public class SpectrumServiceImpl implements SpectrumService {
             }
         }
         return Result.ok(sampleList);
+    }
+
+    /**
+     * 新增样本接口
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result addSamplePort(AddSampleDto paramDto) {
+        // 创建一个String数组用于存放新增后的样品id
+        List<String> sampleIdList = new ArrayList<>();
+        // 根据传过来的参数进行遍历添加样品
+        for (Sample sample : paramDto.getSamples()) {
+            TMeasureSample sampleParam = new TMeasureSample();
+            sampleParam.setSampleName(sample.getSampleName());
+            sampleParam.setSampleNumber(sample.getSampleNumber());
+            sampleParam.setSampleLocation(sample.getSampleLocation());
+            tMeasureSampleService.save(sampleParam);
+            sampleIdList.add(sampleParam.getId());
+        }
+        // 根据任务id查询任务数据
+        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        if (task.getSampleKey() != null){
+            // 将原有在任务中的样品字段提取出来
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            // 遍历样品id数组,将新增的样品id添加到任务中的样品字段中
+            for (String sampleId : sampleIdList) {
+                TaskSpecimen taskSpeciman = new TaskSpecimen();
+                taskSpeciman.setSpecimenKey(sampleId);
+                taskSpeciman.setDeleteType("0");
+                taskSpecimen.add(taskSpeciman);
+            }
+            // 将修改后的样品字段存入任务数据中
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        }else if (task.getSampleKey() == null) {
+            // 如果任务中的样品字段为空,则直接将样品id存入任务数据中
+            List<TaskSpecimen> taskSpecimen = new ArrayList<>();
+            for (String sampleId : sampleIdList) {
+                TaskSpecimen taskSpeciman = new TaskSpecimen();
+                taskSpeciman.setSpecimenKey(sampleId);
+                taskSpeciman.setDeleteType("0");
+                taskSpecimen.add(taskSpeciman);
+            }
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        }
+        boolean update = tMeasureTaskService.updateById(task);
+        return Result.ok(update);
+    }
+
+
+    /**
+     * 删除样品接口
+     * @param sampleId
+     * @param taskId
+     * @return
+     */
+
+    @Override
+    public Result deleteSamplePort(String sampleId, String taskId) {
+        // 获取任务数据
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        for (TaskSpecimen taskSpecimen : taskSpecimenList) {
+            if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                taskSpecimen.setDeleteType("1");
+            }
+        }
+        task.setSampleKey(JSON.toJSONString(taskSpecimenList));
+        boolean update = tMeasureTaskService.updateById(task);
+        return Result.ok( update);
     }
 
     @Override

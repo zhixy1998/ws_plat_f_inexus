@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,6 +11,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
@@ -227,7 +229,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureTask.setMethodKey(paramDto.getMethodId());
         tMeasureTask.setProjectItemKey(project.getId());
         tMeasureTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
-        List<String> list = new ArrayList<>();
+        List<TaskSpecimen> list = new ArrayList<>();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(paramDto.getMeasurementType());
         // TODO 所有测量的创建任务需要完善
         switch (type){
@@ -243,7 +245,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleVolume(specimen.getSampleVolume());
                     sample.setSampleLocation(specimen.getSampleLocation());
                     tMeasureSampleService.save(sample);
-                    list.add(sample.getId());
+                    TaskSpecimen taskSpecimen = new TaskSpecimen();
+                    taskSpecimen.setSpecimenKey(sample.getId());
+                    taskSpecimen.setDeleteType("0");
+                    list.add(taskSpecimen);
                 }
                 break;
             case QUANTITATIVE_MEASUREMENT:
@@ -256,7 +261,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setNormalConcentration(specimen.getNormalConcentration());
                     sample.setSampleLocation(specimen.getSampleLocation());
                     tMeasureSampleService.save(sample);
-                    list.add(sample.getId());
+                    TaskSpecimen taskSpecimen = new TaskSpecimen();
+                    taskSpecimen.setSpecimenKey(sample.getId());
+                    taskSpecimen.setDeleteType("0");
+                    list.add(taskSpecimen);
                 }
             break;
             case SPECTRAL_SCAN:
@@ -267,7 +275,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
                     tMeasureSampleService.save(sample);
-                    list.add(sample.getId());
+                    TaskSpecimen taskSpecimen = new TaskSpecimen();
+                    taskSpecimen.setSpecimenKey(sample.getId());
+                    taskSpecimen.setDeleteType("0");
+                    list.add(taskSpecimen);
                 }
                 break;
             case TIME_SCAN:
@@ -278,14 +289,17 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
                     tMeasureSampleService.save(sample);
-                    list.add(sample.getId());
+                    TaskSpecimen taskSpecimen = new TaskSpecimen();
+                    taskSpecimen.setSpecimenKey(sample.getId());
+                    taskSpecimen.setDeleteType("0");
+                    list.add(taskSpecimen);
                 }
                 break;
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
                 break;
         }
-        String join = String.join(",", list);
-        tMeasureTask.setSampleKey(join);
+
+        tMeasureTask.setSampleKey(JSON.toJSONString(list));
         boolean save = tMeasureTaskService.save(tMeasureTask);
         if (!save) {
             return Result.fail("保存失败");
