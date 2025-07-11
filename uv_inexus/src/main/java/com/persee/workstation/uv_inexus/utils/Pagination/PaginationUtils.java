@@ -1,11 +1,12 @@
 package com.persee.workstation.uv_inexus.utils.Pagination;
 
-import java.util.List;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class PaginationUtils {
 
@@ -29,12 +30,17 @@ public class PaginationUtils {
     }
 
     public static Pageable createPageableWithMultiSort(int pageNo, int pageSize, String[] sortFields, Sort.Direction[] sortDirections) {
-        Sort sort = Sort.by(java.util.Arrays.stream(sortDirections)
-                .map(direction -> java.util.Arrays.stream(sortFields)
-                        .map(field -> new Sort.Order(direction, field))
-                        .toList())
-                .flatMap(List::stream)
-                .toList());
-        return PageRequest.of(pageNo, pageSize, sort);
+        // 确保 sortFields 和 sortDirections 长度相同
+        if (sortFields.length != sortDirections.length) {
+            throw new IllegalArgumentException("Sort fields and directions must have the same length");
+        }
+
+        // 创建 Sort 对象
+        List<Sort.Order> orders = new ArrayList<>();
+        for (int i = 0; i < sortFields.length; i++) {
+            orders.add(new Sort.Order(sortDirections[i], sortFields[i]));
+        }
+
+        return PageRequest.of(pageNo, pageSize, Sort.by(orders));
     }
 }

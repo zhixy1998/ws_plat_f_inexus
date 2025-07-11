@@ -1,12 +1,5 @@
 package com.persee.workstation.uv_inexus.service.parseReport.impl;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
@@ -14,8 +7,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dao.parseReport.DetectionDao;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
-
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service // Spring注解，标记这是一个服务组件，会被Spring管理
@@ -49,33 +48,42 @@ public class DetectionServiceImpl implements DetectionService {
         detectionDao.deleteById(id);
     }
 
-     // 允许查询的字段名
-    public  static final Set<String> ALLOWED_QUERY_FIELDS = Set.of(
-        "standard_identity", "industry", "release_date", "startDate", "endDate"
-    );
+    // 允许查询的字段名
+//    public static final Set<String> ALLOWED_QUERY_FIELDS = Set.of(
+//            "standard_identity", "industry", "release_date", "startDate", "endDate"
+//    );
+    public static final Set<String> ALLOWED_QUERY_FIELDS = new HashSet<String>() {{
+        add("standard_identity");
+        add("industry");
+        add("release_date");
+        add("startDate");
+        add("endDate");
+    }};
+
+
 
     @Override
     public IPage<Detection> findPage(Page<Detection> page, Map<String, String> params) {
         QueryWrapper<Detection> queryWrapper = new QueryWrapper<>();
-        
+
         // 动态构建查询条件
         for (Map.Entry<String, String> entry : params.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            
+
             // 跳过分页参数
             if ("pageNum".equals(key) || "pageSize".equals(key)) {
                 continue;
             }
-            
+
             // 检查字段是否合法
             if (!ALLOWED_QUERY_FIELDS.contains(key)) {
                 log.warn("忽略非法查询字段: {}", key);
                 continue;
             }
-            
+
             // System.out.println("时间: " + "startDate".equals(key) + "endDate".equals(key));
-            
+
             // 处理日期区间查询
             if ("startDate".equals(key)) {
                 if (StringUtils.isNotBlank(value)) {
@@ -89,18 +97,18 @@ public class DetectionServiceImpl implements DetectionService {
                 queryWrapper.like(key, value);
             }
         }
-        
+
         // 打印 SQL（调试用）
         // System.out.println("执行的 SQL: " + queryWrapper.getCustomSqlSegment());
-        
+
         IPage<Detection> resultPage = detectionDao.selectPage(page, queryWrapper);
-        
-        log.info("分页查询结果 - 总数: {}, 当前页记录数: {}, 页码: {}, 页大小: {}", 
-                resultPage.getTotal(), 
+
+        log.info("分页查询结果 - 总数: {}, 当前页记录数: {}, 页码: {}, 页大小: {}",
+                resultPage.getTotal(),
                 resultPage.getRecords().size(),
                 resultPage.getCurrent(),
                 resultPage.getSize());
-                
+
         return resultPage;
     }
 
@@ -143,7 +151,6 @@ public class DetectionServiceImpl implements DetectionService {
 // import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
 
 // import lombok.extern.slf4j.Slf4j;
-
 
 
 // @Slf4j
@@ -215,27 +222,27 @@ public class DetectionServiceImpl implements DetectionService {
 //     @Override
 //     public IPage<Detection> findPage(Page<Detection> page, Map<String, String> params) {
 //         QueryWrapper<Detection> queryWrapper = new QueryWrapper<>();
-        
+
 //         // 动态构建查询条件
 //         for (Map.Entry<String, String> entry : params.entrySet()) {
 //             String key = entry.getKey();
 //             String value = entry.getValue();
-            
+
 //             if ("pageNum".equals(key) || "pageSize".equals(key)) {
 //                 continue;
 //             }
-            
+
 //             if (StringUtils.isNotBlank(value)) {
 //                 queryWrapper.like(key, value);
 //             }
 //         }
-        
+
 //         // 确保分页稳定，按 ID 排序
 //         // queryWrapper.orderByAsc("id");
-        
+
 //         // 打印 SQL（调试用）
 //         System.out.println("执行的 SQL: " + queryWrapper.getCustomSqlSegment());
-        
+
 //         IPage<Detection> resultPage = detectionDao.selectPage(page, queryWrapper);
 //         resultPage.getRecords().forEach(this::setStandardType);
 //         log.info("分页查询结果 - 总数: {}, 当前页记录数: {}, 页码: {}, 页大小: {}", 
@@ -243,7 +250,7 @@ public class DetectionServiceImpl implements DetectionService {
 //                 resultPage.getRecords().size(),
 //                 resultPage.getCurrent(),
 //                 resultPage.getSize());
-                
+
 //         return resultPage;
 //     }
 

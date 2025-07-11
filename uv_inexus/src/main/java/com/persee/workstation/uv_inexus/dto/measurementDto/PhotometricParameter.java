@@ -1,5 +1,7 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import lombok.Data;
 
 import java.util.List;
@@ -25,9 +27,9 @@ public class PhotometricParameter extends MeasurePublicParameters {
     // 样品池方式(0: 单池重复后再移动 1: 依次移动并重复)
     private String samplePoolWay;
     // 输入参数
-    private List<Map<String, Object>> inputParams;
+    private List<InputParam> inputParams;
     // 待计算结果
-    private List<Map<String, Object>> resultParams;
+    private List<PreCountResultParam> resultParams;
     // 修约设置
     private List<Map<String, Object>> roundingSettings;
     // 质控设置

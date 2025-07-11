@@ -41,7 +41,7 @@ public class TMeasureTask{
     @TableField("method_key")
     private String methodKey;
 
-    // 样品Key
+    // 样品Key 由TaskSpecimen类转JSONString
     @TableField("sample_key")
     private String sampleKey;
 

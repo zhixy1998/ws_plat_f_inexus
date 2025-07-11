@@ -1,13 +1,74 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricTableHeadVO;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 public interface PhotometricService {
 
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, PhotometricParameter photometricParameter);
 
     Result updateMethodParameter(PhotometricMethodParameterDto methodDto);
+
+    /**
+     * 新增或删除样本
+     * @param dto
+     * @return
+     */
+    Result addOrDeleteSample(AddOrDeleteSampleDTO dto);
+
+    Result revokeDel(String taskId, String sampleId);
+
+    /**
+     * 查询方法参数
+     * @param methodId
+     * @return
+     */
+    Result queryMethodParam(String methodId);
+
+    /**
+     * 查询标准信息//暂时不需要
+     * @param standardName
+     * @return
+     */
+    @Deprecated
+    Result queryStandardInfo(String standardName);
+
+    /**
+     *  查询表格头
+     * @param taskId
+     * @param methodId
+     * @return
+     */
+    Result<PhotometricTableHeadVO> getTableHead(String taskId, String methodId);
+
+    /**
+     * 查询数据信息
+     * @param taskId
+     * @return
+     */
+    Result<List<PhotometricSampleAndDataVO>> queryDataInfo(String taskId);
+
+    /**
+     * 测量及分析后数据保存，如有记录，认为是重测，做覆盖操作
+     * @param vo
+     * @return
+     */
+    Result savePhotometricMeasureData(LocalDateTime startTime, LocalDateTime endTime, List<PhotometricSampleAndDataVO> vo);
+
+    /**
+     * 前端调用保存数据，用于保存相关内容，如采样时间，备注等
+     * @param vo
+     * @return
+     */
+    Result saveDataInfo(PhotometricSampleAndDataVO vo);
 
 
 }

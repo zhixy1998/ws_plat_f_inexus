@@ -1265,7 +1265,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             CommandRequestDTO.CommandDTO com = new CommandRequestDTO.CommandDTO();
             com.setCmdId(comId);
             if (comId.equals("NewIP")) {
-                com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 110, 253});
+                com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 118, 253});
             }
             commands.add(com);
         });

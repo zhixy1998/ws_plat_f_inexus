@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 标准信息表
@@ -109,4 +111,8 @@ public class TReportStandardDetection {
      */
     @TableField("industry_type")
     private String industryType;
+
+    @ApiModelProperty("前处理处理信息")
+    @TableField(value = "pretreatments", exist = false)
+    List<TReportStandardPretreatment> pretreatments;
 }
