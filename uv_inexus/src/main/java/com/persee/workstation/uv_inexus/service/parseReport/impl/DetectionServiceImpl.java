@@ -1,47 +1,24 @@
 package com.persee.workstation.uv_inexus.service.parseReport.impl;
 
-import java.sql.Timestamp;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.persee.workstation.uv_inexus.dao.parseReport.CalculationFormulaDao;
-import com.persee.workstation.uv_inexus.dao.parseReport.DetectionDao;
-import com.persee.workstation.uv_inexus.dao.parseReport.QualityControlDao;
-import com.persee.workstation.uv_inexus.dao.parseReport.RoundingRulesDao;
-import com.persee.workstation.uv_inexus.dao.parseReport.StandardPretreatmentDao;
-import com.persee.workstation.uv_inexus.dto.parseReport.CalculationResultDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.InputParamDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.PretreatmentDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.QualityControlDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.RoundingSettingDTO;
-import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
-import com.persee.workstation.uv_inexus.po.parseReport.Detection;
-import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
-import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
-import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
+import com.persee.workstation.uv_inexus.dao.parseReport.*;
+import com.persee.workstation.uv_inexus.dto.parseReport.*;
+import com.persee.workstation.uv_inexus.po.parseReport.*;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
-
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -67,10 +44,18 @@ public class DetectionServiceImpl implements DetectionService {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final SimpleDateFormat shortDateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
-    public static final Set<String> ALLOWED_QUERY_FIELDS = Set.of(
-            "standard_identity", "industry", "release_date", "startDate", "endDate",
-            "standard_number", "industry_type", "standard_name"
-    );
+    //    public static final Set<String> ALLOWED_QUERY_FIELDS = Set.of(
+//            "standard_identity", "industry", "release_date", "startDate", "endDate",
+//            "standard_number", "industry_type", "standard_name"
+//    );
+    public static final Set<String> ALLOWED_QUERY_FIELDS = new HashSet<String>() {{
+        add("standard_identity");
+        add("industry");
+        add("release_date");
+        add("startDate");
+        add("endDate");
+    }};
+
 
     @Override
     public List<Detection> findAll() {
@@ -192,12 +177,12 @@ public class DetectionServiceImpl implements DetectionService {
         if (detection == null) {
             return null;
         }
-        
+
         List<Detection> originalDataList = detectionDao.findByStandardNumber(detection.getStandardNumber());
         if (originalDataList == null || originalDataList.isEmpty()) {
             return null;
         }
-        
+
         DetectionListDTO mainData = new DetectionListDTO();
         mainData.setId(detection.getId());
         mainData.setIndustry(detection.getIndustry());
@@ -209,7 +194,7 @@ public class DetectionServiceImpl implements DetectionService {
         mainData.setIndustryType(detection.getIndustryType());
         mainData.setReleaseStatus(detection.getReleaseStatus());
         mainData.setCount(originalDataList.size());
-        
+
         List<Map<String, Object>> identityTypeList = originalDataList.stream()
                 .map(item -> {
                     Map<String, Object> map = new HashMap<>();
@@ -219,12 +204,12 @@ public class DetectionServiceImpl implements DetectionService {
                     return map;
                 })
                 .collect(Collectors.toList());
-        
+
         DetectionDetailDTO detailDTO = new DetectionDetailDTO();
         detailDTO.setMainData(mainData);
         detailDTO.setOriginalDataList(originalDataList);
         detailDTO.setIdentityTypeList(identityTypeList);
-        
+
         return detailDTO;
     }
 
@@ -236,7 +221,7 @@ public class DetectionServiceImpl implements DetectionService {
             return null;
         }
         // 关联字段：使用detection_id（主表id）关联子表
-        String detectionId = detection.getId().toString(); 
+        String detectionId = detection.getId().toString();
         log.info("关联的detection_id: {}", detectionId);
 
         // 2. 格式化主表测量参数（原有逻辑不变）
@@ -285,12 +270,12 @@ public class DetectionServiceImpl implements DetectionService {
         List<String> wavelengthParamList = new ArrayList<>(); // 波长参数1、2列表
         try {
             JsonNode jsonNode = objectMapper.readTree(jsonStr);
-            
+
             // 提取波长1、波长2、波长3（按顺序添加）
             if (jsonNode.has("波长1")) detectionParameters.add(jsonNode.get("波长1").asText());
             if (jsonNode.has("波长2")) detectionParameters.add(jsonNode.get("波长2").asText());
             if (jsonNode.has("波长3")) detectionParameters.add(jsonNode.get("波长3").asText());
-            
+
             // 提取波长参数1、波长参数2（按顺序添加）
             if (jsonNode.has("波长参数1")) wavelengthParamList.add(jsonNode.get("波长参数1").asText());
             if (jsonNode.has("波长参数2")) wavelengthParamList.add(jsonNode.get("波长参数2").asText());
@@ -328,7 +313,7 @@ public class DetectionServiceImpl implements DetectionService {
         for (CalculationFormula formula : formulas) {
             String unit = formula.getUnit();
             String resultIdentity = formula.getResultIdentity();
-            
+
             // 处理10个参数
             if (formula.getInputParam1Name() != null && !formula.getInputParam1Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
@@ -446,7 +431,7 @@ public class DetectionServiceImpl implements DetectionService {
         try {
             JsonNode jsonNode = objectMapper.readTree(jsonStr);
             StringBuilder sb = new StringBuilder();
-            
+
             // 1. 波长（对应JSON中的"波长1"）
             if (jsonNode.has("波长1")) {
                 sb.append("波长1：").append(jsonNode.get("波长1").asText()).append("；");
@@ -485,6 +470,7 @@ public class DetectionServiceImpl implements DetectionService {
     /**
      * 工具方法：将日期字符串转换为Timestamp
      * 支持格式：yyyy-MM-dd HH:mm:ss 或 yyyy-MM-dd
+     *
      * @param dateStr 日期字符串（可能为空或格式错误）
      * @return 转换后的Timestamp，失败则返回null
      */
