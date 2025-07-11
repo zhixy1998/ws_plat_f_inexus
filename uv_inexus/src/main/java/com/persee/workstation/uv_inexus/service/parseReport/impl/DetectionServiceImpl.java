@@ -69,7 +69,7 @@ public class DetectionServiceImpl implements DetectionService {
 
     public static final Set<String> ALLOWED_QUERY_FIELDS = Set.of(
             "standard_identity", "industry", "release_date", "startDate", "endDate",
-            "standard_number", "industry_type"
+            "standard_number", "industry_type", "standard_name"
     );
 
     @Override

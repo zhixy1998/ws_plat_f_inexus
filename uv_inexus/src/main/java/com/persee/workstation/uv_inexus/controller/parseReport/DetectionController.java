@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
@@ -37,6 +38,26 @@ public class DetectionController {
     @Autowired
     private DetectionService detectionService;
 
+    @GetMapping("/noDistinct")
+    @ApiOperation("Detection表分页模糊查询（不去重）")
+    public Result<PageView<Detection>> findNonDistinctDetectionPage(
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam Map<String, String> params) {
+        
+        // 过滤非法查询字段（仅保留允许的字段）
+        Map<String, String> filteredParams = params.entrySet().stream()
+                .filter(entry -> DetectionServiceImpl.ALLOWED_QUERY_FIELDS.contains(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        
+        // 构建分页对象（直接使用Detection实体，不转换DTO）
+        Page<Detection> page = new Page<>(pageNum, pageSize);
+        
+        // 调用服务层执行非去重查询
+        IPage<Detection> resultPage = detectionService.findPage(page, filteredParams);
+        
+        return Result.ok(new PageView<>(resultPage));
+    }
     // 列表接口
     @GetMapping("/")
     @ApiOperation("列表页+分页+查询")
