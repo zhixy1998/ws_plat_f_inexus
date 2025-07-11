@@ -22,7 +22,7 @@ import com.persee.workstation.uv_inexus.service.parseReport.CalculationFormulaSe
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 @RestController
-@RequestMapping("/api/calculationFormula")  // 修改路径以匹配新的实体类型
+@RequestMapping("/com/persee/workstation/uv-inexus/calculationFormula")  // 修改路径以匹配新的实体类型
 public class CalculationFormulaController {
 
     @Autowired

@@ -22,7 +22,7 @@ import com.persee.workstation.uv_inexus.service.parseReport.StandardPretreatment
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 @RestController
-@RequestMapping("/api/standardPretreatment")
+@RequestMapping("/com/persee/workstation/uv-inexus/standardPretreatment")
 public class StandardPretreatmentController {
 
     @Autowired

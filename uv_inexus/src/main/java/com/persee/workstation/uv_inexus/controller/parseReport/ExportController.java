@@ -22,7 +22,7 @@ public class ExportController {
     @Autowired
     private ExportService exportService;
 
-    @GetMapping("/api/parseReport/export")
+    @GetMapping("/com/persee/workstation/uv-inexus/parseReport/export")
     @ApiOperation("导出标准数据")
     public Object exportByCondition(
             @RequestParam(value = "isAll", defaultValue = "1") Integer isAll,

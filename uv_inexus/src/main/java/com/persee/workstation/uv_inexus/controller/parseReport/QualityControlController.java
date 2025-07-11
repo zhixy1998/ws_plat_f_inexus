@@ -22,7 +22,7 @@ import com.persee.workstation.uv_inexus.service.parseReport.QualityControlServic
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 @RestController
-@RequestMapping("/api/qualityControl") // 使用与实体相关的路径
+@RequestMapping("/com/persee/workstation/uv-inexus/qualityControl") // 使用与实体相关的路径
 public class QualityControlController {
 
     @Autowired

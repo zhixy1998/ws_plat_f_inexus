@@ -23,7 +23,7 @@ public class ImportController {
     @Autowired
     private ImportService importService;
 
-    @PostMapping("/api/parseReport/import")
+    @PostMapping("/com/persee/workstation/uv-inexus/parseReport/import")
     @ApiOperation("导入")
     public ResponseEntity<Result<String>> importExcel(@RequestParam("file") MultipartFile file) {
         try {
