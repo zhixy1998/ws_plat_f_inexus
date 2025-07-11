@@ -1,8 +1,13 @@
 package com.persee.workstation.uv_inexus.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import com.baomidou.mybatisplus.annotation.DbType;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
@@ -15,5 +20,13 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedHeaders("*") // 允许所有请求头
                 .allowCredentials(true) // 允许携带Cookie
                 .maxAge(3600); // 预检请求缓存时间（秒）
+    }
+
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        // 添加分页插件
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
     }
 }
