@@ -17,10 +17,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.ReportParametersVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -588,6 +585,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(save);
     }
 
+    /**
+     * 样品列表
+     * @param taskId
+     * @param type
+     * @return
+     */
     @Override
     public Result sampleListPort(String taskId,String type) {
         // 根据任务id查询任务数据
@@ -664,6 +667,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(listVos);
     }
 
+    /**
+     * 变换列表接口
+     * @param taskId
+     * @param type
+     * @return
+     */
     @Override
     public Result changeTheListPort(String taskId,String type) {
         // 根据任务id去查询分析数据
@@ -1274,6 +1283,33 @@ public class SpectrumServiceImpl implements SpectrumService {
         commandRequestDTO.setCommands(commands);
         TestUtil.connect(commandRequestDTO);
 
+    }
+
+    @Override
+    public Result querySampleList(String taskId) {
+        // 根据任务id查询任务数据
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        // 分割任务中的样品数据
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        List<Sample> sampleList = new ArrayList<>();
+        if (taskSpecimen == null || taskSpecimen.size() == 0) {
+            return Result.fail("任务中没有样品数据");
+        }
+        for (TaskSpecimen taskSpeciman : taskSpecimen) {
+            if (taskSpeciman.getDeleteType().equals("0")){
+                TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                Sample sample = new Sample();
+                sample.setSampleId(byId.getId());
+                sample.setSampleName(byId.getSampleName());
+                sample.setSampleNumber(byId.getSampleNumber());
+                sample.setSampleLocation(byId.getSampleLocation());
+                sampleList.add(sample);
+            }
+        }
+        return Result.ok(sampleList);
     }
 
     @Override

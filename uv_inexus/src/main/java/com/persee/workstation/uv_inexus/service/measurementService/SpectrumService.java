@@ -64,4 +64,6 @@ public interface SpectrumService {
     void testScan();
 
     void testStart();
+
+    Result querySampleList(String taskId);
 }

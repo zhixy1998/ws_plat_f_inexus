@@ -57,6 +57,14 @@ public class TMeasureData {
     @TableField("grain")
     private String grain;
 
+    // 采样时间
+    @TableField("sampling_time")
+    private String samplingTime;
+
+    // 备注
+    @TableField("remark")
+    private String remark;
+
     // 是否删除
     @TableField("is_delete")
     private String isDelete;

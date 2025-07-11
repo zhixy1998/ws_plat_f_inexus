@@ -191,6 +191,12 @@ public class SpectrumController {
         spectrumService.testZeroCalibration();
     }
 
+    @GetMapping("querySampleList")
+    @ApiOperation("获取样本列表接口")
+    public Result querySampleList(@RequestParam String taskId) {
+        return spectrumService.querySampleList(taskId);
+    }
+
 
     @GetMapping("testScan")
     @ApiOperation("测试扫描")
