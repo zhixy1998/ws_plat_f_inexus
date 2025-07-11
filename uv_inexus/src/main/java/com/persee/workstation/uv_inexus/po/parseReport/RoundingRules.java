@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.po.parseReport;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,8 +14,8 @@ import lombok.EqualsAndHashCode;
 @TableName("t_report_rounding_rules") // 修改了表名注解
 public class RoundingRules extends BasePO { // 修改了类名
 
-    @TableField("standard_identity")
-    private String standardIdentity; // 标准标识
+    @TableField("detection_id")
+    private String detectionId; // 标准标识
 
     @TableField("result_identity")
     private String resultIdentity; // 结果标识

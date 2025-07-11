@@ -5,6 +5,10 @@ import java.util.Map;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
 import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 
 public interface DetectionService {
@@ -21,12 +25,22 @@ public interface DetectionService {
     
     IPage<Detection> findPage(Page<Detection> page, Map<String, String> params);
 
-    // 新增方法：统计 industry_type 的不同值及其数量
     List<Map<String, Object>> countIndustryType();
 
     List<Map<String, Object>> countIndustry();
     
-    // 新增方法：批量删除
     int deleteBatchIds(List<Integer> ids);
+
+    // 新增：去重分页查询
+    IPage<DetectionListDTO> findDistinctPage(Page<DetectionListDTO> page, Map<String, String> params);
+
+    DetectionDetailDTO getDetailById(Integer id);
+
+    // 新增：查询参数及子表字段
+    DetectionParametersDTO getParametersById(Integer id);
+
+    /**
+     * 查询主表及多子表的多条数据
+     */
+    MultiTableDataDTO getMultiTablesData(Integer id);
 }
-    

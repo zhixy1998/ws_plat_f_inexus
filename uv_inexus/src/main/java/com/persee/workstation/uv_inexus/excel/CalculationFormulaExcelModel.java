@@ -11,7 +11,7 @@ public class CalculationFormulaExcelModel {
     private Long id;
     
     @ExcelProperty("标准标识")
-    private String standardIdentity;
+    private String detectionId;
 
     @ExcelProperty("结果标识")
     private String resultIdentity;
@@ -91,12 +91,12 @@ public class CalculationFormulaExcelModel {
     @ExcelProperty("检出限")
     private String detectionLimit;
 
-    public String getStandardIdentity() {
-        return standardIdentity;
+    public String getDetectionId() {
+        return detectionId;
     }
 
-    public void setStandardIdentity(String standardIdentity) {
-        this.standardIdentity = standardIdentity;
+    public void setDetectionId(String detectionId) {
+        this.detectionId = detectionId;
     }
 
     public String getResultIdentity() {

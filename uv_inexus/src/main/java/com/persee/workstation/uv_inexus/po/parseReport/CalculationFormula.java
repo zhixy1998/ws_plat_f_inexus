@@ -17,8 +17,8 @@ import lombok.EqualsAndHashCode;
 @TableName("t_report_calculation_formulas") // 指定对应的数据库表名
 public class CalculationFormula extends BasePO {
 
-    @TableField("standard_identity") // 映射到 standard_identity 列
-    private String standardIdentity;
+    @TableField("detection_id") // 映射到 detection_id 列
+    private String detectionId;
 
     @TableField("result_identity") // 映射到 result_identity 列
     private String resultIdentity;

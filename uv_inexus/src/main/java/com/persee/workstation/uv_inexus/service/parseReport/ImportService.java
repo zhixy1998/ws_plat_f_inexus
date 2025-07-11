@@ -1,19 +1,22 @@
 package com.persee.workstation.uv_inexus.service.parseReport;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.alibaba.excel.EasyExcel;
-// import com.alibaba.fastjson.JSON;
-// import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dao.parseReport.CalculationFormulaMapper;
 import com.persee.workstation.uv_inexus.dao.parseReport.DetectionMapper;
@@ -33,39 +36,38 @@ import com.persee.workstation.uv_inexus.po.parseReport.Detection;
 import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
 import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
 import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
-
+   
 @Service
 public class ImportService {
+    // 哈希算法：使用SHA-256（识别所有字段变化）
+    private static final String HASH_ALGORITHM = "SHA-256";
+
     @Autowired
     private DetectionMapper detectionMapper;
-
     @Autowired
     private StandardPretreatmentMapper standardPretreatmentMapper;
-
     @Autowired
     private RoundingRulesMapper roundingRulesMapper;
-
     @Autowired
     private QualityControlMapper qualityControlMapper;
-
     @Autowired
     private CalculationFormulaMapper calculationFormulaMapper;
 
-    // 导入标准信息表
+
+    // --------------------------- 主表：标准信息表导入 ---------------------------
     public void importStandardDetection(MultipartFile file) {
         try {
-            // 读取Excel文件数据
             List<StandardDetectionExcelModel> list = EasyExcel.read(file.getInputStream())
                     .head(StandardDetectionExcelModel.class)
                     .sheet("标准信息表")
                     .doReadSync();
-    
+
             if (list == null || list.isEmpty()) {
                 System.out.println("标准信息表数据为空，请检查Excel文件是否正确");
                 return;
             }
-    
-            // 读取UV-VIS-标曲法-检测参数表（如果存在）
+
+            // 读取UV-VIS参数表
             List<StandardDetectionUVVISCurveExcelModel> standardCurveList = null;
             try {
                 standardCurveList = EasyExcel.read(file.getInputStream())
@@ -75,8 +77,7 @@ public class ImportService {
             } catch (Exception e) {
                 System.out.println("未找到UV-VIS-标曲法-检测参数表，忽略该部分数据");
             }
-    
-            // 读取UV-VIS-光度法-检测参数表（如果存在）
+
             List<StandardDetectionUVVISPhotometryExcelModel> photometryList = null;
             try {
                 photometryList = EasyExcel.read(file.getInputStream())
@@ -86,8 +87,8 @@ public class ImportService {
             } catch (Exception e) {
                 System.out.println("未找到UV-VIS-光度法-检测参数表，忽略该部分数据");
             }
-    
-            // 合并数据
+
+            // 合并检测参数
             Map<String, JSONObject> detectionParametersMap = new HashMap<>();
             if (standardCurveList != null) {
                 for (StandardDetectionUVVISCurveExcelModel model : standardCurveList) {
@@ -99,14 +100,14 @@ public class ImportService {
                     jsonObject.put("拟合公式", model.getFittingFormula());
                     jsonObject.put("推荐标样浓度", model.getRecommendedStandardConcentration());
                     jsonObject.put("推荐单位", model.getRecommendedUnits());
-                    detectionParametersMap.put(model.getStandardIdentity(), jsonObject);
+                    detectionParametersMap.put(model.getDetectionId(), jsonObject);
                 }
             }
-    
+
             if (photometryList != null) {
                 for (StandardDetectionUVVISPhotometryExcelModel model : photometryList) {
-                    if (detectionParametersMap.containsKey(model.getStandardIdentity())) {
-                        JSONObject jsonObject = detectionParametersMap.get(model.getStandardIdentity());
+                    if (detectionParametersMap.containsKey(model.getDetectionId())) {
+                        JSONObject jsonObject = detectionParametersMap.get(model.getDetectionId());
                         jsonObject.put("波长1", model.getWavelength1());
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
@@ -115,16 +116,16 @@ public class ImportService {
                         jsonObject.put("波长1", model.getWavelength1());
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
-                        detectionParametersMap.put(model.getStandardIdentity(), jsonObject);
+                        detectionParametersMap.put(model.getDetectionId(), jsonObject);
                     }
                 }
             }
-    
-            // 插入数据
+
+            // 处理主表数据
             for (int i = 0; i < list.size(); i++) {
                 StandardDetectionExcelModel model = list.get(i);
-                int currentRow = i + 2; // Excel通常第一行是标题，数据从第二行开始
-    
+                int currentRow = i + 2;
+
                 // 校验必填字段
                 if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：标准标识不能为空");
@@ -132,19 +133,8 @@ public class ImportService {
                 if (model.getIndustry() == null || model.getIndustry().isEmpty()) {
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：行业不能为空");
                 }
-                if (model.getDetectionType() == null || model.getDetectionType().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：检测类型不能为空");
-                }
-                if (model.getDetectionInstrument() == null || model.getDetectionInstrument().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：检测仪器不能为空");
-                }
-                if (model.getStandardNumber() == null || model.getStandardNumber().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：标准号不能为空");
-                }
-                if (model.getDetectionItem() == null || model.getDetectionItem().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：检测项目不能为空");
-                }
-    
+
+                // 构建Detection对象
                 Detection detection = new Detection();
                 detection.setStandardIdentity(model.getStandardIdentity());
                 detection.setIndustry(model.getIndustry());
@@ -160,12 +150,11 @@ public class ImportService {
                 detection.setEffectiveDate(model.getEffectiveDate());
                 detection.setReleaseStatus(model.getReleaseStatus());
                 detection.setIndustryType(model.getIndustryType());
-    
+
                 // 设置检测参数
                 if (detectionParametersMap.containsKey(model.getStandardIdentity())) {
                     detection.setDetectionParameters(detectionParametersMap.get(model.getStandardIdentity()).toJSONString());
                 } else {
-                    // 如果没有UV-VIS参数表，直接使用Excel中的检测参数
                     JSONObject defaultParams = new JSONObject();
                     if (model.getDetectionParameters() != null && !model.getDetectionParameters().isEmpty()) {
                         try {
@@ -176,19 +165,57 @@ public class ImportService {
                     }
                     detection.setDetectionParameters(defaultParams.toJSONString());
                 }
-    
-                detectionMapper.insert(detection);
+
+                // 主表新增/更新逻辑（基于所有字段哈希）
+                String currentHash = generateDetectionHash(detection);
+                Detection dbDetection = detectionMapper.selectByStandardIdentity(model.getStandardIdentity());
+                if (dbDetection != null) {
+                    String dbHash = generateDetectionHash(dbDetection);
+                    if (!currentHash.equals(dbHash)) {
+                        // 哈希不同：更新
+                        detectionMapper.updateByStandardIdentity(detection);
+                        System.out.println("第 " + currentRow + " 行: 更新标准信息（哈希变化），标准标识 " + model.getStandardIdentity());
+                    } else {
+                        // 哈希相同：不操作
+                        System.out.println("第 " + currentRow + " 行: 标准信息未变更，标准标识 " + model.getStandardIdentity());
+                    }
+                } else {
+                    // 不存在：插入
+                    detectionMapper.insert(detection);
+                    System.out.println("第 " + currentRow + " 行: 插入标准信息，标准标识 " + model.getStandardIdentity());
+                }
             }
+
         } catch (IOException e) {
-            System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
             throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
         } catch (Exception e) {
-            System.out.println("导入标准信息表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入标准信息表时发生异常: " + e.getMessage(), e);
         }
-    }    
+    }
 
-    // 导入前处理信息表
+    // 主表哈希（包含所有字段）
+    private String generateDetectionHash(Detection detection) {
+        String combined = 
+            detection.getStandardIdentity() + "|" +
+            detection.getIndustry() + "|" +
+            (detection.getDetectionType() != null ? detection.getDetectionType() : "") + "|" +
+            (detection.getDetectionInstrument() != null ? detection.getDetectionInstrument() : "") + "|" +
+            (detection.getStandardNumber() != null ? detection.getStandardNumber() : "") + "|" +
+            (detection.getStandardName() != null ? detection.getStandardName() : "") + "|" +
+            (detection.getDetectionItem() != null ? detection.getDetectionItem() : "") + "|" +
+            (detection.getMethodNumber() != null ? detection.getMethodNumber() : "") + "|" +
+            (detection.getRemark() != null ? detection.getRemark() : "") + "|" +
+            (detection.getReleaseDate() != null ? detection.getReleaseDate().toString() : "") + "|" +
+            (detection.getExpirationDate() != null ? detection.getExpirationDate().toString() : "") + "|" +
+            (detection.getEffectiveDate() != null ? detection.getEffectiveDate().toString() : "") + "|" +
+            (detection.getReleaseStatus() != null ? detection.getReleaseStatus() : "") + "|" +
+            (detection.getIndustryType() != null ? detection.getIndustryType() : "") + "|" +
+            (detection.getDetectionParameters() != null ? detection.getDetectionParameters() : "");
+        return generateHash(combined);
+    }
+
+
+    // --------------------------- 子表1：前处理信息表导入 ---------------------------
     public void importStandardPretreatment(MultipartFile file) throws IOException {
         try {
             List<StandardPretreatmentExcelModel> list = EasyExcel.read(file.getInputStream())
@@ -197,248 +224,240 @@ public class ImportService {
                     .doReadSync();
 
             if (list == null || list.isEmpty()) {
-                // System.out.println("前处理信息表数据为空，请检查Excel文件是否正确");
                 return;
             }
-
-            // 从第二行开始计数，假设第一行是标题行
+            
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
             int currentRow = 2;
+
             for (StandardPretreatmentExcelModel model : list) {
                 try {
-                    if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
+                    // 校验必填字段
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
-
-                    // 1. 检查记录是否存在
-                    boolean exists = standardPretreatmentMapper.existsByStandardIdentity(model.getStandardIdentity());
-
-                    StandardPretreatment standardPretreatment = new StandardPretreatment();
-                    standardPretreatment.setStandardIdentity(model.getStandardIdentity());
-                    standardPretreatment.setPretreatmentDescription(model.getPretreatmentDescription());
-                    // 设置其他需要导入的字段...
-
-                    if (exists) {
-                        // 2. 如果存在，执行更新
-                        standardPretreatmentMapper.updateByStandardIdentity(standardPretreatment);
-                        // System.out.println("第 " + currentRow + " 行: 更新前处理信息，标准标识 " + model.getStandardIdentity());
-                    } else {
-                        // 3. 如果不存在，执行插入
-                        standardPretreatmentMapper.insert(standardPretreatment);
-                        // System.out.println("第 " + currentRow + " 行: 插入前处理信息，标准标识 " + model.getStandardIdentity());
+                    if (model.getPretreatmentDescription() == null || model.getPretreatmentDescription().isEmpty()) {
+                        throw new IllegalArgumentException("前处理描述不能为空");
                     }
+                    
+                    String identityName = model.getDetectionId();
+                    Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
+                    if (detectionId == null) {
+                        throw new IllegalArgumentException("标准标识在关联表中不存在: " + identityName);
+                    }
+
+                    // 构建前处理对象
+                    StandardPretreatment pretreatment = new StandardPretreatment();
+                    pretreatment.setDetectionId(detectionId.toString()); // 主表ID
+                    pretreatment.setPretreatmentDescription(model.getPretreatmentDescription());
+                    // 若有其他字段，此处需从Excel获取
+
+                    // 生成当前记录哈希（包含所有字段）
+                    String currentHash = generatePretreatmentHash(pretreatment);
+
+                    // 查询数据库中该主表ID下的所有记录
+                    List<StandardPretreatment> dbRecords = standardPretreatmentMapper.selectByDetectionId(detectionId.toString());
+                    Map<String, StandardPretreatment> hashToRecordMap = new HashMap<>();
+                    for (StandardPretreatment record : dbRecords) {
+                        hashToRecordMap.put(generatePretreatmentHash(record), record);
+                    }
+
+                    // 对比哈希
+                    if (hashToRecordMap.containsKey(currentHash)) {
+                        System.out.println("第 " + currentRow + " 行: 前处理记录未变更，标准标识ID: " + detectionId);
+                    } else {
+                        // 检查同描述记录（用于更新）
+                        Optional<StandardPretreatment> sameDescRecord = dbRecords.stream()
+                                .filter(r -> Objects.equals(r.getPretreatmentDescription(), pretreatment.getPretreatmentDescription()))
+                                .findFirst();
+
+                        if (sameDescRecord.isPresent()) {
+                            pretreatment.setId(sameDescRecord.get().getId()); // 复用ID
+                            standardPretreatmentMapper.updateById(pretreatment);
+                            System.out.println("第 " + currentRow + " 行: 更新前处理记录（哈希变化），标准标识ID: " + detectionId);
+                        } else {
+                            standardPretreatmentMapper.insert(pretreatment);
+                            System.out.println("第 " + currentRow + " 行: 插入前处理记录，标准标识ID: " + detectionId);
+                        }
+                    }
+
                 } catch (IllegalArgumentException e) {
-                    // 捕获并重新抛出，包含行号信息
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
-                } catch (Exception e) {
-                    // 捕获其他可能的异常，包含行号信息
-                    throw new RuntimeException("第 " + currentRow + " 行数据处理失败：" + e.getMessage(), e);
                 } finally {
-                    // 无论成功失败，都递增行号
                     currentRow++;
                 }
             }
         } catch (IOException e) {
-            System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
             throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
         } catch (Exception e) {
-            // 捕获外层循环可能抛出的异常，包含行号信息
-            System.out.println("导入前处理信息表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入前处理信息表时发生异常: " + e.getMessage(), e);
         }
     }
 
+    // 前处理表哈希（包含所有字段，不依赖pretreatmentOrder）
+    private String generatePretreatmentHash(StandardPretreatment pretreatment) {
+        String combined = 
+            (pretreatment.getId() != null ? pretreatment.getId().toString() : "") + "|" +  // 包含ID
+            pretreatment.getDetectionId() + "|" +  // 主表ID
+            pretreatment.getPretreatmentDescription();  // 描述
+        return generateHash(combined);
+    }
 
-    // 导入计算公式表
+
+    // --------------------------- 子表2：计算公式表导入 ---------------------------
     public void importCalculationFormula(MultipartFile file) {
         try {
+            Map<String, List<ExcelImageImportUtils.ImageInfo>> allImages = 
+                ExcelImageImportUtils.extractAllImages(file);
+            List<ExcelImageImportUtils.ImageInfo> formulaSheetImages = 
+                allImages.getOrDefault("计算公式表", new ArrayList<>());
+
             List<CalculationFormulaExcelModel> list = EasyExcel.read(file.getInputStream())
                     .head(CalculationFormulaExcelModel.class)
                     .sheet("计算公式表")
                     .doReadSync();
-    
+
             if (list == null || list.isEmpty()) {
-                System.out.println("计算公式表数据为空，请检查Excel文件是否正确");
                 return;
             }
-            System.out.println("++++++++" + list.size());
-            int picIdx = 0;
-    
-            for (int i = 0; i < list.size(); i++) {
-                CalculationFormulaExcelModel model = list.get(i);
-                // 打印读取到的数据
-                System.out.println("读取到第 " + (i + 2) + " 行数据: " + model);
-    
-                // 校验必填字段
-                if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：标准标识不能为空");
-                }
-                if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果标识不能为空");
-                }
-                if (model.getResultName() == null || model.getResultName().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果名称不能为空");
-                }
-                if (model.getUnit() == null || model.getUnit().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：单位不能为空");
-                }
-                if (model.getInputParam1Name() == null || model.getInputParam1Name().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：输入参数1名称不能为空");
-                }
-                if (model.getInputParam1Identity() == null || model.getInputParam1Identity().isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：输入参数1标识不能为空");
-                }
-    
-                // 提取所有参数标识
-                List<String> paramIdentities = new ArrayList<>();
-                paramIdentities.add(model.getInputParam1Identity());
-                paramIdentities.add(model.getInputParam2Identity());
-                paramIdentities.add(model.getInputParam3Identity());
-                paramIdentities.add(model.getInputParam4Identity());
-                paramIdentities.add(model.getInputParam5Identity());
-                paramIdentities.add(model.getInputParam6Identity());
-                paramIdentities.add(model.getInputParam7Identity());
-                paramIdentities.add(model.getInputParam8Identity());
-                paramIdentities.add(model.getInputParam9Identity());
-                paramIdentities.add(model.getInputParam10Identity());
-    
-                // 过滤掉空值
-                paramIdentities.removeIf(Objects::isNull);
-    
-                // 校验公式文本
-                String formulaText = model.getFormulaText();
-                if (formulaText == null || formulaText.isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：公式文本不能为空");
-                }
-    
-                // 检查是否是等式
-                if (!formulaText.contains("=")) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：不是等式");
-                }
-    
-                // 分割等式
-                String[] parts = formulaText.split("=", 2);
-                String leftSide = parts[0].trim();
-                String rightSide = parts[1].trim();
-                
-                // 校验结果标识
-                String resultIdentity = model.getResultIdentity();
-                if (resultIdentity == null || resultIdentity.isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果标识不能为空");
-                }
 
-                // 处理左边内容和结果标识，去除括号及其内容
-                String processedLeftSide = leftSide.replaceAll("[\\（\\(].*?[\\）\\)]", "").trim();
-                String processedResultIdentity = resultIdentity.replaceAll("[\\（\\(].*?[\\）\\)]", "").trim();
+            System.out.println("读取到 " + list.size() + " 条计算公式数据");
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
+            int currentRow = 2;
 
-                // 比较处理后的字符串
-                if (!processedLeftSide.equals(processedResultIdentity)) {
-                    System.out.println("调试信息 - 第 " + (i + 2) + " 行:");
-                    System.out.println("  原始左边: " + leftSide);
-                    System.out.println("  处理后左边: " + processedLeftSide);
-                    System.out.println("  原始结果标识: " + resultIdentity);
-                    System.out.println("  处理后结果标识: " + processedResultIdentity);
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：结果标识有误，与公式文本左边不匹配！处理后左边: " 
-                        + processedLeftSide + "，处理后结果标识: " + processedResultIdentity);
-                }
-    
-                // 记录不在公式文本中的参数标识
-                List<String> invalidParams = new ArrayList<>();
-    
-                for (int j = 0; j < paramIdentities.size(); j++) {
-                    String paramIdentity = paramIdentities.get(j);
-                    if (!rightSide.contains(paramIdentity)) {
-                        invalidParams.add("参数" + (j + 1) + "标识: " + paramIdentity);
+            for (CalculationFormulaExcelModel model : list) {
+                try {
+                    // 校验必填字段
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
+                        throw new IllegalArgumentException("标准标识不能为空");
                     }
-                }
-    
-                if (!invalidParams.isEmpty()) {
-                    throw new IllegalArgumentException("第 " + (i + 2) + " 行数据错误：以下参数标识有误，不在公式文本中: " + String.join(", ", invalidParams));
-                }
+                    if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
+                        throw new IllegalArgumentException("结果标识不能为空");
+                    }
+                    if (model.getFormulaText() == null || model.getFormulaText().isEmpty()) {
+                        throw new IllegalArgumentException("公式文本不能为空");
+                    }
 
-                boolean exists = calculationFormulaMapper.existsByStandardIdentity(model.getStandardIdentity());
-                // System.out.println(" 查询到了+----------: " + exists);
-                
-                CalculationFormula calculationFormula = new CalculationFormula();
-                calculationFormula.setStandardIdentity(model.getStandardIdentity());
-                calculationFormula.setResultIdentity(model.getResultIdentity());
-                calculationFormula.setResultName(model.getResultName());
-                calculationFormula.setUnit(model.getUnit());
-                calculationFormula.setInputParam1Name(model.getInputParam1Name());
-                calculationFormula.setInputParam1Identity(model.getInputParam1Identity());
-                calculationFormula.setInputParam2Name(model.getInputParam2Name());
-                calculationFormula.setInputParam2Identity(model.getInputParam2Identity());
-                calculationFormula.setInputParam3Name(model.getInputParam3Name());
-                calculationFormula.setInputParam3Identity(model.getInputParam3Identity());
-                calculationFormula.setInputParam4Name(model.getInputParam4Name());
-                calculationFormula.setInputParam4Identity(model.getInputParam4Identity());
-                calculationFormula.setInputParam5Name(model.getInputParam5Name());
-                calculationFormula.setInputParam5Identity(model.getInputParam5Identity());
-                calculationFormula.setInputParam6Name(model.getInputParam6Name());
-                calculationFormula.setInputParam6Identity(model.getInputParam6Identity());
-                calculationFormula.setInputParam7Name(model.getInputParam7Name());
-                calculationFormula.setInputParam7Identity(model.getInputParam7Identity());
-                calculationFormula.setInputParam8Name(model.getInputParam8Name());
-                calculationFormula.setInputParam8Identity(model.getInputParam8Identity());
-                calculationFormula.setInputParam9Name(model.getInputParam9Name());
-                calculationFormula.setInputParam9Identity(model.getInputParam9Identity());
-                calculationFormula.setInputParam10Name(model.getInputParam10Name());
-                calculationFormula.setInputParam10Identity(model.getInputParam10Identity());
-                calculationFormula.setFormulaText(model.getFormulaText());
-                // calculationFormula.setFormulaImage(model.getFormulaImage());
-                // calculationFormula.setFormulaImage(null);
-                String imageData = model.getFormulaImage();
-                calculationFormula.setDetectionLimit(model.getDetectionLimit());
+                    // 获取主表ID
+                    String identityName = model.getDetectionId();
+                    Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
+                    if (detectionId == null) {
+                        throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
+                    }
 
-                String base64Image = null;
-                System.out.println("第 " + (i+2) + " 行图片----------------------------: " + imageData);
-                
-                if (imageData != null && !imageData.isEmpty()) {
-                    try {
-                        if (imageData.startsWith("=DISPIMG")) {
-                            System.out.println("当前第 " + (i+2) + " 行图片88888: " + imageData);
-                            // 传入行号用于图片定位
-                            base64Image = ExcelImageImportUtils.extractImageToBase64(
-                                file, 
-                                imageData,
-                                picIdx
-                            );
-                            picIdx++;
+                    // 提取图片
+                    String base64Image = ExcelImageImportUtils.findImageByRow(formulaSheetImages, currentRow - 1);
+                    if (base64Image == null && model.getFormulaImage() != null && model.getFormulaImage().startsWith("data:image/")) {
+                        base64Image = model.getFormulaImage();
+                    }
 
-                            System.out.println("图片提取结果长度: " + 
-                                (base64Image != null ? base64Image.length() : "null"));
+                    // 构建计算公式对象
+                    CalculationFormula formula = new CalculationFormula();
+                    formula.setDetectionId(detectionId.toString()); // 主表ID
+                    formula.setResultIdentity(model.getResultIdentity());
+                    formula.setResultName(model.getResultName());
+                    formula.setUnit(model.getUnit());
+                    formula.setInputParam1Name(model.getInputParam1Name());
+                    formula.setInputParam1Identity(model.getInputParam1Identity());
+                    formula.setInputParam2Name(model.getInputParam2Name());
+                    formula.setInputParam2Identity(model.getInputParam2Identity());
+                    formula.setInputParam3Name(model.getInputParam3Name());
+                    formula.setInputParam3Identity(model.getInputParam3Identity());
+                    formula.setInputParam4Name(model.getInputParam4Name());
+                    formula.setInputParam4Identity(model.getInputParam4Identity());
+                    formula.setInputParam5Name(model.getInputParam5Name());
+                    formula.setInputParam5Identity(model.getInputParam5Identity());
+                    formula.setInputParam6Name(model.getInputParam6Name());
+                    formula.setInputParam6Identity(model.getInputParam6Identity());
+                    formula.setInputParam7Name(model.getInputParam7Name());
+                    formula.setInputParam7Identity(model.getInputParam7Identity());
+                    formula.setInputParam8Name(model.getInputParam8Name());
+                    formula.setInputParam8Identity(model.getInputParam8Identity());
+                    formula.setInputParam9Name(model.getInputParam9Name());
+                    formula.setInputParam9Identity(model.getInputParam9Identity());
+                    formula.setInputParam10Name(model.getInputParam10Name());
+                    formula.setInputParam10Identity(model.getInputParam10Identity());
+                    formula.setFormulaText(model.getFormulaText());
+                    formula.setFormulaImage(base64Image);
+                    formula.setDetectionLimit(model.getDetectionLimit());
+
+                    // 生成当前哈希（包含所有字段）
+                    String currentHash = generateFormulaHash(formula);
+
+                    // 查询数据库中该主表ID下的所有公式
+                    List<CalculationFormula> dbFormulas = calculationFormulaMapper.selectByDetectionId(detectionId.toString());
+                    Map<String, CalculationFormula> hashToFormulaMap = new HashMap<>();
+                    for (CalculationFormula dbFormula : dbFormulas) {
+                        hashToFormulaMap.put(generateFormulaHash(dbFormula), dbFormula);
+                    }
+
+                    // 对比哈希
+                    if (hashToFormulaMap.containsKey(currentHash)) {
+                        System.out.println("第 " + currentRow + " 行: 公式记录未变更，标准标识ID: " + detectionId);
+                    } else {
+                        // 检查同结果标识记录
+                        Optional<CalculationFormula> sameResultRecord = dbFormulas.stream()
+                                .filter(f -> Objects.equals(f.getResultIdentity(), formula.getResultIdentity()))
+                                .findFirst();
+
+                        if (sameResultRecord.isPresent()) {
+                            formula.setId(sameResultRecord.get().getId());
+                            calculationFormulaMapper.updateById(formula);
+                            System.out.println("第 " + currentRow + " 行: 更新公式记录（哈希变化），标准标识ID: " + detectionId);
                         } else {
-                            base64Image = imageData;
+                            calculationFormulaMapper.insert(formula);
+                            System.out.println("第 " + currentRow + " 行: 插入公式记录，标准标识ID: " + detectionId);
                         }
-                    } catch (Exception e) {
-                        System.out.println("第 " + i + 2 + " 行图片处理失败: " + e.getMessage());
                     }
-                }
-                calculationFormula.setFormulaImage(base64Image);
-                
-                // calculationFormulaMapper.insert(calculationFormula);
 
-                
-                if (exists) {
-                    // System.out.println("第 " + picIdx + " 行: 更新质量控制信息，标准标识 " + model.getStandardIdentity());
-                    calculationFormulaMapper.updateByStandardIdentity(calculationFormula);
-
-                } else {
-                    // System.out.println("第 " + picIdx + " 行: 插入质量控制信息，标准标识 " + model.getStandardIdentity());
-                    calculationFormulaMapper.insert(calculationFormula);
-
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
+                } finally {
+                    currentRow++;
                 }
             }
-        } catch (IOException e) {
-            System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
-            throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
+
         } catch (Exception e) {
-            System.out.println("导入计算公式表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入计算公式表时发生异常: " + e.getMessage(), e);
         }
-    }    
-    
-    
-    // 导入质量控制表
+    }
+
+    // 计算公式表哈希（包含所有字段）
+    private String generateFormulaHash(CalculationFormula formula) {
+        String combined = 
+            (formula.getId() != null ? formula.getId().toString() : "") + "|" +  // ID
+            formula.getDetectionId() + "|" +  // 主表ID
+            formula.getResultIdentity() + "|" +
+            (formula.getResultName() != null ? formula.getResultName() : "") + "|" +
+            (formula.getUnit() != null ? formula.getUnit() : "") + "|" +
+            (formula.getInputParam1Name() != null ? formula.getInputParam1Name() : "") + "|" +
+            (formula.getInputParam1Identity() != null ? formula.getInputParam1Identity() : "") + "|" +
+            (formula.getInputParam2Name() != null ? formula.getInputParam2Name() : "") + "|" +
+            (formula.getInputParam2Identity() != null ? formula.getInputParam2Identity() : "") + "|" +
+            (formula.getInputParam3Name() != null ? formula.getInputParam3Name() : "") + "|" +
+            (formula.getInputParam3Identity() != null ? formula.getInputParam3Identity() : "") + "|" +
+            (formula.getInputParam4Name() != null ? formula.getInputParam4Name() : "") + "|" +
+            (formula.getInputParam4Identity() != null ? formula.getInputParam4Identity() : "") + "|" +
+            (formula.getInputParam5Name() != null ? formula.getInputParam5Name() : "") + "|" +
+            (formula.getInputParam5Identity() != null ? formula.getInputParam5Identity() : "") + "|" +
+            (formula.getInputParam6Name() != null ? formula.getInputParam6Name() : "") + "|" +
+            (formula.getInputParam6Identity() != null ? formula.getInputParam6Identity() : "") + "|" +
+            (formula.getInputParam7Name() != null ? formula.getInputParam7Name() : "") + "|" +
+            (formula.getInputParam7Identity() != null ? formula.getInputParam7Identity() : "") + "|" +
+            (formula.getInputParam8Name() != null ? formula.getInputParam8Name() : "") + "|" +
+            (formula.getInputParam8Identity() != null ? formula.getInputParam8Identity() : "") + "|" +
+            (formula.getInputParam9Name() != null ? formula.getInputParam9Name() : "") + "|" +
+            (formula.getInputParam9Identity() != null ? formula.getInputParam9Identity() : "") + "|" +
+            (formula.getInputParam10Name() != null ? formula.getInputParam10Name() : "") + "|" +
+            (formula.getInputParam10Identity() != null ? formula.getInputParam10Identity() : "") + "|" +
+            formula.getFormulaText() + "|" +
+            (formula.getFormulaImage() != null ? formula.getFormulaImage() : "") + "|" +
+            (formula.getDetectionLimit() != null ? formula.getDetectionLimit() : "");
+        return generateHash(combined);
+    }
+
+
+    // --------------------------- 子表3：质量控制表导入 ---------------------------
     public void importQualityControl(MultipartFile file) throws IOException {
         try {
             List<QualityControlExcelModel> list = EasyExcel.read(file.getInputStream())
@@ -447,85 +466,111 @@ public class ImportService {
                     .doReadSync();
 
             if (list == null || list.isEmpty()) {
-                // System.out.println("质量控制表数据为空，请检查Excel文件是否正确");
                 return;
             }
 
-            // 从第二行开始计数，假设第一行是标题行
             int currentRow = 2;
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
+
             for (QualityControlExcelModel model : list) {
                 try {
-                    // 打印读取到的数据 (可选，用于调试)
-                    // System.out.println("读取到质量控制表数据: " + model);
-
-                    if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
+                    if (model.getControlType() == null || model.getControlType().isEmpty()) {
+                        throw new IllegalArgumentException("控制类型不能为空");
+                    }
 
-                    // 1. 检查记录是否存在
-                    boolean exists = qualityControlMapper.existsByStandardIdentity(model.getStandardIdentity());
+                    // 获取主表ID
+                    String identityName = model.getDetectionId();
+                    Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
+                    if (detectionId == null) {
+                        throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
+                    }
 
-                    QualityControl qualityControl = new QualityControl();
-                    qualityControl.setStandardIdentity(model.getStandardIdentity());
-                    qualityControl.setControlType(model.getControlType());
-                    qualityControl.setControlDescription(model.getControlDescription());
-                    qualityControl.setControlFormula(model.getControlFormula());
+                    // 构建质量控制对象
+                    QualityControl control = new QualityControl();
+                    control.setDetectionId(detectionId.toString()); // 主表ID
+                    control.setControlType(model.getControlType());
+                    control.setControlDescription(model.getControlDescription());
+                    control.setControlFormula(model.getControlFormula());
 
-                    // 根据实际需求选择打印插入或更新信息
-                    if (exists) {
-                        // System.out.println("第 " + currentRow + " 行: 更新质量控制信息，标准标识 " + model.getStandardIdentity());
-                        qualityControlMapper.updateByStandardIdentity(qualityControl);
+                    // 生成当前哈希（包含所有字段）
+                    String currentHash = generateControlHash(control);
 
+                    // 查询数据库中该主表ID下的所有记录
+                    List<QualityControl> dbControls = qualityControlMapper.selectByDetectionId(detectionId.toString());
+                    Map<String, QualityControl> hashToControlMap = new HashMap<>();
+                    for (QualityControl dbControl : dbControls) {
+                        hashToControlMap.put(generateControlHash(dbControl), dbControl);
+                    }
+
+                    // 对比哈希
+                    if (hashToControlMap.containsKey(currentHash)) {
+                        System.out.println("第 " + currentRow + " 行: 质量控制记录未变更，标准标识ID: " + detectionId);
                     } else {
-                        // System.out.println("第 " + currentRow + " 行: 插入质量控制信息，标准标识 " + model.getStandardIdentity());
-                        qualityControlMapper.insert(qualityControl);
+                        // 检查同类型记录
+                        Optional<QualityControl> sameTypeRecord = dbControls.stream()
+                                .filter(c -> Objects.equals(c.getControlType(), control.getControlType()))
+                                .findFirst();
 
+                        if (sameTypeRecord.isPresent()) {
+                            control.setId(sameTypeRecord.get().getId());
+                            qualityControlMapper.updateById(control);
+                            System.out.println("第 " + currentRow + " 行: 更新质量控制记录（哈希变化），标准标识ID: " + detectionId);
+                        } else {
+                            qualityControlMapper.insert(control);
+                            System.out.println("第 " + currentRow + " 行: 插入质量控制记录，标准标识ID: " + detectionId);
+                        }
                     }
 
                 } catch (IllegalArgumentException e) {
-                    // 捕获并重新抛出，包含行号信息
                     throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
-                } catch (Exception e) {
-                    // 捕获其他可能的异常，包含行号信息
-                    throw new RuntimeException("第 " + currentRow + " 行数据处理失败：" + e.getMessage(), e);
                 } finally {
-                    // 无论成功失败，都递增行号
                     currentRow++;
                 }
             }
             System.out.println("质量控制表导入完成。");
-        } catch (IOException e) {
-            System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
-            throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
         } catch (Exception e) {
-            // 捕获外层循环可能抛出的异常，包含行号信息
-            System.out.println("导入质量控制表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入质量控制表时发生异常: " + e.getMessage(), e);
         }
     }
 
-    // 导入修约表
+    // 质量控制表哈希（包含所有字段）
+    private String generateControlHash(QualityControl control) {
+        String combined = 
+            (control.getId() != null ? control.getId().toString() : "") + "|" +  // ID
+            control.getDetectionId() + "|" +  // 主表ID
+            control.getControlType() + "|" +
+            (control.getControlDescription() != null ? control.getControlDescription() : "") + "|" +
+            (control.getControlFormula() != null ? control.getControlFormula() : "");
+        return generateHash(combined);
+    }
+
+
+    // --------------------------- 子表4：修约表导入 ---------------------------
     public void importRoundingRules(MultipartFile file) {
         try {
             List<RoundingRulesExcelModel> list = EasyExcel.read(file.getInputStream())
                     .head(RoundingRulesExcelModel.class)
                     .sheet("修约表")
                     .doReadSync();
-    
+
             if (list == null || list.isEmpty()) {
-                // System.out.println("修约表数据为空，请检查Excel文件是否正确");
                 return;
             }
-    
-            // 从第二行开始计数，假设第一行是标题行
+
             int currentRow = 2;
+            Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
+
             for (RoundingRulesExcelModel model : list) {
                 try {
-                    // 打印读取到的数据
-                    // System.out.println("读取到修约表数据: " + model);
-    
-                    if (model.getStandardIdentity() == null || model.getStandardIdentity().isEmpty()) {
+                    // 校验必填字段
+                    if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
+                    }
+                    if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
+                        throw new IllegalArgumentException("结果标识不能为空");
                     }
                     if (model.getRoundingType() == null || model.getRoundingType().isEmpty()) {
                         throw new IllegalArgumentException("修约类型不能为空");
@@ -534,47 +579,105 @@ public class ImportService {
                         throw new IllegalArgumentException("位数不能为空");
                     }
 
-                    boolean exists = roundingRulesMapper.existsByStandardIdentity(model.getStandardIdentity());
-                    
-                    RoundingRules roundingRules = new RoundingRules();
-                    roundingRules.setStandardIdentity(model.getStandardIdentity());
-                    roundingRules.setResultIdentity(model.getResultIdentity());
-                    roundingRules.setRoundingType(model.getRoundingType());
-                    roundingRules.setRoundingCondition(model.getRoundingCondition());
-                    roundingRules.setDecimalPlaces(model.getDecimalPlaces());
-                    // roundingRulesMapper.insert(roundingRules);
-                    // 根据实际需求选择打印插入或更新信息
-                    if (exists) {
-                        System.out.println("第 " + currentRow + " 行: 更新质量控制信息，标准标识 " + model.getStandardIdentity());
-                        roundingRulesMapper.updateByStandardIdentity(roundingRules);
-
-                    } else {
-                        System.out.println("第 " + currentRow + " 行: 插入质量控制信息，标准标识 " + model.getStandardIdentity());
-                        roundingRulesMapper.insert(roundingRules);
-
+                    // 获取主表ID
+                    String identityName = model.getDetectionId();
+                    Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
+                    if (detectionId == null) {
+                        throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
                     }
+
+                    // 构建修约规则对象
+                    RoundingRules rules = new RoundingRules();
+                    rules.setDetectionId(detectionId.toString()); // 主表ID
+                    rules.setResultIdentity(model.getResultIdentity());
+                    rules.setRoundingType(model.getRoundingType());
+                    rules.setRoundingCondition(model.getRoundingCondition());
+                    rules.setDecimalPlaces(model.getDecimalPlaces());
+
+                    // 生成当前哈希（包含所有字段）
+                    String currentHash = generateRoundingHash(rules);
+
+                    // 查询数据库中该主表ID下的所有记录
+                    List<RoundingRules> dbRules = roundingRulesMapper.selectByDetectionId(detectionId.toString());
+                    Map<String, RoundingRules> hashToRulesMap = new HashMap<>();
+                    for (RoundingRules dbRule : dbRules) {
+                        hashToRulesMap.put(generateRoundingHash(dbRule), dbRule);
+                    }
+
+                    // 对比哈希
+                    if (hashToRulesMap.containsKey(currentHash)) {
+                        System.out.println("第 " + currentRow + " 行: 修约规则未变更，标准标识ID: " + detectionId);
+                    } else {
+                        // 检查同结果标识记录
+                        Optional<RoundingRules> sameResultRecord = dbRules.stream()
+                                .filter(r -> Objects.equals(r.getResultIdentity(), rules.getResultIdentity()))
+                                .findFirst();
+
+                        if (sameResultRecord.isPresent()) {
+                            rules.setId(sameResultRecord.get().getId());
+                            roundingRulesMapper.updateById(rules);
+                            System.out.println("第 " + currentRow + " 行: 更新修约规则（哈希变化），标准标识ID: " + detectionId);
+                        } else {
+                            roundingRulesMapper.insert(rules);
+                            System.out.println("第 " + currentRow + " 行: 插入修约规则，标准标识ID: " + detectionId);
+                        }
+                    }
+
                 } catch (IllegalArgumentException e) {
-                    System.out.println("导入修约表时发生异常: 第 " + currentRow + " 行数据错误：" + e.getMessage());
-                    throw new IllegalArgumentException("导入修约表时发生异常: 第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
+                    throw new IllegalArgumentException("第 " + currentRow + " 行数据错误：" + e.getMessage(), e);
                 } finally {
                     currentRow++;
                 }
             }
-        } catch (IOException e) {
-            System.out.println("读取Excel文件时发生IO异常: " + e.getMessage());
-            throw new RuntimeException("读取Excel文件时发生异常: " + e.getMessage(), e);
+
         } catch (Exception e) {
-            System.out.println("导入修约表时发生异常: " + e.getMessage());
             throw new IllegalArgumentException("导入修约表时发生异常: " + e.getMessage(), e);
         }
-    }    
-    
+    }
+
+    // 修约表哈希（包含所有字段）
+    private String generateRoundingHash(RoundingRules rules) {
+        String combined = 
+            (rules.getId() != null ? rules.getId().toString() : "") + "|" +  // ID
+            rules.getDetectionId() + "|" +  // 主表ID
+            rules.getResultIdentity() + "|" +
+            rules.getRoundingType() + "|" +
+            (rules.getRoundingCondition() != null ? rules.getRoundingCondition() : "") + "|" +
+            rules.getDecimalPlaces().toString();
+        return generateHash(combined);
+    }
+
+
+    // --------------------------- 公共工具方法 ---------------------------
+    // 通用哈希生成方法（SHA-256）
+    private String generateHash(String data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
+            byte[] hashBytes = digest.digest(data.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hashBytes); // 转为Base64便于存储和对比
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("哈希算法初始化失败", e);
+        }
+    }
+
+    // 获取主表ID（缓存逻辑）
+    private Integer getDetectionId(String identityName, Map<String, Integer> cache) {
+        if (cache.containsKey(identityName)) {
+            return cache.get(identityName);
+        }
+        Integer detectionId = detectionMapper.findIdByStandardIdentityName(identityName);
+        if (detectionId != null) {
+            cache.put(identityName, detectionId);
+        }
+        return detectionId;
+    }
+
     // 导入所有表
     public void importExcel(MultipartFile file) throws IOException {
+        importStandardDetection(file);
         importStandardPretreatment(file);
         importRoundingRules(file);
         importQualityControl(file);
         importCalculationFormula(file);
-        importStandardDetection(file);
     }
 }

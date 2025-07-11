@@ -1,12 +1,13 @@
 package com.persee.workstation.uv_inexus.dao.parseReport;
 
 import java.util.List;
+import java.util.Set;
 
-// import org.apache.ibatis.annotations.Mapper;
-// import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -15,64 +16,61 @@ import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
 @Mapper
 public interface StandardPretreatmentMapper {
 
-    @Insert("INSERT INTO t_report_standard_pretreatment (standard_identity, pretreatment_description) " +
-            "VALUES (#{standardIdentity}, #{pretreatmentDescription})")
+    @Insert("INSERT INTO t_report_standard_pretreatment (detection_id, pretreatment_description) " +
+            "VALUES (#{detectionId}, #{pretreatmentDescription})")
     void insert(StandardPretreatment standardPretreatment);
 
-    // 如果需要批量插入，可以添加以下方法
+    // 批量插入（保持原有定义）
     void batchInsert(@Param("list") List<StandardPretreatment> list);
-    // 手动实现 selectList 方法
 
+    // 查询所有记录（保持原有逻辑）
     @Select("SELECT * FROM t_report_standard_pretreatment")
     List<StandardPretreatment> selectAll();
 
-    // 检查是否存在指定 standardIdentity 的记录
-    @Select("SELECT COUNT(*) FROM t_report_standard_pretreatment WHERE standard_identity = #{standardIdentity}")
-    boolean existsByStandardIdentity(@Param("standardIdentity") String standardIdentity);
-
-    // 根据标准标识更新记录
-    @Update("UPDATE t_report_standard_pretreatment " +
-        "SET pretreatment_description = #{pretreatmentDescription} " + // 第一个字段
-        "WHERE standard_identity = #{standardIdentity}")
-    void updateByStandardIdentity(StandardPretreatment standardPretreatment);
-
-}
-
-// package com.persee.workstation.uv_inexus.dao.parseReport;
-
-// import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
-// import org.apache.ibatis.annotations.*;
-
-// import java.util.List;
-
-// @Mapper
-// public interface StandardPretreatmentMapper {
-
-//     // 插入
-//     @Insert("INSERT INTO treportstandardpretreatment (standardidentity, pretreatmentdescription) " +
-//             "VALUES (#{standardIdentity}, #{pretreatmentDescription})")
-//     void insert(StandardPretreatment standardPretreatment);
-
-//     // 查询所有
-//     @Select("SELECT * FROM treportstandardpretreatment")
-//     List<StandardPretreatment> findAll();
+    // 检查记录是否存在（根据Detection ID，保持原有逻辑）
+    @Select("SELECT COUNT(*) FROM t_report_standard_pretreatment WHERE detection_id = #{detectionId}")
+    boolean existsByDetectionId(Integer detectionId);
     
-//     // 根据标准身份标识查询
-//     @Select("SELECT * FROM treportstandardpretreatment WHERE standardidentity = #{standardIdentity}")
-//     StandardPretreatment findById(@Param("standardIdentity") String standardIdentity);
+    // 根据Detection ID更新记录（保持原有逻辑）
+    @Update("UPDATE t_report_standard_pretreatment SET pretreatment_description = #{pretreatmentDescription}, " +
+            "WHERE detection_id = #{detectionId}")
+    void updateByDetectionId(StandardPretreatment pretreatment);
 
-//     // 更新
-//     @Update("UPDATE treportstandardpretreatment " +
-//             "SET pretreatmentdescription = #{pretreatmentDescription} " +
-//             "WHERE standardidentity = #{standardIdentity}")
-//     void update(StandardPretreatment standardPretreatment);
+    // 联表查询（导出用，保持原有逻辑）
+    @Select("SELECT " +
+        "p.id, " +
+        "p.detection_id AS detectionId," +  // SQL中的detectionId（前处理表的外键）
+        "d.standard_identity AS standardIdentity," +  // SQL中的standardIdentity（主表的标识）
+        "p.pretreatment_description " +
+        "FROM t_report_standard_pretreatment p " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON p.detection_id = d.id")
+        // 关键：通过@Results映射，让实体的detectionId接收SQL的standardIdentity
+        @Results({
+        @Result(column = "standardIdentity", property = "detectionId"),
+        })
+        List<StandardPretreatment> selectAllForExport();
 
-//     // 根据标准身份标识删除
-//     @Delete("DELETE FROM treportstandardpretreatment WHERE standardidentity = #{standardIdentity}")
-//     void deleteById(@Param("standardIdentity") String standardIdentity);
+    // 新增：查询某主表ID下的所有前处理记录（用于哈希对比）
+    @Select("SELECT * FROM t_report_standard_pretreatment WHERE detection_id = #{detectionId}")
+    List<StandardPretreatment> selectByDetectionId(String detectionId);
 
-//     // 手动实现 selectList 方法
-//     @Select("SELECT * FROM treportstandardpretreatment")
-//     List<StandardPretreatment> selectAll();
-// }
+    // 新增：根据ID精准更新单条记录（用于哈希对比后的更新）
+    @Update("UPDATE t_report_standard_pretreatment SET " +
+            "pretreatment_description = #{pretreatmentDescription}" +
+            "WHERE id = #{id}")
+    void updateById(StandardPretreatment pretreatment);
 
+    // 按detection_id批量查询（注解方式）
+    @Select("<script>" +
+        "SELECT " +
+        "p.*, " +
+        "d.standard_identity AS detectionId " +
+        "FROM t_report_standard_pretreatment p " +
+        "LEFT JOIN t_report_standard_detection d " +
+        "ON p.detection_id = d.id " +
+        "WHERE p.detection_id IN " +
+        "<foreach collection='detectionIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>" +
+        "</script>")
+        List<StandardPretreatment> selectByDetectionIds(@Param("detectionIds") Set<String> detectionIds);
+}
