@@ -49,6 +49,7 @@ public class ResponseParser {
             case "CheckWLamp":
             case "CheckDLamp":
             case "CheckWl":
+            case "GetInitStatus":
                 return parseBooleanFrom5thByte(responses);
 
             case "ScanFast":
@@ -56,8 +57,7 @@ public class ResponseParser {
                 return parseScanFast(responses);
 
             default:
-                System.out.println("尚未定义命令 [" + cmdId + "] 的解析规则");
-                return null;
+                return 0;
         }
     }
 

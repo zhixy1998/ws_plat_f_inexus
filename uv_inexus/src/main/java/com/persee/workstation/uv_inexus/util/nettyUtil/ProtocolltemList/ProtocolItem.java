@@ -1,7 +1,11 @@
 package com.persee.workstation.uv_inexus.util.nettyUtil.ProtocolltemList;
 
-import org.w3c.dom.*;
-import javax.xml.parsers.*;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.util.*;
 
@@ -166,85 +170,4 @@ public class ProtocolItem {
         return cmdb;
     }
 
-    // ================= 4. 指令解包 =================
-    public Object[] parseOutputs(byte[] reads, int startPos, int endPos) {
-        Object[] ret = new Object[OutputString.size()];
-        Map<String, int[]> positions = new HashMap<>();
-        String[] rs = ReadBytes[0].split(":");
-
-        for (int i = 0; i < rs.length; i++) {
-            if (!isNumeric(rs[i]) && !"check".equalsIgnoreCase(rs[i])) {
-                int finalI = i;
-                int finalI1 = i;
-                positions.computeIfAbsent(rs[i], k -> new int[]{finalI, finalI1})[1] = i;
-            }
-        }
-
-        for (int i = 0; i < OutputString.size(); i++) {
-            String[] parts = OutputString.get(i).split(":");
-            String key = parts[1];
-            String type = parts[2];
-            for (String k : positions.keySet()) {
-                if (k.contains(key)) {
-                    int[] pos = positions.get(k);
-                    byte[] bs = Arrays.copyOfRange(reads, startPos + pos[0], startPos + pos[1] + 1);
-                    Object parsed = ProtocolItemCalculator.parseBytes(bs, type);
-                    ret[i] = ProtocolItemCalculator.getElementValue(k, parsed);
-                }
-            }
-        }
-        return ret;
-    }
-
-    public Object[] parseOutputSN(Queue<Byte> reads, int startPos, byte[] head) {
-        Object[] ret = new Object[OutputString.size()];
-        Map<String, int[]> positions = new HashMap<>();
-        String[] rs = ReadBytes[0].split(":");
-
-        for (int i = 0; i < rs.length; i++) {
-            if (!isNumeric(rs[i]) && !"check".equalsIgnoreCase(rs[i])) {
-                int finalI = i;
-                int finalI1 = i;
-                positions.computeIfAbsent(rs[i], k -> new int[]{finalI, finalI1})[1] = i;
-            }
-        }
-
-        for (int i = 0; i < OutputString.size(); i++) {
-            String[] parts = OutputString.get(i).split(":");
-            String key = parts[1];
-            for (String k : positions.keySet()) {
-                if (k.contains(key)) {
-                    int[] pos = positions.get(k);
-                    byte[] bs = new byte[pos[1] - pos[0] + 1];
-                    for (int j = 0; j < bs.length; j++) {
-                        bs[j] = ((List<Byte>) reads).get(j + startPos + pos[0]);
-                    }
-                    StringBuilder builder = new StringBuilder();
-                    for (byte b : bs) builder.append(String.format("%02d", b));
-                    ret[i] = builder.toString();
-                }
-            }
-        }
-
-        return new Object[] {
-                String.format("%s-%s-%s-%s", ret[0], ret[1], ret[2], ret[3])
-        };
-    }
-
-    public int tryGetKey(String value, Map<Integer, String> positions) {
-        return positions.entrySet().stream()
-                .filter(e -> e.getValue().equals(value))
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElse(0);
-    }
-
-    public boolean isNumeric(String str) {
-        try {
-            Double.parseDouble(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
 }

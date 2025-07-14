@@ -1,14 +1,12 @@
-/*
+package com.persee.workstation.uv_inexus.util.nettyUtil.ProtocolltemList;/*
     报文中公式的转换
 * */
-package com.persee.workstation.uv_inexus.util.nettyUtil.ProtocolltemList;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 
 public class ProtocolItemCalculator {
@@ -158,25 +156,6 @@ public class ProtocolItemCalculator {
         return strLast.substring(0, pos);
     }
 
-    public static Object getElementValue(String equation, Object totalValue) {
-        String resultExp = null;
-        if (equation.contains("+")) {
-            String[] parts = equation.split("\\+");
-            resultExp = isNumeric(parts[1]) ? totalValue + "-" + parts[1] : totalValue + "-" + parts[0];
-        } else if (equation.contains("-")) {
-            String[] parts = equation.split("-");
-            resultExp = isNumeric(parts[1]) ? totalValue + "+" + parts[1] : parts[0] + "-" + totalValue;
-        } else if (equation.contains("*")) {
-            String[] parts = equation.split("\\*");
-            resultExp = isNumeric(parts[1]) ? totalValue + "/" + parts[1] : totalValue + "/" + parts[0];
-        } else if (equation.contains("/")) {
-            String[] parts = equation.split("/");
-            resultExp = isNumeric(parts[1]) ? totalValue + "*" + parts[1] : parts[0] + "/" + totalValue;
-        } else {
-            return totalValue;
-        }
-        return eval(resultExp);
-    }
 
     public static boolean isNumeric(String str) {
         try {
@@ -198,39 +177,4 @@ public class ProtocolItemCalculator {
         }
     }
 
-    public static Object evalExcelExpression(String expr, Map<String, Integer> context) {
-        try {
-            expr = expr.trim();
-
-            if (expr.matches("\\d+")) {
-                return Integer.parseInt(expr);
-            }
-
-            if (context.containsKey(expr)) {
-                return context.get(expr);
-            }
-
-            if (expr.startsWith("MOD(") || expr.startsWith("TRUNC(")) {
-                return getEquationValue(expr, toStringMap(context), new String[1]);
-            }
-
-            String replaced = expr;
-            for (Map.Entry<String, Integer> entry : context.entrySet()) {
-                replaced = replaced.replaceAll(entry.getKey(), entry.getValue().toString());
-            }
-            return eval(replaced);
-
-        } catch (Exception ex) {
-            System.err.println("[表达式求值失败] " + expr + ": " + ex.getMessage());
-            return 0;
-        }
-    }
-
-    private static Map<String, String> toStringMap(Map<String, Integer> context) {
-        Map<String, String> strMap = new HashMap<>();
-        for (Map.Entry<String, Integer> entry : context.entrySet()) {
-            strMap.put(entry.getKey(), String.valueOf(entry.getValue()));
-        }
-        return strMap;
-    }
 }
