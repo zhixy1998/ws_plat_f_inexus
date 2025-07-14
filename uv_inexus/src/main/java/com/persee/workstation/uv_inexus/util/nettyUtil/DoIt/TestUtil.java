@@ -16,13 +16,14 @@ public class TestUtil {
         // 创建 DynamicCommandService 实例
         try {
             DynamicCommandService service = new DynamicCommandService(
-                    "169.254.110.67", 6000, 5000, path);
+                    "169.254.180.83", 6000, 5000, path);
 
             // 存储所有指令的执行结果
             Map<String, Object> resultMap = new HashMap<>();
 
             // 遍历接收到的指令
             for (CommandDTO command : dto.getCommands()) {
+
                 // 创建 CommandRequest 对象
                 CommandRequest request = new CommandRequest(command.getCmdId(), command.getParams());
 
@@ -33,6 +34,7 @@ public class TestUtil {
                 resultMap.put(request.getCmdId(), result);
                 System.out.println("指令 [" + request.getCmdId() + "] 返回结果：" + result);
             }
+            service.close();
 
             // 打印所有指令的执行结果
             System.err.println("所有执行结果：" + resultMap);

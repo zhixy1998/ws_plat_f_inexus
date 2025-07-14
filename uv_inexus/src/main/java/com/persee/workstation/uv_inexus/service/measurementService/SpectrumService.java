@@ -70,4 +70,8 @@ public interface SpectrumService {
     Result addSamplePort(AddSampleDto paramDto);
 
     Result deleteSamplePort(String sampleId, String taskId);
+
+    Result uploadImage(SpectrumImageUpload upload);
+
+    Result queryTheTaskImage(String id, String type);
 }

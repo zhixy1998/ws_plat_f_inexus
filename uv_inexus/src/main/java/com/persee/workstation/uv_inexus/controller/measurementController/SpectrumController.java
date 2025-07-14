@@ -209,6 +209,18 @@ public class SpectrumController {
         return spectrumService.deleteSamplePort(sampleId,taskId);
     }
 
+    @PostMapping("uploadImage")
+    @ApiOperation("图片上传")
+    public Result uploadImage(@RequestBody SpectrumImageUpload upload) {
+        return spectrumService.uploadImage(upload);
+    }
+
+    @PostMapping("queryTheTaskImage")
+    @ApiOperation("获取任务图片接口")
+    public Result queryTheTaskImage(@RequestParam String id,@RequestParam String type) {
+        return spectrumService.queryTheTaskImage(id,type);
+    }
+
 
 
     @GetMapping("testScan")
@@ -216,6 +228,9 @@ public class SpectrumController {
     public void testScan() {
         spectrumService.testScan();
     }
+
+
+
 
 
 

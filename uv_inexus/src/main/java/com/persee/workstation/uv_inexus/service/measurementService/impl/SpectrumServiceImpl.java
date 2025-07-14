@@ -29,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -1264,7 +1265,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             CommandDTO com = new CommandDTO();
             com.setCmdId(comId);
             if (comId.equals("NewIP")) {
-                com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 118, 253});
+                com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 180, 253});
             }
             commands.add(com);
         });
@@ -1309,7 +1310,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             if (taskSpeciman.getDeleteType().equals("0")){
                 TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                 Sample sample = new Sample();
-                sample.setSampleId(byId.getId());
+                sample.setId(byId.getId());
                 sample.setSampleName(byId.getSampleName());
                 sample.setSampleNumber(byId.getSampleNumber());
                 sample.setSampleLocation(byId.getSampleLocation());
@@ -1393,6 +1394,51 @@ public class SpectrumServiceImpl implements SpectrumService {
         task.setSampleKey(JSON.toJSONString(taskSpecimenList));
         boolean update = tMeasureTaskService.updateById(task);
         return Result.ok( update);
+    }
+
+    @Override
+    public Result uploadImage(SpectrumImageUpload upload) {
+        byte[] bytes= new byte[0];
+        try {
+            bytes = upload.getFile().getBytes();
+        } catch (IOException e) {
+            return Result.fail("上传图片失败");
+        }
+        boolean update = false;
+        if (upload.getType().equals("0")){
+            TMeasureData byId = tMeasureDataService.getById(upload.getId());
+            byId.setDataImage(JSON.toJSONString(bytes));
+            update = tMeasureDataService.updateById(byId);
+        }else if (upload.getType().equals("1")){
+            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(upload.getId());
+            byId.setAnalysisDataImage(JSON.toJSONString(bytes));
+            update = tMeasureAnalysisDataService.updateById(byId);
+        }else{
+            return Result.fail("上传图片失败");
+        }
+        return Result.ok(update);
+    }
+
+    @Override
+    public Result queryTheTaskImage(String id, String type) {
+        // 根据type类型查询测量数据或分析数据的图片
+        if (type.equals("0")){
+            TMeasureData byId = tMeasureDataService.getById(id);
+            if (byId.getDataImage() == null) {
+                return Result.fail("图片不存在");
+            }
+            byte[] bytes = JSON.parseObject(byId.getDataImage(), byte[].class);
+            return Result.ok(bytes);
+        }else if (type.equals("1")){
+            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(id);
+            if (byId.getAnalysisDataImage() == null) {
+                return Result.fail("图片不存在");
+            }
+            byte[] bytes = JSON.parseObject(byId.getAnalysisDataImage(), byte[].class);
+            return Result.ok(bytes);
+        }else {
+            return Result.fail("type类型错误");
+        }
     }
 
     @Override
