@@ -9,6 +9,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.util.*;
 
+/**
+ * 将xml中的协议项信息解析为 ProtocolItem 对象
+ */
 public class ProtocolItem {
     public String ID;
     public String Describe;
@@ -71,11 +74,17 @@ public class ProtocolItem {
         return map;
     }
 
+    /**
+     * 获取指定标签的文本内容
+     */
     private static String getText(Element parent, String tag) {
         Element elem = getElement(parent, tag);
         return (elem != null) ? elem.getTextContent().trim() : "";
     }
 
+    /**
+     * 获取指定标签的元素
+     */
     private static Element getElement(Element parent, String tagName) {
         NodeList nodes = parent.getElementsByTagName(tagName);
         if (nodes.getLength() > 0) {

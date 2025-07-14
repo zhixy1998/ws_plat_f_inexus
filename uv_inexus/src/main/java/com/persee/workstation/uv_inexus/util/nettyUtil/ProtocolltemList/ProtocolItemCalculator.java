@@ -29,7 +29,6 @@ public class ProtocolItemCalculator {
             System.err.println("[错误] objType 为 null，inputValue = " + inputValue);
             return lastByte;
         }
-
         switch (objType) {
             case "0":
                 lastByte = new byte[]{(byte) Double.parseDouble(inputValue)};
