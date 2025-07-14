@@ -17,7 +17,7 @@ services:
       DB_PORT: 3306
       DB_USER: root
       DB_PASSWORD: 123456
-      DB_NAME: mydb
+      DB_NAME: t800_uv_inexus
     volumes:
       - ./doc_backend:/app
 
@@ -28,7 +28,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 123456
-      MYSQL_DATABASE: mydb
+      MYSQL_DATABASE: t800_uv_inexus
     ports:
       - "3308:3306"
     volumes:
