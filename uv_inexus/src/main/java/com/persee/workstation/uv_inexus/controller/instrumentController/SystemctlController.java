@@ -5,6 +5,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.systemUserManageService.SystemUserManageService;
+import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
 import com.persee.workstation.uv_inexus.vo.userManageVo.LoginUserInfoVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
@@ -20,6 +21,9 @@ public class SystemctlController {
 
     @Autowired
     SystemUserManageService userManageService;
+
+    @Autowired
+    MessageUtil messageUtil;
 
     @PostMapping("/login")
     @ApiOperation("用户登录接口")
@@ -40,8 +44,6 @@ public class SystemctlController {
     public Result<Boolean> loginOut(@RequestParam String updateBy){
         return Result.ok(true);
     }
-
-
 
 
 

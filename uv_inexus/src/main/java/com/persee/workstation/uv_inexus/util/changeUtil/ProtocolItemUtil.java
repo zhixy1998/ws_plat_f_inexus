@@ -1,7 +1,7 @@
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
-import com.persee.workstation.uv_inexus.util.changeUtil.model.Transition;
 import com.persee.workstation.uv_inexus.util.nettyUtil.ProtocolltemList.ProtocolItemCalculator;
+import org.springframework.stereotype.Service;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -11,7 +11,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.util.*;
 
-public class ProtocolitemUtil {
+@Service("ProtocolItemUtil")
+public class ProtocolItemUtil {
 
     public Map<String, Transition> loadFromXml(String xmlPath) throws Exception {
         Map<String, Transition> map = new LinkedHashMap<>();

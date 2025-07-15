@@ -1,4 +1,4 @@
-package com.persee.workstation.uv_inexus.util.changeUtil.model;
+package com.persee.workstation.uv_inexus.util.changeUtil;
 
 import lombok.Data;
 

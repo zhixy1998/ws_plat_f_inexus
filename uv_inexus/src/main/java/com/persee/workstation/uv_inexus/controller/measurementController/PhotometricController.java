@@ -27,6 +27,13 @@ public class PhotometricController {
         return photometricService.updateMethodParameter(methodDto);
     }
 
+    @GetMapping("queryMethodParam")
+    @ApiOperation("查询方法参数接口")
+    public Result queryMethodParam(@RequestParam String methodId) {
+        System.out.println("1111111");
+        return photometricService.queryMethodParam(methodId);
+    }
+
     @PostMapping("addOrDeleteSample")
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody AddOrDeleteSampleDTO dto) {
