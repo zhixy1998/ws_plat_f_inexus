@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
-import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
@@ -15,7 +15,7 @@ import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardPretreatment;
-import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
+import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectStatisticsVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectTaskMethodVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.RecentlyAccomplishTaskVo;
 import org.springframework.beans.BeanUtils;
@@ -42,7 +43,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureProjectService tMeasureProjectService;
     @Autowired
-    private UserConfigDAO userConfigDAO;
+    private SystemUserManageDAO userConfigDAO;
     @Autowired
     private TMeasureTaskService tMeasureTaskService;
     @Autowired
@@ -83,7 +84,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public Result recentlyAccomplishTask(String updateBy) {
         // 根据用户名查询用户id
-        UserConfigPO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getUserName, updateBy));
+        SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
         // 根据用户id查询任务表
         List<TMeasureTask> tasks = tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getUserId, user.getId()));
         // 提取任务id
@@ -138,7 +139,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
          * 	    }
          * }
          */
-        UserConfigPO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getUserName, updateBy));
+        SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
         long countProject = tMeasureProjectService.count(
                 Wrappers.lambdaQuery(TMeasureProject.class)
                         .and(wrapper -> wrapper.eq(TMeasureProject::getCreatorKey, updateBy)
@@ -226,7 +227,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 根据项目id查询项目
         TMeasureProject project = tMeasureProjectService.getById(paramDto.getProjectId());
         //根据项目中的用户名称查询用户
-        UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getUserName, project.getCreatorKey()));
+        SystemUserManagePO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, project.getCreatorKey()));
         // 创建任务类
         TMeasureTask tMeasureTask = new TMeasureTask();
         tMeasureTask.setUserId(userConfigPO.getId());
@@ -310,7 +311,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (!save) {
             return Result.fail("保存失败");
         }
-        return Result.ok(save);
+        ProjectTaskMethodVo vo = new ProjectTaskMethodVo();
+        vo.setTask(tMeasureTask);
+        vo.setProject(project);
+        vo.setMethod(tMeasureMethodService.getById(tMeasureTask.getMethodKey()));
+        return Result.ok(vo);
     }
 
     @Override
@@ -330,7 +335,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         page.getRecords().forEach(task -> {
             // 根据任务中的用户id查询用户
-            UserConfigPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(UserConfigPO.class).eq(UserConfigPO::getId, task.getUserId()));
+            SystemUserManagePO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getId, task.getUserId()));
             task.setUserId(userConfigPO.getUserName());
         });
         return Result.ok(page);

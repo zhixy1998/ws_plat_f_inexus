@@ -1221,7 +1221,6 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         ScanParamInfo scanParamInfo = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), ScanParamInfo.class);
 
-        CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
         List<Command> commands = new ArrayList<>();
 
         // 光度模式
