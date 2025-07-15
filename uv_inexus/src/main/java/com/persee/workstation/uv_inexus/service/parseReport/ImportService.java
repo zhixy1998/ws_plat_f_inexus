@@ -334,6 +334,18 @@ public class ImportService {
                     if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
                         throw new IllegalArgumentException("结果标识不能为空");
                     }
+                    if (model.getResultName() == null || model.getResultName().isEmpty()) {
+                        throw new IllegalArgumentException("结果名称不能为空");
+                    }
+                    if (model.getInputParam1Name() == null || model.getInputParam1Name().isEmpty()) {
+                        throw new IllegalArgumentException("输入参数名称1不能为空");
+                    }
+                    if (model.getInputParam1Identity() == null || model.getInputParam1Identity().isEmpty()) {
+                        throw new IllegalArgumentException("输入参数标识1不能为空");
+                    }
+                    if (model.getUnit() == null || model.getUnit().isEmpty()) {
+                        throw new IllegalArgumentException("单位不能为空");
+                    }
                     if (model.getFormulaText() == null || model.getFormulaText().isEmpty()) {
                         throw new IllegalArgumentException("公式文本不能为空");
                     }
@@ -477,9 +489,9 @@ public class ImportService {
                     if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
-                    if (model.getControlType() == null || model.getControlType().isEmpty()) {
-                        throw new IllegalArgumentException("控制类型不能为空");
-                    }
+                    // if (model.getControlType() == null || model.getControlType().isEmpty()) {
+                    //     throw new IllegalArgumentException("控制类型不能为空");
+                    // }
 
                     // 获取主表ID
                     String identityName = model.getDetectionId();
