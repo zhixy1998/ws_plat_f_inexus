@@ -9,4 +9,9 @@ public interface TimeSweepService {
     Result updateMethodParameter(MethodParamsDto methodDto);
 
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter);
+    
+    Result queryProjectTaskMethod(String updateBy);
+
+    Result queryMethodParameter(String methodId);
+
 }

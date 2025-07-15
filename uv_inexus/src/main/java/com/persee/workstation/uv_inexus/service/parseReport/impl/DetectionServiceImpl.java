@@ -1,24 +1,47 @@
 package com.persee.workstation.uv_inexus.service.parseReport.impl;
 
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.persee.workstation.uv_inexus.dao.parseReport.*;
-import com.persee.workstation.uv_inexus.dto.parseReport.*;
-import com.persee.workstation.uv_inexus.po.parseReport.*;
+import com.persee.workstation.uv_inexus.dao.parseReport.CalculationFormulaDao;
+import com.persee.workstation.uv_inexus.dao.parseReport.DetectionDao;
+import com.persee.workstation.uv_inexus.dao.parseReport.QualityControlDao;
+import com.persee.workstation.uv_inexus.dao.parseReport.RoundingRulesDao;
+import com.persee.workstation.uv_inexus.dao.parseReport.StandardPretreatmentDao;
+import com.persee.workstation.uv_inexus.dto.parseReport.CalculationResultDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionDetailDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionListDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.DetectionParametersDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.InputParamDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.PretreatmentDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.QualityControlDTO;
+import com.persee.workstation.uv_inexus.dto.parseReport.RoundingSettingDTO;
+import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
+import com.persee.workstation.uv_inexus.po.parseReport.Detection;
+import com.persee.workstation.uv_inexus.po.parseReport.QualityControl;
+import com.persee.workstation.uv_inexus.po.parseReport.RoundingRules;
+import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
 import com.persee.workstation.uv_inexus.service.parseReport.DetectionService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -49,7 +72,7 @@ public class DetectionServiceImpl implements DetectionService {
 //            "standard_number", "industry_type", "standard_name"
 //    );
     public static final Set<String> ALLOWED_QUERY_FIELDS = new HashSet<String>() {{
-        add("standard_identity");
+        add("standard_name");
         add("industry");
         add("release_date");
         add("startDate");
