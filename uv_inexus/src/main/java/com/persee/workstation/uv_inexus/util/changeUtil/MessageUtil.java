@@ -118,11 +118,8 @@ public class MessageUtil {
             long lastReceiveTime = System.currentTimeMillis();
 
             new Thread(() -> {scanReceiveAndDeal(scanSocket, machineList, sumData);}).start();
-//
-//            return responses;
         }catch (Exception e) {
             e.printStackTrace();
-//            return null;
         }
     }
 
@@ -188,6 +185,13 @@ public class MessageUtil {
 
     }
 
+
+    /**
+     * 扫描接收并处理
+     * @param scanSocket
+     * @param machineList
+     * @param sumData
+     */
     private void scanReceiveAndDeal(DatagramSocket scanSocket, List<String> machineList, List<String> sumData) {
         while (Constants.isRunning) {
             try {
@@ -219,6 +223,10 @@ public class MessageUtil {
     }
 
 
+    /**
+     * 获取本机以太网IPv4地址
+     * @return
+     */
     private String getEthernetIPv4() {
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();

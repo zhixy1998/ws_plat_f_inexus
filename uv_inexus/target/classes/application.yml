@@ -5,12 +5,42 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+#  datasource:
+#    url: jdbc:mysql://192.168.32.62:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+#    username: root
+#    password: px123456
+#    driver-class-name: com.mysql.cj.jdbc.Driver
   datasource:
-    url: jdbc:mysql://192.168.32.62:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://192.168.32.62:3308/t800_uv_inexus?useSSL=false&serverTimezone=UTC
     username: root
-    password: px123456
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
+#  datasource:
+#    url: jdbc:mysql://192.168.32.62:3308/t800_uv_inexus_test?useSSL=false&serverTimezone=UTC
+#    username: root
+#    password: 123456
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+
 mybatis:
   mapper-locations:
     - classpath:dao/*.xml
     - classpath*:com/**/mapper/*.xml
+
+device:
+  default:
+    sendPort: 5000
+    receivePort: 6000
+    machineIP: 169.254.110.67
+#    xmlPath: "com/persee/workstation/uv_inexus/util/changeUtil/T600.1.xml"
+    xmlPath: E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\T600.1.xml
+
+sys-manage-default:
+  defaultId: "00000000"
+  userId: "11111111"
+
+
+
+
+
+
+

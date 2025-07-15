@@ -29,7 +29,8 @@ public enum SetParamEnum {
     SetProgrammeModeTrue("SetProgrammeModeTrue", "设置成程序模式"),
     SetProgrammeModeFalse("SetProgrammeModeFalse", "取消程序模式"),
     SetInitStatus("SetInitStatus", "设置初始化状态"),
-    Scan("Scan", "扫描");
+    Scan("Scan", "扫描"),
+    SetWl("SetWl", "设置波长");
 
     private final String comId;
     private final String description;

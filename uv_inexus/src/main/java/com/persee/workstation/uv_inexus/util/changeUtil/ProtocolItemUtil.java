@@ -20,12 +20,13 @@ public class ProtocolItemUtil {
         DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         Document doc = builder.parse(file);
         doc.getDocumentElement().normalize();
-        NodeList nodeList = doc.getElementsByTagName("Transition");
+        NodeList nodeList = doc.getElementsByTagName("ProtocolItem");
 
         for (int i = 0; i < nodeList.getLength(); i++) {
             Element elem = (Element) nodeList.item(i);
             Transition item = new Transition();
-
+            item.setInputString(new ArrayList<>());
+            item.setOutputString(new ArrayList<>());
             item.setID(getText(elem, "ID"));
             item.setDescribe(getText(elem, "Describe"));
             item.setTimeout(getText(elem, "Timeout"));

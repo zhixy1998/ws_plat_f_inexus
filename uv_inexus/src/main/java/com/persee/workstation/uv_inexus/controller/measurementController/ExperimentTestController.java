@@ -89,6 +89,12 @@ public class ExperimentTestController {
         return experimentTestService.preprocessTheData(standardId);
     }
 
+    @GetMapping("zeroCalibrationPort")
+    @ApiOperation("校零接口")
+    public Result zeroCalibrationPort() {
+        return experimentTestService.zeroCalibrationPort();
+    }
+
 
 
 }

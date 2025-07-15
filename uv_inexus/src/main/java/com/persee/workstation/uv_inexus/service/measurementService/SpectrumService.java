@@ -17,7 +17,7 @@ public interface SpectrumService {
 
     Result updateMethodParameter(SpectralMethodParameterDto methodDto);
 
-    Result obtainReportParameters(String methodId, String updateBy);
+    Result obtainReportParameters(String taskId);
 
     void testPythonProt();
 
@@ -57,9 +57,7 @@ public interface SpectrumService {
 
     Result addGaugePoint(AddGaugePointDto paramDto);
 
-    void testSetUpParameters();
-
-    void testZeroCalibration();
+    Result setUpParametersPort(String methodId);
 
     void testScan();
 
@@ -74,4 +72,8 @@ public interface SpectrumService {
     Result uploadImage(SpectrumImageUpload upload);
 
     Result queryTheTaskImage(String id, String type);
+
+    Result deleteChangeListPort(String analysisId);
+
+    Result deleteSampleListPort(String measureId);
 }

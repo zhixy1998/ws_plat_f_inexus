@@ -63,7 +63,7 @@ public class TMeasureData {
 
     // 数据图像
     @TableField("data_image")
-    private String dataImage;
+    private byte[] dataImage;
 
     // 备注
     @TableField("remark")

@@ -30,4 +30,6 @@ public interface ExperimentTestService {
     Result queryReferenceStandard(String standardName);
 
     Result preprocessTheData(String standardId);
+
+    Result zeroCalibrationPort();
 }

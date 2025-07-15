@@ -9,6 +9,7 @@ import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
@@ -18,6 +19,9 @@ import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectStatisticsVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.RecentlyAccomplishTaskVo;
@@ -61,6 +65,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private TReportStandardDetectionService tReportStandardDetectionService;
     @Autowired
     private TReportStandardPretreatmentService tReportStandardPretreatmentService;
+    @Autowired
+    private DevMessageUtil devMessageUtil;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -439,6 +445,22 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail("未查询到前处理信息");
         }
         return Result.ok(info);
+    }
+
+    /**
+     * 校零接口
+     */
+    @Override
+    public Result zeroCalibrationPort() {
+        Command command = new Command();
+        command.setCmdId(SetParamEnum.SetWl.getComId());
+        command.setParams(new Object[]{560});
+        devMessageUtil.wavelengthLocate(command);
+        Command com = new Command();
+        com.setCmdId(SetParamEnum.Zero.getComId());
+        com.setParams(new Object[]{});
+        R<String> stringR = devMessageUtil.zeroCalibration(com);
+        return Result.ok(stringR);
     }
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {

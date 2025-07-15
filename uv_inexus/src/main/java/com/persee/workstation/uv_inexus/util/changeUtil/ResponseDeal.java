@@ -3,8 +3,11 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.*;
 
+@Slf4j
 public class ResponseDeal {
 
     public static String result = "false";
@@ -16,51 +19,51 @@ public class ResponseDeal {
             case "GetSn":
                 return parseSn(responses);
 
-//            case "SetWLampStatus":
-//            case "SetDLampStatus":
-//            case "SetLampPos":
-//            case "SetChangeLampWl":
-//            case "SetWlList":
-//            case "SetScanWlInterval":
-//            case "SetScanSpeed":
-//            case "SetWl":
-//            case "SetStartWl":
-//            case "SetEndWl":
-//            case "SetFilter":
-//            case "SetGain":
-//            case "SetResponseTime":
-//            case "SetPhotoMode":
-//            case "SetSlit1":
-//            case "SetCellPos":
-//            case "SetPadModeTrue":
-//            case "SetPadModeFalse":
-//            case "SetPCModeTrue":
-//            case "SetPCModeFalse":
-//            case "SetProgrammeModeTrue":
-//            case "SetProgrammeModeFalse":
+            case "SetWLampStatus":
+            case "SetDLampStatus":
+            case "SetLampPos":
+            case "SetChangeLampWl":
+            case "SetWlList":
+            case "SetScanWlInterval":
+            case "SetScanSpeed":
+            case "SetWl":
+            case "SetStartWl":
+            case "SetEndWl":
+            case "SetFilter":
+            case "SetGain":
+            case "SetResponseTime":
+            case "SetPhotoMode":
+            case "SetSlit1":
+            case "SetCellPos":
+            case "SetPadModeTrue":
+            case "SetPadModeFalse":
+            case "SetPCModeTrue":
+            case "SetPCModeFalse":
+            case "SetProgrammeModeTrue":
+            case "SetProgrammeModeFalse":
             case "SetInitStatus":
                 return parseCompareBytes(responses, sendBytes);
 
-//            case "InitSampleCell":
-//            case "InitFilterMotor":
-//            case "InitSlit1Motor":
-//            case "InitWlMotor":
-//            case "InitLampMotor":
-//            case "CheckWLamp":
-//            case "CheckDLamp":
-//            case "CheckWl":
-//            case "GetInitStatus":
-//            case "Dark":
-//            case "DisConnect":
+            case "InitSampleCell":
+            case "InitFilterMotor":
+            case "InitSlit1Motor":
+            case "InitWlMotor":
+            case "InitLampMotor":
+            case "CheckWLamp":
+            case "CheckDLamp":
+            case "CheckWl":
+            case "GetInitStatus":
+            case "Dark":
+            case "DisConnect":
             case "DisConnectIAP":
                 return parseBooleanFrom5thByte(responses);
 
-//            case "ScanFast":
-//            case "Scan":
+            case "ScanFast":
+            case "Scan":
             case "Measure":
                 return parseSingleTest(responses);
-//            case "BaseLine":
-//            case "Zero":
+            case "BaseLine":
+            case "Zero":
             case "BaseLineFast":
                 return parseScanFast(responses);
 
@@ -135,6 +138,8 @@ public class ResponseDeal {
                 System.out.println("第 " + (i + 1) + " 条回应不满足条件，跳过");
             }
         }
+        log.info("xList: {}", xList);
+        log.info("yList: {}", yList);
         return Arrays.asList(xList, yList); // [0] 是 xList， [1] 是 yList
     }
 
