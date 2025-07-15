@@ -268,7 +268,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 data.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
                 data.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
                 tMeasureDataService.updateById(data);
-            }else {
+            } else {
                 TMeasureData tMeasureData = new TMeasureData();
                 tMeasureData.setTaskId(taskId);
                 tMeasureData.setSampleKey(sampleId);
@@ -286,6 +286,22 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result saveDataInfo(PhotometricSampleAndDataVO vo) {
-        return null;
+
+        String taskId = vo.getTaskId();
+        String sampleId = vo.getSampleId();
+        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                .eq(TMeasureData::getSampleKey, sampleId);
+        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+        if (data == null || data.getIsDelete().equals(deleteType)) {
+            log.info("数据不存在或者已删除");
+            return Result.fail("数据不存在或已删除");
+        }
+
+        data.setRemark(vo.getRemark());
+        data.setSamplingTime(vo.getSampleTime());
+        tMeasureDataService.updateById(data);
+
+        return Result.ok( true);
     }
 }

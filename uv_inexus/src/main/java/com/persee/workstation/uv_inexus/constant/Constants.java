@@ -45,6 +45,8 @@ public class Constants {
     public static volatile LocalDateTime startTime;
     public static volatile LocalDateTime endTime = null;
 
+    public static volatile Boolean isRunning = true;
+
     public static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
     // 存储原始的数据
     public static volatile List<String> field2Values = new CopyOnWriteArrayList<>();

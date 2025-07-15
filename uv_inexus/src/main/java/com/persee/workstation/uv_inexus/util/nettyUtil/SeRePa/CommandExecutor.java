@@ -1,13 +1,14 @@
-package com.persee.workstation.uv_inexus.util.nettyUtil.SeRePa;/*
+/*
     发送和接收报文
 * */
+package com.persee.workstation.uv_inexus.util.nettyUtil.SeRePa;
 
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class CommandExecutor  {
+public class CommandExecutor implements AutoCloseable {
     private final String localIp;
     private final int localPort;
     private final int remotePort;
@@ -52,7 +53,7 @@ public class CommandExecutor  {
             System.out.println();
 
             // 等待10秒
-            Thread.sleep(10000);
+            Thread.sleep(100);
 
             // 发送 configCmd
             DatagramPacket packet2 = new DatagramPacket(configCmd, configCmd.length,
@@ -63,7 +64,7 @@ public class CommandExecutor  {
             System.out.println();
 
             // 再等待10秒
-            Thread.sleep(10000);
+            Thread.sleep(100);
         }
 
         // 发送主命令
@@ -76,12 +77,11 @@ public class CommandExecutor  {
         System.out.println();
 
         // 是否为慢命令（用于接收等待时间判断）
-        boolean isSlowCommand = cmdId.equalsIgnoreCase("Dark");
-//                || cmdId.equalsIgnoreCase("Scan")
-//                || cmdId.equalsIgnoreCase("ScanFast")
-//                || cmdId.equalsIgnoreCase("BaseLineFast");
-
-        int timeoutMs = isSlowCommand ? 10000 : 4500;
+        boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
+                || cmdId.equalsIgnoreCase("Scan")
+                || cmdId.equalsIgnoreCase("ScanFast")
+                || cmdId.equalsIgnoreCase("BaseLineFast");
+        int timeoutMs = isSlowCommand ? 5000 : 4500;
         socket.setSoTimeout(timeoutMs);
 
         long lastReceiveTime = System.currentTimeMillis();
@@ -89,7 +89,6 @@ public class CommandExecutor  {
         while (true) {
             try {
                 DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
-                System.out.println("++++++++++++");
                 socket.receive(receivePacket);
 
                 byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
@@ -101,10 +100,9 @@ public class CommandExecutor  {
                 System.out.println();
 
                 lastReceiveTime = System.currentTimeMillis();
+                socket.setSoTimeout(4500);
 
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
-                System.out.println("----------------------");
+            } catch (SocketTimeoutException e) {
                 if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
             }
         }

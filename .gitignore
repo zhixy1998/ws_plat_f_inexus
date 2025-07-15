@@ -32,3 +32,4 @@ hs_err_pid*
 /uv_inexus/.idea/vcs.xml
 /.idea/ws_plat_inexus.iml
 /uv_inexus/target/
+.history

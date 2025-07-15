@@ -59,6 +59,10 @@ public class TMeasureAnalysisData {
     @TableField("color")
     private String color;
 
+    // 分析数据图像
+    @TableField("analysis_data_image")
+    private String analysisDataImage;
+
     // 是否删除 (0:未删除 1:已删除)
     @TableField("is_delete")
     private String isDelete;

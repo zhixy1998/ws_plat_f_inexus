@@ -192,10 +192,35 @@ public class SpectrumController {
     }
 
     @GetMapping("querySampleList")
-    @ApiOperation("获取样本列表接口")
+    @ApiOperation("获取样本按钮列表接口")
     public Result querySampleList(@RequestParam String taskId) {
         return spectrumService.querySampleList(taskId);
     }
+
+    @PostMapping("addSamplePort")
+    @ApiOperation("添加样本接口")
+    public Result addSamplePort(@RequestBody AddSampleDto paramDto){
+        return spectrumService.addSamplePort(paramDto);
+    }
+
+    @DeleteMapping("deleteSamplePort")
+    @ApiOperation("删除样本接口")
+    public Result deleteSamplePort(@RequestParam String sampleId,@RequestParam String taskId){
+        return spectrumService.deleteSamplePort(sampleId,taskId);
+    }
+
+    @PostMapping("uploadImage")
+    @ApiOperation("图片上传")
+    public Result uploadImage(@RequestBody SpectrumImageUpload upload) {
+        return spectrumService.uploadImage(upload);
+    }
+
+    @PostMapping("queryTheTaskImage")
+    @ApiOperation("获取任务图片接口")
+    public Result queryTheTaskImage(@RequestParam String id,@RequestParam String type) {
+        return spectrumService.queryTheTaskImage(id,type);
+    }
+
 
 
     @GetMapping("testScan")
@@ -203,6 +228,9 @@ public class SpectrumController {
     public void testScan() {
         spectrumService.testScan();
     }
+
+
+
 
 
 

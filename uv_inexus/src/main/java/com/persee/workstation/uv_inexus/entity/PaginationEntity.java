@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.entity;
 
+
 import javax.persistence.Entity;
 import javax.persistence.Id;
 

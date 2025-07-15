@@ -27,6 +27,10 @@ public class TMeasureSample{
     @TableField("sample_type")
     private String sampleType;
 
+    // 样品种类
+    @TableField("sample_kind")
+    private String sampleKind;
+
     // 样品名称
     @TableField("sample_name")
     private String sampleName;

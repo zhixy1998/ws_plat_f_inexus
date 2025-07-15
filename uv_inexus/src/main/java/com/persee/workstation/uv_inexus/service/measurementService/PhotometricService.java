@@ -70,5 +70,13 @@ public interface PhotometricService {
      */
     Result saveDataInfo(PhotometricSampleAndDataVO vo);
 
+    /**
+     * 光度测量
+     * 从websocket建立连接-->获取样品-->测量-->保存数据-->关闭连接
+     * socket负责连接建立，推数据，关连接，
+     * service里，负责调测量，然后存数据？
+     */
+
+
 
 }

@@ -4,6 +4,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
@@ -52,45 +53,45 @@ public class SpectrumScan {
         TARGET_IP=deviceInfoService.getIp(deviceSerialNumber);
 
         CommandRequestDTO commandRequestDTO = new CommandRequestDTO();
-        List<CommandRequestDTO.CommandDTO> commands = new ArrayList<>();
+        List<CommandDTO> commands = new ArrayList<>();
 
         // 光度模式
-        CommandRequestDTO.CommandDTO com1 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com1 = new CommandDTO();
         com1.setCmdId(SetParamEnum.SetPhotoMode.getComId());
         com1.setParams(new Object[]{scanParamInfo.getLuminosity()});
         commands.add(com1);
         // 开始波长
-        CommandRequestDTO.CommandDTO com2 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com2 = new CommandDTO();
         com2.setCmdId(SetParamEnum.SetStartWl.getComId());
         com2.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
         commands.add(com2);
         // 结束波长
-        CommandRequestDTO.CommandDTO com3 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com3 = new CommandDTO();
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
         commands.add(com3);
         // 波长间隔
-        CommandRequestDTO.CommandDTO com4 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com4 = new CommandDTO();
         com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
         com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
         commands.add(com4);
         // 响应时间
-        CommandRequestDTO.CommandDTO com5 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com5 = new CommandDTO();
         com5.setCmdId(SetParamEnum.SetResponseTime.getComId());
         com5.setParams(new Object[]{scanParamInfo.getResponseTime()});
         commands.add(com5);
         // 换灯波长
-        CommandRequestDTO.CommandDTO com6 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com6 = new CommandDTO();
         com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
         com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
         commands.add(com6);
         // 能量灯
-        CommandRequestDTO.CommandDTO com7 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com7 = new CommandDTO();
         com7.setCmdId(SetParamEnum.SetLampPos.getComId());
         com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
         commands.add(com7);
         // 增益
-        CommandRequestDTO.CommandDTO com8 = new CommandRequestDTO.CommandDTO();
+        CommandDTO com8 = new CommandDTO();
         com8.setCmdId(SetParamEnum.SetGain.getComId());
         com8.setParams(new Object[]{scanParamInfo.getGain()});
         commands.add(com8);

@@ -61,6 +61,10 @@ public class TMeasureData {
     @TableField("sampling_time")
     private String samplingTime;
 
+    // 数据图像
+    @TableField("data_image")
+    private String dataImage;
+
     // 备注
     @TableField("remark")
     private String remark;
