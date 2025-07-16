@@ -5,9 +5,12 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricAndRationTableHeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
+
+import java.util.List;
 
 /**
  * 定量测定
@@ -19,7 +22,7 @@ public interface RationService {
 
     Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType);
 
-    Result querySampleInfo(String taskId);
+    Result<List<SampleVO>> querySampleInfo(String taskId, String sampleKind);
 
     /**
      * 新增或删除样本
@@ -45,6 +48,10 @@ public interface RationService {
      * @param methodId
      * @return
      */
-    Result<PhotometricAndRationTableHeadVO> getTableHead(String taskId, String methodId);
+    Result<List<HeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+
+    Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+
+
 
 }

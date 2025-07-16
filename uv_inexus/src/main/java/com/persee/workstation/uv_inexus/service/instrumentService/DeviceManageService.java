@@ -21,6 +21,8 @@ public interface DeviceManageService {
 
     List<FindDeviceVO> findDevice();
 
+    List<FindDeviceVO> newFindDevice();
+
     /**
      * 仪器激活接口
      * 参数暂时未知 @param

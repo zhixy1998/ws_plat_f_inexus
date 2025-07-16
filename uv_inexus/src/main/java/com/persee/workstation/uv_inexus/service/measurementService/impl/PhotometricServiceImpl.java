@@ -288,6 +288,8 @@ public class PhotometricServiceImpl implements PhotometricService {
                 }
             }
         }
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        tMeasureTaskService.updateById(task);
         return Result.ok(true);
     }
 
@@ -523,10 +525,8 @@ public class PhotometricServiceImpl implements PhotometricService {
                     .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
 
             TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-            String result = one.getAnalysisResult();
-
             if (one != null) {
-                List<PhotometricCountDataInfo> countList = JSON.parseArray(result, PhotometricCountDataInfo.class);
+                List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
 
                 for (PhotometricCountDataInfo count : countList) {
                     map.put(count.getResultIdentity()+ "-" + count.getFormulaText(), count.getCountValue());

@@ -4,13 +4,16 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.RationService;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricAndRationTableHeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/quantitativeMeasurement/")
@@ -40,8 +43,9 @@ public class RationController {
 
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
-    public Result getSampleList(@RequestParam String taskId) {
-        return rationService.querySampleInfo(taskId);
+    public Result<List<SampleVO>> getSampleList(@RequestParam String taskId,
+                                                @RequestParam String sampleKind) {
+        return rationService.querySampleInfo(taskId, sampleKind);
     }
 
     @PostMapping("addOrDeleteSample")
@@ -56,9 +60,15 @@ public class RationController {
         return rationService.revokeDel(taskId, sampleId);
     }
 
-    @GetMapping("getTableHead")
-    @ApiOperation("获取表头信息接口")
-    public Result<PhotometricAndRationTableHeadVO> getTableHead(@RequestParam String taskId, @RequestParam String methodId) {
-        return rationService.getTableHead(taskId, methodId);
+    @GetMapping("getStandTableHead")
+    @ApiOperation("获取标准样品表头信息接口")
+    public Result<List<HeadVO>> getTableHead(@RequestParam String taskId, @RequestParam String methodId, @RequestParam Boolean allDisplay) {
+        return rationService.getStandSampleTableHead(taskId, methodId, allDisplay);
+    }
+
+    @GetMapping("getUnknowTableHead")
+    @ApiOperation("获取未知样品表头信息接口")
+    public Result<List<HeadVO>> getUnknownSampleTableHead(@RequestParam String taskId, @RequestParam String methodId, @RequestParam Boolean allDisplay) {
+        return rationService.getUnknownSampleTableHead(taskId, methodId, allDisplay);
     }
 }

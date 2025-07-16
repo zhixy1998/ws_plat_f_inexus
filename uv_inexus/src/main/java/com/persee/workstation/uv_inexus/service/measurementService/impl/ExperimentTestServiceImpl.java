@@ -231,6 +231,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         TMeasureTask tMeasureTask = new TMeasureTask();
         tMeasureTask.setUserId(userConfigPO.getId());
         tMeasureTask.setTaskName(paramDto.getTaskName());
+        tMeasureTask.setMeasureType(paramDto.getMeasurementType());
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setMethodKey(paramDto.getMethodId());
         tMeasureTask.setProjectItemKey(project.getId());

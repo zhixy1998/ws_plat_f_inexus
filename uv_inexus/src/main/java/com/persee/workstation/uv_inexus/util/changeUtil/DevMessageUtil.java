@@ -77,11 +77,31 @@ public class DevMessageUtil {
     /**
      * 初始化设备，暂放
      *
-     * @param list
+     * @param
      * @return
      */
-    public R<String> initDevice(List<Command> list) {
-        return null;
+    public R<String> initDevice(Command  command) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            return R.fail("xml文件加载失败");
+        }
+        String cmdId = command.getCmdId();
+        //发送报文组
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        String result = parse.toString();
+        if ("true".equals(result)) {
+            return R.ok();
+        }
+
+        return R.fail();
     }
 
     /**

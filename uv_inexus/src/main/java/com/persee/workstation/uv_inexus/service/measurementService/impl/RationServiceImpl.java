@@ -5,13 +5,20 @@ import com.alibaba.fastjson.JSONArray;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricAndRationTableHeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
@@ -108,10 +115,11 @@ public class RationServiceImpl implements RationService {
 
         LambdaQueryWrapper<TMeasureTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TMeasureTask::getUserId, id)
-                .eq(TMeasureTask::getMeasureType, measureType);
-
-        TMeasureTask task = tMeasureTaskService.getOne(wrapper);
-        if (task != null){
+                .eq(TMeasureTask::getMeasureType, measureType)
+                .orderByDesc(TMeasureTask::getCreateTime);
+        List<TMeasureTask> taskList = tMeasureTaskService.list(wrapper);
+        if (taskList != null && !taskList.isEmpty()){
+            TMeasureTask task = taskList.get(0);
             String projectItemKey = task.getProjectItemKey();
             String methodKey = task.getMethodKey();
 
@@ -126,6 +134,7 @@ public class RationServiceImpl implements RationService {
             vo.setProjectName(project.getProjectName());
             return Result.ok(vo);
         }
+
         MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
 
         LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
@@ -154,11 +163,10 @@ public class RationServiceImpl implements RationService {
             vo.setProjectName(tMeasureProject.getProjectName());
         }
         return Result.ok(vo);
-
     }
 
     @Override
-    public Result<List<SampleVO>> querySampleInfo(String taskId) {
+    public Result<List<SampleVO>> querySampleInfo(String taskId, String sampleKind) {
         List<SampleVO> sampleVOList = new ArrayList<>();
         if (!StringUtils.hasText(taskId)) {
             return Result.ok(sampleVOList);
@@ -173,13 +181,14 @@ public class RationServiceImpl implements RationService {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                SampleVO vo = new SampleVO();
-                BeanUtils.copyProperties(measureSample, vo);
-                vo.setSampleId(measureSample.getId());
-                sampleVOList.add(vo);
+                if (measureSample.getSampleKind().equals(sampleKind)) {
+                    SampleVO vo = new SampleVO();
+                    BeanUtils.copyProperties(measureSample, vo);
+                    vo.setSampleId(measureSample.getId());
+                    sampleVOList.add(vo);
+                }
             }
         }
-
         return Result.ok(sampleVOList);
     }
 
@@ -291,6 +300,8 @@ public class RationServiceImpl implements RationService {
                 }
             }
         }
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        tMeasureTaskService.updateById(task);
         return Result.ok(true);
     }
 
@@ -319,8 +330,6 @@ public class RationServiceImpl implements RationService {
         return Result.ok(tMeasureTaskService.updateById(task));
     }
 
-
-
     @Override
     public Result<MethodParam> queryMethodParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
@@ -345,15 +354,143 @@ public class RationServiceImpl implements RationService {
         return Result.ok(param);
     }
 
+    //标准样品表头
     @Override
-    public Result<PhotometricAndRationTableHeadVO> getTableHead(String taskId, String methodId) {
+    public Result<List<HeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay) {
+
+        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
+            return Result.fail("缺少参数");
+        }
+
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             return Result.fail("方法不存在");
         }
-        PhotometricParameter Parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        PhotometricAndRationTableHeadVO photometricTableHeadVO = new PhotometricAndRationTableHeadVO();
-        BeanUtils.copyProperties(Parameter, photometricTableHeadVO);
-        return Result.ok(photometricTableHeadVO);
+        List<HeadVO> ans = new ArrayList<>();
+        //根据任务中记录的样品id判断是否存在空白样品
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task != null && StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen specimen : taskSpecimen) {
+                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (sample!=null && StringUtils.hasText(sample.getSampleType())) {
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())){
+                        ans.add(new HeadVO(SampleTableEnum.sumAbs.getName(), SampleTableEnum.sumAbs.getIdentity()));
+                    }
+                }
+            }
+        }
+        ans.add(new HeadVO(SampleTableEnum.sampleName.getName(), SampleTableEnum.sampleName.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleNumber.getName(), SampleTableEnum.sampleNumber.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleType.getName(), SampleTableEnum.sampleType.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleKind.getName(), SampleTableEnum.sampleKind.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.normalConcentration.getName(), SampleTableEnum.normalConcentration.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleLocation.getName(), SampleTableEnum.sampleLocation.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.Abs.getName(), SampleTableEnum.Abs.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.samplingTime.getName(), SampleTableEnum.samplingTime.getIdentity()));
+
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        List<String> waveLengths = parameter.getWaveLength();
+
+        if (waveLengths != null && !waveLengths.isEmpty()) {
+
+            for (String waveLength : waveLengths) {
+                StringBuilder s1 = new StringBuilder();
+                StringBuilder s2 = new StringBuilder();
+
+                s1.append(waveLength).append(WaveLengthEnum.abs.getName());
+                s2.append(waveLength).append("-").append(WaveLengthEnum.abs.getCode());
+                HeadVO headVO1 = new HeadVO(s1.toString(), s2.toString());
+                ans.add(headVO1);
+
+                if (allDisplay) {
+                    s1.setLength(0);
+                    s2.setLength(0);
+                    s1.append(waveLength).append(WaveLengthEnum.tPercent.getName());
+                    s2.append(waveLength).append("-").append(WaveLengthEnum.tPercent.getCode());
+                    HeadVO headVO2 = new HeadVO(s1.toString(), s2.toString());
+                    ans.add(headVO2);
+                }
+            }
+        }
+
+        return Result.ok(ans);
+
     }
+
+    //未知样品表头
+    @Override
+    public Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay) {
+
+        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
+            return Result.fail("缺少参数");
+        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        List<HeadVO> ans = new ArrayList<>();
+        //根据任务中记录的样品id判断是否存在空白样品
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task != null && StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen specimen : taskSpecimen) {
+                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (sample!=null && StringUtils.hasText(sample.getSampleType())) {
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())){
+                        ans.add(new HeadVO(SampleTableEnum.sumAbs.getName(), SampleTableEnum.sumAbs.getIdentity()));
+                    }
+                }
+            }
+        }
+        ans.add(new HeadVO(SampleTableEnum.sampleName.getName(), SampleTableEnum.sampleName.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleNumber.getName(), SampleTableEnum.sampleNumber.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleType.getName(), SampleTableEnum.sampleType.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.dilutionRatio.getName(), SampleTableEnum.dilutionRatio.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.amount.getName(), SampleTableEnum.amount.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleKind.getName(), SampleTableEnum.sampleKind.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.fitConcentration.getName(), SampleTableEnum.fitConcentration.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.sampleLocation.getName(), SampleTableEnum.sampleLocation.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.Abs.getName(), SampleTableEnum.Abs.getIdentity()));
+        ans.add(new HeadVO(SampleTableEnum.samplingTime.getName(), SampleTableEnum.samplingTime.getIdentity()));
+
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        List<String> waveLengths = parameter.getWaveLength();
+
+        if (waveLengths != null && !waveLengths.isEmpty()) {
+
+            for (String waveLength : waveLengths) {
+                StringBuilder s1 = new StringBuilder();
+                StringBuilder s2 = new StringBuilder();
+
+                s1.append(waveLength).append(WaveLengthEnum.abs.getName());
+                s2.append(waveLength).append("-").append(WaveLengthEnum.abs.getCode());
+                HeadVO headVO1 = new HeadVO(s1.toString(), s2.toString());
+                ans.add(headVO1);
+
+                if (allDisplay) {
+                    s1.setLength(0);
+                    s2.setLength(0);
+                    s1.append(waveLength).append(WaveLengthEnum.tPercent.getName());
+                    s2.append(waveLength).append("-").append(WaveLengthEnum.tPercent.getCode());
+                    HeadVO headVO2 = new HeadVO(s1.toString(), s2.toString());
+                    ans.add(headVO2);
+                }
+            }
+        }
+        if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+
+            for (PreCountResultParam param : parameter.getResultParams()) {
+                StringBuilder s2 = new StringBuilder();
+                String s1 = param.getResultName() + "(" + param.getUnit() + ")";
+                s2.append(param.getResultIdentity()).append("-").append(param.getFormulaText());
+                HeadVO headVO = new HeadVO(s1, s2.toString());
+                ans.add(headVO);
+            }
+        }
+        return Result.ok(ans);
+    }
+
+
 }
