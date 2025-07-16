@@ -45,6 +45,10 @@ public class TMeasureTask{
     @TableField("sample_key")
     private String sampleKey;
 
+    // 测量类型
+    @TableField("measure_type")
+    private String measureType;
+
     // 所属项目Key
     @TableField("project_item_key")
     private String projectItemKey;

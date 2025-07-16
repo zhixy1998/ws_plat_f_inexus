@@ -141,7 +141,7 @@
 <string/>
 </OutputString>
 <SendBytes>
-<string>181:254:10:1:TRUNC(I12/256):MOD(I12,256):0:0:0:0:0:Check</string>
+<string>181:254:10:1:TRUNC(I12*50/256):MOD(I12*50,256):0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
 <string>254:181:10:1:0:0:0:0:0:0:0:Check</string>

@@ -60,8 +60,8 @@ public class SpectrumController {
 
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告参数接口")
-    public Result obtainReportParameters(@RequestParam String methodId,@RequestParam String updateBy) {
-        return spectrumService.obtainReportParameters(methodId,updateBy);
+    public Result obtainReportParameters(@RequestParam String taskId) {
+        return spectrumService.obtainReportParameters(taskId);
     }
 
 
@@ -107,15 +107,24 @@ public class SpectrumController {
         return spectrumService.sampleListPort(taskId,type);
     }
 
+
+    @DeleteMapping("deleteSampleListPort")
+    @ApiOperation("删除样品列表接口")
+    public Result deleteSampleListPort(@RequestParam String measureId) {
+        return spectrumService.deleteSampleListPort(measureId);
+    }
+
+
     @GetMapping("changeTheListPort")
     @ApiOperation("获取变换列表接口")
     public Result changeTheListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
         return spectrumService.changeTheListPort(taskId,type);
     }
-    @GetMapping("queryMeasureGaugePoint")
-    @ApiOperation("获取测量标记点接口")
-    public Result queryMeasureGaugePoint(@RequestParam String measureId) {
-        return spectrumService.queryMeasureGaugePoint(measureId);
+
+    @DeleteMapping("deleteChangeListPort")
+    @ApiOperation("删除变换列表接口")
+    public Result deleteChangeListPort(@RequestParam String analysisId) {
+        return spectrumService.deleteChangeListPort(analysisId);
     }
 
     @GetMapping("queryAnalysisGaugePoint")
@@ -179,17 +188,13 @@ public class SpectrumController {
         spectrumService.testPythonProt();
     }
 
-    @GetMapping("testSetUpParameters")
-    @ApiOperation("测试设置参数")
-    public void testSetUpParameters() {
-        spectrumService.testSetUpParameters();
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId) {
+        return spectrumService.setUpParametersPort(methodId);
     }
 
-    @GetMapping("testZeroCalibration")
-    @ApiOperation("测试校零")
-    public void testZeroCalibration() {
-        spectrumService.testZeroCalibration();
-    }
+
 
     @GetMapping("querySampleList")
     @ApiOperation("获取样本按钮列表接口")
@@ -228,6 +233,9 @@ public class SpectrumController {
     public void testScan() {
         spectrumService.testScan();
     }
+
+
+
 
 
 
