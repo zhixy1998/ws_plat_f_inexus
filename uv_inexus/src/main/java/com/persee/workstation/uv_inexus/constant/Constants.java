@@ -53,6 +53,10 @@ public class Constants {
     // 存储处理后的数据
     public static volatile List<String> field3Values = new CopyOnWriteArrayList<>();
 
+    public static volatile List<String> instrumentData = new CopyOnWriteArrayList<>();
+
+    public static volatile List<String> originalCalculationData = new CopyOnWriteArrayList<>();
+
     public static final String EndData = "0D0A,000";
 
 

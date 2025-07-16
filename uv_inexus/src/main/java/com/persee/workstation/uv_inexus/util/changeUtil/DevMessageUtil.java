@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.net.DatagramSocket;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -190,6 +192,29 @@ public class DevMessageUtil {
             }
         }
         return R.ok(s);
+    }
+
+    /**
+     * 光谱扫描: 获取测量数据
+     */
+    public void getMeasureData(Command command) {
+        R<DatagramSocket> re = messageUtil.getSocket();
+        if (!re.getSuccess()) {
+            log.info("绑定socket失败");
+            return ;
+        }
+        DatagramSocket socket = re.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            log.info("转换xml出错");
+            return;
+        }
+        String cmdId = command.getCmdId();
+        Transition transition = xml.get(cmdId);
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        Constants.startTime = LocalDateTime.now();
+        messageUtil.scanSendAndDeal(socket, defaultIp, cmdId, bytes, Constants.instrumentData, Constants.originalCalculationData);
     }
 
     /**

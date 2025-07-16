@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -62,41 +63,41 @@ public class MessageUtil {
             List<byte[]> responses = new ArrayList<>();
 
             // 特殊命令预处理
-            if (cmdId.equalsIgnoreCase("Scan") || cmdId.equalsIgnoreCase("ScanFast")) {
-                byte[] firstCmd = new byte[]{
-                        (byte) 0xB5, (byte) 0xFF, (byte) 0xF0, (byte) 0x01,
-                        (byte) 0x00, (byte) 0x40, (byte) 0xC2, (byte) 0xBA,
-                        (byte) 0xA9, (byte) 0x08, (byte) 0x64, (byte) 0x76
-                };
-
-                byte[] configCmd = new byte[]{
-                        (byte) 0xFF, (byte) 0xB5, (byte) 0x13, (byte) 0x04,
-                        (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
-                        (byte) 0x00, (byte) 0x2A, (byte) 0x9D, (byte) 0xA6
-                };
+//            if (cmdId.equalsIgnoreCase("Scan") || cmdId.equalsIgnoreCase("ScanFast")) {
+//                byte[] firstCmd = new byte[]{
+//                        (byte) 0xB5, (byte) 0xFF, (byte) 0xF0, (byte) 0x01,
+//                        (byte) 0x00, (byte) 0x40, (byte) 0xC2, (byte) 0xBA,
+//                        (byte) 0xA9, (byte) 0x08, (byte) 0x64, (byte) 0x76
+//                };
+//
+//                byte[] configCmd = new byte[]{
+//                        (byte) 0xFF, (byte) 0xB5, (byte) 0x13, (byte) 0x04,
+//                        (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
+//                        (byte) 0x00, (byte) 0x2A, (byte) 0x9D, (byte) 0xA6
+//                };
 
                 // 发送 firstCmd
-                DatagramPacket packet1 = new DatagramPacket(firstCmd, firstCmd.length,
-                        InetAddress.getByName(sendIp), remotePort);
-                scanSocket.send(packet1);
-                System.out.print("预发送报文 firstCmd：");
-                for (byte b : firstCmd) System.out.printf("%02X ", b);
-                System.out.println();
-
-                // 等待10秒
-                Thread.sleep(100);
-
-                // 发送 configCmd
-                DatagramPacket packet2 = new DatagramPacket(configCmd, configCmd.length,
-                        InetAddress.getByName(sendIp), remotePort);
-                scanSocket.send(packet2);
-                System.out.print("预发送报文 configCmd：");
-                for (byte b : configCmd) System.out.printf("%02X ", b);
-                System.out.println();
-
-                // 再等待10秒
-                Thread.sleep(100);
-            }
+//                DatagramPacket packet1 = new DatagramPacket(firstCmd, firstCmd.length,
+//                        InetAddress.getByName(sendIp), remotePort);
+//                scanSocket.send(packet1);
+//                System.out.print("预发送报文 firstCmd：");
+//                for (byte b : firstCmd) System.out.printf("%02X ", b);
+//                System.out.println();
+//
+//                // 等待10秒
+//                Thread.sleep(100);
+//
+//                // 发送 configCmd
+//                DatagramPacket packet2 = new DatagramPacket(configCmd, configCmd.length,
+//                        InetAddress.getByName(sendIp), remotePort);
+//                scanSocket.send(packet2);
+//                System.out.print("预发送报文 configCmd：");
+//                for (byte b : configCmd) System.out.printf("%02X ", b);
+//                System.out.println();
+//
+//                // 再等待10秒
+//                Thread.sleep(100);
+//            }
 
             // 发送主命令
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
@@ -220,6 +221,7 @@ public class MessageUtil {
                 return;
             }
         }
+        Constants.endTime = LocalDateTime.now();
     }
 
 

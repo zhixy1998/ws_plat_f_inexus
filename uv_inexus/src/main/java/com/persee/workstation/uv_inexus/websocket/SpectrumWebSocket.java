@@ -1,6 +1,19 @@
 package com.persee.workstation.uv_inexus.websocket;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSON;
+import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.service.measurementService.SpectrumService;
+import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -12,10 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+@Component
 public class SpectrumWebSocket extends TextWebSocketHandler {
 
     // 所有设备连接 <sessionId, session>
@@ -24,8 +36,14 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     // 假设的设备数据缓存队列
     private static final Map<String, List<String>> deviceDataCache = new ConcurrentHashMap<>();
 
-    // 模拟一个设备数据源（实际项目中替换为串口/Socket接收线程）
-    private final ScheduledExecutorService dataProducer = Executors.newScheduledThreadPool(1);
+
+
+    @Autowired
+    private SpectrumService spectrumService;
+    @Autowired
+    private TMeasureTaskService tMeasureTaskService;
+    @Autowired
+    private DevMessageUtil devMessageUtil;
 
     /**
      * 前端连接成功 WebSocket 时触发
@@ -38,35 +56,96 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
 
         // 解析参数
         String query = Objects.requireNonNull(session.getUri()).getQuery();
-        String deviceId = getQueryParam(query, "device_id");
+        String taskId = getQueryParam(query, "taskId");
+        String sampleId= getQueryParam(query, "sampleId");
 
-        if (deviceId == null) {
-            sendAndClose(session, "缺少 device_id 参数");
+        if (taskId == null) {
+            sendAndClose(session, "缺少 taskId 参数");
             return;
         }
+        if (sampleId == null) {
+            sendAndClose(session, "缺少 sampleId 参数");
+            return;
+        }
+        // 根据任务id查询任务数据
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        Result result = spectrumService.setUpParametersPort(task.getMethodKey());
+        if (result.getCode() != 200) {
+            sendAndClose(session, result.getMessage());
+        }
+        // 开始获取数据
+        Command command = new Command();
+        command.setCmdId(SetParamEnum.Scan.getComId());
+        command.setParams(new Object[]{});
+        devMessageUtil.getMeasureData(command);
 
-        System.out.println("连接设备: " + deviceId);
-
-        deviceDataCache.putIfAbsent(deviceId, new ArrayList<>());
-
-        // 启动定时接收 & 推送模拟
-        dataProducer.scheduleAtFixedRate(() -> {
+        // 往前端推送数据的线程
+        new Thread(() -> {
             try {
-                if (!session.isOpen()) return;
-
-                // 模拟设备生成数据
-                String data = "设备[" + deviceId + "]数据: " + System.currentTimeMillis();
-                deviceDataCache.get(deviceId).add(data); // 缓存数据
-
-                // 实时推送给前端
-                JSONObject json = new JSONObject();
-                json.put("device_id", deviceId);
-                json.put("data", data);
-                session.sendMessage(new TextMessage(json.toJSONString()));
-            } catch (IOException e) {
-                e.printStackTrace();
+                // 如果公共变量中没有数据的话就让他睡眠50毫秒
+                if (Constants.instrumentData.size() == 0) {
+                    Thread.sleep(50);
+                }
+                Boolean flag = true;
+                while (flag) {
+                    for (String option : Constants.originalCalculationData) {
+                        if (option.equals(Constants.EndData)){
+                            flag = false;
+                        }
+                    }
+                    int size = Constants.originalCalculationData.size();
+                    JSONArray dataArray = new JSONArray();
+                    JSONObject payload = new JSONObject();
+                    // 如果size为0则跳过本次循环
+                    if (size == 0) {
+                        continue;
+                    }
+                    for (int j = 0; j < size; j++) {
+                        JSONObject point = new JSONObject();
+                        String[] split = Constants.originalCalculationData.get(0).split(",");
+                        Constants.field3Values.add(Constants.originalCalculationData.get(0));
+                        point.put("x", split[0]);
+                        point.put("y", split[1]);
+                        dataArray.add(point);
+                        Constants.originalCalculationData.remove(0);
+                    }
+                    payload.put("data", dataArray);
+                    // 构建数据点JSON
+                    if (!flag) {
+                        payload.put("result", "finish");
+                    }
+                    session.sendMessage(new TextMessage(payload.toJSONString()));
+                    TimeUnit.MILLISECONDS.sleep(100);
+                }
+                session.close();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        }, 0, 1, TimeUnit.SECONDS); // 每秒一条数据
+            // 将公共的变量中的原始数据暂存变量清楚
+            Constants.originalCalculationData.clear();
+        }).start();
+
+        // 创建线程循环如果公共变量为空则进行一秒的睡眠
+        new Thread(() -> {
+            while (Constants.endTime == null) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            // 进行存储操作
+            // 创建一个测量数据对象
+            TMeasureData measureData = new TMeasureData();
+            measureData.setTaskId(taskId);
+            measureData.setSampleKey(sampleId);
+            measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
+            measureData.setOriginalCalculationData(JSON.toJSONString(Constants.field3Values));
+            measureData.setMeasurementStartTime(Constants.startTime);
+            measureData.setMeasurementEndTime(Constants.endTime);
+
+        }).start();
+
     }
 
     /**
