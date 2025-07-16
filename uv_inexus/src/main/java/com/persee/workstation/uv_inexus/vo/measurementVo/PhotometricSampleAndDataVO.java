@@ -26,7 +26,7 @@ public class PhotometricSampleAndDataVO {
     @JsonIgnore
     private List<PhotometricOriginDataInfo> machineData;
 
-    @ApiModelProperty("原始数据")
+    @ApiModelProperty("原始计算数据")
     private List<PhotometricOriginDataInfo> wavelengthData;
 
     @ApiModelProperty("经过公式计算后的数据")

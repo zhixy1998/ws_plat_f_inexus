@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -469,13 +468,17 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        try {
-            // 将 Map 转换为指定的 Java 对象
-            return objectMapper.convertValue(params, clazz);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        try {
+//            // 将 Map 转换为指定的 Java 对象
+//            return objectMapper.convertValue(params, clazz);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+        String jsonString = JSON.toJSONString(params);
+        T t = JSON.parseObject(jsonString, clazz);
+        return t;
+
     }
 }
