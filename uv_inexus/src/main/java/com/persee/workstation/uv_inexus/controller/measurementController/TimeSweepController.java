@@ -43,12 +43,6 @@ public class TimeSweepController {
         return timeSweepService.queryMethodParameter(method_id);
     }
 
-    @GetMapping("sampleListPort")
-    @ApiOperation("获取样本列表接口")
-    public Result sampleListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
-        return timeSweepService.sampleListPort(taskId,type);
-    }
-
     @PostMapping("addSamplePort")
     @ApiOperation("添加样本接口")
     public Result addSamplePort(@RequestBody AddSampleDto paramDto){
