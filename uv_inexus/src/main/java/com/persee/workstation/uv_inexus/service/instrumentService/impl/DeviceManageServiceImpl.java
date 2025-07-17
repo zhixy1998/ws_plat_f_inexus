@@ -152,7 +152,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{});
             }
 
-            R<String> initDevice = devMessageUtil.initDevice(command);
+            R<String> initDevice = devMessageUtil.initDevice(command, ip);
             if (!initDevice.getSuccess()) {
                 log.info("{}指令初始化异常", DeviceInitCommandEnum.getComId(i));
                 infoPO.setConnectStatus(Constants.CONNECT_DEVICE_FALSE);
@@ -161,9 +161,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 return;
             }
             log.info("{}指令初始化成功", DeviceInitCommandEnum.getComId(i));
-            infoPO.setIsDevOpened(Constants.DEVICE_IS_OPEN);
-            infoPO.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
-            infoService.saveOrUpdateInfo(infoPO);
+            if (i < 3) {
+                infoPO.setIsDevOpened(Constants.DEVICE_IS_OPEN);
+                infoPO.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
+                infoService.saveOrUpdateInfo(infoPO);
+            }
             recordPO.setInitTaskNum(getInitTaskNum(i));
             updateSuccess(recordPO);
         }

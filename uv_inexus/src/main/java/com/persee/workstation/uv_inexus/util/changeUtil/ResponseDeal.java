@@ -33,8 +33,7 @@ public class ResponseDeal {
             case "SetGain":
             case "SetResponseTime":
             case "SetPhotoMode":
-            case "SetSlit1":
-            case "SetCellPos":
+
             case "SetPadModeTrue":
             case "SetPadModeFalse":
             case "SetPCModeTrue":
@@ -48,11 +47,14 @@ public class ResponseDeal {
             case "InitFilterMotor":
             case "InitSlit1Motor":
             case "InitWlMotor":
+            case "SetSlit1":
+            case "SetCellPos":
             case "InitLampMotor":
             case "CheckWLamp":
             case "CheckDLamp":
             case "CheckWl":
             case "GetInitStatus":
+            case "GetAccessoryType":
             case "Dark":
             case "DisConnect":
             case "DisConnectIAP":
@@ -67,8 +69,8 @@ public class ResponseDeal {
             case "BaseLineFast":
                 return parseScanFast(responses);
 
-            case "NewIP":
-                return parseNewIP(responses);
+//            case "NewIP":
+//                return parseNewIP(responses);
             default:
                 return 0;
         }

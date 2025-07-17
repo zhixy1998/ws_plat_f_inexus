@@ -23,10 +23,12 @@ public class DevMessageUtil {
     ProtocolItemUtil protocolItemUtil;
 
 //    @Value("${device.default.xmlPath}")
-    String xmlPath = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
+    String xmlPath = "D:\\Projects\\IdeaProjects\\T800\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
 
-    private volatile static String defaultIp = "169.254.180.253";
+    private volatile static String defaultIp = "255.255.255.255";
     private volatile  Map<String, Transition> xml;
+
+    private static String ipEnd = "253";
 
     /**
      * 连接设备
@@ -48,6 +50,17 @@ public class DevMessageUtil {
 
         for (Command command : list) {
             String cmdId = command.getCmdId();
+            if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
+                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+                String address = socket.getLocalAddress().getHostAddress();
+                Object[] split = address.split("\\.");
+                int length = param.length;
+                for (int i = 2; i >= 0; i--) {
+                    param[length - i - 2] = split[2-i];
+                }
+                command.setParams(param);
+            }
+
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
@@ -57,17 +70,26 @@ public class DevMessageUtil {
                 return R.fail("接收报文解析异常");
             }
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
-                findDeviceVO.setIp(parse.toString());
-                defaultIp = parse.toString();
+                String ip = socket.getLocalAddress().getHostAddress();
+                String s = ip.substring(0, ip.length() - 3) + ipEnd;
+                findDeviceVO.setIp(s);
+                defaultIp = s;
                 continue;
             }
 
             if (cmdId.equals(FindDevEnum.GetSn.getComId())) {
-                findDeviceVO.setDeviceSerialNumber(parse.toString());
+                String s = String.valueOf(parse);
+                s = s.substring(0, 16);
+                findDeviceVO.setDeviceSerialNumber(s);
                 continue;
             }
             if (cmdId.equals(FindDevEnum.GetInitStatus.getComId())) {
-                findDeviceVO.setIsInited((Integer) parse);
+                if (parse.toString().equals("true")) {
+                    findDeviceVO.setIsInited(1);
+                } else {
+                    findDeviceVO.setIsInited(2);
+                }
+
 
             }
         }
@@ -80,7 +102,7 @@ public class DevMessageUtil {
      * @param
      * @return
      */
-    public R<String> initDevice(Command  command) {
+    public R<String> initDevice(Command  command, String deviceIp) {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             return R.fail(ans.getMessage());
@@ -94,14 +116,14 @@ public class DevMessageUtil {
         String cmdId = command.getCmdId();
         //发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         String result = parse.toString();
-        if ("true".equals(result)) {
-            return R.ok();
+        if ("false".equals(result)) {
+            return R.fail();
         }
 
-        return R.fail();
+        return R.ok();
     }
 
     /**

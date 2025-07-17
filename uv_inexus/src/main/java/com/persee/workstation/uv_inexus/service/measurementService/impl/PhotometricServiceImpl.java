@@ -71,6 +71,12 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Value("0")
     String createType;
 
+    @Value("0")
+    String noTested;
+
+    @Value("1")
+    String tested;
+
 
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, PhotometricParameter photometricParameter) {
@@ -248,10 +254,11 @@ public class PhotometricServiceImpl implements PhotometricService {
             } else {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
-                taskSpecimen.add(specimen);
+                specimen.setIsTested(noTested);
                 log.info("新增的样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
+                taskSpecimen.add(specimen);
             }
         }
 

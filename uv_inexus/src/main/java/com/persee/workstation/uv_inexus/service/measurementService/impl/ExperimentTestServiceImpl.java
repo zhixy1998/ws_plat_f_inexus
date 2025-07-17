@@ -255,6 +255,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
                 break;
@@ -271,6 +272,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
             break;
@@ -285,6 +287,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
                 break;
@@ -299,6 +302,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
                 break;

@@ -150,17 +150,25 @@ public class MessageUtil {
             boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
                     || cmdId.equalsIgnoreCase("Scan")
                     || cmdId.equalsIgnoreCase("ScanFast")
+                    || cmdId.equalsIgnoreCase("InitSlit1Motor")
+                    || cmdId.equalsIgnoreCase("SetSlit1")
+                    || cmdId.equalsIgnoreCase("InitWlMotor")
+                    || cmdId.equalsIgnoreCase("InitLampMotor")
+                    || cmdId.equalsIgnoreCase("CheckWLamp")
+                    || cmdId.equalsIgnoreCase("CheckDLamp")
+                    || cmdId.equalsIgnoreCase("CheckWl")
                     || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 5000 : 4500;
+            int timeoutMs = isSlowCommand ? 15000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
 
             long lastReceiveTime = System.currentTimeMillis();
 
-
+            int count = 0;
             while (Constants.isRunning) {
                 try {
                     DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                     currentSocket.receive(receivePacket);
+                    count++;
 
                     byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
                     responses.add(reply);
@@ -171,7 +179,11 @@ public class MessageUtil {
                     System.out.println();
 
                     lastReceiveTime = System.currentTimeMillis();
-                    currentSocket.setSoTimeout(4500);
+                    if (count > 1) {
+                        currentSocket.setSoTimeout(1000);
+                        timeoutMs = 1000;
+                    }
+
 
                 } catch (SocketTimeoutException e) {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;

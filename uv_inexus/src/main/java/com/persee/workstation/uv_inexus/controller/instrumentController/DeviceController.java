@@ -35,7 +35,7 @@ public class DeviceController {
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
     public Result<List<FindDeviceVO>> findDevice(){
-        List<FindDeviceVO> device = deviceManageService.findDevice();
+        List<FindDeviceVO> device = deviceManageService.newFindDevice();
         if (device == null) {
             return Result.fail("查找设备异常");
         } else {

@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -194,6 +195,7 @@ public class RationServiceImpl implements RationService {
 
 
     @Override
+    @Transactional
     public Result addOrDeleteSample(AddOrDeleteSampleDTO dto) {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
@@ -253,6 +255,10 @@ public class RationServiceImpl implements RationService {
 
         for (SampleVO sample : dto.getNewSamples()) {
 
+            if (StringUtils.hasText(sample.getSampleKind())) {
+                return Result.fail("缺少样品种类");
+            }
+
             TMeasureSample newSample = new TMeasureSample();
             BeanUtils.copyProperties(sample, newSample);
             if (StringUtils.hasText(newSample.getId())) {
@@ -260,10 +266,10 @@ public class RationServiceImpl implements RationService {
             } else {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
-                taskSpecimen.add(specimen);
                 log.info("新增的样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
+                taskSpecimen.add(specimen);
             }
         }
 

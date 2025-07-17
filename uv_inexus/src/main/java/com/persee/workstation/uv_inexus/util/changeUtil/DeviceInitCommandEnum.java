@@ -8,7 +8,7 @@ import java.util.Map;
 @Getter
 public enum DeviceInitCommandEnum {
 
-    GetAccessoryType(0, "GetAccessoryType"),
+    GetAccessoryType(0, "Connect"),
     GetInitStatus(1, "GetInitStatus"),
     InitSampleCell(2, "InitSampleCell"),
     SetCellPos(3, "SetCellPos"),
