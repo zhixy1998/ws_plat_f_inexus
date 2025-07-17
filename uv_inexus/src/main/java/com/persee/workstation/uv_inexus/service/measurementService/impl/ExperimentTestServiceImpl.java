@@ -251,6 +251,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setDilutionRatio(specimen.getDilutionRatio());
                     sample.setSampleVolume(specimen.getSampleVolume());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
@@ -268,6 +269,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleType(specimen.getSampleType());
                     sample.setNormalConcentration(specimen.getNormalConcentration());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
@@ -283,6 +285,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleNumber(specimen.getSampleNumber());
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
+                    sample.setColor("");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
@@ -298,6 +302,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleNumber(specimen.getSampleNumber());
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
@@ -311,6 +316,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         tMeasureTask.setSampleKey(JSON.toJSONString(list));
+        tMeasureTask.setCreateTime(LocalDateTime.now());
         boolean save = tMeasureTaskService.save(tMeasureTask);
         if (!save) {
             return Result.fail("保存失败");
@@ -471,6 +477,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         R<String> stringR = devMessageUtil.zeroCalibration(com);
         return Result.ok(stringR);
     }
+
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {
 //        ObjectMapper objectMapper = new ObjectMapper();

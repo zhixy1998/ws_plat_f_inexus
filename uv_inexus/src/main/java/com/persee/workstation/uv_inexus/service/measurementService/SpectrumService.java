@@ -76,4 +76,6 @@ public interface SpectrumService {
     Result deleteChangeListPort(String analysisId);
 
     Result deleteSampleListPort(String measureId);
+
+    Result reportDataQuery(String taskId);
 }

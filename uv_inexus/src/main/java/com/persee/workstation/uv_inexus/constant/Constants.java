@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.constant;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -56,6 +57,9 @@ public class Constants {
     public static volatile List<String> instrumentData = new CopyOnWriteArrayList<>();
 
     public static volatile List<String> originalCalculationData = new CopyOnWriteArrayList<>();
+
+    public static volatile List<String> x_data = new ArrayList<>();
+    public static volatile List<String> y_data = new ArrayList<>();
 
     public static final String EndData = "0D0A,000";
 

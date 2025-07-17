@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.util.changeUtil;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -180,6 +181,31 @@ public class DevMessageUtil {
     }
 
     /**
+     * 光谱扫描:读取样品池类型
+     */
+    public Result spectrumScanReadSamplePoolType(Command command) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            log.info("绑定socket失败");
+            return Result.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+        Boolean b = changeXml();
+        if (!b) {
+            return Result.fail("转换xml出错");
+        }
+        String cmdId = command.getCmdId();
+        //发送报文组
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        if (parse.equals("false")) {
+            return Result.fail("解析报文出错");
+        }
+        return Result.ok(parse.toString());
+    }
+
+    /**
      * 定位波长
      */
     public void wavelengthLocate(Command command) {
@@ -256,7 +282,7 @@ public class DevMessageUtil {
         Transition transition = xml.get(cmdId);
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
         Constants.startTime = LocalDateTime.now();
-        messageUtil.scanSendAndDeal(socket, defaultIp, cmdId, bytes, Constants.instrumentData, Constants.originalCalculationData);
+        messageUtil.scanSendAndDeal(socket, defaultIp, cmdId, bytes);
     }
 
     /**

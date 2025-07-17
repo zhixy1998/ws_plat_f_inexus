@@ -54,10 +54,8 @@ public class MessageUtil {
      * @param sendIp  机器ip
      * @param cmdId  指令
      * @param sendBytes 发送报文
-     * @param machineList  机器报文数据存储数组
-     * @param sumData  机器初步计算后的存储数组
      */
-    public void scanSendAndDeal(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes, List<String> machineList, List<String> sumData) {
+    public void scanSendAndDeal(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
 
         try {
             List<byte[]> responses = new ArrayList<>();
@@ -118,7 +116,7 @@ public class MessageUtil {
 
             long lastReceiveTime = System.currentTimeMillis();
 
-            new Thread(() -> {scanReceiveAndDeal(scanSocket, machineList, sumData);}).start();
+            new Thread(() -> {scanReceiveAndDeal(scanSocket);}).start();
         }catch (Exception e) {
             e.printStackTrace();
         }
@@ -202,11 +200,10 @@ public class MessageUtil {
     /**
      * 扫描接收并处理
      * @param scanSocket
-     * @param machineList
-     * @param sumData
      */
-    private void scanReceiveAndDeal(DatagramSocket scanSocket, List<String> machineList, List<String> sumData) {
+    private void scanReceiveAndDeal(DatagramSocket scanSocket) {
         while (Constants.isRunning) {
+            int i = 0;
             try {
                 DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                 scanSocket.receive(receivePacket);
@@ -224,16 +221,24 @@ public class MessageUtil {
                     double result_x = x / 50.0;
                     double result_y = y / 8388607.0 * 100;
 
-                    sumData.add(result_x + "," + result_y);
-                    machineList.add(x + "," + y);
+                    Constants.originalCalculationData.add(result_x + "," + result_y);
+                    Constants.field3Values.add(result_x + "," + result_y);
+                    Constants.x_data.add(String.valueOf(result_x));
+                    Constants.y_data.add(String.valueOf(result_y));
+                    System.out.println("第 " + (i + 1) + " 条回应：" + result_x + "," + result_y);
+                    Constants.instrumentData.add(x + "," + y);
+                    System.out.println("第 " + (i + 1) + " 条回应：" + x + "," + y);
+                    i++;
+
                 }
 
+
             } catch (Exception e) {
-                Constants.field1Values.add(Constants.EndData);
+                Constants.originalCalculationData.add(Constants.EndData);
+                Constants.endTime = LocalDateTime.now();
                 return;
             }
         }
-        Constants.endTime = LocalDateTime.now();
     }
 
 

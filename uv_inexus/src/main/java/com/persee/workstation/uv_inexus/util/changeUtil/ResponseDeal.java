@@ -54,10 +54,10 @@ public class ResponseDeal {
             case "CheckDLamp":
             case "CheckWl":
             case "GetInitStatus":
-            case "GetAccessoryType":
             case "Dark":
             case "DisConnect":
             case "DisConnectIAP":
+            case "GetAccessoryType":
                 return parseBooleanFrom5thByte(responses);
 
             case "ScanFast":

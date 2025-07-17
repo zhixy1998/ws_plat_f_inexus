@@ -16,7 +16,7 @@ public class MeasurePublicParameters {
     private String responseTime;
     // 换灯波长
     private String changeLampWaveLength;
-    // 能量灯
+    // 能量灯(0.钨灯 1.氘灯 2.汞灯)
     private String energyLamp;
     // 增益
     private Integer gain;
