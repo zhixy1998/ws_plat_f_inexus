@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -232,6 +231,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         TMeasureTask tMeasureTask = new TMeasureTask();
         tMeasureTask.setUserId(userConfigPO.getId());
         tMeasureTask.setTaskName(paramDto.getTaskName());
+        tMeasureTask.setMeasureType(paramDto.getMeasurementType());
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setMethodKey(paramDto.getMethodId());
         tMeasureTask.setProjectItemKey(project.getId());
@@ -251,10 +251,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setDilutionRatio(specimen.getDilutionRatio());
                     sample.setSampleVolume(specimen.getSampleVolume());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
                 break;
@@ -267,10 +269,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleType(specimen.getSampleType());
                     sample.setNormalConcentration(specimen.getNormalConcentration());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
             break;
@@ -281,10 +285,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleNumber(specimen.getSampleNumber());
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
+                    sample.setColor("");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
                 break;
@@ -295,10 +302,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleNumber(specimen.getSampleNumber());
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
+                    sample.setColor("#000000");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
                     taskSpecimen.setDeleteType("0");
+                    taskSpecimen.setIsTested("0");
                     list.add(taskSpecimen);
                 }
                 break;
@@ -307,6 +316,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         tMeasureTask.setSampleKey(JSON.toJSONString(list));
+        tMeasureTask.setCreateTime(LocalDateTime.now());
         boolean save = tMeasureTaskService.save(tMeasureTask);
         if (!save) {
             return Result.fail("保存失败");
@@ -468,14 +478,19 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(stringR);
     }
 
+
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        try {
-            // 将 Map 转换为指定的 Java 对象
-            return objectMapper.convertValue(params, clazz);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        try {
+//            // 将 Map 转换为指定的 Java 对象
+//            return objectMapper.convertValue(params, clazz);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+        String jsonString = JSON.toJSONString(params);
+        T t = JSON.parseObject(jsonString, clazz);
+        return t;
+
     }
 }

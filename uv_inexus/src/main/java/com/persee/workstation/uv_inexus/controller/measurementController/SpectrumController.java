@@ -27,7 +27,7 @@ public class SpectrumController {
         return spectrumService.queryProjectTaskMethod(updateBy);
     }
 
-    @PostMapping("queryProjectAllMethods")
+    @GetMapping("queryProjectAllMethods")
     @ApiOperation("查询项目下的所有方法")
     public Result queryProjectAllMethods(@RequestParam String projectId, @RequestParam String measureForm) {
         return spectrumService.queryProjectAllMethods(projectId,measureForm);
@@ -235,7 +235,11 @@ public class SpectrumController {
     }
 
 
-
+    @GetMapping("reportDataQuery")
+    @ApiOperation("报告数据查询")
+    public Result reportDataQuery(@RequestParam String taskId){
+        return spectrumService.reportDataQuery(taskId);
+    }
 
 
 

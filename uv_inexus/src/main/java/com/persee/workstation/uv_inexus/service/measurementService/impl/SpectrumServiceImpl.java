@@ -6,12 +6,13 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
-import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -20,7 +21,6 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
@@ -53,7 +53,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     private TMeasureMethodService tMeasureMethodService;
 
     @Autowired
-    private UserConfigDAO userConfigDAO;
+    private SystemUserManageDAO userConfigDAO;
 
     @Autowired
     private TMeasureTaskService tMeasureTaskService;
@@ -627,21 +627,21 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
-            // 如果type为1则跳过
-            if (type==null&&taskSpeciman.getDeleteType().equals("1")) continue;
+            if (type.equals("")&&taskSpeciman.getDeleteType().equals("1")) continue;
             SampleListVo vo = new SampleListVo();
             TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
             QueryWrapper<TMeasureData> eq = new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId());
-            if (type==null){
+            if (type.equals("")){
                 eq.eq("is_delete", "0");
             }
             // 根据样品id和任务id两个条件去查询测量数据
             TMeasureData measureData = tMeasureDataService.getOne(eq);
-            vo.setKey(measureData.getId());
             vo.setTitle(byId.getSampleName());
             if (measureData== null){
                 vo.setData(null);
+                vo.setKey(null);
             }else {
+                vo.setKey(measureData.getId());
                 List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
                 List<Double> gauges = JSON.parseArray(measureData.getGaugePoint(), Double.class);
                 List<Double> peaks = JSON.parseArray(measureData.getPeak(), Double.class);
@@ -664,30 +664,30 @@ public class SpectrumServiceImpl implements SpectrumService {
                     }else{
                         map.put("marked","0");
                     }
-                   if (peaks!=null){
-                       for (Double peak : peaks) {
-                           if (split[0].equals(String.valueOf(peak))){
-                               map.put("feng","1");
-                               break;
-                           }else{
-                               map.put("feng","0");
-                           }
-                       }
-                   }else{
-                       map.put("feng","0");
-                   }
-                   if (grades!=null){
-                       for (Double grade : grades){
-                           if (split[0].equals(String.valueOf(grade))){
-                               map.put("gu","1");
-                               break;
-                           }else{
-                               map.put("gu","0");
-                           }
-                       }
-                   }else{
-                       map.put("gu","0");
-                   }
+                    if (peaks!=null){
+                        for (Double peak : peaks) {
+                            if (split[0].equals(String.valueOf(peak))){
+                                map.put("feng","1");
+                                break;
+                            }else{
+                                map.put("feng","0");
+                            }
+                        }
+                    }else{
+                        map.put("feng","0");
+                    }
+                    if (grades!=null){
+                        for (Double grade : grades){
+                            if (split[0].equals(String.valueOf(grade))){
+                                map.put("gu","1");
+                                break;
+                            }else{
+                                map.put("gu","0");
+                            }
+                        }
+                    }else{
+                        map.put("gu","0");
+                    }
                     resultList.add(map);
                 }
                 vo.setData(resultList);
@@ -1219,7 +1219,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("方法不存在");
         }
 
-        ScanParamInfo scanParamInfo = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), ScanParamInfo.class);
+        SpectrumParameter scanParamInfo = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), SpectrumParameter.class);
 
         List<Command> commands = new ArrayList<>();
 
@@ -1243,10 +1243,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
         com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
         commands.add(com4);
-        // 响应时间
+        // 扫描速度
         Command com5 = new Command();
-        com5.setCmdId(SetParamEnum.SetResponseTime.getComId());
-        com5.setParams(new Object[]{scanParamInfo.getResponseTime()});
+        com5.setCmdId(SetParamEnum.SetScanSpeed.getComId());
+        com5.setParams(new Object[]{scanParamInfo.getScanSpeed()});
         commands.add(com5);
         // 换灯波长
         Command com6 = new Command();
@@ -1358,6 +1358,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             sampleParam.setSampleName(sample.getSampleName());
             sampleParam.setSampleNumber(sample.getSampleNumber());
             sampleParam.setSampleLocation(sample.getSampleLocation());
+            sampleParam.setColor("#000000");
             tMeasureSampleService.save(sampleParam);
             sampleIdList.add(sampleParam.getId());
         }
@@ -1374,6 +1375,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 TaskSpecimen taskSpeciman = new TaskSpecimen();
                 taskSpeciman.setSpecimenKey(sampleId);
                 taskSpeciman.setDeleteType("0");
+                taskSpeciman.setIsTested("0");
                 taskSpecimen.add(taskSpeciman);
             }
             // 将修改后的样品字段存入任务数据中
@@ -1498,31 +1500,76 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public Result obtainReportParameters(String taskId) {
         SpectralReportVo vo = new SpectralReportVo();
-        // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        // 根据任务中的method_key字段查询方法数据
-        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-        // 根据任务中的project_item_key查询项目数据
         TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-        // 根据任务中的sample_key字段查询样品数据
-        List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        List<TMeasureSample> sampleList = new ArrayList<>();
-        for (TaskSpecimen taskSpecimen : taskSpecimenList) {
-            if (taskSpecimen.getDeleteType().equals("1")) continue;
-            TMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
-            sampleList.add(sample);
-        }
-        // 根据任务id查询测量数据
-        List<TMeasureData> dataList = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
-        // 根据任务id查询分析数据
-        List<TMeasureAnalysisData> analysisDataList = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_delete", "0"));
-        vo.setTask(task);
-        vo.setData(dataList);
-        vo.setAnalysisData(analysisDataList);
-        vo.setSample(sampleList);
-        vo.setProject(project);
-        vo.setMethod(method);
+        SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+        TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).last("LIMIT 1"));
+        vo.setInstrumentWavelength(methodparam.getWaveLengthInterval());
+        vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+        vo.setLuminosityMode(methodparam.getLuminosity());
+        vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
+        vo.setReferenceMethod(method.getMethodName());
+        vo.setReferenceStandard(null);
+        vo.setRemark(data.getRemark());
+        vo.setSampleName(null);
+        vo.setSampleNumber(null);
+        vo.setDetectionStartTime(data.getMeasurementStartTime());
+        vo.setDetectionEndTime(data.getMeasurementEndTime());
+        vo.setProject(project.getProjectName());
+        vo.setDetector(user.getUserName());
+        vo.setEnergyLight(methodparam.getEnergyLamp());
+        vo.setCalculationFormula(null);
+        vo.setStairCorrection(methodparam.getLadderCorrection()=="0"?"启用":"不启用");
+        vo.setSpectrumScanImage(data.getDataImage());
+        vo.setOriginalData(data.getOriginalCalculationData());
+        vo.setGain(methodparam.getGain().toString());
+        vo.setScanRange(methodparam.getStartWaveLength()+"-"+methodparam.getEndWaveLength());
+        vo.setScanSpeed(null);
+        vo.setScanInterval(methodparam.getWaveLengthInterval());
+        vo.setMethodName(method.getMethodName());
         return Result.ok(vo);
     }
+
+    @Override
+    public Result reportDataQuery(String taskId) {
+        // 根据任务id测量数据表
+        List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
+        if (measureData == measureData || measureData.size() == 0){
+            return Result.fail("未查询到数据");
+        }
+        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_delete", "0"));
+        if (analysisData == null || analysisData.size() == 0) {
+            return Result.fail("未查询到数据");
+        }
+        List<ReportDataVo> list = new ArrayList<>();
+        for (TMeasureData data : measureData) {
+            ReportDataVo vo = new ReportDataVo();
+            // 根据data的样品id查询样品名称
+            TMeasureSample sample = tMeasureSampleService.getById(data.getSampleKey());
+            vo.setName(sample.getSampleName());
+            vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
+            vo.setValley(JSON.parseArray(data.getGrain(), String.class));
+            vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
+            vo.setParameterData(JSON.parseArray(data.getOriginalCalculationData(), String.class));
+            vo.setDataType("测量数据");
+            list.add(vo);
+        }
+        for (TMeasureAnalysisData data : analysisData) {
+            ReportDataVo vo = new ReportDataVo();
+            // 根据data的样品id查询样品名称
+            vo.setName(data.getAnalysisName());
+            vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
+            vo.setValley(JSON.parseArray(data.getGrain(), String.class));
+            vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
+            vo.setParameterData(JSON.parseArray(data.getAnalysisResult(), String.class));
+            vo.setDataType("分析数据");
+            list.add(vo);
+        }
+        return Result.ok(list);
+    }
+
 
 }

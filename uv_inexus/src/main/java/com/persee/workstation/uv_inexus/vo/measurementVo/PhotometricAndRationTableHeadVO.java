@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class PhotometricTableHeadVO {
+public class PhotometricAndRationTableHeadVO {
     @ApiModelProperty("波长")
     private List<String> wavelength;
 
