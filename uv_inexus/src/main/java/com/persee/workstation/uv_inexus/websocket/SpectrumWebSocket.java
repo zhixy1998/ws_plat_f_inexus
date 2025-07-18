@@ -71,6 +71,15 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        if (Constants.endTime != null||Constants.startTime != null) {
+            try {
+                session.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            sendAndClose(session, "当前测试未结束,无法开启新的测试");
+        }
+
         // 记录当前连接
         sessions.put(session.getId(), session);
 
@@ -195,6 +204,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                     sessions.remove(session.getId());
                     session.close();
                 } catch (Exception e) {
+                    exceptionHandling();
                     sessions.remove(session.getId());
                     handleTransportError(session, e);
                 }
@@ -206,7 +216,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
-                        sessions.remove(session.getId());
+                        exceptionHandling();
                         handleTransportError(session, e);
                     }
                 }
@@ -251,11 +261,15 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                     sendAndClose(session,"更新任务失败");
                     return;
                 }
+                System.err.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
                 // 将公共的变量中的数据清除
                 Constants.x_data.clear();
                 Constants.y_data.clear();
                 Constants.field3Values.clear();
                 Constants.instrumentData.clear();
+                Constants.originalCalculationData.clear();
+                Constants.endTime = null;
+                Constants.startTime = null;
             }).start();
         }
         sessions.remove(session.getId());
@@ -329,10 +343,24 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
+            Constants.originalCalculationData.clear();
+            sessions.remove(session.getId());
             session.close();
         } catch (IOException ignored) {
+            exceptionHandling();
             sessions.remove(session.getId());
         }
     }
+
+    private void exceptionHandling(){
+        Constants.x_data.clear();
+        Constants.y_data.clear();
+        Constants.field3Values.clear();
+        Constants.instrumentData.clear();
+        Constants.originalCalculationData.clear();
+        Constants.startTime = null;
+        Constants.endTime = null;
+    }
+
 
 }

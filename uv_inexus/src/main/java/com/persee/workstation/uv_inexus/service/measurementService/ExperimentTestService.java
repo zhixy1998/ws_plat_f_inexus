@@ -34,4 +34,5 @@ public interface ExperimentTestService {
     Result zeroCalibrationPort(String serialNumber);
 
 
+    Result reportDataQuery(String taskId, String reportName);
 }

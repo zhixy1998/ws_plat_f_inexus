@@ -50,4 +50,10 @@ public class TimeSweepController {
     public Result deleteChangeListPort(@RequestParam String analysisId) {
         return timeSweepService.deleteChangeListPort(analysisId);
     }
+
+    @GetMapping("setMethodParameters")
+    @ApiOperation("设置方法参数接口")
+    public Result setMethodParameters(@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
+        return timeSweepService.setMethodParameters(methodId,deviceSerialNumber);
+    }
 }

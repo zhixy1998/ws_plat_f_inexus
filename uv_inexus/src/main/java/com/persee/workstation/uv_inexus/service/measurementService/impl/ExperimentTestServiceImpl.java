@@ -22,10 +22,7 @@ import com.persee.workstation.uv_inexus.service.standardService.TReportStandardP
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectStatisticsVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.ProjectTaskMethodVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.RecentlyAccomplishTaskVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -70,6 +67,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private DevMessageUtil devMessageUtil;
     @Autowired
     private DeviceInfoService deviceInfoService;
+    @Autowired
+    private TMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -320,6 +319,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
         tMeasureTask.setSampleKey(JSON.toJSONString(list));
         tMeasureTask.setCreateTime(LocalDateTime.now());
+        tMeasureTask.setStartTime(LocalDateTime.now());
+        tMeasureTask.setMeasureType(paramDto.getMeasurementType());
+        tMeasureTask.setIsDelete("0");
         boolean save = tMeasureTaskService.save(tMeasureTask);
         if (!save) {
             return Result.fail("保存失败");
@@ -481,6 +483,56 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         R<String> stringR = devMessageUtil.zeroCalibration(com);
         return Result.ok(stringR);
     }
+
+    @Override
+    public Result reportDataQuery(String taskId,String reportName) {
+        // 根据任务id测量数据表
+        List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
+        if (measureData == null || measureData.size() == 0) {
+            return Result.fail("未查询到数据");
+        }
+        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_delete", "0"));
+        if (analysisData == null || analysisData.size() == 0) {
+            return Result.fail("未查询到数据");
+        }
+        if (reportName.equals("光度测量表格")){
+            return Result.ok("暂未开放");
+        } else if(reportName.equals("定量测量表格")){
+            return Result.ok("暂未开放");
+        }
+        else if (reportName.equals("光谱扫描表格")) {
+            List<ReportDataVo> list = new ArrayList<>();
+            for (TMeasureData data : measureData) {
+                ReportDataVo vo = new ReportDataVo();
+                // 根据data的样品id查询样品名称
+                TMeasureSample sample = tMeasureSampleService.getById(data.getSampleKey());
+                vo.setName(sample.getSampleName());
+                vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
+                vo.setValley(JSON.parseArray(data.getGrain(), String.class));
+                vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
+                vo.setParameterData(JSON.parseArray(data.getOriginalCalculationData(), String.class));
+                vo.setDataType("测量数据");
+                list.add(vo);
+            }
+            for (TMeasureAnalysisData data : analysisData) {
+                ReportDataVo vo = new ReportDataVo();
+                // 根据data的样品id查询样品名称
+                vo.setName(data.getAnalysisName());
+                vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
+                vo.setValley(JSON.parseArray(data.getGrain(), String.class));
+                vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
+                vo.setParameterData(JSON.parseArray(data.getAnalysisResult(), String.class));
+                vo.setDataType("分析数据");
+                list.add(vo);
+            }
+            return Result.ok(list);
+        }else if (reportName.equals("时间扫描表格")){
+            return Result.ok("暂未开放");
+        }else{
+            return Result.fail("类型错误,请重新选择");
+        }
+    }
+
 
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {

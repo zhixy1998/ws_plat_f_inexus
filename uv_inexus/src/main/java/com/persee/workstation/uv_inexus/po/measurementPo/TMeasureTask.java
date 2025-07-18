@@ -67,6 +67,6 @@ public class TMeasureTask{
 
     // 是否删除
     @TableField("is_delete")
-    private Integer isDelete;
+    private String isDelete;
 }
 

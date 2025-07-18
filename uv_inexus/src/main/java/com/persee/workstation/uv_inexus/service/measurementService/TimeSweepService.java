@@ -23,4 +23,6 @@ public interface TimeSweepService {
     Result changeTheListPort(String taskId, String type);
 
     Result deleteChangeListPort(String analysisId);
+
+    Result setMethodParameters(String methodId, String deviceSerialNumber);
 }

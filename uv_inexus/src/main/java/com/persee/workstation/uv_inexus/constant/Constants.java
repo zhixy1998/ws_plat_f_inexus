@@ -43,7 +43,7 @@ public class Constants {
     public final static Integer CONNECT_DEVICE_SUCCESS = 2;
     public final static Integer CONNECT_DEVICE_FALSE = 3;
 
-    public static volatile LocalDateTime startTime;
+    public static volatile LocalDateTime startTime=null;
     public static volatile LocalDateTime endTime = null;
 
     public static volatile Boolean isRunning = true;

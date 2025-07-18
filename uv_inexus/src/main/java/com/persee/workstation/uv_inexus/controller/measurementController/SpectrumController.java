@@ -233,12 +233,18 @@ public class SpectrumController {
     }
 
 
-    @GetMapping("reportDataQuery")
-    @ApiOperation("报告数据查询")
-    public Result reportDataQuery(@RequestParam String taskId){
-        return spectrumService.reportDataQuery(taskId);
+
+    @GetMapping("saveData")
+    @ApiOperation("保存数据接口")
+    public Result saveData(@RequestParam String taskId) {
+        return spectrumService.saveData(taskId);
     }
 
+    @GetMapping("queryPreprocessingOperation")
+    @ApiOperation("查询预处理操作接口")
+    public Result queryPreprocessingOperation(@RequestParam String methodId) {
+        return spectrumService.queryPreprocessingOperation(methodId);
+    }
 
 
 

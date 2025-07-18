@@ -26,6 +26,7 @@ public class TokenConfig implements WebMvcConfigurer {
         excludePath.add("/com/persee/workstation/uv-inexus/system/logout"); //登出
         excludePath.add("/static/**");  //静态资源
         excludePath.add("/assets/**");  //静态资源
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/reportDataQuery");
 
         registry.addInterceptor(tokenInterceptor)
                 .addPathPatterns("/com/persee/workstation/uv-inexus/**")

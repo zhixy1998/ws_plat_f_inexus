@@ -95,7 +95,11 @@ public class ExperimentTestController {
         return experimentTestService.zeroCalibrationPort(serialNumber);
     }
 
-
+    @GetMapping("reportDataQuery")
+    @ApiOperation("报告数据查询")
+    public Result reportDataQuery(@RequestParam String taskId,@RequestParam String reportName){
+        return experimentTestService.reportDataQuery(taskId,reportName);
+    }
 
 
 

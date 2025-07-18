@@ -283,6 +283,9 @@ public class SpectrumServiceImpl implements SpectrumService {
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter) {
         // 创建测量方法表
         TMeasureMethod tMeasureMethod = new TMeasureMethod();
+        if (methodDto.getPretreatmentIds()!= null){
+            tMeasureMethod.setPreprocessKey(JSON.toJSONString(methodDto.getPretreatmentIds()));
+        }
         tMeasureMethod.setProjectItemKey(methodDto.getProjectId());
         tMeasureMethod.setMethodName(methodDto.getMethodName());
         tMeasureMethod.setMeasurementType(methodDto.getMethodType());
@@ -631,20 +634,23 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
-            if (type.equals("")&&taskSpeciman.getDeleteType().equals("1")) continue;
+            // 如果type为空同时删除类型为1则跳过
+            if (type==null&&taskSpeciman.getDeleteType().equals("1")) continue;
             SampleListVo vo = new SampleListVo();
+            // 根据样品id查询样品数据
             TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-            QueryWrapper<TMeasureData> eq = new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId());
-            if (type.equals("")){
-                eq.eq("is_delete", "0");
-            }
-            // 根据样品id和任务id两个条件去查询测量数据
-            TMeasureData measureData = tMeasureDataService.getOne(eq);
             vo.setTitle(byId.getSampleName());
-            if (measureData== null){
+            if (taskSpeciman.getIsTested().equals("0")){
                 vo.setData(null);
                 vo.setKey(null);
             }else {
+                // 根据样品id和任务id两个条件去查询测量数据
+                QueryWrapper<TMeasureData> eq = new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId());
+                if (type==null){
+                    eq.eq("is_delete", "0");
+                }
+                // 根据样品id和任务id两个条件去查询测量数据
+                TMeasureData measureData = tMeasureDataService.getOne(eq);
                 vo.setKey(measureData.getId());
                 List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
                 List<Double> gauges = JSON.parseArray(measureData.getGaugePoint(), Double.class);
@@ -1516,6 +1522,37 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
+    public Result saveData(String taskId) {
+        // 根据任务id查询任务数据
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        task.setIsDelete("1");
+        boolean update = tMeasureTaskService.updateById(task);
+        if ( update){
+            return Result.ok(true);
+        }else {
+            return Result.fail(false);
+        }
+    }
+
+    @Override
+    public Result queryPreprocessingOperation(String methodId) {
+        // 根据方法id查询方法数据
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        if (method.getPreprocessKey() == null) {
+             return Result.fail("预处理参数不存在");
+        }else{
+            List<List> lists = JSON.parseArray(method.getPreprocessKey(), List.class);
+            return Result.ok(lists);
+        }
+    }
+
+    @Override
     public Result obtainReportParameters(String taskId) {
         SpectralReportVo vo = new SpectralReportVo();
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -1551,43 +1588,6 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(vo);
     }
 
-    @Override
-    public Result reportDataQuery(String taskId) {
-        // 根据任务id测量数据表
-        List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
-        if (measureData == measureData || measureData.size() == 0){
-            return Result.fail("未查询到数据");
-        }
-        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_delete", "0"));
-        if (analysisData == null || analysisData.size() == 0) {
-            return Result.fail("未查询到数据");
-        }
-        List<ReportDataVo> list = new ArrayList<>();
-        for (TMeasureData data : measureData) {
-            ReportDataVo vo = new ReportDataVo();
-            // 根据data的样品id查询样品名称
-            TMeasureSample sample = tMeasureSampleService.getById(data.getSampleKey());
-            vo.setName(sample.getSampleName());
-            vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
-            vo.setValley(JSON.parseArray(data.getGrain(), String.class));
-            vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
-            vo.setParameterData(JSON.parseArray(data.getOriginalCalculationData(), String.class));
-            vo.setDataType("测量数据");
-            list.add(vo);
-        }
-        for (TMeasureAnalysisData data : analysisData) {
-            ReportDataVo vo = new ReportDataVo();
-            // 根据data的样品id查询样品名称
-            vo.setName(data.getAnalysisName());
-            vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
-            vo.setValley(JSON.parseArray(data.getGrain(), String.class));
-            vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
-            vo.setParameterData(JSON.parseArray(data.getAnalysisResult(), String.class));
-            vo.setDataType("分析数据");
-            list.add(vo);
-        }
-        return Result.ok(list);
-    }
 
 
 }

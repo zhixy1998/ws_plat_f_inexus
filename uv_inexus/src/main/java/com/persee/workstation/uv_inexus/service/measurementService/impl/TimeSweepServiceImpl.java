@@ -334,7 +334,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
     }
 
-
+    @Override
+    public Result setMethodParameters(String methodId, String deviceSerialNumber) {
+        return Result.ok();
+    }
 
 
 }
