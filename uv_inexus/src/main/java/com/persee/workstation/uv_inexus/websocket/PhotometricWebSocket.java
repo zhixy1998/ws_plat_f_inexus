@@ -118,7 +118,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
 
-        if (parameter.getWaveLengths() == null || parameter.getWaveLengths().isEmpty()) {
+        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
             log.info("缺少波长， 无法测量");
             sendAndClose(session, "缺少波长， 无法测量");
             return;
@@ -137,7 +137,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             List<Command> list = new ArrayList<>();
             List<ChangeParam> machineData = new ArrayList<>();
 
-            List<String> waveLengths = parameter.getWaveLengths();
+            List<String> waveLengths = parameter.getWaveLength();
 
             list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
             list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
@@ -219,7 +219,11 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             sampleAndDataVO.setStartTime(startTime);
             sampleAndDataVO.setEndTime(endTime);
             photometricService.savePhotometricMeasureData(sampleAndDataVO);
+
+            specimen.setIsTested(right);
         }
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        tMeasureTaskService.updateById(task);
         sessions.remove(session.getId());
         session.close();
 

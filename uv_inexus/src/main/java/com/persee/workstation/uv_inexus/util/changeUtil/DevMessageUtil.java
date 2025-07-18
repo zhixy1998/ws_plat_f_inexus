@@ -6,6 +6,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.DatagramSocket;
@@ -25,13 +26,15 @@ public class DevMessageUtil {
 //    @Autowired
 //    private ExperimentTestService experimentService;
 
-//    @Value("${device.default.xmlPath}")
-    String xmlPath = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
+    @Value("${device.default.xmlPath}")
+    String xmlPath;
+//    String xmlPath = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
 
     private volatile static String defaultIp = "255.255.255.255";
+//    private volatile static String defaultIp = "192.168.32.254";
     private volatile  Map<String, Transition> xml;
 
-    private static String ipEnd = ".253";
+    private static String ipEnd = "253";
 
     /**
      * 连接设备
@@ -75,7 +78,7 @@ public class DevMessageUtil {
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
                 String ip = socket.getLocalAddress().getHostAddress();
                 String[] split = ip.split("\\.");
-                String s = ip.substring(0, split[split.length - 1].length()) + ipEnd;
+                String s = ip.substring(0, ip.length() - split[split.length - 1].length()) + ipEnd;
                 findDeviceVO.setIp(s);
                 defaultIp = s;
                 continue;

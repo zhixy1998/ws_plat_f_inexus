@@ -94,7 +94,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, PhotometricParameter photometricParameter) {
 
-        if (photometricParameter.getWaveLengths() == null || photometricParameter.getWaveLengths().isEmpty()) {
+        if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
             return Result.fail("请填写波长值");
         }
 
@@ -379,10 +379,11 @@ public class PhotometricServiceImpl implements PhotometricService {
         PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
 
         MethodParam param = new MethodParam();
+        BeanUtils.copyProperties(photometricParameter, param);
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());
-        param.setPhotometricParameter(photometricParameter);
+//        param.setPhotometricParameter(photometricParameter);
         return Result.ok(param);
     }
 
@@ -409,7 +410,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail("方法不存在");
         }
         PhotometricParameter Parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        List<String> waveLengths = Parameter.getWaveLengths();
+        List<String> waveLengths = Parameter.getWaveLength();
         List<HeadVO> ans = new ArrayList<>();
 
         if (waveLengths != null && !waveLengths.isEmpty()) {
@@ -515,7 +516,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         String sampleVolume = sample.getSampleVolume();
 
         StringBuilder identity = new StringBuilder();
-        identity.append("d").append(",").append("m").append(",");
+        identity.append("t").append(",").append("m").append(",");
         values.append(dilutionRatio).append(",").append(sampleVolume).append(",");
         for (PhotometricOriginDataInfo info : vo) {
             identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
@@ -748,10 +749,10 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail("方法不存在");
         }
         PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        if (photometricParameter.getWaveLengths() == null || photometricParameter.getWaveLengths().isEmpty()) {
+        if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
             return Result.fail("缺少波长");
         }
-        List<String> waveLength = photometricParameter.getWaveLengths();
+        List<String> waveLength = photometricParameter.getWaveLength();
         // 通过序列号获取ip
         String ip = deviceInfoService.getIp(serialNumber);
         List<ChangeParam> list = new ArrayList<>();

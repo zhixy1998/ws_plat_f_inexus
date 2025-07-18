@@ -20,7 +20,7 @@ public class PhotometricParameter extends MeasurePublicParameters {
     private String luminosity;
     // 波长值(波长值是多个值,不连续的)
     @ApiModelProperty("波长值")
-    private List<String> waveLengths;
+    private List<String> waveLength;
     // 重复模式
     @ApiModelProperty("重复模式")
     private String repetitionPattern;

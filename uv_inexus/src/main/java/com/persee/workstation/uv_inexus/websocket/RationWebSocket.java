@@ -102,7 +102,7 @@ public class RationWebSocket extends TextWebSocketHandler {
         TMeasureMethod byId = tMeasureMethodService.getById(task.getMethodKey());
         PhotometricParameter parameter = JSON.parseObject(byId.getMeasurementParamInfo(), PhotometricParameter.class);
 
-        if (parameter.getWaveLengths() == null || parameter.getWaveLengths().isEmpty()) {
+        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
             log.info("缺少波长， 无法测量");
             sendAndClose(session, "缺少波长， 无法测量");
             return;
@@ -115,7 +115,7 @@ public class RationWebSocket extends TextWebSocketHandler {
                 continue;
             }
 
-            List<String> waveLengths = parameter.getWaveLengths();
+            List<String> waveLengths = parameter.getWaveLength();
             List<Command> list = new ArrayList<>();
             list.add(new Command("SetPhotoMode", new Object[]{1}));
             list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));

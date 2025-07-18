@@ -31,7 +31,7 @@ device:
     sendPort: 5000
     receivePort: 6000
     machineIP: 169.254.110.67
-    xmlPath: "com/persee/workstation/uv_inexus/util/changeUtil/T600.1.xml"
+    xmlPath: "uv_inexus/src/main/java/com/persee/workstation/uv_inexus/util/changeUtil/T600.1.xml"
 
 sys-manage-default:
   defaultId: "00000000"
