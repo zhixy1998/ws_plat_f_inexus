@@ -3,7 +3,6 @@ package com.persee.workstation.uv_inexus.util.changeUtil;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.net.DatagramSocket;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -76,7 +74,8 @@ public class DevMessageUtil {
             }
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
                 String ip = socket.getLocalAddress().getHostAddress();
-                String s = ip.substring(0, ip.length() - 3) + ipEnd;
+                String[] split = ip.split("\\.");
+                String s = ip.substring(0, split[split.length - 1].length()) + ipEnd;
                 findDeviceVO.setIp(s);
                 defaultIp = s;
                 continue;
@@ -237,7 +236,7 @@ public class DevMessageUtil {
     /**
      * 光度测量：
      */
-    public R<String> photoMetricMeasurement(List<Command> list, String deviceIp) {
+    public R<ChangeParam> photoMetricMeasurement(List<Command> list, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");
@@ -249,8 +248,7 @@ public class DevMessageUtil {
         if (!b) {
             return R.fail("转换xml出错");
         }
-        Map<String, ChangeParam> s = new HashMap<>();
-        String ans = "";
+        ChangeParam changeParam = null;
         for (Command command : list) {
             String cmdId = command.getCmdId();
             //发送报文组
@@ -260,19 +258,11 @@ public class DevMessageUtil {
             if (parse == null || parse.equals("false")) {
                 return R.fail("解析报文出错");
             }
-            if (cmdId.equals("Zero")) {
-                ChangeParam changeParam = (ChangeParam) parse;
-                s.put(cmdId, changeParam);
-            }
             if (cmdId.equals("Measure")) {
-                ChangeParam changeParam = (ChangeParam) parse;
-                ChangeParam zero = s.get("Zero");
-                String T = DataCountUtil.countTPercent(zero, changeParam, 1.0);
-                ans = DataCountUtil.changeTPercentOrAbs(null, T);
-
+                changeParam = (ChangeParam) parse;
             }
         }
-        return R.ok(ans);
+        return R.ok(changeParam);
     }
 
     /**

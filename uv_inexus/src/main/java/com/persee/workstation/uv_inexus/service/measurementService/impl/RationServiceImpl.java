@@ -17,6 +17,8 @@ import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
@@ -31,9 +33,7 @@ import org.springframework.util.StringUtils;
 
 import javax.transaction.Transactional;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -63,6 +63,12 @@ public class RationServiceImpl implements RationService {
 
     @Value("0")
     private String createType;
+
+    @Value("0")
+    private String stand;
+
+    @Value("1")
+    private String unknown;
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
@@ -496,6 +502,79 @@ public class RationServiceImpl implements RationService {
             }
         }
         return Result.ok(ans);
+    }
+
+    @Override
+    public Result<List<Map<String, String>>> queryData(String taskId, Boolean allDisplay, String sampleKind) {
+
+        if (!StringUtils.hasText(taskId) || allDisplay == null || !StringUtils.hasText(sampleKind)) {
+            return Result.fail("缺少参数");
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        List<Map<String, String>> ans = new ArrayList<>();
+
+        if (sampleKind.equals(stand)) {
+
+        }
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+            if (!allDisplay && specimen.getDeleteType().equals("1")) {
+                continue;
+            }
+
+            Map<String, String> map = new HashMap<>();
+            TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+            if (sample == null || !sample.getSampleKind().equals(sampleKind)) {
+                //不是需要的样品，跳过
+                continue;
+            }
+
+            map.put("sampleId", specimen.getSpecimenKey());
+            map.put("sampleName", sample.getSampleName());
+            map.put("sampleNumber", sample.getSampleNumber());
+            map.put("sampleType", sample.getSampleType());
+            map.put("dilutionRatio", sample.getDilutionRatio());
+            map.put("sampleVolume", sample.getSampleVolume());
+            map.put("deleteType", specimen.getDeleteType());
+            map.put("sampleLocation", sample.getSampleLocation());
+
+            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
+            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+
+            if (data != null) {
+                List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
+
+                for (PhotometricOriginDataInfo wlData : wlDataList) {
+                    map.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
+                    map.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
+                    map.put("remark", data.getRemark());
+                    map.put("samplingTime", data.getSamplingTime());
+
+                }
+            }
+
+            LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                    .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
+
+            TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            if (one != null) {
+                List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
+
+                for (PhotometricCountDataInfo count : countList) {
+                    map.put(count.getResultIdentity() + "-" + count.getFormulaText(), count.getCountValue());
+
+                }
+
+            }
+            ans.add(map);
+        }
+        return Result.ok(ans);
+
     }
 
 

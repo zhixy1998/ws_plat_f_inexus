@@ -4,13 +4,15 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -69,14 +71,14 @@ public interface PhotometricService {
     //暂时不用
     Result<List<PhotometricSampleAndDataVO>> queryDataInfo(String taskId);
 
-
+    R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String methodId);
 
     /**
      * 测量及分析后数据保存，如有记录，认为是重测，做覆盖操作
      * @param vo
      * @return
      */
-    Result savePhotometricMeasureData(LocalDateTime startTime, LocalDateTime endTime, List<PhotometricSampleAndDataVO> vo);
+    Result savePhotometricMeasureData(PhotometricSampleAndDataVO vo);
 
     /**
      * 前端调用保存数据，用于保存相关内容，如采样时间，备注等
@@ -85,12 +87,6 @@ public interface PhotometricService {
      */
     Result saveDataInfo(PhotometricSampleAndDataVO vo);
 
-    /**
-     * 光度测量
-     * 从websocket建立连接-->获取样品-->测量-->保存数据-->关闭连接
-     * socket负责连接建立，推数据，关连接，
-     * service里，负责调测量，然后存数据？
-     */
 
 
     void test(String taskId, String methodId);

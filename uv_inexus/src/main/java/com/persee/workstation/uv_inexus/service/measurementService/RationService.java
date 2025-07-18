@@ -11,6 +11,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 定量测定
@@ -53,5 +54,6 @@ public interface RationService {
     Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay);
 
 
+    Result<List<Map<String, String>>> queryData(String taskId, Boolean allDisplay, String sampleKind);
 
 }

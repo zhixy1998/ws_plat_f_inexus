@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
@@ -121,7 +122,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
         TMeasureMethod method = tMeasureMethodService.getById(methodDto.getMethodId());
 
-    // 将ExperimentMethodDto中的值转入SpectrumParameter对象中
+        // 将ExperimentMethodDto中的值转入SpectrumParameter对象中
         PhotometricParameter param = new PhotometricParameter();
         BeanUtils.copyProperties(methodDto, param);
 
@@ -149,7 +150,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 .orderByDesc(TMeasureTask::getCreateTime);
 
         List<TMeasureTask> taskList = tMeasureTaskService.list(wrapper);
-        if (taskList != null && !taskList.isEmpty()){
+        if (taskList != null && !taskList.isEmpty()) {
             TMeasureTask task = taskList.get(0);
             String projectItemKey = task.getProjectItemKey();
             String methodKey = task.getMethodKey();
@@ -172,12 +173,12 @@ public class PhotometricServiceImpl implements PhotometricService {
                 .eq(TMeasureMethod::getMeasurementType, measureType)
                 .orderByDesc(TMeasureMethod::getMethodCreateTime);
         List<TMeasureMethod> list = tMeasureMethodService.list(queryWrapper);
-        if (list == null|| list.isEmpty()){
+        if (list == null || list.isEmpty()) {
             LambdaQueryWrapper<TMeasureProject> projectWrapper = new LambdaQueryWrapper<>();
             projectWrapper.eq(TMeasureProject::getCreatorKey, updateBy)
                     .orderByDesc(TMeasureProject::getCreateTime);
             List<TMeasureProject> projectList = tMeasureProjectService.list(projectWrapper);
-            if (projectList == null || projectList.isEmpty()){
+            if (projectList == null || projectList.isEmpty()) {
                 return Result.ok(vo);
             }
             vo.setProjectName(projectList.get(0).getProjectName());
@@ -494,6 +495,46 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(list);
     }
 
+    @Override
+    public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String methodId) {
+        TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+
+        if (!StringUtils.hasText(method.getMeasurementParamInfo())) {
+            return R.fail("未查询到该方法参数");
+        }
+
+        PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+
+        List<PreCountResultParam> resultParams = parameter.getResultParams();
+
+        StringBuilder values = new StringBuilder();
+        //稀释倍数
+        String dilutionRatio = sample.getDilutionRatio();
+        //取样量
+        String sampleVolume = sample.getSampleVolume();
+
+        StringBuilder identity = new StringBuilder();
+        identity.append("d").append(",").append("m").append(",");
+        values.append(dilutionRatio).append(",").append(sampleVolume).append(",");
+        for (PhotometricOriginDataInfo info : vo) {
+            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
+            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
+        }
+
+        List<PhotometricCountDataInfo> countList = new ArrayList<>();
+        for (PreCountResultParam param : resultParams) {
+            String[] split = param.getFormulaText().split("=");
+            String text = split[split.length - 1];
+            String result = RestUtil.sum(text, identity.toString(), values.toString());
+            PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
+            BeanUtils.copyProperties(param, countDataInfo);
+            countDataInfo.setCountValue(result);
+            countList.add(countDataInfo);
+        }
+        return R.ok(countList);
+    }
+
 
     @Override
     public Result<List<Map<String, String>>> queryData(String taskId, Boolean allDisplay) {
@@ -531,10 +572,10 @@ public class PhotometricServiceImpl implements PhotometricService {
                 List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
 
                 for (PhotometricOriginDataInfo wlData : wlDataList) {
-                    map.put(wlData.getWavelength()+ "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
-                    map.put(wlData.getWavelength()+ "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
-                    map.put("remark",data.getRemark() );
-                    map.put("samplingTime",data.getSamplingTime() );
+                    map.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
+                    map.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
+                    map.put("remark", data.getRemark());
+                    map.put("samplingTime", data.getSamplingTime());
 
                 }
             }
@@ -548,7 +589,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
 
                 for (PhotometricCountDataInfo count : countList) {
-                    map.put(count.getResultIdentity()+ "-" + count.getFormulaText(), count.getCountValue());
+                    map.put(count.getResultIdentity() + "-" + count.getFormulaText(), count.getCountValue());
 
                 }
 
@@ -559,31 +600,31 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public Result savePhotometricMeasureData(LocalDateTime startTime, LocalDateTime endTime, List<PhotometricSampleAndDataVO> vo) {
-        for (PhotometricSampleAndDataVO sampleAndDataVO : vo) {
-            String taskId = sampleAndDataVO.getTaskId();
-            String sampleId = sampleAndDataVO.getSampleId();
-            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                    .eq(TMeasureData::getSampleKey, sampleId);
-            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-            if (data != null) {
-                //认为是重测，覆盖数据
-                data.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
-                data.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
-                tMeasureDataService.updateById(data);
-            } else {
-                TMeasureData tMeasureData = new TMeasureData();
-                tMeasureData.setTaskId(taskId);
-                tMeasureData.setSampleKey(sampleId);
-                tMeasureData.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
-                tMeasureData.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
-                tMeasureData.setMeasurementStartTime(startTime);
-                tMeasureData.setMeasurementEndTime(endTime);
-                tMeasureData.setIsDelete(createType);
-                tMeasureDataService.save(tMeasureData);
-            }
+    public Result savePhotometricMeasureData(PhotometricSampleAndDataVO sampleAndDataVO) {
+
+        String taskId = sampleAndDataVO.getTaskId();
+        String sampleId = sampleAndDataVO.getSampleId();
+        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                .eq(TMeasureData::getSampleKey, sampleId);
+        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+        if (data != null) {
+            //认为是重测，覆盖数据
+            data.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
+            data.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
+            tMeasureDataService.updateById(data);
+        } else {
+            TMeasureData tMeasureData = new TMeasureData();
+            tMeasureData.setTaskId(taskId);
+            tMeasureData.setSampleKey(sampleId);
+            tMeasureData.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
+            tMeasureData.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
+            tMeasureData.setMeasurementStartTime(sampleAndDataVO.getStartTime());
+            tMeasureData.setMeasurementEndTime(sampleAndDataVO.getEndTime());
+            tMeasureData.setIsDelete(createType);
+            tMeasureDataService.save(tMeasureData);
         }
+
 
         return Result.ok(true);
     }
@@ -606,7 +647,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         data.setSamplingTime(vo.getSampleTime());
         tMeasureDataService.updateById(data);
 
-        return Result.ok( true);
+        return Result.ok(true);
     }
 
     @Override
@@ -662,7 +703,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                     PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
                     BeanUtils.copyProperties(resultParam, countDataInfo);
                     double i = Double.parseDouble(s);
-                    countDataInfo.setCountValue(df.format(i * 4L /3));
+                    countDataInfo.setCountValue(df.format(i * 4L / 3));
                     list.add(countDataInfo);
 
                 }
@@ -684,7 +725,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             queryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId).eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
 
             TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
-            if (analysisData == null){
+            if (analysisData == null) {
                 analysisData = new TMeasureAnalysisData();
                 analysisData.setTaskId(taskId);
                 analysisData.setSampleKey(specimen.getSpecimenKey());
@@ -697,21 +738,20 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
 
-
     }
 
     @Override
-    public Result zero(String serialNumber,String methodId) {
+    public Result zero(String serialNumber, String methodId) {
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             return Result.fail("方法不存在");
         }
         PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        if(photometricParameter.getWaveLengths() == null || photometricParameter.getWaveLengths().isEmpty()) {
+        if (photometricParameter.getWaveLengths() == null || photometricParameter.getWaveLengths().isEmpty()) {
             return Result.fail("缺少波长");
         }
-        List<String> waveLength  = photometricParameter.getWaveLengths();
+        List<String> waveLength = photometricParameter.getWaveLengths();
         // 通过序列号获取ip
         String ip = deviceInfoService.getIp(serialNumber);
         List<ChangeParam> list = new ArrayList<>();
@@ -720,7 +760,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             Command command = new Command();
             command.setCmdId(SetParamEnum.SetWl.getComId());
             command.setParams(new Object[]{v});
-            devMessageUtil.wavelengthLocate(command,ip);
+            devMessageUtil.wavelengthLocate(command, ip);
             Command com = new Command();
             com.setCmdId(SetParamEnum.Zero.getComId());
             com.setParams(new Object[]{});
@@ -735,7 +775,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         photometricParameter.setChanageParams(list);
         method.setMeasurementParamInfo(JSON.toJSONString(photometricParameter));
         boolean update = tMeasureMethodService.updateById(method);
-        return update?Result.ok() : Result.fail();
+        return update ? Result.ok() : Result.fail();
     }
 
 
