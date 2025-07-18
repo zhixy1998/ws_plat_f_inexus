@@ -59,15 +59,15 @@ public class ResponseDeal {
             case "DisConnectIAP":
             case "GetAccessoryType":
                 return parseBooleanFrom5thByte(responses);
-
+            case "Measure":
+            case "Zero":
+                return parseZero(responses);
             case "ScanFast":
             case "Scan":
-            case "Measure":
-                return parseSingleTest(responses);
             case "BaseLine":
-            case "Zero":
             case "BaseLineFast":
                 return parseScanFast(responses);
+
 
 //            case "NewIP":
 //                return parseNewIP(responses);
@@ -115,6 +115,39 @@ public class ResponseDeal {
 
         return sn.toString(); // 存储到全局变量
     }
+    /*
+        S、D、R解析
+     */
+    public static ChangeParam parseZero(List<byte[]> responses){
+        ChangeParam param = new ChangeParam();
+
+        if (responses == null || responses.size() < 2) {
+            System.out.println("回应数量不足，无法解析 Zero");
+            return null;
+        }
+
+        try {
+            // 倒数第二条
+            byte[] secondLast = responses.get(responses.size() - 2);
+            int s0 = ((secondLast[8] & 0xFF) << 16) | ((secondLast[9] & 0xFF) << 8) | (secondLast[10] & 0xFF);
+            param.setS(String.valueOf(s0));
+
+            // 倒数第一条
+            byte[] last = responses.get(responses.size() - 1);
+            int d0 = ((last[4] & 0xFF) << 16) | ((last[5] & 0xFF) << 8) | (last[6] & 0xFF);
+            int r0 = ((last[8] & 0xFF) << 16) | ((last[9] & 0xFF) << 8) | (last[10] & 0xFF);
+
+            param.setD(String.valueOf(d0));
+            param.setR(String.valueOf(r0));
+
+
+        } catch (Exception e) {
+            System.out.println("Zero解析异常: " + e.getMessage());
+            return null;
+        }
+
+        return param;
+    }
 
     /*
         扫描的解析规则
@@ -158,6 +191,7 @@ public class ResponseDeal {
                 String result_y = String.valueOf(y / 8388607.0 * 100);
 
                 result.put("wave", result_x);
+                result.put("machineValue", String.valueOf(x));
                 result.put("value", result_y);
 
             } else {

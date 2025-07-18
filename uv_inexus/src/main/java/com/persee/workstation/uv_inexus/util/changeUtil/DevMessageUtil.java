@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.util.changeUtil;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -233,7 +234,7 @@ public class DevMessageUtil {
     /**
      * 光度测量：
      */
-    public R<Map<String, String>> photoMetricMeasurement(List<Command> list, String deviceIp) {
+    public R<String> photoMetricMeasurement(List<Command> list, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");
@@ -245,21 +246,30 @@ public class DevMessageUtil {
         if (!b) {
             return R.fail("转换xml出错");
         }
-        Map<String, String> s = new HashMap<>();
+        Map<String, ChangeParam> s = new HashMap<>();
+        String ans = "";
         for (Command command : list) {
             String cmdId = command.getCmdId();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-            if (parse == null) {
+            if (parse == null || parse.equals("false")) {
                 return R.fail("解析报文出错");
             }
+            if (cmdId.equals("Zero")) {
+                ChangeParam changeParam = (ChangeParam) parse;
+                s.put(cmdId, changeParam);
+            }
             if (cmdId.equals("Measure")) {
-                s = (Map<String, String>) parse;
+                ChangeParam changeParam = (ChangeParam) parse;
+                ChangeParam zero = s.get("Zero");
+                String T = DataCountUtil.countTPercent(zero, changeParam, 1.0);
+                ans = DataCountUtil.changeTPercentOrAbs(null, T);
+
             }
         }
-        return R.ok(s);
+        return R.ok(ans);
     }
 
     /**
