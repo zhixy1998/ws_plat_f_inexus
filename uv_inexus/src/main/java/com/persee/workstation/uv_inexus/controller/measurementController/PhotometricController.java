@@ -93,4 +93,11 @@ public class PhotometricController {
         photometricService.test(taskId, methodId);
     }
 
+    @GetMapping("zero")
+    @ApiOperation("校零接口")
+    public Result zero(@RequestParam String serialNumber,
+                       @RequestParam String methodId) {
+        return photometricService.zero(serialNumber,methodId);
+    }
+
 }

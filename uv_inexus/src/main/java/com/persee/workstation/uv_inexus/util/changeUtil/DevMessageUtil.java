@@ -24,13 +24,16 @@ public class DevMessageUtil {
     @Autowired
     ProtocolItemUtil protocolItemUtil;
 
+//    @Autowired
+//    private ExperimentTestService experimentService;
+
 //    @Value("${device.default.xmlPath}")
-    String xmlPath = "D:\\Projects\\IdeaProjects\\T800\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
+    String xmlPath = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
 
     private volatile static String defaultIp = "255.255.255.255";
     private volatile  Map<String, Transition> xml;
 
-    private static String ipEnd = "253";
+    private static String ipEnd = ".253";
 
     /**
      * 连接设备
@@ -157,7 +160,7 @@ public class DevMessageUtil {
     /**
      * 光谱扫描:设置参数
      */
-    public R<String> spectrumScanSet(List<Command> list) {
+    public R<String> spectrumScanSet(List<Command> list, String deviceIp) {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             log.info("绑定socket失败");
@@ -172,7 +175,7 @@ public class DevMessageUtil {
             String cmdId = command.getCmdId();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
                 return R.fail("解析报文出错");
@@ -209,7 +212,7 @@ public class DevMessageUtil {
     /**
      * 定位波长
      */
-    public void wavelengthLocate(Command command) {
+    public void wavelengthLocate(Command command, String deviceIp) {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             log.info("绑定socket失败");
@@ -275,7 +278,7 @@ public class DevMessageUtil {
     /**
      * 光谱扫描: 获取测量数据
      */
-    public void getMeasureData(Command command) {
+    public void getMeasureData(Command command, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");
@@ -292,7 +295,7 @@ public class DevMessageUtil {
         Transition transition = xml.get(cmdId);
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
         Constants.startTime = LocalDateTime.now();
-        messageUtil.scanSendAndDeal(socket, defaultIp, cmdId, bytes);
+        messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes);
     }
 
     /**
@@ -317,5 +320,33 @@ public class DevMessageUtil {
         }
         // 如果加载成功，则返回true
         return true;
+    }
+
+
+    /**
+     * 光度测量：校零
+     */
+    public R<ChangeParam> zero(Command command, String deviceIp) {
+        R<DatagramSocket> re = messageUtil.getSocket();
+        if (!re.getSuccess()) {
+            log.info("绑定socket失败");
+            return R.fail(re.getMessage());
+        }
+        DatagramSocket socket = re.getData();
+        Boolean b = changeXml();
+        if (!b) {
+            return R.fail("转换xml出错");
+        }
+        String cmdId = command.getCmdId();
+        Transition transition = xml.get(cmdId);
+        //发送报文组
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        if (parse.equals("false")) {
+            return R.fail("校零失败");
+        }
+        ChangeParam changeParam = (ChangeParam) parse;
+        return R.ok(changeParam);
     }
 }

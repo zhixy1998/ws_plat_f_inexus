@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.QualityConfVO;
@@ -47,5 +48,8 @@ public class PhotometricParameter extends MeasurePublicParameters {
     // 质控设置
     @ApiModelProperty("质控设置")
     private List<QualityConfVO> qcParams;
+    // 校零参数
+    @ApiModelProperty("校零参数")
+    private List<ChangeParam> chanageParams;
 
 }

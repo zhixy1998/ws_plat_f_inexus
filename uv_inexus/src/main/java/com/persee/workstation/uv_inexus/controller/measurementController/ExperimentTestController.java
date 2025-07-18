@@ -91,8 +91,8 @@ public class ExperimentTestController {
 
     @GetMapping("zeroCalibrationPort")
     @ApiOperation("校零接口")
-    public Result zeroCalibrationPort() {
-        return experimentTestService.zeroCalibrationPort();
+    public Result zeroCalibrationPort(String serialNumber) {
+        return experimentTestService.zeroCalibrationPort(serialNumber);
     }
 
 

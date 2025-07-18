@@ -190,11 +190,9 @@ public class SpectrumController {
 
     @GetMapping("setUpParametersPort")
     @ApiOperation("设置参数接口")
-    public Result setUpParametersPort(@RequestParam String methodId) {
-        return spectrumService.setUpParametersPort(methodId);
+    public Result setUpParametersPort(@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
+        return spectrumService.setUpParametersPort(methodId,deviceSerialNumber);
     }
-
-
 
     @GetMapping("querySampleList")
     @ApiOperation("获取样本按钮列表接口")

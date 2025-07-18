@@ -13,6 +13,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -72,6 +73,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Autowired
     private DevMessageUtil devMessageUtil;
+
+    @Autowired
+    private DeviceInfoService deviceInfoService;
 
 
     /**
@@ -1138,17 +1142,19 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (tMeasureData==null){
             return Result.fail("测量数据不存在");
         }
-        // 将标记点转换成List
-        List<String> list = new ArrayList<>();
-        try {
-            list=objectMapper.readValue(tMeasureData.getGaugePoint(), List.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        boolean update = false;
+        if (tMeasureData.getGaugePoint()!=null){
+            List<String> list = JSON.parseArray(tMeasureData.getGaugePoint(), String.class);
+            list.add(paramDto.getGaugePoint());
+            tMeasureData.setGaugePoint(JSON.toJSONString(list));
+            update = tMeasureDataService.updateById(tMeasureData);
+        }else{
+            List<String> list = new ArrayList<>();
+            list.add(paramDto.getGaugePoint());
+            tMeasureData.setGaugePoint(JSON.toJSONString(list));
+            update = tMeasureDataService.updateById(tMeasureData);
         }
-        list.add(paramDto.getGaugePoint());
-        tMeasureData.setGaugePoint(JSON.toJSONString(list));
-        boolean update = tMeasureDataService.updateById(tMeasureData);
-        return Result.ok(update);
+        return update?Result.ok(true):Result.fail(false);
     }
 
     @Override
@@ -1212,7 +1218,9 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
-    public Result setUpParametersPort(String methodId) {
+    public Result setUpParametersPort(String methodId,String deviceSerialNumber) {
+        // 根据序列号查询设备ip
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
         // 根据methodId去方法表中查询数据
         TMeasureMethod tMeasureMethod = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("id", methodId).eq("measurement_type","光谱扫描"));
         if (tMeasureMethod==null){
@@ -1263,7 +1271,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         com8.setCmdId(SetParamEnum.SetGain.getComId());
         com8.setParams(new Object[]{scanParamInfo.getGain()});
         commands.add(com8);
-        R<String> stringR = devMessageUtil.spectrumScanSet(commands);
+        R<String> stringR = devMessageUtil.spectrumScanSet(commands,ip);
         return Result.ok(stringR);
     }
 
@@ -1353,7 +1361,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 创建一个String数组用于存放新增后的样品id
         List<String> sampleIdList = new ArrayList<>();
         // 根据传过来的参数进行遍历添加样品
-        for (Sample sample : paramDto.getSamples()) {
+        for (SpectrumSpecimenDto sample : paramDto.getSamples()) {
             TMeasureSample sampleParam = new TMeasureSample();
             sampleParam.setSampleName(sample.getSampleName());
             sampleParam.setSampleNumber(sample.getSampleNumber());
@@ -1463,12 +1471,17 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
     }
 
+    /**
+     * 删除分析数据接口
+     * @param analysisId
+     * @return
+     */
     @Override
     public Result deleteChangeListPort(String analysisId) {
         // 根据analysisId查询测量数据
         TMeasureAnalysisData  byId = tMeasureAnalysisDataService.getById(analysisId);
         if (byId == null) {
-            return Result.fail("测量数据不存在");
+            return Result.fail("分析数据不存在");
         }
         // 删除测量数据
         byId.setIsDelete("1");
@@ -1480,6 +1493,11 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
     }
 
+    /**
+     * 删除样本列表参数接口
+     * @param measureId
+     * @return
+     */
     @Override
     public Result deleteSampleListPort(String measureId) {
         // 根据measureId查询测量数据

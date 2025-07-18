@@ -15,6 +15,7 @@ import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
@@ -67,6 +68,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private TReportStandardPretreatmentService tReportStandardPretreatmentService;
     @Autowired
     private DevMessageUtil devMessageUtil;
+    @Autowired
+    private DeviceInfoService deviceInfoService;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -466,11 +469,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * 校零接口
      */
     @Override
-    public Result zeroCalibrationPort() {
+    public Result zeroCalibrationPort(String serialNumber) {
+        String ip = deviceInfoService.getIp(serialNumber);
         Command command = new Command();
         command.setCmdId(SetParamEnum.SetWl.getComId());
         command.setParams(new Object[]{560});
-        devMessageUtil.wavelengthLocate(command);
+        devMessageUtil.wavelengthLocate(command,ip);
         Command com = new Command();
         com.setCmdId(SetParamEnum.Zero.getComId());
         com.setParams(new Object[]{});

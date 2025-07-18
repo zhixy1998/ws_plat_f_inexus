@@ -41,7 +41,7 @@ public class SystemctlController {
 
     @PostMapping("/logout")
     @ApiOperation("用户登出接口")
-    public Result<Boolean> loginOut(@RequestParam String updateBy){
+    public Result<Boolean> loginOut(){
         return Result.ok(true);
     }
 

@@ -95,4 +95,10 @@ public interface PhotometricService {
 
     void test(String taskId, String methodId);
 
+    /**
+     * 校零
+     * @param serialNumber
+     * @return
+     */
+    Result zero(String serialNumber, String methodId);
 }

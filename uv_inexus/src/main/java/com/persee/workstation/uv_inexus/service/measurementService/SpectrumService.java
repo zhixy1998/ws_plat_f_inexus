@@ -57,7 +57,7 @@ public interface SpectrumService {
 
     Result addGaugePoint(AddGaugePointDto paramDto);
 
-    Result setUpParametersPort(String methodId);
+    Result setUpParametersPort(String methodId,String deviceSerialNumber);
 
     void testScan();
 

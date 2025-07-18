@@ -10,16 +10,22 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
@@ -64,6 +70,12 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Autowired
     private TReportStandardPretreatmentService tReportStandardPretreatmentService;
+
+    @Autowired
+    private DeviceInfoService deviceInfoService;
+
+    @Autowired
+    private DevMessageUtil devMessageUtil;
 
     @Value("1")
     String deleteType;
@@ -686,6 +698,44 @@ public class PhotometricServiceImpl implements PhotometricService {
 
 
 
+    }
+
+    @Override
+    public Result zero(String serialNumber,String methodId) {
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+        if(photometricParameter.getWaveLengths() == null || photometricParameter.getWaveLengths().isEmpty()) {
+            return Result.fail("缺少波长");
+        }
+        List<String> waveLength  = photometricParameter.getWaveLengths();
+        // 通过序列号获取ip
+        String ip = deviceInfoService.getIp(serialNumber);
+        List<ChangeParam> list = new ArrayList<>();
+        for (String s : waveLength) {
+            Double v = Double.valueOf(s);
+            Command command = new Command();
+            command.setCmdId(SetParamEnum.SetWl.getComId());
+            command.setParams(new Object[]{v});
+            devMessageUtil.wavelengthLocate(command,ip);
+            Command com = new Command();
+            com.setCmdId(SetParamEnum.Zero.getComId());
+            com.setParams(new Object[]{});
+            R<ChangeParam> zero = devMessageUtil.zero(com, ip);
+            if (!zero.getSuccess()) {
+                return Result.fail(zero.getMessage());
+            }
+            ChangeParam changeParam = zero.getData();
+            changeParam.setWl(s);
+            list.add(changeParam);
+        }
+        photometricParameter.setChanageParams(list);
+        method.setMeasurementParamInfo(JSON.toJSONString(photometricParameter));
+        boolean update = tMeasureMethodService.updateById(method);
+        return update?Result.ok() : Result.fail();
     }
 
 

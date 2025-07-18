@@ -11,6 +11,7 @@ import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.SpectrumService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureDataService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureMethodService;
@@ -61,6 +62,8 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     private TMeasureMethodService tMeasureMethodService;
     @Autowired
     private SystemAlgorithmConfService systemAlgorithmConfService;
+    @Autowired
+    private DeviceInfoService deviceInfoService;
 
     /**
      * 前端连接成功 WebSocket 时触发
@@ -75,6 +78,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String sampleId= getQueryParam(query, "sampleId");
+        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
 
         if (taskId == null) {
             sendAndClose(session, "缺少 taskId 参数");
@@ -84,10 +88,14 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "缺少 sampleId 参数");
             return;
         }
+        if (deviceSerialNumber == null) {
+            sendAndClose(session, "缺少 deviceSerialNumber 参数");
+            return;
+        }
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         // 设置参数
-        Result result = spectrumService.setUpParametersPort(task.getMethodKey());
+        Result result = spectrumService.setUpParametersPort(task.getMethodKey(),deviceSerialNumber);
         // 根据方法id查询方法数据
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
@@ -98,10 +106,11 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         if (result.getCode() == 200){
             // 开始获取数据
             new Thread(() -> {
+                String ip = deviceInfoService.getIp(deviceSerialNumber);
                 Command command = new Command();
                 command.setCmdId(SetParamEnum.Scan.getComId());
                 command.setParams(new Object[]{});
-                devMessageUtil.getMeasureData(command);
+                devMessageUtil.getMeasureData(command,ip);
             }).start();
 
             // 往前端推送数据的线程
