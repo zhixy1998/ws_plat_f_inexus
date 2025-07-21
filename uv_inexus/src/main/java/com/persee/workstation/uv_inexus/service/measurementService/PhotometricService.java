@@ -87,8 +87,6 @@ public interface PhotometricService {
      */
     Result saveDataInfo(PhotometricSampleAndDataVO vo);
 
-
-
     void test(String taskId, String methodId);
 
     /**

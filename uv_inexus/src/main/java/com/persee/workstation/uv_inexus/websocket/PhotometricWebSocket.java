@@ -6,10 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
@@ -67,6 +64,9 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
     private TMeasureSampleService tMeasureSampleService;
 
     @Autowired
+    private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
     DeviceInfoService infoService;
 
     @Value("1")
@@ -89,23 +89,14 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String sampleId= getQueryParam(query, "sampleId");
+        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
+        if (deviceSerialNumber == null) {
+            sendAndClose(session, "缺少 deviceSerialNumber 参数");
+            return;
+        }
 
         if (taskId == null) {
             sendAndClose(session, "缺少 taskId 参数");
-            return;
-        }
-        if (sampleId != null) {
-            //单样品重测
-            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(TMeasureData::getSampleKey, sampleId)
-                    .eq(TMeasureData::getTaskId, taskId);
-            List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
-            if (list != null || !list.isEmpty()) {
-                //认为是重测，覆盖数据
-                log.info("有数据，重测");
-            }
-
-            sendAndClose(session, "缺少 sampleId 参数");
             return;
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -114,6 +105,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "任务或样品不存在");
             return;
         }
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
@@ -124,109 +116,160 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             return;
         }
 
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        for (TaskSpecimen specimen : taskSpecimen) {
-            if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
-                System.out.println("删除的样品,不需要测量");
-                continue;
+        if (sampleId != null) {
+            TaskSpecimen specimen = new TaskSpecimen();
+            for (TaskSpecimen s : taskSpecimen) {
+                if (s.getSpecimenKey().equals(sampleId)) {
+                    BeanUtils.copyProperties(s, specimen);
+                }
             }
-            String sampleKey = specimen.getSpecimenKey();
-            TMeasureSample sample = tMeasureSampleService.getById(sampleKey);
-
-            List<PhotometricOriginDataInfo> originDataList = new ArrayList<>();
-            List<Command> list = new ArrayList<>();
-            List<ChangeParam> machineData = new ArrayList<>();
-
-            List<String> waveLengths = parameter.getWaveLength();
-
-            list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
-            list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
-            LocalDateTime startTime = LocalDateTime.now();
-            for (String waveLength : waveLengths) {
-                list.add(new Command("SetWl", new Object[]{waveLength}));
-                list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
-                list.add(new Command("Measure", new Object[]{}));
-
-                String ip = infoService.getIp(task.getDeviceSerialNumber());
-                R<ChangeParam> res = devMessageUtil.photoMetricMeasurement(list, ip);
-                if (!res.getSuccess()) {
-                    log.info("测量出错");
-                    return;
-                }
-                ChangeParam response = res.getData();
-                machineData.add(response);
-                ChangeParam originRsd = new ChangeParam();
-                List<ChangeParam> params = parameter.getChanageParams();
-                for (ChangeParam param : params) {
-                    if (param.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
-                    }
-                }
-                String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
-                String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
-
-                PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
-                originDataInfo.setMode(parameter.getLuminosity());
-                originDataInfo.setWavelength(waveLength);
-                if (parameter.getLuminosity().equals(WaveLengthEnum.abs.getCode())) {
-                    originDataInfo.setAbsValue(data);
-                    originDataInfo.setTPercentValue(tPercent);
-
-                } else{
-                    originDataInfo.setTPercentValue(tPercent);
-                    originDataInfo.setAbsValue(data);
-                }
-                originDataList.add(originDataInfo);
-
-                if (session.isOpen()) {
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("sampleId", sampleKey);
-                    jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
-                    jsonObject.put("value", data);
-                    session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-                }
-                list.clear();
-            }
-
-            R<List<PhotometricCountDataInfo>> countedData = photometricService.formula(originDataList, sampleKey, task.getMethodKey());
-
-            if (!countedData.getSuccess()) {
-                log.info("计算出错");
+            if (specimen.getDeleteType().equals(right)) {
+                log.info("删除的样品,不需要测量");
+                session.sendMessage(new TextMessage("已删除的样品, 无法测量"));
                 return;
             }
-            List<PhotometricCountDataInfo> countDataInfos = countedData.getData();
+            removeOldData(taskId, sampleId);
 
-            for (PhotometricCountDataInfo countDataInfo : countDataInfos) {
-                if (session.isOpen()) {
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("sampleId", sampleKey);
-                    jsonObject.put("key", countDataInfo.getResultIdentity() + "-" + countDataInfo.getResultIdentity());
-                    jsonObject.put("value", countDataInfo.getCountValue());
-                    session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            singleSampleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+
+        } else {
+            for (TaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
+                    System.out.println("删除的样品,不需要测量");
+                    continue;
                 }
+                R<Boolean> r = singleSampleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+                if (!r.getSuccess()) {
+                    sendAndClose(session, "测量失败");
+                    return;
+                }
+                specimen.setIsTested(right);
             }
-
-            LocalDateTime endTime = LocalDateTime.now();
-
-            PhotometricSampleAndDataVO sampleAndDataVO = new PhotometricSampleAndDataVO();
-            sampleAndDataVO.setTaskId(taskId);
-            sampleAndDataVO.setSampleId(sampleKey);
-            sampleAndDataVO.setSample(sample);
-            sampleAndDataVO.setWavelengthData(originDataList);
-            sampleAndDataVO.setCountData(countDataInfos);
-            sampleAndDataVO.setMachineData(machineData);
-            sampleAndDataVO.setStartTime(startTime);
-            sampleAndDataVO.setEndTime(endTime);
-            photometricService.savePhotometricMeasureData(sampleAndDataVO);
-
-            specimen.setIsTested(right);
         }
+
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
         tMeasureTaskService.updateById(task);
+        if (session.isOpen()) {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("result", "finish");
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+        }
         sessions.remove(session.getId());
         session.close();
 
+    }
+
+    private void removeOldData(String taskId, String sampleId) {
+        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureData::getTaskId, taskId).eq(TMeasureData::getSampleKey, sampleId);
+        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+        if (data != null) {
+            tMeasureDataService.remove(queryWrapper);
+        }
+
+        LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+        analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId);
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+        if (analysisData != null) {
+            tMeasureAnalysisDataService.remove(analysisDataQueryWrapper);
+        }
+    }
+
+    public R<Boolean> singleSampleMeasure(TaskSpecimen specimen, PhotometricParameter parameter, String taskId, String methodId, String deviceSerialNumber, String sessionId) throws IOException{
+
+        WebSocketSession session = sessions.get(sessionId);
+
+        String sampleKey = specimen.getSpecimenKey();
+        TMeasureSample sample = tMeasureSampleService.getById(sampleKey);
+
+        List<PhotometricOriginDataInfo> originDataList = new ArrayList<>();
+        List<Command> list = new ArrayList<>();
+        List<ChangeParam> machineData = new ArrayList<>();
+
+        List<String> waveLengths = parameter.getWaveLength();
+
+        list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        LocalDateTime startTime = LocalDateTime.now();
+        for (String waveLength : waveLengths) {
+            list.add(new Command("SetWl", new Object[]{waveLength}));
+            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+            list.add(new Command("Measure", new Object[]{}));
+
+            String ip = infoService.getIp(deviceSerialNumber);
+            R<ChangeParam> res = devMessageUtil.photoMetricMeasurement(list, ip);
+            if (!res.getSuccess()) {
+                log.info("测量出错");
+                return R.fail("测量出错");
+            }
+            ChangeParam response = res.getData();
+            machineData.add(response);
+            ChangeParam originRsd = new ChangeParam();
+            List<ChangeParam> params = parameter.getChanageParams();
+            for (ChangeParam param : params) {
+                if (param.getWl().equals(waveLength)) {
+                    BeanUtils.copyProperties(param, originRsd);
+                    break;
+                }
+            }
+            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
+            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+
+            PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
+            originDataInfo.setMode(parameter.getLuminosity());
+            originDataInfo.setWavelength(waveLength);
+            if (parameter.getLuminosity().equals(WaveLengthEnum.abs.getCode())) {
+                originDataInfo.setAbsValue(data);
+                originDataInfo.setTPercentValue(tPercent);
+
+            } else{
+                originDataInfo.setTPercentValue(tPercent);
+                originDataInfo.setAbsValue(data);
+            }
+            originDataList.add(originDataInfo);
+
+            if (session.isOpen()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
+                jsonObject.put("value", data);
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            }
+            list.clear();
+        }
+
+        R<List<PhotometricCountDataInfo>> countedData = photometricService.formula(originDataList, sampleKey, methodId);
+
+        if (!countedData.getSuccess()) {
+            log.info("计算出错");
+            return R.fail("计算出错");
+        }
+        List<PhotometricCountDataInfo> countDataInfos = countedData.getData();
+
+        for (PhotometricCountDataInfo countDataInfo : countDataInfos) {
+            if (session.isOpen()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+                jsonObject.put("key", countDataInfo.getResultIdentity() + "-" + countDataInfo.getFormulaText());
+                jsonObject.put("value", countDataInfo.getCountValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            }
+        }
+
+        LocalDateTime endTime = LocalDateTime.now();
+
+        PhotometricSampleAndDataVO sampleAndDataVO = new PhotometricSampleAndDataVO();
+        sampleAndDataVO.setTaskId(taskId);
+        sampleAndDataVO.setSampleId(sampleKey);
+        sampleAndDataVO.setSample(sample);
+        sampleAndDataVO.setWavelengthData(originDataList);
+        sampleAndDataVO.setCountData(countDataInfos);
+        sampleAndDataVO.setMachineData(machineData);
+        sampleAndDataVO.setStartTime(startTime);
+        sampleAndDataVO.setEndTime(endTime);
+        photometricService.savePhotometricMeasureData(sampleAndDataVO);
+        return R.ok();
     }
 
 

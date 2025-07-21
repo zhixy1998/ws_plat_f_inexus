@@ -196,6 +196,72 @@ public class MessageUtil {
 
     }
 
+    public List<byte[]> quickSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
+        try {
+
+            List<byte[]> responses = new ArrayList<>();
+
+            // 发送命令
+            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
+                    InetAddress.getByName(sendIp), remotePort);
+            currentSocket.send(packet);
+
+            System.out.print("发送指令 [" + cmdId + "] 报文：");
+            for (byte b : sendBytes) System.out.printf("%02X ", b);
+            System.out.println();
+
+            // 是否为慢命令（用于接收等待时间判断）
+            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
+                    || cmdId.equalsIgnoreCase("Scan")
+                    || cmdId.equalsIgnoreCase("ScanFast")
+                    || cmdId.equalsIgnoreCase("InitSlit1Motor")
+                    || cmdId.equalsIgnoreCase("SetSlit1")
+                    || cmdId.equalsIgnoreCase("InitWlMotor")
+                    || cmdId.equalsIgnoreCase("InitLampMotor")
+                    || cmdId.equalsIgnoreCase("CheckWLamp")
+                    || cmdId.equalsIgnoreCase("CheckDLamp")
+                    || cmdId.equalsIgnoreCase("CheckWl")
+                    || cmdId.equalsIgnoreCase("BaseLineFast");
+            int timeoutMs = isSlowCommand ? 15000 : 4500;
+            currentSocket.setSoTimeout(timeoutMs);
+
+            long lastReceiveTime = System.currentTimeMillis();
+
+            int count = 0;
+            while (Constants.isRunning) {
+                try {
+                    DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                    currentSocket.receive(receivePacket);
+                    count++;
+
+                    byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+                    responses.add(reply);
+
+                    System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                    System.out.print("十六进制回应：");
+                    for (byte b : reply) System.out.printf("%02X ", b);
+                    System.out.println();
+
+                    lastReceiveTime = System.currentTimeMillis();
+                    if (count > 1) {
+                        currentSocket.setSoTimeout(300);
+                        timeoutMs = 300;
+                    }
+
+
+                } catch (SocketTimeoutException e) {
+                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
+                }
+            }
+
+            return responses;
+        }catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+
+    }
+
 
     /**
      * 扫描接收并处理

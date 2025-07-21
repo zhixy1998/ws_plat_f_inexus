@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
@@ -261,6 +262,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         for (SampleVO sample : dto.getNewSamples()) {
             TMeasureSample newSample = new TMeasureSample();
             BeanUtils.copyProperties(sample, newSample);
+            newSample.setId(sample.getSampleId());
 
             if (StringUtils.hasText(newSample.getId())) {
                 tMeasureSampleService.updateById(newSample);
@@ -516,12 +518,13 @@ public class PhotometricServiceImpl implements PhotometricService {
         String sampleVolume = sample.getSampleVolume();
 
         StringBuilder identity = new StringBuilder();
-        identity.append("t").append(",").append("m").append(",");
-        values.append(dilutionRatio).append(",").append(sampleVolume).append(",");
+
         for (PhotometricOriginDataInfo info : vo) {
             identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
             values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
         }
+        identity.append("t").append(",").append("m");
+        values.append("4").append(",").append("5");
 
         List<PhotometricCountDataInfo> countList = new ArrayList<>();
         for (PreCountResultParam param : resultParams) {
@@ -530,9 +533,11 @@ public class PhotometricServiceImpl implements PhotometricService {
             String result = RestUtil.sum(text, identity.toString(), values.toString());
             PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
             BeanUtils.copyProperties(param, countDataInfo);
-            countDataInfo.setCountValue(result);
+            JSONObject jsonObject = JSONObject.parseObject(result);
+            countDataInfo.setCountValue(jsonObject.get("result").toString());
             countList.add(countDataInfo);
         }
+
         return R.ok(countList);
     }
 
@@ -626,7 +631,22 @@ public class PhotometricServiceImpl implements PhotometricService {
             tMeasureDataService.save(tMeasureData);
         }
 
-
+        LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+        analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId);
+        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+        if (one != null) {
+            one.setAnalysisResult(JSON.toJSONString(sampleAndDataVO.getCountData()));
+            one.setIsDelete(createType);
+            tMeasureAnalysisDataService.save(one);
+        } else {
+            TMeasureAnalysisData analysisData = new TMeasureAnalysisData();
+            analysisData.setTaskId(taskId);
+            analysisData.setSampleKey(sampleId);
+            analysisData.setAnalysisResult(JSON.toJSONString(sampleAndDataVO.getCountData()));
+            analysisData.setIsDelete(createType);
+            tMeasureAnalysisDataService.save(analysisData);
+        }
         return Result.ok(true);
     }
 

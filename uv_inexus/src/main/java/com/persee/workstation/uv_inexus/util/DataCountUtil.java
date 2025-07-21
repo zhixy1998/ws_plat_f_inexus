@@ -19,7 +19,7 @@ public class DataCountUtil {
         if (tPercent != null) {
             double d = Double.parseDouble(tPercent);
             log.info("透光率不为空，计算吸光度");
-            double re = -Math.log10(d / 100.0);
+            double re = - Math.log10(d / 100.0);
             System.out.println("吸光度:" + re);
             return String.format("%.2f", re);
         }
@@ -56,6 +56,6 @@ public class DataCountUtil {
 
         double ans = a2/a1 * 100;
         System.out.println("ans:" + ans);
-        return String.format("%.2f", ans);
+        return String.valueOf(ans);
     }
 }

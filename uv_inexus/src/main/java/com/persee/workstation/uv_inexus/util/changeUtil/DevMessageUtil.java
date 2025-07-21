@@ -69,7 +69,7 @@ public class DevMessageUtil {
 
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, defaultIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
 
             if (parse == null) {
@@ -151,7 +151,7 @@ public class DevMessageUtil {
         Transition transition = xml.get(cmdId);
         //发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        List<byte[]> responses = messageUtil.quickSendAndReceive(socket, defaultIp, cmdId, bytes);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse.equals("false")) {
             return R.fail("校零失败");
@@ -256,7 +256,7 @@ public class DevMessageUtil {
             String cmdId = command.getCmdId();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse == null || parse.equals("false")) {
                 return R.fail("解析报文出错");
