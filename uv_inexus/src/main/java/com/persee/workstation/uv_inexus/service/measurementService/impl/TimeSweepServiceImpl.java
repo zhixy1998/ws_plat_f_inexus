@@ -9,7 +9,11 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +38,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private TMeasureDataService tMeasureDataService;
     @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+    @Autowired
+    private DeviceInfoService deviceInfoService;
+    @Autowired
+    private DevMessageUtil devMessageUtil;
 
     /**
      * 创建方法接口
@@ -334,9 +342,43 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
     }
 
+    /**
+     * 设置方法参数
+     * @param methodId
+     * @param deviceSerialNumber
+     * @return
+     */
     @Override
     public Result setMethodParameters(String methodId, String deviceSerialNumber) {
+        // 根据序列号查询设备ip
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("id", methodId).eq("measurement_type","时间扫描"));
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        TimeSweepParamter time = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+        List<Command> commands = new ArrayList<>();
+        commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getSpectralBandwidth()));
+        commands.add(buildCommand(SetParamEnum.SetWl, time.getWaveLength()));
+        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
+        commands.add(buildCommand(SetParamEnum.SetLampPos, time.getEnergyLamp()));
+        commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
+        devMessageUtil.timeSweepSet(commands, ip);
         return Result.ok();
+    }
+
+
+    /**
+     * 构建命令
+     * @param cmdEnum
+     * @param value
+     * @return
+     */
+    private Command buildCommand(SetParamEnum cmdEnum, Object value) {
+        Command cmd = new Command();
+        cmd.setCmdId(cmdEnum.getComId());
+        cmd.setParams(new Object[]{value});
+        return cmd;
     }
 
 

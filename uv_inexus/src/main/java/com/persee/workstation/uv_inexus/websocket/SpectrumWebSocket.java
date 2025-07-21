@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.websocket;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
@@ -64,6 +65,8 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     private SystemAlgorithmConfService systemAlgorithmConfService;
     @Autowired
     private DeviceInfoService deviceInfoService;
+    @Autowired
+    private TMeasureDataService tMeasureDataService;
 
     /**
      * 前端连接成功 WebSocket 时触发
@@ -235,6 +238,14 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                 // 进行存储操作
                 // 创建一个测量数据对象
                 TMeasureData measureData = new TMeasureData();
+                // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
+                // 如果发现测量数据表中有数据则将最大的序列号拿出来加1并放入新建的测量数据对象中
+                TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).orderByDesc("serial_number"));
+                if (data != null) {
+                    measureData.setSerialNumber(data.getSerialNumber() + 1);
+                }else{
+                    measureData.setSerialNumber(1);
+                }
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
                 measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));

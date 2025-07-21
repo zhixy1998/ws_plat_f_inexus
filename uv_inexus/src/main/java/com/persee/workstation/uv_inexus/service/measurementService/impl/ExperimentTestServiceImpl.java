@@ -72,6 +72,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
+        // 根据用户名查询项目数据
+        List<TMeasureProject> projects = tMeasureProjectService.list(Wrappers.lambdaQuery(TMeasureProject.class).eq(TMeasureProject::getCreatorKey, paramDto.getUserName()));
+        if (projects.size() > 0) {
+            return Result.fail("该项目已存在");
+        }
         // 创建项目表
         TMeasureProject tMeasureProject = new TMeasureProject();
         tMeasureProject.setProjectName(paramDto.getProjectName());
@@ -371,13 +376,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     /**
      * 查询当前用户的所有项目
-     * @param updateBy
      * @return
      */
     @Override
-    public Result queryAllProject(String updateBy) {
+    public Result queryAllProject() {
         // 根据用户名查询项目
-        List<TMeasureProject> projects = tMeasureProjectService.list(new QueryWrapper<TMeasureProject>().eq("creator_key", updateBy));
+        List<TMeasureProject> projects = tMeasureProjectService.list();
         return Result.ok(projects);
     }
 

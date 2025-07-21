@@ -342,4 +342,33 @@ public class DevMessageUtil {
         ChangeParam changeParam = (ChangeParam) parse;
         return R.ok(changeParam);
     }
+
+    /**
+     * 时间扫描：设置参数
+     * @param list
+     * @param deviceIp
+     */
+    public R<String> timeSweepSet(List<Command> list, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            log.info("绑定socket失败");
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+        Boolean b = changeXml();
+        if (!b) {
+            return R.fail("转换xml出错");
+        }
+        for (Command command : list) {
+            String cmdId = command.getCmdId();
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse.equals("false")) {
+                return R.fail("解析报文出错");
+            }
+        }
+        return R.ok("true");
+    }
 }

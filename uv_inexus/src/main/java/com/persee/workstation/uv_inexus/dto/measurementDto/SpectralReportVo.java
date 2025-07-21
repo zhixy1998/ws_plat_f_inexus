@@ -2,8 +2,6 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import lombok.Data;
 
-import java.time.LocalDateTime;
-
 @Data
 public class SpectralReportVo {
     // 仪器波长
@@ -25,9 +23,9 @@ public class SpectralReportVo {
     // 样品编号
     private String SampleNumber;
     // 检测开始时间
-    private LocalDateTime DetectionStartTime;
+    private String DetectionStartTime;
     // 检测结束时间
-    private LocalDateTime DetectionEndTime;
+    private String DetectionEndTime;
     // 项目
     private String Project;
     // 检测人

@@ -12,9 +12,13 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.parseReport.CalculationFormula;
+import com.persee.workstation.uv_inexus.po.parseReport.StandardPretreatment;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.service.parseReport.CalculationFormulaService;
+import com.persee.workstation.uv_inexus.service.parseReport.StandardPretreatmentService;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.CmdConstant;
@@ -22,7 +26,10 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.vo.measurementVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.Sample;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.BeanUtils;
@@ -35,6 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -76,6 +84,14 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Autowired
     private DeviceInfoService deviceInfoService;
+
+    // 计算公式的服务
+    @Autowired
+    private CalculationFormulaService calculationFormulaService;
+
+    // 标准预处理服务
+    @Autowired
+    private StandardPretreatmentService standardPretreatmentService;
 
 
     /**
@@ -635,77 +651,43 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<SampleListVo> listVos = new ArrayList<>();
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
             // 如果type为空同时删除类型为1则跳过
-            if (type==null&&taskSpeciman.getDeleteType().equals("1")) continue;
+            if (type == null && taskSpeciman.getDeleteType().equals("1")) continue;
             SampleListVo vo = new SampleListVo();
             // 根据样品id查询样品数据
             TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
             vo.setTitle(byId.getSampleName());
-            if (taskSpeciman.getIsTested().equals("0")){
+            if (taskSpeciman.getIsTested().equals("0")) {
                 vo.setData(null);
                 vo.setKey(null);
-            }else {
+            } else {
                 // 根据样品id和任务id两个条件去查询测量数据
                 QueryWrapper<TMeasureData> eq = new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId());
-                if (type==null){
+                if (type == null) {
                     eq.eq("is_delete", "0");
                 }
+                // 增加查询条件,按照序列号从大到小排序
+                eq.orderByDesc("serial_number");
                 // 根据样品id和任务id两个条件去查询测量数据
-                TMeasureData measureData = tMeasureDataService.getOne(eq);
-                vo.setKey(measureData.getId());
-                List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
-                List<Double> gauges = JSON.parseArray(measureData.getGaugePoint(), Double.class);
-                List<Double> peaks = JSON.parseArray(measureData.getPeak(), Double.class);
-                List<Double> grades = JSON.parseArray(measureData.getGrain(), Double.class);
-                List<Map<String, Object>> resultList = new ArrayList<>();
-                for (String s : list) {
-                    String[] split = s.split(",");
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("x", split[0]);
-                    map.put("y", split[1]);
-                    if (gauges!=null){
-                        for (Double gauge : gauges) {
-                            if (split[0].equals(String.valueOf(gauge))){
-                                map.put("marked","1");
-                                break;
-                            }else{
-                                map.put("marked","0");
-                            }
-                        }
+                List<TMeasureData> measureDataList = tMeasureDataService.list(eq);
+                for (TMeasureData measureData : measureDataList) {
+                    if (measureDataList.size() > 1) {
+                        SampleListVo vos = new SampleListVo();
+                        vos.setTitle(byId.getSampleName() + "(" + measureData.getSerialNumber() + ")");
+                        vos.setKey(measureData.getId());
+                        vos.setData(getSampleData(measureData));
+                        vos.setColor(byId.getColor());
+                        vos.setDeleteType(taskSpeciman.getDeleteType());
+                        vos.setType("0");
+                        listVos.add(vos);
                     }else{
-                        map.put("marked","0");
+                        vo.setData(getSampleData(measureData));
+                        vo.setColor(byId.getColor());
+                        vo.setDeleteType(taskSpeciman.getDeleteType());
+                        vo.setType("0");
+                        listVos.add(vo);
                     }
-                    if (peaks!=null){
-                        for (Double peak : peaks) {
-                            if (split[0].equals(String.valueOf(peak))){
-                                map.put("feng","1");
-                                break;
-                            }else{
-                                map.put("feng","0");
-                            }
-                        }
-                    }else{
-                        map.put("feng","0");
-                    }
-                    if (grades!=null){
-                        for (Double grade : grades){
-                            if (split[0].equals(String.valueOf(grade))){
-                                map.put("gu","1");
-                                break;
-                            }else{
-                                map.put("gu","0");
-                            }
-                        }
-                    }else{
-                        map.put("gu","0");
-                    }
-                    resultList.add(map);
                 }
-                vo.setData(resultList);
             }
-            vo.setColor(byId.getColor());
-            vo.setDeleteType(taskSpeciman.getDeleteType());
-            vo.setType("0");
-            listVos.add(vo);
         }
         return Result.ok(listVos);
     }
@@ -1301,9 +1283,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         CmdConstant.connect.forEach(comId -> {
             CommandDTO com = new CommandDTO();
             com.setCmdId(comId);
-            if (comId.equals("NewIP")) {
-                com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 180, 253});
-            }
+//            if (comId.equals("NewIP")) {
+//                com.setParams(new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 180, 253});
+//            }
             commands.add(com);
         });
         commandRequestDTO.setCommands(commands);
@@ -1554,6 +1536,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Override
     public Result obtainReportParameters(String taskId) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         SpectralReportVo vo = new SpectralReportVo();
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
@@ -1561,31 +1544,95 @@ public class SpectrumServiceImpl implements SpectrumService {
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
         TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
-        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).last("LIMIT 1"));
+        // 根据方法表的计算公式id和前处理id进行查询
+        CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
+        vo.setCalculationFormula(calculationFormula.getResultName());
+        StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
+        vo.setReferenceStandard(serviceById.getPretreatmentDescription());
+//        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).last("LIMIT 1"));
+        TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
+        vo.setSampleName(byId.getSampleName());
+        vo.setSampleNumber(byId.getSampleNumber());
+        vo.setDataType("测量数据");
+        vo.setScanSpeed(methodparam.getScanSpeed());
         vo.setInstrumentWavelength(methodparam.getWaveLengthInterval());
         vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
         vo.setLuminosityMode(methodparam.getLuminosity());
         vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
         vo.setReferenceMethod(method.getMethodName());
-        vo.setReferenceStandard(null);
         vo.setRemark(data.getRemark());
-        vo.setSampleName(null);
-        vo.setSampleNumber(null);
-        vo.setDetectionStartTime(data.getMeasurementStartTime());
-        vo.setDetectionEndTime(data.getMeasurementEndTime());
+        vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+        vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
         vo.setProject(project.getProjectName());
         vo.setDetector(user.getUserName());
         vo.setEnergyLight(methodparam.getEnergyLamp());
-        vo.setCalculationFormula(null);
         vo.setStairCorrection(methodparam.getLadderCorrection()=="0"?"启用":"不启用");
         vo.setSpectrumScanImage(data.getDataImage());
         vo.setOriginalData(data.getOriginalCalculationData());
         vo.setGain(methodparam.getGain().toString());
         vo.setScanRange(methodparam.getStartWaveLength()+"-"+methodparam.getEndWaveLength());
-        vo.setScanSpeed(null);
         vo.setScanInterval(methodparam.getWaveLengthInterval());
         vo.setMethodName(method.getMethodName());
+        vo.setRemark(data.getRemark());
+        vo.setSpectrumScanImage(data.getDataImage());
         return Result.ok(vo);
+    }
+
+    /**
+     * 获取样品的详细数据
+     * @param measureData
+     * @return
+     */
+    public List<Map<String, Object>> getSampleData(TMeasureData measureData) {
+        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+        List<Double> gauges = JSON.parseArray(measureData.getGaugePoint(), Double.class);
+        List<Double> peaks = JSON.parseArray(measureData.getPeak(), Double.class);
+        List<Double> grades = JSON.parseArray(measureData.getGrain(), Double.class);
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (String s : list) {
+            String[] split = s.split(",");
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", split[0]);
+            map.put("y", split[1]);
+            if (gauges != null) {
+                for (Double gauge : gauges) {
+                    if (split[0].equals(String.valueOf(gauge))) {
+                        map.put("marked", "1");
+                        break;
+                    } else {
+                        map.put("marked", "0");
+                    }
+                }
+            } else {
+                map.put("marked", "0");
+            }
+            if (peaks != null) {
+                for (Double peak : peaks) {
+                    if (split[0].equals(String.valueOf(peak))) {
+                        map.put("feng", "1");
+                        break;
+                    } else {
+                        map.put("feng", "0");
+                    }
+                }
+            } else {
+                map.put("feng", "0");
+            }
+            if (grades != null) {
+                for (Double grade : grades) {
+                    if (split[0].equals(String.valueOf(grade))) {
+                        map.put("gu", "1");
+                        break;
+                    } else {
+                        map.put("gu", "0");
+                    }
+                }
+            } else {
+                map.put("gu", "0");
+            }
+            resultList.add(map);
+        }
+        return resultList;
     }
 
 

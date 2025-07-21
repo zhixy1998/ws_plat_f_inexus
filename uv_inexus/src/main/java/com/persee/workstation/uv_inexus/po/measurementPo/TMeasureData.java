@@ -25,6 +25,10 @@ public class TMeasureData {
     @TableField("task_id")
     private String taskId;
 
+    // 序列号(当多个测量数据的时候按照序列号进行部分排序)
+    @TableField("serial_number")
+    private Integer serialNumber;
+
     // 样品Key
     @TableField("sample_key")
     private String sampleKey;

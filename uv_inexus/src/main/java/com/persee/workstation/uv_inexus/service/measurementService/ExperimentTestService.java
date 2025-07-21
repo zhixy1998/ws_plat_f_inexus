@@ -21,7 +21,7 @@ public interface ExperimentTestService {
 
     Result continueMeasuringPort(String projectId, String methodId);
 
-    Result queryAllProject(String updateBy);
+    Result queryAllProject();
 
     Result queryMethodProt(String projectId, String measureType, Integer pageNum, Integer pageSize);
 
