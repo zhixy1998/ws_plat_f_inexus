@@ -33,10 +33,6 @@ public class TMeasureTask{
     @TableField("create_time")
     private LocalDateTime createTime;
 
-    // 采集起始时间
-    @TableField("collection_start_time")
-    private LocalDateTime collectionStartTime;
-
     // 方法Key
     @TableField("method_key")
     private String methodKey;
