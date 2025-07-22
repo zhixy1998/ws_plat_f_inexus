@@ -44,7 +44,6 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 光谱扫描服务实现类
@@ -203,32 +202,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Override
     public Result queryProjectTaskMethod(String updateBy) {
-        // 根据用户名查询所有项目
-        List<TMeasureProject> projectList = tMeasureProjectService.list(Wrappers.lambdaQuery(TMeasureProject.class).eq(TMeasureProject::getCreatorKey, updateBy));
-        // 查询所有项目下最近创建的方法
-        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>()
-                .in("project_item_key", projectList.stream().map(TMeasureProject::getId).collect(Collectors.toList()))
-                .eq("measurement_type","光谱扫描")
-                .orderByDesc("method_create_time")
-                .last("LIMIT 1"));
-        // 根据方法中的项目id查询项目
-        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-        // 将测量数据中的json转换成对象存入返回值中
-        SpectrumBasicParameterVo spectrumBasicParameterVo = null;
-        ObjectMapper objectMapper = new ObjectMapper();
-        try {
-            spectrumBasicParameterVo = objectMapper.readValue(method.getMeasurementParamInfo(), SpectrumBasicParameterVo.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        // 将项目,方法名称存入返回对象中
-        spectrumBasicParameterVo.setMethodId(method.getId());
-        spectrumBasicParameterVo.setTaskName(method.getMethodName());
-        spectrumBasicParameterVo.setTaskId(method.getId());
-        spectrumBasicParameterVo.setProjectId(project.getId());
-        spectrumBasicParameterVo.setProjectName(project.getProjectName());
-        spectrumBasicParameterVo.setMethodName(method.getMethodName());
-        return Result.ok(spectrumBasicParameterVo);
+        // 根据用户名查询用户信息
+//        userConfigDAO.selectOne(new QueryWrapper<>().eq("username", updateBy));
+        return null;
     }
 
     @Override
@@ -259,6 +235,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             throw new RuntimeException(e);
         }
         spectrumBasicParameterVo.setMethodName(method.getMethodName());
+        spectrumBasicParameterVo.setMethodId(method.getId());
         return Result.ok(spectrumBasicParameterVo);
     }
 

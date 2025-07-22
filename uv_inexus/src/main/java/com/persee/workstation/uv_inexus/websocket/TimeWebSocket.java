@@ -4,8 +4,12 @@ package com.persee.workstation.uv_inexus.websocket;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
 import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -37,6 +41,12 @@ public class TimeWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private TimeSweepService timeSweepService;
+
+    @Autowired
+    private DeviceInfoService deviceInfoService;
+
+    @Autowired
+    private DevMessageUtil devMessageUtil;
 
 
     /**
@@ -78,6 +88,16 @@ public class TimeWebSocket extends TextWebSocketHandler {
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         // 设置参数
         Result result = timeSweepService.setMethodParameters(task.getMethodKey(),deviceSerialNumber);
+
+        if (result.getCode() != 200) {
+            sendAndClose(session, result.getMessage());
+        }
+
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        Command command = new Command();
+        command.setCmdId(SetParamEnum.Scan.getComId());
+        command.setParams(new Object[]{});
+        devMessageUtil.timeSweepGetMeasureData(command,ip);
         startTimedTask(session); // 启动推送任务
     }
 

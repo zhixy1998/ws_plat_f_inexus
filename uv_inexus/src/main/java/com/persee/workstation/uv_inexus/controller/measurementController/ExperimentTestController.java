@@ -25,8 +25,8 @@ public class ExperimentTestController {
 
     @GetMapping("recentlyAccomplishTask")
     @ApiOperation("最近完成的任务")
-    public Result recentlyAccomplishTask(@RequestParam String updateBy) {
-       return experimentTestService.recentlyAccomplishTask(updateBy);
+    public Result recentlyAccomplishTask(@RequestParam String updateBy,@RequestParam String mesureType) {
+       return experimentTestService.recentlyAccomplishTask(updateBy,mesureType);
     }
 
     @GetMapping("queryAllProject")

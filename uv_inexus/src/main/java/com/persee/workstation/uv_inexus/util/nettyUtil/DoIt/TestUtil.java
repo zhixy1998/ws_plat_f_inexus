@@ -16,7 +16,7 @@ public class TestUtil {
         // 创建 DynamicCommandService 实例
         try {
             DynamicCommandService service = new DynamicCommandService(
-                    "169.254.57.42", 6000, 5000, path);
+                    "169.254.180.83", 6000, 5000, path);
 
             // 存储所有指令的执行结果
             Map<String, Object> resultMap = new HashMap<>();

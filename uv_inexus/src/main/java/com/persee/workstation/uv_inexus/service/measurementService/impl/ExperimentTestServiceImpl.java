@@ -33,11 +33,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 ("experimentTestService")
@@ -74,14 +74,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private DeviceInfoService deviceInfoService;
     @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
-
     @Autowired
     TMeasureTaskMapper tMeasureTaskMapper;
+
+
+    public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
         // 根据用户名查询项目数据
-        List<TMeasureProject> projects = tMeasureProjectService.list(Wrappers.lambdaQuery(TMeasureProject.class).eq(TMeasureProject::getCreatorKey, paramDto.getUserName()));
+        List<TMeasureProject> projects = tMeasureProjectService.list(Wrappers.lambdaQuery(TMeasureProject.class).eq(TMeasureProject::getProjectName,paramDto.getProjectName()));
         if (projects.size() > 0) {
             return Result.fail("该项目已存在");
         }
@@ -89,43 +91,44 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         TMeasureProject tMeasureProject = new TMeasureProject();
         tMeasureProject.setProjectName(paramDto.getProjectName());
         tMeasureProject.setRemark(paramDto.getRemark());
-        tMeasureProject.setCreatorKey(paramDto.getUserName());
+        tMeasureProject.setCreatorKey(paramDto.getUpdateBy());
         tMeasureProject.setCreateTime(LocalDateTime.now());
         boolean save = tMeasureProjectService.save(tMeasureProject);
         return Result.ok(save);
     }
 
     @Override
-    public Result recentlyAccomplishTask(String updateBy) {
+    public Result recentlyAccomplishTask(String updateBy,String measureType) {
         // 根据用户名查询用户id
         SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
-        // 根据用户id查询任务表
-        List<TMeasureTask> tasks = tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getUserId, user.getId()));
-        // 提取任务id
-        List<String> taskIds = tasks.stream().map(TMeasureTask::getId).collect(Collectors.toList());
-        // 根据任务表中的id查询测量数据
-        List<TMeasureData> measureData = tMeasureDataService.list(Wrappers.lambdaQuery(TMeasureData.class)
-                .in(TMeasureData::getTaskId, taskIds)
-                .orderByDesc(TMeasureData::getMeasurementStartTime)
-                .last("LIMIT 3"));
-        ArrayList<RecentlyAccomplishTaskVo> list = new ArrayList<>();
-        for (TMeasureData tMeasureData : measureData) {
-            RecentlyAccomplishTaskVo vo = new RecentlyAccomplishTaskVo();
-            TMeasureTask task = tMeasureTaskService.getById(tMeasureData.getTaskId());
-            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-            vo.setMeasureId(tMeasureData.getId());
-            vo.setTaskId(task.getId());
-            vo.setTaskName(task.getTaskName());
-            vo.setMethodId(method.getId());
-            vo.setMethodName(method.getMethodName());
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
-            vo.setMeasurementStartTime(tMeasureData.getMeasurementStartTime());
-            vo.setMeasurementEndTime(tMeasureData.getMeasurementEndTime());
-            list.add(vo);
+        if (user == null) {
+            return Result.fail("用户不存在");
         }
-        return Result.ok(list);
+        if (measureType == null){
+            measureType = "光谱扫描";
+        }
+        // 根据用户id查询字段is_delete为1的数据
+        List<TMeasureTask> taskList = tMeasureTaskService.list(new QueryWrapper<TMeasureTask>()
+                .eq("user_id", user.getId())
+                .eq("is_delete", "1")
+                .eq("measure_type", measureType)
+                .orderByDesc("create_time").last("limit 3"));
+        List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
+        for (TMeasureTask task : taskList) {
+            RecentlyCompletedTasksVo vo = new RecentlyCompletedTasksVo();
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).orderByDesc("measurement_end_time").last("limit 1"));
+            TMeasureSample byId = tMeasureSampleService.getById(measureData.getSampleKey());
+            vo.setTaskName(task.getTaskName());
+            vo.setMethodName(method.getMethodName());
+            vo.setProjectName(project.getProjectName());
+            vo.setMeasurementSample(byId.getSampleName());
+            vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
+            vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
+            vos.add(vo);
+        }
+        return Result.ok(vos);
     }
 
 
@@ -154,19 +157,21 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
          * }
          */
         SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        // 项目数量
         long countProject = tMeasureProjectService.count(
                 Wrappers.lambdaQuery(TMeasureProject.class)
                         .and(wrapper -> wrapper.eq(TMeasureProject::getCreatorKey, updateBy)
                                 .or()
                                 .eq(TMeasureProject::getLastUpdatedBy, updateBy)));
+        // 方法数量
         Long countMethod = tMeasureMethodService.count(
                 Wrappers.lambdaQuery(TMeasureMethod.class)
                         .eq(TMeasureMethod::getMethodCreator, updateBy)
         );
+        // 测量任务数量
         Long countTask = tMeasureTaskService.count(
                 Wrappers.lambdaQuery(TMeasureTask.class)
                         .eq(TMeasureTask::getUserId, user.getId())
-                        .isNotNull(TMeasureTask::getCollectionStartTime)
         );
         List<TMeasureProject> projects = tMeasureProjectService.list(
                 Wrappers.lambdaQuery(TMeasureProject.class)
@@ -438,7 +443,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             if (count > 0){
                 // 查询当前方法id的所有任务中最近采集的任务时间,最近采集任务的时间字段是collection_start_time
                 TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()).orderByDesc("collection_start_time").last("limit 1"));
-                vo.setLastTaskTime(task.getCollectionStartTime());
+                vo.setLastTaskTime(task.getStartTime());
             }
             records.add(vo);
         }

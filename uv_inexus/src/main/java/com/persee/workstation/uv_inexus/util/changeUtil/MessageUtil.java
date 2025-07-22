@@ -7,10 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.net.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.List;
+import java.util.*;
 
 @Service("MessageUtil")
 public class MessageUtil {
@@ -195,6 +192,108 @@ public class MessageUtil {
         }
 
     }
+
+
+
+
+//    public List<byte[]> singleSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
+//        try {
+//            List<byte[]> responses = new ArrayList<>();
+//
+//            // 记录发送报文的第 3、4、5 位
+//            byte sentThirdByte = sendBytes[2];  // 第3位
+//            byte sentFourthByte = sendBytes[3]; // 第4位
+//            byte sentFifthByte = sendBytes[4];  // 第5位
+//
+//            // 发送命令
+//            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
+//                    InetAddress.getByName(sendIp), remotePort);
+//            currentSocket.send(packet);
+//
+//            System.out.print("发送指令 [" + cmdId + "] 报文：");
+//            for (byte b : sendBytes) System.out.printf("%02X ", b);
+//            System.out.println();
+//
+//            // 是否为特定指令，结束条件是根据接收到多条回应
+//            Set<String> specialCommands = new HashSet<>();
+//            specialCommands.add("CheckWLamp");
+//            specialCommands.add("CheckDLamp");
+//            specialCommands.add("CheckWl");
+//            specialCommands.add("Measure");
+//            specialCommands.add("BaseLine");
+//            specialCommands.add("Scan");
+//            specialCommands.add("Zero");
+//            specialCommands.add("BaseLineFast");
+//            specialCommands.add("ScanFast");
+//            specialCommands.add("SearchInSameZoom");
+//            specialCommands.add("SearchAround");
+//            specialCommands.add("NewIP");
+//            specialCommands.add("GetSn");
+//
+//            boolean isSpecialCommand = specialCommands.contains(cmdId);
+//
+//            int timeoutMs = isSpecialCommand ? 15000 : 4500;
+//            currentSocket.setSoTimeout(timeoutMs);
+//
+//            long lastReceiveTime = System.currentTimeMillis();
+//            int count = 0;
+//
+//            while (Constants.isRunning) {
+//                try {
+//                    DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+//                    currentSocket.receive(receivePacket);
+//                    count++;
+//
+//                    byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+//                    responses.add(reply);
+//
+//                    System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+//                    System.out.print("十六进制回应：");
+//                    for (byte b : reply) System.out.printf("%02X ", b);
+//                    System.out.println();
+//
+//                    lastReceiveTime = System.currentTimeMillis();
+//
+//                    if (isSpecialCommand) {
+//                        // 对于特殊指令，接收到超过 1 条回应后结束接收
+//                        if (count > 1) {
+//                            break; // 结束接收
+//                        }
+//                    } else {
+//                        // 对于其他指令，检查发送的第 3、4、5 位与接收到的最后一条报文的 3、4、5 位是否匹配
+//                        if (reply.length > 4 && reply[2] == sentThirdByte && reply[3] == sentFourthByte && reply[4] == sentFifthByte) {
+//                            break; // 如果匹配，终止接收
+//                        }
+//                    }
+//
+//                    // 设置更短的超时时间
+//                    if (count > 1) {
+//                        currentSocket.setSoTimeout(1000);
+//                        timeoutMs = 1000;
+//                    }
+//                } catch (SocketTimeoutException e) {
+//                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
+//                }
+//            }
+//
+//            return responses;
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//    }
+
+
+
+
+
+
+
+
+
+
+
+
 
     public List<byte[]> quickSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
         try {

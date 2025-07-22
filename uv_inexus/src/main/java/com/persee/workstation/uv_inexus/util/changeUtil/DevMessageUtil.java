@@ -28,6 +28,7 @@ public class DevMessageUtil {
 
     @Value("${device.default.xmlPath}")
     String xmlPath;
+
 //    String xmlPath = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
 
     private volatile static String defaultIp = "255.255.255.255";
@@ -145,7 +146,7 @@ public class DevMessageUtil {
         DatagramSocket socket = ans.getData();
         Boolean b = changeXml();
         if (!b) {
-            return R.fail("转换xml出错");
+            return R.fail("     转换xml出错");
         }
         String cmdId = command.getCmdId();
         Transition transition = xml.get(cmdId);
@@ -370,5 +371,28 @@ public class DevMessageUtil {
             }
         }
         return R.ok("true");
+    }
+
+    /**
+     * 时间扫描：获取测量数据
+     */
+    public void timeSweepGetMeasureData(Command command, String deviceIp) {
+        R<DatagramSocket> re = messageUtil.getSocket();
+        if (!re.getSuccess()) {
+            log.info("绑定socket失败");
+            return ;
+        }
+        DatagramSocket socket = re.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            log.info("转换xml出错");
+            return;
+        }
+        String cmdId = command.getCmdId();
+        Transition transition = xml.get(cmdId);
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        Constants.startTime = LocalDateTime.now();
+        List<byte[]> list = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
     }
 }

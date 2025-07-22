@@ -201,7 +201,7 @@ public class DataWebSocket {
                 tMeasureTask.setTaskName("任务" + new Random().nextInt(100000));
                 tMeasureTask.setMethodKey(methodId);
                 tMeasureTask.setCreateTime(LocalDateTime.now());
-                tMeasureTask.setCollectionStartTime(Constants.startTime);
+                tMeasureTask.setStartTime(Constants.startTime);
                 tMeasureTask.setProjectItemKey(project.getId());
                 tMeasureTask.setMethodKey(methodId);
                 tMeasureTask.setUserId(userConfigPO.getId());
