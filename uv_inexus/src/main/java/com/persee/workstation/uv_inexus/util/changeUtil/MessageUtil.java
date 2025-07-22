@@ -232,7 +232,7 @@ public class MessageUtil {
 //
 //            boolean isSpecialCommand = specialCommands.contains(cmdId);
 //
-//            int timeoutMs = isSpecialCommand ? 15000 : 4500;
+//            int timeoutMs = isSpecialCommand ? 20000 : 4500;
 //            currentSocket.setSoTimeout(timeoutMs);
 //
 //            long lastReceiveTime = System.currentTimeMillis();

@@ -45,7 +45,7 @@ public class TMeasureMethod {
     @TableField("measurement_param_info")
     private String measurementParamInfo;
 
-    // 是否共享方法
+    // 是否共享方法(0.否 1.是)
     @TableField("is_sharing_method")
     private String isSharingMethod;
 

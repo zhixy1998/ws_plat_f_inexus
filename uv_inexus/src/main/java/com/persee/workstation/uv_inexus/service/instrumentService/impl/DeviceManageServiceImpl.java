@@ -443,7 +443,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     public List<FindDeviceVO> newFindDevice() {
         List<Command> list = new ArrayList<>();
         list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
-//        list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
+        list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.Connect.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetSn.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetAccessoryType.getComId(), new Object[]{}));
