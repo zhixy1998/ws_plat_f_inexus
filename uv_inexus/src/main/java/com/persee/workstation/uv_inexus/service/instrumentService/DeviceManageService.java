@@ -77,6 +77,16 @@ public interface DeviceManageService {
      */
     List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber);
 
+    /**
+     * 检查仪器状态
+     */
+    R<Boolean> checkDeviceStatus(String deviceSerialNumber);
+
+    /**
+     * 更新仪器状态
+     */
+    R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status);
+
     void test();
 
 

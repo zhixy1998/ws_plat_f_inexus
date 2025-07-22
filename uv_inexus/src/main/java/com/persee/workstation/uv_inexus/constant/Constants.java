@@ -63,6 +63,15 @@ public class Constants {
 
     public static final String EndData = "0D0A,000";
 
+    //等待操作，所有操作执行完成后恢复需要该状态，异常之后，也要恢复该状态
+    public static final String machine_status_origin = "0";
+    public static final String machine_status_init = "init";
+    public static final String machine_status_zero = "zero";
+    public static final String machine_status_setParam = "param";
+    public static final String machine_status_measure = "measure";
+    public static final String machine_status_error = "error"; // 仪器故障，处理待定
+
+
 
     /**
      * 查询用户时，权限校验结果

@@ -32,10 +32,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInf
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -473,7 +470,8 @@ public class PhotometricServiceImpl implements PhotometricService {
 
             LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
+                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                    .orderByDesc(TMeasureData::getSerialNumber);
             TMeasureData data = tMeasureDataService.getOne(queryWrapper);
 
             if (data != null) {
@@ -651,21 +649,36 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public Result saveDataInfo(PhotometricSampleAndDataVO vo) {
+    public Result saveDataInfo(RemarkChangeSaveVO vo) {
+        if (!StringUtils.isEmpty(vo.getTaskId())) {
+            return Result.fail("缺少任务id");
+        }
+
+        if (!StringUtils.isEmpty(vo.getSampleId())) {
+            return Result.fail("缺少样品id");
+        }
+
+        if (!StringUtils.isEmpty(vo.getRemark())) {
+            return Result.fail("缺少备注");
+        }
 
         String taskId = vo.getTaskId();
         String sampleId = vo.getSampleId();
         LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                .eq(TMeasureData::getSampleKey, sampleId);
-        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-        if (data == null || data.getIsDelete().equals(deleteType)) {
-            log.info("数据不存在或者已删除");
-            return Result.fail("数据不存在或已删除");
+                .eq(TMeasureData::getSampleKey, sampleId)
+                .orderByDesc(TMeasureData::getSerialNumber);
+        List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+        TMeasureData data = new TMeasureData();
+        if (list != null || !list.isEmpty()) {
+            data = list.get(0);
+            data.setRemark(vo.getRemark());
+        } else {
+            data.setTaskId(taskId);
+            data.setSampleKey(sampleId);
+            data.setSerialNumber(1);
+            data.setRemark(vo.getRemark());
         }
-
-        data.setRemark(vo.getRemark());
-        data.setSamplingTime(vo.getSampleTime());
         tMeasureDataService.updateById(data);
 
         return Result.ok(true);
@@ -797,6 +810,23 @@ public class PhotometricServiceImpl implements PhotometricService {
         method.setMeasurementParamInfo(JSON.toJSONString(photometricParameter));
         boolean update = tMeasureMethodService.updateById(method);
         return update ? Result.ok() : Result.fail();
+    }
+
+    @Override
+    public Result<Boolean> saveButton(String taskId, String updateBy) {
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("未创建任务，无法保存");
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        String id = po.getId();
+        task.setUserId(id);
+        task.setIsDelete("1");
+        tMeasureTaskService.updateById(task);
+        return Result.ok(true);
     }
 
 

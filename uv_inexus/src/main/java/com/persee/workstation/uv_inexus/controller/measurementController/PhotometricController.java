@@ -4,9 +4,9 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.PhotometricService;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RemarkChangeSaveVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,9 +81,9 @@ public class PhotometricController {
         return photometricService.queryData(taskId, allDisplay);
     }
 
-    @PostMapping("saveData")
-    @ApiOperation("保存数据接口")
-    public Result saveData(@RequestBody PhotometricSampleAndDataVO vo) {
+    @PostMapping("saveDataInfo")
+    @ApiOperation("保存数据接口,备注等")
+    public Result saveData(@RequestBody RemarkChangeSaveVO vo) {
         return photometricService.saveDataInfo(vo);
     }
 
@@ -98,6 +98,12 @@ public class PhotometricController {
     public Result photoZero(@RequestParam String serialNumber,
                        @RequestParam String methodId) {
         return photometricService.zero(serialNumber,methodId);
+    }
+
+    @GetMapping("saveTask")
+    @ApiOperation("保存任务接口")
+    public Result<Boolean> saveTask(@RequestParam String taskId, @RequestParam String updateBy){
+        return photometricService.saveButton(taskId, updateBy);
     }
 
 }

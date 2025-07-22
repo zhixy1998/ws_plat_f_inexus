@@ -612,6 +612,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public R<Boolean> checkDeviceStatus(String deviceSerialNumber) {
+        return null;
+    }
+
+    @Override
+    public R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status) {
+        return null;
+    }
+
+    @Override
     public void test() {
         String ip = "169.254.110.254";
         ScanParamInfo info = new ScanParamInfo();

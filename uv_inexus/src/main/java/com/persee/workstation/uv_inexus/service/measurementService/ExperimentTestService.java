@@ -5,6 +5,10 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
+
+import java.util.List;
 
 public interface ExperimentTestService {
     Result newProject(ProjectParamDto paramDto);
@@ -35,4 +39,8 @@ public interface ExperimentTestService {
 
 
     Result reportDataQuery(String taskId, String reportName);
+
+    Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType);
+
+    Result<List<TaskBaseVO>> getAllTask(String projectId, String measureType);
 }

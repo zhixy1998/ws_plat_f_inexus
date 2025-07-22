@@ -12,6 +12,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDat
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RemarkChangeSaveVO;
 
 import java.util.List;
 import java.util.Map;
@@ -85,7 +86,7 @@ public interface PhotometricService {
      * @param vo
      * @return
      */
-    Result saveDataInfo(PhotometricSampleAndDataVO vo);
+    Result saveDataInfo(RemarkChangeSaveVO vo);
 
     void test(String taskId, String methodId);
 
@@ -95,4 +96,9 @@ public interface PhotometricService {
      * @return
      */
     Result zero(String serialNumber, String methodId);
+
+    /**
+     * 保存按钮
+     */
+    Result<Boolean> saveButton(String taskId, String updateBy);
 }

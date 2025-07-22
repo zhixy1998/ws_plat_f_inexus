@@ -1,12 +1,19 @@
 package com.persee.workstation.uv_inexus.controller.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
@@ -99,6 +106,18 @@ public class ExperimentTestController {
     @ApiOperation("报告数据查询")
     public Result reportDataQuery(@RequestParam String taskId,@RequestParam String reportName){
         return experimentTestService.reportDataQuery(taskId,reportName);
+    }
+
+    @GetMapping("getProjectInfo")
+    @ApiOperation("获取项目信息")
+    public Result<MeasurementCurrentInfoVO> getProjectInfo(@RequestParam String projectId, @RequestParam String measureType){
+        return experimentTestService.getProjectInfo(projectId,measureType);
+    }
+
+    @GetMapping("getAllTask")
+    @ApiOperation("获取项目下所有任务")
+    public Result<List<TaskBaseVO>> getAllTask(@RequestParam String projectId, @RequestParam String measureType){
+        return experimentTestService.getAllTask(projectId,measureType);
     }
 
 

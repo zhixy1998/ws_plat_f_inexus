@@ -1,10 +1,12 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
+import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
@@ -23,9 +25,12 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -69,6 +74,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private DeviceInfoService deviceInfoService;
     @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
+    TMeasureTaskMapper tMeasureTaskMapper;
 
     @Override
     public Result newProject(ProjectParamDto paramDto) {
@@ -537,6 +545,63 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
     }
 
+    @Override
+    public Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType) {
+
+        if (!StringUtils.hasText(projectId) || !StringUtils.hasText(measureType)) {
+            System.out.println("缺少参数");
+            return Result.fail("缺少参数");
+        }
+
+        MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
+
+        TMeasureProject project = tMeasureProjectService.getById(projectId);
+        if (project == null) {
+            return Result.fail("项目不存在");
+        }
+        vo.setProjectId(project.getId());
+        vo.setProjectName(project.getProjectName());
+
+        LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureTask::getProjectItemKey, projectId)
+                .eq(TMeasureTask::getMeasureType, measureType)
+                .orderByDesc(TMeasureTask::getCreateTime);
+        TMeasureTask task = tMeasureTaskService.list(queryWrapper).get(0);
+        if (task != null) {
+            vo.setTaskId(task.getId());
+            vo.setTaskName(task.getTaskName());
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            vo.setMethodId(method.getId());
+            vo.setMethodName(method.getMethodName());
+        } else {
+            LambdaQueryWrapper<TMeasureMethod> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(TMeasureMethod::getProjectItemKey, projectId)
+                    .eq(TMeasureMethod::getMeasurementType, measureType)
+                    .orderByDesc(TMeasureMethod::getMethodCreateTime);
+            TMeasureMethod method = tMeasureMethodService.list(wrapper).get(0);
+            if (method != null) {
+                vo.setMethodId(method.getId());
+                vo.setMethodName(method.getMethodName());
+            }
+
+        }
+        return Result.ok(vo);
+    }
+
+    @Override
+    public Result<List<TaskBaseVO>> getAllTask(String projectId, String measureType) {
+        if (!StringUtils.hasText(projectId) || !StringUtils.hasText(measureType)) {
+            System.out.println("缺少参数");
+            return Result.fail("缺少参数");
+        }
+        List<TaskBaseVO> taskList =  tMeasureTaskMapper.getAllTask(projectId, measureType);
+
+        if (taskList == null || taskList.isEmpty()) {
+            return Result.fail("没有找到任务");
+        }
+
+        return Result.ok(taskList);
+    }
 
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {
