@@ -466,19 +466,56 @@ public class DetectionServiceImpl implements DetectionService {
             if (jsonNode.has("波长3")) {
                 sb.append("波长3：").append(jsonNode.get("波长3").asText()).append("；");
             }
+            if (jsonNode.has("系数1")) {
+                sb.append("系数1：").append(jsonNode.get("系数1").asText()).append("；");
+            }
+            if (jsonNode.has("系数2")) {
+                sb.append("系数2：").append(jsonNode.get("系数2").asText()).append("；");
+            }
+            if (jsonNode.has("系数3")) {
+                sb.append("系数3：").append(jsonNode.get("系数3").asText()).append("；");
+            }
             // 2. 拟合类型（对应JSON中的"拟合公式"）
             if (jsonNode.has("拟合公式")) {
-                sb.append("拟合类型：").append(jsonNode.get("拟合公式").asText()).append("；");
+                sb.append("拟合公式").append(jsonNode.get("拟合公式").asText()).append("；");
             }
             // 3. 推荐浓度（对应JSON中的"推荐标样浓度"）
             if (jsonNode.has("推荐标样浓度")) {
-                sb.append("推荐浓度：").append(jsonNode.get("推荐标样浓度").asText()).append("；");
+                sb.append("推荐标样浓度").append(jsonNode.get("推荐标样浓度").asText()).append("；");
             }
             // 4. 浓度单位（对应JSON中的"推荐单位"）
             if (jsonNode.has("推荐单位")) {
-                sb.append("浓度单位：").append(jsonNode.get("推荐单位").asText()).append("；");
+                sb.append("推荐单位").append(jsonNode.get("推荐单位").asText()).append("；");
             }
-
+            // 5. 拟合类型（对应JSON中的"光谱带宽"）
+            if (jsonNode.has("光谱带宽")) {
+                sb.append("光谱带宽").append(jsonNode.get("光谱带宽").asText()).append("；");
+            }
+            // 6. 推荐浓度（对应JSON中的"曲线方程"）
+            if (jsonNode.has("曲线方程")) {
+                sb.append("曲线方程").append(jsonNode.get("曲线方程").asText()).append("；");
+            }
+            // 7. 浓度单位（对应JSON中的"是否需要扣空白"）
+            if (jsonNode.has("是否需要扣空白")) {
+                sb.append("是否需要扣空白").append(jsonNode.get("是否需要扣空白").asText()).append("；");
+            }
+            // 8. 拟合类型（对应JSON中的"加入零点"）
+            if (jsonNode.has("加入零点")) {
+                sb.append("加入零点").append(jsonNode.get("加入零点").asText()).append("；");
+            }
+            // 9. 拟合类型（对应JSON中的"强制过零点"）
+            if (jsonNode.has("强制过零点")) {
+                sb.append("强制过零点").append(jsonNode.get("强制过零点").asText()).append("；");
+            }
+            // 10. 推荐浓度（对应JSON中的"斜率"）
+            if (jsonNode.has("斜率")) {
+                sb.append("斜率").append(jsonNode.get("斜率").asText()).append("；");
+            }
+            // 11. 浓度单位（对应JSON中的"截距"）
+            if (jsonNode.has("截距")) {
+                sb.append("截距").append(jsonNode.get("截距").asText()).append("；");
+            }
+            
             // 去除最后一个分号（如果有）
             if (sb.length() > 0) {
                 sb.setLength(sb.length() - 1);
