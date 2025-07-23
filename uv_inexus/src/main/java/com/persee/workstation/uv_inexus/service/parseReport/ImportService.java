@@ -96,10 +96,19 @@ public class ImportService {
                     jsonObject.put("波长1", model.getWavelength1());
                     jsonObject.put("波长2", model.getWavelength2());
                     jsonObject.put("波长3", model.getWavelength3());
+                    jsonObject.put("系数1", model.getCoefficient1());
+                    jsonObject.put("系数2", model.getCoefficient2());
+                    jsonObject.put("系数3", model.getCoefficient3());
                     jsonObject.put("光谱带宽", model.getSpectralBandwidth());
                     jsonObject.put("拟合公式", model.getFittingFormula());
                     jsonObject.put("推荐标样浓度", model.getRecommendedStandardConcentration());
                     jsonObject.put("推荐单位", model.getRecommendedUnits());
+                    jsonObject.put("曲线方程", model.getCurveEquation());
+                    jsonObject.put("是否需要扣空白", model.getIsBlank());
+                    jsonObject.put("加入零点", model.getJoinZeroPoint());
+                    jsonObject.put("强制过零点", model.getForceZeroCrossing());
+                    jsonObject.put("斜率", model.getSlope());
+                    jsonObject.put("截距", model.getIntercept());
                     detectionParametersMap.put(model.getDetectionId(), jsonObject);
                 }
             }
@@ -111,11 +120,13 @@ public class ImportService {
                         jsonObject.put("波长1", model.getWavelength1());
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
+                        jsonObject.put("波长4", model.getWavelength4());
                     } else {
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("波长1", model.getWavelength1());
                         jsonObject.put("波长2", model.getWavelength2());
                         jsonObject.put("波长3", model.getWavelength3());
+                        jsonObject.put("波长4", model.getWavelength4());
                         detectionParametersMap.put(model.getDetectionId(), jsonObject);
                     }
                 }

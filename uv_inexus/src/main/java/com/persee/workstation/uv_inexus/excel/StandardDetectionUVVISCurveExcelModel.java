@@ -20,6 +20,15 @@ public class StandardDetectionUVVISCurveExcelModel {
     @ExcelProperty("波长3")
     private String wavelength3;
 
+    @ExcelProperty("系数1")
+    private String coefficient1;
+
+    @ExcelProperty("系数2")
+    private String coefficient2;
+
+    @ExcelProperty("系数3")
+    private String coefficient3;
+
     @ExcelProperty("光谱带宽")
     private String spectralBandwidth;
 
@@ -31,6 +40,24 @@ public class StandardDetectionUVVISCurveExcelModel {
 
     @ExcelProperty("推荐单位")
     private String recommendedUnits;
+
+    @ExcelProperty("曲线方程")
+    private String curveEquation;
+
+    @ExcelProperty("是否需要扣空白")
+    private String isBlank;
+
+    @ExcelProperty("加入零点")
+    private String joinZeroPoint;
+
+    @ExcelProperty("强制过零点")
+    private String forceZeroCrossing;
+
+    @ExcelProperty("斜率")
+    private String slope;
+
+    @ExcelProperty("截距")
+    private String intercept;
 
     // Getters and Setters
     public String getDetectionId() {
@@ -65,6 +92,30 @@ public class StandardDetectionUVVISCurveExcelModel {
         this.wavelength3 = wavelength3;
     }
 
+    public String getCoefficient1() {
+        return coefficient1;
+    }
+
+    public void setCoefficient1(String coefficient1) {
+        this.coefficient1 = coefficient1;
+    }
+
+    public String getCoefficient2() {
+        return coefficient2;
+    }
+
+    public void setCoefficient2(String coefficient2) {
+        this.coefficient2 = coefficient2;
+    }
+
+    public String getCoefficient3() {
+        return coefficient3;
+    }
+
+    public void setCoefficient3(String coefficient3) {
+        this.coefficient3 = coefficient3;
+    }
+
     public String getSpectralBandwidth() {
         return spectralBandwidth;
     }
@@ -95,5 +146,53 @@ public class StandardDetectionUVVISCurveExcelModel {
 
     public void setRecommendedUnits(String recommendedUnits) {
         this.recommendedUnits = recommendedUnits;
+    }
+
+    public String getCurveEquation() {
+        return curveEquation;
+    }
+
+    public void setCurveEquation(String curveEquation) {
+        this.curveEquation = curveEquation;
+    }
+
+    public String getIsBlank() {
+        return isBlank;
+    }
+
+    public void setIsBlank(String isBlank) {
+        this.isBlank = isBlank;
+    }
+
+    public String getJoinZeroPoint() {
+        return joinZeroPoint;
+    }
+
+    public void setJoinZeroPoint(String joinZeroPoint) {
+        this.joinZeroPoint = joinZeroPoint;
+    }
+
+    public String getForceZeroCrossing() {
+        return forceZeroCrossing;
+    }
+
+    public void setForceZeroCrossing(String forceZeroCrossing) {
+        this.forceZeroCrossing = forceZeroCrossing;
+    }
+
+    public String getSlope() {
+        return slope;
+    }
+
+    public void setSlope(String slope) {
+        this.slope = slope;
+    }
+
+    public String getIntercept() {
+        return intercept;
+    }
+
+    public void setIntercept(String intercept) {
+        this.intercept = intercept;
     }
 }

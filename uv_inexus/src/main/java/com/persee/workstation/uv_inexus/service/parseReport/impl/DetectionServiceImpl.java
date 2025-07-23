@@ -300,8 +300,9 @@ public class DetectionServiceImpl implements DetectionService {
             if (jsonNode.has("波长3")) detectionParameters.add(jsonNode.get("波长3").asText());
 
             // 提取波长参数1、波长参数2（按顺序添加）
-            if (jsonNode.has("波长参数1")) wavelengthParamList.add(jsonNode.get("波长参数1").asText());
-            if (jsonNode.has("波长参数2")) wavelengthParamList.add(jsonNode.get("波长参数2").asText());
+            if (jsonNode.has("系数1")) wavelengthParamList.add(jsonNode.get("系数1").asText());
+            if (jsonNode.has("系数2")) wavelengthParamList.add(jsonNode.get("系数2").asText());
+            if (jsonNode.has("系数3")) wavelengthParamList.add(jsonNode.get("系数3").asText());
         } catch (Exception e) {
             log.error("解析波长JSON失败: {}", e.getMessage());
             // 解析失败时返回空列表（避免null）

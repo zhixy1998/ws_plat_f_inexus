@@ -19,6 +19,15 @@ public class StandardDetectionUVVISPhotometryExcelModel {
     @ExcelProperty("波长3")
     private String wavelength3;
 
+    @ExcelProperty("波长4")
+    private String wavelength4;
+
+    @ExcelProperty("波长5")
+    private String wavelength5;
+
+    @ExcelProperty("波长6")
+    private String wavelength6;
+
     // Getters and Setters
     public String getDetectionId() {
         return detectionId;
@@ -50,5 +59,29 @@ public class StandardDetectionUVVISPhotometryExcelModel {
 
     public void setWavelength3(String wavelength3) {
         this.wavelength3 = wavelength3;
+    }
+
+    public String getWavelength4() {
+        return wavelength4;
+    }
+
+    public void setWavelength4(String wavelength4) {
+        this.wavelength4 = wavelength4;
+    }
+
+    public String getWavelength5() {
+        return wavelength5;
+    }
+
+    public void setWavelength5(String wavelength5) {
+        this.wavelength5 = wavelength5;
+    }
+
+    public String getWavelength6() {
+        return wavelength6;
+    }
+
+    public void setWavelength6(String wavelength6) {
+        this.wavelength6 = wavelength6;
     }
 }
