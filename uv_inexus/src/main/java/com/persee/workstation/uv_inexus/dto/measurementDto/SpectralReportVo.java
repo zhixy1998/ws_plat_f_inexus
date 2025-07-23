@@ -2,6 +2,8 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class SpectralReportVo {
     // 仪器波长
@@ -52,4 +54,6 @@ public class SpectralReportVo {
     private String DataType;
     // 方法名称
     private String MethodName;
+    //操作步骤
+    private List<String> steps;
 }

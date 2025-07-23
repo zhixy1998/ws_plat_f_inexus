@@ -14,6 +14,8 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RemarkChangeSaveVO;
 
+
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 
@@ -93,7 +95,6 @@ public interface PhotometricService {
     /**
      * 校零
      * @param serialNumber
-     * @return
      */
     Result zero(String serialNumber, String methodId);
 
@@ -101,4 +102,8 @@ public interface PhotometricService {
      * 保存按钮
      */
     Result<Boolean> saveButton(String taskId, String updateBy);
+
+    Result<MeasurementCurrentInfoVO> getInfoByTaskId(String taskId);
+
+    R<File> downloadWord(String taskId);
 }

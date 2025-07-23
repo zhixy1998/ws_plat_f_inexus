@@ -360,7 +360,7 @@ public class RationServiceImpl implements RationService {
 
         MethodParam param = new MethodParam();
         BeanUtils.copyProperties(rationParameter, param);
-//        param.setRationParam(rationParameter);
+        param.setRationParam(rationParameter);
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());

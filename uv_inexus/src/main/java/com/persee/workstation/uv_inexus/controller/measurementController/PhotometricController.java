@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.controller.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.PhotometricService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
@@ -10,8 +11,14 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.*;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
 
@@ -104,6 +111,40 @@ public class PhotometricController {
     @ApiOperation("保存任务接口")
     public Result<Boolean> saveTask(@RequestParam String taskId, @RequestParam String updateBy){
         return photometricService.saveButton(taskId, updateBy);
+    }
+
+    @GetMapping("downloadDoc")
+    @ApiOperation("下载文档接口")
+    public ResponseEntity downloadDoc(@RequestParam String taskId) throws Exception {
+        R<File> r = photometricService.downloadWord(taskId);
+        if (r.getSuccess()) {
+            File file = r.getData();
+            FileInputStream fis = new FileInputStream(file);
+            InputStreamResource resource = new InputStreamResource(fis);
+
+            String fileName = URLEncoder.encode(file.getName(), "UTF-8");
+            //5.删除临时文件
+            new Thread(() -> {
+                try {
+                    Thread.sleep(10000);
+                    System.out.println("删除文件");
+                    boolean delete = file.delete();
+                    System.out.println("删除结果：" + delete);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+            return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+        }
+        return null;
+    }
+
+    @GetMapping("queryNewMethodTaskInfo")
+    @ApiOperation("查询新方法任务信息接口")
+    public Result queryNewMethodTask(@RequestParam String taskId) {
+        return photometricService.getInfoByTaskId(taskId);
     }
 
 }
