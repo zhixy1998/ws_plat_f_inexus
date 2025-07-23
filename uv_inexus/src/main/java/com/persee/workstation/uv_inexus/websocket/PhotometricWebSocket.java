@@ -30,6 +30,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -268,6 +269,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         sampleAndDataVO.setMachineData(machineData);
         sampleAndDataVO.setStartTime(startTime);
         sampleAndDataVO.setEndTime(endTime);
+        sampleAndDataVO.setSampleTime(startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         photometricService.savePhotometricMeasureData(sampleAndDataVO);
         return R.ok();
     }

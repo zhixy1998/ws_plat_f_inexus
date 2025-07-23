@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -20,7 +22,7 @@ public class MethodParam extends PhotometricParameter {
 //    @JsonInclude(JsonInclude.Include.NON_NULL)
 //    private PhotometricParameter photometricParameter;
 //
-//    @ApiModelProperty("定量测量参数")
-//    @JsonInclude(JsonInclude.Include.NON_NULL)
-//    private RationParameter rationParam;
+    @ApiModelProperty("定量测量参数")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private RationParameter rationParam;
 }

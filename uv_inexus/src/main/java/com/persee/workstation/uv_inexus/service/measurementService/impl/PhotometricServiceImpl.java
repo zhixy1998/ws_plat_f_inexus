@@ -10,6 +10,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -34,12 +35,15 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDat
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -200,6 +204,12 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
             return Result.fail("方法ID不能为空");
+        }
+        if(dto.getNewSamples() == null) {
+            dto.setNewSamples(new ArrayList<>());
+        }
+        if (dto.getDelSampleIds() == null) {
+            dto.setDelSampleIds(new ArrayList<>());
         }
         if (dto.getNewSamples().isEmpty() && dto.getDelSampleIds().isEmpty()) {
             return Result.ok("没有要新增或删除的样品！");
@@ -616,6 +626,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             //认为是重测，覆盖数据
             data.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
             data.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
+            data.setSamplingTime(sampleAndDataVO.getSampleTime());
             tMeasureDataService.updateById(data);
         } else {
             TMeasureData tMeasureData = new TMeasureData();
@@ -625,6 +636,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             tMeasureData.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
             tMeasureData.setMeasurementStartTime(sampleAndDataVO.getStartTime());
             tMeasureData.setMeasurementEndTime(sampleAndDataVO.getEndTime());
+            tMeasureData.setSamplingTime(sampleAndDataVO.getSampleTime());
             tMeasureData.setIsDelete(createType);
             tMeasureDataService.save(tMeasureData);
         }
@@ -650,15 +662,15 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result saveDataInfo(RemarkChangeSaveVO vo) {
-        if (!StringUtils.isEmpty(vo.getTaskId())) {
+        if (!StringUtils.hasText(vo.getTaskId())) {
             return Result.fail("缺少任务id");
         }
 
-        if (!StringUtils.isEmpty(vo.getSampleId())) {
+        if (!StringUtils.hasText(vo.getSampleId())) {
             return Result.fail("缺少样品id");
         }
 
-        if (!StringUtils.isEmpty(vo.getRemark())) {
+        if (!StringUtils.hasText(vo.getRemark())) {
             return Result.fail("缺少备注");
         }
 
@@ -827,6 +839,117 @@ public class PhotometricServiceImpl implements PhotometricService {
         task.setIsDelete("1");
         tMeasureTaskService.updateById(task);
         return Result.ok(true);
+    }
+
+    @Override
+    public Result<MeasurementCurrentInfoVO> getInfoByTaskId(String taskId) {
+        if (!StringUtils.hasText(taskId)){
+            return Result.fail("缺少任务id");
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        MeasurementCurrentInfoVO measurementCurrentInfoVO = new MeasurementCurrentInfoVO();
+        measurementCurrentInfoVO.setTaskId(taskId);
+        measurementCurrentInfoVO.setTaskName(task.getTaskName());
+        measurementCurrentInfoVO.setMethodId(task.getMethodKey());
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        measurementCurrentInfoVO.setMethodName(method.getMethodName());
+        measurementCurrentInfoVO.setProjectId(task.getProjectItemKey());
+        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+        measurementCurrentInfoVO.setProjectName(project.getProjectName());
+
+        return Result.ok(measurementCurrentInfoVO);
+    }
+
+    @Override
+    public R<File> downloadWord(String taskId) {
+        if (!StringUtils.hasText(taskId)) {
+            return R.fail("缺少任务id");
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return R.fail("任务不存在");
+        }
+
+        String fileName = task.getTaskName() + ".docx";
+
+        String methodId = task.getMethodKey();
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        List<HeadVO> heads = new ArrayList<>();
+
+        heads.add(new HeadVO("样品编号", "sampleNumber"));
+        heads.add(new HeadVO("样品名称", "sampleName"));
+        heads.add(new HeadVO("样品类型", "sampleType"));
+        heads.add(new HeadVO("稀释比", "dilutionRatio"));
+        heads.add(new HeadVO("样品体积", "sampleVolume"));
+        heads.add(new HeadVO("样品位置", "sampleLocation"));
+
+        List<HeadVO> vos = tableHead(taskId, methodId, false).getData();
+        heads.addAll(vos);
+        heads.add(new HeadVO("备注", "remark"));
+        heads.add(new HeadVO("采样时间", "samplingTime"));
+
+        List<Map<String, String>> data = queryData(taskId, false).getData();
+
+
+        XWPFDocument doc = new XWPFDocument();
+
+        XWPFParagraph paragraph = doc.createParagraph();
+        XWPFRun run = paragraph.createRun();
+        run.setText("任务：" + task.getTaskName() + "方法" + method.getMethodName() + "测试数据");
+        XWPFTable table = doc.createTable();
+
+        table.setWidth("100%");
+        int i = 0;
+        for (Map<String, String> map : data) {
+            XWPFTableRow headerRow = table.getRow(0);
+            if(headerRow != null) {
+                XWPFTableCell cell = headerRow.getCell(0);
+                if(cell != null) {
+                    cell.setText("序号");
+                }
+
+                XWPFTableRow row = table.createRow();
+                int m = 1;
+                for (HeadVO head : heads) {
+
+                    String cellData = map.get(head.getIdentity());
+
+                    if (head.getIdentity().equals("sampleType")) {
+                        cellData = SampleTypeEnum.getName(cellData);
+                    }
+                    if (head.getIdentity().equals("sampleLocation")) {
+                        cellData = "样品"+cellData;
+                    }
+                    if (i == 0) {
+                        headerRow.addNewTableCell().setText(head.getName());
+                        row.addNewTableCell().setText(cellData);
+                        row.getCell(0).setText(String.valueOf(1));
+                    } else {
+                        row.getCell(m).setText(cellData);
+                        row.getCell(0).setText(String.valueOf(i+1));
+                        m++;
+                    }
+                }
+                i++;
+            }
+            for (XWPFTableRow row : table.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    XWPFParagraph paragraph1=cell.getParagraphArray(0);
+                    paragraph1.setAlignment(ParagraphAlignment.CENTER);
+                    cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+                }
+            }
+        }
+
+        try {
+            FileOutputStream out = new FileOutputStream(fileName);
+            doc.write(out);
+            out.close();
+            return R.ok(new File(fileName));
+        } catch (Exception e) {
+            return R.fail(e.getMessage());
+
+        }
     }
 
 

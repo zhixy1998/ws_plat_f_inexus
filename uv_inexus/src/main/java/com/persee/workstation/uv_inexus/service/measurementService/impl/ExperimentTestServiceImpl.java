@@ -25,7 +25,9 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -505,6 +507,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result reportDataQuery(String taskId,String reportName) {
+
+        if ((taskId == null)) {
+            return Result.fail("任务id不能为空");
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
         // 根据任务id测量数据表
         List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
         if (measureData == null || measureData.size() == 0) {
@@ -515,7 +526,25 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail("未查询到数据");
         }
         if (reportName.equals("光度测量表格")){
-            return Result.ok("暂未开放");
+
+            PhotometricReportDataVO vo = new PhotometricReportDataVO();
+
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            List<HeadVO> data = photometricService.tableHead(taskId, method.getId(), true).getData();
+            data.add(new HeadVO("样品名称", "sampleName"));
+            data.add(new HeadVO("样品编号", "sampleNumber"));
+            data.add(new HeadVO("样品类型", "sampleType"));
+            data.add(new HeadVO("稀释比", "dilutionRatio"));
+            data.add(new HeadVO("样品体积", "sampleVolume"));
+            data.add(new HeadVO("样品位置", "sampleLocation"));
+            data.add(new HeadVO("备注", "remark"));
+            data.add(new HeadVO("采样时间", "samplingTime"));
+            vo.setHeadList(data);
+
+            List<Map<String, String>> list = photometricService.queryData(taskId, false).getData();
+            vo.setDataList(list);
+
+            return Result.ok(vo);
         } else if(reportName.equals("定量测量表格")){
             return Result.ok("暂未开放");
         }
