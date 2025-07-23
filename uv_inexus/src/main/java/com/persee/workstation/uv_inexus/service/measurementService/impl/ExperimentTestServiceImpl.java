@@ -93,6 +93,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureProject.setRemark(paramDto.getRemark());
         tMeasureProject.setCreatorKey(paramDto.getUpdateBy());
         tMeasureProject.setCreateTime(LocalDateTime.now());
+        tMeasureProject.setLastUpdatedBy(paramDto.getUpdateBy());
+        tMeasureProject.setLastUpdatedTime(LocalDateTime.now());
         boolean save = tMeasureProjectService.save(tMeasureProject);
         return Result.ok(save);
     }
@@ -119,11 +121,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
             TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).orderByDesc("measurement_end_time").last("limit 1"));
-            TMeasureSample byId = tMeasureSampleService.getById(measureData.getSampleKey());
+            List<String> lists = JSON.parseArray(task.getSampleKey(), String.class);
             vo.setTaskName(task.getTaskName());
             vo.setMethodName(method.getMethodName());
             vo.setProjectName(project.getProjectName());
-            vo.setMeasurementSample(byId.getSampleName());
+            vo.setMeasurementSample(String.valueOf(lists.size()));
             vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
             vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
             vos.add(vo);
@@ -191,9 +193,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setProjectId(project.getId());
             vo.setProjectName(project.getProjectName());
             vo.setCreator(project.getCreatorKey());
-            vo.setCreateTime(project.getCreateTime());
+            vo.setCreateTime(project.getCreateTime().format(formatter));
             vo.setUpdateBy(project.getLastUpdatedBy());
-            vo.setUpdateTime(project.getLastUpdatedTime());
+            vo.setUpdateTime(project.getLastUpdatedTime().format(formatter));
             vo.setMethodCount(String.valueOf(count1));
             vo.setTaskCount(String.valueOf(count2));
             projectStatisticsVos.add(vo);
@@ -338,7 +340,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureTask.setSampleKey(JSON.toJSONString(list));
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setStartTime(LocalDateTime.now());
-        tMeasureTask.setMeasureType(paramDto.getMeasurementType());
         tMeasureTask.setIsDelete("0");
         boolean save = tMeasureTaskService.save(tMeasureTask);
         if (!save) {
@@ -436,14 +437,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         ArrayList<QueryMethodVO> records = new ArrayList<>();
         for (TMeasureMethod method : page.getRecords()) {
             QueryMethodVO vo = new QueryMethodVO();
+            // 将method复制给vo
             BeanUtils.copyProperties(method, vo);
             // 查询当前方法id的所有任务的数量
             Long count = tMeasureTaskService.count(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()));
             vo.setTaskCount(count);
             if (count > 0){
                 // 查询当前方法id的所有任务中最近采集的任务时间,最近采集任务的时间字段是collection_start_time
-                TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()).orderByDesc("collection_start_time").last("limit 1"));
-                vo.setLastTaskTime(task.getStartTime());
+                TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()).orderByDesc("create_time").last("limit 1"));
+                vo.setLastTaskTime(task.getStartTime().format(formatter));
             }
             records.add(vo);
         }

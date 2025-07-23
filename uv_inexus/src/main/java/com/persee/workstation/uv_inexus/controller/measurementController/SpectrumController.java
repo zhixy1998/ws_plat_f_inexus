@@ -23,8 +23,8 @@ public class SpectrumController {
 
     @GetMapping("queryEssentialInformation")
     @ApiOperation("查询项目任务方法接口")
-    public Result queryProjectTaskMethod(@RequestParam String updateBy) {
-        return spectrumService.queryProjectTaskMethod(updateBy);
+    public Result queryProjectTaskMethod(@RequestParam String updateBy,@RequestParam String measureType) {
+        return spectrumService.queryProjectTaskMethod(updateBy,measureType);
     }
 
     @GetMapping("queryProjectAllMethods")
@@ -33,10 +33,10 @@ public class SpectrumController {
         return spectrumService.queryProjectAllMethods(projectId,measureForm);
     }
 
-    @GetMapping("methodParameter/{method_id}")
+    @GetMapping("methodParameter")
     @ApiOperation("查询方法参数接口")
-    public Result queryMethodParameter(@PathVariable String method_id) {
-        return spectrumService.queryMethodParameter(method_id);
+    public Result queryMethodParameter(@RequestParam String methodId) {
+        return spectrumService.queryMethodParameter(methodId);
     }
 
     @PostMapping("saveMethodParameter")

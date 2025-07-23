@@ -9,7 +9,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 public interface SpectrumService {
     Result queryMeasuredData(QueryMeasuredDataVo dataVo);
 
-    Result queryProjectTaskMethod(String updateBy);
+    Result queryProjectTaskMethod(String updateBy,String measureType);
 
     Result queryProjectAllMethods(String projectId,  String measureForm);
 

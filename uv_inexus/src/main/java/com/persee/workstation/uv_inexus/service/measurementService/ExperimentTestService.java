@@ -13,7 +13,7 @@ import java.util.List;
 public interface ExperimentTestService {
     Result newProject(ProjectParamDto paramDto);
 
-    Result recentlyAccomplishTask(String updateBy,String mesureType);
+    Result recentlyAccomplishTask(String updateBy,String measureType);
 
     Result queryProjectStatistics(String updateBy);
 
