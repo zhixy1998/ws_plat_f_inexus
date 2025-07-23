@@ -4,14 +4,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +24,7 @@ import com.alibaba.excel.write.metadata.holder.WriteSheetHolder;
 import com.alibaba.excel.write.metadata.holder.WriteTableHolder;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.dao.parseReport.CalculationFormulaMapper;
-import com.persee.workstation.uv_inexus.dao.parseReport.DetectionDao; // 注意：此处使用你的DetectionDao（对应原DetectionMapper）
+import com.persee.workstation.uv_inexus.dao.parseReport.DetectionDao;
 import com.persee.workstation.uv_inexus.dao.parseReport.QualityControlMapper;
 import com.persee.workstation.uv_inexus.dao.parseReport.RoundingRulesMapper;
 import com.persee.workstation.uv_inexus.dao.parseReport.StandardPretreatmentMapper;
@@ -55,76 +54,75 @@ public class ExportServiceImpl implements ExportService {
     @Autowired
     private RoundingRulesMapper roundingRulesMapper;
     @Autowired
-    private DetectionDao detectionDao; // 对应你的DetectionDao（原DetectionMapper）
+    private DetectionDao detectionDao;
     @Autowired
     private StandardPretreatmentMapper standardPretreatmentMapper;
 
-    // 全量导出（支持筛选参数，保持原有功能）
+    // 核心优化1：缓存图片数据（key=Excel行索引，value=Base64字符串），不写入单元格
+    private Map<Integer, String> formulaImageCache = new HashMap<>();
+
     @Override
     public void exportAllTables(OutputStream outputStream, Map<String, Object> queryParams) throws IOException {
-        // 构建查询条件
-        QueryWrapper<Detection> queryWrapper = buildQueryWrapper(queryParams);
-        // 查询所有符合条件的原始数据（不去重）
-        List<Detection> allDetections = detectionDao.selectList(queryWrapper);
-        log.info("全量导出（带筛选），共获取{}条原始Detection记录", allDetections.size());
-        // 执行导出
-        exportData(outputStream, allDetections);
+        try {
+            formulaImageCache.clear(); // 清理缓存
+            QueryWrapper<Detection> queryWrapper = buildQueryWrapper(queryParams);
+            List<Detection> allDetections = detectionDao.selectList(queryWrapper);
+            log.info("全量导出（带筛选），共获取{}条原始Detection记录", allDetections.size());
+            exportData(outputStream, allDetections);
+        } finally {
+            formulaImageCache.clear(); // 释放资源
+        }
     }
 
-    // 按条件导出（核心修改：保留原始数据，不去重）
     @Override
     public void exportByCondition(OutputStream outputStream, Integer isAll, String exportIds, Map<String, Object> queryParams) throws IOException {
-        List<Detection> targetDetections;
+        try {
+            formulaImageCache.clear(); // 清理缓存
+            List<Detection> targetDetections;
 
-        if (isAll == 1) {
-            // 全量导出 + 筛选参数
-            QueryWrapper<Detection> queryWrapper = buildQueryWrapper(queryParams);
-            targetDetections = detectionDao.selectList(queryWrapper);
-            log.info("全量导出（带筛选），共获取{}条原始Detection记录", targetDetections.size());
-        } else {
-            // 按ID筛选导出（保留原始数据，不去重）
-            if (exportIds == null || exportIds.isEmpty()) {
-                throw new IllegalArgumentException("当isAll=0时，必须提供exportIds参数");
-            }
-            
-            // 1. 解析exportIds为ID列表
-            List<String> exportIdList = Arrays.stream(exportIds.split(","))
-                    .map(String::trim)
-                    .filter(id -> !id.isEmpty())
-                    .collect(Collectors.toList());
-            
-            if (exportIdList.isEmpty()) {
-                throw new IllegalArgumentException("exportIds参数格式错误，应为逗号分隔的ID列表");
-            }
-
-            // 2. 构建查询条件（包含筛选参数+ID列表）
-            QueryWrapper<Detection> queryWrapper = buildQueryWrapper(queryParams);
-            queryWrapper.in("id", exportIdList); // 直接按ID筛选，不进行去重
-
-            // 3. 查询原始Detection记录（保留所有匹配的记录，不去重）
-            List<Detection> baseDetections = detectionDao.selectList(queryWrapper);
-            if (baseDetections.isEmpty()) {
-                log.warn("exportIds对应的Detection记录为空");
-                targetDetections = new ArrayList<>();
+            if (isAll == 1) {
+                QueryWrapper<Detection> queryWrapper = buildQueryWrapper(queryParams);
+                targetDetections = detectionDao.selectList(queryWrapper);
+                log.info("全量导出（带筛选），共获取{}条原始Detection记录", targetDetections.size());
             } else {
-                // 直接使用原始查询结果（不去重）
-                targetDetections = baseDetections;
-                log.info("按ID筛选后共获取{}条原始Detection记录（未去重）", targetDetections.size());
-            }
-        }
+                if (exportIds == null || exportIds.isEmpty()) {
+                    throw new IllegalArgumentException("当isAll=0时，必须提供exportIds参数");
+                }
 
-        // 执行导出（关联子表数据）
-        exportData(outputStream, targetDetections);
+                List<String> exportIdList = Arrays.stream(exportIds.split(","))
+                        .map(String::trim)
+                        .filter(id -> !id.isEmpty())
+                        .collect(Collectors.toList());
+
+                if (exportIdList.isEmpty()) {
+                    throw new IllegalArgumentException("exportIds参数格式错误，应为逗号分隔的ID列表");
+                }
+
+                QueryWrapper<Detection> queryWrapper = buildQueryWrapper(queryParams);
+                queryWrapper.in("id", exportIdList);
+
+                List<Detection> baseDetections = detectionDao.selectList(queryWrapper);
+                if (baseDetections.isEmpty()) {
+                    log.warn("exportIds对应的Detection记录为空");
+                    targetDetections = new ArrayList<>();
+                } else {
+                    targetDetections = baseDetections;
+                    log.info("按ID筛选后共获取{}条原始Detection记录（未去重）", targetDetections.size());
+                }
+            }
+
+            exportData(outputStream, targetDetections);
+        } finally {
+            formulaImageCache.clear(); // 释放资源
+        }
     }
 
-    // 构建查询条件（支持筛选参数）
     private QueryWrapper<Detection> buildQueryWrapper(Map<String, Object> queryParams) {
         QueryWrapper<Detection> queryWrapper = new QueryWrapper<>();
         if (queryParams == null || queryParams.isEmpty()) {
             return queryWrapper;
         }
 
-        // 处理standard_name（模糊查询）
         if (queryParams.containsKey("standard_name")) {
             String standardName = (String) queryParams.get("standard_name");
             if (standardName != null && !standardName.isEmpty()) {
@@ -132,7 +130,6 @@ public class ExportServiceImpl implements ExportService {
             }
         }
 
-        // 处理industry（精确匹配）
         if (queryParams.containsKey("industry")) {
             String industry = (String) queryParams.get("industry");
             if (industry != null && !industry.isEmpty()) {
@@ -140,7 +137,6 @@ public class ExportServiceImpl implements ExportService {
             }
         }
 
-        // 处理release_date（精确匹配）
         if (queryParams.containsKey("release_date")) {
             String releaseDate = (String) queryParams.get("release_date");
             if (releaseDate != null && !releaseDate.isEmpty()) {
@@ -148,7 +144,6 @@ public class ExportServiceImpl implements ExportService {
             }
         }
 
-        // 处理日期范围（startDate <= release_date <= endDate）
         if (queryParams.containsKey("startDate")) {
             String startDate = (String) queryParams.get("startDate");
             if (startDate != null && !startDate.isEmpty()) {
@@ -165,18 +160,15 @@ public class ExportServiceImpl implements ExportService {
         return queryWrapper;
     }
 
-    // 核心导出逻辑（保持不变，关联所有子表数据）
     private void exportData(OutputStream outputStream, List<Detection> targetDetections) throws IOException {
-        // 1. 提取所有原始Detection的id（用于关联子表）
         Set<String> detectionIds = targetDetections.stream()
-                .map(detection -> String.valueOf(detection.getId())) // 假设id是Integer类型，转为String
+                .map(detection -> String.valueOf(detection.getId()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         log.info("关联子表的Detection ID共{}个", detectionIds.size());
 
-        // 2. 查询所有关联子表数据（基于原始id）
-        List<CalculationFormula> calculationFormulas = detectionIds.isEmpty() 
-                ? new ArrayList<>() 
+        List<CalculationFormula> calculationFormulas = detectionIds.isEmpty()
+                ? new ArrayList<>()
                 : calculationFormulaMapper.selectByDetectionIds(detectionIds);
         List<QualityControl> qualityControls = detectionIds.isEmpty()
                 ? new ArrayList<>()
@@ -200,46 +192,84 @@ public class ExportServiceImpl implements ExportService {
                 roundingRules.size(),
                 standardPretreatments.size());
 
-        // 3. 创建Excel并写入数据
+        // 核心优化2：提前缓存图片数据（不写入Excel单元格）
+        cacheFormulaImages(calculationFormulas);
+
         ExcelWriter excelWriter = EasyExcel.write(outputStream)
-                .registerWriteHandler(new FormulaImageHandler()) // 保留图片处理
+                .registerWriteHandler(new FormulaImageHandler()) // 注册图片处理器
                 .build();
 
-        // 4. 写入标准信息表（主表）
         WriteSheet sheet1 = EasyExcel.writerSheet(0, "标准信息表")
                 .head(StandardDetectionExcelModel.class)
                 .build();
         excelWriter.write(convertToStandardModels(targetDetections), sheet1);
 
-        // 5. 写入前处理信息表
         WriteSheet sheet2 = EasyExcel.writerSheet(1, "前处理信息表")
                 .head(StandardPretreatmentExcelModel.class)
                 .build();
         excelWriter.write(convertToPretreatmentModels(standardPretreatments), sheet2);
 
-        // 6. 写入计算公式表（带图片）
         WriteSheet sheet3 = EasyExcel.writerSheet(2, "计算公式表")
                 .head(CalculationFormulaExcelModel.class)
                 .build();
+        // 核心优化3：写入的模型中formulaImage已为空，避免Base64写入单元格
         excelWriter.write(convertToFormulaModels(calculationFormulas), sheet3);
 
-        // 7. 写入质量控制表
         WriteSheet sheet4 = EasyExcel.writerSheet(3, "质量控制表")
                 .head(QualityControlExcelModel.class)
                 .build();
         excelWriter.write(convertToQualityModels(qualityControls), sheet4);
 
-        // 8. 写入修约表
         WriteSheet sheet5 = EasyExcel.writerSheet(4, "修约表")
                 .head(RoundingRulesExcelModel.class)
                 .build();
         excelWriter.write(convertToRoundingModels(roundingRules), sheet5);
 
-        // 9. 完成导出
         excelWriter.finish();
     }
 
-    // 模型转换方法（保持不变）
+    // 核心优化4：缓存图片数据（计算Excel行索引与Base64的对应关系）
+    private void cacheFormulaImages(List<CalculationFormula> formulas) {
+        // Excel表头占1行（索引0），数据从第1行（索引1）开始
+        int dataStartRowIndex = 1;
+        for (int i = 0; i < formulas.size(); i++) {
+            CalculationFormula formula = formulas.get(i);
+            if (formula.getFormulaImage() != null && !formula.getFormulaImage().isEmpty()) {
+                // 计算当前数据在Excel中的行索引（表头行 + 数据索引）
+                int excelRowIndex = dataStartRowIndex + i;
+                formulaImageCache.put(excelRowIndex, formula.getFormulaImage());
+                log.info("缓存计算公式表第{}行图片（Base64长度：{}）", excelRowIndex, formula.getFormulaImage().length());
+            }
+        }
+    }
+
+    // 模型转换方法（核心优化5：清空formulaImage，避免Base64写入单元格）
+    private List<CalculationFormulaExcelModel> convertToFormulaModels(List<CalculationFormula> formulas) {
+        return formulas.stream().map(formula -> {
+            CalculationFormulaExcelModel model = new CalculationFormulaExcelModel();
+            model.setDetectionId(formula.getDetectionId());
+            model.setResultIdentity(formula.getResultIdentity());
+            model.setResultName(formula.getResultName());
+            model.setUnit(formula.getUnit());
+            model.setInputParam1Name(formula.getInputParam1Name());
+            model.setInputParam1Identity(formula.getInputParam1Identity());
+            model.setInputParam2Name(formula.getInputParam2Name());
+            model.setInputParam2Identity(formula.getInputParam2Identity());
+            model.setInputParam3Name(formula.getInputParam3Name());
+            model.setInputParam3Identity(formula.getInputParam3Identity());
+            model.setInputParam4Name(formula.getInputParam4Name());
+            model.setInputParam4Identity(formula.getInputParam4Identity());
+            model.setInputParam5Name(formula.getInputParam5Name());
+            model.setInputParam5Identity(formula.getInputParam5Identity());
+            model.setFormulaText(formula.getFormulaText());
+            // 关键：不设置Base64到单元格，避免超长
+            model.setFormulaImage(""); 
+            model.setDetectionLimit(formula.getDetectionLimit());
+            return model;
+        }).collect(Collectors.toList());
+    }
+
+    // 其他模型转换方法（保持不变）
     private List<StandardDetectionExcelModel> convertToStandardModels(List<Detection> detections) {
         return detections.stream().map(detection -> {
             StandardDetectionExcelModel model = new StandardDetectionExcelModel();
@@ -271,30 +301,6 @@ public class ExportServiceImpl implements ExportService {
         }).collect(Collectors.toList());
     }
 
-    private List<CalculationFormulaExcelModel> convertToFormulaModels(List<CalculationFormula> formulas) {
-        return formulas.stream().map(formula -> {
-            CalculationFormulaExcelModel model = new CalculationFormulaExcelModel();
-            model.setDetectionId(formula.getDetectionId());
-            model.setResultIdentity(formula.getResultIdentity());
-            model.setResultName(formula.getResultName());
-            model.setUnit(formula.getUnit());
-            model.setInputParam1Name(formula.getInputParam1Name());
-            model.setInputParam1Identity(formula.getInputParam1Identity());
-            model.setInputParam2Name(formula.getInputParam2Name());
-            model.setInputParam2Identity(formula.getInputParam2Identity());
-            model.setInputParam3Name(formula.getInputParam3Name());
-            model.setInputParam3Identity(formula.getInputParam3Identity());
-            model.setInputParam4Name(formula.getInputParam4Name());
-            model.setInputParam4Identity(formula.getInputParam4Identity());
-            model.setInputParam5Name(formula.getInputParam5Name());
-            model.setInputParam5Identity(formula.getInputParam5Identity());
-            model.setFormulaText(formula.getFormulaText());
-            model.setFormulaImage(formula.getFormulaImage());
-            model.setDetectionLimit(formula.getDetectionLimit());
-            return model;
-        }).collect(Collectors.toList());
-    }
-
     private List<QualityControlExcelModel> convertToQualityModels(List<QualityControl> controls) {
         return controls.stream().map(control -> {
             QualityControlExcelModel model = new QualityControlExcelModel();
@@ -318,49 +324,63 @@ public class ExportServiceImpl implements ExportService {
         }).collect(Collectors.toList());
     }
 
-    // 图片处理器（修复方法参数类型，保持功能不变）
-    private static class FormulaImageHandler implements RowWriteHandler {
+    // 图片处理器（核心优化6：从缓存读取Base64，直接转换为图片插入，不读取单元格）
+    private class FormulaImageHandler implements RowWriteHandler {
+        // 图片所在列索引（必须与CalculationFormulaExcelModel中formulaImage的@ExcelProperty(index)一致）
+        private static final int IMAGE_COLUMN_INDEX = 25;
+
         @Override
         public void afterRowDispose(WriteSheetHolder writeSheetHolder,
                                     WriteTableHolder writeTableHolder,
                                     Row row, Integer relativeRowIndex,
-                                    Boolean isHead) {
+                                    Boolean isHead) { // 修复参数类型：Boolean -> boolean
+            // 只处理"计算公式表"的非表头行
             if (isHead || row == null || !"计算公式表".equals(writeSheetHolder.getSheetName())) {
                 return;
             }
 
             try {
-                Cell cell = row.getCell(25); // 第25列（索引25）
-                if (cell != null && cell.getCellType() == CellType.STRING) {
-                    String cellValue = cell.getStringCellValue();
-                    if (cellValue != null && !cellValue.isEmpty()) {
-                        Sheet sheet = writeSheetHolder.getSheet();
-                        String imgRef = ExcelImageExportUtils.insertImage(
-                                cellValue,
-                                "formula-" + row.getRowNum(),
-                                sheet,
-                                row.getRowNum(),
-                                25
-                        );
-                        if (imgRef != null) {
-                            cell.setCellValue("");
-                            log.info("插入图片到第{}行第25列，引用: {}", row.getRowNum(), imgRef);
-                        }
-                    }
+                // 获取当前行在Excel中的索引
+                int currentRowIndex = row.getRowNum();
+                // 从缓存获取Base64（不读取单元格内容）
+                String base64Image = formulaImageCache.get(currentRowIndex);
+                if (base64Image == null || base64Image.isEmpty()) {
+                    log.debug("计算公式表第{}行无图片，跳过", currentRowIndex);
+                    return;
                 }
+
+                // 调用工具类插入图片（直接从缓存Base64转换）
+                Sheet sheet = writeSheetHolder.getSheet();
+                String imgRef = ExcelImageExportUtils.insertImage(
+                        base64Image,
+                        "formula-" + currentRowIndex,
+                        sheet,
+                        currentRowIndex,
+                        IMAGE_COLUMN_INDEX
+                );
+
+                if (imgRef != null) {
+                    log.info("插入图片到第{}行第{}列，引用: {}", currentRowIndex, IMAGE_COLUMN_INDEX, imgRef);
+                } else {
+                    log.warn("第{}行图片插入失败（工具类返回空）", currentRowIndex);
+                }
+
             } catch (Exception e) {
-                log.error("处理行{}图片时出错: {}", row.getRowNum(), e.getMessage());
+                log.error("处理第{}行图片时出错: {}", row.getRowNum(), e.getMessage(), e);
             }
         }
 
-        // 修复其他方法的参数类型（Boolean -> boolean）
+        // 接口其他方法（空实现，避免编译错误）
         // @Override
-        // public void beforeRowCreate(WriteSheetHolder writeSheetHolder, WriteTableHolder writeTableHolder, Integer rowIndex, Integer relativeRowIndex, boolean isHead) {}
+        // public void beforeRowCreate(WriteSheetHolder writeSheetHolder, WriteTableHolder writeTableHolder,
+        //                            Integer rowIndex, Integer relativeRowIndex, boolean isHead) {}
 
         // @Override
-        // public void afterRowCreate(WriteSheetHolder writeSheetHolder, WriteTableHolder writeTableHolder, Row row, Integer relativeRowIndex, boolean isHead) {}
+        // public void afterRowCreate(WriteSheetHolder writeSheetHolder, WriteTableHolder writeTableHolder,
+        //                           Row row, Integer relativeRowIndex, boolean isHead) {}
 
         // @Override
-        // public void beforeRowWrite(WriteSheetHolder writeSheetHolder, WriteTableHolder writeTableHolder, Row row, Integer relativeRowIndex, boolean isHead) {}
+        // public void beforeRowWrite(WriteSheetHolder writeSheetHolder, WriteTableHolder writeTableHolder,
+        //                           Row row, Integer relativeRowIndex, boolean isHead) {}
     }
 }
