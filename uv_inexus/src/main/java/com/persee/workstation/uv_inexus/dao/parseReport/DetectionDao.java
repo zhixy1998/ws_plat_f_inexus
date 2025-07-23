@@ -112,4 +112,10 @@ public interface DetectionDao {
             Page<DetectionListDTO> page,
             @Param("ew") QueryWrapper<Detection> queryWrapper
     );
+
+    @Select("<script>" +
+        "SELECT * FROM t_report_standard_detection " +
+        "<where>${ew.sqlSegment}</where>" +
+        "</script>")
+        List<Detection> selectList(@Param("ew") QueryWrapper<Detection> queryWrapper);
 }
