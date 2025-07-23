@@ -1,0 +1,165 @@
+package com.persee.workstation.uv_inexus.service.instrumentService.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.persee.workstation.uv_inexus.dao.instrumentDao.DeviceAutoInjectorDAO;
+import com.persee.workstation.uv_inexus.dao.instrumentDao.InjectorTrayParamDAO;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.instrumentPo.DeviceAutoInjectorPO;
+import com.persee.workstation.uv_inexus.po.instrumentPo.InjectionTrayParamPO;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceAutoInjectorService;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+
+@Service
+@Slf4j
+public class DeviceAutoInjectorServiceImpl implements DeviceAutoInjectorService {
+
+    @Autowired
+    DeviceAutoInjectorDAO dao;
+
+    @Autowired
+    InjectorTrayParamDAO paramDAO;
+
+    @Autowired
+    DeviceInfoService infoService;
+
+    @Value("缺少设备序列号！")
+    private String misSerialNumber;
+
+    @Override
+    public R<Boolean> setInjectorConf(DeviceAutoInjectorPO po) {
+        if (!StringUtils.hasText(po.getDeviceSerialNumber())){
+            log.info(misSerialNumber);
+            return R.fail(misSerialNumber);
+        }
+        log.info("发送消息给仪器配置设置");
+
+
+        log.info("配置成功，维护数据库");
+        LambdaQueryWrapper<DeviceAutoInjectorPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceAutoInjectorPO::getDeviceSerialNumber, po.getDeviceSerialNumber());
+
+        if (dao.selectCount(queryWrapper) == 0) {
+            log.info("没有记录，插入数据");
+            po.setCreateBy(po.getUpdateBy());
+            for (int i = 0; i < 2; i++) {
+                if (dao.insert(po) > 0) {
+                    log.info("插入成功");
+                    return R.ok();
+                }
+            }
+        } else {
+            log.info("有记录，更新数据");
+            for (int i = 0; i < 2; i++) {
+                if (dao.update(po, queryWrapper)>0) {
+                    log.info("更新成功");
+                    return R.ok();
+                }
+            }
+        }
+
+        return R.fail("仪器设置成功，数据库保存失败，请检查数据库设置");
+    }
+
+    @Override
+    public R<Boolean> setInjectorTray(List<InjectionTrayParamPO> poList) {
+        String deviceSerialNumber = null;
+        if (poList.isEmpty()) {
+            return R.fail("没有数据");
+        }
+        for (InjectionTrayParamPO paramPO : poList) {
+            if(StringUtils.hasText(paramPO.getDeviceSerialNumber())) {
+                deviceSerialNumber = paramPO.getDeviceSerialNumber();
+                break;
+            }
+        }
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info(misSerialNumber);
+            return R.fail(misSerialNumber);
+        }
+        for (InjectionTrayParamPO paramPO : poList) {
+            if (!StringUtils.hasText(paramPO.getDeviceSerialNumber())){
+                paramPO.setDeviceSerialNumber(deviceSerialNumber);
+            }
+
+            log.info("调用仪器设置");
+
+            LambdaQueryWrapper<InjectionTrayParamPO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(InjectionTrayParamPO::getDeviceSerialNumber,deviceSerialNumber)
+                    .eq(InjectionTrayParamPO::getPanel,paramPO.getPanel());
+
+            if (paramDAO.selectCount(queryWrapper) == 0) {
+                paramPO.setCreateBy(paramPO.getUpdateBy());
+
+                for (int i = 0; i < 2; i++) {
+                    if (paramDAO.insert(paramPO) > 0) {
+                        log.info("插入成功");
+                        break;
+                    }
+                }
+            } else {
+                log.info("更新数据");
+                for (int i = 0; i < 2; i++) {
+                    if (paramDAO.update(paramPO, queryWrapper) > 0) {
+                        log.info("更新成功");
+                        break;
+                    }
+                }
+            }
+        }
+
+        return R.ok();
+    }
+
+    @Override
+    public R<DeviceAutoInjectorPO> queryInjectorConf(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info(misSerialNumber);
+            return R.fail(misSerialNumber);
+        }
+
+        LambdaQueryWrapper<DeviceAutoInjectorPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceAutoInjectorPO::getDeviceSerialNumber,deviceSerialNumber);
+
+        DeviceAutoInjectorPO injectorPO = dao.selectOne(queryWrapper);
+        if (injectorPO == null) {
+            return R.fail("该序列号未查找到进样器");
+        } else {
+            injectorPO.setParamList(selectInjectorTray(deviceSerialNumber));
+            return R.ok(injectorPO);
+        }
+
+    }
+
+    @Override
+    public List<InjectionTrayParamPO> selectInjectorTray(String deviceSerialNumber) {
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info(misSerialNumber);
+            return null;
+        }
+        LambdaQueryWrapper<InjectionTrayParamPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(InjectionTrayParamPO::getDeviceSerialNumber,deviceSerialNumber);
+
+        return paramDAO.selectList(queryWrapper);
+    }
+
+    @Override
+    public R<Integer> checkConnectStatus(String deviceSerialNumber) {
+
+        String ip = infoService.getIp(deviceSerialNumber);
+
+        log.info("工具类通过ip去查找连接状态");
+
+
+        return R.ok(1);
+
+    }
+}
