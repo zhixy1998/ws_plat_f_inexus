@@ -413,6 +413,70 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
+    public R<PhotometricReportDataVO> getReportCount(String taskId) {
+
+        if (!StringUtils.hasText(taskId)) {
+            return R.fail("缺少任务id");
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return R.fail("任务不存在");
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+
+        if (parameter.getResultParams() == null || parameter.getResultParams().isEmpty()) {
+            return R.fail("缺少结果参数");
+        }
+
+        List<HeadVO> heads = new ArrayList<>();
+
+        List<Map<String, String>> data = new ArrayList<>();
+        PhotometricReportDataVO ans = new PhotometricReportDataVO();
+
+        heads.add(new HeadVO("样品编号", "sampleNumber"));
+        heads.add(new HeadVO("样品名称", "sampleName"));
+        heads.add(new HeadVO("样品类型", "sampleType"));
+        for (PreCountResultParam param : parameter.getResultParams()) {
+            heads.add(new HeadVO(param.getResultName(), param.getResultIdentity() + "-" +param.getFormulaText()));
+        }
+        ans.setHeadList(heads);
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
+            for (TaskSpecimen specimen : taskSpecimen) {
+                Map<String, String> map = new HashMap<>();
+                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                map.put("sampleName", sample.getSampleName());
+                map.put("sampleNumber", sample.getSampleNumber());
+                map.put("sampleType", SampleTypeEnum.getName(sample.getSampleType()));
+
+                LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                        .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
+                List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(queryWrapper);
+                if (list != null && !list.isEmpty()) {
+                    TMeasureAnalysisData analysisData = list.get(0);
+                    List<PhotometricCountDataInfo> countDataInfos = JSON.parseArray(analysisData.getAnalysisResult(), PhotometricCountDataInfo.class);
+
+                    if (countDataInfos != null && !countDataInfos.isEmpty()) {
+                        for (PhotometricCountDataInfo count : countDataInfos) {
+                            double value = Double.parseDouble(count.getCountValue());
+                            map.put(count.getResultIdentity() + "-" + count.getFormulaText(), String.format("%.2f",value));
+                        }
+                    }
+                    data.add(map);
+                }
+            }
+        }
+        ans.setDataList(data);
+
+        return R.ok(ans);
+    }
+
+    @Override
     public Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay) {
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
