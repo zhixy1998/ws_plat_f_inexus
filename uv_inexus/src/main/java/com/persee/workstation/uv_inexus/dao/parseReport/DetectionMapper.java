@@ -120,4 +120,10 @@ public interface DetectionMapper {
             "</script>")
     List<Detection> selectByStandardNumbers(@Param("standardNumbers") Set<String> standardNumbers);
 
+    /**
+     * 根据记录ID查询标准标识（用于日志输出）
+     */
+    @Select("SELECT standard_identity FROM t_report_standard_detection WHERE id = #{id}")
+    String findStandardIdentityById(Integer id);
+
 }
