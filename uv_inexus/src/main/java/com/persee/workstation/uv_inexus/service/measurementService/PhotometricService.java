@@ -9,10 +9,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RemarkChangeSaveVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
 
 import java.io.File;
@@ -54,6 +51,8 @@ public interface PhotometricService {
      */
     @Deprecated
     Result queryStandardInfo(String standardName);
+
+    R<PhotometricReportDataVO> getReportCount(String taskId);
 
     /**
      *  查询表格头

@@ -525,27 +525,40 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (analysisData == null || analysisData.size() == 0) {
             return Result.fail("未查询到数据");
         }
-        if (reportName.equals("光度测量表格")){
+        if (reportName.equals("光度测量原始记录表格")){
 
             PhotometricReportDataVO vo = new PhotometricReportDataVO();
 
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-            List<HeadVO> data = photometricService.tableHead(taskId, method.getId(), true).getData();
-            data.add(new HeadVO("样品名称", "sampleName"));
-            data.add(new HeadVO("样品编号", "sampleNumber"));
-            data.add(new HeadVO("样品类型", "sampleType"));
-            data.add(new HeadVO("稀释比", "dilutionRatio"));
-            data.add(new HeadVO("样品体积", "sampleVolume"));
-            data.add(new HeadVO("样品位置", "sampleLocation"));
-            data.add(new HeadVO("备注", "remark"));
-            data.add(new HeadVO("采样时间", "samplingTime"));
-            vo.setHeadList(data);
+
+            List<HeadVO> heads = new ArrayList<>();
+            heads.add(new HeadVO("样品编号", "sampleNumber"));
+            heads.add(new HeadVO("样品名称", "sampleName"));
+            heads.add(new HeadVO("样品类型", "sampleType"));
+            heads.add(new HeadVO("稀释比", "dilutionRatio"));
+            heads.add(new HeadVO("样品体积", "sampleVolume"));
+            heads.add(new HeadVO("样品位置", "sampleLocation"));
+
+            List<HeadVO> vos = photometricService.tableHead(taskId, method.getId(),false).getData();
+            heads.addAll(vos);
+            heads.add(new HeadVO("备注", "remark"));
+            heads.add(new HeadVO("采样时间", "samplingTime"));
+            vo.setHeadList(heads);
 
             List<Map<String, String>> list = photometricService.queryData(taskId, false).getData();
             vo.setDataList(list);
 
             return Result.ok(vo);
-        } else if(reportName.equals("定量测量表格")){
+        } else if (reportName.equals("光度测量表格")){
+            R<PhotometricReportDataVO> reportCount = photometricService.getReportCount(taskId);
+            if (reportCount.getSuccess()) {
+                PhotometricReportDataVO vo = reportCount.getData();
+                return Result.ok(vo);
+            }
+
+            return Result.fail(reportCount.getMessage());
+        }
+        else if(reportName.equals("定量测量表格")){
             return Result.ok("暂未开放");
         }
         else if (reportName.equals("光谱扫描表格")) {
