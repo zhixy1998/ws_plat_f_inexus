@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class Sample {
     // 样品id
-    private String id;
+    private String sampleId;
     // 样品编号
     private String sampleNumber;
     // 样品名称

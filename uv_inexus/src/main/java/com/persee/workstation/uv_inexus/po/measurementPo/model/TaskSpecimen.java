@@ -1,8 +1,12 @@
 package com.persee.workstation.uv_inexus.po.measurementPo.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class TaskSpecimen {
     // 样本id
     private String specimenKey;

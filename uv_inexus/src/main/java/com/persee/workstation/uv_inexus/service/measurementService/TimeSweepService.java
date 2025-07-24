@@ -1,6 +1,5 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -14,7 +13,7 @@ public interface TimeSweepService {
     Result queryProjectAllMethods(String projectId, String measureForm);
 
     // 添加样品接口
-    Result addSamplePort(AddSampleDto paramDto);
+//    Result addSamplePort(AddSampleDto paramDto);
 
     Result sampleListPort(String taskId, String type);
 

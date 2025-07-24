@@ -2,10 +2,9 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import lombok.Data;
 
-import java.util.List;
-
 @Data
-public class AddSampleDto {
+public class QueryMeasuredDataVo {
+    private Integer pageNum;
+    private Integer pageSize;
     private String taskId;
-    private List<SpectrumSpecimenDto> samples;
 }

@@ -2,9 +2,7 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumSpecimenDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
@@ -83,57 +81,57 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         return Result.ok(methods);
     }
 
-    /**
-     * 新增样本接口
-     * @param paramDto
-     * @return
-     */
-    @Override
-    public Result addSamplePort(AddSampleDto paramDto) {
-        // 创建一个String数组用于存放新增后的样品id
-        List<String> sampleIdList = new ArrayList<>();
-        // 根据传过来的参数进行遍历添加样品
-        for (SpectrumSpecimenDto sample : paramDto.getSamples()) {
-            TMeasureSample sampleParam = new TMeasureSample();
-            sampleParam.setSampleName(sample.getSampleName());
-            sampleParam.setSampleNumber(sample.getSampleNumber());
-            sampleParam.setSampleLocation(sample.getSampleLocation());
-            sampleParam.setColor("#000000");
-            tMeasureSampleService.save(sampleParam);
-            sampleIdList.add(sampleParam.getId());
-        }
-        // 根据任务id查询任务数据
-        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-        if (task == null) {
-            return Result.fail("任务不存在");
-        }
-        if (task.getSampleKey() != null){
-            // 将原有在任务中的样品字段提取出来
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            // 遍历样品id数组,将新增的样品id添加到任务中的样品字段中
-            for (String sampleId : sampleIdList) {
-                TaskSpecimen taskSpeciman = new TaskSpecimen();
-                taskSpeciman.setSpecimenKey(sampleId);
-                taskSpeciman.setDeleteType("0");
-                taskSpeciman.setIsTested("0");
-                taskSpecimen.add(taskSpeciman);
-            }
-            // 将修改后的样品字段存入任务数据中
-            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-        }else if (task.getSampleKey() == null) {
-            // 如果任务中的样品字段为空,则直接将样品id存入任务数据中
-            List<TaskSpecimen> taskSpecimen = new ArrayList<>();
-            for (String sampleId : sampleIdList) {
-                TaskSpecimen taskSpeciman = new TaskSpecimen();
-                taskSpeciman.setSpecimenKey(sampleId);
-                taskSpeciman.setDeleteType("0");
-                taskSpecimen.add(taskSpeciman);
-            }
-            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-        }
-        boolean update = tMeasureTaskService.updateById(task);
-        return Result.ok(update);
-    }
+//    /**
+//     * 新增样本接口
+//     * @param paramDto
+//     * @return
+//     */
+//    @Override
+//    public Result addSamplePort(AddSampleDto paramDto) {
+//        // 创建一个String数组用于存放新增后的样品id
+//        List<String> sampleIdList = new ArrayList<>();
+//        // 根据传过来的参数进行遍历添加样品
+//        for (SpectrumSpecimenDto sample : paramDto.getSamples()) {
+//            TMeasureSample sampleParam = new TMeasureSample();
+//            sampleParam.setSampleName(sample.getSampleName());
+//            sampleParam.setSampleNumber(sample.getSampleNumber());
+//            sampleParam.setSampleLocation(sample.getSampleLocation());
+//            sampleParam.setColor("#000000");
+//            tMeasureSampleService.save(sampleParam);
+//            sampleIdList.add(sampleParam.getId());
+//        }
+//        // 根据任务id查询任务数据
+//        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
+//        if (task == null) {
+//            return Result.fail("任务不存在");
+//        }
+//        if (task.getSampleKey() != null){
+//            // 将原有在任务中的样品字段提取出来
+//            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+//            // 遍历样品id数组,将新增的样品id添加到任务中的样品字段中
+//            for (String sampleId : sampleIdList) {
+//                TaskSpecimen taskSpeciman = new TaskSpecimen();
+//                taskSpeciman.setSpecimenKey(sampleId);
+//                taskSpeciman.setDeleteType("0");
+//                taskSpeciman.setIsTested("0");
+//                taskSpecimen.add(taskSpeciman);
+//            }
+//            // 将修改后的样品字段存入任务数据中
+//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+//        }else if (task.getSampleKey() == null) {
+//            // 如果任务中的样品字段为空,则直接将样品id存入任务数据中
+//            List<TaskSpecimen> taskSpecimen = new ArrayList<>();
+//            for (String sampleId : sampleIdList) {
+//                TaskSpecimen taskSpeciman = new TaskSpecimen();
+//                taskSpeciman.setSpecimenKey(sampleId);
+//                taskSpeciman.setDeleteType("0");
+//                taskSpecimen.add(taskSpeciman);
+//            }
+//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+//        }
+//        boolean update = tMeasureTaskService.updateById(task);
+//        return Result.ok(update);
+//    }
 
     /**
      * 样品列表
@@ -160,9 +158,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             vo.setTitle(byId.getSampleName());
             if (measureData== null){
                 vo.setData(null);
-                vo.setKey(null);
+                vo.setMeasureId(null);
             }else {
-                vo.setKey(measureData.getId());
+                vo.setMeasureId(measureData.getId());
                 List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
                 List<Double> gauges = JSON.parseArray(measureData.getGaugePoint(), Double.class);
                 List<Double> peaks = JSON.parseArray(measureData.getPeak(), Double.class);
@@ -261,7 +259,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<SampleListVo> listVos = new ArrayList<>();
         for (TMeasureAnalysisData tMeasureAnalysisData : list) {
             SampleListVo vo = new SampleListVo();
-            vo.setKey(tMeasureAnalysisData.getId());
+            vo.setMeasureId(tMeasureAnalysisData.getId());
             vo.setTitle(tMeasureAnalysisData.getAnalysisName());
             vo.setColor(tMeasureAnalysisData.getColor());
             vo.setDeleteType(tMeasureAnalysisData.getIsDelete());

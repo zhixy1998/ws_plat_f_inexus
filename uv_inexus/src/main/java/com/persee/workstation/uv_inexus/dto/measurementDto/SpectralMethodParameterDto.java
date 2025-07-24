@@ -9,6 +9,8 @@ public class SpectralMethodParameterDto extends SpectrumParameter{
     private String projectId;
     // 测量类型
     private String measureType;
+    // 方法ID
+    private String methodId;
     // 方法名称
     private String methodName;
     // 用户名

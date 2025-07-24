@@ -24,6 +24,8 @@ public interface PhotometricService {
 
     Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType);
 
+    Result<List<HeadVO>> sampleTableHead(String methodId);
+
     /**
      * 新增或删除样本
      * @param dto

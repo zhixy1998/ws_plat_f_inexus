@@ -5,6 +5,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodPara
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.PhotometricService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RemarkChangeSaveVO;
@@ -59,6 +60,12 @@ public class PhotometricController {
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody AddOrDeleteSampleDTO dto) {
         return photometricService.addOrDeleteSample(dto);
+    }
+
+    @GetMapping("getSampleInputHead")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<HeadVO>> getSampleInputHead(@RequestParam String methodId) {
+        return photometricService.sampleTableHead(methodId);
     }
 
     @GetMapping("deleteOneSample")

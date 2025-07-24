@@ -1,6 +1,10 @@
 package com.persee.workstation.uv_inexus.enums.systemUserManageEnums;
 
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitInfoEnum;
 import lombok.Getter;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Getter
 public enum SystemGroupEnum {
@@ -22,6 +26,20 @@ public enum SystemGroupEnum {
         this.groupNo = groupNo;
         this.name = name;
     }
+    private static final Map<String, String> map = new HashMap<>();
 
+    static {
+        for(SystemGroupEnum e : SystemGroupEnum.values()) {
+            map.put(e.groupNo,e.name);
+        }
+    }
+
+
+    public static String getName(String groupNo) {
+        if(map.containsKey(groupNo)) {
+            return map.get(groupNo);
+        }
+        return "";
+    }
 
 }

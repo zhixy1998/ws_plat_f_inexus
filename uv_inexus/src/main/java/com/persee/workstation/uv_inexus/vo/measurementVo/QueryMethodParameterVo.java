@@ -5,5 +5,6 @@ import lombok.Data;
 
 @Data
 public class QueryMethodParameterVo extends SpectrumParameter {
+    private String methodId;
     private String methodName;
 }

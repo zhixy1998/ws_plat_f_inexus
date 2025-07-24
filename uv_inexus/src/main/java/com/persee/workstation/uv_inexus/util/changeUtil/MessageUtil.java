@@ -120,6 +120,42 @@ public class MessageUtil {
     }
 
     /**
+     * 光谱扫描调用2
+     * @param scanSocket 获取socket
+     * @param sendIp  机器ip
+     * @param cmdId  指令
+     * @param sendBytes 发送报文
+     */
+    public void scanSendAndDeal2(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
+
+        try {
+            List<byte[]> responses = new ArrayList<>();
+            // 发送主命令
+            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
+                    InetAddress.getByName(sendIp), remotePort);
+            scanSocket.send(packet);
+
+            System.out.print("发送指令 [" + cmdId + "] 报文：");
+            for (byte b : sendBytes) System.out.printf("%02X ", b);
+            System.out.println();
+
+            // 是否为慢命令（用于接收等待时间判断）
+            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
+                    || cmdId.equalsIgnoreCase("Scan")
+                    || cmdId.equalsIgnoreCase("ScanFast")
+                    || cmdId.equalsIgnoreCase("BaseLineFast");
+            int timeoutMs = isSlowCommand ? 5000 : 4500;
+            scanSocket.setSoTimeout(timeoutMs);
+
+            long lastReceiveTime = System.currentTimeMillis();
+
+            new Thread(() -> {scanReceiveAndDeal(scanSocket);}).start();
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * 非光谱扫描指令使用的发送
      * @param currentSocket
      * @param sendIp
@@ -394,10 +430,7 @@ public class MessageUtil {
                     Constants.instrumentData.add(x + "," + y);
                     System.out.println("第 " + (i + 1) + " 条回应：" + x + "," + y);
                     i++;
-
                 }
-
-
             } catch (Exception e) {
                 Constants.originalCalculationData.add(Constants.EndData);
                 Constants.endTime = LocalDateTime.now();

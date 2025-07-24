@@ -240,7 +240,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                 TMeasureData measureData = new TMeasureData();
                 // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
                 // 如果发现测量数据表中有数据则将最大的序列号拿出来加1并放入新建的测量数据对象中
-                TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).orderByDesc("serial_number"));
+                TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).orderByDesc("serial_number").last("LIMIT 1"));
                 if (data != null) {
                     measureData.setSerialNumber(data.getSerialNumber() + 1);
                 }else{
@@ -274,13 +274,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                 }
                 System.err.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
                 // 将公共的变量中的数据清除
-                Constants.x_data.clear();
-                Constants.y_data.clear();
-                Constants.field3Values.clear();
-                Constants.instrumentData.clear();
-                Constants.originalCalculationData.clear();
-                Constants.endTime = null;
-                Constants.startTime = null;
+                exceptionHandling();
             }).start();
         }
         sessions.remove(session.getId());
@@ -328,6 +322,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
+        exceptionHandling();
         System.out.println("连接异常: " + exception.getMessage());
     }
 

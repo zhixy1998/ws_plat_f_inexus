@@ -1,6 +1,9 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class SpectrumParameter extends MeasurePublicParameters {
@@ -22,4 +25,6 @@ public class SpectrumParameter extends MeasurePublicParameters {
     private String ladderCorrection;
     // 扫描速度(0.慢速 1.中速 2.快速 3.极快)
     private String scanSpeed;
+    // 基线数据
+    private List<ChangeParam> baselineData;
 }
