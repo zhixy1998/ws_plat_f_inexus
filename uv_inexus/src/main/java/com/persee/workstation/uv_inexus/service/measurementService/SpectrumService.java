@@ -3,6 +3,8 @@ package com.persee.workstation.uv_inexus.service.measurementService;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 
+import javax.servlet.http.HttpServletResponse;
+
 /**
  * 光谱扫描服务
  */
@@ -65,7 +67,7 @@ public interface SpectrumService {
 
     Result querySampleList(String taskId);
 
-    Result addSamplePort(AddSampleDto paramDto);
+    Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto);
 
     Result deleteSamplePort(String sampleId, String taskId);
 
@@ -80,4 +82,8 @@ public interface SpectrumService {
     Result saveData(String taskId);
 
     Result queryPreprocessingOperation(String methodId);
+
+    Result obtainTheBaseline(String methodId,String deviceSerialNumber);
+
+    void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 }

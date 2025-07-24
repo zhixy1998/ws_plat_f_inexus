@@ -9,6 +9,9 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/spectrumScanning/")
 @ApiModel("光谱扫描")
@@ -200,10 +203,10 @@ public class SpectrumController {
         return spectrumService.querySampleList(taskId);
     }
 
-    @PostMapping("addSamplePort")
-    @ApiOperation("添加样本接口")
-    public Result addSamplePort(@RequestBody AddSampleDto paramDto){
-        return spectrumService.addSamplePort(paramDto);
+    @PostMapping("addOrDeleteSamplePort")
+    @ApiOperation("添加或删除样本接口")
+    public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto){
+        return spectrumService.addOrDeleteSamplePort(paramDto);
     }
 
     @DeleteMapping("deleteSamplePort")
@@ -247,7 +250,27 @@ public class SpectrumController {
     }
 
 
+    @GetMapping("obtainTheBaseline")
+    @ApiOperation("获取基线接口")
+    public Result obtainTheBaseline(@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
+        return spectrumService.obtainTheBaseline(methodId,deviceSerialNumber);
+    }
 
+
+    @GetMapping("/exportWord")
+    @ApiOperation("导出Word接口")
+    public void exportWord(@RequestParam String taskId, HttpServletResponse response) {
+        try {
+            spectrumService.exportToWord(taskId, response);
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try {
+                response.getWriter().write("导出失败: " + e.getMessage());
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+        }
+    }
 
 
 

@@ -64,9 +64,10 @@ public class ResponseDeal {
                 return parseZero(responses);
             case "ScanFast":
             case "Scan":
+                return parseScanFast(responses);
             case "BaseLine":
             case "BaseLineFast":
-                return parseScanFast(responses);
+                return parseBaseLine(responses);
 
 
 //            case "NewIP":
@@ -250,6 +251,58 @@ public class ResponseDeal {
 
         result = isEqual ? "true" : "false";
         return isEqual;
+    }
+
+
+    public static List<ChangeParam> parseBaseLine(List<byte[]> responses) {
+        List<ChangeParam> resultList = new ArrayList<>(); // 用来存储每条回应的解析结果
+        ChangeParam tempParam = null; // 临时存储 0x05 的结果，等待 0x06 补充完整
+
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应数量不足，无法解析 BaseLine");
+            return resultList;
+        }
+
+        try {
+            // 遍历所有的回应报文
+            for (byte[] response : responses) {
+                byte fourthByte = response[3]; // 获取第四位字节值
+
+                if (fourthByte == 0x07){
+                    continue;
+                }
+                // 如果第四位字节为 05，解析 s
+                if (fourthByte == 0x05) {
+                    // 只有 s0 的值
+                    int s0 = ((response[8] & 0xFF) << 16) | ((response[9] & 0xFF) << 8) | (response[10] & 0xFF);
+                    Double wl0 = (double) ((((response[5] & 0xFF) << 8) | (response[6] & 0xFF))/50.0f);
+                    tempParam = new ChangeParam(); // 创建一个新的 ChangeParam 对象，等待 0x06 补充
+                    tempParam.setS(String.valueOf(s0)); // 设置 s0
+                    tempParam.setWl(String.valueOf(wl0));
+                }
+
+                // 如果第四位字节为 06，解析 d 和 r，结合之前的 s0
+                if (fourthByte == 0x06 && tempParam != null) {
+                    int d0 = ((response[4] & 0xFF) << 16) | ((response[5] & 0xFF) << 8) | (response[6] & 0xFF);
+                    int r0 = ((response[8] & 0xFF) << 16) | ((response[9] & 0xFF) << 8) | (response[10] & 0xFF);
+                    tempParam.setD(String.valueOf(d0)); // 设置 d0
+                    tempParam.setR(String.valueOf(r0)); // 设置 r0
+
+                    // 将解析完成的对象添加到结果列表中
+                    resultList.add(tempParam);
+
+                    // 解析完成后重置 tempParam 为 null
+                    tempParam = null;
+                }
+
+            }
+            System.out.println(resultList);
+
+        } catch (Exception e) {
+            System.out.println("BaseLine解析异常: " + e.getMessage());
+        }
+
+        return resultList;
     }
 
 

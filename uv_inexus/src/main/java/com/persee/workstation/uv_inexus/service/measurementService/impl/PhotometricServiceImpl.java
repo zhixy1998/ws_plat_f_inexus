@@ -6,10 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
@@ -118,26 +115,21 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result updateMethodParameter(PhotometricMethodParameterDto methodDto) {
-        // 根据方法id查询当前方法
-        if (!StringUtils.hasText(methodDto.getMethodId())) {
-            return Result.fail("缺少方法id");
+        // 根据方法id查询方法
+        TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getMethodId());
+        if (measureMethod==null){
+            return Result.fail("方法不存在");
         }
-        TMeasureMethod method = tMeasureMethodService.getById(methodDto.getMethodId());
-
-        // 将ExperimentMethodDto中的值转入SpectrumParameter对象中
-        PhotometricParameter param = new PhotometricParameter();
-        BeanUtils.copyProperties(methodDto, param);
-
-        String s = JSON.toJSONString(param);
-//            String s = new ObjectMapper().writeValueAsString(param);
-        method.setMeasurementParamInfo(s);
-
-        if (!methodDto.getMethodName().equals(method.getMethodName())) {
-            method.setMethodName(methodDto.getMethodName());
+        // 将前端传过来的值复制到SpectrumParameter类中
+        PhotometricParameter parameter = new PhotometricParameter();
+        BeanUtils.copyProperties(methodDto, parameter);
+        measureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
+        measureMethod.setMethodName(methodDto.getMethodName());
+        boolean update = tMeasureMethodService.updateById(measureMethod);
+        if (!update){
+            return Result.fail("更新失败");
         }
-        boolean update = tMeasureMethodService.updateById(method);
-
-        return Result.ok(update);
+        return Result.ok(measureMethod.getId());
     }
 
     @Override
@@ -544,8 +536,8 @@ public class PhotometricServiceImpl implements PhotometricService {
 
             LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                    .orderByDesc(TMeasureData::getSerialNumber);
+                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
+//                    .orderByDesc(TMeasureData::getSerialNumber);
             TMeasureData data = tMeasureDataService.getOne(queryWrapper);
 
             if (data != null) {
@@ -1012,7 +1004,6 @@ public class PhotometricServiceImpl implements PhotometricService {
             return R.ok(new File(fileName));
         } catch (Exception e) {
             return R.fail(e.getMessage());
-
         }
     }
 

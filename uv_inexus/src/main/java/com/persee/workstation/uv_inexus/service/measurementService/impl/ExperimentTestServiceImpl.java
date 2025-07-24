@@ -10,6 +10,7 @@ import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
@@ -310,6 +311,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
                     sample.setColor("#000000");
+                    sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
                     sample.setColor("");
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
@@ -359,20 +361,22 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 判断方法id是all还是id
         QueryWrapper<TMeasureTask> wrapper =  new QueryWrapper<>();
         wrapper.eq("project_item_key", queryTask.getProjectId());
-        if (!queryTask.getMethodIds().isEmpty()){
+        if (queryTask.getMethodIds().size()!=0){
             wrapper.in("method_key", queryTask.getMethodIds());
         }
+        wrapper.eq("project_item_key", queryTask.getProjectId());
         if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
             wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
         }
         Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
         if (page==null||page.getRecords().size() == 0){
-            return Result.fail("未查询到数据");
+            return Result.ok(page);
         }
         page.getRecords().forEach(task -> {
             // 根据任务中的用户id查询用户
             SystemUserManagePO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getId, task.getUserId()));
             task.setUserId(userConfigPO.getUserName());
+            task.setIsDelete(task.getCreateTime().format(formatter));
         });
         return Result.ok(page);
     }
@@ -650,6 +654,32 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         return Result.ok(taskList);
+    }
+
+    @Override
+    public Result useThisMethodPort(String methodId) {
+        // 使用StringUtils 判断参数是否为空
+        if (!StringUtils.hasText(methodId)){
+            return Result.fail("缺少参数");
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null){
+            return Result.fail("没有找到该方法");
+        }
+
+        // 根据方法的测量类型和方法id去查询最近时间的任务
+        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>()
+                .eq("measure_type", method.getMeasurementType())
+                .eq("method_key", methodId)
+                .orderByDesc("create_time")
+                .last("limit 1"));
+        if (task == null){
+            return Result.ok("没有找到该任务");
+        }
+        Map<String,String> params = new HashMap<>();
+        params.put("taskId", task.getId());
+        params.put("taskName", task.getTaskName());
+        return Result.ok(params);
     }
 
 

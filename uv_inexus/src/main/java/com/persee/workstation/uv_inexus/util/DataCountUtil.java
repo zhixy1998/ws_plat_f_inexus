@@ -10,7 +10,6 @@ public class DataCountUtil {
 
         if (abs != null) {
             double i = Double.parseDouble(abs);
-
             log.info("吸光度不为空，计算透光率");
             double v = Math.pow(10, -i) * 100;
             System.out.println("透光率:" + v);

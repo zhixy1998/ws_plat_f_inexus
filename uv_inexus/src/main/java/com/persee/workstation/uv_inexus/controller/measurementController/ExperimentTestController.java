@@ -72,6 +72,12 @@ public class ExperimentTestController {
         return experimentTestService.queryMethodProt(projectId,measureType,pageNum,pageSize);
     }
 
+    @GetMapping("useThisMethodPort")
+    @ApiOperation("使用此方法接口")
+    public Result useThisMethodPort(@RequestParam String methodId){
+        return experimentTestService.useThisMethodPort(methodId);
+    }
+
     @GetMapping("continueMeasuringPort")
     @ApiOperation("继续测量接口")
     public Result continueMeasuringPort(@RequestParam String projectId,@RequestParam String methodId){
@@ -119,6 +125,8 @@ public class ExperimentTestController {
     public Result<List<TaskBaseVO>> getAllTask(@RequestParam String projectId, @RequestParam String measureType){
         return experimentTestService.getAllTask(projectId,measureType);
     }
+
+
 
 
 

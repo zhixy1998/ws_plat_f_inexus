@@ -213,6 +213,32 @@ public class DevMessageUtil {
     }
 
     /**
+     * 光谱扫描:基线
+     */
+    public R<List<ChangeParam>> spectrumScanGetBaseline(Command command, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            log.info("绑定socket失败");
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+        Boolean b = changeXml();
+        if (!b) {
+            return R.fail("转换xml出错");
+        }
+        String cmdId = command.getCmdId();
+        //发送报文组
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        if (parse.equals("false")) {
+            return R.fail("基线失败");
+        }
+        List<ChangeParam> changeParam = (List<ChangeParam>) parse;
+        return R.ok(changeParam);
+    }
+
+    /**
      * 定位波长
      */
     public void wavelengthLocate(Command command, String deviceIp) {
@@ -291,6 +317,30 @@ public class DevMessageUtil {
         Constants.startTime = LocalDateTime.now();
         messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes);
     }
+
+    /**
+     * 光谱扫描: 获取测量数据
+     */
+    public void getMeasureData2(Command command, String deviceIp) {
+        R<DatagramSocket> re = messageUtil.getSocket();
+        if (!re.getSuccess()) {
+            log.info("绑定socket失败");
+            return ;
+        }
+        DatagramSocket socket = re.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            log.info("转换xml出错");
+            return;
+        }
+        String cmdId = command.getCmdId();
+        Transition transition = xml.get(cmdId);
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        Constants.startTime = LocalDateTime.now();
+        messageUtil.scanSendAndDeal2(socket, deviceIp, cmdId, bytes);
+    }
+
 
     /**
      * 转换xml为map
