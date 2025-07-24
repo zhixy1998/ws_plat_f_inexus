@@ -19,11 +19,12 @@ public class DeveloperFactory implements UserFactory{
         }
         if (!StringUtils.hasText(dto.getGroupNo())) {
             dto.setGroupNo(SystemGroupEnum.DEV_USER.getGroupNo());
-            dto.setGroupName(SystemGroupEnum.DEV_USER.getName());
         }
+        dto.setGroupName(SystemGroupEnum.DEV_USER.getName());
 
         SystemUserManagePO user = new SystemUserManagePO();
         BeanUtils.copyProperties(dto, user);
+        user.setGroupName(SystemGroupEnum.getName(dto.getGroupNo()));
 
 
         if (dto.getUserPermissionList() != null) {

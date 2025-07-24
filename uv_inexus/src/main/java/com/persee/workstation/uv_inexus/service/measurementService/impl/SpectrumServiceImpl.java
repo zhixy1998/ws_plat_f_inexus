@@ -1746,46 +1746,87 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Override
     public Result obtainReportParameters(String taskId) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        SpectralReportVo vo = new SpectralReportVo();
+
+        if ((taskId == null)) {
+            return Result.fail("任务id不能为空");
+        }
+
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-        SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
-        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-        SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
-        // 根据方法表的计算公式id和前处理id进行查询
-        CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
-        vo.setCalculationFormula(calculationFormula.getResultName());
-        StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
-        vo.setReferenceStandard(serviceById.getPretreatmentDescription());
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        if (task.getMeasureType().equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())) {
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+            SpectralReportVo vo = new SpectralReportVo();
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+
+            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            vo.setLuminosityMode(methodparam.getLuminosity());
+            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
+
+            vo.setReferenceMethod(method.getMethodName());
+            vo.setReferenceStandard(methodparam.getReferenceStandardName());
+            vo.setSteps(methodparam.getPreProcessParameters());
+            vo.setDetectionStartTime(task.getStartTime().format(formatter));
+            vo.setDetectionEndTime(task.getEndTime());
+            vo.setDataType("测量数据");
+
+            vo.setProject(project.getProjectName());
+            vo.setDetector(user.getUserName());
+            vo.setEnergyLight(methodparam.getEnergyLamp());
+            vo.setMethodName(method.getMethodName());
+
+            return Result.ok(vo);
+
+        } else {
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            SpectralReportVo vo = new SpectralReportVo();
+//            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
+            // 根据方法表的计算公式id和前处理id进行查询
+            CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
+            vo.setCalculationFormula(calculationFormula.getResultName());
+            StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
+            vo.setReferenceStandard(serviceById.getPretreatmentDescription());
 //        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).last("LIMIT 1"));
-        TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
-        vo.setSampleName(byId.getSampleName());
-        vo.setSampleNumber(byId.getSampleNumber());
-        vo.setDataType("测量数据");
-        vo.setScanSpeed(methodparam.getScanSpeed());
-        vo.setInstrumentWavelength(methodparam.getWaveLengthInterval());
-        vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-        vo.setLuminosityMode(methodparam.getLuminosity());
-        vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
-        vo.setReferenceMethod(method.getMethodName());
-        vo.setRemark(data.getRemark());
-        vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
-        vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
-        vo.setProject(project.getProjectName());
-        vo.setDetector(user.getUserName());
-        vo.setEnergyLight(methodparam.getEnergyLamp());
-        vo.setStairCorrection(methodparam.getLadderCorrection()=="0"?"启用":"不启用");
-        vo.setSpectrumScanImage(data.getDataImage());
-        vo.setOriginalData(data.getOriginalCalculationData());
-        vo.setGain(methodparam.getGain().toString());
-        vo.setScanRange(methodparam.getStartWaveLength()+"-"+methodparam.getEndWaveLength());
-        vo.setScanInterval(methodparam.getWaveLengthInterval());
-        vo.setMethodName(method.getMethodName());
-        vo.setRemark(data.getRemark());
-        vo.setSpectrumScanImage(data.getDataImage());
-        return Result.ok(vo);
+            TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
+            vo.setSampleName(byId.getSampleName());
+            vo.setSampleNumber(byId.getSampleNumber());
+            vo.setDataType("测量数据");
+            vo.setScanSpeed(methodparam.getScanSpeed());
+            vo.setInstrumentWavelength(methodparam.getWaveLengthInterval());
+            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            vo.setLuminosityMode(methodparam.getLuminosity());
+            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
+            vo.setReferenceMethod(method.getMethodName());
+            vo.setRemark(data.getRemark());
+            vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+            vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
+            vo.setProject(project.getProjectName());
+            vo.setDetector(user.getUserName());
+            vo.setEnergyLight(methodparam.getEnergyLamp());
+            vo.setStairCorrection(methodparam.getLadderCorrection() == "0" ? "启用" : "不启用");
+            vo.setSpectrumScanImage(data.getDataImage());
+            vo.setOriginalData(data.getOriginalCalculationData());
+            vo.setGain(methodparam.getGain().toString());
+            vo.setScanRange(methodparam.getStartWaveLength() + "-" + methodparam.getEndWaveLength());
+            vo.setScanInterval(methodparam.getWaveLengthInterval());
+            vo.setMethodName(method.getMethodName());
+            vo.setRemark(data.getRemark());
+            vo.setSpectrumScanImage(data.getDataImage());
+            return Result.ok(vo);
+        }
     }
 
     /**

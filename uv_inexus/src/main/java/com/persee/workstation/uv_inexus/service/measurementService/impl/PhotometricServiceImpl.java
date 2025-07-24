@@ -26,10 +26,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -115,6 +112,10 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result updateMethodParameter(PhotometricMethodParameterDto methodDto) {
+        // 根据方法id查询当前方法
+        if (!StringUtils.hasText(methodDto.getMethodId())) {
+            return Result.fail("缺少方法");
+        }
         // 根据方法id查询方法
         TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getMethodId());
         if (measureMethod==null){
@@ -192,10 +193,35 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
+    public Result<List<HeadVO>> sampleTableHead(String methodId) {
+
+        List<HeadVO> headVOList = new ArrayList<>();
+        if (!StringUtils.hasText(methodId)) {
+            return Result.ok(headVOList);
+        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.ok(headVOList);
+        }
+
+        PhotometricParameter param = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+        if (param.getSampleInputParams() == null || param.getSampleInputParams().isEmpty()) {
+            return Result.ok(headVOList);
+        }
+
+        for (InputParam inputParam : param.getSampleInputParams()) {
+            headVOList.add(new HeadVO(inputParam.getResultIdentity(), inputParam.getParamName()));
+        }
+        return Result.ok(headVOList);
+
+    }
+
+    @Override
     public Result addOrDeleteSample(AddOrDeleteSampleDTO dto) {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
-            return Result.fail("方法ID不能为空");
+            return Result.fail("请先创建方法");
         }
         if(dto.getNewSamples() == null) {
             dto.setNewSamples(new ArrayList<>());
@@ -384,6 +410,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());
+        param.setLuminosity(WaveLengthEnum.getName(photometricParameter.getLuminosity()));
 //        param.setPhotometricParameter(photometricParameter);
         return Result.ok(param);
     }

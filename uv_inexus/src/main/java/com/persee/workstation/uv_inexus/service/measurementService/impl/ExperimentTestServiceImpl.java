@@ -520,15 +520,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (task == null) {
             return Result.fail("任务不存在");
         }
-        // 根据任务id测量数据表
-        List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
-        if (measureData == null || measureData.size() == 0) {
-            return Result.fail("未查询到数据");
-        }
-        List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_delete", "0"));
-        if (analysisData == null || analysisData.size() == 0) {
-            return Result.fail("未查询到数据");
-        }
+
         if (reportName.equals("光度测量原始记录表格")){
 
             PhotometricReportDataVO vo = new PhotometricReportDataVO();
@@ -550,6 +542,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setHeadList(heads);
 
             List<Map<String, String>> list = photometricService.queryData(taskId, false).getData();
+
+            for (Map<String, String> stringMap : list) {
+                stringMap.put("sampleType", SampleTypeEnum.getName(stringMap.get("sampleType")));
+            }
+
             vo.setDataList(list);
 
             return Result.ok(vo);
@@ -566,6 +563,17 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.ok("暂未开放");
         }
         else if (reportName.equals("光谱扫描表格")) {
+
+            // 根据任务id测量数据表
+            List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
+            if (measureData == null || measureData.size() == 0) {
+                return Result.fail("未查询到数据");
+            }
+            List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_delete", "0"));
+            if (analysisData == null || analysisData.size() == 0) {
+                return Result.fail("未查询到数据");
+            }
+
             List<ReportDataVo> list = new ArrayList<>();
             for (TMeasureData data : measureData) {
                 ReportDataVo vo = new ReportDataVo();
