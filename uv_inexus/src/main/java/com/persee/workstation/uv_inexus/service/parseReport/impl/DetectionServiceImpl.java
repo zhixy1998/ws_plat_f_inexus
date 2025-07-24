@@ -72,6 +72,7 @@ public class DetectionServiceImpl implements DetectionService {
 //            "standard_number", "industry_type", "standard_name"
 //    );
     public static final Set<String> ALLOWED_QUERY_FIELDS = new HashSet<String>() {{
+        add("standard_identity");
         add("standard_name");
         add("industry");
         add("release_date");
