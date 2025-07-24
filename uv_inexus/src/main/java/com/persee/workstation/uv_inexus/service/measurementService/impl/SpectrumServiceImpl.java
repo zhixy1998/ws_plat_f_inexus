@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,6 +11,7 @@ import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManage
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
@@ -41,6 +43,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import javax.servlet.http.HttpServletResponse;
@@ -1766,8 +1769,31 @@ public class SpectrumServiceImpl implements SpectrumService {
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
 
+            if (StringUtils.hasText(task.getSampleKey())) {
+                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+                if (taskSpecimen.size() > 1) {
+                    TaskSpecimen specimen = taskSpecimen.get(0);
+                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                    vo.setSampleName(sample.getSampleName());
+                    vo.setSampleNumber(sample.getSampleNumber());
+
+                    LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
+                    wrapper.eq(TMeasureData::getTaskId, taskId)
+                            .eq(TMeasureData::getSampleKey, sample.getId());
+                    TMeasureData one = tMeasureDataService.getOne(wrapper);
+                    if (one != null) {
+                        vo.setDetectionStartTime(one.getMeasurementStartTime().format(formatter));
+                        vo.setDetectionEndTime(one.getMeasurementEndTime().format(formatter));
+                        vo.setOriginalData(one.getInstrumentData());
+                    }
+                }
+            }
+
+            vo.setReferenceMethod(method.getMethodName());
+            vo.setReferenceStandard(methodparam.getReferenceStandardName());
+
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-            vo.setLuminosityMode(methodparam.getLuminosity());
+            vo.setLuminosityMode(WaveLengthEnum.getName(methodparam.getLuminosity()));
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
 
             vo.setReferenceMethod(method.getMethodName());

@@ -610,12 +610,34 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         StringBuilder identity = new StringBuilder();
 
+        String luminosity = parameter.getLuminosity();
+        if (!StringUtils.hasText(luminosity)) {
+            luminosity = "1";
+        }
+
         for (PhotometricOriginDataInfo info : vo) {
-            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
-            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
+            if (WaveLengthEnum.abs.getCode().equals(luminosity)){
+                identity.append(info.getWavelength()).append("abs").append(",");
+                values.append(info.getAbsValue()).append(",");
+            } else {
+                identity.append(info.getWavelength()).append("t").append(",");
+                values.append(info.getTPercentValue()).append(",");
+            }
+//            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
+//            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
         }
         identity.append("t").append(",").append("m");
-        values.append("4").append(",").append("5");
+        if(!StringUtils.hasText(dilutionRatio)) {
+            values.append(dilutionRatio).append(",");
+        } else {
+            values.append("4").append(",");
+        }
+
+        if (!StringUtils.hasText(sampleVolume)) {
+            values.append(sampleVolume);
+        } else {
+            values.append("5");
+        }
 
         List<PhotometricCountDataInfo> countList = new ArrayList<>();
         for (PreCountResultParam param : resultParams) {
@@ -682,6 +704,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                     .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
 
             TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            System.err.println("查询数据");
             if (one != null) {
                 List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
 
@@ -693,6 +716,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
             ans.add(map);
         }
+
         return Result.ok(ans);
     }
 
