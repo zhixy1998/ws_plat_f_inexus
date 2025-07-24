@@ -117,47 +117,91 @@ public class ExportServiceImpl implements ExportService {
         }
     }
 
+    // 在ExportServiceImpl中检查buildQueryWrapper方法
     private QueryWrapper<Detection> buildQueryWrapper(Map<String, Object> queryParams) {
         QueryWrapper<Detection> queryWrapper = new QueryWrapper<>();
         if (queryParams == null || queryParams.isEmpty()) {
+            log.info("无筛选参数，查询所有数据");
             return queryWrapper;
         }
 
-        if (queryParams.containsKey("standard_name")) {
-            String standardName = (String) queryParams.get("standard_name");
-            if (standardName != null && !standardName.isEmpty()) {
+        // 1. 标准名称（模糊查询）：参数非空才添加条件
+        Object standardNameObj = queryParams.get("standard_name");
+        if (standardNameObj != null) {
+            String standardName = standardNameObj.toString().trim();
+            // 仅当参数非空时才添加筛选条件
+            if (!standardName.isEmpty()) {
                 queryWrapper.like("standard_name", standardName);
+                log.info("添加筛选条件：standard_name LIKE %{}%", standardName);
+            } else {
+                log.info("standard_name为空，不筛选该条件");
             }
         }
 
-        if (queryParams.containsKey("industry")) {
-            String industry = (String) queryParams.get("industry");
-            if (industry != null && !industry.isEmpty()) {
+        // 2. 行业（精确匹配）：参数非空才添加条件
+        Object industryObj = queryParams.get("industry");
+        if (industryObj != null) {
+            String industry = industryObj.toString().trim();
+            // 仅当参数非空时才添加筛选条件
+            if (!industry.isEmpty()) {
                 queryWrapper.eq("industry", industry);
+                log.info("添加筛选条件：industry = {}", industry);
+            } else {
+                log.info("industry为空，不筛选该条件");
             }
         }
 
-        if (queryParams.containsKey("release_date")) {
-            String releaseDate = (String) queryParams.get("release_date");
-            if (releaseDate != null && !releaseDate.isEmpty()) {
+        // 3. 发布日期（精确匹配）：参数为空则不筛选该条件（任何时间都匹配）
+        Object releaseDateObj = queryParams.get("release_date");
+        if (releaseDateObj != null) {
+            String releaseDate = releaseDateObj.toString().trim();
+            // 仅当参数非空且格式有效时，才添加条件
+            if (!releaseDate.isEmpty() && isValidDate(releaseDate)) {
                 queryWrapper.eq("release_date", releaseDate);
+                log.info("添加筛选条件：release_date = {}", releaseDate);
+            } else {
+                log.info("release_date为空或格式无效，不筛选该时间条件");
             }
         }
 
-        if (queryParams.containsKey("startDate")) {
-            String startDate = (String) queryParams.get("startDate");
-            if (startDate != null && !startDate.isEmpty()) {
+        // 4. 日期范围：开始日期（>=）为空则不筛选，非空才添加
+        Object startDateObj = queryParams.get("startDate");
+        if (startDateObj != null) {
+            String startDate = startDateObj.toString().trim();
+            // 仅当参数非空且格式有效时，才添加条件
+            if (!startDate.isEmpty() && isValidDate(startDate)) {
                 queryWrapper.ge("release_date", startDate);
-            }
-        }
-        if (queryParams.containsKey("endDate")) {
-            String endDate = (String) queryParams.get("endDate");
-            if (endDate != null && !endDate.isEmpty()) {
-                queryWrapper.le("release_date", endDate);
+                log.info("添加筛选条件：release_date >= {}", startDate);
+            } else {
+                log.info("startDate为空或格式无效，不筛选开始时间条件");
             }
         }
 
+        // 5. 日期范围：结束日期（<=）为空则不筛选，非空才添加
+        Object endDateObj = queryParams.get("endDate");
+        if (endDateObj != null) {
+            String endDate = endDateObj.toString().trim();
+            // 仅当参数非空且格式有效时，才添加条件
+            if (!endDate.isEmpty() && isValidDate(endDate)) {
+                queryWrapper.le("release_date", endDate);
+                log.info("添加筛选条件：release_date <= {}", endDate);
+            } else {
+                log.info("endDate为空或格式无效，不筛选结束时间条件");
+            }
+        }
+
+        log.info("构建的筛选条件：{}", queryWrapper.getCustomSqlSegment());
         return queryWrapper;
+    }
+
+    // 日期格式校验（支持 yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss）
+    private boolean isValidDate(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) {
+            return false;
+        }
+        // 正则匹配常见日期格式
+        String datePattern = "^\\d{4}-\\d{2}-\\d{2}(\\s\\d{2}:\\d{2}:\\d{2})?$";
+        return dateStr.matches(datePattern);
     }
 
     private void exportData(OutputStream outputStream, List<Detection> targetDetections) throws IOException {
