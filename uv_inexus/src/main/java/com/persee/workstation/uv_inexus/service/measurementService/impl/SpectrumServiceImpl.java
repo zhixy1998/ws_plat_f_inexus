@@ -1412,7 +1412,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<Sample> sampleList = new ArrayList<>();
         if (taskSpecimen == null || taskSpecimen.size() == 0) {
-            return Result.ok("任务中没有样品数据");
+            return Result.ok(new ArrayList<>());
         }
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
             if (taskSpeciman.getDeleteType().equals("0")){
