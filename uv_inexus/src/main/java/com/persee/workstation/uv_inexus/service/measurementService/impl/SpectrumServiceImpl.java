@@ -1403,7 +1403,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            return Result.ok("任务不存在");
         }
         if (task.getSampleKey() == null) {
             return Result.ok(null);
@@ -1412,7 +1412,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<Sample> sampleList = new ArrayList<>();
         if (taskSpecimen == null || taskSpecimen.size() == 0) {
-            return Result.fail("任务中没有样品数据");
+            return Result.ok("任务中没有样品数据");
         }
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
             if (taskSpeciman.getDeleteType().equals("0")){
@@ -1656,7 +1656,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public Result deleteSampleListPort(String taskId, String sampleId) {
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        List<TaskSpecimen> taskSpecimenList = JSON.parseObject(task.getSampleKey(), List.class);
+        List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen taskSpecimen : taskSpecimenList){
             if (taskSpecimen.getSpecimenKey().equals(sampleId)){
                 taskSpecimen.setDeleteType("1");

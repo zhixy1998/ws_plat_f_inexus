@@ -189,9 +189,11 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                             JSONObject point = new JSONObject();
                             point.put("x", x_data.get(j));
                             if (spectrumParameter.getLadderCorrection().equals("1")){
-                                point.put("y", yData.get(j));
+                                String format = String.format("%.2f", Double.valueOf(yData.get(j)));
+                                point.put("y", format);
                             }else{
-                                point.put("y", y_data.get(j));
+                                String format = String.format("%.2f", Double.valueOf(y_data.get(j)));
+                                point.put("y", format);
                             }
                             dataArray.add(point);
                         }
