@@ -344,70 +344,70 @@ public class DetectionServiceImpl implements DetectionService {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam1Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam1Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam2Name() != null && !formula.getInputParam2Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam2Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam2Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam3Name() != null && !formula.getInputParam3Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam3Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam3Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam4Name() != null && !formula.getInputParam4Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam4Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam4Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam5Name() != null && !formula.getInputParam5Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam5Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam5Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam6Name() != null && !formula.getInputParam6Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam6Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam6Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam7Name() != null && !formula.getInputParam7Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam7Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam7Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam8Name() != null && !formula.getInputParam8Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam8Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam8Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam9Name() != null && !formula.getInputParam9Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam9Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam9Identity());
                 inputParamsSet.add(dto);
             }
             if (formula.getInputParam10Name() != null && !formula.getInputParam10Name().isEmpty()) {
                 InputParamDTO dto = new InputParamDTO();
                 dto.setParamName(formula.getInputParam10Name());
                 dto.setUnit(unit);
-                dto.setResultIdentity(resultIdentity);
+                dto.setResultIdentity(formula.getInputParam10Identity());
                 inputParamsSet.add(dto);
             }
         }
