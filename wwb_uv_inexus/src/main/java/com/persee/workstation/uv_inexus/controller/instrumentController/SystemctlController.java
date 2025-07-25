@@ -4,8 +4,9 @@ package com.persee.workstation.uv_inexus.controller.instrumentController;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.service.systemctlConfigService.UserManagerService;
-import com.persee.workstation.uv_inexus.vo.systemConfigVo.LoginUserInfoVO;
+import com.persee.workstation.uv_inexus.service.systemUserManageService.SystemUserManageService;
+import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
+import com.persee.workstation.uv_inexus.vo.userManageVo.LoginUserInfoVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -19,13 +20,16 @@ import org.springframework.web.bind.annotation.*;
 public class SystemctlController {
 
     @Autowired
-    UserManagerService userManagerService;
+    SystemUserManageService userManageService;
+
+    @Autowired
+    MessageUtil messageUtil;
 
     @PostMapping("/login")
     @ApiOperation("用户登录接口")
     public Result<LoginUserInfoVO> login(@RequestBody UserLoginDTO loginDTO){
 
-        R<LoginUserInfoVO> login = userManagerService.login(loginDTO);
+        R<LoginUserInfoVO> login = userManageService.login(loginDTO);
         if (login.getSuccess()) {
             log.info("登陆成功");
             return Result.ok(login.getData());
@@ -37,11 +41,9 @@ public class SystemctlController {
 
     @PostMapping("/logout")
     @ApiOperation("用户登出接口")
-    public Result<Boolean> loginOut(@RequestParam String updateBy){
+    public Result<Boolean> loginOut(){
         return Result.ok(true);
     }
-
-
 
 
 

@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
@@ -35,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import springfox.documentation.spring.web.json.Json;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -232,6 +234,10 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (dto.getNewSamples().isEmpty() && dto.getDelSampleIds().isEmpty()) {
             return Result.ok("没有要新增或删除的样品！");
         }
+
+        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+            return Result.fail("表格新增列数不能超过10列");
+        }
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
@@ -284,10 +290,26 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
         }
 
-        for (SampleVO sample : dto.getNewSamples()) {
+        for (Map<String, String> map : dto.getNewSamples()) {
+            String jsonString = JSON.toJSONString(map);
+            SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
             TMeasureSample newSample = new TMeasureSample();
             BeanUtils.copyProperties(sample, newSample);
             newSample.setId(sample.getSampleId());
+
+            if (dto.getHeads() != null) {
+
+                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
+
+                JSONObject newColData = new JSONObject();
+
+                for (HeadVO head : dto.getHeads()) {
+                    String s = map.get(head.getIdentity());
+                    newColData.put(head.getIdentity(), s);
+                }
+
+                newSample.setNewColData(JSON.toJSONString(newColData));
+            }
 
             if (StringUtils.hasText(newSample.getId())) {
                 tMeasureSampleService.updateById(newSample);
@@ -390,6 +412,67 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
         return Result.ok(sampleVOList);
+    }
+
+    @Override
+    public Result<List<JSONObject>> newQuerySampleInfo(String taskId) {
+        List<JSONObject> sampleVOList = new ArrayList<>();
+        if (!StringUtils.hasText(taskId)) {
+            return Result.ok(sampleVOList);
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen specimen : taskSpecimen) {
+                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                SampleVO vo = new SampleVO();
+                BeanUtils.copyProperties(measureSample, vo);
+                vo.setSampleId(measureSample.getId());
+                String jsonString = JSONObject.toJSONString(vo);
+
+                JSONObject jsonObject = JSONObject.parseObject(jsonString);
+                if (StringUtils.hasText(measureSample.getNewColData())) {
+                    JSONObject object = JSONObject.parseObject(measureSample.getNewColData());
+                    jsonObject.putAll(object);
+                }
+                sampleVOList.add(jsonObject);
+
+            }
+        }
+        return Result.ok(sampleVOList);
+    }
+
+    @Override
+    public Result<List<HeadVO>> querySampleHeads(String taskId) {
+
+        List<HeadVO> ans = new ArrayList<>();
+
+        if (!StringUtils.hasText(taskId)) {
+            return Result.ok(ans);
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen specimen : taskSpecimen) {
+                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
+
+                if (heads != null && !heads.equals(ans)) {
+                    ans.addAll(heads);
+                }
+            }
+        }
+        return Result.ok(ans);
     }
 
     @Override
@@ -505,6 +588,23 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<String> waveLengths = Parameter.getWaveLength();
         List<HeadVO> ans = new ArrayList<>();
 
+        if (StringUtils.hasText(taskId)) {
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            if (task != null && StringUtils.hasText(task.getSampleKey())) {
+
+                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+                for (TaskSpecimen specimen : taskSpecimen) {
+                    TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                    List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
+
+                    if (!heads.equals(ans)) {
+                        ans.addAll(heads);
+                    }
+                }
+
+            }
+        }
+
         if (waveLengths != null && !waveLengths.isEmpty()) {
 
             for (String waveLength : waveLengths) {
@@ -610,12 +710,61 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         StringBuilder identity = new StringBuilder();
 
-        for (PhotometricOriginDataInfo info : vo) {
-            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
-            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
+        String luminosity = parameter.getLuminosity();
+        if (!StringUtils.hasText(luminosity)) {
+            luminosity = "1";
         }
-        identity.append("t").append(",").append("m");
-        values.append("4").append(",").append("5");
+
+        for (InputParam inputParam : parameter.getSampleInputParams()) {
+            identity.append(inputParam.getResultIdentity()).append(",");
+            if (sample.getHeads() != null && !sample.getHeads().isEmpty()) {
+                List<HeadVO> vos = JSON.parseArray(sample.getHeads(), HeadVO.class);
+                for (HeadVO head : vos) {
+                    JSONObject jsonObject = JSON.parseObject(sample.getNewColData());
+                    if (head.getName().equals(inputParam.getParamName())) {
+                        values.append(jsonObject.getString(head.getIdentity())).append(",");
+                    } else{
+                        String s = String.valueOf((Math.random() * 10) + 1);
+                        values.append(s).append(",");
+                    }
+                }
+            }
+        }
+
+
+        for (int i = 0; i < vo.size(); i++) {
+            PhotometricOriginDataInfo info = vo.get(i);
+            if (WaveLengthEnum.abs.getCode().equals(luminosity)){
+//                identity.append(info.getWavelength()).append("abs").append(",");
+
+                identity.append("A").append(i+1).append(",");
+
+                values.append(info.getAbsValue()).append(",");
+            } else {
+//                identity.append(info.getWavelength()).append("t").append(",");
+                identity.append("A").append(i+1).append(",");
+                values.append(info.getTPercentValue()).append(",");
+            }
+//            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
+//            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
+        }
+//        identity.append("t").append(",").append("m");
+
+
+//        if(!StringUtils.hasText(dilutionRatio)) {
+//            values.append(dilutionRatio).append(",");
+//        } else {
+//            values.append("4").append(",");
+//        }
+//
+//        if (!StringUtils.hasText(sampleVolume)) {
+//            values.append(sampleVolume);
+//        } else {
+//            values.append("5");
+//        }
+
+        identity.deleteCharAt(identity.length()-1);
+        values.deleteCharAt(values.length()-1);
 
         List<PhotometricCountDataInfo> countList = new ArrayList<>();
         for (PreCountResultParam param : resultParams) {
@@ -660,6 +809,12 @@ public class PhotometricServiceImpl implements PhotometricService {
             map.put("deleteType", specimen.getDeleteType());
             map.put("sampleLocation", sample.getSampleLocation());
 
+            if (StringUtils.hasText(sample.getNewColData())){
+                Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
+
+                map.putAll(object);
+            }
+
             LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TMeasureData::getTaskId, taskId)
                     .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
@@ -682,6 +837,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                     .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
 
             TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            System.err.println("查询数据");
             if (one != null) {
                 List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
 
@@ -693,6 +849,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
             ans.add(map);
         }
+
         return Result.ok(ans);
     }
 
@@ -1033,6 +1190,5 @@ public class PhotometricServiceImpl implements PhotometricService {
             return R.fail(e.getMessage());
         }
     }
-
 
 }

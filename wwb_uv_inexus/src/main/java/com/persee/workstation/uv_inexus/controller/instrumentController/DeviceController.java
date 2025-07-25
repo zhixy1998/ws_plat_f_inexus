@@ -11,8 +11,7 @@ import com.persee.workstation.uv_inexus.service.instrumentService.DeviceAutoInje
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
-import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/dev/ins")
-@ApiModel("仪器管理接口")
+@Api("仪器管理接口")
 public class DeviceController {
 
     @Autowired
@@ -36,7 +35,7 @@ public class DeviceController {
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
     public Result<List<FindDeviceVO>> findDevice(){
-        List<FindDeviceVO> device = deviceManageService.findDevice();
+        List<FindDeviceVO> device = deviceManageService.newFindDevice();
         if (device == null) {
             return Result.fail("查找设备异常");
         } else {
@@ -100,8 +99,12 @@ public class DeviceController {
     @GetMapping("/getDeviceConfig")
     @ApiOperation("查询仪器配置")
     public Result<QueryDeviceConfigVO> getDeviceConfig(@RequestParam String deviceSerialNumber) {
-        QueryDeviceConfigVO vo = deviceManageService.queryDeviceConfig(deviceSerialNumber);
-        return Result.ok(vo);
+        R<QueryDeviceConfigVO> r = deviceManageService.queryDeviceConfig(deviceSerialNumber);
+        if (r.getSuccess()){
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
     @GetMapping("/getBandWidth")

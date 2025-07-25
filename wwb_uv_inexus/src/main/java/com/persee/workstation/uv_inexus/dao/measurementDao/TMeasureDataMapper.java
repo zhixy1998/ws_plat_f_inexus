@@ -11,6 +11,5 @@ import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
  * @since 2025-06-12 10:05:08
  */
 public interface TMeasureDataMapper extends BaseMapper<TMeasureData> {
-
 }
 

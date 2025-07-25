@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO">
+
+    <update id="updateToken">
+        update t_system_user_manage set token = #{token} where user_name = #{user_name}
+    </update>
+    <select id="getPassword" resultType="String">
+        select password from t_system_user_manage where user_name = #{user_name}
+    </select>
+    <select id="getToken" resultType="java.lang.String">
+        select token from t_system_user_manage where user_name = #{user_name}
+    </select>
+    <select id="queryRoleInfo" resultType="com.persee.workstation.uv_inexus.vo.systemUserManageVo.QueryUserVO">
+
+        select system_role_name as systemIdentityName, system_role_num as systemIdentityId from t_system_role
+        <if test="system_role_num != null">
+            where system_role_num = #{system_role_num}
+        </if>
+    </select>
+
+    <select id="queryGroupInfo" resultType="com.persee.workstation.uv_inexus.vo.systemUserManageVo.GroupVO">
+        select group_name as groupName, group_no as groupNo, group_desc as groupDesc from t_system_user_group_manage
+        where system_identity_id = #{system_identity_id}
+            <if test="groupNo != null">
+                and group_no = #{groupNo}
+            </if>
+    </select>
+
+</mapper>

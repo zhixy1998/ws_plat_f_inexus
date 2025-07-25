@@ -1,0 +1,27 @@
+package com.persee.workstation.uv_inexus.enums.systemUserManageEnums;
+
+import lombok.Getter;
+
+@Getter
+public enum SystemGroupEnum {
+
+    DEV_USER("dev-g","开发组"),
+    PRODUCTION_LINE_ADMIN("cx-01","产线管理员"),
+    PRODUCTION_LINE_INSTALL("cx-02","产线装调员"),
+    PRODUCTION_LINE_INSPECTOR("cx-03","产线检验员"),
+    REPAIR_USER("re-g","维修人员"),
+    CUSTOMER_ADMIN("cus-01", "客户管理组"),
+    CUSTOMER_TESTER("cus-02", "实验组"),;
+
+
+    private final String groupNo;
+
+    private final String name;
+
+    SystemGroupEnum(String groupNo, String name){
+        this.groupNo = groupNo;
+        this.name = name;
+    }
+
+
+}

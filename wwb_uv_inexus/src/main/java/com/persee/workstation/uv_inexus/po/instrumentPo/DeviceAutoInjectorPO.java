@@ -24,6 +24,10 @@ public class DeviceAutoInjectorPO extends BasePO {
     @TableField("message_port")
     private Integer messagePort;
 
+    @ApiModelProperty("连接状态，0-未连接，1-已连接")
+    @TableField("connect_status")
+    private Integer connectStatus;
+
     @ApiModelProperty("是否开机自动对进样器初始化， 0-否，1-是")
     @TableField("is_start_init")
     private Integer isStartInit;

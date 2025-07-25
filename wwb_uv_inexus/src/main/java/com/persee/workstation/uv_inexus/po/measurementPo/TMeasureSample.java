@@ -16,16 +16,20 @@ import lombok.Data;
 @TableName("t_measure_sample")
 public class TMeasureSample{
     // 样品id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
-    // 任务id
-    @TableField("task_id")
-    private String taskId;
+    // 样品编号
+    @TableField("sample_number")
+    private String sampleNumber;
 
     // 样品类型
     @TableField("sample_type")
     private String sampleType;
+
+    // 样品种类
+    @TableField("sample_kind")
+    private String sampleKind;
 
     // 样品名称
     @TableField("sample_name")
@@ -59,21 +63,8 @@ public class TMeasureSample{
     @TableField("input_data")
     private String inputData;
 
-    // 预留字段1 ~ 预留字段5
-    @TableField("field1")
-    private String field1;
-
-    @TableField("field2")
-    private String field2;
-
-    @TableField("field3")
-    private String field3;
-
-    @TableField("field4")
-    private String field4;
-
-    @TableField("field5")
-    private String field5;
-
+    // 颜色
+    @TableField("color")
+    private String color;
 }
 

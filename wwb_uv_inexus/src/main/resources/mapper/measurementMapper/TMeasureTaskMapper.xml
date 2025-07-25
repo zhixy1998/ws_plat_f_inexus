@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureTaskMapper">
+
+
+    <select id="getAllTask" resultType="com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO">
+        select id as taskId,
+            task_name as taskName
+        from t_measure_task
+        where project_item_key = #{projectId} and measure_type = #{measureType}
+    </select>
+</mapper>

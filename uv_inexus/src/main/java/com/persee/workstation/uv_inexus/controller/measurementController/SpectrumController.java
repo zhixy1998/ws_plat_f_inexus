@@ -111,10 +111,10 @@ public class SpectrumController {
     }
 
 
-    @DeleteMapping("deleteSampleListPort")
+    @GetMapping("deleteSampleListPort")
     @ApiOperation("删除样品列表接口")
-    public Result deleteSampleListPort(@RequestParam String measureId) {
-        return spectrumService.deleteSampleListPort(measureId);
+    public Result deleteSampleListPort(@RequestParam String taskId,@RequestParam String sampleId) {
+        return spectrumService.deleteSampleListPort(taskId,sampleId);
     }
 
 
@@ -124,10 +124,17 @@ public class SpectrumController {
         return spectrumService.changeTheListPort(taskId,type);
     }
 
-    @DeleteMapping("deleteChangeListPort")
+    @GetMapping("deleteChangeListPort")
     @ApiOperation("删除变换列表接口")
     public Result deleteChangeListPort(@RequestParam String analysisId) {
         return spectrumService.deleteChangeListPort(analysisId);
+    }
+
+
+    @GetMapping("restoreDeletedListData")
+    @ApiOperation("恢复已删除数据接口")
+    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String paramId,@RequestParam String type){
+        return spectrumService.restoreDeletedListData(taskId,paramId,type);
     }
 
     @GetMapping("queryAnalysisGaugePoint")

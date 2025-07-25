@@ -1,5 +1,7 @@
 package com.persee.workstation.uv_inexus.constant;
 
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,12 +56,20 @@ public class Constants {
     // 存储处理后的数据
     public static volatile List<String> field3Values = new CopyOnWriteArrayList<>();
 
+    // 存储仪器数据
     public static volatile List<String> instrumentData = new CopyOnWriteArrayList<>();
 
+    // 存储计算后的数据
     public static volatile List<String> originalCalculationData = new CopyOnWriteArrayList<>();
 
     public static volatile List<String> x_data = new ArrayList<>();
     public static volatile List<String> y_data = new ArrayList<>();
+
+    public static volatile List<ChangeParam> measurd_data = new ArrayList<>();
+
+//    public static volatile List<String> r_data = new ArrayList<>();
+//    public static volatile List<String> s_data = new ArrayList<>();
+//    public static volatile List<String> d_data = new ArrayList<>();
 
     public static final String EndData = "0D0A,000";
 

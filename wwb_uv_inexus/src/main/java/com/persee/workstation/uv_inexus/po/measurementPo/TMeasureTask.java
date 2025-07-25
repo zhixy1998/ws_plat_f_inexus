@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @TableName("t_measure_task")
 public class TMeasureTask{
     // 任务id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 用户id
@@ -33,13 +33,17 @@ public class TMeasureTask{
     @TableField("create_time")
     private LocalDateTime createTime;
 
-    // 采集起始时间
-    @TableField("collection_start_time")
-    private LocalDateTime collectionStartTime;
-
     // 方法Key
     @TableField("method_key")
     private String methodKey;
+
+    // 样品Key 由TaskSpecimen类转JSONString
+    @TableField("sample_key")
+    private String sampleKey;
+
+    // 测量类型
+    @TableField("measure_type")
+    private String measureType;
 
     // 所属项目Key
     @TableField("project_item_key")
@@ -57,11 +61,8 @@ public class TMeasureTask{
     @TableField("device_serial_number")
     private String deviceSerialNumber;
 
-    // 预留字段4 ~ 预留字段5
-    @TableField("field4")
-    private String field4;
-
-    @TableField("field5")
-    private String field5;
+    // 是否删除
+    @TableField("is_delete")
+    private String isDelete;
 }
 
