@@ -76,6 +76,6 @@ public class TMeasureSample{
     List<HeadVO> heads;
 
     @TableField("new_col_data")
-    JSONObject newColData;
+    String newColData;
 }
 
