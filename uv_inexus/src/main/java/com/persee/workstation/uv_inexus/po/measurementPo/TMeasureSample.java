@@ -73,9 +73,9 @@ public class TMeasureSample{
     private String color;
 
     @TableField("heads")
-    List<HeadVO> heads;
+    private String heads;
 
     @TableField("new_col_data")
-    String newColData;
+    private String newColData;
 }
 

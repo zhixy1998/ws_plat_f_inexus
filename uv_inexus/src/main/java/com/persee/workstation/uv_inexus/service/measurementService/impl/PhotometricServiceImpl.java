@@ -298,7 +298,8 @@ public class PhotometricServiceImpl implements PhotometricService {
             newSample.setId(sample.getSampleId());
 
             if (dto.getHeads() != null) {
-                newSample.setHeads(dto.getHeads());
+
+                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
 
                 JSONObject newColData = new JSONObject();
 
@@ -464,7 +465,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                List<HeadVO> heads = measureSample.getHeads();
+                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
 
                 if (heads != null && !heads.equals(ans)) {
                     ans.addAll(heads);
@@ -594,7 +595,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
                 for (TaskSpecimen specimen : taskSpecimen) {
                     TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                    List<HeadVO> heads = measureSample.getHeads();
+                    List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
 
                     if (!heads.equals(ans)) {
                         ans.addAll(heads);
@@ -717,7 +718,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         for (InputParam inputParam : parameter.getSampleInputParams()) {
             identity.append(inputParam.getResultIdentity()).append(",");
             if (sample.getHeads() != null && !sample.getHeads().isEmpty()) {
-                for (HeadVO head : sample.getHeads()) {
+                List<HeadVO> vos = JSON.parseArray(sample.getHeads(), HeadVO.class);
+                for (HeadVO head : vos) {
                     JSONObject jsonObject = JSON.parseObject(sample.getNewColData());
                     if (head.getName().equals(inputParam.getParamName())) {
                         values.append(jsonObject.getString(head.getIdentity())).append(",");
