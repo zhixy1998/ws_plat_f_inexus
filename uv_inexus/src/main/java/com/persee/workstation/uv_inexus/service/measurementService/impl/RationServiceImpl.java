@@ -285,6 +285,7 @@ public class RationServiceImpl implements RationService {
                     newColData.put(head.getIdentity(), s);
                 }
 
+                newSample.setHeads(dto.getHeads());
                 newSample.setNewColData(JSON.toJSONString(newColData));
             }
 

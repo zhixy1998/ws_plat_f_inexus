@@ -1528,6 +1528,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 byId.setSampleNumber(newSample.getSampleNumber());
                 byId.setSampleLocation(newSample.getSampleLocation());
 
+                byId.setHeads(paramDto.getHeads());
                 byId.setNewColData(newColData.toJSONString());
                 boolean update = tMeasureSampleService.updateById(byId);
                 if (!update){
@@ -1541,6 +1542,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 sample.setColor("#000000");
                 sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
 
+                sample.setHeads(paramDto.getHeads());
                 sample.setNewColData(newColData.toJSONString());
                 boolean save = tMeasureSampleService.save(sample);
                 if (!save){

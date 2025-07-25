@@ -298,6 +298,8 @@ public class PhotometricServiceImpl implements PhotometricService {
             newSample.setId(sample.getSampleId());
 
             if (dto.getHeads() != null) {
+                newSample.setHeads(dto.getHeads());
+
                 JSONObject newColData = new JSONObject();
 
                 for (HeadVO head : dto.getHeads()) {
@@ -411,6 +413,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(sampleVOList);
     }
 
+    @Override
     public Result<List<JSONObject>> newQuerySampleInfo(String taskId) {
         List<JSONObject> sampleVOList = new ArrayList<>();
         if (!StringUtils.hasText(taskId)) {
@@ -463,7 +466,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 List<HeadVO> heads = measureSample.getHeads();
 
-                if (!heads.equals(ans)) {
+                if (heads != null && !heads.equals(ans)) {
                     ans.addAll(heads);
                 }
             }
