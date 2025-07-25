@@ -4,7 +4,10 @@ import lombok.Data;
 
 @Data
 public class ProjectParamDto {
+    // 项目名称
     private String projectName;
+    // 备注
     private String remark;
-    private String userName;
+    // 用户名
+    private String updateBy;
 }

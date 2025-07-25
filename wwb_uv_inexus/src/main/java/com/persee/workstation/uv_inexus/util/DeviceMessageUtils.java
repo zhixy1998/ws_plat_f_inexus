@@ -17,7 +17,7 @@ import java.util.Arrays;
 @Service("DeviceMessageUtils")
 public class DeviceMessageUtils {
     private volatile static String DEFAULT_IP = "255.255.255.255";
-//    private volatile static String DEFAULT_IP = "169.254.110.254";
+//    private volatile static String DEFAULT_IP = "169.254.110.66";
 
     @Value("${device.default.machineIP}")
     private String MACHINE_IP;
@@ -204,35 +204,35 @@ public class DeviceMessageUtils {
         return (byte)sum;
     }
 
-//    public Boolean setScanParam(String deviceIp, Integer port, byte[][] data, ScanParamInfo realData){
-//        String s = "aaa";
-//
-//        try{
-//            InetAddress ip = InetAddress.getByName(deviceIp);
-//
-//            for (byte[] bytes : data) {
-//                bytes = changeParam(bytes, realData);
-//                log.info("连接设备");
-//                int length = bytes.length;
-//                int dealType = bytes[length - 1];
-////                bytes[length - 1] = 0;
-//                byte[] newData = Arrays.copyOf(bytes, length - 1);
-//                byte[][] receive = send(ip, newData, port);
-//                log.info(check);
-////                s = scanDealData(receive, dealType);
-//            }
-//            if (s.equals("false")){
-//                log.info("接收的数据有问题");
-//                return false;
-//
-//            }
-//            return true;
-//        } catch (Exception e) {
-//            log.info("出现异常");
-//            log.info(e.getMessage());
-//            return false;
-//        }
-//    }
+    public Boolean setScanParam(String deviceIp, Integer port, byte[][] data, ScanParamInfo realData){
+        String s = "aaa";
+
+        try{
+            InetAddress ip = InetAddress.getByName(deviceIp);
+
+            for (byte[] bytes : data) {
+                bytes = changeParam(bytes, realData);
+                log.info("连接设备");
+                int length = bytes.length;
+                int dealType = bytes[length - 1];
+//                bytes[length - 1] = 0;
+                byte[] newData = Arrays.copyOf(bytes, length - 1);
+                byte[][] receive = send(ip, newData, port);
+                log.info(check);
+//                s = scanDealData(receive, dealType);
+            }
+            if (s.equals("false")){
+                log.info("接收的数据有问题");
+                return false;
+
+            }
+            return true;
+        } catch (Exception e) {
+            log.info("出现异常");
+            log.info(e.getMessage());
+            return false;
+        }
+    }
 
     public void setScanParam(String deviceIp, Integer port, byte[][] data){
         String s = "";
@@ -561,6 +561,7 @@ public class DeviceMessageUtils {
 
             InetAddress localBindIp = InetAddress.getByName(MACHINE_IP);
             socket = new DatagramSocket(RECEIVE_PORT, localBindIp); // 绑定到指定 IP
+//            socket = new DatagramSocket(RECEIVE_PORT); // 绑定到指定 IP
             socket.setSoTimeout(timeOut);
             //发送udp请求
             DatagramPacket packet = new DatagramPacket(cmd, cmd.length, ip, port);
@@ -603,10 +604,13 @@ public class DeviceMessageUtils {
 
             InetAddress localBindIp = InetAddress.getByName(MACHINE_IP);
             socket = new DatagramSocket(RECEIVE_PORT, localBindIp);
+//            socket = new DatagramSocket(RECEIVE_PORT);
             socket.setSoTimeout(timeOut);
 
             // 构造发送的UDP数据包
             DatagramPacket packet = new DatagramPacket(cmd, cmd.length, ip, port);
+            InetAddress localAddress = socket.getLocalAddress();
+            System.out.println(localAddress);
             socket.send(packet); // 发送请求
 
             byte[] firstPacket = null;

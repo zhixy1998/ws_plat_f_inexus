@@ -1,0 +1,350 @@
+package com.persee.workstation.uv_inexus.websocket;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+@Slf4j
+public class PhotometricWebSocket extends TextWebSocketHandler {
+
+    // 所有设备连接 <sessionId, session>
+    private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+
+    // 假设的设备数据缓存队列
+    private static final Map<String, List<String>> deviceDataCache = new ConcurrentHashMap<>();
+
+    @Autowired
+    private TMeasureTaskService tMeasureTaskService;
+    @Autowired
+    private DevMessageUtil devMessageUtil;
+
+    @Autowired
+    private TMeasureMethodService tMeasureMethodService;
+
+    @Autowired
+    private TMeasureDataService tMeasureDataService;
+
+    @Autowired
+    private PhotometricService photometricService;
+
+    @Autowired
+    private TMeasureSampleService tMeasureSampleService;
+
+    @Autowired
+    private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
+    DeviceInfoService infoService;
+
+    @Value("1")
+    private String right;
+
+    @Value("0")
+    private String error;
+
+
+    /**
+     * 前端连接成功 WebSocket 时触发
+     * @param session
+     */
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) throws IOException {
+        // 记录当前连接
+        sessions.put(session.getId(), session);
+
+        // 解析参数
+        String query = Objects.requireNonNull(session.getUri()).getQuery();
+        String taskId = getQueryParam(query, "taskId");
+        String sampleId= getQueryParam(query, "sampleId");
+        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
+        if (deviceSerialNumber == null) {
+            sendAndClose(session, "缺少 deviceSerialNumber 参数");
+            return;
+        }
+
+        if (taskId == null) {
+            sendAndClose(session, "缺少 taskId 参数");
+            return;
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+
+        if (task == null || !StringUtils.hasText(task.getSampleKey())) {
+            sendAndClose(session, "任务或样品不存在");
+            return;
+        }
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+
+        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
+            log.info("缺少波长， 无法测量");
+            sendAndClose(session, "缺少波长， 无法测量");
+            return;
+        }
+
+        if (sampleId != null) {
+            TaskSpecimen specimen = new TaskSpecimen();
+            for (TaskSpecimen s : taskSpecimen) {
+                if (s.getSpecimenKey().equals(sampleId)) {
+                    BeanUtils.copyProperties(s, specimen);
+                }
+            }
+            if (specimen.getDeleteType().equals(right)) {
+                log.info("删除的样品,不需要测量");
+                session.sendMessage(new TextMessage("已删除的样品, 无法测量"));
+                return;
+            }
+            removeOldData(taskId, sampleId);
+
+            singleSampleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+
+        } else {
+            for (TaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
+                    System.out.println("删除的样品,不需要测量");
+                    continue;
+                }
+                R<Boolean> r = singleSampleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+                if (!r.getSuccess()) {
+                    sendAndClose(session, "测量失败");
+                    return;
+                }
+                specimen.setIsTested(right);
+            }
+        }
+
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        tMeasureTaskService.updateById(task);
+        if (session.isOpen()) {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("result", "finish");
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+        }
+        sessions.remove(session.getId());
+        session.close();
+
+    }
+
+    private void removeOldData(String taskId, String sampleId) {
+        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureData::getTaskId, taskId).eq(TMeasureData::getSampleKey, sampleId);
+        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+        if (data != null) {
+            tMeasureDataService.remove(queryWrapper);
+        }
+
+        LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+        analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId);
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+        if (analysisData != null) {
+            tMeasureAnalysisDataService.remove(analysisDataQueryWrapper);
+        }
+    }
+
+    public R<Boolean> singleSampleMeasure(TaskSpecimen specimen, PhotometricParameter parameter, String taskId, String methodId, String deviceSerialNumber, String sessionId) throws IOException{
+
+        WebSocketSession session = sessions.get(sessionId);
+
+        String sampleKey = specimen.getSpecimenKey();
+        TMeasureSample sample = tMeasureSampleService.getById(sampleKey);
+
+        List<PhotometricOriginDataInfo> originDataList = new ArrayList<>();
+        List<Command> list = new ArrayList<>();
+        List<ChangeParam> machineData = new ArrayList<>();
+
+        List<String> waveLengths = parameter.getWaveLength();
+
+        list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        LocalDateTime startTime = LocalDateTime.now();
+        for (String waveLength : waveLengths) {
+            list.add(new Command("SetWl", new Object[]{waveLength}));
+            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+            list.add(new Command("Measure", new Object[]{}));
+
+            String ip = infoService.getIp(deviceSerialNumber);
+            R<ChangeParam> res = devMessageUtil.photoMetricMeasurement(list, ip);
+            if (!res.getSuccess()) {
+                log.info("测量出错");
+                return R.fail("测量出错");
+            }
+            ChangeParam response = res.getData();
+            machineData.add(response);
+            ChangeParam originRsd = new ChangeParam();
+            List<ChangeParam> params = parameter.getChanageParams();
+            for (ChangeParam param : params) {
+                if (param.getWl().equals(waveLength)) {
+                    BeanUtils.copyProperties(param, originRsd);
+                    break;
+                }
+            }
+            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
+            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+
+            PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
+            originDataInfo.setMode(parameter.getLuminosity());
+            originDataInfo.setWavelength(waveLength);
+            if (parameter.getLuminosity().equals(WaveLengthEnum.abs.getCode())) {
+                originDataInfo.setAbsValue(data);
+                originDataInfo.setTPercentValue(tPercent);
+
+            } else{
+                originDataInfo.setTPercentValue(tPercent);
+                originDataInfo.setAbsValue(data);
+            }
+            originDataList.add(originDataInfo);
+
+            if (session.isOpen()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
+                jsonObject.put("value", data);
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            }
+            list.clear();
+        }
+
+        R<List<PhotometricCountDataInfo>> countedData = photometricService.formula(originDataList, sampleKey, methodId);
+
+        if (!countedData.getSuccess()) {
+            log.info("计算出错");
+            return R.fail("计算出错");
+        }
+        List<PhotometricCountDataInfo> countDataInfos = countedData.getData();
+
+        for (PhotometricCountDataInfo countDataInfo : countDataInfos) {
+            if (session.isOpen()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+                jsonObject.put("key", countDataInfo.getResultIdentity() + "-" + countDataInfo.getFormulaText());
+                jsonObject.put("value", countDataInfo.getCountValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            }
+        }
+
+        LocalDateTime endTime = LocalDateTime.now();
+
+        PhotometricSampleAndDataVO sampleAndDataVO = new PhotometricSampleAndDataVO();
+        sampleAndDataVO.setTaskId(taskId);
+        sampleAndDataVO.setSampleId(sampleKey);
+        sampleAndDataVO.setSample(sample);
+        sampleAndDataVO.setWavelengthData(originDataList);
+        sampleAndDataVO.setCountData(countDataInfos);
+        sampleAndDataVO.setMachineData(machineData);
+        sampleAndDataVO.setStartTime(startTime);
+        sampleAndDataVO.setEndTime(endTime);
+        sampleAndDataVO.setSampleTime(startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        photometricService.savePhotometricMeasureData(sampleAndDataVO);
+        return R.ok();
+    }
+
+
+    /**
+     * 收到前端消息时触发
+     * @param session
+     * @param message
+     * @throws IOException
+     */
+    @Override
+    public void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
+        String msg = message.getPayload();
+        System.out.println("收到前端消息: " + msg);
+
+        // 示例：如果前端发来"save"，就保存当前缓存
+        if ("save".equalsIgnoreCase(msg)) {
+            String deviceId = getQueryParam(session.getUri().getQuery(), "device_id");
+            if (deviceId != null && deviceDataCache.containsKey(deviceId)) {
+                List<String> toSave = new ArrayList<>(deviceDataCache.get(deviceId));
+                System.out.println("保存数据[" + deviceId + "]: " + toSave.size() + "条");
+                // TODO: 持久化保存到数据库
+                deviceDataCache.get(deviceId).clear();
+            }
+        }
+    }
+
+    /**
+     * 前端连接关闭时触发
+     * @param session
+     * @param status
+     */
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        sessions.remove(session.getId());
+        System.out.println("连接关闭: " + session.getId());
+    }
+
+    /**
+     * 连接异常时触发
+     * @param session
+     * @param exception
+     */
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        sessions.remove(session.getId());
+        System.out.println("连接异常: " + exception.getMessage());
+    }
+
+    /**
+     * 获取查询参数
+     * @param query
+     * @param key
+     * @return
+     */
+    private String getQueryParam(String query, String key) {
+        if (query == null) return null;
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=");
+            if (pair.length == 2 && pair[0].equals(key)) return pair[1];
+        }
+        return null;
+    }
+
+    /**
+     * 发送消息并关闭连接
+     * @param session
+     * @param msg
+     */
+    private void sendAndClose(WebSocketSession session, String msg) {
+        try {
+            session.sendMessage(new TextMessage(msg));
+            session.close();
+        } catch (IOException ignored) {}
+    }
+
+}

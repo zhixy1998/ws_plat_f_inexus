@@ -3,8 +3,8 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 import lombok.Data;
 
 @Data
-public class SpectrumParameter {
-    // 光度模式
+public class SpectrumParameter extends MeasurePublicParameters {
+    // 光度模式(1.abs 2.T% 3.R%)
     private String luminosity;
     // 开始波长
     private String startWaveLength;
@@ -12,20 +12,14 @@ public class SpectrumParameter {
     private String endWaveLength;
     // 波长间隔
     private String waveLengthInterval;
-    // 重复模式
+    // 重复模式(0.不重复 1.单池重复)
     private String repetitionPattern;
     // 重复次数
     private String repetitionTime;
     // 时间间隔
     private String timeInterval;
-    // 光谱带宽
-    private String spectralBandwidth;
-    // 响应时间
-    private String responseTime;
-    // 换灯波长
-    private String changeLampWaveLength;
-    // 能量灯
-    private String energyLamp;
-    // 增益
-    private String gain;
+    // 阶梯校正(0.不启用 1.启用)
+    private String ladderCorrection;
+    // 扫描速度(0.慢速 1.中速 2.快速 3.极快)
+    private String scanSpeed;
 }

@@ -16,12 +16,20 @@ import lombok.Data;
 @TableName("t_measure_analysis_data")
 public class TMeasureAnalysisData {
     // 分析数据id
-    @TableId(value = "id", type = IdType.NONE) // 假设id是主键
+    @TableId(value = "id",type = IdType.ASSIGN_UUID)// 假设id是主键
     private String id;
+
+    // 分析名称
+    @TableField("analysis_name")
+    private String analysisName;
 
     // 测量任务id
     @TableField("task_id")
     private String taskId;
+
+    // 样品id
+    @TableField("sample_key")
+    private String sampleKey;
 
     // 分析参数
     @TableField("analysis_param")
@@ -31,44 +39,32 @@ public class TMeasureAnalysisData {
     @TableField("analysis_result")
     private String analysisResult;
 
-    // 预留字段1
-    @TableField("field1")
-    private String field1;
+    // 变换类型 (0.四则运算 1.高级运算 2.平滑 3.微分 4.光度模式转换)
+    @TableField("analysis_type")
+    private String analysisType;
 
-    // 预留字段2
-    @TableField("field2")
-    private String field2;
+    // 标记点
+    @TableField("gauge_point")
+    private String gaugePoint;
 
-    // 预留字段3
-    @TableField("field3")
-    private String field3;
+    // 峰
+    @TableField("peak")
+    private String peak;
 
-    // 预留字段4
-    @TableField("field4")
-    private String field4;
+    // 谷
+    @TableField("grain")
+    private String grain;
 
-    // 预留字段5
-    @TableField("field5")
-    private String field5;
+    // 颜色
+    @TableField("color")
+    private String color;
 
-    // 预留字段6
-    @TableField("field6")
-    private String field6;
+    // 分析数据图像
+    @TableField("analysis_data_image")
+    private byte[] analysisDataImage;
 
-    // 预留字段7
-    @TableField("field7")
-    private String field7;
-
-    // 预留字段8
-    @TableField("field8")
-    private String field8;
-
-    // 预留字段9
-    @TableField("field9")
-    private String field9;
-
-    // 预留字段10
-    @TableField("field10")
-    private String field10;
+    // 是否删除 (0:未删除 1:已删除)
+    @TableField("is_delete")
+    private String isDelete;
 }
 

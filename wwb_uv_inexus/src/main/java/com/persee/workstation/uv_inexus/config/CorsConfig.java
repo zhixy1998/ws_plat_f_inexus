@@ -16,4 +16,12 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowCredentials(true) // 允许携带Cookie
                 .maxAge(3600); // 预检请求缓存时间（秒）
     }
+
+//    @Bean
+//    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+//        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+//        // 添加分页插件
+//        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+//        return interceptor;
+//    }
 }

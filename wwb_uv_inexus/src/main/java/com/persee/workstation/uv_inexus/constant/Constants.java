@@ -1,12 +1,15 @@
 package com.persee.workstation.uv_inexus.constant;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Constants {
     public Constants() {
     }
+
+    public static final String SUPER_USER_NAME = "admin";
 
     public final static String DEFAULT_USER_NAME = "default";
 
@@ -40,8 +43,10 @@ public class Constants {
     public final static Integer CONNECT_DEVICE_SUCCESS = 2;
     public final static Integer CONNECT_DEVICE_FALSE = 3;
 
-    public static volatile LocalDateTime startTime;
+    public static volatile LocalDateTime startTime=null;
     public static volatile LocalDateTime endTime = null;
+
+    public static volatile Boolean isRunning = true;
 
     public static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
     // 存储原始的数据
@@ -49,11 +54,32 @@ public class Constants {
     // 存储处理后的数据
     public static volatile List<String> field3Values = new CopyOnWriteArrayList<>();
 
+    public static volatile List<String> instrumentData = new CopyOnWriteArrayList<>();
+
+    public static volatile List<String> originalCalculationData = new CopyOnWriteArrayList<>();
+
+    public static volatile List<String> x_data = new ArrayList<>();
+    public static volatile List<String> y_data = new ArrayList<>();
+
     public static final String EndData = "0D0A,000";
+
+    //等待操作，所有操作执行完成后恢复需要该状态，异常之后，也要恢复该状态
+    public static final String machine_status_origin = "0";
+    public static final String machine_status_init = "init";
+    public static final String machine_status_zero = "zero";
+    public static final String machine_status_setParam = "param";
+    public static final String machine_status_measure = "measure";
+    public static final String machine_status_error = "error"; // 仪器故障，处理待定
+
 
 
     /**
-     * 接收数据字节码类型：
+     * 查询用户时，权限校验结果
      */
+    public static final String GET_ALL_USER = "all";
+
+    public static final String GET_CURRENT_ROLE = "current_role";
+
+    public static final String GET_CURRENT_GROUP = "current_group";
 
 }

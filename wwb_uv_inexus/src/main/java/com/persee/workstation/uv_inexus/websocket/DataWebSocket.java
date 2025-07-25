@@ -6,9 +6,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.systemctlConfigDao.UserConfigDAO;
+import com.persee.workstation.uv_inexus.dao.userManageDao.UserConfigDAO;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.systemctlConfigPo.UserConfigPO;
+import com.persee.workstation.uv_inexus.po.userManagePo.UserConfigPO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.SpectrumScan;
@@ -40,7 +40,6 @@ public class DataWebSocket {
     private TMeasureDataService dataService = BeanUtils.getBean(TMeasureDataService.class);
     private DeviceMessageUtils messageUtils =  BeanUtils.getBean(DeviceMessageUtils.class);
     private TMeasureMethodService methodService = BeanUtils.getBean(TMeasureMethodService.class);
-    private TMeasureStandardService standardService = BeanUtils.getBean(TMeasureStandardService.class);
     // 日志记录器
     private static final Logger log = LoggerFactory.getLogger(DataWebSocket.class);
     // 单线程执行器，用于执行数据推送任务
@@ -122,8 +121,7 @@ public class DataWebSocket {
         TMeasureData tMeasureData = new TMeasureData();
         Constants.field1Values.clear();
         TMeasureMethod method = methodService.getById(methodId);
-        TMeasureStandard standard = standardService.getById(method.getStandardKey());
-        String measurementParamInfo = standard.getMeasurementParamInfo();
+        String measurementParamInfo = method.getMeasurementParamInfo();
         ObjectMapper objectMapper = new ObjectMapper();
         ScanParamInfo ScanParamInfo=new ScanParamInfo();
         try {
@@ -131,9 +129,10 @@ public class DataWebSocket {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        // 调用仪器
+        // 调用仪器 TODO 差前端传过来的小数位数参数
         spectrumScan.scanStart(deviceSerialNumber,ScanParamInfo);
 
+        // 新建一个线程用于获取数据
         new Thread(() -> {
             try {
                 while (Constants.field1Values.size() == 0) {
@@ -176,26 +175,16 @@ public class DataWebSocket {
                     }
                     // 推送数据点
                     session.getBasicRemote().sendText(payload.toJSONString());
-//                        if ( last){
-//                            session.close();
-//                        }
                     // 模拟数据推送速度（500ms/点）
                     TimeUnit.MILLISECONDS.sleep(100);
                 }
                 session.close();
-//                sessions.get(sessionId);
-//                log.info("-----"+ session.getId());
-//                JSONObject data = new JSONObject();
-//                data.put("result","finish");
-//                data.put("task_id",taskResultId);
-//                session.getBasicRemote().sendText(data.toJSONString());
-//                session.close();
             } catch (IOException | InterruptedException e) {
                 log.error("数据推送异常: {}", e.getMessage());
             }
         }).start();
 
-
+        // 等待测量结束,然后对数据对象进行创建
         new Thread(() -> {
             while (Constants.endTime == null) {
                 try {
@@ -212,7 +201,7 @@ public class DataWebSocket {
                 tMeasureTask.setTaskName("任务" + new Random().nextInt(100000));
                 tMeasureTask.setMethodKey(methodId);
                 tMeasureTask.setCreateTime(LocalDateTime.now());
-                tMeasureTask.setCollectionStartTime(Constants.startTime);
+                tMeasureTask.setStartTime(Constants.startTime);
                 tMeasureTask.setProjectItemKey(project.getId());
                 tMeasureTask.setMethodKey(methodId);
                 tMeasureTask.setUserId(userConfigPO.getId());

@@ -18,12 +18,16 @@ import java.time.LocalDateTime;
 @TableName("t_measure_data")
 public class TMeasureData {
     // 测量数据id
-    @TableId(value = "id", type = IdType.NONE) // 主键字段
+    @TableId(value = "id",type = IdType.ASSIGN_UUID) // 主键字段
     private String id;
 
     // 测量任务id
     @TableField("task_id")
     private String taskId;
+
+    // 序列号(当多个测量数据的时候按照序列号进行部分排序)
+    @TableField("serial_number")
+    private Integer serialNumber;
 
     // 样品Key
     @TableField("sample_key")
@@ -45,35 +49,34 @@ public class TMeasureData {
     @TableField("measurement_end_time")
     private LocalDateTime measurementEndTime;
 
-    // 预留字段1 ~ 预留字段10
-    @TableField("field1")
-    private String field1;
+    // 标记点
+    @TableField("gauge_point")
+    private String gaugePoint;
 
-    @TableField("field2")
-    private String field2;
+    // 峰
+    @TableField("peak")
+    private String peak;
 
-    @TableField("field3")
-    private String field3;
+    // 谷
+    @TableField("grain")
+    private String grain;
 
-    @TableField("field4")
-    private String field4;
+    // 采样时间
+    @TableField("sampling_time")
+    private String samplingTime;
 
-    @TableField("field5")
-    private String field5;
+    // 数据图像
+    @TableField("data_image")
+    private byte[] dataImage;
 
-    @TableField("field6")
-    private String field6;
+    // 备注
+    @TableField("remark")
+    private String remark;
 
-    @TableField("field7")
-    private String field7;
-
-    @TableField("field8")
-    private String field8;
-
-    @TableField("field9")
-    private String field9;
-
-    @TableField("field10")
-    private String field10;
+    // 是否删除
+    @TableField("is_delete")
+    private String isDelete;
 }
+
+
 

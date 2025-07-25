@@ -21,6 +21,8 @@ public interface DeviceManageService {
 
     List<FindDeviceVO> findDevice();
 
+    List<FindDeviceVO> newFindDevice();
+
     /**
      * 仪器激活接口
      * 参数暂时未知 @param
@@ -33,7 +35,7 @@ public interface DeviceManageService {
      * @param deviceSerialNumber
      * @return
      */
-    QueryDeviceConfigVO queryDeviceConfig(String deviceSerialNumber);
+    R<QueryDeviceConfigVO> queryDeviceConfig(String deviceSerialNumber);
 
     /**
      * 查询光谱带宽接口
@@ -58,7 +60,7 @@ public interface DeviceManageService {
      * @param closeTime
      * @return
      */
-    Boolean timedShutdown(String deviceSerialNumber, String closeTime);
+    Boolean timedStart(String deviceSerialNumber, String closeTime);
 
     /**
      * 仪器校准接口
@@ -74,6 +76,16 @@ public interface DeviceManageService {
      * @return
      */
     List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber);
+
+    /**
+     * 检查仪器状态
+     */
+    R<Boolean> checkDeviceStatus(String deviceSerialNumber);
+
+    /**
+     * 更新仪器状态
+     */
+    R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status);
 
     void test();
 
