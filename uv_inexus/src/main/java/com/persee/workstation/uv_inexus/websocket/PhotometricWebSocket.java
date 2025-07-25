@@ -47,6 +47,8 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
     // 假设的设备数据缓存队列
     private static final Map<String, List<String>> deviceDataCache = new ConcurrentHashMap<>();
 
+    private static volatile int status = 0;
+
     @Autowired
     private TMeasureTaskService tMeasureTaskService;
     @Autowired
@@ -79,18 +81,24 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
     /**
      * 前端连接成功 WebSocket 时触发
+     *
      * @param session
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
+
+        if (status == 0) {
+            sendAndClose(session, "已有连接，不要重复操作");
+        }
+        status = 1;
         // 记录当前连接
         sessions.put(session.getId(), session);
 
         // 解析参数
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
-        String sampleId= getQueryParam(query, "sampleId");
-        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
+        String sampleId = getQueryParam(query, "sampleId");
+        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         if (deviceSerialNumber == null) {
             sendAndClose(session, "缺少 deviceSerialNumber 参数");
             return;
@@ -157,6 +165,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         }
         sessions.remove(session.getId());
         session.close();
+        status = 1;
 
     }
 
@@ -174,10 +183,11 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
         if (analysisData != null) {
             tMeasureAnalysisDataService.remove(analysisDataQueryWrapper);
+            System.out.println("删除数据");
         }
     }
 
-    public R<Boolean> singleSampleMeasure(TaskSpecimen specimen, PhotometricParameter parameter, String taskId, String methodId, String deviceSerialNumber, String sessionId) throws IOException{
+    public R<Boolean> singleSampleMeasure(TaskSpecimen specimen, PhotometricParameter parameter, String taskId, String methodId, String deviceSerialNumber, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
 
@@ -224,7 +234,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
                 originDataInfo.setAbsValue(data);
                 originDataInfo.setTPercentValue(tPercent);
 
-            } else{
+            } else {
                 originDataInfo.setTPercentValue(tPercent);
                 originDataInfo.setAbsValue(data);
             }
@@ -234,8 +244,13 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("sampleId", sampleKey);
                 jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
-                jsonObject.put("value", data);
+                jsonObject.put("value", originDataInfo.getAbsValue());
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
+                jsonObject.put("value", originDataInfo.getTPercentValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
             }
             list.clear();
         }
@@ -258,6 +273,14 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             }
         }
 
+        if (session.isOpen()) {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sampleId", sampleKey);
+            jsonObject.put("key", "samplingTime");
+            jsonObject.put("value", startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+        }
+
         LocalDateTime endTime = LocalDateTime.now();
 
         PhotometricSampleAndDataVO sampleAndDataVO = new PhotometricSampleAndDataVO();
@@ -277,6 +300,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
     /**
      * 收到前端消息时触发
+     *
      * @param session
      * @param message
      * @throws IOException
@@ -300,6 +324,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
     /**
      * 前端连接关闭时触发
+     *
      * @param session
      * @param status
      */
@@ -311,6 +336,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
     /**
      * 连接异常时触发
+     *
      * @param session
      * @param exception
      */
@@ -322,6 +348,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
     /**
      * 获取查询参数
+     *
      * @param query
      * @param key
      * @return
@@ -337,14 +364,19 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
     /**
      * 发送消息并关闭连接
+     *
      * @param session
      * @param msg
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("result", "finish");
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             session.close();
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
     }
 
 }

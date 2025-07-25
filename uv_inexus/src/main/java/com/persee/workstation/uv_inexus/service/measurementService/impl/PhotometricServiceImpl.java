@@ -6,10 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
@@ -29,10 +26,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -120,24 +114,23 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result updateMethodParameter(PhotometricMethodParameterDto methodDto) {
         // 根据方法id查询当前方法
         if (!StringUtils.hasText(methodDto.getMethodId())) {
-            return Result.fail("缺少方法id");
+            return Result.fail("缺少方法");
         }
-        TMeasureMethod method = tMeasureMethodService.getById(methodDto.getMethodId());
-
-        // 将ExperimentMethodDto中的值转入SpectrumParameter对象中
-        PhotometricParameter param = new PhotometricParameter();
-        BeanUtils.copyProperties(methodDto, param);
-
-        String s = JSON.toJSONString(param);
-//            String s = new ObjectMapper().writeValueAsString(param);
-        method.setMeasurementParamInfo(s);
-
-        if (!methodDto.getMethodName().equals(method.getMethodName())) {
-            method.setMethodName(methodDto.getMethodName());
+        // 根据方法id查询方法
+        TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getMethodId());
+        if (measureMethod==null){
+            return Result.fail("方法不存在");
         }
-        boolean update = tMeasureMethodService.updateById(method);
-
-        return Result.ok(update);
+        // 将前端传过来的值复制到SpectrumParameter类中
+        PhotometricParameter parameter = new PhotometricParameter();
+        BeanUtils.copyProperties(methodDto, parameter);
+        measureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
+        measureMethod.setMethodName(methodDto.getMethodName());
+        boolean update = tMeasureMethodService.updateById(measureMethod);
+        if (!update){
+            return Result.fail("更新失败");
+        }
+        return Result.ok(measureMethod.getId());
     }
 
     @Override
@@ -200,10 +193,35 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
+    public Result<List<HeadVO>> sampleTableHead(String methodId) {
+
+        List<HeadVO> headVOList = new ArrayList<>();
+        if (!StringUtils.hasText(methodId)) {
+            return Result.ok(headVOList);
+        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.ok(headVOList);
+        }
+
+        PhotometricParameter param = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+        if (param.getSampleInputParams() == null || param.getSampleInputParams().isEmpty()) {
+            return Result.ok(headVOList);
+        }
+
+        for (InputParam inputParam : param.getSampleInputParams()) {
+            headVOList.add(new HeadVO(inputParam.getResultIdentity(), inputParam.getParamName()));
+        }
+        return Result.ok(headVOList);
+
+    }
+
+    @Override
     public Result addOrDeleteSample(AddOrDeleteSampleDTO dto) {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
-            return Result.fail("方法ID不能为空");
+            return Result.fail("请先创建方法");
         }
         if(dto.getNewSamples() == null) {
             dto.setNewSamples(new ArrayList<>());
@@ -392,6 +410,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());
+        param.setLuminosity(WaveLengthEnum.getName(photometricParameter.getLuminosity()));
 //        param.setPhotometricParameter(photometricParameter);
         return Result.ok(param);
     }
@@ -544,8 +563,8 @@ public class PhotometricServiceImpl implements PhotometricService {
 
             LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                    .orderByDesc(TMeasureData::getSerialNumber);
+                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
+//                    .orderByDesc(TMeasureData::getSerialNumber);
             TMeasureData data = tMeasureDataService.getOne(queryWrapper);
 
             if (data != null) {
@@ -591,12 +610,34 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         StringBuilder identity = new StringBuilder();
 
+        String luminosity = parameter.getLuminosity();
+        if (!StringUtils.hasText(luminosity)) {
+            luminosity = "1";
+        }
+
         for (PhotometricOriginDataInfo info : vo) {
-            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
-            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
+            if (WaveLengthEnum.abs.getCode().equals(luminosity)){
+                identity.append(info.getWavelength()).append("abs").append(",");
+                values.append(info.getAbsValue()).append(",");
+            } else {
+                identity.append(info.getWavelength()).append("t").append(",");
+                values.append(info.getTPercentValue()).append(",");
+            }
+//            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
+//            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
         }
         identity.append("t").append(",").append("m");
-        values.append("4").append(",").append("5");
+        if(!StringUtils.hasText(dilutionRatio)) {
+            values.append(dilutionRatio).append(",");
+        } else {
+            values.append("4").append(",");
+        }
+
+        if (!StringUtils.hasText(sampleVolume)) {
+            values.append(sampleVolume);
+        } else {
+            values.append("5");
+        }
 
         List<PhotometricCountDataInfo> countList = new ArrayList<>();
         for (PreCountResultParam param : resultParams) {
@@ -663,6 +704,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                     .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
 
             TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            System.err.println("查询数据");
             if (one != null) {
                 List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
 
@@ -674,6 +716,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
             ans.add(map);
         }
+
         return Result.ok(ans);
     }
 
@@ -1012,7 +1055,6 @@ public class PhotometricServiceImpl implements PhotometricService {
             return R.ok(new File(fileName));
         } catch (Exception e) {
             return R.fail(e.getMessage());
-
         }
     }
 

@@ -1,6 +1,5 @@
 package com.persee.workstation.uv_inexus.controller.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddSampleDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
 import io.swagger.annotations.ApiModel;
@@ -21,11 +20,11 @@ public class TimeSweepController {
         return timeSweepService.queryProjectAllMethods(projectId,measureForm);
     }
 
-    @PostMapping("addSamplePort")
-    @ApiOperation("添加样本接口")
-    public Result addSamplePort(@RequestBody AddSampleDto paramDto){
-        return timeSweepService.addSamplePort(paramDto);
-    }
+//    @PostMapping("addSamplePort")
+//    @ApiOperation("添加样本接口")
+//    public Result addSamplePort(@RequestBody AddSampleDto paramDto){
+//        return timeSweepService.addSamplePort(paramDto);
+//    }
 
     @GetMapping("sampleListPort")
     @ApiOperation("获取样本列表接口")

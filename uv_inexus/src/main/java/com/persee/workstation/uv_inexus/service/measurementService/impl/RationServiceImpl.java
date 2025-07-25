@@ -571,6 +571,7 @@ public class RationServiceImpl implements RationService {
                 LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
                 analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
                         .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
+//                        .orderByDesc();
 
                 TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
                 if (one != null) {

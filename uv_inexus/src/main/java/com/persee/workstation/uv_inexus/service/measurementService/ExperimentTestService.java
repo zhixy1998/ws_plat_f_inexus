@@ -43,4 +43,6 @@ public interface ExperimentTestService {
     Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType);
 
     Result<List<TaskBaseVO>> getAllTask(String projectId, String measureType);
+
+    Result useThisMethodPort(String methodId);
 }

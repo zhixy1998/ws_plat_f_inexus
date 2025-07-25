@@ -9,8 +9,10 @@ import java.util.Map;
 public class SampleListVo {
     // 标题
     private String title;
-    // id
-    private String key;
+    // 测量id
+    private String measureId;
+    // 样品id
+    private String sampleId;
     // 颜色
     private String color;
     // 数据

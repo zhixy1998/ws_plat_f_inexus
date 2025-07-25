@@ -10,7 +10,6 @@ public class DataCountUtil {
 
         if (abs != null) {
             double i = Double.parseDouble(abs);
-
             log.info("吸光度不为空，计算透光率");
             double v = Math.pow(10, -i) * 100;
             System.out.println("透光率:" + v);
@@ -44,14 +43,16 @@ public class DataCountUtil {
         double r1 = Double.parseDouble(real.getR());
         double s1 = Double.parseDouble(real.getS());
 
-        double m1 = r0-z*d0;
-        double m2 = s0-z*d0;
-        double a1 = m1/m2;
+        double v0 = z * d0;
+        double m1 = r0- v0;
+        double m2 = s0- v0;
+        double a1 = m2/m1;
         System.out.println("a1:" + a1);
 
-        double m3 = r1-z*d1;
-        double m4 = s1-z*d1;
-        double a2 = m3/m4;
+        double v1 = z * d1;
+        double m3 = r1- v1;
+        double m4 = s1- v1;
+        double a2 = m4/m3;
         System.out.println("a2:" + a2);
 
         double ans = a2/a1 * 100;
