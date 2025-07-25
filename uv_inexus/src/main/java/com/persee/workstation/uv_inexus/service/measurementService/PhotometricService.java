@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
+import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
@@ -38,6 +39,9 @@ public interface PhotometricService {
     Result revokeDel(String taskId, String sampleId);
 
     Result querySampleInfo(String taskId);
+    Result newQuerySampleInfo(String taskId);
+
+    Result<List<HeadVO>> querySampleHeads(String taskId);
 
     /**
      * 查询方法参数
@@ -107,4 +111,5 @@ public interface PhotometricService {
     Result<MeasurementCurrentInfoVO> getInfoByTaskId(String taskId);
 
     R<File> downloadWord(String taskId);
+
 }

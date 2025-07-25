@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -32,6 +33,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
@@ -1485,6 +1487,10 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (paramDto.getNewSamples()==null){
             paramDto.setNewSamples(new ArrayList<>());
         }
+
+        if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
+            return Result.fail("表格新增列数不能超过10列");
+        }
         // 根据任务id进行查询
         TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
         if (task == null) {
@@ -1500,7 +1506,19 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
 
         // 遍历新增的样品列表,如果id为null则进行新增,如果id不为null则进行方法修改
-        for (SampleVO newSample : paramDto.getNewSamples()) {
+        for (Map<String, String> map : paramDto.getNewSamples()) {
+            String jsonString = JSON.toJSONString(map);
+            SampleVO newSample = JSON.parseObject(jsonString, SampleVO.class);
+
+            JSONObject newColData = new JSONObject();
+            if (paramDto.getHeads() != null) {
+
+                for (HeadVO head : paramDto.getHeads()) {
+                    String s = map.get(head.getIdentity());
+                    newColData.put(head.getIdentity(), s);
+                }
+            }
+
             if (newSample.getSampleId()!=null){
                 TMeasureSample byId = tMeasureSampleService.getById(newSample.getSampleId());
                 if (byId == null){
@@ -1509,6 +1527,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                 byId.setSampleName(newSample.getSampleName());
                 byId.setSampleNumber(newSample.getSampleNumber());
                 byId.setSampleLocation(newSample.getSampleLocation());
+
+                byId.setNewColData(newColData.toJSONString());
                 boolean update = tMeasureSampleService.updateById(byId);
                 if (!update){
                     return Result.ok("修改失败");
@@ -1520,6 +1540,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                 sample.setSampleLocation(newSample.getSampleLocation());
                 sample.setColor("#000000");
                 sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
+
+                sample.setNewColData(newColData.toJSONString());
                 boolean save = tMeasureSampleService.save(sample);
                 if (!save){
                     return Result.ok("新增失败");

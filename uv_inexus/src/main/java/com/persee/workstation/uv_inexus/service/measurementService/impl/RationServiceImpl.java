@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
@@ -212,6 +213,10 @@ public class RationServiceImpl implements RationService {
             return Result.ok("没有要新增或删除的样品！");
         }
 
+        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+            return Result.fail("表格新增列数不能超过10列");
+        }
+
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
@@ -259,7 +264,10 @@ public class RationServiceImpl implements RationService {
             }
         }
 
-        for (SampleVO sample : dto.getNewSamples()) {
+        for (Map<String, String> map : dto.getNewSamples()) {
+
+            String jsonString = JSON.toJSONString(map);
+            SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
 
             if (StringUtils.hasText(sample.getSampleKind())) {
                 return Result.fail("缺少样品种类");
@@ -267,6 +275,19 @@ public class RationServiceImpl implements RationService {
 
             TMeasureSample newSample = new TMeasureSample();
             BeanUtils.copyProperties(sample, newSample);
+            newSample.setId(sample.getSampleId());
+
+            if (dto.getHeads() != null) {
+                JSONObject newColData = new JSONObject();
+
+                for (HeadVO head : dto.getHeads()) {
+                    String s = map.get(head.getIdentity());
+                    newColData.put(head.getIdentity(), s);
+                }
+
+                newSample.setNewColData(JSON.toJSONString(newColData));
+            }
+
             if (StringUtils.hasText(newSample.getId())) {
                 tMeasureSampleService.updateById(newSample);
             } else {

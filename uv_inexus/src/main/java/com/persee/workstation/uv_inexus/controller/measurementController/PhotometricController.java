@@ -46,7 +46,14 @@ public class PhotometricController {
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
     public Result getSampleList(@RequestParam String taskId) {
-        return photometricService.querySampleInfo(taskId);
+//        return photometricService.querySampleInfo(taskId);
+        return photometricService.newQuerySampleInfo(taskId);
+    }
+
+    @GetMapping("querySampleHeads")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+        return photometricService.querySampleHeads(taskId);
     }
 
     @GetMapping("getCurrentInfo")
@@ -60,12 +67,6 @@ public class PhotometricController {
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSample(@RequestBody AddOrDeleteSampleDTO dto) {
         return photometricService.addOrDeleteSample(dto);
-    }
-
-    @GetMapping("getSampleInputHead")
-    @ApiOperation("获取样本输入表头接口")
-    public Result<List<HeadVO>> getSampleInputHead(@RequestParam String methodId) {
-        return photometricService.sampleTableHead(methodId);
     }
 
     @GetMapping("deleteOneSample")
