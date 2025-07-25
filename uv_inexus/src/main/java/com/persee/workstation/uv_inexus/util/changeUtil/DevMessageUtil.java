@@ -58,7 +58,7 @@ public class DevMessageUtil {
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
-                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
                 String address = socket.getLocalAddress().getHostAddress();
                 Object[] split = address.split("\\.");
                 int length = param.length;
@@ -319,7 +319,7 @@ public class DevMessageUtil {
     }
 
     /**
-     * 光谱扫描: 获取测量数据
+     * 光谱扫描: 获取测量数据2
      */
     public void getMeasureData2(Command command, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();

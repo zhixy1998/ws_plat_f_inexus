@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 public class SpectrumParameter extends MeasurePublicParameters {
-    // 光度模式(1.abs 2.T% 3.R%)
+    // 光度模式(1.abs 2.T% 3.Es 4.Er)
     private String luminosity;
     // 开始波长
     private String startWaveLength;

@@ -149,7 +149,7 @@ public class MessageUtil {
 
             long lastReceiveTime = System.currentTimeMillis();
 
-            new Thread(() -> {scanReceiveAndDeal(scanSocket);}).start();
+            new Thread(() -> {scanReceiveAndDeal2(scanSocket);}).start();
         }catch (Exception e) {
             e.printStackTrace();
         }
@@ -397,7 +397,6 @@ public class MessageUtil {
 
     }
 
-
     /**
      * 扫描接收并处理
      * @param scanSocket
@@ -438,6 +437,66 @@ public class MessageUtil {
             }
         }
     }
+
+
+    /**
+     * 扫描接收并处理2
+     * @param scanSocket
+     */
+    private void scanReceiveAndDeal2(DatagramSocket scanSocket) {
+        int i = 0;
+        ChangeParam changeParam = null;
+        while (Constants.isRunning) {
+            try {
+                DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                scanSocket.receive(receivePacket);
+
+                byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+
+                System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                System.out.print("十六进制回应：");
+                for (byte b : data) System.out.printf("%02X ", b);
+                System.out.println();
+                if (data.length >= 12 && (data[4] & 0xFF) != 0) {
+                    if (changeParam == null) {
+                        changeParam = new ChangeParam();
+                    }
+                    int x = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
+                    changeParam.setWl(String.valueOf(x/50.0f));
+                    Constants.instrumentData.add(String.valueOf(x));
+                    i++;
+                }
+
+                if(data[3] == 0x01){
+                    int s = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                    changeParam.setS(String.valueOf(s));
+                    System.out.println("s = " + s);
+                }
+
+                else if(data[3] == 0x02){
+                    int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
+                    int r = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                    changeParam.setD(String.valueOf(d));
+                    changeParam.setR(String.valueOf(r));
+                    System.out.println("d = " + d);
+                    System.out.println("r = " + r);
+                }
+
+                // 检查是否完整：如果有值 wl, s, d, r 都已经填充，认为对象已完成
+                if (changeParam != null && changeParam.getWl() != null && changeParam.getS() != null && changeParam.getD() != null && changeParam.getR() != null) {
+                    Constants.measurd_data.add(changeParam);  // 完成的对象添加到公共列表
+                    System.out.println("已完成一个完整的对象：" + changeParam);
+                    changeParam = null;  // 清空临时对象，准备接收下一个
+                }
+
+            } catch (Exception e) {
+                Constants.instrumentData.add(Constants.EndData);
+                Constants.endTime = LocalDateTime.now();
+                return;
+            }
+        }
+    }
+
 
 
     /**

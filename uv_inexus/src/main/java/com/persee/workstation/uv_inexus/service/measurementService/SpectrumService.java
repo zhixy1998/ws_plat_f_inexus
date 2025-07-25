@@ -77,7 +77,7 @@ public interface SpectrumService {
 
     Result deleteChangeListPort(String analysisId);
 
-    Result deleteSampleListPort(String measureId);
+    Result deleteSampleListPort(String taskId, String sampleId);
 
     Result saveData(String taskId);
 
@@ -86,4 +86,6 @@ public interface SpectrumService {
     Result obtainTheBaseline(String methodId,String deviceSerialNumber);
 
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
+
+    Result restoreDeletedListData(String taskId,String paramId, String type);
 }

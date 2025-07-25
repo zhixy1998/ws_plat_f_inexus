@@ -15,7 +15,7 @@ import java.util.List;
  */
 @Data
 public class PhotometricParameter extends MeasurePublicParameters {
-    // 光度模式
+    // 光度模式(1.Abs 2.T% 3.Es 4.ER)
     @ApiModelProperty("光度模式")
     private String luminosity;
     // 波长值(波长值是多个值,不连续的)

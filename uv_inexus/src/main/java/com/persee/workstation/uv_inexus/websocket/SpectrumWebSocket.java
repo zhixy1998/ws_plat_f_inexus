@@ -77,6 +77,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         if (Constants.endTime != null||Constants.startTime != null) {
             try {
                 session.close();
+                exceptionHandling();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
