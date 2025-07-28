@@ -1912,9 +1912,12 @@ public class SpectrumServiceImpl implements SpectrumService {
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
             TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
-            // 根据方法表的计算公式id和前处理id进行查询
-            CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
-            vo.setCalculationFormula(calculationFormula.getResultName());
+            // 根据方法表的计算公式id和前处理id进行查
+            if(StringUtils.hasText(method.getMultipleCalculationFormulaKey())) {
+                CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
+                vo.setCalculationFormula(calculationFormula.getResultName());
+            }
+
             StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
             vo.setReferenceStandard(serviceById.getPretreatmentDescription());
 //        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).last("LIMIT 1"));
