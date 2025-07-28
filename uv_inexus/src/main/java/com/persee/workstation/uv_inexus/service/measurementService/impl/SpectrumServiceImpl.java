@@ -1827,11 +1827,12 @@ public class SpectrumServiceImpl implements SpectrumService {
 
             if (StringUtils.hasText(task.getSampleKey())) {
                 List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-                if (taskSpecimen.size() > 1) {
+                if (!taskSpecimen.isEmpty()) {
                     TaskSpecimen specimen = taskSpecimen.get(0);
                     TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                     vo.setSampleName(sample.getSampleName());
                     vo.setSampleNumber(sample.getSampleNumber());
+                    vo.setSamplingTime(task.getCreateTime().format(formatter));
 
                     LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
                     wrapper.eq(TMeasureData::getTaskId, taskId)
@@ -1845,6 +1846,17 @@ public class SpectrumServiceImpl implements SpectrumService {
                 }
             }
 
+            StringBuilder wave = new StringBuilder();
+            if (methodparam.getWaveLength() != null && !methodparam.getWaveLength().isEmpty()) {
+                for (String s : methodparam.getWaveLength()) {
+                    wave.append(s).append(",");
+                }
+            }
+            if (wave.length() > 0) {
+                wave.deleteCharAt(wave.length() - 1);
+            }
+            vo.setInstrumentWavelength(wave.toString());
+
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
 
@@ -1857,10 +1869,31 @@ public class SpectrumServiceImpl implements SpectrumService {
 
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
-            vo.setSteps(methodparam.getPreProcessParameters());
+            StringBuilder steps = new StringBuilder();
+            methodparam.getPreProcessParameters().forEach(preProcessParameter -> {
+                steps.append(preProcessParameter).append("\n");
+            });
+
+            StringBuilder result = new StringBuilder();
+            methodparam.getResultParams().forEach(resultParam -> {
+                result.append(resultParam.getFormulaText()).append("\n");
+            });
+            vo.setCalculationFormula(result.toString());
+
+            result.setLength(0);
+            methodparam.getSampleInputParams().forEach(sampleInputParam -> {
+                result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
+            });
+            vo.setFormulaParams(result.toString());
+
+            vo.setSteps(steps.toString());
             vo.setDetectionStartTime(task.getStartTime().format(formatter));
             vo.setDetectionEndTime(task.getEndTime());
             vo.setDataType("测量数据");
+
+            vo.setAmbientTemperature("26℃");
+            vo.setRelativeHumidity("60%");
+            vo.setSampleState("正常");
 
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());

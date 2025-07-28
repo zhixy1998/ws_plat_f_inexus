@@ -211,8 +211,8 @@ public class MessageUtil {
 
                     lastReceiveTime = System.currentTimeMillis();
                     if (count > 1 && cmdId != "BaseLine" && cmdId != "BaseLineFast") {
-                        currentSocket.setSoTimeout(1000);
-                        timeoutMs = 1000;
+                        currentSocket.setSoTimeout(1300);
+                        timeoutMs = 1300;
                     }
 
                 } catch (SocketTimeoutException e) {

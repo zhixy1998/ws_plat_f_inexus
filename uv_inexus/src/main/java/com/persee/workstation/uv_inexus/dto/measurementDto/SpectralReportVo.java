@@ -60,5 +60,19 @@ public class SpectralReportVo {
     // 方法名称
     private String MethodName;
     //操作步骤
-    private List<String> steps;
+    private String steps;
+    //环境温度
+    private String ambientTemperature;
+    //相对湿度
+    private String relativeHumidity;
+    //质量等级
+    private String qualityLevel;
+    //公式参数
+    private String formulaParams;
+    //比色皿光程
+    private String colorPlateWavelength;
+    //样品状态
+    private String sampleState;
+    //样品采样时间
+    private String samplingTime;
 }
