@@ -814,8 +814,8 @@ public class SpectrumServiceImpl implements SpectrumService {
             for (String s : results){
                 String[] split = s.split(",");
                 Map<String, Object> map = new HashMap<>();
-                map.put("x", split[0]);
-                map.put("y", split[1]);
+                map.put("x", String.format("%.2f", Double.parseDouble(split[0])));
+                map.put("y", String.format("%.2f", Double.parseDouble(split[1])));
                 if (gauges != null){
                     for (Double gauge : gauges) {
                         if (split[0].equals(String.valueOf(gauge))){
@@ -1928,8 +1928,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         for (String s : list) {
             String[] split = s.split(",");
             Map<String, Object> map = new HashMap<>();
-            map.put("x", split[0]);
-            map.put("y", split[1]);
+            map.put("x", String.format("%.2f", Double.parseDouble(split[0])));
+            map.put("y", String.format("%.2f", Double.parseDouble(split[1])));
             if (gauges != null) {
                 for (Double gauge : gauges) {
                     if (split[0].equals(String.valueOf(gauge))) {

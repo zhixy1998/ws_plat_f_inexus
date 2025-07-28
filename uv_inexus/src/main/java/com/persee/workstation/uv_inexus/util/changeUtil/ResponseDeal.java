@@ -267,6 +267,7 @@ public class ResponseDeal {
             // 遍历所有的回应报文
             for (byte[] response : responses) {
                 byte fourthByte = response[3]; // 获取第四位字节值
+                byte tenByte = response[9];
 
                 if (fourthByte == 0x07){
                     continue;
@@ -279,6 +280,11 @@ public class ResponseDeal {
                     tempParam = new ChangeParam(); // 创建一个新的 ChangeParam 对象，等待 0x06 补充
                     tempParam.setS(String.valueOf(s0)); // 设置 s0
                     tempParam.setWl(String.valueOf(wl0));
+                    System.err.println(wl0);
+
+//                    if (wl0 == 538.0){
+//                        sleep(1000);
+//                    }
                 }
 
                 // 如果第四位字节为 06，解析 d 和 r，结合之前的 s0
@@ -294,7 +300,6 @@ public class ResponseDeal {
                     // 解析完成后重置 tempParam 为 null
                     tempParam = null;
                 }
-
             }
             System.out.println(resultList);
 

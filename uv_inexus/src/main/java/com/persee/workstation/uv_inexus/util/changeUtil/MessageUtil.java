@@ -189,7 +189,7 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("CheckDLamp")
                     || cmdId.equalsIgnoreCase("CheckWl")
                     || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 15000 : 4500;
+            int timeoutMs = isSlowCommand ? 10000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
 
             long lastReceiveTime = System.currentTimeMillis();
@@ -210,11 +210,10 @@ public class MessageUtil {
                     System.out.println();
 
                     lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1) {
+                    if (count > 1 && cmdId != "BaseLine" && cmdId != "BaseLineFast") {
                         currentSocket.setSoTimeout(1000);
                         timeoutMs = 1000;
                     }
-
 
                 } catch (SocketTimeoutException e) {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
@@ -457,23 +456,21 @@ public class MessageUtil {
                 System.out.print("十六进制回应：");
                 for (byte b : data) System.out.printf("%02X ", b);
                 System.out.println();
-                if (data.length >= 12 && (data[4] & 0xFF) != 0) {
+                if (data.length >= 12 && (data[3] & 0xFF) != 0x07) {
                     if (changeParam == null) {
                         changeParam = new ChangeParam();
                     }
-                    int x = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
-                    changeParam.setWl(String.valueOf(x/50.0f));
-                    Constants.instrumentData.add(String.valueOf(x));
-                    i++;
                 }
 
-                if(data[3] == 0x01){
-                    int s = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                if(data[3] == 0x01&&changeParam!=null){
+                    int s = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     changeParam.setS(String.valueOf(s));
+                    changeParam.setWl(String.valueOf(s/50.0f));
+                    Constants.instrumentData.add(String.valueOf(s));
                     System.out.println("s = " + s);
                 }
 
-                else if(data[3] == 0x02){
+                else if(data[3] == 0x02&&changeParam!=null){
                     int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     int r = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                     changeParam.setD(String.valueOf(d));
