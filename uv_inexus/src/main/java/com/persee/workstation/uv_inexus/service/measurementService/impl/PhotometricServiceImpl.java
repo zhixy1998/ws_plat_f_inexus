@@ -595,10 +595,12 @@ public class PhotometricServiceImpl implements PhotometricService {
                 List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
                 for (TaskSpecimen specimen : taskSpecimen) {
                     TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                    List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
+                    if (StringUtils.hasText(measureSample.getHeads())){
+                        List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
 
-                    if (!heads.equals(ans)) {
-                        ans.addAll(heads);
+                        if (!heads.equals(ans)) {
+                            ans.addAll(heads);
+                        }
                     }
                 }
 
@@ -719,14 +721,17 @@ public class PhotometricServiceImpl implements PhotometricService {
             identity.append(inputParam.getResultIdentity()).append(",");
             if (sample.getHeads() != null && !sample.getHeads().isEmpty()) {
                 List<HeadVO> vos = JSON.parseArray(sample.getHeads(), HeadVO.class);
+                Boolean flag = false;
                 for (HeadVO head : vos) {
                     JSONObject jsonObject = JSON.parseObject(sample.getNewColData());
                     if (head.getName().equals(inputParam.getParamName())) {
                         values.append(jsonObject.getString(head.getIdentity())).append(",");
-                    } else{
-                        String s = String.valueOf((Math.random() * 10) + 1);
-                        values.append(s).append(",");
+                        flag = true;
                     }
+                }
+                if (!flag) {
+                    String s = String.valueOf((Math.random() * 10) + 1);
+                    values.append(s).append(",");
                 }
             }
         }

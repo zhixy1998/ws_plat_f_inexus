@@ -127,7 +127,11 @@ public class ExperimentTestController {
     }
 
 
-
+    @GetMapping("useMethodToTest")
+    @ApiOperation("使用该方法继续测量")
+    public Result<MeasurementCurrentInfoVO> useMethodToTest(@RequestParam String methodId, @RequestParam String updateBy, @RequestParam String deviceSerialNumber){
+        return experimentTestService.useMethodToTest(methodId,updateBy,deviceSerialNumber);
+    }
 
 
 }

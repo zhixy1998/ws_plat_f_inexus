@@ -45,4 +45,6 @@ public interface ExperimentTestService {
     Result<List<TaskBaseVO>> getAllTask(String projectId, String measureType);
 
     Result useThisMethodPort(String methodId);
+
+    Result<MeasurementCurrentInfoVO> useMethodToTest(String methodId, String updateBy, String deviceSerialNumber);
 }

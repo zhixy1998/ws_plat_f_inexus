@@ -1852,6 +1852,9 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setLuminosityMode(WaveLengthEnum.getName(methodparam.getLuminosity()));
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
 
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
+
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
             vo.setSteps(methodparam.getPreProcessParameters());

@@ -6,6 +6,10 @@ import lombok.Data;
 public class RecentlyCompletedTasksVo {
     // 任务名称
     private String taskName;
+
+    private String taskId;
+
+    private String methodId;
     // 方法名称
     private String methodName;
     // 项目名称

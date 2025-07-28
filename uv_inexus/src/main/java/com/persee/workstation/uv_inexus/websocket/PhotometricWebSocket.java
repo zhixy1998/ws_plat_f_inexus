@@ -259,6 +259,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
         if (!countedData.getSuccess()) {
             log.info("计算出错");
+            sendAndClose(session, "计算出错");
             return R.fail("计算出错");
         }
         List<PhotometricCountDataInfo> countDataInfos = countedData.getData();

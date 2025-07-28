@@ -37,10 +37,8 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 ("experimentTestService")
@@ -126,6 +124,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).orderByDesc("measurement_end_time").last("limit 1"));
             List<String> lists = JSON.parseArray(task.getSampleKey(), String.class);
             vo.setTaskName(task.getTaskName());
+            vo.setTaskId(task.getId());
+            vo.setMethodId(task.getMethodKey());
             vo.setMethodName(method.getMethodName());
             vo.setProjectName(project.getProjectName());
             vo.setMeasurementSample(String.valueOf(lists.size()));
@@ -242,7 +242,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result createTask(CreateTaskParamDto paramDto) {
+    public Result<ProjectTaskMethodVo> createTask(CreateTaskParamDto paramDto) {
         // 根据任务名称查询任务,如果为空则继续,如果有值的话则返回错误
         List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName()));
         if (taskList.size()>0){
@@ -535,11 +535,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             heads.add(new HeadVO("样品体积", "sampleVolume"));
             heads.add(new HeadVO("样品位置", "sampleLocation"));
 
-            List<HeadVO> vos = photometricService.tableHead(taskId, method.getId(),false).getData();
+            List<HeadVO> vos = photometricService.tableHead(taskId, method.getId(), false).getData();
             heads.addAll(vos);
+
             heads.add(new HeadVO("备注", "remark"));
             heads.add(new HeadVO("采样时间", "samplingTime"));
             vo.setHeadList(heads);
+
 
             List<Map<String, String>> list = photometricService.queryData(taskId, false).getData();
 
@@ -688,6 +690,55 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         params.put("taskId", task.getId());
         params.put("taskName", task.getTaskName());
         return Result.ok(params);
+    }
+
+    @Override
+    public Result<MeasurementCurrentInfoVO> useMethodToTest(String methodId, String updateBy, String deviceSerialNumber) {
+        if (!StringUtils.hasText(methodId)) {
+            return Result.fail("未选择方法");
+        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        if (!StringUtils.hasText(method.getMeasurementType())) {
+            return Result.fail("当前方法缺少类型");
+        }
+
+        CreateTaskParamDto dto = new CreateTaskParamDto();
+        dto.setMethodId(methodId);
+        dto.setProjectId(method.getProjectItemKey());
+        dto.setMeasurementType(method.getMeasurementType());
+        dto.setDeviceSerialNumber(deviceSerialNumber);
+
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        String collect = new Random().ints(8, 0, chars.length())
+                .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                .collect(Collectors.joining());
+
+        dto.setTaskName(method.getMeasurementType() + "task_" + collect);
+        List<SpectrumSpecimenDto> taskSpecimen = new ArrayList<>();
+        dto.setSpecimens(taskSpecimen);
+
+        Result task = createTask(dto);
+        if (!task.getCode().equals(200)) {
+           return Result.fail(task.getMessage());
+        }
+
+        MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
+        vo.setProjectId(method.getProjectItemKey());
+        vo.setMethodId(methodId);
+        ProjectTaskMethodVo data =(ProjectTaskMethodVo) task.getData();
+        vo.setTaskId(data.getTask().getId());
+        vo.setTaskName(dto.getTaskName());
+        vo.setMethodName(method.getMethodName());
+
+        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+
+        vo.setProjectName(project.getProjectName());
+
+        return Result.ok(vo);
     }
 
 

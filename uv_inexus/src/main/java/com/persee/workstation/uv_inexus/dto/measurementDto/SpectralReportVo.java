@@ -6,6 +6,11 @@ import java.util.List;
 
 @Data
 public class SpectralReportVo {
+
+    //仪器名称
+    private String instrumentName;
+    //仪器型号
+    private String instrumentModel;
     // 仪器波长
     private String InstrumentWavelength;
     // 仪器编号
