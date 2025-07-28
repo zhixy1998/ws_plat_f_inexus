@@ -320,7 +320,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         measureMethod.setMethodName(methodDto.getMethodName());
         boolean update = tMeasureMethodService.updateById(measureMethod);
         if (!update){
-            return Result.fail("更新失败");
+            return Result.ok(new ArrayList<>());
         }
         return Result.ok(measureMethod.getId());
     }
@@ -1403,7 +1403,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.ok("任务不存在");
+            return Result.ok(new ArrayList<>());
         }
         if (task.getSampleKey() == null) {
             return Result.ok(null);
@@ -1917,9 +1917,10 @@ public class SpectrumServiceImpl implements SpectrumService {
                 CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
                 vo.setCalculationFormula(calculationFormula.getResultName());
             }
-
-            StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
-            vo.setReferenceStandard(serviceById.getPretreatmentDescription());
+            if(StringUtils.hasText(method.getPreprocessKey())){
+                StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
+                vo.setReferenceStandard(serviceById.getPretreatmentDescription());
+            }
 //        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).last("LIMIT 1"));
             TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
             vo.setSampleName(byId.getSampleName());
