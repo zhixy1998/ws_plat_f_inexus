@@ -171,10 +171,19 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
     private void removeOldData(String taskId, String sampleId) {
         LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TMeasureData::getTaskId, taskId).eq(TMeasureData::getSampleKey, sampleId);
+        queryWrapper.eq(TMeasureData::getTaskId, taskId).eq(TMeasureData::getSampleKey, sampleId)
+                .orderByDesc(TMeasureData::getSerialNumber).last("limit 1");
         TMeasureData data = tMeasureDataService.getOne(queryWrapper);
         if (data != null) {
-            tMeasureDataService.remove(queryWrapper);
+            TMeasureData newData = new TMeasureData();
+
+            newData.setSampleKey(sampleId);
+            newData.setTaskId(taskId);
+            newData.setIsDelete(error);
+            newData.setRemark(data.getRemark());
+
+            newData.setSerialNumber(data.getSerialNumber() + 1);
+            tMeasureDataService.save(newData);
         }
 
         LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();

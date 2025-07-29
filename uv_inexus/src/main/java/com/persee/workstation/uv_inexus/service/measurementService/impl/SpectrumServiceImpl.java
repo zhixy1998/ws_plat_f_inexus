@@ -1836,7 +1836,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
                     LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
                     wrapper.eq(TMeasureData::getTaskId, taskId)
-                            .eq(TMeasureData::getSampleKey, sample.getId());
+                            .eq(TMeasureData::getSampleKey, sample.getId())
+                            .orderByDesc(TMeasureData::getSerialNumber)
+                            .last("LIMIT 1");
                     TMeasureData one = tMeasureDataService.getOne(wrapper);
                     if (one != null) {
                         vo.setDetectionStartTime(one.getMeasurementStartTime().format(formatter));
@@ -1894,6 +1896,8 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setAmbientTemperature("26℃");
             vo.setRelativeHumidity("60%");
             vo.setSampleState("正常");
+            vo.setColorPlateWavelength("1");
+
 
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());

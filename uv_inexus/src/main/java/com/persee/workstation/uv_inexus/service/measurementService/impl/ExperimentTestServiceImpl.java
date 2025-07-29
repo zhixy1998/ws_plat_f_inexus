@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -26,10 +27,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -113,7 +111,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 根据用户id查询字段is_delete为1的数据
         List<TMeasureTask> taskList = tMeasureTaskService.list(new QueryWrapper<TMeasureTask>()
                 .eq("user_id", user.getId())
-                .eq("is_delete", "1")
+//                .eq("is_delete", "1")
                 .eq("measure_type", measureType)
                 .orderByDesc("create_time").last("limit 3"));
         List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
@@ -121,16 +119,19 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             RecentlyCompletedTasksVo vo = new RecentlyCompletedTasksVo();
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).orderByDesc("measurement_end_time").last("limit 1"));
-            List<String> lists = JSON.parseArray(task.getSampleKey(), String.class);
+            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).last("limit 1"));
+            List<TaskSpecimen> lists = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             vo.setTaskName(task.getTaskName());
             vo.setTaskId(task.getId());
             vo.setMethodId(task.getMethodKey());
             vo.setMethodName(method.getMethodName());
             vo.setProjectName(project.getProjectName());
             vo.setMeasurementSample(String.valueOf(lists.size()));
-            vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
+            if (measureData != null) {
+                vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
             vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
+            }
+
             vos.add(vo);
         }
         return Result.ok(vos);
@@ -266,45 +267,35 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // TODO 所有测量的创建任务需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
-                // 遍历CreateTaskParamDto中的样品list
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
-                    // 创建样品表
-                    TMeasureSample sample = new TMeasureSample();
-                    sample.setSampleNumber(specimen.getSampleNumber());
-                    sample.setSampleName(specimen.getSampleName());
-                    sample.setSampleType(specimen.getSampleType());
-                    sample.setDilutionRatio(specimen.getDilutionRatio());
-                    sample.setSampleVolume(specimen.getSampleVolume());
-                    sample.setSampleLocation(specimen.getSampleLocation());
-                    sample.setColor("#000000");
-                    tMeasureSampleService.save(sample);
-                    TaskSpecimen taskSpecimen = new TaskSpecimen();
-                    taskSpecimen.setSpecimenKey(sample.getId());
-                    taskSpecimen.setDeleteType("0");
-                    taskSpecimen.setIsTested("0");
-                    list.add(taskSpecimen);
+            case QUANTITATIVE_MEASUREMENT:
+                if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
+                    for (Map<String, String> cols : paramDto.getSpecimens()) {
+                        String jsonString = JSON.toJSONString(cols);
+                        TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
+                        if (paramDto.getHeads() != null) {
+                            sample.setHeads(JSON.toJSONString(paramDto.getHeads()));
+                            JSONObject newColData = new JSONObject();
+                            for (HeadVO head : paramDto.getHeads()) {
+                                String s = cols.get(head.getIdentity());
+                                newColData.put(head.getIdentity(), s);
+                            }
+                            sample.setNewColData(JSON.toJSONString(newColData));
+                        }
+                        sample.setColor("#000000");
+                        tMeasureSampleService.save(sample);
+                        TaskSpecimen taskSpecimen = new TaskSpecimen();
+                        taskSpecimen.setSpecimenKey(sample.getId());
+                        taskSpecimen.setDeleteType("0");
+                        taskSpecimen.setIsTested("0");
+                        list.add(taskSpecimen);
+                    }
                 }
                 break;
-            case QUANTITATIVE_MEASUREMENT:
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
-                    // 创建样品表
-                    TMeasureSample sample = new TMeasureSample();
-                    sample.setSampleNumber(specimen.getSampleNumber());
-                    sample.setSampleName(specimen.getSampleName());
-                    sample.setSampleType(specimen.getSampleType());
-                    sample.setNormalConcentration(specimen.getNormalConcentration());
-                    sample.setSampleLocation(specimen.getSampleLocation());
-                    sample.setColor("#000000");
-                    tMeasureSampleService.save(sample);
-                    TaskSpecimen taskSpecimen = new TaskSpecimen();
-                    taskSpecimen.setSpecimenKey(sample.getId());
-                    taskSpecimen.setDeleteType("0");
-                    taskSpecimen.setIsTested("0");
-                    list.add(taskSpecimen);
-                }
-            break;
             case SPECTRAL_SCAN:
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                for (Map<String, String> map: paramDto.getSpecimens()) {
+                    String jsonString = JSON.toJSONString(map);
+
+                    SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
                     // 创建样品表
                     TMeasureSample sample = new TMeasureSample();
                     sample.setSampleNumber(specimen.getSampleNumber());
@@ -322,7 +313,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
                 break;
             case TIME_SCAN:
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                for (Map<String, String> map: paramDto.getSpecimens()) {
+                    String jsonString = JSON.toJSONString(map);
+
+                    SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
                     // 创建样品表
                     TMeasureSample sample = new TMeasureSample();
                     sample.setSampleNumber(specimen.getSampleNumber());
@@ -718,7 +712,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 .collect(Collectors.joining());
 
         dto.setTaskName(method.getMeasurementType() + "task_" + collect);
-        List<SpectrumSpecimenDto> taskSpecimen = new ArrayList<>();
+        List<Map<String, String>> taskSpecimen = new ArrayList<>();
         dto.setSpecimens(taskSpecimen);
 
         Result task = createTask(dto);

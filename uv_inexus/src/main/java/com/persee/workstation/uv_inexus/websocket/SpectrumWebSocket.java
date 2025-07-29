@@ -280,7 +280,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                 exceptionHandling();
             }).start();
         }
-        sessions.remove(session.getId());
+        afterConnectionClosed(session, CloseStatus.NORMAL);
     }
 
     /**
@@ -313,6 +313,11 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        try {
+            session.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         sessions.remove(session.getId());
         System.out.println("连接关闭: " + session.getId());
     }

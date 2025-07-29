@@ -102,12 +102,6 @@ public class PhotometricController {
         return photometricService.saveDataInfo(vo);
     }
 
-    @PostMapping("savePhotometricMeasureData")
-    public void test(@RequestParam String taskId,
-                     @RequestParam String methodId){
-        photometricService.test(taskId, methodId);
-    }
-
     @GetMapping("zero")
     @ApiOperation("校零接口")
     public Result photoZero(@RequestParam String serialNumber,
