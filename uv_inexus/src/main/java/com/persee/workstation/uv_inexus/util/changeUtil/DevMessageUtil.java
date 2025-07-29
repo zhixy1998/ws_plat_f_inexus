@@ -354,7 +354,6 @@ public class DevMessageUtil {
             return true;
         }
 
-
         try {
             // 从xmlPath路径加载xml
             xml = protocolItemUtil.loadFromXml(xmlPath);
@@ -366,6 +365,7 @@ public class DevMessageUtil {
         // 如果加载成功，则返回true
         return true;
     }
+
 
 
     /**

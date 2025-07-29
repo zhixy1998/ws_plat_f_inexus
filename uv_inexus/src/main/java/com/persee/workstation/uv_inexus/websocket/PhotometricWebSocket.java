@@ -87,7 +87,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
 
-        if (status == 0) {
+        if (status != 0) {
             sendAndClose(session, "已有连接，不要重复操作");
         }
         status = 1;
@@ -165,7 +165,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         }
         sessions.remove(session.getId());
         session.close();
-        status = 1;
+        status = 0;
 
     }
 
@@ -327,11 +327,12 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
      * 前端连接关闭时触发
      *
      * @param session
-     * @param status
+     * @param closeStatus
      */
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) {
         sessions.remove(session.getId());
+        status = 0;
         System.out.println("连接关闭: " + session.getId());
     }
 
@@ -344,6 +345,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
+        status = 0;
         System.out.println("连接异常: " + exception.getMessage());
     }
 
@@ -375,6 +377,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            status = 0;
             session.close();
         } catch (IOException ignored) {
         }

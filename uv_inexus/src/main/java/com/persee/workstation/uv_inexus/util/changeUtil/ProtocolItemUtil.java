@@ -9,16 +9,27 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
+import java.io.InputStream;
 import java.util.*;
 
 @Service("ProtocolItemUtil")
 public class ProtocolItemUtil {
 
     public Map<String, Transition> loadFromXml(String xmlPath) throws Exception {
+//        Map<String, Transition> map = new LinkedHashMap<>();
+//        File file = new File(xmlPath);
+//        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+//        Document doc = builder.parse(file);
+//        doc.getDocumentElement().normalize();
         Map<String, Transition> map = new LinkedHashMap<>();
-        File file = new File(xmlPath);
+
+        // 使用类加载器读取资源文件
+        InputStream inputStream = ProtocolItemUtil.class.getClassLoader().getResourceAsStream(xmlPath);
+        if (inputStream == null) {
+            throw new Exception("无法找到资源文件: " + xmlPath);
+        }
         DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-        Document doc = builder.parse(file);
+        Document doc = builder.parse(inputStream);
         doc.getDocumentElement().normalize();
         NodeList nodeList = doc.getElementsByTagName("ProtocolItem");
 
