@@ -68,9 +68,10 @@ public class ResponseDeal {
             case "BaseLineFast":
                 return parseScanFast(responses);
 
+            case "SearchAround":
+            case "SearchInSameZoom":
+                return pareSearch(responses);
 
-//            case "NewIP":
-//                return parseNewIP(responses);
             default:
                 return 0;
         }
@@ -115,7 +116,7 @@ public class ResponseDeal {
 
         return sn.toString(); // 存储到全局变量
     }
-    /*
+    /**
         S、D、R解析
      */
     public static ChangeParam parseZero(List<byte[]> responses){
@@ -149,9 +150,9 @@ public class ResponseDeal {
         return param;
     }
 
-    /*
+    /**
         扫描的解析规则
-    * */
+    */
     public static List<Double> xList = new ArrayList<>();
     public static List<Double> yList = new ArrayList<>();
 
@@ -252,5 +253,24 @@ public class ResponseDeal {
         return isEqual;
     }
 
+    //查找设备的指令解析
+    static List<Integer> deviceInfo = new ArrayList<>();
+    public static List<Integer> pareSearch(List<byte[]> responses) {
+        deviceInfo.clear();
 
+        if (responses == null || responses.isEmpty()) {
+            return deviceInfo; // 返回空列表
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        if (last.length < 12) {
+            return deviceInfo; // 长度不足不处理
+        }
+
+        for (int i = 6; i <= 11; i++) {
+            deviceInfo.add(last[i] & 0xFF); // 转换为无符号十进制数
+        }
+
+        return new ArrayList<>(deviceInfo); // 返回副本，避免外部修改
+    }
 }

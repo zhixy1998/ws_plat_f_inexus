@@ -53,14 +53,14 @@ public class NetworkUtils {
         return null;  // 如果未找到以太网 MAC 地址，返回 null
     }
 
-    public static void main(String[] args) {
-        String macAddress = getEthernetMacAddress();
-        if (macAddress != null) {
-            System.out.println("本机的以太网 MAC 地址是: " + macAddress);
-        } else {
-            System.out.println("无法获取本机的以太网 MAC 地址");
-        }
-    }
+//    public static void main(String[] args) {
+//        String macAddress = getEthernetMacAddress();
+//        if (macAddress != null) {
+//            System.out.println("本机的以太网 MAC 地址是: " + macAddress);
+//        } else {
+//            System.out.println("无法获取本机的以太网 MAC 地址");
+//        }
+//    }
 }
 
 

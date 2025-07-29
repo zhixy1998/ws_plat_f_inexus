@@ -8,11 +8,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.persee.workstation.uv_inexus.GetMac.NetworkUtils;
 
 import java.net.DatagramSocket;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import static com.persee.workstation.uv_inexus.util.changeUtil.ResponseDeal.deviceInfo;
 
 @Service("DevMessageUtil")
 @Slf4j
@@ -35,7 +38,7 @@ public class DevMessageUtil {
 //    private volatile static String defaultIp = "192.168.32.254";
     private volatile  Map<String, Transition> xml;
 
-    private static String ipEnd = "253";
+    static String ipEnd = "253";
 
     /**
      * 连接设备
@@ -58,14 +61,43 @@ public class DevMessageUtil {
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
+                // 初始化 param 数组
                 Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
-                String address = socket.getLocalAddress().getHostAddress();
-                Object[] split = address.split("\\.");
-                int length = param.length;
-                for (int i = 2; i >= 0; i--) {
-                    param[length - i - 2] = split[2-i];
+//              Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
+
+                // 获取上位机的 MAC 地址
+                String macAddress = NetworkUtils.getEthernetMacAddress();
+                if (macAddress != null) {
+                    String[] macParts = macAddress.split(":");
+                    // 将上位机的前 6 个 MAC 地址部分插入到 param 数组的前 6 个位置
+                    for (int i = 0; i < 6; i++) {
+                        param[i] = Integer.parseInt(macParts[i], 16);  // 将每一部分从十六进制转换为十进制
+                    }
                 }
+
+                // 获取下位机的 MAC 地址的十进制数据
+                if (deviceInfo.size() == 6) {
+                    for (int i = 0; i < deviceInfo.size(); i++) {
+                        param[6 + i] = deviceInfo.get(i);  // 将 MAC 地址的十进制值填充到 param 数组的相应位置
+                    }
+                }
+
+                // 获取本机的 IP 地址并插入到 param 数组的倒数 3 位
+                String address = socket.getLocalAddress().getHostAddress();
+                String[] split = address.split("\\.");
+                for (int i = 0; i <= 2; i++) {
+                    param[12 + i] = Integer.parseInt(split[i]);  // 逆序插入 IP 地址的最后 3 个部分
+                }
+                // 设置参数
                 command.setParams(param);
+            }
+
+            if (cmdId.equals(FindDevEnum.Connect.getComId())) {
+                String cmdId1 = command.getCmdId();
+                if (cmdId1.equals(FindDevEnum.Connect.getComId())) {
+                    Object[] param = new Object[]{64, 194, 186, 169, 8, 100};
+                    command.setParams(param);
+                }
             }
 
             //发送报文组

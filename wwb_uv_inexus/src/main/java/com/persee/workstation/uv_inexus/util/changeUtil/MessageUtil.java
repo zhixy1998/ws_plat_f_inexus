@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
 import com.persee.workstation.uv_inexus.model.R;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -174,7 +175,7 @@ public class MessageUtil {
                     System.out.println();
 
                     lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1) {
+                    if (count > 1 && cmdId != "BaseLine" && cmdId != "BaseLineFast" && cmdId != "InitSlit1Motor") {
                         currentSocket.setSoTimeout(1000);
                         timeoutMs = 1000;
                     }
@@ -256,8 +257,9 @@ public class MessageUtil {
 //
 //                    if (isSpecialCommand) {
 //                        // 对于特殊指令，接收到超过 1 条回应后结束接收
-//                        if (count > 1) {
-//                            break; // 结束接收
+//                        if (count > 1 && cmdId != "BaseLine" && cmdId != "BaseLineFast" && cmdId != "InitSlit1Motor") {
+//                        currentSocket.setSoTimeout(1000);
+//                        timeoutMs = 1000;
 //                        }
 //                    } else {
 //                        // 对于其他指令，检查发送的第 3、4、5 位与接收到的最后一条报文的 3、4、5 位是否匹配
@@ -266,11 +268,6 @@ public class MessageUtil {
 //                        }
 //                    }
 //
-//                    // 设置更短的超时时间
-//                    if (count > 1) {
-//                        currentSocket.setSoTimeout(1000);
-//                        timeoutMs = 1000;
-//                    }
 //                } catch (SocketTimeoutException e) {
 //                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
 //                }
@@ -282,13 +279,6 @@ public class MessageUtil {
 //            return null;
 //        }
 //    }
-
-
-
-
-
-
-
 
 
 
@@ -342,7 +332,7 @@ public class MessageUtil {
                     System.out.println();
 
                     lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1) {
+                    if (count > 1 && cmdId != "BaseLine" && cmdId != "BaseLineFast") {
                         currentSocket.setSoTimeout(300);
                         timeoutMs = 300;
                     }
@@ -440,8 +430,15 @@ public class MessageUtil {
                 while (addresses.hasMoreElements()) {
                     InetAddress addr = addresses.nextElement();
                     if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
-                        return addr.getHostAddress();
-//                        System.out.println(addr.getHostAddress());
+                        String ip = addr.getHostAddress();  // 获取 IP 地址
+                        System.out.println("IP Address: " + ip);
+
+                        // 检查 IP 地址最后一位是否为 253
+                        String[] ipParts = ip.split("\\.");
+                        if (ipParts.length == 4 && ipParts[3].equals("253")) {
+                            DevMessageUtil.ipEnd = "254";
+                        }
+                        return ip;
                     }
                 }
             }
