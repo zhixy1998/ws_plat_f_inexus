@@ -35,7 +35,6 @@ public interface ExperimentTestService {
 
     Result preprocessTheData(String standardId);
 
-    Result zeroCalibrationPort(String serialNumber);
 
 
     Result reportDataQuery(String taskId, String reportName);

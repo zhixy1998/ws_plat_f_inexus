@@ -58,8 +58,8 @@ public class DevMessageUtil {
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
-//                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
-                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
+//                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
                 String address = socket.getLocalAddress().getHostAddress();
                 Object[] split = address.split("\\.");
                 int length = param.length;
@@ -257,7 +257,7 @@ public class DevMessageUtil {
         Transition transition = xml.get(cmdId);
         //发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse.equals("false")) {
             return;
@@ -319,29 +319,6 @@ public class DevMessageUtil {
         messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes);
     }
 
-    /**
-     * 光谱扫描: 获取测量数据2
-     */
-    public void getMeasureData2(Command command, String deviceIp) {
-        R<DatagramSocket> re = messageUtil.getSocket();
-        if (!re.getSuccess()) {
-            log.info("绑定socket失败");
-            return ;
-        }
-        DatagramSocket socket = re.getData();
-
-        Boolean b = changeXml();
-        if (!b) {
-            log.info("转换xml出错");
-            return;
-        }
-        String cmdId = command.getCmdId();
-        Transition transition = xml.get(cmdId);
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        Constants.startTime = LocalDateTime.now();
-        messageUtil.scanSendAndDeal2(socket, deviceIp, cmdId, bytes);
-    }
-
 
     /**
      * 转换xml为map
@@ -386,7 +363,7 @@ public class DevMessageUtil {
         Transition transition = xml.get(cmdId);
         //发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse.equals("false")) {
             return R.fail("校零失败");
@@ -422,6 +399,32 @@ public class DevMessageUtil {
             }
         }
         return R.ok("true");
+    }
+
+    /**
+     * 时间扫描: 定位波长
+     */
+    public void timeWavelengthLocate(Command command, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            log.info("绑定socket失败");
+            return;
+        }
+        DatagramSocket socket = ans.getData();
+        Boolean b = changeXml();
+        if (!b) {
+            return;
+        }
+        String cmdId = command.getCmdId();
+        Transition transition = xml.get(cmdId);
+        //发送报文组
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        if (parse.equals("false")) {
+            return;
+        }
+
     }
 
     /**

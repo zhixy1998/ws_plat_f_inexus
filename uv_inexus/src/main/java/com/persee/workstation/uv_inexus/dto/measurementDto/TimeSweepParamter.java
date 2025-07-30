@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.Data;
 
 @Data
@@ -18,4 +19,6 @@ public class TimeSweepParamter extends MeasurePublicParameters{
     private String totalNumber;
     // 多联池模式(0.顺序单池连续采样,1.循环多池交替采样)
     private String multiPoolMode;
+    // 基线数据
+    private ChangeParam baselineData;
 }

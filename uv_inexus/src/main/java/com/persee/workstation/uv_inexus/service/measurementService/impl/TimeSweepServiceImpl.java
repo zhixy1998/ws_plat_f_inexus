@@ -2,17 +2,23 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +46,56 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private DeviceInfoService deviceInfoService;
     @Autowired
     private DevMessageUtil devMessageUtil;
+    @Autowired
+    private SystemUserManageDAO systemUserManageDAO;
+    @Autowired
+    private TMeasureProjectService tMeasureProjectService;
+
+    /**
+     * 查询项目任务方法接口
+     * @param updateBy
+     * @param measureType
+     * @return
+     */
+    @Override
+    public Result queryProjectTaskMethod(String updateBy,String measureType) {
+        SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<SystemUserManagePO>().eq("user_name", updateBy));
+        if (user==null){
+            return Result.fail("用户不存在");
+        }
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        if (measureTypeEnum==null){
+            return Result.fail("暂不支持此测量类型");
+        }
+        // 根据用户id和测量类型然后通过创建时间查找到最近的一次任务
+        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("user_id", user.getId()).eq("measure_type", measureTypeEnum.getDescription()).orderByDesc("create_time").last("limit 1"));
+        if (task==null){
+            return Result.fail("暂无任务数据");
+        }
+        // 根据任务id查询方法
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        // 根据项目id查询项目
+        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+        SpectrumBasicParameterVo spectrumBasicParameterVo = new SpectrumBasicParameterVo();
+        spectrumBasicParameterVo.setTaskId(task.getId());
+        spectrumBasicParameterVo.setTaskName(task.getTaskName());
+        if (method==null){
+            spectrumBasicParameterVo.setMethodId(null);
+            spectrumBasicParameterVo.setMethodName(null);
+        }else{
+            spectrumBasicParameterVo.setMethodId(method.getId());
+            spectrumBasicParameterVo.setMethodName(method.getMethodName());
+        }
+        if (project==null){
+            spectrumBasicParameterVo.setProjectId(null);
+            spectrumBasicParameterVo.setProjectName(null);
+        }else{
+            spectrumBasicParameterVo.setProjectId(project.getId());
+            spectrumBasicParameterVo.setProjectName(project.getProjectName());
+        }
+        return Result.ok(spectrumBasicParameterVo);
+    }
+
 
     /**
      * 创建方法接口
@@ -81,57 +137,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         return Result.ok(methods);
     }
 
-//    /**
-//     * 新增样本接口
-//     * @param paramDto
-//     * @return
-//     */
-//    @Override
-//    public Result addSamplePort(AddSampleDto paramDto) {
-//        // 创建一个String数组用于存放新增后的样品id
-//        List<String> sampleIdList = new ArrayList<>();
-//        // 根据传过来的参数进行遍历添加样品
-//        for (SpectrumSpecimenDto sample : paramDto.getSamples()) {
-//            TMeasureSample sampleParam = new TMeasureSample();
-//            sampleParam.setSampleName(sample.getSampleName());
-//            sampleParam.setSampleNumber(sample.getSampleNumber());
-//            sampleParam.setSampleLocation(sample.getSampleLocation());
-//            sampleParam.setColor("#000000");
-//            tMeasureSampleService.save(sampleParam);
-//            sampleIdList.add(sampleParam.getId());
-//        }
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-//        if (task == null) {
-//            return Result.fail("任务不存在");
-//        }
-//        if (task.getSampleKey() != null){
-//            // 将原有在任务中的样品字段提取出来
-//            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//            // 遍历样品id数组,将新增的样品id添加到任务中的样品字段中
-//            for (String sampleId : sampleIdList) {
-//                TaskSpecimen taskSpeciman = new TaskSpecimen();
-//                taskSpeciman.setSpecimenKey(sampleId);
-//                taskSpeciman.setDeleteType("0");
-//                taskSpeciman.setIsTested("0");
-//                taskSpecimen.add(taskSpeciman);
-//            }
-//            // 将修改后的样品字段存入任务数据中
-//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-//        }else if (task.getSampleKey() == null) {
-//            // 如果任务中的样品字段为空,则直接将样品id存入任务数据中
-//            List<TaskSpecimen> taskSpecimen = new ArrayList<>();
-//            for (String sampleId : sampleIdList) {
-//                TaskSpecimen taskSpeciman = new TaskSpecimen();
-//                taskSpeciman.setSpecimenKey(sampleId);
-//                taskSpeciman.setDeleteType("0");
-//                taskSpecimen.add(taskSpeciman);
-//            }
-//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-//        }
-//        boolean update = tMeasureTaskService.updateById(task);
-//        return Result.ok(update);
-//    }
 
     /**
      * 样品列表
@@ -363,6 +368,49 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
         devMessageUtil.timeSweepSet(commands, ip);
         return Result.ok();
+    }
+
+    /**
+     * 零点校零
+     * @param serialNumber
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result zero(String serialNumber, String methodId) {
+        if (serialNumber == null || serialNumber.equals("")){
+            return Result.fail("缺少设备序列号");
+        }
+        if (methodId == null || methodId.equals("")){
+            return Result.fail("缺少方法id");
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        TimeSweepParamter timeSweepParamter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+        if (timeSweepParamter.getWaveLength() == null || timeSweepParamter.getWaveLength().isEmpty()) {
+            return Result.fail("缺少波长");
+        }
+        // 通过序列号获取ip
+        String ip = deviceInfoService.getIp(serialNumber);
+
+        // 定位当前波长
+        Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{Double.parseDouble(timeSweepParamter.getWaveLength())});
+        devMessageUtil.wavelengthLocate(command, ip);
+
+        // 进行校零
+        command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+        R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+        if (!zero.getSuccess()) {
+            return Result.fail(zero.getMessage());
+        }
+        ChangeParam changeParam = zero.getData();
+        changeParam.setWl(timeSweepParamter.getWaveLength());
+        timeSweepParamter.setBaselineData(changeParam);
+        method.setMeasurementParamInfo(JSON.toJSONString(timeSweepParamter));
+        boolean update = tMeasureMethodService.updateById(method);
+        return Result.ok(update);
     }
 
 

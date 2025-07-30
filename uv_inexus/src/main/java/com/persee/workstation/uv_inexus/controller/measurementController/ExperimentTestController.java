@@ -102,12 +102,6 @@ public class ExperimentTestController {
         return experimentTestService.preprocessTheData(standardId);
     }
 
-    @GetMapping("zeroCalibrationPort")
-    @ApiOperation("校零接口")
-    public Result zeroCalibrationPort(String serialNumber) {
-        return experimentTestService.zeroCalibrationPort(serialNumber);
-    }
-
     @GetMapping("reportDataQuery")
     @ApiOperation("报告数据查询")
     public Result reportDataQuery(@RequestParam String taskId,@RequestParam String reportName){

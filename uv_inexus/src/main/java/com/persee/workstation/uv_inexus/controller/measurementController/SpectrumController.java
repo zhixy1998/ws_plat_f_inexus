@@ -156,28 +156,10 @@ public class SpectrumController {
     }
 
 
-    @GetMapping("peakSearchingPort")
-    @ApiOperation("寻峰接口")
-    public Result peakSearchingPort(@RequestParam String DataId,@RequestParam String type){
-        if (type.equals("0")){
-        return spectrumService.peakSearchingPort(DataId);
-         } if (type.equals("1")){
-            return spectrumService.conversionPeakSearching(DataId);
-        }else{
-            return Result.fail("未知数据类型");
-        }
-    }
-
-    @GetMapping("valleySearchingPort")
-    @ApiOperation("寻谷接口")
-    public Result valleySearchingPort(@RequestParam String measureDataId,@RequestParam String type){
-        if (type.equals("0")){
-            return spectrumService.valleySearchingPort(measureDataId);
-        } if (type.equals("1")){
-            return spectrumService.conversionValleySearching(measureDataId);
-        }else{
-            return Result.fail("未知数据类型");
-        }
+    @GetMapping("seekingPeaksAndValleysPort")
+    @ApiOperation("寻峰寻谷接口")
+    public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
+        return spectrumService.peakSearchingPort(paramDto);
     }
 
     @PostMapping("addGaugePoint")

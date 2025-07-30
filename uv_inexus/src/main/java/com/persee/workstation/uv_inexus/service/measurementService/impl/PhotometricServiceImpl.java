@@ -821,6 +821,12 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(true);
     }
 
+    /**
+     * 零点校零
+     * @param serialNumber
+     * @param methodId
+     * @return
+     */
     @Override
     public Result zero(String serialNumber, String methodId) {
 

@@ -1042,19 +1042,24 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
-    public Result peakSearchingPort(String measureDataId) {
-        // 根据测量数据id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(measureDataId);
-        // 校验一下测量数据
-        if (tMeasureData==null){
-            return Result.fail("测量数据不存在");
-        }
+    public Result peakSearchingPort(SeekingPeaksValleysDto paramDto) {
+        paramDto.setHeight(paramDto.getHeight()/100);
         List<String> list = new ArrayList<>();
-       // 将测量数据中的原始计算数据转换成List
-        try {
-            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), List.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        if (paramDto.getType().equals("0")){
+            // 根据测量数据id查询出测量数据
+            TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        }else if (paramDto.getType().equals("1")){
+            TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
+            if (tMeasureAnalysisData==null){
+                return Result.fail("测量数据不存在");
+            }
+            list = JSON.parseArray(tMeasureAnalysisData.getAnalysisResult(), String.class);
+        }else{
+            return Result.fail("参数错误");
         }
         // 分割测量数据
         List<String> xList = new ArrayList<>();
@@ -1069,66 +1074,55 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> body = new HashMap<>();
         body.put("x_data", xList);
         body.put("y_data", yList);
-        body.put("height", 0.5);
-        body.put("distance", 1);
+        body.put("peak_height", paramDto.getHeight());
+        body.put("valley_height", paramDto.getHeight());
+        body.put("distance", paramDto.getDistance());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING_AND_VALLEY_SEARCHING, request, Map.class).getBody();
         List<Map<String, Object>> listVos = new ArrayList<>();
-        List<String> xData = (List<String>) resultMap.get("peak_x");
-        List<String> yData = (List<String>) resultMap.get("peak_y");
-        for (int i = 0; i < xData.size(); i++) {
+        List<String> xPeak = (List<String>) resultMap.get("peak_x");
+        List<String> yPeak = (List<String>) resultMap.get("peak_y");
+        List<String> xValley = (List<String>) resultMap.get("valley_x");
+        List<String> yValley = (List<String>) resultMap.get("valley_y");
+        int number=0;
+        for (int i = 0; i < xPeak.size(); i++) {
             Map<String, Object> map = new HashMap<>();
-            map.put("x", xData.get(i));
-            map.put("y", yData.get(i));
+            map.put("serialNumber", ++number);
+            map.put("x", xPeak.get(i));
+            map.put("y", yPeak.get(i));
+            map.put("type", "波峰");
             listVos.add(map);
+        }
+        for (int i = 0; i < xValley.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("serialNumber", ++number);
+            map.put("x", xValley.get(i));
+            map.put("y", yValley.get(i));
+            map.put("type", "波谷");
+            listVos.add(map);
+        }
+        if (paramDto.getType().equals("0")){
+            // 根据测量数据id查询出测量数据
+            TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            tMeasureData.setPeak(JSON.toJSONString(xPeak));
+            tMeasureData.setGrain(JSON.toJSONString(xValley));
+            tMeasureDataService.updateById(tMeasureData);
+        }else if (paramDto.getType().equals("1")){
+            TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
+            if (tMeasureAnalysisData==null){
+                return Result.fail("分析数据不存在");
+            }
+            tMeasureAnalysisData.setPeak(JSON.toJSONString(xPeak));
+            tMeasureAnalysisData.setGrain(JSON.toJSONString(xValley));
+            tMeasureAnalysisDataService.updateById(tMeasureAnalysisData);
+        }else{
+            return Result.fail("参数错误");
         }
         return Result.ok(listVos);
     }
-
-    @Override
-    public Result conversionPeakSearching(String dataId) {
-        // 根据分析数据id查询出分析数据
-        TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(dataId);
-        // 校验一下数据
-        if (byId==null){
-            return Result.fail("测量数据不存在");
-        }
-        List<String> list = new ArrayList<>();
-        // 将数据中的结果数据转换成List
-        try {
-            list=objectMapper.readValue(byId.getAnalysisResult(), List.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        // 分割数据
-        List<String> xList = new ArrayList<>();
-        List<String> yList = new ArrayList<>();
-        for (String s : list){
-            String[] split = s.split(",");
-            xList.add(split[0]);
-            yList.add(split[1]);
-        }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String, Object> body = new HashMap<>();
-        body.put("x_data", xList);
-        body.put("y_data", yList);
-        body.put("height", 0.5);
-        body.put("distance", 1);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-        List<Map<String, Object>> listVos = new ArrayList<>();
-        List<String> xData = (List<String>) resultMap.get("peak_x");
-        List<String> yData = (List<String>) resultMap.get("peak_y");
-        for (int i = 0; i < xData.size(); i++) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("x", xData.get(i));
-            map.put("y", yData.get(i));
-            listVos.add(map);
-        }
-        return Result.ok(listVos);
-    }
-
     @Override
     public Result valleySearchingPort(String measureDataId) {
         // 根据测量数据id查询出测量数据

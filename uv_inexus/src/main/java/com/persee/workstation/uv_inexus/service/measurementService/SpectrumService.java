@@ -43,9 +43,8 @@ public interface SpectrumService {
 
     Result queryMeasureGaugePoint(String measureId);
 
-    Result peakSearchingPort(String measureDataId);
+    Result peakSearchingPort(SeekingPeaksValleysDto paramDto);
 
-    Result conversionPeakSearching(String dataId);
 
     Result valleySearchingPort(String measureDataId);
 

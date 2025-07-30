@@ -493,23 +493,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(info);
     }
 
-    /**
-     * 校零接口
-     */
-    @Override
-    public Result zeroCalibrationPort(String serialNumber) {
-        String ip = deviceInfoService.getIp(serialNumber);
-        Command command = new Command();
-        command.setCmdId(SetParamEnum.SetWl.getComId());
-        command.setParams(new Object[]{560});
-        devMessageUtil.wavelengthLocate(command,ip);
-        Command com = new Command();
-        com.setCmdId(SetParamEnum.Zero.getComId());
-        com.setParams(new Object[]{});
-        R<String> stringR = devMessageUtil.zeroCalibration(com);
-        return Result.ok(stringR);
-    }
-
     @Override
     public Result reportDataQuery(String taskId,String reportName) {
 
