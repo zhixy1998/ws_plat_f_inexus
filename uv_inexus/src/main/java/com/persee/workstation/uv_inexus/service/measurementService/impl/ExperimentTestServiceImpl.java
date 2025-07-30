@@ -244,6 +244,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result<ProjectTaskMethodVo> createTask(CreateTaskParamDto paramDto) {
+        if (!StringUtils.hasText(paramDto.getMethodId())) {
+            return Result.fail("请选择方法!");
+        }
+        if (!StringUtils.hasText(paramDto.getMeasurementType())) {
+            return Result.fail("请选择测量类型!");
+        }
+
         // 根据任务名称查询任务,如果为空则继续,如果有值的话则返回错误
         List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName()));
         if (taskList.size()>0){
@@ -344,9 +351,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail("保存失败");
         }
         ProjectTaskMethodVo vo = new ProjectTaskMethodVo();
-        vo.setTask(tMeasureTask);
-        vo.setProject(project);
-        vo.setMethod(tMeasureMethodService.getById(tMeasureTask.getMethodKey()));
+        vo.setTaskId(tMeasureTask.getId());
+        vo.setTaskName(tMeasureTask.getTaskName());
+        vo.setMethodId(tMeasureTask.getMethodKey());
         return Result.ok(vo);
     }
 
@@ -724,7 +731,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         vo.setProjectId(method.getProjectItemKey());
         vo.setMethodId(methodId);
         ProjectTaskMethodVo data =(ProjectTaskMethodVo) task.getData();
-        vo.setTaskId(data.getTask().getId());
+        vo.setTaskId(data.getTaskId());
         vo.setTaskName(dto.getTaskName());
         vo.setMethodName(method.getMethodName());
 

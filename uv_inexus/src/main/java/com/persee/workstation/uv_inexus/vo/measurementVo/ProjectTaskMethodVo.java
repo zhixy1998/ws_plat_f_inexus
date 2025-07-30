@@ -7,7 +7,7 @@ import lombok.Data;
 
 @Data
 public class ProjectTaskMethodVo {
-    private TMeasureProject project;
-    private TMeasureTask task;
-    private TMeasureMethod method;
+    private String taskId;
+    private String taskName;
+    private String methodId;
 }
