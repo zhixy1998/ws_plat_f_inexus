@@ -1,12 +1,17 @@
 package com.persee.workstation.uv_inexus.websocket;
 
 
+import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
 import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
@@ -41,6 +46,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private TimeSweepService timeSweepService;
+
+    @Autowired
+    private TMeasureMethodService tMeasureMethodService;
 
     @Autowired
     private DeviceInfoService deviceInfoService;
@@ -86,19 +94,11 @@ public class TimeWebSocket extends TextWebSocketHandler {
         }
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        // 设置参数
-        Result result = timeSweepService.setMethodParameters(task.getMethodKey(),deviceSerialNumber);
-
-        if (result.getCode() != 200) {
-            sendAndClose(session, result.getMessage());
-        }
-
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        Command command = new Command();
-        command.setCmdId(SetParamEnum.Scan.getComId());
-        command.setParams(new Object[]{});
-        devMessageUtil.timeSweepGetMeasureData(command,ip);
-        startTimedTask(session); // 启动推送任务
+        // 根据方法id查询方法数据
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        // 将方法参数提取出来
+        TimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+        startTimedTask(session,timeSweepParameter,deviceSerialNumber); // 启动推送任务
     }
 
     /**
@@ -169,7 +169,6 @@ public class TimeWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
-            Constants.originalCalculationData.clear();
             sessions.remove(session.getId());
             session.close();
         } catch (IOException ignored) {
@@ -181,31 +180,98 @@ public class TimeWebSocket extends TextWebSocketHandler {
      * 启动定时任务，每隔 1 秒推送数据给前端
      * @param session
      */
-    private void startTimedTask(WebSocketSession session) {
+    private void startTimedTask(WebSocketSession session,TimeSweepParamter param,String deviceSerialNumber) {
         // 创建一个单线程的定时任务执行器
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        final int[] counter = {0}; // 记录执行次数
 
+        Constants.startTime = LocalDateTime.now();
+        final long startTime = System.currentTimeMillis();  // 记录任务开始的时间
+        final double intervalTime = Double.parseDouble(param.getIntervalTime());
+        final int[] counter = {0}; // 记录执行次数
+        ChangeParam baselineData = param.getBaselineData();
+
+        List<Double> x_data = new ArrayList<>();
+        List<Double> y_data = new ArrayList<>();
+        List<String> measureData = new ArrayList<>();
+        List<String> originalData = new ArrayList<>();
+
+        // 扫描的总时长
+        Integer totalTime = Integer.valueOf(param.getScanTime());
+        // 时间间隔
+        Integer interval = Integer.valueOf(param.getIntervalTime());
+        // 扫描的单位
+        String scanUnit = param.getScanUnit();
         // 每隔 1 秒执行一次任务
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 // 如果执行次数大于等于 30 或者会话已经关闭，则停止任务
-                if (counter[0] >= 30 || !session.isOpen()) {
+                if (counter[0] >= totalTime || !session.isOpen()) {
                     scheduler.shutdown(); // 停止任务
+                    Constants.endTime = LocalDateTime.now();
+                    saveData(measureData); // 保存数据
                     return;
                 }
 
-                // 模拟读取数据（你可以换成真实读取机器数据的函数）
-                String data = "{\"time\":\"" + LocalDateTime.now() + "\", \"value\":" + Math.random() + "}";
+                // 计算当前执行的时间差（x 值）
+                long currentTime = System.currentTimeMillis();
+                double elapsedTime = (currentTime - startTime) / 1000.0;  // 毫秒转为秒
 
+                // 更新 x 值
+                double xValue  = Math.floor(elapsedTime);
+
+                // 开始扫描
+                String ip = deviceInfoService.getIp(deviceSerialNumber);
+                Command command = new Command(SetParamEnum.Scan.getComId(),new Object[]{});
+                ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
+                if (changeParam == null) {
+                    scheduler.shutdown();
+                    sendAndClose(session,"扫描失败");
+                }
+                originalData.add(xValue+ "," + changeParam.getS());
+                // 计算当前 y 值
+                if (param.getSpectralBandwidth().equals("1")){
+                    String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
+                    String y = DataCountUtil.changeTPercentOrAbs2(null, s);
+                    x_data.add(xValue);
+                    y_data.add(Double.parseDouble(y));
+                    measureData.add( xValue + "," + y);
+                }else if (param.getSpectralBandwidth().equals("2")){
+                    String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
+                    String y = DataCountUtil.changeTPercentOrAbs2(null, s);
+                    x_data.add(xValue);
+                    y_data.add(Double.parseDouble(y));
+                    measureData.add( xValue + "," + y);
+                }else if (param.getSpectralBandwidth().equals("3")){
+                    Double sData = Double.valueOf(changeParam.getS());
+                    String y = String.valueOf((sData / (4095 * 32)) * 100);
+                    x_data.add(xValue);
+                    y_data.add(Double.parseDouble(y));
+                    measureData.add( xValue + "," + y);
+                }else if (param.getSpectralBandwidth().equals("4")){
+                    Double rData = Double.valueOf(changeParam.getR());
+                    String y = String.valueOf((rData / (4095 * 32)) * 100);
+                    x_data.add(xValue);
+                    y_data.add(Double.parseDouble(y));
+                    measureData.add( xValue + "," + y);
+                }else{
+                    session.close();
+                }
                 // 推送数据到前端
-                session.sendMessage(new TextMessage(data));
+                session.sendMessage(new TextMessage("55"));
                 counter[0]++;
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }, 0, 1, TimeUnit.SECONDS); // 每隔 1 秒执行一次,参数分别是 延迟时间、执行间隔、执行间隔单位
+        }, 0, interval, scanUnit.equals("0")?TimeUnit.MINUTES:TimeUnit.SECONDS); // 每隔 1 秒执行一次,参数分别是 延迟时间、执行间隔、执行间隔单位
+    }
+
+    /**
+     * 存储数据
+     * @param measureData
+     */
+    private void saveData(List<String> measureData) {
+        // TODO: 实现保存数据的逻辑
+        System.out.println("保存数据: " + measureData.size() + "条");
     }
 
 }

@@ -23,13 +23,16 @@ import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoServ
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -369,6 +372,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
             wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
         }
+        wrapper.eq("measure_type", queryTask.getMeasurementType());
         Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
         if (page==null||page.getRecords().size() == 0){
             return Result.ok(page);
@@ -723,6 +727,70 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         vo.setProjectName(project.getProjectName());
 
         return Result.ok(vo);
+    }
+
+    /**
+     * 获取所有方法或按条件查询方法
+     * @param methodName
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    @Override
+    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize) {
+        // 1. 获取所有方法或按条件查询方法
+        List<MethodBaseVo> methodVo;
+        if (methodName == null || methodName.isEmpty()) {
+            List<TMeasureMethod> methods = tMeasureMethodService.list();  // 查询所有方法
+            methodVo = methods.stream()
+                    .map(method -> {
+                        // 将TMeasureMethod拷贝到MethodBaseVo
+                        MethodBaseVo vo = new MethodBaseVo();
+                        BeanUtils.copyProperties(method, vo);
+                        return vo;
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            List<TMeasureMethod> methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodName, methodName));  // 根据方法名查询
+            methodVo = methods.stream()
+                    .map(method -> {
+                        // 将TMeasureMethod拷贝到MethodBaseVo
+                        MethodBaseVo vo = new MethodBaseVo();
+                        BeanUtils.copyProperties(method, vo);
+                        return vo;
+                    })
+                    .collect(Collectors.toList());
+        }
+        // 2. 获取每个方法的最近任务使用时间
+        for (MethodBaseVo method : methodVo) {
+            // 获取方法的ID
+            String methodId = method.getId();
+
+            // 查询该方法的最近任务，按创建时间降序排序
+            TMeasureTask latestTask = tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class)
+                            .eq(TMeasureTask::getMethodKey, methodId)
+                            .orderByDesc(TMeasureTask::getCreateTime)
+                            .last("LIMIT 1"))  // 只获取最近的一条任务
+                    .stream()                           // 将查询结果转换为流 (Stream)
+                    .findFirst()                         // 获取流中的第一条数据（如果有的话）
+                    .orElse(null);                       // 如果没有数据，返回 null
+
+            // 获取最近任务的创建时间，作为使用时间
+            LocalDateTime lastUsedTime = latestTask != null ? latestTask.getCreateTime() : null;
+            method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
+            method.setCreateTime(method.getMethodCreateTime().format(formatter));
+        }
+        // 3. 根据使用时间进行逆序排序（最近的时间在前）
+        methodVo.sort((m1, m2) -> {
+            if (m1.getRecentUsageTime() == null) return 1;
+            if (m2.getRecentUsageTime() == null) return -1;
+            return m2.getRecentUsageTime().compareTo(m1.getRecentUsageTime());
+        });
+        // 4. 分页处理
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, methodVo.size());
+        List<MethodBaseVo> pagedResult = methodVo.subList(fromIndex, toIndex);
+      return Result.ok( new PageImpl<>(pagedResult, PageRequest.of(pageNum - 1, pageSize), methodVo.size()));
     }
 
 

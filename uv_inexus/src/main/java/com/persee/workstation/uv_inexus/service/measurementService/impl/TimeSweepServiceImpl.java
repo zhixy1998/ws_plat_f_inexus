@@ -366,8 +366,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
         commands.add(buildCommand(SetParamEnum.SetLampPos, time.getEnergyLamp()));
         commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
-        devMessageUtil.timeSweepSet(commands, ip);
-        return Result.ok();
+        R<String> stringR = devMessageUtil.timeSweepSet(commands, ip);
+        return Result.ok(stringR.getData());
     }
 
     /**
@@ -391,6 +391,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         TimeSweepParamter timeSweepParamter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
         if (timeSweepParamter.getWaveLength() == null || timeSweepParamter.getWaveLength().isEmpty()) {
             return Result.fail("缺少波长");
+        }
+        // 设置参数
+        Result result = setMethodParameters(methodId, serialNumber);
+        if (result.getData().equals("false")) {
+            return result;
         }
         // 通过序列号获取ip
         String ip = deviceInfoService.getIp(serialNumber);

@@ -156,7 +156,7 @@ public class SpectrumController {
     }
 
 
-    @GetMapping("seekingPeaksAndValleysPort")
+    @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
     public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
         return spectrumService.peakSearchingPort(paramDto);

@@ -21,7 +21,7 @@ public class SpectrumParameter extends MeasurePublicParameters {
     private String repetitionTime;
     // 时间间隔
     private String timeInterval;
-    // 阶梯校正(0.不启用 1.启用)
+    // 阶梯校正(false.不启用 true.启用)
     private String ladderCorrection;
     // 扫描速度(0.慢速 1.中速 2.快速 3.极快)
     private String scanSpeed;

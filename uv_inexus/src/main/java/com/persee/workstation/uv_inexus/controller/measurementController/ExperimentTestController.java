@@ -6,6 +6,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import io.swagger.annotations.ApiModel;
@@ -125,6 +126,14 @@ public class ExperimentTestController {
     @ApiOperation("使用该方法继续测量")
     public Result<MeasurementCurrentInfoVO> useMethodToTest(@RequestParam String methodId, @RequestParam String updateBy, @RequestParam String deviceSerialNumber){
         return experimentTestService.useMethodToTest(methodId,updateBy,deviceSerialNumber);
+    }
+
+    @GetMapping("listOfMethods")
+    @ApiOperation("获取方法列表")
+    public Result<List<MethodBaseVo>> listOfMethods(@RequestParam(required = false,value = "方法名称") String methodName,
+                                                    @RequestParam(value = "页码") Integer pageNum,
+                                                    @RequestParam(value = "页大小") Integer pageSize){
+        return experimentTestService.listOfMethods(methodName,pageNum,pageSize);
     }
 
 

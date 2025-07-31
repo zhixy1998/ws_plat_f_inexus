@@ -381,12 +381,12 @@ public class DevMessageUtil {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             log.info("绑定socket失败");
-            return R.fail(ans.getMessage());
+            return R.fail("false");
         }
         DatagramSocket socket = ans.getData();
         Boolean b = changeXml();
         if (!b) {
-            return R.fail("转换xml出错");
+            return R.fail("false");
         }
         for (Command command : list) {
             String cmdId = command.getCmdId();
@@ -395,7 +395,7 @@ public class DevMessageUtil {
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
-                return R.fail("解析报文出错");
+                return R.fail("false");
             }
         }
         return R.ok("true");
@@ -430,23 +430,29 @@ public class DevMessageUtil {
     /**
      * 时间扫描：获取测量数据
      */
-    public void timeSweepGetMeasureData(Command command, String deviceIp) {
+    public ChangeParam timeSweepGetMeasureData(Command command, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");
-            return ;
+            return null;
         }
         DatagramSocket socket = re.getData();
 
         Boolean b = changeXml();
         if (!b) {
             log.info("转换xml出错");
-            return;
+            return null;
         }
         String cmdId = command.getCmdId();
         Transition transition = xml.get(cmdId);
+        // 发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        Constants.startTime = LocalDateTime.now();
-        List<byte[]> list = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        if (parse==null || parse.equals("false")) {
+            return null;
+        }
+        ChangeParam changeParam = (ChangeParam) parse;
+        return changeParam;
     }
 }
