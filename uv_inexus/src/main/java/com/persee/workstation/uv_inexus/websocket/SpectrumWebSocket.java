@@ -384,6 +384,10 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             handleTransportError(session, e);
         }
     }
+
+    /**
+     * 全局数据清空
+     */
     private void exceptionHandling() {
         Constants.x_data.clear();
         Constants.y_data.clear();
