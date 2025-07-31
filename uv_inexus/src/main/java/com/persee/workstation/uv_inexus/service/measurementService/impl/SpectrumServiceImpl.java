@@ -1936,7 +1936,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());
             vo.setEnergyLight(methodparam.getEnergyLamp());
-            vo.setStairCorrection(methodparam.getLadderCorrection() == "0" ? "启用" : "不启用");
+            vo.setStairCorrection(methodparam.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setSpectrumScanImage(data.getDataImage());
             vo.setOriginalData(data.getOriginalCalculationData());
             vo.setGain(methodparam.getGain().toString());

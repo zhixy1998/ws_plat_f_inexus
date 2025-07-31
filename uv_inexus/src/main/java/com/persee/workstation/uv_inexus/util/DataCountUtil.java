@@ -3,6 +3,8 @@ package com.persee.workstation.uv_inexus.util;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
 
+import java.math.BigDecimal;
+
 @Slf4j
 public class DataCountUtil {
 
@@ -39,7 +41,7 @@ public class DataCountUtil {
             double d = Double.parseDouble(tPercent);
             log.info("透光率不为空，计算吸光度");
             d=d / 100.0;
-            double re = - Math.log10(d);
+            BigDecimal re = BigDecimal.valueOf(- Math.log10(d));
             System.out.println("吸光度:" + re);
             return String.valueOf(re);
         }

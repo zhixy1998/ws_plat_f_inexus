@@ -33,6 +33,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -125,8 +126,8 @@ public class TimeWebSocket extends TextWebSocketHandler {
         final int[] counter = {0}; // 记录执行次数
         ChangeParam baselineData = param.getBaselineData();
 
-        List<Double> x_data = new ArrayList<>();
-        List<Double> y_data = new ArrayList<>();
+        List<BigDecimal> x_data = new ArrayList<>();
+        List<BigDecimal> y_data = new ArrayList<>();
         List<String> measureData = new ArrayList<>();
         List<ChangeParam> originalData = new ArrayList<>();
 
@@ -142,7 +143,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
                 if (counter[0] >= totalTime || !session.isOpen()) {
                     scheduler.shutdown(); // 停止任务
                     Constants.endTime = LocalDateTime.now();
-                    saveData(session,measureData,originalData,x_data,y_data,sampleId,task); // 保存数据
+                    saveData(session,originalData,x_data,y_data,sampleId,task); // 保存数据
                     return;
                 }
 
@@ -151,11 +152,11 @@ public class TimeWebSocket extends TextWebSocketHandler {
                 double elapsedTime = (currentTime - startTime) / 1000.0;  // 毫秒转为秒
 
                 // 更新 x 值
-                double xValue  = Math.floor(elapsedTime);
+                BigDecimal xValue  = BigDecimal.valueOf(Math.floor(elapsedTime));
 
                 // 开始扫描
                 String ip = deviceInfoService.getIp(deviceSerialNumber);
-                Command command = new Command(SetParamEnum.Scan.getComId(),new Object[]{});
+                Command command = new Command(SetParamEnum.Measure.getComId(),new Object[]{});
                 ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
                 if (changeParam == null) {
                     scheduler.shutdown();
@@ -167,28 +168,28 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
                     String y = DataCountUtil.changeTPercentOrAbs2(null, s);
                     x_data.add(xValue);
-                    y_data.add(Double.parseDouble(y));
+                    y_data.add(new BigDecimal(y));
                     measureData.add( xValue + "," + y);
                     session.sendMessage(new TextMessage(xValue + "," + y));
                 }else if (param.getSpectralBandwidth().equals("2")){
                     String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-                    String y = DataCountUtil.changeTPercentOrAbs2(null, s);
+                    String y = DataCountUtil.changeTPercentOrAbs2(s,null);
                     x_data.add(xValue);
-                    y_data.add(Double.parseDouble(y));
+                    y_data.add(new BigDecimal(y));
                     measureData.add( xValue + "," + y);
                     session.sendMessage(new TextMessage(xValue + "," + y));
                 }else if (param.getSpectralBandwidth().equals("3")){
                     Double sData = Double.valueOf(changeParam.getS());
                     String y = String.valueOf((sData / (4095 * 32)) * 100);
                     x_data.add(xValue);
-                    y_data.add(Double.parseDouble(y));
+                    y_data.add(new BigDecimal(y));
                     measureData.add( xValue + "," + y);
                     session.sendMessage(new TextMessage(xValue + "," + y));
                 }else if (param.getSpectralBandwidth().equals("4")){
                     Double rData = Double.valueOf(changeParam.getR());
                     String y = String.valueOf((rData / (4095 * 32)) * 100);
                     x_data.add(xValue);
-                    y_data.add(Double.parseDouble(y));
+                    y_data.add(new BigDecimal(y));
                     measureData.add( xValue + "," + y);
                     session.sendMessage(new TextMessage(xValue + "," + y));
                 }else{
@@ -203,13 +204,17 @@ public class TimeWebSocket extends TextWebSocketHandler {
 
     /**
      * 存储数据
-     * @param measureData
+     * @param session
+     * @param originalData
+     * @param x_data
+     * @param y_data
+     * @param sampleId
+     * @param task
      */
     private void saveData(WebSocketSession session,
-                          List<String> measureData,
                           List<ChangeParam> originalData,
-                          List<Double> x_data,
-                          List<Double> y_data, String sampleId, TMeasureTask task) {
+                          List<BigDecimal> x_data,
+                          List<BigDecimal> y_data, String sampleId, TMeasureTask task) {
         // 先对数据进行寻峰寻谷
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

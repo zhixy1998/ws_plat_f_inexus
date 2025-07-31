@@ -362,7 +362,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         TimeSweepParamter time = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
         List<Command> commands = new ArrayList<>();
         commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getSpectralBandwidth()));
-        commands.add(buildCommand(SetParamEnum.SetWl, time.getWaveLength()));
         commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
         commands.add(buildCommand(SetParamEnum.SetLampPos, time.getEnergyLamp()));
         commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
