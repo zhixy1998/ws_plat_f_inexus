@@ -48,5 +48,5 @@ public interface ExperimentTestService {
     Result<MeasurementCurrentInfoVO> useMethodToTest(String methodId, String updateBy, String deviceSerialNumber);
 
     // 获取方法列表
-    Result listOfMethods(String methodName, Integer pageNum, Integer pageSize);
+    Result listOfMethods(String methodName, Integer pageNum, Integer pageSize,String sort);
 }

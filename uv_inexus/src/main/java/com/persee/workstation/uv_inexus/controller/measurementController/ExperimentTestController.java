@@ -130,10 +130,11 @@ public class ExperimentTestController {
 
     @GetMapping("listOfMethods")
     @ApiOperation("获取方法列表")
-    public Result<List<MethodBaseVo>> listOfMethods(@RequestParam(required = false,value = "方法名称") String methodName,
-                                                    @RequestParam(value = "页码") Integer pageNum,
-                                                    @RequestParam(value = "页大小") Integer pageSize){
-        return experimentTestService.listOfMethods(methodName,pageNum,pageSize);
+    public Result<List<MethodBaseVo>> listOfMethods(@RequestParam(required = false) String methodName,
+                                                    @RequestParam Integer pageNum,
+                                                    @RequestParam Integer pageSize,
+                                                    @RequestParam String sort){
+        return experimentTestService.listOfMethods(methodName,pageNum,pageSize, sort);
     }
 
 

@@ -235,29 +235,31 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     x_data.add(xValue);
                     y_data.add(Double.parseDouble(y));
                     measureData.add( xValue + "," + y);
+                    session.sendMessage(new TextMessage(xValue + "," + y));
                 }else if (param.getSpectralBandwidth().equals("2")){
                     String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
                     String y = DataCountUtil.changeTPercentOrAbs2(null, s);
                     x_data.add(xValue);
                     y_data.add(Double.parseDouble(y));
                     measureData.add( xValue + "," + y);
+                    session.sendMessage(new TextMessage(xValue + "," + y));
                 }else if (param.getSpectralBandwidth().equals("3")){
                     Double sData = Double.valueOf(changeParam.getS());
                     String y = String.valueOf((sData / (4095 * 32)) * 100);
                     x_data.add(xValue);
                     y_data.add(Double.parseDouble(y));
                     measureData.add( xValue + "," + y);
+                    session.sendMessage(new TextMessage(xValue + "," + y));
                 }else if (param.getSpectralBandwidth().equals("4")){
                     Double rData = Double.valueOf(changeParam.getR());
                     String y = String.valueOf((rData / (4095 * 32)) * 100);
                     x_data.add(xValue);
                     y_data.add(Double.parseDouble(y));
                     measureData.add( xValue + "," + y);
+                    session.sendMessage(new TextMessage(xValue + "," + y));
                 }else{
                     session.close();
                 }
-                // 推送数据到前端
-                session.sendMessage(new TextMessage("55"));
                 counter[0]++;
             } catch (IOException e) {
                 e.printStackTrace();

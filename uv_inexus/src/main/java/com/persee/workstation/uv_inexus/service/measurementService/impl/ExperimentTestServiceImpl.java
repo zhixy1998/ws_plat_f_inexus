@@ -31,8 +31,6 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -737,7 +735,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * @return
      */
     @Override
-    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize) {
+    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort) {
         // 1. 获取所有方法或按条件查询方法
         List<MethodBaseVo> methodVo;
         if (methodName == null || methodName.isEmpty()) {
@@ -746,7 +744,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     .map(method -> {
                         // 将TMeasureMethod拷贝到MethodBaseVo
                         MethodBaseVo vo = new MethodBaseVo();
-                        BeanUtils.copyProperties(method, vo);
+                        vo.setId(method.getId());
+                        vo.setMethodName(method.getMethodName());
+                        vo.setCreator(method.getMethodCreator());
+                        vo.setCreateTime(method.getMethodCreateTime().format(formatter));
+                        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+                        vo.setProject(project.getProjectName());
                         return vo;
                     })
                     .collect(Collectors.toList());
@@ -756,7 +759,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     .map(method -> {
                         // 将TMeasureMethod拷贝到MethodBaseVo
                         MethodBaseVo vo = new MethodBaseVo();
-                        BeanUtils.copyProperties(method, vo);
+                        vo.setId(method.getId());
+                        vo.setMethodName(method.getMethodName());
+                        vo.setCreator(method.getMethodCreator());
+                        vo.setCreateTime(method.getMethodCreateTime().format(formatter));
+                        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+                        vo.setProject(project.getProjectName());
                         return vo;
                     })
                     .collect(Collectors.toList());
@@ -778,19 +786,40 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             // 获取最近任务的创建时间，作为使用时间
             LocalDateTime lastUsedTime = latestTask != null ? latestTask.getCreateTime() : null;
             method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
-            method.setCreateTime(method.getMethodCreateTime().format(formatter));
         }
-        // 3. 根据使用时间进行逆序排序（最近的时间在前）
-        methodVo.sort((m1, m2) -> {
-            if (m1.getRecentUsageTime() == null) return 1;
-            if (m2.getRecentUsageTime() == null) return -1;
-            return m2.getRecentUsageTime().compareTo(m1.getRecentUsageTime());
-        });
+        // 3. 根据使用时间进行排序（根据sort参数判断排序方式）
+        if (sort.equals("0")) {  // 倒序
+            methodVo.sort((m1, m2) -> {
+                if (m1.getRecentUsageTime() == null) return 1;
+                if (m2.getRecentUsageTime() == null) return -1;
+                return m2.getRecentUsageTime().compareTo(m1.getRecentUsageTime());
+            });
+        } else if (sort.equals("1")) {  // 顺序
+            methodVo.sort((m1, m2) -> {
+                if (m1.getRecentUsageTime() == null) return 1;
+                if (m2.getRecentUsageTime() == null) return -1;
+                return m1.getRecentUsageTime().compareTo(m2.getRecentUsageTime());
+            });
+        }
+
         // 4. 分页处理
+        int total = methodVo.size();  // 总条数
         int fromIndex = (pageNum - 1) * pageSize;
         int toIndex = Math.min(fromIndex + pageSize, methodVo.size());
+
+        // 获取当前页的数据
         List<MethodBaseVo> pagedResult = methodVo.subList(fromIndex, toIndex);
-      return Result.ok( new PageImpl<>(pagedResult, PageRequest.of(pageNum - 1, pageSize), methodVo.size()));
+
+        // 构造分页返回结果
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", pagedResult);  // 数据
+        response.put("total", total);       // 总条数
+        response.put("pageNum", pageNum);  // 当前页码
+        response.put("pageSize", pageSize);  // 每页大小
+        response.put("totalPages", (int) Math.ceil((double) total / pageSize)); // 总页数
+
+        return Result.ok(response);
+
     }
 
 
