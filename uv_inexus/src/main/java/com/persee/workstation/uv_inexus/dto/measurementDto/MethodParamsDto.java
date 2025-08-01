@@ -2,10 +2,8 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import lombok.Data;
 
-import java.util.Map;
-
 @Data
-public class MethodParamsDto {
+public class MethodParamsDto extends RationParameter{
     // 用户名
     private String updateBy;
     // 项目id
@@ -14,7 +12,6 @@ public class MethodParamsDto {
     private String methodId;
     // 方法名称
     private String methodName;
-    // 方法参数
-    private Map<String, Object> params;
+
 
 }

@@ -267,7 +267,7 @@ public class DevMessageUtil {
     /**
      * 光度测量：
      */
-    public R<ChangeParam> photoMetricMeasurement(List<Command> list, String deviceIp) {
+    public R<ChangeParam> photometricAndRationMeasurement(List<Command> list, String deviceIp) {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");

@@ -4,10 +4,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.RationService;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,13 +34,13 @@ public class RationController {
 
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")
-    public Result<MethodParam> queryMethodParam(@RequestParam String methodId) {
+    public Result<RationMethodParam> queryMethodParam(@RequestParam String methodId) {
         return rationService.queryMethodParam(methodId);
     }
 
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
-    public Result<List<SampleVO>> getSampleList(@RequestParam String taskId,
+    public Result getSampleList(@RequestParam String taskId,
                                                 @RequestParam String sampleKind) {
         return rationService.querySampleInfo(taskId, sampleKind);
     }

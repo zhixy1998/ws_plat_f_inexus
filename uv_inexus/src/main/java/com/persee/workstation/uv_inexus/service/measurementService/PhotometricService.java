@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
+import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
@@ -18,7 +19,7 @@ import java.util.Map;
 
 public interface PhotometricService {
     /**
-     * 光度测量
+     * 创建光度测量方法
      */
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, PhotometricParameter photometricParameter);
 
@@ -47,7 +48,7 @@ public interface PhotometricService {
     /**
      * 查询样品列表
      */
-    Result newQuerySampleInfo(String taskId);
+    Result<List<JSONObject>> newQuerySampleInfo(String taskId);
 
     /**
      * 查询样品的表头
@@ -88,7 +89,7 @@ public interface PhotometricService {
     /**
      * 校零
      */
-    Result zero(String serialNumber, String methodId);
+    Result zero(String serialNumber, String methodId, String taskId,String updateBy);
 
     /**
      * 保存按钮
@@ -103,6 +104,6 @@ public interface PhotometricService {
     /**
      * 导出到word
      */
-    R<File> downloadWord(String taskId);
+    R<File> downloadWord(String taskId, Boolean allDisplay);
 
 }

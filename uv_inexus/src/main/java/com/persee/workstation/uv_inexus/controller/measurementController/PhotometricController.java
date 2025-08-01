@@ -105,8 +105,10 @@ public class PhotometricController {
     @GetMapping("zero")
     @ApiOperation("校零接口")
     public Result photoZero(@RequestParam String serialNumber,
-                       @RequestParam String methodId) {
-        return photometricService.zero(serialNumber,methodId);
+                       @RequestParam String methodId,
+                            @RequestParam String taskId,
+                            @RequestParam String updateBy) {
+        return photometricService.zero(serialNumber,methodId, taskId,updateBy);
     }
 
     @GetMapping("saveTask")
@@ -117,15 +119,15 @@ public class PhotometricController {
 
     @GetMapping("downloadDoc")
     @ApiOperation("下载文档接口")
-    public ResponseEntity downloadDoc(@RequestParam String taskId) throws Exception {
-        R<File> r = photometricService.downloadWord(taskId);
+    public ResponseEntity downloadDoc(@RequestParam String taskId, @RequestParam Boolean allDisplay) throws Exception {
+        R<File> r = photometricService.downloadWord(taskId, allDisplay);
         if (r.getSuccess()) {
             File file = r.getData();
             FileInputStream fis = new FileInputStream(file);
             InputStreamResource resource = new InputStreamResource(fis);
 
             String fileName = URLEncoder.encode(file.getName(), "UTF-8");
-            //5.删除临时文件
+            //删除临时文件
             new Thread(() -> {
                 try {
                     Thread.sleep(10000);

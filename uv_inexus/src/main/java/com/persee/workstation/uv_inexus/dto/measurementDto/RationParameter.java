@@ -61,7 +61,7 @@ public class RationParameter extends MeasurePublicParameters{
     private String samplePoolWay;
     // 样品输入参数
     @ApiModelProperty("样品输入参数")
-    private List<InputParam> inputParams;
+    private List<InputParam> sampleInputParams;
     // 待计算结果
     @ApiModelProperty("待计算结果")
     private List<PreCountResultParam> resultParams;

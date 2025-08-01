@@ -17,8 +17,8 @@ public class RestUtil {
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("formula_string", formula);
-        jsonObject.put("independent_ariable_string", identity);
-        jsonObject.put("independent_ariable_value", values);
+        jsonObject.put("independent_variable_string", identity);
+        jsonObject.put("independent_variable_value", values);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

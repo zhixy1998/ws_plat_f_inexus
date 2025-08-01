@@ -785,7 +785,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
             // 获取最近任务的创建时间，作为使用时间
             LocalDateTime lastUsedTime = latestTask != null ? latestTask.getCreateTime() : null;
-            method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
+            if (lastUsedTime == null) {
+                method.setRecentUsageTime("—");
+            } else{
+                method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
+            }
+
         }
         // 3. 根据使用时间进行排序（根据sort参数判断排序方式）
         if (sort.equals("0")) {  // 倒序

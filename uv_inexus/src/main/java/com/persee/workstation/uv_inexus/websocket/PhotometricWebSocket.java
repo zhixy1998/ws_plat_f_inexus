@@ -100,12 +100,12 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         String sampleId = getQueryParam(query, "sampleId");
         String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         if (deviceSerialNumber == null) {
-            sendAndClose(session, "缺少 deviceSerialNumber 参数");
+            sendAndClose(session, "未连接仪器");
             return;
         }
 
         if (taskId == null) {
-            sendAndClose(session, "缺少 taskId 参数");
+            sendAndClose(session, "请创建任务");
             return;
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -202,6 +202,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
 
         String sampleKey = specimen.getSpecimenKey();
         TMeasureSample sample = tMeasureSampleService.getById(sampleKey);
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
 
         List<PhotometricOriginDataInfo> originDataList = new ArrayList<>();
         List<Command> list = new ArrayList<>();
@@ -218,7 +219,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             list.add(new Command("Measure", new Object[]{}));
 
             String ip = infoService.getIp(deviceSerialNumber);
-            R<ChangeParam> res = devMessageUtil.photoMetricMeasurement(list, ip);
+            R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
             if (!res.getSuccess()) {
                 log.info("测量出错");
                 return R.fail("测量出错");
@@ -226,7 +227,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             ChangeParam response = res.getData();
             machineData.add(response);
             ChangeParam originRsd = new ChangeParam();
-            List<ChangeParam> params = parameter.getChanageParams();
+            List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
             for (ChangeParam param : params) {
                 if (param.getWl().equals(waveLength)) {
                     BeanUtils.copyProperties(param, originRsd);
