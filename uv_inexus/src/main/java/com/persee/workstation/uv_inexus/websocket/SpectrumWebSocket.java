@@ -109,8 +109,8 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        // 将方法参数中的Rsd取出来
-        List<ChangeParam> baselineData = spectrumParameter.getBaselineData();
+        // 将任务中的Rsd取出来
+        List<ChangeParam> baselineData = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
         // 开始获取数据
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = new Command();

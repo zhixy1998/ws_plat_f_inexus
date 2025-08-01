@@ -124,8 +124,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
         final long startTime = System.currentTimeMillis();  // 记录任务开始的时间
         final double intervalTime = Double.parseDouble(param.getIntervalTime());
         final int[] counter = {0}; // 记录执行次数
-        ChangeParam baselineData = param.getBaselineData();
-
+        ChangeParam baselineData = JSON.parseObject(task.getZeroParam(), ChangeParam.class);
         List<BigDecimal> x_data = new ArrayList<>();
         List<BigDecimal> y_data = new ArrayList<>();
         List<String> measureData = new ArrayList<>();
@@ -210,6 +209,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
      * @param y_data
      * @param sampleId
      * @param task
+     * @throws IOException
      */
     private void saveData(WebSocketSession session,
                           List<ChangeParam> originalData,

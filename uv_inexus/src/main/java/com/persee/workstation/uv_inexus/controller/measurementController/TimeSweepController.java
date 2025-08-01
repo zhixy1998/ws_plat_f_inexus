@@ -63,9 +63,10 @@ public class TimeSweepController {
 
     @GetMapping("zero")
     @ApiOperation("校零接口")
-    public Result photoZero(@RequestParam String serialNumber,
+    public Result photoZero(@RequestParam String taskId,
+                            @RequestParam String serialNumber,
                             @RequestParam String methodId) {
-        return timeSweepService.zero(serialNumber,methodId);
+        return timeSweepService.zero(taskId,serialNumber,methodId);
     }
 
     @GetMapping("querySampleList")
@@ -97,6 +98,8 @@ public class TimeSweepController {
     public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto){
         return timeSweepService.addGaugePoint(paramDto);
     }
+
+
 
 
 

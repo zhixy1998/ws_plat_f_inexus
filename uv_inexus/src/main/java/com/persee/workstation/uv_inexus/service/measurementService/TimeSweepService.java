@@ -29,7 +29,7 @@ public interface TimeSweepService {
     Result setMethodParameters(String methodId, String deviceSerialNumber);
 
     // 校零接口
-    Result zero(String serialNumber, String methodId);
+    Result zero(String taskId,String serialNumber, String methodId);
 
     // 获取样本按钮列表接口
     Result querySampleList(String taskId);

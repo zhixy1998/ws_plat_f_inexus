@@ -82,7 +82,7 @@ public interface SpectrumService {
 
     Result queryPreprocessingOperation(String methodId);
 
-    Result obtainTheBaseline(String methodId,String deviceSerialNumber);
+    Result obtainTheBaseline(String taskId,String methodId,String deviceSerialNumber);
 
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 

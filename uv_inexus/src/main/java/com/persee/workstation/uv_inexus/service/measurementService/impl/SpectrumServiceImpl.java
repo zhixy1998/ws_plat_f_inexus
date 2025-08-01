@@ -55,6 +55,7 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 光谱扫描服务实现类
@@ -1669,6 +1670,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (task == null) {
             return Result.fail("任务不存在");
         }
+        task.setEndTime(LocalDateTime.now());
         task.setIsDelete("1");
         boolean update = tMeasureTaskService.updateById(task);
         if ( update){
@@ -1700,7 +1702,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @return
      */
     @Override
-    public Result obtainTheBaseline(String methodId,String deviceSerialNumber) {
+    public Result obtainTheBaseline(String taskId,String methodId,String deviceSerialNumber) {
         if (methodId == null|| methodId.equals("")){
             return Result.fail("方法编号不能为空");
         }
@@ -1718,13 +1720,31 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (listR.getSuccess() != true){
             return Result.ok(listR.getMessage());
         }
-        // 根据方法id查询方法数据
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        // 将listR中的数据保存到spectrumParameter的baselineData中
-        spectrumParameter.setBaselineData(listR.getData());
-        method.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
-        boolean update = tMeasureMethodService.updateById(method);
+        TMeasureTask task =null;
+        if (taskId != null && !taskId.equals("")){
+            task = tMeasureTaskService.getById(taskId);
+        }else{
+            task = new TMeasureTask();
+            TMeasureMethod method = tMeasureMethodService.getById(methodId);
+            SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
+            task.setUserId(user.getId());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            task.setTaskName(method.getMeasurementType() + "task_" + collect);
+            task.setCreateTime(LocalDateTime.now());
+            task.setMethodKey(methodId);
+            task.setMeasureType(method.getMeasurementType());
+            task.setProjectItemKey(method.getProjectItemKey());
+            task.setStartTime(LocalDateTime.now());
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            tMeasureTaskService.save(task);
+        }
+        // 将listR中的数据保存到task的校零参数中
+        task.setZeroParam(JSON.toJSONString(listR.getData()));
+        boolean update = tMeasureTaskService.updateById(task);
         return Result.ok(update);
     }
 
@@ -1884,7 +1904,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
             vo.setSteps(steps.toString());
             vo.setDetectionStartTime(task.getStartTime().format(formatter));
-            vo.setDetectionEndTime(task.getEndTime());
+            vo.setDetectionEndTime(task.getEndTime().format(formatter));
             vo.setDataType("测量数据");
 
             vo.setAmbientTemperature("26℃");

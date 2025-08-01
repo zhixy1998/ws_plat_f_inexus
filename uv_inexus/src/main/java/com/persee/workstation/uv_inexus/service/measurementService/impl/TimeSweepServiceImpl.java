@@ -33,10 +33,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 ("timeSweepService")
@@ -402,23 +400,24 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
     /**
      * 零点校零
+     * @param taskId
      * @param serialNumber
      * @param methodId
      * @return
      */
     @Override
-    public Result zero(String serialNumber, String methodId) {
+    public Result zero(String taskId,String serialNumber, String methodId) {
         if (serialNumber == null || serialNumber.equals("")){
             return Result.fail("缺少设备序列号");
         }
         if (methodId == null || methodId.equals("")){
             return Result.fail("缺少方法id");
         }
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        if (method == null) {
+        TMeasureMethod methodData = tMeasureMethodService.getById(methodId);
+        if (methodData == null) {
             return Result.fail("方法不存在");
         }
-        TimeSweepParamter timeSweepParamter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+        TimeSweepParamter timeSweepParamter = JSON.parseObject(methodData.getMeasurementParamInfo(), TimeSweepParamter.class);
         if (timeSweepParamter.getWaveLength() == null || timeSweepParamter.getWaveLength().isEmpty()) {
             return Result.fail("缺少波长");
         }
@@ -440,11 +439,32 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (!zero.getSuccess()) {
             return Result.fail(zero.getMessage());
         }
+        TMeasureTask task =null;
+        if (taskId != null && !taskId.equals("")){
+            task = tMeasureTaskService.getById(taskId);
+        }else{
+            task = new TMeasureTask();
+            TMeasureMethod method = tMeasureMethodService.getById(methodId);
+            SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
+            task.setUserId(user.getId());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            task.setTaskName(method.getMeasurementType() + "task_" + collect);
+            task.setCreateTime(LocalDateTime.now());
+            task.setMethodKey(methodId);
+            task.setMeasureType(method.getMeasurementType());
+            task.setProjectItemKey(method.getProjectItemKey());
+            task.setStartTime(LocalDateTime.now());
+            task.setDeviceSerialNumber(serialNumber);
+            tMeasureTaskService.save(task);
+        }
         ChangeParam changeParam = zero.getData();
         changeParam.setWl(timeSweepParamter.getWaveLength());
-        timeSweepParamter.setBaselineData(changeParam);
-        method.setMeasurementParamInfo(JSON.toJSONString(timeSweepParamter));
-        boolean update = tMeasureMethodService.updateById(method);
+        task.setZeroParam(JSON.toJSONString(changeParam));
+        boolean update = tMeasureTaskService.updateById(task);
         return Result.ok(update);
     }
 
