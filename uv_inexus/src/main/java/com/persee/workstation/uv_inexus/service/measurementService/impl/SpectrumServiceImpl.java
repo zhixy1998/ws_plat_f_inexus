@@ -1548,7 +1548,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         task.setSampleKey(JSON.toJSONString(taskSpecimenList));
         boolean update = tMeasureTaskService.updateById(task);
-        return Result.ok(update== true?"修改成功":"修改失败");
+        return Result.ok(update);
     }
 
 

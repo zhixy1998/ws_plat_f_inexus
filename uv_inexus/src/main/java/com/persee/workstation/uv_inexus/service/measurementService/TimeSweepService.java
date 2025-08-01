@@ -1,7 +1,6 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 
 public interface TimeSweepService {
@@ -31,4 +30,18 @@ public interface TimeSweepService {
 
     // 校零接口
     Result zero(String serialNumber, String methodId);
+
+    // 获取样本按钮列表接口
+    Result querySampleList(String taskId);
+
+    // 添加或删除样本接口
+    Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto);
+
+    // 图片上传
+    Result uploadImage(SpectrumImageUpload upload);
+
+    // 查询峰谷接口
+    Result seekingPeaksAndValleysPort(SeekingPeaksValleysDto paramDto);
+
+    Result addGaugePoint(AddGaugePointDto paramDto);
 }

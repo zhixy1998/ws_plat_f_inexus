@@ -1,5 +1,9 @@
 package com.persee.workstation.uv_inexus.controller.measurementController;
 
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SeekingPeaksValleysDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
 import io.swagger.annotations.ApiModel;
@@ -63,6 +67,37 @@ public class TimeSweepController {
                             @RequestParam String methodId) {
         return timeSweepService.zero(serialNumber,methodId);
     }
+
+    @GetMapping("querySampleList")
+    @ApiOperation("获取样本按钮列表接口")
+    public Result querySampleList(@RequestParam String taskId) {
+        return timeSweepService.querySampleList(taskId);
+    }
+
+    @PostMapping("addOrDeleteSamplePort")
+    @ApiOperation("添加或删除样本接口")
+    public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto){
+        return timeSweepService.addOrDeleteSamplePort(paramDto);
+    }
+
+    @PostMapping("uploadImage")
+    @ApiOperation("图片上传")
+    public Result uploadImage(@RequestBody SpectrumImageUpload upload) {
+        return timeSweepService.uploadImage(upload);
+    }
+
+    @PostMapping("seekingPeaksAndValleysPort")
+    @ApiOperation("寻峰寻谷接口")
+    public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
+        return timeSweepService.seekingPeaksAndValleysPort(paramDto);
+    }
+
+    @PostMapping("addGaugePoint")
+    @ApiOperation("添加标记点接口")
+    public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto){
+        return timeSweepService.addGaugePoint(paramDto);
+    }
+
 
 
 }

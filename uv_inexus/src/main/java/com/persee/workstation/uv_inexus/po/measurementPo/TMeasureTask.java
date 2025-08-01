@@ -49,6 +49,10 @@ public class TMeasureTask{
     @TableField("project_item_key")
     private String projectItemKey;
 
+    // 校零参数
+    @TableField("zero_param")
+    private String zeroParam;
+
     //  开始时间
     @TableField("start_time")
     private LocalDateTime startTime;
