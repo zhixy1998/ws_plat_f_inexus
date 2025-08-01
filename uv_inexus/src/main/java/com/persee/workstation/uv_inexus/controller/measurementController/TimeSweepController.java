@@ -1,15 +1,15 @@
 package com.persee.workstation.uv_inexus.controller.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/timeSweep/")
@@ -63,7 +63,7 @@ public class TimeSweepController {
 
     @GetMapping("zero")
     @ApiOperation("校零接口")
-    public Result photoZero(@RequestParam String taskId,
+    public Result photoZero(@RequestParam(required = false) String taskId,
                             @RequestParam String serialNumber,
                             @RequestParam String methodId) {
         return timeSweepService.zero(taskId,serialNumber,methodId);
@@ -97,6 +97,58 @@ public class TimeSweepController {
     @ApiOperation("添加标记点接口")
     public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto){
         return timeSweepService.addGaugePoint(paramDto);
+    }
+
+    @GetMapping("/exportWord")
+    @ApiOperation("导出Word接口")
+    public void exportWord(@RequestParam String taskId, HttpServletResponse response) {
+        try {
+            timeSweepService.exportToWord(taskId, response);
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try {
+                response.getWriter().write("导出失败: " + e.getMessage());
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+        }
+    }
+
+    @PostMapping("fourOperationsPort")
+    @ApiOperation("四则运算接口")
+    public Result fourOperationsPort(@RequestBody FourOperationsParamDto paramDto){
+        return timeSweepService.fourOperationsPort(paramDto);
+    }
+
+
+    @PostMapping("advancedOperationsPort")
+    @ApiOperation("高级运算接口")
+    public Result advancedOperationsPort(@RequestBody AdvancedOperationsDto paramDto){
+        return timeSweepService.advancedOperationsPort(paramDto);
+    }
+
+    @PostMapping("smoothnessPort")
+    @ApiOperation("平滑接口")
+    public Result smoothnessPort(@RequestBody SmoothnessDto paramDto){
+        return timeSweepService.smoothnessPort(paramDto);
+    }
+
+    @PostMapping("differentialPort")
+    @ApiOperation("微分接口")
+    public Result differentialPort(@RequestBody DifferentialDto paramDto){
+        return timeSweepService.differentialPort(paramDto);
+    }
+
+    @PostMapping("luminanceModeConversionPort")
+    @ApiOperation("光度模式转换")
+    public Result luminanceModeConversionPort(@RequestBody LuminosityConversionDto paramDto){
+        return timeSweepService.luminanceModeConversionPort(paramDto);
+    }
+
+    @GetMapping("saveData")
+    @ApiOperation("保存数据接口")
+    public Result saveData(@RequestParam String taskId) {
+        return timeSweepService.saveData(taskId);
     }
 
 

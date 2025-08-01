@@ -4,6 +4,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 
 @Slf4j
 public class DataCountUtil {
@@ -31,20 +32,35 @@ public class DataCountUtil {
     public static String changeTPercentOrAbs2(String abs, String tPercent) {
 
         if (abs != null) {
-            double i = Double.parseDouble(abs);
+            // 吸光度不为空，计算透光率
+            BigDecimal absorbance = new BigDecimal(abs);
             log.info("吸光度不为空，计算透光率");
-            double v = Math.pow(10, -i) * 100;
-            System.out.println("透光率:" + v);
-            return String.valueOf(v);
+
+            // v = 10^(-abs) * 100
+            BigDecimal ten = new BigDecimal("10");
+            BigDecimal minusAbs = absorbance.negate();
+            BigDecimal power = ten.pow(minusAbs.intValue(), MathContext.DECIMAL128);  // 精度高一点
+            BigDecimal result = power.multiply(new BigDecimal("100"));
+
+            System.out.println("透光率: " + result.stripTrailingZeros().toPlainString());
+            return result.stripTrailingZeros().toPlainString();
         }
+
         if (tPercent != null) {
-            double d = Double.parseDouble(tPercent);
+            // 透光率不为空，计算吸光度
+            BigDecimal t = new BigDecimal(tPercent);
             log.info("透光率不为空，计算吸光度");
-            d=d / 100.0;
-            BigDecimal re = BigDecimal.valueOf(- Math.log10(d));
-            System.out.println("吸光度:" + re);
-            return String.valueOf(re);
+
+            BigDecimal ratio = t.divide(new BigDecimal("100"), MathContext.DECIMAL128);
+
+            // -log10(ratio)
+            double logValue = Math.log10(ratio.doubleValue());
+            BigDecimal absorbance = BigDecimal.valueOf(-logValue);
+
+            System.out.println("吸光度: " + absorbance.stripTrailingZeros().toPlainString());
+            return absorbance.stripTrailingZeros().toPlainString();
         }
+
         return null;
     }
 

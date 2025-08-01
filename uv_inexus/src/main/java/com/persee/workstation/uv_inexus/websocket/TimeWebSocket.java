@@ -127,7 +127,6 @@ public class TimeWebSocket extends TextWebSocketHandler {
         ChangeParam baselineData = JSON.parseObject(task.getZeroParam(), ChangeParam.class);
         List<BigDecimal> x_data = new ArrayList<>();
         List<BigDecimal> y_data = new ArrayList<>();
-        List<String> measureData = new ArrayList<>();
         List<ChangeParam> originalData = new ArrayList<>();
 
         // 扫描的总个数
@@ -168,29 +167,37 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     String y = DataCountUtil.changeTPercentOrAbs2(null, s);
                     x_data.add(xValue);
                     y_data.add(new BigDecimal(y));
-                    measureData.add( xValue + "," + y);
-                    session.sendMessage(new TextMessage(xValue + "," + y));
+                    JSONObject point = new JSONObject();
+                    point.put("x", xValue);
+                    point.put("y", y);
+                    session.sendMessage(new TextMessage(point.toJSONString()));
                 }else if (param.getSpectralBandwidth().equals("2")){
                     String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
                     String y = DataCountUtil.changeTPercentOrAbs2(s,null);
                     x_data.add(xValue);
                     y_data.add(new BigDecimal(y));
-                    measureData.add( xValue + "," + y);
-                    session.sendMessage(new TextMessage(xValue + "," + y));
+                    JSONObject point = new JSONObject();
+                    point.put("x", xValue);
+                    point.put("y", y);
+                    session.sendMessage(new TextMessage(point.toJSONString()));
                 }else if (param.getSpectralBandwidth().equals("3")){
                     Double sData = Double.valueOf(changeParam.getS());
                     String y = String.valueOf((sData / (4095 * 32)) * 100);
                     x_data.add(xValue);
                     y_data.add(new BigDecimal(y));
-                    measureData.add( xValue + "," + y);
-                    session.sendMessage(new TextMessage(xValue + "," + y));
+                    JSONObject point = new JSONObject();
+                    point.put("x", xValue);
+                    point.put("y", y);
+                    session.sendMessage(new TextMessage(point.toJSONString()));
                 }else if (param.getSpectralBandwidth().equals("4")){
                     Double rData = Double.valueOf(changeParam.getR());
                     String y = String.valueOf((rData / (4095 * 32)) * 100);
                     x_data.add(xValue);
                     y_data.add(new BigDecimal(y));
-                    measureData.add( xValue + "," + y);
-                    session.sendMessage(new TextMessage(xValue + "," + y));
+                    JSONObject point = new JSONObject();
+                    point.put("x", xValue);
+                    point.put("y", y);
+                    session.sendMessage(new TextMessage(point.toJSONString()));
                 }else{
                     session.close();
                 }

@@ -3,6 +3,8 @@ package com.persee.workstation.uv_inexus.service.measurementService;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 
+import javax.servlet.http.HttpServletResponse;
+
 public interface TimeSweepService {
     // 查询项目任务方法接口
     Result queryProjectTaskMethod(String updateBy, String measureType);
@@ -43,5 +45,27 @@ public interface TimeSweepService {
     // 查询峰谷接口
     Result seekingPeaksAndValleysPort(SeekingPeaksValleysDto paramDto);
 
+    // 添加标记点接口
     Result addGaugePoint(AddGaugePointDto paramDto);
+
+    // 导出Word接口
+    void exportToWord(String taskId, HttpServletResponse response) throws Exception;
+
+    // 四则运算接口
+    Result fourOperationsPort(FourOperationsParamDto paramDto);
+
+    // 高级运算接口
+    Result advancedOperationsPort(AdvancedOperationsDto paramDto);
+
+    // 平滑接口
+    Result smoothnessPort(SmoothnessDto paramDto);
+
+    // 微分接口
+    Result differentialPort(DifferentialDto paramDto);
+
+    // 光度模式转换接口
+    Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
+
+    // 保存数据接口
+    Result saveData(String taskId);
 }

@@ -241,7 +241,7 @@ public class SpectrumController {
 
     @GetMapping("obtainTheBaseline")
     @ApiOperation("获取基线接口")
-    public Result obtainTheBaseline(@RequestParam String taskId,@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
+    public Result obtainTheBaseline(@RequestParam(required = false) String taskId,@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
         return spectrumService.obtainTheBaseline(taskId,methodId,deviceSerialNumber);
     }
 
