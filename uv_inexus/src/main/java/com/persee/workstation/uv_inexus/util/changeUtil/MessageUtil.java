@@ -56,44 +56,6 @@ public class MessageUtil {
 
         try {
             List<byte[]> responses = new ArrayList<>();
-
-            // 特殊命令预处理
-//            if (cmdId.equalsIgnoreCase("Scan") || cmdId.equalsIgnoreCase("ScanFast")) {
-//                byte[] firstCmd = new byte[]{
-//                        (byte) 0xB5, (byte) 0xFF, (byte) 0xF0, (byte) 0x01,
-//                        (byte) 0x00, (byte) 0x40, (byte) 0xC2, (byte) 0xBA,
-//                        (byte) 0xA9, (byte) 0x08, (byte) 0x64, (byte) 0x76
-//                };
-//
-//                byte[] configCmd = new byte[]{
-//                        (byte) 0xFF, (byte) 0xB5, (byte) 0x13, (byte) 0x04,
-//                        (byte) 0x00, (byte) 0x07, (byte) 0x0D, (byte) 0x00,
-//                        (byte) 0x00, (byte) 0x2A, (byte) 0x9D, (byte) 0xA6
-//                };
-
-                // 发送 firstCmd
-//                DatagramPacket packet1 = new DatagramPacket(firstCmd, firstCmd.length,
-//                        InetAddress.getByName(sendIp), remotePort);
-//                scanSocket.send(packet1);
-//                System.out.print("预发送报文 firstCmd：");
-//                for (byte b : firstCmd) System.out.printf("%02X ", b);
-//                System.out.println();
-//
-//                // 等待10秒
-//                Thread.sleep(100);
-//
-//                // 发送 configCmd
-//                DatagramPacket packet2 = new DatagramPacket(configCmd, configCmd.length,
-//                        InetAddress.getByName(sendIp), remotePort);
-//                scanSocket.send(packet2);
-//                System.out.print("预发送报文 configCmd：");
-//                for (byte b : configCmd) System.out.printf("%02X ", b);
-//                System.out.println();
-//
-//                // 再等待10秒
-//                Thread.sleep(100);
-//            }
-
             // 发送主命令
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName(sendIp), remotePort);
@@ -114,42 +76,6 @@ public class MessageUtil {
             long lastReceiveTime = System.currentTimeMillis();
 
             new Thread(() -> {scanReceiveAndDeal(scanSocket);}).start();
-        }catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * 光谱扫描调用2
-     * @param scanSocket 获取socket
-     * @param sendIp  机器ip
-     * @param cmdId  指令
-     * @param sendBytes 发送报文
-     */
-    public void scanSendAndDeal2(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
-
-        try {
-            List<byte[]> responses = new ArrayList<>();
-            // 发送主命令
-            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
-                    InetAddress.getByName(sendIp), remotePort);
-            scanSocket.send(packet);
-
-            System.out.print("发送指令 [" + cmdId + "] 报文：");
-            for (byte b : sendBytes) System.out.printf("%02X ", b);
-            System.out.println();
-
-            // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 5000 : 4500;
-            scanSocket.setSoTimeout(timeoutMs);
-
-            long lastReceiveTime = System.currentTimeMillis();
-
-            new Thread(() -> {scanReceiveAndDeal2(scanSocket);}).start();
         }catch (Exception e) {
             e.printStackTrace();
         }
@@ -401,48 +327,6 @@ public class MessageUtil {
      * @param scanSocket
      */
     private void scanReceiveAndDeal(DatagramSocket scanSocket) {
-        while (Constants.isRunning) {
-            int i = 0;
-            try {
-                DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
-                scanSocket.receive(receivePacket);
-
-                byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
-
-                System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
-                System.out.print("十六进制回应：");
-                for (byte b : data) System.out.printf("%02X ", b);
-                System.out.println();
-
-                if (data.length >= 12 && (data[4] & 0xFF) != 0) {
-                    int x = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
-                    int y = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
-                    double result_x = x / 50.0;
-                    double result_y = y / 8388607.0 * 100;
-
-                    Constants.originalCalculationData.add(result_x + "," + result_y);
-                    Constants.field3Values.add(result_x + "," + result_y);
-                    Constants.x_data.add(String.valueOf(result_x));
-                    Constants.y_data.add(String.valueOf(result_y));
-                    System.out.println("第 " + (i + 1) + " 条回应：" + result_x + "," + result_y);
-                    Constants.instrumentData.add(x + "," + y);
-                    System.out.println("第 " + (i + 1) + " 条回应：" + x + "," + y);
-                    i++;
-                }
-            } catch (Exception e) {
-                Constants.originalCalculationData.add(Constants.EndData);
-                Constants.endTime = LocalDateTime.now();
-                return;
-            }
-        }
-    }
-
-
-    /**
-     * 扫描接收并处理2
-     * @param scanSocket
-     */
-    private void scanReceiveAndDeal2(DatagramSocket scanSocket) {
         int i = 0;
         ChangeParam changeParam = null;
         while (Constants.isRunning) {
@@ -466,7 +350,6 @@ public class MessageUtil {
                     int s = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     changeParam.setS(String.valueOf(s));
                     changeParam.setWl(String.valueOf(s/50.0f));
-                    Constants.instrumentData.add(String.valueOf(s));
                     System.out.println("s = " + s);
                 }
 
@@ -483,6 +366,7 @@ public class MessageUtil {
                 if (changeParam != null && changeParam.getWl() != null && changeParam.getS() != null && changeParam.getD() != null && changeParam.getR() != null) {
                     Constants.measurd_data.add(changeParam);  // 完成的对象添加到公共列表
                     System.out.println("已完成一个完整的对象：" + changeParam);
+                    Constants.instrumentData.add(changeParam.toString());
                     changeParam = null;  // 清空临时对象，准备接收下一个
                 }
 

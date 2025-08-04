@@ -1,19 +1,29 @@
 package com.persee.workstation.uv_inexus.websocket;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureDataService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationWavelengthDataInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -24,6 +34,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +63,15 @@ public class RationWebSocket extends TextWebSocketHandler {
     private TMeasureDataService tMeasureDataService;
 
     @Autowired
+    RationService rationService;
+
+    @Autowired
+    TMeasureSampleService tMeasureSampleService;
+
+    @Autowired
+    TMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
     DeviceInfoService infoService;
 
     @Value("1")
@@ -59,13 +80,18 @@ public class RationWebSocket extends TextWebSocketHandler {
     @Value("0")
     private String error;
 
-
+    private static volatile int status = 0;
     /**
      * 前端连接成功 WebSocket 时触发
      * @param session
      */
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
+    public void afterConnectionEstablished(WebSocketSession session) throws IOException {
+
+        if (status != 0) {
+            sendAndClose(session, "已有连接，不要重复操作");
+        }
+        status = 1;
         // 记录当前连接
         sessions.put(session.getId(), session);
 
@@ -73,11 +99,38 @@ public class RationWebSocket extends TextWebSocketHandler {
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String sampleId= getQueryParam(query, "sampleId");
+        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
+        String sampleKind= getQueryParam(query, "sampleKind");
 
-        if (taskId == null) {
-            sendAndClose(session, "缺少 taskId 参数");
+        if (deviceSerialNumber == null) {
+            sendAndClose(session, "未连接仪器");
             return;
         }
+
+        if (taskId == null) {
+            sendAndClose(session, "请创建任务后再测量");
+            return;
+        }
+        if(!StringUtils.hasText(sampleKind)){
+            sendAndClose(session, "请选择样品类型");
+            return;
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null || !StringUtils.hasText(task.getSampleKey())) {
+            sendAndClose(session, "任务或样品不存在");
+            return;
+        }
+
+        TMeasureMethod byId = tMeasureMethodService.getById(task.getMethodKey());
+        RationParameter parameter = JSON.parseObject(byId.getMeasurementParamInfo(), RationParameter.class);
+
+        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
+            log.info("缺少波长， 无法测量");
+            sendAndClose(session, "缺少波长， 无法测量");
+            return;
+        }
+
         if (sampleId != null) {
             //单样品重测
             LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
@@ -89,68 +142,268 @@ public class RationWebSocket extends TextWebSocketHandler {
                 log.info("有数据，重测");
             }
 
-            sendAndClose(session, "缺少 sampleId 参数");
             return;
+        } else {
+
+            if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+                List<RationDataVO> data = new ArrayList<>();
+
+                if (parameter.getRepeatMode().equals("重复")) {
+                    //重复测量，单独处理！
+                    return;
+                }
+
+                boolean empty = false;
+                double minuend = 0;
+                for (TaskSpecimen specimen : taskSpecimen) {
+
+                    if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
+                        System.out.println("删除的样品,不需要测量");
+                        continue;
+                    }
+
+                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                    if (!sample.getSampleKind().equals(sampleKind)) {
+                        log.info("不是需要的样品，跳过");
+                        continue;
+                    }
+                    //标准样品
+                    R<RationDataVO> r = singleSampleSimpleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+                    if (!r.getSuccess()) {
+                        sendAndClose(session, r.getMessage());
+                        return;
+                    }
+
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                        empty = true;
+                        minuend = r.getData().getCountData().get(0).getColValue();
+                    }
+                    specimen.setIsTested(right);
+                    data.add(r.getData());
+                }
+                List<RationCountDataInfo> countData = new ArrayList<>();
+                if (empty) {
+                    for (RationDataVO dataVO : data) {
+                        RationCountDataInfo yAbs = new RationCountDataInfo();
+                        yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+
+                        double value = dataVO.getCountData().get(0).getColValue();
+                        yAbs.setColValue(value - minuend);
+                        dataVO.getCountData().add(yAbs);
+                        countData.add(yAbs);
+                        rationService.saveStandSampleData(dataVO);
+
+                    }
+                } else {
+                    for (RationDataVO dataVO : data) {
+                        countData.addAll(dataVO.getCountData());
+                        rationService.saveStandSampleData(dataVO);
+                    }
+                }
+                //拟合曲线
+                FittingReceiveInfo fittingReceiveInfo = rationService.fittingCurve(countData, empty, task.getMethodKey(), parameter.getWaveLengthParams());
+                if (fittingReceiveInfo == null) {
+                    sendAndClose(session, "曲线拟合失败");
+                    return;
+                }
+
+                String fitParam = JSON.toJSONString(fittingReceiveInfo);
+                task.setFittingParam(fitParam);
+
+                //绘图
+                RationFitCurveVO curveData = rationService.curveData(fittingReceiveInfo);
+
+                if (session.isOpen()) {
+                    JSONObject payload = new JSONObject();
+                    payload.put("type", "curve");
+                    payload.put("x_data", curveData.getXList());
+                    payload.put("y_data", curveData.getYList());
+                    payload.put("degree", curveData.getCurveType());
+                    payload.put("equation_type", RationCurveParamEnums.getName(parameter.getEquationType()));
+                    payload.put("param", curveData.getCoefficientList());
+                    session.sendMessage(new TextMessage(payload.toJSONString()));
+                }
+
+            } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+                List<RationDataVO> data = new ArrayList<>();
+
+                if (parameter.getRepeatMode().equals("重复")) {
+                    //重复测量，单独处理！
+                    return;
+                }
+
+                boolean empty = false;
+                double minuend = 0;
+                for (TaskSpecimen specimen : taskSpecimen) {
+
+                    if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
+                        System.out.println("删除的样品,不需要测量");
+                        continue;
+                    }
+
+                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                    if (!sample.getSampleKind().equals(sampleKind)) {
+                        log.info("不是需要的样品，跳过");
+                        continue;
+                    }
+                    //标准样品
+                    R<RationDataVO> r = singleSampleSimpleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+                    if (!r.getSuccess()) {
+                        sendAndClose(session, r.getMessage());
+                        return;
+                    }
+
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                        empty = true;
+                        minuend = r.getData().getCountData().get(0).getColValue();
+                    }
+                    specimen.setIsTested(right);
+                    data.add(r.getData());
+                }
+                if (empty) {
+                    for (RationDataVO dataVO : data) {
+                        RationCountDataInfo yAbs = new RationCountDataInfo();
+                        yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+
+                        double value = dataVO.getCountData().get(0).getColValue();
+                        yAbs.setColValue(value - minuend);
+                        dataVO.getCountData().add(yAbs);
+                    }
+                }
+
+
+            } else {
+                sendAndClose(session, "请选择样品类型");
+                return;
+            }
+
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            List<RationDataVO> data = new ArrayList<>();
+
+
+
+
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            tMeasureTaskService.updateById(task);
+            if (session.isOpen()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            }
+            sessions.remove(session.getId());
+            session.close();
+            status = 0;
         }
+    }
+
+
+
+
+    public R<RationDataVO> singleSampleSimpleMeasure(TaskSpecimen specimen, RationParameter parameter, String taskId, String methodId, String deviceSerialNumber, String sessionId) throws IOException {
+
+        WebSocketSession session = sessions.get(sessionId);
+
+        String sampleKey = specimen.getSpecimenKey();
+        TMeasureSample sample = tMeasureSampleService.getById(sampleKey);
         TMeasureTask task = tMeasureTaskService.getById(taskId);
 
-        if (task == null || !StringUtils.hasText(task.getSampleKey())) {
-            sendAndClose(session, "任务或样品不存在");
-            return;
-        }
+        List<RationWavelengthDataInfo> originDataList = new ArrayList<>();
+        List<Command> list = new ArrayList<>();
+        List<ChangeParam> machineData = new ArrayList<>();
+        List<RationCountDataInfo> countData = new ArrayList<>();
+        RationDataVO dataInfo = new RationDataVO();
 
-        TMeasureMethod byId = tMeasureMethodService.getById(task.getMethodKey());
-        PhotometricParameter parameter = JSON.parseObject(byId.getMeasurementParamInfo(), PhotometricParameter.class);
+        List<String> waveLengths = parameter.getWaveLength();
 
-        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
-            log.info("缺少波长， 无法测量");
-            sendAndClose(session, "缺少波长， 无法测量");
-            return;
-        }
+        list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
+        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        LocalDateTime startTime = LocalDateTime.now();
+        for (String waveLength : waveLengths) {
+            list.add(new Command("SetWl", new Object[]{waveLength}));
+            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+            list.add(new Command("Measure", new Object[]{}));
 
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        for (TaskSpecimen specimen : taskSpecimen) {
-            if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
-                System.out.println("删除的样品,不需要测量");
-                continue;
+            String ip = infoService.getIp(deviceSerialNumber);
+            R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+            if (!res.getSuccess()) {
+                log.info("测量出错");
+                return R.fail("测量出错");
             }
+            ChangeParam response = res.getData();
+            machineData.add(response);
+            ChangeParam originRsd = new ChangeParam();
+            List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+            for (ChangeParam param : params) {
+                if (param.getWl().equals(waveLength)) {
+                    BeanUtils.copyProperties(param, originRsd);
+                    break;
+                }
+            }
+            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
+            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
-            List<String> waveLengths = parameter.getWaveLength();
-            List<Command> list = new ArrayList<>();
-            list.add(new Command("SetPhotoMode", new Object[]{1}));
-            list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+            RationWavelengthDataInfo originDataInfo = new RationWavelengthDataInfo();
+            originDataInfo.setIdentity(RationDataIdentityEnums.result.getIdentity());
+            originDataInfo.setWavelength(waveLength);
 
-            for (String waveLength : waveLengths) {
-                list.add(new Command("SetWl", new Object[]{waveLength}));
-                list.add(new Command("Measure", new Object[]{}));
+            originDataInfo.setAbsValue(data);
+            originDataInfo.setTPercentValue(tPercent);
 
-                String ip = infoService.getIp(task.getDeviceSerialNumber());
-//                R<Map<String, String>> res = devMessageUtil.photoMetricMeasurement(list, ip);
-//                if (!res.getSuccess()) {
-//                    log.info("测量出错");
-//                    return;
-//                }
-//                Map<String, String> data = res.getData();
-//                log.info(data.get("wave"));
-//                log.info(data.get("value"));
-//                log.info(data.get("machineValue"));
-//
-//                TMeasureData measureData = new TMeasureData();
-//                measureData.setTaskId(taskId);
-//                measureData.setSampleKey(specimen.getSpecimenKey());
+            originDataList.add(originDataInfo);
 
+            if (session.isOpen()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
+                jsonObject.put("value", originDataInfo.getAbsValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
+                jsonObject.put("value", originDataInfo.getTPercentValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
             }
-
-
-
-
-
-
-
+            list.clear();
         }
+        LocalDateTime endTime = LocalDateTime.now();
+        dataInfo.setMachineData(machineData);
+        dataInfo.setWavelengthData(originDataList);
+        dataInfo.setTaskId(taskId);
+        dataInfo.setSampleId(sampleKey);
+        dataInfo.setSampleTime(startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        dataInfo.setStartTime(startTime);
+        dataInfo.setEndTime(endTime);
 
+        R<RationCountDataInfo> absValue = rationService.countAbsValue(originDataList, methodId);
+        if (!absValue.getSuccess()) {
+            log.info("计算出错");
+            sendAndClose(session, absValue.getMessage());
+            return R.fail("计算出错");
+        }
+        RationCountDataInfo data = absValue.getData();
+        if (session.isOpen()) {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sampleId", sampleKey);
+            jsonObject.put("key", data.getIdentity());
+            jsonObject.put("value", data.getColValue());
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
+            jsonObject.put("key", "samplingTime");
+            jsonObject.put("value", startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+        }
+        countData.add(data);
+        dataInfo.setCountData(countData);
+
+        return R.ok(dataInfo);
+    }
+
+    public R<Boolean> singleSampleDifferentialMeasure(){
+        return R.ok();
     }
 
 
@@ -222,6 +475,9 @@ public class RationWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("result", "finish");
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             session.close();
         } catch (IOException ignored) {}
     }

@@ -1,25 +1,28 @@
 package com.persee.workstation.uv_inexus.constant;
 
 public class PythonPathConstant {
+    private static String httpUrl= "http://192.168.32.62:8002/";
     // 最小二乘接口路径
-    public final static String LEAST_SQUARE_FIT = "http://192.168.32.62:8002/least_squares_fitting";
+    public final static String LEAST_SQUARE_FIT = httpUrl+"least_squares_fitting";
     // 计算浓度或吸收率接口路径
-    public final static String CONCENTRATION_OR_ABSORPTION_RATE = "http://192.168.32.62:8002/calculate_concentration_or_abs";
+    public final static String CONCENTRATION_OR_ABSORPTION_RATE = httpUrl+"calculate_concentration_or_abs";
     // 代数运算接口路径
-    public final static String ALGEBRAIC_OPERATION = "http://192.168.32.62:8002/algebraic_operations";
+    public final static String ALGEBRAIC_OPERATION = httpUrl+"algebraic_operations";
     // 寻峰接口路径
-    public final static String PEAK_SEARCHING = "http://192.168.32.62:8002/get_peak";
+    public final static String PEAK_SEARCHING = httpUrl+"get_peak";
     // 寻谷接口路径
-    public final static String VALLEY_SEARCHING = "http://192.168.32.62:8002/get_valley";
+    public final static String VALLEY_SEARCHING = httpUrl+"get_valley";
+    // 寻峰寻谷接口路径
+    public final static String PEAK_SEARCHING_AND_VALLEY_SEARCHING = httpUrl+"get_peaks_and_valleys";
     // 谱图的四则运算接口路径
-    public final static String SPECTRUM_FOUR_OPERATION = "http://192.168.32.62:8002/spectral_arithmetic_operations";
+    public final static String SPECTRUM_FOUR_OPERATION = httpUrl+"spectral_arithmetic_operations";
     // 谱图变换
-    public final static String SPECTRUM_TRANSFORMATION = "http://192.168.32.62:8002/spectrum_transform";
+    public final static String SPECTRUM_TRANSFORMATION = httpUrl+"spectrum_transform";
     // 消除台阶或者倒刺
-    public final static String REMOVE_STEP_OR_SPIKES = "http://192.168.32.62:8002/detect_step_skipe";
+    public final static String REMOVE_STEP_OR_SPIKES = httpUrl+"detect_step_skipe";
     // 微分
-    public final static String DIFFERENTIATED = "http://192.168.32.62:8002/differentiated";
+    public final static String DIFFERENTIATED = httpUrl+"differentiated";
     // 平滑
-    public final static String SMOOTHED = "http://192.168.32.62:8002/smoothed";
+    public final static String SMOOTHED = httpUrl+"smoothed";
 
 }

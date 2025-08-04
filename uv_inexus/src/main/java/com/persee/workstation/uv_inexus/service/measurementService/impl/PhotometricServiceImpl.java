@@ -14,14 +14,11 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardDetection;
-import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
-import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -31,50 +28,52 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import springfox.documentation.spring.web.json.Json;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.text.DecimalFormat;
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-
 @Slf4j
 @Service("photometricService")
 public class PhotometricServiceImpl implements PhotometricService {
     @Autowired
-    private TMeasureProjectService tMeasureProjectService;
+    TMeasureProjectService tMeasureProjectService;
     @Autowired
-    private TMeasureTaskService tMeasureTaskService;
+    TMeasureTaskService tMeasureTaskService;
     @Autowired
-    private TMeasureSampleService tMeasureSampleService;
+    TMeasureSampleService tMeasureSampleService;
     @Autowired
-    private SystemUserManageDAO userManageDAO;
+    SystemUserManageDAO userManageDAO;
     @Autowired
-    private TMeasureMethodService tMeasureMethodService;
+    TMeasureMethodService tMeasureMethodService;
     @Autowired
-    private TMeasureDataService tMeasureDataService;
+    TMeasureDataService tMeasureDataService;
 
     @Autowired
-    private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+    TMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Autowired
-    private TReportStandardDetectionService tReportStandardDetectionService;
+    TReportStandardDetectionService tReportStandardDetectionService;
 
     @Autowired
-    private TReportStandardPretreatmentService tReportStandardPretreatmentService;
+    TReportStandardPretreatmentService tReportStandardPretreatmentService;
 
     @Autowired
-    private DeviceInfoService deviceInfoService;
+    DeviceInfoService deviceInfoService;
 
     @Autowired
-    private DevMessageUtil devMessageUtil;
+    DevMessageUtil devMessageUtil;
 
     @Value("1")
     String deleteType;
@@ -195,31 +194,6 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public Result<List<HeadVO>> sampleTableHead(String methodId) {
-
-        List<HeadVO> headVOList = new ArrayList<>();
-        if (!StringUtils.hasText(methodId)) {
-            return Result.ok(headVOList);
-        }
-
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        if (method == null) {
-            return Result.ok(headVOList);
-        }
-
-        PhotometricParameter param = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        if (param.getSampleInputParams() == null || param.getSampleInputParams().isEmpty()) {
-            return Result.ok(headVOList);
-        }
-
-        for (InputParam inputParam : param.getSampleInputParams()) {
-            headVOList.add(new HeadVO(inputParam.getResultIdentity(), inputParam.getParamName()));
-        }
-        return Result.ok(headVOList);
-
-    }
-
-    @Override
     public Result addOrDeleteSample(AddOrDeleteSampleDTO dto) {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
@@ -281,9 +255,11 @@ public class PhotometricServiceImpl implements PhotometricService {
                 specimen.setDeleteType(deleteType);
                 LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                        .eq(TMeasureData::getTaskId, task.getId());
-                TMeasureData one = tMeasureDataService.getOne(queryWrapper);
-                if (one != null) {
+                        .eq(TMeasureData::getTaskId, task.getId())
+                        .orderByDesc(TMeasureData::getSerialNumber);
+                List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+                if (list != null && !list.isEmpty()) {
+                    TMeasureData one = list.get(0);
                     one.setIsDelete(deleteType);
                     tMeasureDataService.updateById(one);
                 }
@@ -334,7 +310,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result<Boolean> deleteSample(String taskId, String sampleId) {
 
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(sampleId)) {
-            return Result.fail("缺少参数");
+            return Result.fail("请选择需要删除的任务和样品");
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
@@ -349,9 +325,11 @@ public class PhotometricServiceImpl implements PhotometricService {
                 specimen.setDeleteType(deleteType);
                 LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                        .eq(TMeasureData::getTaskId, task.getId());
-                TMeasureData one = tMeasureDataService.getOne(queryWrapper);
-                if (one != null) {
+                        .eq(TMeasureData::getTaskId, task.getId())
+                         .orderByDesc(TMeasureData::getSerialNumber);
+                List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+                if (list != null && !list.isEmpty()) {
+                    TMeasureData one = list.get(0);
                     one.setIsDelete(deleteType);
                     tMeasureDataService.updateById(one);
                 }
@@ -374,9 +352,11 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
             LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                    .eq(TMeasureData::getTaskId, task.getId());
-            TMeasureData one = tMeasureDataService.getOne(queryWrapper);
-            if (one != null) {
+                    .eq(TMeasureData::getTaskId, task.getId())
+                     .orderByDesc(TMeasureData::getSerialNumber);
+            List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+            if (list != null && !list.isEmpty()) {
+                TMeasureData one = list.get(0);
                 one.setIsDelete(createType);
                 tMeasureDataService.updateById(one);
             }
@@ -386,32 +366,6 @@ public class PhotometricServiceImpl implements PhotometricService {
         task.setSampleKey(jsonString);
 
         return Result.ok(tMeasureTaskService.updateById(task));
-    }
-
-    @Override
-    public Result<List<SampleVO>> querySampleInfo(String taskId) {
-        List<SampleVO> sampleVOList = new ArrayList<>();
-        if (!StringUtils.hasText(taskId)) {
-            return Result.ok(sampleVOList);
-        }
-
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task == null) {
-            return Result.fail("任务不存在");
-        }
-
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                SampleVO vo = new SampleVO();
-                BeanUtils.copyProperties(measureSample, vo);
-                vo.setSampleId(measureSample.getId());
-                sampleVOList.add(vo);
-            }
-        }
-
-        return Result.ok(sampleVOList);
     }
 
     @Override
@@ -429,6 +383,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 SampleVO vo = new SampleVO();
                 BeanUtils.copyProperties(measureSample, vo);
@@ -496,22 +453,6 @@ public class PhotometricServiceImpl implements PhotometricService {
         param.setLuminosity(WaveLengthEnum.getName(photometricParameter.getLuminosity()));
 //        param.setPhotometricParameter(photometricParameter);
         return Result.ok(param);
-    }
-
-    @Override
-    public Result queryStandardInfo(String standardName) {
-
-        LambdaQueryWrapper<TReportStandardDetection> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(TReportStandardDetection::getStandardName, standardName);
-        List<TReportStandardDetection> list = tReportStandardDetectionService.list(queryWrapper);
-        for (TReportStandardDetection detection : list) {
-            LambdaQueryWrapper<TReportStandardPretreatment> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(TReportStandardPretreatment::getDetectionId, detection.getId());
-            List<TReportStandardPretreatment> pretreatmentList = tReportStandardPretreatmentService.list(wrapper);
-            detection.setPretreatments(pretreatmentList);
-        }
-
-        return Result.ok(list);
     }
 
     @Override
@@ -650,48 +591,6 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public Result<List<PhotometricSampleAndDataVO>> queryDataInfo(String taskId) {
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        List<PhotometricSampleAndDataVO> list = new ArrayList<>();
-
-        for (TaskSpecimen specimen : taskSpecimen) {
-            PhotometricSampleAndDataVO sampleAndDataVO = new PhotometricSampleAndDataVO();
-            sampleAndDataVO.setTaskId(taskId);
-            sampleAndDataVO.setSampleId(specimen.getSpecimenKey());
-
-            TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-            sampleAndDataVO.setSample(sample);
-
-            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
-//                    .orderByDesc(TMeasureData::getSerialNumber);
-            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-
-            if (data != null) {
-                List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
-                sampleAndDataVO.setWavelengthData(wlDataList);
-            }
-
-            LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-            analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
-                    .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
-
-            TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-
-            if (one != null) {
-                List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
-                sampleAndDataVO.setCountData(countList);
-            }
-
-            list.add(sampleAndDataVO);
-
-        }
-        return Result.ok(list);
-    }
-
-    @Override
     public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String methodId) {
         TMeasureSample sample = tMeasureSampleService.getById(sampleId);
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
@@ -705,10 +604,6 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<PreCountResultParam> resultParams = parameter.getResultParams();
 
         StringBuilder values = new StringBuilder();
-        //稀释倍数
-        String dilutionRatio = sample.getDilutionRatio();
-        //取样量
-        String sampleVolume = sample.getSampleVolume();
 
         StringBuilder identity = new StringBuilder();
 
@@ -719,9 +614,9 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         for (InputParam inputParam : parameter.getSampleInputParams()) {
             identity.append(inputParam.getResultIdentity()).append(",");
-            if (sample.getHeads() != null && !sample.getHeads().isEmpty()) {
+            if (StringUtils.hasText(sample.getHeads())) {
                 List<HeadVO> vos = JSON.parseArray(sample.getHeads(), HeadVO.class);
-                Boolean flag = false;
+                boolean flag = false;
                 for (HeadVO head : vos) {
                     JSONObject jsonObject = JSON.parseObject(sample.getNewColData());
                     if (head.getName().equals(inputParam.getParamName())) {
@@ -733,9 +628,11 @@ public class PhotometricServiceImpl implements PhotometricService {
                     String s = String.valueOf((Math.random() * 10) + 1);
                     values.append(s).append(",");
                 }
+            }else {
+                String s = String.valueOf((Math.random() * 10) + 1);
+                values.append(s).append(",");
             }
         }
-
 
         for (int i = 0; i < vo.size(); i++) {
             PhotometricOriginDataInfo info = vo.get(i);
@@ -750,23 +647,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 identity.append("A").append(i+1).append(",");
                 values.append(info.getTPercentValue()).append(",");
             }
-//            identity.append(info.getWavelength()).append("abs").append(",").append(info.getWavelength()).append("t").append(",");
-//            values.append(info.getAbsValue()).append(",").append(info.getTPercentValue()).append(",");
         }
-//        identity.append("t").append(",").append("m");
-
-
-//        if(!StringUtils.hasText(dilutionRatio)) {
-//            values.append(dilutionRatio).append(",");
-//        } else {
-//            values.append("4").append(",");
-//        }
-//
-//        if (!StringUtils.hasText(sampleVolume)) {
-//            values.append(sampleVolume);
-//        } else {
-//            values.append("5");
-//        }
 
         identity.deleteCharAt(identity.length()-1);
         values.deleteCharAt(values.length()-1);
@@ -790,7 +671,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result<List<Map<String, String>>> queryData(String taskId, Boolean allDisplay) {
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
-            return Result.fail("缺少参数");
+            return Result.fail("未选择任务");
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -822,19 +703,27 @@ public class PhotometricServiceImpl implements PhotometricService {
 
             LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
-            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                    .orderByDesc(TMeasureData::getSerialNumber);
+            List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+            TMeasureData data = null;
+            if (list != null && !list.isEmpty()) {
+                data = list.get(0);
 
+            }
             if (data != null) {
-                List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
+                if (StringUtils.hasText(data.getOriginalCalculationData())){
+                    List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
 
-                for (PhotometricOriginDataInfo wlData : wlDataList) {
-                    map.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
-                    map.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
-                    map.put("remark", data.getRemark());
-                    map.put("samplingTime", data.getSamplingTime());
+                    for (PhotometricOriginDataInfo wlData : wlDataList) {
+                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
+                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
 
+                        map.put("samplingTime", data.getSamplingTime());
+
+                    }
                 }
+                map.put("remark", data.getRemark());
             }
 
             LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
@@ -842,7 +731,6 @@ public class PhotometricServiceImpl implements PhotometricService {
                     .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
 
             TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-            System.err.println("查询数据");
             if (one != null) {
                 List<PhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), PhotometricCountDataInfo.class);
 
@@ -865,26 +753,27 @@ public class PhotometricServiceImpl implements PhotometricService {
         String sampleId = sampleAndDataVO.getSampleId();
         LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                .eq(TMeasureData::getSampleKey, sampleId);
-        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-        if (data != null) {
-            //认为是重测，覆盖数据
-            data.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
-            data.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
-            data.setSamplingTime(sampleAndDataVO.getSampleTime());
-            tMeasureDataService.updateById(data);
+                .eq(TMeasureData::getSampleKey, sampleId)
+                .orderByDesc(TMeasureData::getSerialNumber);
+        List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+
+        TMeasureData tMeasureData = new TMeasureData();
+        tMeasureData.setTaskId(taskId);
+        tMeasureData.setSampleKey(sampleId);
+        tMeasureData.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
+        tMeasureData.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
+        tMeasureData.setMeasurementStartTime(sampleAndDataVO.getStartTime());
+        tMeasureData.setMeasurementEndTime(sampleAndDataVO.getEndTime());
+        tMeasureData.setSamplingTime(sampleAndDataVO.getSampleTime());
+
+        if (list != null && !list.isEmpty()) {
+            TMeasureData data = list.get(0);
+            tMeasureData.setSerialNumber(data.getSerialNumber() + 1);
         } else {
-            TMeasureData tMeasureData = new TMeasureData();
-            tMeasureData.setTaskId(taskId);
-            tMeasureData.setSampleKey(sampleId);
-            tMeasureData.setInstrumentData(JSON.toJSONString(sampleAndDataVO.getMachineData()));
-            tMeasureData.setOriginalCalculationData(JSON.toJSONString(sampleAndDataVO.getWavelengthData()));
-            tMeasureData.setMeasurementStartTime(sampleAndDataVO.getStartTime());
-            tMeasureData.setMeasurementEndTime(sampleAndDataVO.getEndTime());
-            tMeasureData.setSamplingTime(sampleAndDataVO.getSampleTime());
-            tMeasureData.setIsDelete(createType);
-            tMeasureDataService.save(tMeasureData);
+            tMeasureData.setSerialNumber(0);
         }
+        tMeasureData.setIsDelete(createType);
+        tMeasureDataService.save(tMeasureData);
 
         LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
@@ -927,7 +816,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 .orderByDesc(TMeasureData::getSerialNumber);
         List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
         TMeasureData data = new TMeasureData();
-        if (list != null || !list.isEmpty()) {
+        if (list != null && !list.isEmpty()) {
             data = list.get(0);
             data.setRemark(vo.getRemark());
         } else {
@@ -936,108 +825,61 @@ public class PhotometricServiceImpl implements PhotometricService {
             data.setSerialNumber(1);
             data.setRemark(vo.getRemark());
         }
-        tMeasureDataService.updateById(data);
+        tMeasureDataService.saveOrUpdate(data);
 
         return Result.ok(true);
     }
 
+    /**
+     * 零点校零
+     * @param serialNumber
+     * @param methodId
+     * @return
+     */
     @Override
-    public void test(String taskId, String methodId) {
-        List<String> waveLengths = new ArrayList<>();
-        waveLengths.add("400");
-        waveLengths.add("500");
-        waveLengths.add("600");
+    public Result zero(String serialNumber, String methodId, String taskId,String updateBy) {
 
-        TMeasureData data = new TMeasureData();
-        data.setTaskId(taskId);
-        data.setRemark("test");
-        data.setIsDelete("0");
-
-        TMeasureMethod byId = tMeasureMethodService.getById(methodId);
-        PhotometricParameter parameter = JSON.parseObject(byId.getMeasurementParamInfo(), PhotometricParameter.class);
-//        parameter.setWaveLengths(waveLengths);
-//        String jsonString = JSON.toJSONString(parameter);
-//        byId.setMeasurementParamInfo(jsonString);
-//       tMeasureMethodService.updateById(byId);
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        for (TaskSpecimen specimen : taskSpecimen) {
-            LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(TMeasureData::getTaskId, taskId)
-                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey());
-            TMeasureData one = tMeasureDataService.getOne(wrapper);
-
-            List<PhotometricOriginDataInfo> orData = new ArrayList<>();
-            List<PhotometricCountDataInfo> list = new ArrayList<>();
-            for (String length : waveLengths) {
-                PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
-
-                originDataInfo.setWavelength(length);
-
-                Random random = new Random();
-                // 生成[0,1)之间的随机数
-                double randomValue = random.nextDouble();
-                // 格式化为三位小数
-                DecimalFormat df = new DecimalFormat("0.000");
-                String formattedValue = df.format(randomValue);
-
-                String s = DataCountUtil.changeTPercentOrAbs(formattedValue, null);
-
-                originDataInfo.setAbsValue(formattedValue);
-                originDataInfo.setTPercentValue(s);
-                originDataInfo.setMode("1");
-                orData.add(originDataInfo);
-
-                List<PreCountResultParam> resultParams = parameter.getResultParams();
-
-                for (PreCountResultParam resultParam : resultParams) {
-                    PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
-                    BeanUtils.copyProperties(resultParam, countDataInfo);
-                    double i = Double.parseDouble(s);
-                    countDataInfo.setCountValue(df.format(i * 4L / 3));
-                    list.add(countDataInfo);
-
-                }
-            }
-
-            if (one == null) {
-                one = new TMeasureData();
-                one.setSampleKey(specimen.getSpecimenKey());
-                one.setIsDelete("0");
-                one.setTaskId(taskId);
-                one.setOriginalCalculationData(JSON.toJSONString(orData));
-                tMeasureDataService.save(one);
-            } else {
-                one.setOriginalCalculationData(JSON.toJSONString(orData));
-                tMeasureDataService.updateById(one);
-            }
-
-            LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId).eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey());
-
-            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
-            if (analysisData == null) {
-                analysisData = new TMeasureAnalysisData();
-                analysisData.setTaskId(taskId);
-                analysisData.setSampleKey(specimen.getSpecimenKey());
-                analysisData.setAnalysisParam(JSON.toJSONString(list));
-                tMeasureAnalysisDataService.save(analysisData);
-            } else {
-                analysisData.setAnalysisParam(JSON.toJSONString(list));
-                tMeasureAnalysisDataService.updateById(analysisData);
-            }
+        if (!StringUtils.hasText(serialNumber)) {
+            return Result.fail("未连接仪器");
         }
-
-
-    }
-
-    @Override
-    public Result zero(String serialNumber, String methodId) {
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             return Result.fail("方法不存在");
         }
+
+        if (!StringUtils.hasText(taskId)){
+            //创建任务
+
+            //创建任务
+            TMeasureTask newTask = new TMeasureTask();
+
+            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+            newTask.setUserId(po.getId());
+            newTask.setProjectItemKey(method.getProjectItemKey());
+            newTask.setMethodKey(method.getId());
+            newTask.setMeasureType(method.getMeasurementType());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
+            newTask.setCreateTime(LocalDateTime.now());
+            boolean save = false;
+            for (int i = 0; i < 3; i++) {
+                if (tMeasureTaskService.save(newTask)) {
+                    save = true;
+                    break;
+                }
+            }
+            if (!save) {
+                return Result.fail("系统出错");
+            }
+            taskId = newTask.getId();
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
         PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
         if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
             return Result.fail("缺少波长");
@@ -1047,15 +889,13 @@ public class PhotometricServiceImpl implements PhotometricService {
         String ip = deviceInfoService.getIp(serialNumber);
         List<ChangeParam> list = new ArrayList<>();
         for (String s : waveLength) {
-            Double v = Double.valueOf(s);
-            Command command = new Command();
-            command.setCmdId(SetParamEnum.SetWl.getComId());
-            command.setParams(new Object[]{v});
+
+            double v = Double.parseDouble(s);
+            Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
             devMessageUtil.wavelengthLocate(command, ip);
-            Command com = new Command();
-            com.setCmdId(SetParamEnum.Zero.getComId());
-            com.setParams(new Object[]{});
-            R<ChangeParam> zero = devMessageUtil.zero(com, ip);
+
+            command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+            R<ChangeParam> zero = devMessageUtil.zero(command, ip);
             if (!zero.getSuccess()) {
                 return Result.fail(zero.getMessage());
             }
@@ -1063,9 +903,9 @@ public class PhotometricServiceImpl implements PhotometricService {
             changeParam.setWl(s);
             list.add(changeParam);
         }
-        photometricParameter.setChanageParams(list);
-        method.setMeasurementParamInfo(JSON.toJSONString(photometricParameter));
-        boolean update = tMeasureMethodService.updateById(method);
+        task.setZeroParam(JSON.toJSONString(list));
+
+        boolean update = tMeasureTaskService.updateById(task);
         return update ? Result.ok() : Result.fail();
     }
 
@@ -1106,7 +946,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public R<File> downloadWord(String taskId) {
+    public R<File> downloadWord(String taskId, Boolean allDisplay) {
         if (!StringUtils.hasText(taskId)) {
             return R.fail("缺少任务id");
         }
@@ -1128,19 +968,36 @@ public class PhotometricServiceImpl implements PhotometricService {
         heads.add(new HeadVO("样品体积", "sampleVolume"));
         heads.add(new HeadVO("样品位置", "sampleLocation"));
 
-        List<HeadVO> vos = tableHead(taskId, methodId, false).getData();
+        List<HeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
         heads.addAll(vos);
         heads.add(new HeadVO("备注", "remark"));
         heads.add(new HeadVO("采样时间", "samplingTime"));
 
-        List<Map<String, String>> data = queryData(taskId, false).getData();
+        List<Map<String, String>> data = queryData(taskId, allDisplay).getData();
 
 
         XWPFDocument doc = new XWPFDocument();
+        CTDocument1 document = doc.getDocument();
+        CTBody body = document.getBody();
+        if (!body.isSetSectPr()) {
+            body.addNewSectPr();
+        }
+        CTSectPr section = body.getSectPr();
+        if(!section.isSetPgSz()) {
+            section.addNewPgSz();
+        }
+        CTPageSz pageSize = section.getPgSz();
+        if (vos.size() > 5) {
+            //必须要设置下面两个参数，否则整个的代码是无效的
+            pageSize.setW(BigInteger.valueOf(15840));
+            pageSize.setH(BigInteger.valueOf(12240));
+        }
 
         XWPFParagraph paragraph = doc.createParagraph();
         XWPFRun run = paragraph.createRun();
-        run.setText("任务：" + task.getTaskName() + "方法" + method.getMethodName() + "测试数据");
+        run.setText("任务：" + task.getTaskName() + "\r" );
+        run.setText("方法：" + method.getMethodName() + "\r");
+        run.setText("测试数据：");
         XWPFTable table = doc.createTable();
 
         table.setWidth("100%");

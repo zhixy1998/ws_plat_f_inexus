@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
@@ -18,6 +17,8 @@ import com.persee.workstation.uv_inexus.service.measurementService.TMeasureDataS
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
 import com.persee.workstation.uv_inexus.service.systemManageService.SystemAlgorithmConfService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
@@ -36,7 +37,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+
+import static java.lang.Thread.sleep;
 
 @Component
 public class SpectrumWebSocket extends TextWebSocketHandler {
@@ -46,7 +48,6 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
 
     // 假设的设备数据缓存队列
     private static final Map<String, List<String>> deviceDataCache = new ConcurrentHashMap<>();
-
 
 
     @Autowired
@@ -68,20 +69,17 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     @Autowired
     private TMeasureDataService tMeasureDataService;
 
+
     /**
      * 前端连接成功 WebSocket 时触发
+     *
      * @param session
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         if (Constants.endTime != null||Constants.startTime != null) {
-            try {
-                session.close();
-                exceptionHandling();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
             sendAndClose(session, "当前测试未结束,无法开启新的测试");
+            return;
         }
 
         // 记录当前连接
@@ -90,8 +88,8 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         // 解析参数
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
-        String sampleId= getQueryParam(query, "sampleId");
-        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
+        String sampleId = getQueryParam(query, "sampleId");
+        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
 
         if (taskId == null) {
             sendAndClose(session, "缺少 taskId 参数");
@@ -107,65 +105,95 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         }
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        // 设置参数
-        Result result = spectrumService.setUpParametersPort(task.getMethodKey(),deviceSerialNumber);
+        if (task.getSampleKey()==null||task.getSampleKey().equals("")) {
+            sendAndClose(session, "请先创建样品");
+            return;
+        }
         // 根据方法id查询方法数据
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        if (result.getCode() != 200) {
-            sendAndClose(session, result.getMessage());
-        }
-        if (result.getCode() == 200){
-            // 开始获取数据
-            new Thread(() -> {
-                String ip = deviceInfoService.getIp(deviceSerialNumber);
-                Command command = new Command();
-                command.setCmdId(SetParamEnum.Scan.getComId());
-                command.setParams(new Object[]{});
-                devMessageUtil.getMeasureData(command,ip);
-            }).start();
-
-            // 往前端推送数据的线程
-            new Thread(() -> {
-                try {
-                    // 如果公共变量中没有数据的话就让他睡眠50毫秒
-                    if (Constants.instrumentData.size() == 0) {
-                        Thread.sleep(50);
-                    }
-                    Boolean flag = true;
-                    while (flag) {
-                        for (String option : Constants.originalCalculationData) {
-                            if (option.equals(Constants.EndData)){
-                                flag = false;
-                            }
+        // 将任务中的Rsd取出来
+        List<ChangeParam> baselineData = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+        // 开始获取数据
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        Command command = new Command();
+        command.setCmdId(SetParamEnum.Scan.getComId());
+        command.setParams(new Object[]{});
+        devMessageUtil.getMeasureData(command, ip);
+        // 往前端推送数据的线程
+        new Thread(() -> {
+            try {
+                // 如果公共变量中没有数据的话就让他睡眠50毫秒
+                while (Constants.instrumentData.size() == 0) {
+                    sleep(50);
+                }
+                Boolean flag = true;
+                int count = 0;
+                while (flag) {
+                    List<String> data = new ArrayList<>(Constants.instrumentData);
+                    if (data != null && !data.isEmpty()) {
+                        int size = Constants.measurd_data.size();
+                        int sum = data.size();
+                        if (data.contains(Constants.EndData)) {
+                            flag = false;
                         }
-                        int size = Constants.originalCalculationData.size();
-                        JSONArray dataArray = new JSONArray();
-                        JSONObject payload = new JSONObject();
                         // 如果size为0则跳过本次循环
                         if (size == 0) {
                             continue;
                         }
+
+                        if (data.get(sum - 1).equals(Constants.EndData)) {
+                            flag = false;
+                        }
+                        if (size<10&&flag)continue;
+                        JSONArray dataArray = new JSONArray();
+                        JSONObject payload = new JSONObject();
                         List<Double> x_data = new ArrayList<>();
                         List<Double> y_data = new ArrayList<>();
                         for (int i = 0; i < size; i++) {
-                            if (!Constants.originalCalculationData.isEmpty()
-                                    && Constants.originalCalculationData.get(0).equals(Constants.EndData)) {
-                                break;
+
+                            if (spectrumParameter.getLuminosity().equals("1")) {
+                                String s = DataCountUtil.countTPercent(baselineData.get(0), Constants.measurd_data.get(0), 1.0);
+                                String y = DataCountUtil.changeTPercentOrAbs2(null, s);
+                                Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
+                                x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
+                                y_data.add(Double.parseDouble(y));
+                                System.err.println("++++++++" + y);
+                            } else if (spectrumParameter.getLuminosity().equals("2")) {
+                                String s = DataCountUtil.countTPercent(baselineData.get(0), Constants.measurd_data.get(0), 1.0);
+                                String y = DataCountUtil.changeTPercentOrAbs2(s, null);
+                                Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
+                                x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
+                                y_data.add(Double.parseDouble(y));
+                                System.err.println("++++++++" + y);
+                            } else if (spectrumParameter.getLuminosity().equals("3")) {
+                                Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
+                                String y = String.valueOf((sData / (4095 * 32)) * 100);
+                                Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
+                                x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
+                                y_data.add(Double.parseDouble(y));
+                                System.err.println("++++++++" + y);
+                            } else if (spectrumParameter.getLuminosity().equals("4")) {
+                                Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
+                                String y = String.valueOf((rData / (4095 * 32)) * 100);
+                                Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
+                                x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
+                                y_data.add(Double.parseDouble(y));
+                                System.err.println("++++++++" + y);
                             }
-                            String[] split = Constants.originalCalculationData.get(0).split(",");
-                            x_data.add(Double.parseDouble(split[0]));
-                            y_data.add(Double.parseDouble(split[1]));
-                            System.err.println("++++++++"+Constants.originalCalculationData.get(0));
-                            Constants.originalCalculationData.remove(0);
+                            System.err.println("++++++++" + Constants.measurd_data.get(0));
+                            System.err.println("++++++++" + baselineData.get(0));
+                            System.err.println("++++++++" + y_data);
+                            Constants.measurd_data.remove(0);
+                            baselineData.remove(0);
                         }
                         Map<String, Object> resultMap = new HashMap<>();
-                        if (spectrumParameter.getLadderCorrection().equals("1")){
+                        if (spectrumParameter.getLadderCorrection().equals("true")) {
                             // 每次传过来的数据进行一次门限消除
                             SystemAlgorithmConfVO systemAlgorithmConfVO = systemAlgorithmConfService.queryAlgorithmConf();
-                            if (systemAlgorithmConfVO == null){
-                                sendAndClose(session, result.getMessage());
+                            if (systemAlgorithmConfVO == null) {
+                                session.sendMessage(new TextMessage("门限消除算法配置为空"));
                             }
                             HttpHeaders headers = new HttpHeaders();
                             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -174,117 +202,113 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                             body.put("y_data", y_data);
                             body.put("k", systemAlgorithmConfVO.getIntegratingSphere());
                             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-                            resultMap=restTemplate.postForEntity(PythonPathConstant.REMOVE_STEP_OR_SPIKES, request, Map.class).getBody();
+                            resultMap = restTemplate.postForEntity(PythonPathConstant.REMOVE_STEP_OR_SPIKES, request, Map.class).getBody();
                         }
-                        List<String> yData = new ArrayList<>();
-                        if (resultMap != null){
-                            yData=(List<String>) resultMap.get("smoothed_data");
+                        if (resultMap != null&&resultMap.size()>0) {
+                            y_data = (List<Double>) resultMap.get("smoothed_data");
                         }
+                        x_data.stream().map(x -> String.valueOf(x)).forEach(Constants.x_data::add);
+                        y_data.stream().map(y -> String.valueOf(y)).forEach(Constants.y_data::add);
                         // 传送给前端消除门限后的值
                         for (int j = 0; j < size; j++) {
-                            if (!Constants.originalCalculationData.isEmpty()
-                                    && Constants.originalCalculationData.get(0).equals(Constants.EndData)) {
+                            if (!data.isEmpty()
+                                    && data.get(0).equals(Constants.EndData)) {
                                 break;
                             }
                             JSONObject point = new JSONObject();
                             point.put("x", x_data.get(j));
-                            if (spectrumParameter.getLadderCorrection().equals("1")){
-                                String format = String.format("%.2f", Double.valueOf(yData.get(j)));
-                                point.put("y", format);
-                            }else{
-                                String format = String.format("%.2f", Double.valueOf(y_data.get(j)));
-                                point.put("y", format);
-                            }
+                            point.put("y", y_data.get(j));
                             dataArray.add(point);
                         }
                         payload.put("data", dataArray);
-                        // 构建数据点JSON
-                        if (!flag) {
-                            payload.put("result", "finish");
-                        }
                         if (session.isOpen()) {
                             session.sendMessage(new TextMessage(payload.toJSONString()));
                         }
-                        TimeUnit.MILLISECONDS.sleep(100);
+                    }else{
+                        sleep(50);
                     }
-                    sessions.remove(session.getId());
-                    session.close();
-                } catch (Exception e) {
-                    exceptionHandling();
-                    sessions.remove(session.getId());
+                }
+            } catch (Exception e) {
+                System.err.println("异常!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"+e);
+                handleTransportError(session, e);
+            }
+        }).start();
+
+
+        // 创建线程循环如果公共变量为空则进行一秒的睡眠
+        new Thread(() -> {
+            while (Constants.endTime == null) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
                     handleTransportError(session, e);
                 }
-            }).start();
-
-            // 创建线程循环如果公共变量为空则进行一秒的睡眠
-            new Thread(() -> {
-                while (Constants.endTime == null) {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        exceptionHandling();
-                        handleTransportError(session, e);
-                    }
+            }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            Map<String, Object> body = new HashMap<>();
+            body.put("x_data", Constants.x_data);
+            body.put("y_data", Constants.y_data);
+            body.put("height", 0.5);
+            body.put("distance", 1);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
+            Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+            List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
+            List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
+            // 进行存储操作
+            // 创建一个测量数据对象
+            TMeasureData measureData = new TMeasureData();
+            // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
+            // 如果发现测量数据表中有数据则将最大的序列号拿出来加1并放入新建的测量数据对象中
+            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).orderByDesc("serial_number").last("LIMIT 1"));
+            if (data != null) {
+                measureData.setSerialNumber(data.getSerialNumber() + 1);
+            } else {
+                measureData.setSerialNumber(1);
+            }
+            List<String> listData = new ArrayList<>();
+            for (int i = 0; i < Constants.x_data.size(); i++) {
+                listData.add(Constants.x_data.get(i) + "," + Constants.y_data.get(i));
+            }
+            measureData.setTaskId(taskId);
+            measureData.setSampleKey(sampleId);
+            measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
+            measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+            measureData.setMeasurementStartTime(Constants.startTime);
+            measureData.setMeasurementEndTime(Constants.endTime);
+            measureData.setPeak(JSON.toJSONString(xDataFeng));
+            measureData.setGrain(JSON.toJSONString(xDataGu));
+            measureData.setIsDelete("0");
+            boolean save = traceDataService.save(measureData);
+            if (!save) {
+                sendAndClose(session, "保存测量数据失败");
+                return;
+            }
+            List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen taskSpecimen : specimen) {
+                if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                    taskSpecimen.setIsTested("1");
                 }
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                Map<String, Object> body = new HashMap<>();
-                body.put("x_data", Constants.x_data);
-                body.put("y_data", Constants.y_data);
-                body.put("height", 0.5);
-                body.put("distance", 1);
-                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-                Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-                Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
-                List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
-                List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
-                // 进行存储操作
-                // 创建一个测量数据对象
-                TMeasureData measureData = new TMeasureData();
-                // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
-                // 如果发现测量数据表中有数据则将最大的序列号拿出来加1并放入新建的测量数据对象中
-                TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", sampleId).orderByDesc("serial_number").last("LIMIT 1"));
-                if (data != null) {
-                    measureData.setSerialNumber(data.getSerialNumber() + 1);
-                }else{
-                    measureData.setSerialNumber(1);
-                }
-                measureData.setTaskId(taskId);
-                measureData.setSampleKey(sampleId);
-                measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
-                measureData.setOriginalCalculationData(JSON.toJSONString(Constants.field3Values));
-                measureData.setMeasurementStartTime(Constants.startTime);
-                measureData.setMeasurementEndTime(Constants.endTime);
-                measureData.setPeak(JSON.toJSONString(xDataFeng));
-                measureData.setGrain(JSON.toJSONString(xDataGu));
-                measureData.setIsDelete("0");
-                boolean save = traceDataService.save(measureData);
-                if (!save){
-                    sendAndClose(session, "保存测量数据失败");
-                    return;
-                }
-                List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-                for (TaskSpecimen taskSpecimen : specimen) {
-                    if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
-                        taskSpecimen.setIsTested("1");
-                    }
-                }
-                task.setSampleKey(JSON.toJSONString(specimen));
-                boolean update = tMeasureTaskService.updateById(task);
-                if (!update) {
-                    sendAndClose(session,"更新任务失败");
-                    return;
-                }
-                System.err.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-                // 将公共的变量中的数据清除
-                exceptionHandling();
-            }).start();
-        }
-        sessions.remove(session.getId());
+            }
+            task.setSampleKey(JSON.toJSONString(specimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            boolean update = tMeasureTaskService.updateById(task);
+            if (!update) {
+                sendAndClose(session, "更新任务失败");
+                return;
+            }
+            System.err.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+            JSONObject payload = new JSONObject();
+            payload.put("result", "finish");
+            // 将公共的变量中的数据清除
+            sendAndClose(session, String.valueOf(payload));
+        }).start();
     }
 
     /**
      * 收到前端消息时触发
+     *
      * @param session
      * @param message
      * @throws IOException
@@ -325,12 +349,18 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
+        try {
+            session.close();
+        } catch (IOException e) {
+            handleTransportError(session, e);
+        }
         exceptionHandling();
         System.out.println("连接异常: " + exception.getMessage());
     }
 
     /**
      * 获取查询参数
+     *
      * @param query
      * @param key
      * @return
@@ -352,16 +382,18 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
-            Constants.originalCalculationData.clear();
-            sessions.remove(session.getId());
-            session.close();
-        } catch (IOException ignored) {
             exceptionHandling();
             sessions.remove(session.getId());
+            session.close();
+        } catch (IOException e) {
+            handleTransportError(session, e);
         }
     }
 
-    private void exceptionHandling(){
+    /**
+     * 全局数据清空
+     */
+    private void exceptionHandling() {
         Constants.x_data.clear();
         Constants.y_data.clear();
         Constants.field3Values.clear();

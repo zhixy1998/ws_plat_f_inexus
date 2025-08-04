@@ -43,9 +43,8 @@ public interface SpectrumService {
 
     Result queryMeasureGaugePoint(String measureId);
 
-    Result peakSearchingPort(String measureDataId);
+    Result peakSearchingPort(SeekingPeaksValleysDto paramDto);
 
-    Result conversionPeakSearching(String dataId);
 
     Result valleySearchingPort(String measureDataId);
 
@@ -83,9 +82,15 @@ public interface SpectrumService {
 
     Result queryPreprocessingOperation(String methodId);
 
-    Result obtainTheBaseline(String methodId,String deviceSerialNumber);
+    Result obtainTheBaseline(String taskId,String methodId,String deviceSerialNumber);
 
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 
     Result restoreDeletedListData(String taskId,String paramId, String type);
+
+    // 查询峰谷接口
+    Result queryPeakAndValleysPort(String dataId, String type);
+
+    // 查询标记点接口
+    Result queryGaugePointPort(String dataId, String type);
 }

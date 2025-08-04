@@ -35,7 +35,6 @@ public interface ExperimentTestService {
 
     Result preprocessTheData(String standardId);
 
-    Result zeroCalibrationPort(String serialNumber);
 
 
     Result reportDataQuery(String taskId, String reportName);
@@ -47,4 +46,10 @@ public interface ExperimentTestService {
     Result useThisMethodPort(String methodId);
 
     Result<MeasurementCurrentInfoVO> useMethodToTest(String methodId, String updateBy, String deviceSerialNumber);
+
+    // 获取方法列表
+    Result listOfMethods(String methodName, Integer pageNum, Integer pageSize,String sort);
+
+    // 最近创建的任务
+    Result recentlyCreatedTasks(String updateBy, String measureType);
 }

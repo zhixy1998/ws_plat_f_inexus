@@ -8,11 +8,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ChangeParam {
+    // 波长
     private String wl;
 
+    // R0
     private String r;
 
+    // S0
     private String s;
 
+    // D0
     private String d;
 }

@@ -59,10 +59,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     DevMessageUtil devMessageUtil;
 
     @Value("${device.default.sendPort}")
-    private Integer sendPort;
+    Integer sendPort;
 
     @Value("${device.default.receivePort}")
-    private Integer receivePort;
+    Integer receivePort;
 
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
@@ -127,9 +127,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 //            startInit(infoPO);
 //        }).start();
 
-        new Thread(() -> {
-            newStartInit(infoPO);
-        }).start();
+        new Thread(() -> newStartInit(infoPO)).start();
 
         return R.ok(true);
     }
@@ -137,7 +135,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     private void newStartInit(DeviceInfoPO infoPO) {
         log.info("自检开始");
-        R<String> ret;
         String ip = infoPO.getIp();
 
         InitRecordPO recordPO = new InitRecordPO();
@@ -193,193 +190,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 return 6;
             case 10:
                 return 7;
-            case 11:
-                return 8;
             default:
                 return 8;
         }
 
-    }
-
-
-    private void startInit(DeviceInfoPO infoPO) {
-        log.info("开始自检~~~");
-        R<String> ret;
-        String ip = infoPO.getIp();
-
-        InitRecordPO recordPO = new InitRecordPO();
-        recordPO.setDeviceInfoId(infoPO.getId());
-        recordPO.setDeviceSerialNumber(infoPO.getDeviceSerialNumber());
-
-        log.info("获取连接状态");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.LinkMachineSend, 2);
-        if (!ret.getSuccess()) {
-            log.info("仪器连接失败");
-
-            infoPO.setConnectStatus(Constants.CONNECT_DEVICE_FALSE);
-
-            recordPO.setInitTaskNum(DeviceInitInfoEnum.WAVELENGTH_LIST.getCode());
-
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("连接成功，");
-
-        infoPO.setIsDevOpened(Constants.DEVICE_IS_OPEN);
-        infoPO.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
-        infoService.saveOrUpdateInfo(infoPO);
-
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.ReadSamplepoolSend, 4);
-        if (!ret.getSuccess()) {
-            log.info("读取样品池失败");
-            log.info(ret.getMessage());
-
-            recordPO.setInitTaskNum(DeviceInitInfoEnum.WAVELENGTH_LIST.getCode());
-            recordPO.setInitStatus(Constants.INIT_STATUS_FALSE);
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("获取初始化状态");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.InitStatusSend, 5);
-
-            /*
-            未知指令，uvwin7发送的初始化有，不过excel里未记录
-            ret = messageUtils.initUtil(ip, sendPort, ByteUse.BeforeInit, 999);
-             */
-
-//            if (!ret.getSuccess()) {
-//                log.info("获取初始化状态异常");
-//                log.info(ret.getMessage());
-//                failDeal(infoPO, null);
-//                return;
-//            }
-        log.info("初始化样品池");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.InitSamplepoolSend, 6);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.WAVELENGTH_LIST.getCode());
-        if (!ret.getSuccess()) {
-            log.info("初始化样品池异常");
-            log.info(ret.getMessage());
-
-            failDeal(infoPO, recordPO);
-            return;
-        }
-
-        log.info("样品池初始化成功，开始样品池定位");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.SamplepoolLocationSend, 7);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.WAVELENGTH_LIST.getCode());
-        if (!ret.getSuccess()) {
-            log.info("样品池定位异常");
-            log.info(ret.getMessage());
-
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("样品池初始化完成，更新状态");
-        updateSuccess(recordPO);
-
-        log.info("样品池定位完成，开始初始化滤色片电机");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.InitColorFilterSend, 8);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.COLOR_FILTER.getCode());
-        if (!ret.getSuccess()) {
-            log.info("初始化滤色片电机异常");
-            log.info(ret.getMessage());
-
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("滤色片电机初始化完成");
-        updateSuccess(recordPO);
-
-        log.info("滤色片电机初始化完成，开始初始化狭缝电机");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.InitSlitMotorSend, 9);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.INIT_SLIT_MOTOR.getCode());
-        if (!ret.getSuccess()) {
-            log.info("狭缝电机初始化异常");
-            log.info(ret.getMessage());
-
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("狭缝电机初始化成功");
-        updateSuccess(recordPO);
-
-        log.info("狭缝电机初始化完成，开始设置狭缝宽度");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.SetSlitWidthSend, 10);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.INIT_SLIT_MOTOR.getCode());
-        if (!ret.getSuccess()) {
-            log.info("设置狭缝宽度异常");
-            log.info(ret.getMessage());
-
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("狭缝宽度初始化成功");
-        updateSuccess(recordPO);
-
-        log.info("狭缝宽度设置完成，开始波长电机初始化");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.InitWavelengthSend, 11);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.SCANNING_MOTOR.getCode());
-        if (!ret.getSuccess()) {
-            log.info("初始化波长异常");
-            log.info(ret.getMessage());
-
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("波长电机初始化成功");
-        updateSuccess(recordPO);
-
-        log.info("初始化波长完成，开始灯电机初始化");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.InitLampMotorSend, 12);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.LIGHT_SOURCE_MOTOR.getCode());
-        if (!ret.getSuccess()) {
-            log.info("灯电机初始化异常");
-            log.info(ret.getMessage());
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("灯电机初始成功");
-        updateSuccess(recordPO);
-
-        log.info("灯电机初始化完成，开始钨灯能量检查");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.WuDengPowerSend, 13);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.TUNGSTEN_LAMP_ENERGY.getCode());
-        if (!ret.getSuccess()) {
-            log.info("钨灯检查异常");
-            log.info(ret.getMessage());
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("钨灯检测成功");
-        updateSuccess(recordPO);
-
-        log.info("钨灯能量检查完成，开始氘灯能量检查");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.DaoDengPowerSend, 14);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.DEUTERIUM_LAMP_ENERGY.getCode());
-        if (!ret.getSuccess()) {
-            log.info("氘灯检测异常");
-            log.info(ret.getMessage());
-            failDeal(infoPO, recordPO);
-            return;
-        }
-        log.info("氘灯检测成功");
-        updateSuccess(recordPO);
-
-        log.info("氘灯能量检查完成,开始波长检测");
-        ret = messageUtils.initUtil(ip, sendPort, ByteUse.CheckWavelengthSend, 15);
-        recordPO.setInitTaskNum(DeviceInitInfoEnum.WAVELENGTH.getCode());
-        if (!ret.getSuccess()) {
-            log.info("波长检测异常");
-            log.info(ret.getMessage());
-            failDeal(infoPO, recordPO);
-            return;
-        }
-
-        log.info("波长检测成功");
-        updateSuccess(recordPO);
-
-        infoPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
-        infoService.saveOrUpdateInfo(infoPO);
     }
 
     private void updateSuccess(InitRecordPO recordPO) {
@@ -628,7 +442,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         info.setWaveLengthInterval("0.5");
         info.setStartWaveLength("400");
         info.setEndWaveLength("700");
-//        messageUtils.searchDevice();
+//        messageUtils.searchDevice();+
 //        messageUtils.initUtil(ip, sendPort, ByteUse.LinkMachineSend, 2);
         messageUtils.setScanParam(ip, sendPort, ByteUse.SpectrumScanAllConfig);
 

@@ -49,13 +49,21 @@ public class TMeasureTask{
     @TableField("project_item_key")
     private String projectItemKey;
 
+    // 校零参数
+    @TableField("zero_param")
+    private String zeroParam;
+
+    // 拟合参数
+    @TableField("fitting_param")
+    private String fittingParam;
+
     //  开始时间
     @TableField("start_time")
     private LocalDateTime startTime;
 
     //  结束时间
     @TableField("end_time")
-    private String endTime;
+    private LocalDateTime endTime;
 
     // 序列号
     @TableField("device_serial_number")

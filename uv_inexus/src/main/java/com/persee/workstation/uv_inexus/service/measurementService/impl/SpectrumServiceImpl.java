@@ -55,6 +55,7 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 光谱扫描服务实现类
@@ -222,32 +223,60 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("暂不支持");
         }
         // 根据用户id和测量类型然后通过创建时间查找到最近的一次任务
-        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("user_id", user.getId()).eq("measure_type", measureTypeEnum.getDescription()).orderByDesc("create_time").last("limit 1"));
-        if (task==null){
-            return Result.fail("没有任务");
+        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>()
+                .eq("user_id", user.getId())
+                .eq("measure_type", measureTypeEnum.getDescription())
+                .orderByDesc("create_time")
+                .last("limit 1"));
+
+        if (task!=null){
+            // 根据任务id查询方法
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            // 根据项目id查询项目
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            SpectrumBasicParameterVo spectrumBasicParameterVo = new SpectrumBasicParameterVo();
+            spectrumBasicParameterVo.setTaskId(task.getId());
+            spectrumBasicParameterVo.setTaskName(task.getTaskName());
+            if (method==null){
+                spectrumBasicParameterVo.setMethodId(null);
+                spectrumBasicParameterVo.setMethodName(null);
+            }else{
+                spectrumBasicParameterVo.setMethodId(method.getId());
+                spectrumBasicParameterVo.setMethodName(method.getMethodName());
+            }
+            if (project==null){
+                spectrumBasicParameterVo.setProjectId(null);
+                spectrumBasicParameterVo.setProjectName(null);
+            }else{
+                spectrumBasicParameterVo.setProjectId(project.getId());
+                spectrumBasicParameterVo.setProjectName(project.getProjectName());
+            }
+            return Result.ok(spectrumBasicParameterVo);
         }
-        // 根据任务id查询方法
-        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-        // 根据项目id查询项目
-        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-        SpectrumBasicParameterVo spectrumBasicParameterVo = new SpectrumBasicParameterVo();
-        spectrumBasicParameterVo.setTaskId(task.getId());
-        spectrumBasicParameterVo.setTaskName(task.getTaskName());
+        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>()
+                .eq("method_creator", user.getUserName())
+                .eq("measurement_type", measureType)
+                .orderByDesc("method_create_time")
+                .last("limit 1"));
+        SpectrumBasicParameterVo vo = new SpectrumBasicParameterVo();
         if (method==null){
-            spectrumBasicParameterVo.setMethodId(null);
-            spectrumBasicParameterVo.setMethodName(null);
+            TMeasureProject project = tMeasureProjectService.getOne(new QueryWrapper<TMeasureProject>()
+                    .eq("creator_key", updateBy)
+                    .orderByDesc("create_time")
+                    .last("limit 1"));
+            if (project==null){
+                return Result.ok(vo);
+            }
+            vo.setProjectId(project.getId());
+            vo.setProjectName(project.getProjectName());
         }else{
-            spectrumBasicParameterVo.setMethodId(method.getId());
-            spectrumBasicParameterVo.setMethodName(method.getMethodName());
+            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+            vo.setMethodId(method.getId());
+            vo.setMethodName(method.getMethodName());
+            vo.setProjectId(project.getId());
+            vo.setProjectName(project.getProjectName());
         }
-        if (project==null){
-            spectrumBasicParameterVo.setProjectId(null);
-            spectrumBasicParameterVo.setProjectName(null);
-        }else{
-            spectrumBasicParameterVo.setProjectId(project.getId());
-            spectrumBasicParameterVo.setProjectName(project.getProjectName());
-        }
-        return Result.ok(spectrumBasicParameterVo);
+        return Result.ok(vo);
     }
 
     @Override
@@ -1042,19 +1071,24 @@ public class SpectrumServiceImpl implements SpectrumService {
     }
 
     @Override
-    public Result peakSearchingPort(String measureDataId) {
-        // 根据测量数据id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(measureDataId);
-        // 校验一下测量数据
-        if (tMeasureData==null){
-            return Result.fail("测量数据不存在");
-        }
+    public Result peakSearchingPort(SeekingPeaksValleysDto paramDto) {
+        paramDto.setHeight(paramDto.getHeight()/100);
         List<String> list = new ArrayList<>();
-       // 将测量数据中的原始计算数据转换成List
-        try {
-            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), List.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        if (paramDto.getType().equals("0")){
+            // 根据测量数据id查询出测量数据
+            TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        }else if (paramDto.getType().equals("1")){
+            TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
+            if (tMeasureAnalysisData==null){
+                return Result.fail("测量数据不存在");
+            }
+            list = JSON.parseArray(tMeasureAnalysisData.getAnalysisResult(), String.class);
+        }else{
+            return Result.fail("参数错误");
         }
         // 分割测量数据
         List<String> xList = new ArrayList<>();
@@ -1069,66 +1103,55 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> body = new HashMap<>();
         body.put("x_data", xList);
         body.put("y_data", yList);
-        body.put("height", 0.5);
-        body.put("distance", 1);
+        body.put("peak_height", paramDto.getHeight());
+        body.put("valley_height", paramDto.getHeight());
+        body.put("distance", paramDto.getDistance());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING_AND_VALLEY_SEARCHING, request, Map.class).getBody();
         List<Map<String, Object>> listVos = new ArrayList<>();
-        List<String> xData = (List<String>) resultMap.get("peak_x");
-        List<String> yData = (List<String>) resultMap.get("peak_y");
-        for (int i = 0; i < xData.size(); i++) {
+        List<String> xPeak = (List<String>) resultMap.get("peak_x");
+        List<String> yPeak = (List<String>) resultMap.get("peak_y");
+        List<String> xValley = (List<String>) resultMap.get("valley_x");
+        List<String> yValley = (List<String>) resultMap.get("valley_y");
+        int number=0;
+        for (int i = 0; i < xPeak.size(); i++) {
             Map<String, Object> map = new HashMap<>();
-            map.put("x", xData.get(i));
-            map.put("y", yData.get(i));
+            map.put("serialNumber", ++number);
+            map.put("x", xPeak.get(i));
+            map.put("y", yPeak.get(i));
+            map.put("type", "波峰");
             listVos.add(map);
+        }
+        for (int i = 0; i < xValley.size(); i++) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("serialNumber", ++number);
+            map.put("x", xValley.get(i));
+            map.put("y", yValley.get(i));
+            map.put("type", "波谷");
+            listVos.add(map);
+        }
+        if (paramDto.getType().equals("0")){
+            // 根据测量数据id查询出测量数据
+            TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            tMeasureData.setPeak(JSON.toJSONString(xPeak));
+            tMeasureData.setGrain(JSON.toJSONString(xValley));
+            tMeasureDataService.updateById(tMeasureData);
+        }else if (paramDto.getType().equals("1")){
+            TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
+            if (tMeasureAnalysisData==null){
+                return Result.fail("分析数据不存在");
+            }
+            tMeasureAnalysisData.setPeak(JSON.toJSONString(xPeak));
+            tMeasureAnalysisData.setGrain(JSON.toJSONString(xValley));
+            tMeasureAnalysisDataService.updateById(tMeasureAnalysisData);
+        }else{
+            return Result.fail("参数错误");
         }
         return Result.ok(listVos);
     }
-
-    @Override
-    public Result conversionPeakSearching(String dataId) {
-        // 根据分析数据id查询出分析数据
-        TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(dataId);
-        // 校验一下数据
-        if (byId==null){
-            return Result.fail("测量数据不存在");
-        }
-        List<String> list = new ArrayList<>();
-        // 将数据中的结果数据转换成List
-        try {
-            list=objectMapper.readValue(byId.getAnalysisResult(), List.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        // 分割数据
-        List<String> xList = new ArrayList<>();
-        List<String> yList = new ArrayList<>();
-        for (String s : list){
-            String[] split = s.split(",");
-            xList.add(split[0]);
-            yList.add(split[1]);
-        }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String, Object> body = new HashMap<>();
-        body.put("x_data", xList);
-        body.put("y_data", yList);
-        body.put("height", 0.5);
-        body.put("distance", 1);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-        List<Map<String, Object>> listVos = new ArrayList<>();
-        List<String> xData = (List<String>) resultMap.get("peak_x");
-        List<String> yData = (List<String>) resultMap.get("peak_y");
-        for (int i = 0; i < xData.size(); i++) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("x", xData.get(i));
-            map.put("y", yData.get(i));
-            listVos.add(map);
-        }
-        return Result.ok(listVos);
-    }
-
     @Override
     public Result valleySearchingPort(String measureDataId) {
         // 根据测量数据id查询出测量数据
@@ -1435,49 +1458,6 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto) {
-//        // 创建一个String数组用于存放新增后的样品id
-//        List<String> sampleIdList = new ArrayList<>();
-//        // 根据传过来的参数进行遍历添加样品
-//        for (SpectrumSpecimenDto sample : paramDto.getSamples()) {
-//            TMeasureSample sampleParam = new TMeasureSample();
-//            sampleParam.setSampleName(sample.getSampleName());
-//            sampleParam.setSampleNumber(sample.getSampleNumber());
-//            sampleParam.setSampleLocation(sample.getSampleLocation());
-//            sampleParam.setColor("#000000");
-//            tMeasureSampleService.save(sampleParam);
-//            sampleIdList.add(sampleParam.getId());
-//        }
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-//        if (task == null) {
-//            return Result.fail("任务不存在");
-//        }
-//        if (task.getSampleKey() != null){
-//            // 将原有在任务中的样品字段提取出来
-//            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//            // 遍历样品id数组,将新增的样品id添加到任务中的样品字段中
-//            for (String sampleId : sampleIdList) {
-//                TaskSpecimen taskSpeciman = new TaskSpecimen();
-//                taskSpeciman.setSpecimenKey(sampleId);
-//                taskSpeciman.setDeleteType("0");
-//                taskSpeciman.setIsTested("0");
-//                taskSpecimen.add(taskSpeciman);
-//            }
-//            // 将修改后的样品字段存入任务数据中
-//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-//        }else if (task.getSampleKey() == null) {
-//            // 如果任务中的样品字段为空,则直接将样品id存入任务数据中
-//            List<TaskSpecimen> taskSpecimen = new ArrayList<>();
-//            for (String sampleId : sampleIdList) {
-//                TaskSpecimen taskSpeciman = new TaskSpecimen();
-//                taskSpeciman.setSpecimenKey(sampleId);
-//                taskSpeciman.setDeleteType("0");
-//                taskSpecimen.add(taskSpeciman);
-//            }
-//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-//        }
-//        boolean update = tMeasureTaskService.updateById(task);
-//        return Result.ok(update);
         if (paramDto.getNewSamples().isEmpty() && paramDto.getDelSampleIds().isEmpty()) {
             return Result.ok("没有要新增或删除的样品！");
         }
@@ -1491,10 +1471,27 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
-        // 根据任务id进行查询
-        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-        if (task == null) {
-            return Result.fail("任务不存在");
+        // 根据方法id查询方法数据
+        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
+        // 根据用户名查询用户数据
+        SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", paramDto.getUpdateBy()));
+        TMeasureTask task;
+        if (paramDto.getTaskId()!=null){
+            task = tMeasureTaskService.getById(paramDto.getTaskId());
+        }else{
+            task = new TMeasureTask();
+            task.setUserId(user.getId());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+            task.setTaskName(method.getMeasurementType() + "task_" + collect);
+            task.setCreateTime(LocalDateTime.now());
+            task.setMethodKey(method.getId());
+            task.setMeasureType(method.getMeasurementType());
+            task.setProjectItemKey(method.getProjectItemKey());
+            task.setIsDelete("0");
+            tMeasureTaskService.save(task);
         }
         List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen taskSpecimen : taskSpecimenList) {
@@ -1554,7 +1551,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         task.setSampleKey(JSON.toJSONString(taskSpecimenList));
         boolean update = tMeasureTaskService.updateById(task);
-        return Result.ok(update== true?"修改成功":"修改失败");
+        return Result.ok(update);
     }
 
 
@@ -1675,6 +1672,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (task == null) {
             return Result.fail("任务不存在");
         }
+        task.setEndTime(LocalDateTime.now());
         task.setIsDelete("1");
         boolean update = tMeasureTaskService.updateById(task);
         if ( update){
@@ -1706,7 +1704,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @return
      */
     @Override
-    public Result obtainTheBaseline(String methodId,String deviceSerialNumber) {
+    public Result obtainTheBaseline(String taskId,String methodId,String deviceSerialNumber) {
         if (methodId == null|| methodId.equals("")){
             return Result.fail("方法编号不能为空");
         }
@@ -1724,13 +1722,31 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (listR.getSuccess() != true){
             return Result.ok(listR.getMessage());
         }
-        // 根据方法id查询方法数据
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        // 将listR中的数据保存到spectrumParameter的baselineData中
-        spectrumParameter.setBaselineData(listR.getData());
-        method.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
-        boolean update = tMeasureMethodService.updateById(method);
+        TMeasureTask task =null;
+        if (taskId != null && !taskId.equals("")){
+            task = tMeasureTaskService.getById(taskId);
+        }else{
+            task = new TMeasureTask();
+            TMeasureMethod method = tMeasureMethodService.getById(methodId);
+            SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
+            task.setUserId(user.getId());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            task.setTaskName(method.getMeasurementType() + "task_" + collect);
+            task.setCreateTime(LocalDateTime.now());
+            task.setMethodKey(methodId);
+            task.setMeasureType(method.getMeasurementType());
+            task.setProjectItemKey(method.getProjectItemKey());
+            task.setStartTime(LocalDateTime.now());
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            tMeasureTaskService.save(task);
+        }
+        // 将listR中的数据保存到task的校零参数中
+        task.setZeroParam(JSON.toJSONString(listR.getData()));
+        boolean update = tMeasureTaskService.updateById(task);
         return Result.ok(update);
     }
 
@@ -1803,6 +1819,170 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok();
     }
 
+    /**
+     * 查询峰谷数据
+     * @param type
+     * @return
+     */
+    @Override
+    public Result queryPeakAndValleysPort(String dataId, String type) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<Map<String, Object>> resultData = new ArrayList<>();
+        List<String> peaks = new ArrayList<>();
+        List<String> grains = new ArrayList<>();
+        int serialNumber=1;
+        if (type.equals("0")){
+            TMeasureData measureData = tMeasureDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getOriginalCalculationData() != null){
+                List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+                if (measureData.getPeak()!=null){
+                    peaks = JSON.parseArray(measureData.getPeak(), String.class);
+                }
+                if (measureData.getGrain()!=null){
+                    grains = JSON.parseArray(measureData.getGrain(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (peaks!=null && peaks.size()!=0){
+                        for (String peak : peaks){
+                            if (peak.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                    if (grains!=null && grains.size()!=0){
+                        for (String grain : grains){
+                            if (grain.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波谷");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else if (type.equals("1")){
+            TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getAnalysisResult() != null){
+                List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+                if (measureData.getPeak()!=null){
+                    peaks = JSON.parseArray(measureData.getPeak(), String.class);
+                }
+                if (measureData.getGrain()!=null){
+                    grains = JSON.parseArray(measureData.getGrain(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (peaks!=null && peaks.size()!=0){
+                        for (String peak : peaks){
+                            if (peak.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                    if (grains!=null && grains.size()!=0){
+                        for (String grain : grains){
+                            if (grain.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波谷");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else{
+            return Result.ok(new ArrayList<>());
+        }
+    }
+
+    @Override
+    public Result queryGaugePointPort(String dataId, String type) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<Map<String, Object>> resultData = new ArrayList<>();
+        List<String> gaugePoints = new ArrayList<>();
+        int serialNumber=1;
+        if (type.equals("0")){
+            TMeasureData measureData = tMeasureDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getOriginalCalculationData() != null){
+                List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+                if (measureData.getGaugePoint()!=null){
+                    gaugePoints = JSON.parseArray(measureData.getGaugePoint(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (gaugePoints!=null && gaugePoints.size()!=0){
+                        for (String gaugePoint : gaugePoints){
+                            if (gaugePoint.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else if (type.equals("1")){
+            TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getAnalysisResult() != null){
+                List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+                if (measureData.getGaugePoint()!=null){
+                    gaugePoints = JSON.parseArray(measureData.getPeak(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (gaugePoints!=null && gaugePoints.size()!=0){
+                        for (String gaugePoint : gaugePoints){
+                            if (gaugePoint.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else{
+            return Result.ok(new ArrayList<>());
+        }
+    }
+
     @Override
     public Result obtainReportParameters(String taskId) {
 
@@ -1836,7 +2016,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
                     LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
                     wrapper.eq(TMeasureData::getTaskId, taskId)
-                            .eq(TMeasureData::getSampleKey, sample.getId());
+                            .eq(TMeasureData::getSampleKey, sample.getId())
+                            .orderByDesc(TMeasureData::getSerialNumber)
+                            .last("LIMIT 1");
                     TMeasureData one = tMeasureDataService.getOne(wrapper);
                     if (one != null) {
                         vo.setDetectionStartTime(one.getMeasurementStartTime().format(formatter));
@@ -1888,12 +2070,14 @@ public class SpectrumServiceImpl implements SpectrumService {
 
             vo.setSteps(steps.toString());
             vo.setDetectionStartTime(task.getStartTime().format(formatter));
-            vo.setDetectionEndTime(task.getEndTime());
+            vo.setDetectionEndTime(task.getEndTime().format(formatter));
             vo.setDataType("测量数据");
 
             vo.setAmbientTemperature("26℃");
             vo.setRelativeHumidity("60%");
             vo.setSampleState("正常");
+            vo.setColorPlateWavelength("1");
+
 
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());
@@ -1938,7 +2122,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());
             vo.setEnergyLight(methodparam.getEnergyLamp());
-            vo.setStairCorrection(methodparam.getLadderCorrection() == "0" ? "启用" : "不启用");
+            vo.setStairCorrection(methodparam.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setSpectrumScanImage(data.getDataImage());
             vo.setOriginalData(data.getOriginalCalculationData());
             vo.setGain(methodparam.getGain().toString());

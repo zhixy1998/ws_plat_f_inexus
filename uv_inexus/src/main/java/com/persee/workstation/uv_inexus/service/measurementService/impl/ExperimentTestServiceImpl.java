@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -22,9 +23,7 @@ import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoServ
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
@@ -117,20 +116,26 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 .eq("measure_type", measureType)
                 .orderByDesc("create_time").last("limit 3"));
         List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
+        if (taskList.size() == 0){
+            return Result.ok(vos);
+        }
         for (TMeasureTask task : taskList) {
             RecentlyCompletedTasksVo vo = new RecentlyCompletedTasksVo();
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).orderByDesc("measurement_end_time").last("limit 1"));
-            List<String> lists = JSON.parseArray(task.getSampleKey(), String.class);
+            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).last("limit 1"));
+            List<TaskSpecimen> lists = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             vo.setTaskName(task.getTaskName());
             vo.setTaskId(task.getId());
             vo.setMethodId(task.getMethodKey());
             vo.setMethodName(method.getMethodName());
             vo.setProjectName(project.getProjectName());
             vo.setMeasurementSample(String.valueOf(lists.size()));
-            vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
+            if (measureData != null) {
+                vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
             vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
+            }
+
             vos.add(vo);
         }
         return Result.ok(vos);
@@ -243,6 +248,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Override
     public Result<ProjectTaskMethodVo> createTask(CreateTaskParamDto paramDto) {
+        if (!StringUtils.hasText(paramDto.getMethodId())) {
+            return Result.fail("请选择方法!");
+        }
+        if (!StringUtils.hasText(paramDto.getMeasurementType())) {
+            return Result.fail("请选择测量类型!");
+        }
+
         // 根据任务名称查询任务,如果为空则继续,如果有值的话则返回错误
         List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName()));
         if (taskList.size()>0){
@@ -266,45 +278,35 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // TODO 所有测量的创建任务需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
-                // 遍历CreateTaskParamDto中的样品list
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
-                    // 创建样品表
-                    TMeasureSample sample = new TMeasureSample();
-                    sample.setSampleNumber(specimen.getSampleNumber());
-                    sample.setSampleName(specimen.getSampleName());
-                    sample.setSampleType(specimen.getSampleType());
-                    sample.setDilutionRatio(specimen.getDilutionRatio());
-                    sample.setSampleVolume(specimen.getSampleVolume());
-                    sample.setSampleLocation(specimen.getSampleLocation());
-                    sample.setColor("#000000");
-                    tMeasureSampleService.save(sample);
-                    TaskSpecimen taskSpecimen = new TaskSpecimen();
-                    taskSpecimen.setSpecimenKey(sample.getId());
-                    taskSpecimen.setDeleteType("0");
-                    taskSpecimen.setIsTested("0");
-                    list.add(taskSpecimen);
+            case QUANTITATIVE_MEASUREMENT:
+                if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
+                    for (Map<String, String> cols : paramDto.getSpecimens()) {
+                        String jsonString = JSON.toJSONString(cols);
+                        TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
+                        if (paramDto.getHeads() != null) {
+                            sample.setHeads(JSON.toJSONString(paramDto.getHeads()));
+                            JSONObject newColData = new JSONObject();
+                            for (HeadVO head : paramDto.getHeads()) {
+                                String s = cols.get(head.getIdentity());
+                                newColData.put(head.getIdentity(), s);
+                            }
+                            sample.setNewColData(JSON.toJSONString(newColData));
+                        }
+                        sample.setColor("#000000");
+                        tMeasureSampleService.save(sample);
+                        TaskSpecimen taskSpecimen = new TaskSpecimen();
+                        taskSpecimen.setSpecimenKey(sample.getId());
+                        taskSpecimen.setDeleteType("0");
+                        taskSpecimen.setIsTested("0");
+                        list.add(taskSpecimen);
+                    }
                 }
                 break;
-            case QUANTITATIVE_MEASUREMENT:
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
-                    // 创建样品表
-                    TMeasureSample sample = new TMeasureSample();
-                    sample.setSampleNumber(specimen.getSampleNumber());
-                    sample.setSampleName(specimen.getSampleName());
-                    sample.setSampleType(specimen.getSampleType());
-                    sample.setNormalConcentration(specimen.getNormalConcentration());
-                    sample.setSampleLocation(specimen.getSampleLocation());
-                    sample.setColor("#000000");
-                    tMeasureSampleService.save(sample);
-                    TaskSpecimen taskSpecimen = new TaskSpecimen();
-                    taskSpecimen.setSpecimenKey(sample.getId());
-                    taskSpecimen.setDeleteType("0");
-                    taskSpecimen.setIsTested("0");
-                    list.add(taskSpecimen);
-                }
-            break;
             case SPECTRAL_SCAN:
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                for (Map<String, String> map: paramDto.getSpecimens()) {
+                    String jsonString = JSON.toJSONString(map);
+
+                    SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
                     // 创建样品表
                     TMeasureSample sample = new TMeasureSample();
                     sample.setSampleNumber(specimen.getSampleNumber());
@@ -322,7 +324,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
                 break;
             case TIME_SCAN:
-                for (SpectrumSpecimenDto specimen : paramDto.getSpecimens()) {
+                for (Map<String, String> map: paramDto.getSpecimens()) {
+                    String jsonString = JSON.toJSONString(map);
+
+                    SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
                     // 创建样品表
                     TMeasureSample sample = new TMeasureSample();
                     sample.setSampleNumber(specimen.getSampleNumber());
@@ -350,9 +355,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail("保存失败");
         }
         ProjectTaskMethodVo vo = new ProjectTaskMethodVo();
-        vo.setTask(tMeasureTask);
-        vo.setProject(project);
-        vo.setMethod(tMeasureMethodService.getById(tMeasureTask.getMethodKey()));
+        vo.setTaskId(tMeasureTask.getId());
+        vo.setTaskName(tMeasureTask.getTaskName());
+        vo.setMethodId(tMeasureTask.getMethodKey());
         return Result.ok(vo);
     }
 
@@ -368,6 +373,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
             wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
         }
+        wrapper.eq("measure_type", queryTask.getMeasurementType());
         Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
         if (page==null||page.getRecords().size() == 0){
             return Result.ok(page);
@@ -490,23 +496,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail("未查询到前处理信息");
         }
         return Result.ok(info);
-    }
-
-    /**
-     * 校零接口
-     */
-    @Override
-    public Result zeroCalibrationPort(String serialNumber) {
-        String ip = deviceInfoService.getIp(serialNumber);
-        Command command = new Command();
-        command.setCmdId(SetParamEnum.SetWl.getComId());
-        command.setParams(new Object[]{560});
-        devMessageUtil.wavelengthLocate(command,ip);
-        Command com = new Command();
-        com.setCmdId(SetParamEnum.Zero.getComId());
-        com.setParams(new Object[]{});
-        R<String> stringR = devMessageUtil.zeroCalibration(com);
-        return Result.ok(stringR);
     }
 
     @Override
@@ -718,7 +707,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 .collect(Collectors.joining());
 
         dto.setTaskName(method.getMeasurementType() + "task_" + collect);
-        List<SpectrumSpecimenDto> taskSpecimen = new ArrayList<>();
+        List<Map<String, String>> taskSpecimen = new ArrayList<>();
         dto.setSpecimens(taskSpecimen);
 
         Result task = createTask(dto);
@@ -730,7 +719,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         vo.setProjectId(method.getProjectItemKey());
         vo.setMethodId(methodId);
         ProjectTaskMethodVo data =(ProjectTaskMethodVo) task.getData();
-        vo.setTaskId(data.getTask().getId());
+        vo.setTaskId(data.getTaskId());
         vo.setTaskName(dto.getTaskName());
         vo.setMethodName(method.getMethodName());
 
@@ -739,6 +728,163 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         vo.setProjectName(project.getProjectName());
 
         return Result.ok(vo);
+    }
+
+    /**
+     * 获取所有方法或按条件查询方法
+     * @param methodName
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    @Override
+    public Result listOfMethods(String methodName, Integer pageNum, Integer pageSize, String sort) {
+        // 1. 获取所有方法或按条件查询方法
+        List<MethodBaseVo> methodVo;
+        if (methodName == null || methodName.isEmpty()) {
+            List<TMeasureMethod> methods = tMeasureMethodService.list();  // 查询所有方法
+            methodVo = methods.stream()
+                    .map(method -> {
+                        // 将TMeasureMethod拷贝到MethodBaseVo
+                        MethodBaseVo vo = new MethodBaseVo();
+                        vo.setId(method.getId());
+                        vo.setMethodName(method.getMethodName());
+                        vo.setCreator(method.getMethodCreator());
+                        vo.setCreateTime(method.getMethodCreateTime().format(formatter));
+                        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+                        vo.setProject(project.getProjectName());
+                        return vo;
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            List<TMeasureMethod> methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodName, methodName));  // 根据方法名查询
+            methodVo = methods.stream()
+                    .map(method -> {
+                        // 将TMeasureMethod拷贝到MethodBaseVo
+                        MethodBaseVo vo = new MethodBaseVo();
+                        vo.setId(method.getId());
+                        vo.setMethodName(method.getMethodName());
+                        vo.setCreator(method.getMethodCreator());
+                        vo.setCreateTime(method.getMethodCreateTime().format(formatter));
+                        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+                        vo.setProject(project.getProjectName());
+                        return vo;
+                    })
+                    .collect(Collectors.toList());
+        }
+        // 2. 获取每个方法的最近任务使用时间
+        for (MethodBaseVo method : methodVo) {
+            // 获取方法的ID
+            String methodId = method.getId();
+
+            // 查询该方法的最近任务，按创建时间降序排序
+            TMeasureTask latestTask = tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class)
+                            .eq(TMeasureTask::getMethodKey, methodId)
+                            .orderByDesc(TMeasureTask::getCreateTime)
+                            .last("LIMIT 1"))  // 只获取最近的一条任务
+                    .stream()                           // 将查询结果转换为流 (Stream)
+                    .findFirst()                         // 获取流中的第一条数据（如果有的话）
+                    .orElse(null);                       // 如果没有数据，返回 null
+
+            // 获取最近任务的创建时间，作为使用时间
+            LocalDateTime lastUsedTime = latestTask != null ? latestTask.getCreateTime() : null;
+            if (lastUsedTime == null) {
+                method.setRecentUsageTime("—");
+            } else{
+                method.setRecentUsageTime(lastUsedTime.format(formatter));  // 将使用时间设置到方法对象中
+            }
+
+        }
+        // 3. 根据使用时间进行排序（根据sort参数判断排序方式）
+        if (sort.equals("0")) {  // 倒序
+            methodVo.sort((m1, m2) -> {
+                if (m1.getRecentUsageTime() == null) return 1;
+                if (m2.getRecentUsageTime() == null) return -1;
+                return m2.getRecentUsageTime().compareTo(m1.getRecentUsageTime());
+            });
+        } else if (sort.equals("1")) {  // 顺序
+            methodVo.sort((m1, m2) -> {
+                if (m1.getRecentUsageTime() == null) return 1;
+                if (m2.getRecentUsageTime() == null) return -1;
+                return m1.getRecentUsageTime().compareTo(m2.getRecentUsageTime());
+            });
+        }
+
+        // 4. 分页处理
+        int total = methodVo.size();  // 总条数
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, methodVo.size());
+
+        // 获取当前页的数据
+        List<MethodBaseVo> pagedResult = methodVo.subList(fromIndex, toIndex);
+
+        // 构造分页返回结果
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", pagedResult);  // 数据
+        response.put("total", total);       // 总条数
+        response.put("pageNum", pageNum);  // 当前页码
+        response.put("pageSize", pageSize);  // 每页大小
+        response.put("totalPages", (int) Math.ceil((double) total / pageSize)); // 总页数
+
+        return Result.ok(response);
+
+    }
+
+    /**
+     * 最近创建的任务
+     * @param updateBy
+     * @param measureType
+     * @return
+     */
+    @Override
+    public Result recentlyCreatedTasks(String updateBy, String measureType) {
+        // 根据用户名查询用户id
+        SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        if (user == null) {
+            return Result.fail("用户不存在");
+        }
+        if (measureType == null){
+            measureType = "光谱扫描";
+        }
+        // 根据用户id查询字段is_delete为1的数据
+        List<TMeasureTask> taskList = tMeasureTaskService.list(new QueryWrapper<TMeasureTask>()
+                .eq("user_id", user.getId())
+                .eq("measure_type", measureType)
+                .orderByDesc("create_time").last("limit 3"));
+        List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
+        if (taskList == null){
+            return Result.ok(new ArrayList<>());
+        }
+        for (TMeasureTask task : taskList) {
+            RecentlyCompletedTasksVo vo = new RecentlyCompletedTasksVo();
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).last("limit 1"));
+            List<TaskSpecimen> lists = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            if(lists != null){
+                vo.setMeasurementSample(String.valueOf(lists.size()));
+            }else{
+                vo.setMeasurementSample("0");
+            }
+            vo.setTaskName(task.getTaskName());
+            vo.setTaskId(task.getId());
+            vo.setMethodId(task.getMethodKey());
+            vo.setMethodName(method.getMethodName());
+            vo.setProjectName(project.getProjectName());
+
+            if (measureData != null) {
+                if (measureData.getMeasurementStartTime() != null&& measureData.getMeasurementEndTime() != null){
+                    vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
+                    vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
+                }else{
+                    vo.setMeasurementStartTime("—");
+                    vo.setMeasurementEndTime("—");
+                }
+            }
+
+            vos.add(vo);
+        }
+        return Result.ok(vos);
     }
 
 

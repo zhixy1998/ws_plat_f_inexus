@@ -6,6 +6,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import io.swagger.annotations.ApiModel;
@@ -25,8 +26,14 @@ public class ExperimentTestController {
 
     @GetMapping("recentlyAccomplishTask")
     @ApiOperation("最近完成的任务")
-    public Result recentlyAccomplishTask(@RequestParam String updateBy,@RequestParam String measureType) {
+    public Result recentlyAccomplishTask(@RequestParam String updateBy,@RequestParam(required = false) String measureType) {
        return experimentTestService.recentlyAccomplishTask(updateBy,measureType);
+    }
+
+    @GetMapping("recentlyCreatedTasks")
+    @ApiOperation("最近创建的任务")
+    public Result recentlyCreatedTasks(@RequestParam String updateBy,@RequestParam(required = false) String measureType) {
+        return experimentTestService.recentlyCreatedTasks(updateBy,measureType);
     }
 
     @GetMapping("queryAllProject")
@@ -102,12 +109,6 @@ public class ExperimentTestController {
         return experimentTestService.preprocessTheData(standardId);
     }
 
-    @GetMapping("zeroCalibrationPort")
-    @ApiOperation("校零接口")
-    public Result zeroCalibrationPort(String serialNumber) {
-        return experimentTestService.zeroCalibrationPort(serialNumber);
-    }
-
     @GetMapping("reportDataQuery")
     @ApiOperation("报告数据查询")
     public Result reportDataQuery(@RequestParam String taskId,@RequestParam String reportName){
@@ -132,6 +133,17 @@ public class ExperimentTestController {
     public Result<MeasurementCurrentInfoVO> useMethodToTest(@RequestParam String methodId, @RequestParam String updateBy, @RequestParam String deviceSerialNumber){
         return experimentTestService.useMethodToTest(methodId,updateBy,deviceSerialNumber);
     }
+
+    @GetMapping("listOfMethods")
+    @ApiOperation("获取方法列表")
+    public Result<List<MethodBaseVo>> listOfMethods(@RequestParam(required = false) String methodName,
+                                                    @RequestParam Integer pageNum,
+                                                    @RequestParam Integer pageSize,
+                                                    @RequestParam String sort){
+        return experimentTestService.listOfMethods(methodName,pageNum,pageSize, sort);
+    }
+
+
 
 
 }
