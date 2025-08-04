@@ -383,6 +383,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 SampleVO vo = new SampleVO();
                 BeanUtils.copyProperties(measureSample, vo);

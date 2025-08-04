@@ -4,10 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationDataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
@@ -20,8 +17,10 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationWavelengthDataInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -184,6 +183,7 @@ public class RationWebSocket extends TextWebSocketHandler {
                     specimen.setIsTested(right);
                     data.add(r.getData());
                 }
+                List<RationCountDataInfo> countData = new ArrayList<>();
                 if (empty) {
                     for (RationDataVO dataVO : data) {
                         RationCountDataInfo yAbs = new RationCountDataInfo();
@@ -192,11 +192,39 @@ public class RationWebSocket extends TextWebSocketHandler {
                         double value = dataVO.getCountData().get(0).getColValue();
                         yAbs.setColValue(value - minuend);
                         dataVO.getCountData().add(yAbs);
+                        countData.add(yAbs);
+                        rationService.saveStandSampleData(dataVO);
 
+                    }
+                } else {
+                    for (RationDataVO dataVO : data) {
+                        countData.addAll(dataVO.getCountData());
                         rationService.saveStandSampleData(dataVO);
                     }
                 }
-                //出图
+                //拟合曲线
+                FittingReceiveInfo fittingReceiveInfo = rationService.fittingCurve(countData, empty, task.getMethodKey(), parameter.getWaveLengthParams());
+                if (fittingReceiveInfo == null) {
+                    sendAndClose(session, "曲线拟合失败");
+                    return;
+                }
+
+                String fitParam = JSON.toJSONString(fittingReceiveInfo);
+                task.setFittingParam(fitParam);
+
+                //绘图
+                RationFitCurveVO curveData = rationService.curveData(fittingReceiveInfo);
+
+                if (session.isOpen()) {
+                    JSONObject payload = new JSONObject();
+                    payload.put("type", "curve");
+                    payload.put("x_data", curveData.getXList());
+                    payload.put("y_data", curveData.getYList());
+                    payload.put("degree", curveData.getCurveType());
+                    payload.put("equation_type", RationCurveParamEnums.getName(parameter.getEquationType()));
+                    payload.put("param", curveData.getCoefficientList());
+                    session.sendMessage(new TextMessage(payload.toJSONString()));
+                }
 
             } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);

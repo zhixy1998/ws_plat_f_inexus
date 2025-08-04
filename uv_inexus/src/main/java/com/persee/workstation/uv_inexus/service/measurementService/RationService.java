@@ -1,12 +1,10 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
 import com.alibaba.fastjson.JSONObject;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
 import java.util.List;
@@ -26,7 +24,6 @@ public interface RationService {
     /**
      * 查询样品列表
      */
-    Result<List<SampleVO>> querySampleInfo(String taskId, String sampleKind);
     Result<List<JSONObject>> querySampleList(String taskId, String sampleKind);
     /**
      * 查询样品的表头
@@ -35,7 +32,7 @@ public interface RationService {
     /**
      * 新增或删除样本
      */
-    Result addOrDeleteSample(AddOrDeleteSampleDTO dto);
+    Result addOrDeleteSample(RationAddOrDeleteSampleDTO dto);
     /**
      * 删除单个样本
      */
@@ -67,8 +64,15 @@ public interface RationService {
 
     Result<List<Map<String, String>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
 
-    void fittingCurve(List<RationCountDataInfo> originData, Boolean empty, String taskId);
+    /**
+     * 拟合曲线
+     * @param originData 原始数据
+     * @param empty 是否有空白样品
+     */
+    FittingReceiveInfo fittingCurve(List<RationCountDataInfo> originData, Boolean empty, String methodId, List<String> inputParam);
 
-    void queryCurveInfo(String taskId, String methodId);
+    Result<RationFitCurveVO> queryCurveInfo(String taskId, String methodId);
+
+    RationFitCurveVO curveData(FittingReceiveInfo info);
 
 }

@@ -7,16 +7,19 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
+import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
@@ -28,6 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.transaction.Transactional;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -174,32 +179,6 @@ public class RationServiceImpl implements RationService {
         return Result.ok(vo);
     }
 
-    @Override
-    public Result<List<SampleVO>> querySampleInfo(String taskId, String sampleKind) {
-        List<SampleVO> sampleVOList = new ArrayList<>();
-        if (!StringUtils.hasText(taskId)) {
-            return Result.ok(sampleVOList);
-        }
-
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task == null) {
-            return Result.fail("任务不存在");
-        }
-
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (measureSample.getSampleKind().equals(sampleKind)) {
-                    SampleVO vo = new SampleVO();
-                    BeanUtils.copyProperties(measureSample, vo);
-                    vo.setSampleId(measureSample.getId());
-                    sampleVOList.add(vo);
-                }
-            }
-        }
-        return Result.ok(sampleVOList);
-    }
 
     @Override
     public Result<List<JSONObject>> querySampleList(String taskId, String sampleKind) {
@@ -270,18 +249,22 @@ public class RationServiceImpl implements RationService {
 
     @Override
     @Transactional
-    public Result addOrDeleteSample(AddOrDeleteSampleDTO dto) {
+    public Result addOrDeleteSample(RationAddOrDeleteSampleDTO dto) {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
             return Result.fail("没有方法！");
         }
 
-        if (dto.getNewSamples().isEmpty() && dto.getDelSampleIds().isEmpty()) {
+        if (dto.getNewStandSamples().isEmpty() && dto.getDelSampleIds().isEmpty() && dto.getNewUnknowSamples().isEmpty()) {
             return Result.ok("没有要新增或删除的样品！");
         }
 
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
-            return Result.fail("表格新增列数不能超过10列");
+        if (dto.getStandHeads() != null && dto.getStandHeads().size() > 10) {
+            return Result.fail("标准样品表格新增列数不能超过10列");
+        }
+
+        if (dto.getUnknowHeads() != null && dto.getUnknowHeads().size() > 10) {
+            return Result.fail("未知样品表格新增列数不能超过10列");
         }
 
         if (!StringUtils.hasText(dto.getTaskId())) {
@@ -331,7 +314,50 @@ public class RationServiceImpl implements RationService {
             }
         }
 
-        for (Map<String, String> map : dto.getNewSamples()) {
+        for (Map<String, String> map : dto.getNewStandSamples()) {
+
+            String jsonString = JSON.toJSONString(map);
+            SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
+
+            if (!StringUtils.hasText(sample.getSampleKind())) {
+                return Result.fail("缺少样品种类");
+            }
+
+            TMeasureSample newSample = new TMeasureSample();
+            BeanUtils.copyProperties(sample, newSample);
+            newSample.setId(sample.getSampleId());
+            if (!newSample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                log.info("样品类型出错");
+                return Result.fail("样品种类出错，---系统出错");
+            }
+
+            if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
+                JSONObject newColData = new JSONObject();
+
+                for (HeadVO head : dto.getStandHeads()) {
+                    String s = map.get(head.getIdentity());
+                    newColData.put(head.getIdentity(), s);
+                }
+
+                newSample.setHeads(JSON.toJSONString(dto.getStandHeads()));
+                newSample.setNewColData(JSON.toJSONString(newColData));
+            }
+
+            if (StringUtils.hasText(newSample.getId())) {
+                tMeasureSampleService.updateById(newSample);
+            } else {
+                TaskSpecimen specimen = new TaskSpecimen();
+                specimen.setDeleteType(createType);
+                specimen.setIsTested(noTested);
+                log.info("新增的标准样品：{}", newSample);
+                tMeasureSampleService.save(newSample);
+                specimen.setSpecimenKey(newSample.getId());
+                taskSpecimen.add(specimen);
+            }
+        }
+
+
+        for (Map<String, String> map : dto.getNewUnknowSamples()) {
 
             String jsonString = JSON.toJSONString(map);
             SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
@@ -344,15 +370,21 @@ public class RationServiceImpl implements RationService {
             BeanUtils.copyProperties(sample, newSample);
             newSample.setId(sample.getSampleId());
 
-            if (dto.getHeads() != null) {
+            if (!newSample.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                log.info("该样品不是未知样品");
+                return Result.fail("样品种类出错");
+            }
+
+
+            if (dto.getUnknowHeads() != null && !dto.getUnknowHeads().isEmpty()) {
                 JSONObject newColData = new JSONObject();
 
-                for (HeadVO head : dto.getHeads()) {
+                for (HeadVO head : dto.getUnknowHeads()) {
                     String s = map.get(head.getIdentity());
                     newColData.put(head.getIdentity(), s);
                 }
 
-                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
+                newSample.setHeads(JSON.toJSONString(dto.getUnknowHeads()));
                 newSample.setNewColData(JSON.toJSONString(newColData));
             }
 
@@ -362,7 +394,7 @@ public class RationServiceImpl implements RationService {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
-                log.info("新增的样品：{}", newSample);
+                log.info("新增的未知样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
                 taskSpecimen.add(specimen);
@@ -975,34 +1007,161 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
-    public void fittingCurve(List<RationCountDataInfo> originData, Boolean empty, String taskId) {
+    public FittingReceiveInfo fittingCurve(List<RationCountDataInfo> countData, Boolean empty, String methodId, List<String> inputParam) {
         
-        StringBuilder data = new StringBuilder();
+        List<Double> data = new ArrayList<>();
+        FittingParam param = new FittingParam();
         if (empty) {
-            for (RationCountDataInfo dataInfo : originData) {
+            for (RationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.sumAbs.getIdentity())) {
-                    data.append(dataInfo.getColValue()).append(",");
+                    data.add(dataInfo.getColValue());
+
                 }
             }
         } else {
-            for (RationCountDataInfo dataInfo : originData) {
+            for (RationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                    data.append(dataInfo.getColValue()).append(",");
+                    data.add(dataInfo.getColValue());
                 }
             }
         }
 
-        
-        FittingParam param = new FittingParam();
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
 
+        List<String> zeroMethod = parameter.getZeroMethod();
+
+        param.setForce_zero(0L);
+
+        for (String zero: zeroMethod) {
+            if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+                data.add(0.00);
+                inputParam.add("0.0");
+            }
+
+            if (zero.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+                param.setForce_zero(1L);
+            }
+        }
+
+        param.setDegree(Long.parseLong(parameter.getCurveType()));
+
+        if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
+            param.setX_data(data.stream().mapToDouble(Double::doubleValue).toArray());
+            param.setY_data(inputParam.stream().mapToDouble(Double::parseDouble).toArray());
+        } else {
+            param.setY_data(data.stream().mapToDouble(Double::doubleValue).toArray());
+            param.setX_data(inputParam.stream().mapToDouble(Double::parseDouble).toArray());
+        }
         String s = RestUtil.dataFit(param);
+        FittingReceiveInfo info = JSON.parseObject(s, FittingReceiveInfo.class);
+        if (info == null || !ResultCodeEnum.SUCCESS.getCode().equals(info.getCode())) {
+            log.info("数据拟合失败");
+            return null;
+        }
 
+        Arrays.stream(param.getX_data()).min().ifPresent(info::setMinX);
+        Arrays.stream(param.getX_data()).max().ifPresent(info::setMaxX);
+
+        return info;
+    }
+
+    @Override
+    public Result<RationFitCurveVO> queryCurveInfo(String taskId, String methodId){
+
+        if (!StringUtils.hasText(taskId)) {
+            log.info("缺少任务id");
+            return Result.fail("未选择任务");
+        }
+        if (!StringUtils.hasText(methodId)) {
+            log.info("缺少方法id");
+            return Result.fail("未选择方法");
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            log.info("任务不存在");
+            return Result.fail("任务不存在");
+        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+
+        RationFitCurveVO resultVo = new RationFitCurveVO();
+        resultVo.setTaskId(taskId);
+        resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
+        resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
+
+        if (StringUtils.hasText(task.getFittingParam())) {
+            FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+            resultVo = curveData(fittingParam);
+        }
+
+        return Result.ok(resultVo);
 
     }
 
     @Override
-    public void queryCurveInfo(String taskId, String methodId){
+    public RationFitCurveVO curveData(FittingReceiveInfo info) {
+        List<Double> list = info.getCoefficients().stream()
+                .map(d -> BigDecimal.valueOf(d)
+                        .setScale(3, RoundingMode.HALF_UP)
+                        .doubleValue())
+                .collect(Collectors.toList());
+        List<Double> x_data = new ArrayList<>();
+        List<Double> y_data = new ArrayList<>();
 
+        double k0 = info.getK0() == null ? 0 : (double) Math.round(info.getK0() * 1000) / 1000;
+        double k1 = info.getK1() == null ? 0 : (double) Math.round(info.getK1() * 1000) / 1000;
+        double k2 = info.getK2() == null ? 0 : (double) Math.round(info.getK2() * 1000) / 1000;
+        double k3 = info.getK3() == null ? 0 : (double) Math.round(info.getK3() * 1000) / 1000;
+        double k4 = info.getK4() == null ? 0 : (double) Math.round(info.getK4() * 1000) / 1000;
+
+
+        double step = 0.1;
+        //采用3位小数来计算
+        double minX = (double) Math.round(info.getMinX() * 1000) / 1000;
+        double maxX = (double) Math.round(info.getMaxX() * 1000) / 1000;
+
+        switch (info.getDegree()) {
+            case 1:
+                for (double i = minX - 1; i < maxX + 1; i += step) {
+                    double y = k0 + k1 * i;
+                    x_data.add(i);
+                    y_data.add(y);
+                }
+                break;
+            case 2:
+                for (double i = minX - 1; i < maxX + 1; i += step) {
+                    double y = k0 + k1 * i + k2 * i * i;
+                    x_data.add(i);
+                    y_data.add(y);
+                }
+                break;
+            case 3:
+                for (double i = minX - 1; i < maxX + 1; i += step) {
+                    double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i;
+                    x_data.add(i);
+                    y_data.add(y);
+                }
+                break;
+
+            case 4:
+                for (double i = minX - 1; i < maxX + 1; i += step) {
+                    double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i + k4 * i * i * i * i;
+                    x_data.add(i);
+                    y_data.add(y);
+
+                }
+                break;
+            default:
+                break;
+        }
+        RationFitCurveVO vo = new RationFitCurveVO();
+        vo.setCoefficientList(list);
+        vo.setXList(x_data);
+        vo.setYList(y_data);
+        vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
+        return vo;
     }
 
 
