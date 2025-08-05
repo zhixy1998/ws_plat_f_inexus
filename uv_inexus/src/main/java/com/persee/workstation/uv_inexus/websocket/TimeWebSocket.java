@@ -104,6 +104,10 @@ public class TimeWebSocket extends TextWebSocketHandler {
         }
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task.getSampleKey()==null||task.getSampleKey().equals("")) {
+            sendAndClose(session, "请先创建样品");
+            return;
+        }
         // 根据方法id查询方法数据
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
@@ -141,7 +145,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
                 if (counter[0] >= totalTime || !session.isOpen()) {
                     scheduler.shutdown(); // 停止任务
                     Constants.endTime = LocalDateTime.now();
-                    saveData(session,originalData,x_data,y_data,sampleId,task); // 保存数据
+                    saveData(session,originalData,x_data,y_data,sampleId,task,deviceSerialNumber); // 保存数据
                     return;
                 }
 
@@ -221,7 +225,10 @@ public class TimeWebSocket extends TextWebSocketHandler {
     private void saveData(WebSocketSession session,
                           List<ChangeParam> originalData,
                           List<BigDecimal> x_data,
-                          List<BigDecimal> y_data, String sampleId, TMeasureTask task) {
+                          List<BigDecimal> y_data,
+                          String sampleId,
+                          TMeasureTask task,
+                          String deviceSerialNumber) {
         // 先对数据进行寻峰寻谷
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -270,6 +277,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
             }
         }
         task.setSampleKey(JSON.toJSONString(specimen));
+        task.setDeviceSerialNumber(deviceSerialNumber);
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
             sendAndClose(session, "更新任务失败");

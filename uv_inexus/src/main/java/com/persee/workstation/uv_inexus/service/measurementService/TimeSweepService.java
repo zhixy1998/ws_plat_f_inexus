@@ -19,7 +19,7 @@ public interface TimeSweepService {
     Result sampleListPort(String taskId, String type);
 
     // 删除样品列表接口
-    Result deleteSampleListPort(String measureId);
+    Result deleteSampleListPort(String sampleId, String taskId);
 
     // 获取变换列表接口
     Result changeTheListPort(String taskId, String type);

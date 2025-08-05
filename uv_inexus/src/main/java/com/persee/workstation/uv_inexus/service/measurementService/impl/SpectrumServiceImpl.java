@@ -223,32 +223,60 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("暂不支持");
         }
         // 根据用户id和测量类型然后通过创建时间查找到最近的一次任务
-        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("user_id", user.getId()).eq("measure_type", measureTypeEnum.getDescription()).orderByDesc("create_time").last("limit 1"));
-        if (task==null){
-            return Result.fail("没有任务");
+        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>()
+                .eq("user_id", user.getId())
+                .eq("measure_type", measureTypeEnum.getDescription())
+                .orderByDesc("create_time")
+                .last("limit 1"));
+
+        if (task!=null){
+            // 根据任务id查询方法
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            // 根据项目id查询项目
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            SpectrumBasicParameterVo spectrumBasicParameterVo = new SpectrumBasicParameterVo();
+            spectrumBasicParameterVo.setTaskId(task.getId());
+            spectrumBasicParameterVo.setTaskName(task.getTaskName());
+            if (method==null){
+                spectrumBasicParameterVo.setMethodId(null);
+                spectrumBasicParameterVo.setMethodName(null);
+            }else{
+                spectrumBasicParameterVo.setMethodId(method.getId());
+                spectrumBasicParameterVo.setMethodName(method.getMethodName());
+            }
+            if (project==null){
+                spectrumBasicParameterVo.setProjectId(null);
+                spectrumBasicParameterVo.setProjectName(null);
+            }else{
+                spectrumBasicParameterVo.setProjectId(project.getId());
+                spectrumBasicParameterVo.setProjectName(project.getProjectName());
+            }
+            return Result.ok(spectrumBasicParameterVo);
         }
-        // 根据任务id查询方法
-        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-        // 根据项目id查询项目
-        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-        SpectrumBasicParameterVo spectrumBasicParameterVo = new SpectrumBasicParameterVo();
-        spectrumBasicParameterVo.setTaskId(task.getId());
-        spectrumBasicParameterVo.setTaskName(task.getTaskName());
+        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>()
+                .eq("method_creator", user.getUserName())
+                .eq("measurement_type", measureType)
+                .orderByDesc("method_create_time")
+                .last("limit 1"));
+        SpectrumBasicParameterVo vo = new SpectrumBasicParameterVo();
         if (method==null){
-            spectrumBasicParameterVo.setMethodId(null);
-            spectrumBasicParameterVo.setMethodName(null);
+            TMeasureProject project = tMeasureProjectService.getOne(new QueryWrapper<TMeasureProject>()
+                    .eq("creator_key", updateBy)
+                    .orderByDesc("create_time")
+                    .last("limit 1"));
+            if (project==null){
+                return Result.ok(vo);
+            }
+            vo.setProjectId(project.getId());
+            vo.setProjectName(project.getProjectName());
         }else{
-            spectrumBasicParameterVo.setMethodId(method.getId());
-            spectrumBasicParameterVo.setMethodName(method.getMethodName());
+            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+            vo.setMethodId(method.getId());
+            vo.setMethodName(method.getMethodName());
+            vo.setProjectId(project.getId());
+            vo.setProjectName(project.getProjectName());
         }
-        if (project==null){
-            spectrumBasicParameterVo.setProjectId(null);
-            spectrumBasicParameterVo.setProjectName(null);
-        }else{
-            spectrumBasicParameterVo.setProjectId(project.getId());
-            spectrumBasicParameterVo.setProjectName(project.getProjectName());
-        }
-        return Result.ok(spectrumBasicParameterVo);
+        return Result.ok(vo);
     }
 
     @Override
@@ -1430,49 +1458,6 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto) {
-//        // 创建一个String数组用于存放新增后的样品id
-//        List<String> sampleIdList = new ArrayList<>();
-//        // 根据传过来的参数进行遍历添加样品
-//        for (SpectrumSpecimenDto sample : paramDto.getSamples()) {
-//            TMeasureSample sampleParam = new TMeasureSample();
-//            sampleParam.setSampleName(sample.getSampleName());
-//            sampleParam.setSampleNumber(sample.getSampleNumber());
-//            sampleParam.setSampleLocation(sample.getSampleLocation());
-//            sampleParam.setColor("#000000");
-//            tMeasureSampleService.save(sampleParam);
-//            sampleIdList.add(sampleParam.getId());
-//        }
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-//        if (task == null) {
-//            return Result.fail("任务不存在");
-//        }
-//        if (task.getSampleKey() != null){
-//            // 将原有在任务中的样品字段提取出来
-//            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//            // 遍历样品id数组,将新增的样品id添加到任务中的样品字段中
-//            for (String sampleId : sampleIdList) {
-//                TaskSpecimen taskSpeciman = new TaskSpecimen();
-//                taskSpeciman.setSpecimenKey(sampleId);
-//                taskSpeciman.setDeleteType("0");
-//                taskSpeciman.setIsTested("0");
-//                taskSpecimen.add(taskSpeciman);
-//            }
-//            // 将修改后的样品字段存入任务数据中
-//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-//        }else if (task.getSampleKey() == null) {
-//            // 如果任务中的样品字段为空,则直接将样品id存入任务数据中
-//            List<TaskSpecimen> taskSpecimen = new ArrayList<>();
-//            for (String sampleId : sampleIdList) {
-//                TaskSpecimen taskSpeciman = new TaskSpecimen();
-//                taskSpeciman.setSpecimenKey(sampleId);
-//                taskSpeciman.setDeleteType("0");
-//                taskSpecimen.add(taskSpeciman);
-//            }
-//            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-//        }
-//        boolean update = tMeasureTaskService.updateById(task);
-//        return Result.ok(update);
         if (paramDto.getNewSamples().isEmpty() && paramDto.getDelSampleIds().isEmpty()) {
             return Result.ok("没有要新增或删除的样品！");
         }
@@ -1486,10 +1471,27 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
-        // 根据任务id进行查询
-        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-        if (task == null) {
-            return Result.fail("任务不存在");
+        // 根据方法id查询方法数据
+        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
+        // 根据用户名查询用户数据
+        SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", paramDto.getUpdateBy()));
+        TMeasureTask task;
+        if (paramDto.getTaskId()!=null){
+            task = tMeasureTaskService.getById(paramDto.getTaskId());
+        }else{
+            task = new TMeasureTask();
+            task.setUserId(user.getId());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+            task.setTaskName(method.getMeasurementType() + "task_" + collect);
+            task.setCreateTime(LocalDateTime.now());
+            task.setMethodKey(method.getId());
+            task.setMeasureType(method.getMeasurementType());
+            task.setProjectItemKey(method.getProjectItemKey());
+            task.setIsDelete("0");
+            tMeasureTaskService.save(task);
         }
         List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen taskSpecimen : taskSpecimenList) {
@@ -1815,6 +1817,170 @@ public class SpectrumServiceImpl implements SpectrumService {
             tMeasureAnalysisDataService.updateById(byId);
         }
         return Result.ok();
+    }
+
+    /**
+     * 查询峰谷数据
+     * @param type
+     * @return
+     */
+    @Override
+    public Result queryPeakAndValleysPort(String dataId, String type) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<Map<String, Object>> resultData = new ArrayList<>();
+        List<String> peaks = new ArrayList<>();
+        List<String> grains = new ArrayList<>();
+        int serialNumber=1;
+        if (type.equals("0")){
+            TMeasureData measureData = tMeasureDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getOriginalCalculationData() != null){
+                List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+                if (measureData.getPeak()!=null){
+                    peaks = JSON.parseArray(measureData.getPeak(), String.class);
+                }
+                if (measureData.getGrain()!=null){
+                    grains = JSON.parseArray(measureData.getGrain(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (peaks!=null && peaks.size()!=0){
+                        for (String peak : peaks){
+                            if (peak.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                    if (grains!=null && grains.size()!=0){
+                        for (String grain : grains){
+                            if (grain.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波谷");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else if (type.equals("1")){
+            TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getAnalysisResult() != null){
+                List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+                if (measureData.getPeak()!=null){
+                    peaks = JSON.parseArray(measureData.getPeak(), String.class);
+                }
+                if (measureData.getGrain()!=null){
+                    grains = JSON.parseArray(measureData.getGrain(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (peaks!=null && peaks.size()!=0){
+                        for (String peak : peaks){
+                            if (peak.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                    if (grains!=null && grains.size()!=0){
+                        for (String grain : grains){
+                            if (grain.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波谷");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else{
+            return Result.ok(new ArrayList<>());
+        }
+    }
+
+    @Override
+    public Result queryGaugePointPort(String dataId, String type) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<Map<String, Object>> resultData = new ArrayList<>();
+        List<String> gaugePoints = new ArrayList<>();
+        int serialNumber=1;
+        if (type.equals("0")){
+            TMeasureData measureData = tMeasureDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getOriginalCalculationData() != null){
+                List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+                if (measureData.getGaugePoint()!=null){
+                    gaugePoints = JSON.parseArray(measureData.getGaugePoint(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (gaugePoints!=null && gaugePoints.size()!=0){
+                        for (String gaugePoint : gaugePoints){
+                            if (gaugePoint.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else if (type.equals("1")){
+            TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getAnalysisResult() != null){
+                List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+                if (measureData.getGaugePoint()!=null){
+                    gaugePoints = JSON.parseArray(measureData.getPeak(), String.class);
+                }
+                for (String s : list) {
+                    String[] split = s.split(",");
+                    if (gaugePoints!=null && gaugePoints.size()!=0){
+                        for (String gaugePoint : gaugePoints){
+                            if (gaugePoint.equals(split[0])){
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("serialNumber", serialNumber++);
+                                map.put("x", split[0]);
+                                map.put("y", split[1]);
+                                map.put("type", "波峰");
+                            }
+                        }
+                    }
+                }
+            }
+            return Result.ok(resultData);
+        }else{
+            return Result.ok(new ArrayList<>());
+        }
     }
 
     @Override

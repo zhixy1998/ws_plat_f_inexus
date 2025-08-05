@@ -1,7 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -18,9 +17,6 @@ public class AddOrDeleteSampleDTO {
 
     @ApiModelProperty("更新人")
     private String updateBy;
-
-//    @ApiModelProperty("新增的样本")
-//    private List<SampleVO> newSamples;
 
     @ApiModelProperty("新增的样本")
     private List<Map<String, String>> newSamples;

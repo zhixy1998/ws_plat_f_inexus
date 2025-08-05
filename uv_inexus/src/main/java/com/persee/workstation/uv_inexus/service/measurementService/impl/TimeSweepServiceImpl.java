@@ -260,24 +260,27 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
     /**
      * 删除样品列表中的一个测量数据
-     * @param measureId
+     * @param sampleId
+     * @param taskId
      * @return
      */
     @Override
-    public Result deleteSampleListPort(String measureId) {
-        // 根据measureId查询测量数据
-        TMeasureData  byId = tMeasureDataService.getById(measureId);
-        if (byId == null) {
-            return Result.fail("测量数据不存在");
+    public Result deleteSampleListPort(String sampleId, String taskId) {
+        // 获取任务数据
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
         }
-        // 删除测量数据
-        byId.setIsDelete("1");
-        boolean update = tMeasureDataService.updateById(byId);
-        if (update){
-            return Result.ok(true);
-        }else {
-            return Result.fail(false);
+        List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        for (TaskSpecimen taskSpecimen : taskSpecimenList) {
+            if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                taskSpecimen.setDeleteType("1");
+                break;
+            }
         }
+        task.setSampleKey(JSON.toJSONString(taskSpecimenList));
+        boolean update = tMeasureTaskService.updateById(task);
+        return Result.ok(update);
     }
 
     /**
@@ -528,10 +531,27 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
-        // 根据任务id进行查询
-        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-        if (task == null) {
-            return Result.fail("任务不存在");
+        // 根据方法id查询方法数据
+        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
+        // 根据用户名查询用户数据
+        SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", paramDto.getUpdateBy()));
+        TMeasureTask task;
+        if (paramDto.getTaskId()!=null){
+            task = tMeasureTaskService.getById(paramDto.getTaskId());
+        }else{
+            task = new TMeasureTask();
+            task.setUserId(user.getId());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+            task.setTaskName(method.getMeasurementType() + "task_" + collect);
+            task.setCreateTime(LocalDateTime.now());
+            task.setMethodKey(method.getId());
+            task.setMeasureType(method.getMeasurementType());
+            task.setProjectItemKey(method.getProjectItemKey());
+            task.setIsDelete("0");
+            tMeasureTaskService.save(task);
         }
         List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen taskSpecimen : taskSpecimenList) {

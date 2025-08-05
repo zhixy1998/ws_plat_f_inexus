@@ -112,10 +112,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 根据用户id查询字段is_delete为1的数据
         List<TMeasureTask> taskList = tMeasureTaskService.list(new QueryWrapper<TMeasureTask>()
                 .eq("user_id", user.getId())
-//                .eq("is_delete", "1")
+                .eq("is_delete", "1")
                 .eq("measure_type", measureType)
                 .orderByDesc("create_time").last("limit 3"));
         List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
+        if (taskList.size() == 0){
+            return Result.ok(vos);
+        }
         for (TMeasureTask task : taskList) {
             RecentlyCompletedTasksVo vo = new RecentlyCompletedTasksVo();
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
@@ -825,6 +828,63 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
         return Result.ok(response);
 
+    }
+
+    /**
+     * 最近创建的任务
+     * @param updateBy
+     * @param measureType
+     * @return
+     */
+    @Override
+    public Result recentlyCreatedTasks(String updateBy, String measureType) {
+        // 根据用户名查询用户id
+        SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        if (user == null) {
+            return Result.fail("用户不存在");
+        }
+        if (measureType == null){
+            measureType = "光谱扫描";
+        }
+        // 根据用户id查询字段is_delete为1的数据
+        List<TMeasureTask> taskList = tMeasureTaskService.list(new QueryWrapper<TMeasureTask>()
+                .eq("user_id", user.getId())
+                .eq("measure_type", measureType)
+                .orderByDesc("create_time").last("limit 3"));
+        List<RecentlyCompletedTasksVo> vos = new ArrayList<>();
+        if (taskList == null){
+            return Result.ok(new ArrayList<>());
+        }
+        for (TMeasureTask task : taskList) {
+            RecentlyCompletedTasksVo vo = new RecentlyCompletedTasksVo();
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            TMeasureData measureData = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", task.getId()).last("limit 1"));
+            List<TaskSpecimen> lists = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            if(lists != null){
+                vo.setMeasurementSample(String.valueOf(lists.size()));
+            }else{
+                vo.setMeasurementSample("0");
+            }
+            vo.setTaskName(task.getTaskName());
+            vo.setTaskId(task.getId());
+            vo.setMethodId(task.getMethodKey());
+            vo.setMethodName(method.getMethodName());
+            vo.setProjectName(project.getProjectName());
+
+            if (measureData != null) {
+                if (measureData.getMeasurementStartTime() != null&& measureData.getMeasurementEndTime() != null){
+                    vo.setMeasurementStartTime(measureData.getMeasurementStartTime().format(formatter));
+                    vo.setMeasurementEndTime(measureData.getMeasurementEndTime().format(formatter));
+                }else{
+                    vo.setMeasurementStartTime("—");
+                    vo.setMeasurementEndTime("—");
+                }
+            }
+
+            vos.add(vo);
+        }
+        return Result.ok(vos);
     }
 
 
