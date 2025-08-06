@@ -18,6 +18,8 @@ public class MeasurePublicParameters {
     private String changeLampWaveLength;
     // 能量灯(0.钨灯 1.氘灯 2.汞灯)
     private String energyLamp;
+    //能量灯的名称
+    private String energyLampName;
     // 增益
     private Integer gain;
 }

@@ -250,7 +250,7 @@ public class RationWebSocket extends TextWebSocketHandler {
                         log.info("不是需要的样品，跳过");
                         continue;
                     }
-                    //标准样品
+                    //未知样品普通测
                     R<RationDataVO> r = singleSampleSimpleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
                     if (!r.getSuccess()) {
                         sendAndClose(session, r.getMessage());
@@ -264,6 +264,8 @@ public class RationWebSocket extends TextWebSocketHandler {
                     specimen.setIsTested(right);
                     data.add(r.getData());
                 }
+                List<RationCountDataInfo> countData = new ArrayList<>();
+                FittingReceiveInfo fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                 if (empty) {
                     for (RationDataVO dataVO : data) {
                         RationCountDataInfo yAbs = new RationCountDataInfo();
@@ -272,8 +274,43 @@ public class RationWebSocket extends TextWebSocketHandler {
                         double value = dataVO.getCountData().get(0).getColValue();
                         yAbs.setColValue(value - minuend);
                         dataVO.getCountData().add(yAbs);
+                        String ans = rationService.valueCalculate(fittingInfo, yAbs.getColValue(), parameter.getEquationType());
+
+                        RationCountDataInfo valueData = new RationCountDataInfo();
+                        valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
+                        valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+                        valueData.setColValue(Double.valueOf(ans));
+                        dataVO.getCountData().add(valueData);
+                        rationService.saveStandSampleData(dataVO);
+
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("sampleId", dataVO.getSampleId());
+                        jsonObject.put("key", valueData.getIdentity());
+                        jsonObject.put("value", valueData.getColValue());
+                        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                    }
+                } else {
+                    for (RationDataVO dataVO : data) {
+                        countData.addAll(dataVO.getCountData());
+                        double value = dataVO.getCountData().get(0).getColValue();
+                        String ans = rationService.valueCalculate(fittingInfo, value, parameter.getEquationType());
+
+                        RationCountDataInfo valueData = new RationCountDataInfo();
+                        valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
+                        valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+                        valueData.setColValue(Double.valueOf(ans));
+                        dataVO.getCountData().add(valueData);
+
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("sampleId", dataVO.getSampleId());
+                        jsonObject.put("key", valueData.getIdentity());
+                        jsonObject.put("value", valueData.getColValue());
+                        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                        rationService.saveStandSampleData(dataVO);
                     }
                 }
+
 
 
             } else {
@@ -302,7 +339,7 @@ public class RationWebSocket extends TextWebSocketHandler {
 
 
 
-
+    //单个样品普通不微分测量
     public R<RationDataVO> singleSampleSimpleMeasure(TaskSpecimen specimen, RationParameter parameter, String taskId, String methodId, String deviceSerialNumber, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
@@ -402,6 +439,7 @@ public class RationWebSocket extends TextWebSocketHandler {
         return R.ok(dataInfo);
     }
 
+    //微分测
     public R<Boolean> singleSampleDifferentialMeasure(){
         return R.ok();
     }

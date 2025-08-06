@@ -10,7 +10,9 @@ import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -233,6 +235,19 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 return photometricService.createMethodPort(methodDto, methodDto.getUpdateBy(), photometricParameter);
             case QUANTITATIVE_MEASUREMENT:
                 RationParameter rationParameter = convertParams(params, RationParameter.class);
+                rationParameter.setEnergyLampName(EnergyLampEnums.getName(rationParameter.getEnergyLamp()));
+                rationParameter.setCurveTypeName(RationCurveParamEnums.getName(rationParameter.getCurveType()));
+                rationParameter.setCoefficientModeName(RationCurveParamEnums.getName(rationParameter.getCoefficientMode()));
+                rationParameter.setEquationTypeName(RationCurveParamEnums.getName(rationParameter.getEquationType()));
+                rationParameter.setDifferentialModeName(RationCurveParamEnums.getName(rationParameter.getDifferentialMode()));
+                if (rationParameter.getZeroMethod() != null && !rationParameter.getZeroMethod().isEmpty()) {
+                    StringBuilder zeroName = new StringBuilder();
+                    for (String s : rationParameter.getZeroMethod()) {
+                        zeroName.append(s).append(",");
+                    }
+                    zeroName.deleteCharAt(zeroName.length() - 1);
+                    rationParameter.setZeroMethodName(zeroName.toString());
+                }
                 return rationService.createMethodPort(methodDto, methodDto.getUpdateBy(), rationParameter);
             case SPECTRAL_SCAN:
                 SpectrumParameter spectrumParameter = convertParams(params, SpectrumParameter.class);
