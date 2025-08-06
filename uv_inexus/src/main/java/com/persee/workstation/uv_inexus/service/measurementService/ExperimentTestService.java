@@ -49,4 +49,7 @@ public interface ExperimentTestService {
 
     // 获取方法列表
     Result listOfMethods(String methodName, Integer pageNum, Integer pageSize,String sort);
+
+    // 最近创建的任务
+    Result recentlyCreatedTasks(String updateBy, String measureType);
 }

@@ -87,4 +87,10 @@ public interface SpectrumService {
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 
     Result restoreDeletedListData(String taskId,String paramId, String type);
+
+    // 查询峰谷接口
+    Result queryPeakAndValleysPort(String dataId, String type);
+
+    // 查询标记点接口
+    Result queryGaugePointPort(String dataId, String type);
 }

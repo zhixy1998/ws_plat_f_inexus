@@ -26,8 +26,14 @@ public class ExperimentTestController {
 
     @GetMapping("recentlyAccomplishTask")
     @ApiOperation("最近完成的任务")
-    public Result recentlyAccomplishTask(@RequestParam String updateBy,@RequestParam String measureType) {
+    public Result recentlyAccomplishTask(@RequestParam String updateBy,@RequestParam(required = false) String measureType) {
        return experimentTestService.recentlyAccomplishTask(updateBy,measureType);
+    }
+
+    @GetMapping("recentlyCreatedTasks")
+    @ApiOperation("最近创建的任务")
+    public Result recentlyCreatedTasks(@RequestParam String updateBy,@RequestParam(required = false) String measureType) {
+        return experimentTestService.recentlyCreatedTasks(updateBy,measureType);
     }
 
     @GetMapping("queryAllProject")
@@ -136,6 +142,8 @@ public class ExperimentTestController {
                                                     @RequestParam String sort){
         return experimentTestService.listOfMethods(methodName,pageNum,pageSize, sort);
     }
+
+
 
 
 }

@@ -39,8 +39,8 @@ public class TimeSweepController {
 
     @DeleteMapping("deleteSampleListPort")
     @ApiOperation("删除样品列表接口")
-    public Result deleteSampleListPort(@RequestParam String measureId) {
-        return timeSweepService.deleteSampleListPort(measureId);
+    public Result deleteSampleListPort(@RequestParam String sampleId,@RequestParam String taskId) {
+        return timeSweepService.deleteSampleListPort(sampleId,taskId);
     }
 
     @GetMapping("changeTheListPort")

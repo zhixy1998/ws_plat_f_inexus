@@ -105,6 +105,10 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         }
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task.getSampleKey()==null||task.getSampleKey().equals("")) {
+            sendAndClose(session, "请先创建样品");
+            return;
+        }
         // 根据方法id查询方法数据
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
@@ -288,6 +292,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                 }
             }
             task.setSampleKey(JSON.toJSONString(specimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
             boolean update = tMeasureTaskService.updateById(task);
             if (!update) {
                 sendAndClose(session, "更新任务失败");
