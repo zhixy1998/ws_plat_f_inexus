@@ -98,6 +98,19 @@ public class RationServiceImpl implements RationService {
         }
         RationParameter parameter = new RationParameter();
         BeanUtils.copyProperties(methodDto, parameter);
+        parameter.setEnergyLampName(EnergyLampEnums.getName(parameter.getEnergyLamp()));
+        parameter.setCurveTypeName(RationCurveParamEnums.getName(parameter.getCurveType()));
+        parameter.setCoefficientModeName(RationCurveParamEnums.getName(parameter.getCoefficientMode()));
+        parameter.setEquationTypeName(RationCurveParamEnums.getName(parameter.getEquationType()));
+        parameter.setDifferentialModeName(RationCurveParamEnums.getName(parameter.getDifferentialMode()));
+        if (parameter.getZeroMethod() != null && !parameter.getZeroMethod().isEmpty()) {
+            StringBuilder zeroName = new StringBuilder();
+            for (String s : parameter.getZeroMethod()) {
+                zeroName.append(RationCurveParamEnums.getName(s)).append(",");
+            }
+            zeroName.deleteCharAt(zeroName.length() - 1);
+            parameter.setZeroMethodName(zeroName.toString());
+        }
 
         String param = JSON.toJSONString(parameter);
         // 更新方法参数
@@ -761,26 +774,20 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
-    public R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, String methodId) {
-
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        if (method == null || !StringUtils.hasText(method.getMeasurementParamInfo())) {
-            return R.fail("方法参数缺少");
-        }
-        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+    public R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter) {
 
         List<String> waveLength = parameter.getWaveLength();
         List<String> lengthParams = parameter.getWaveLengthParams();
         double ans = 0;
 
         for (int i = 0; i < waveLength.size(); i++) {
-            double value = 0;
+            double value = Double.MIN_VALUE;
             for (RationWavelengthDataInfo dataInfo : originData) {
                 if (waveLength.get(i).equals(dataInfo.getWavelength())) {
                     value = Double.parseDouble(dataInfo.getAbsValue());
                 }
             }
-            if (value == 0) {
+            if (value == Double.MIN_VALUE) {
                 return R.fail("未找到对应波长数据");
             }
             if (i < lengthParams.size()) {
@@ -1080,7 +1087,13 @@ public class RationServiceImpl implements RationService {
             log.info("数据拟合失败");
             return null;
         }
+        String equation = info.getEquation();
 
+        if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
+            info.setEquation(equation.replace("x", "Abs").replace("y", "C"));
+        } else {
+            info.setEquation(equation.replace("x", "C").replace("y", "Abs"));
+        }
         Arrays.stream(param.getX_data()).min().ifPresent(info::setMinX);
         Arrays.stream(param.getX_data()).max().ifPresent(info::setMaxX);
 
@@ -1129,8 +1142,8 @@ public class RationServiceImpl implements RationService {
                         .setScale(3, RoundingMode.HALF_UP)
                         .doubleValue())
                 .collect(Collectors.toList());
-        List<Double> x_data = new ArrayList<>();
-        List<Double> y_data = new ArrayList<>();
+
+        List<JSONObject> dataList = new ArrayList<>();
 
         double k0 = info.getK0() == null ? 0 : (double) Math.round(info.getK0() * 1000) / 1000;
         double k1 = info.getK1() == null ? 0 : (double) Math.round(info.getK1() * 1000) / 1000;
@@ -1148,30 +1161,38 @@ public class RationServiceImpl implements RationService {
             case 1:
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i;
-                    x_data.add(i);
-                    y_data.add(y);
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    dataList.add(jsonObject);
                 }
                 break;
             case 2:
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i + k2 * i * i;
-                    x_data.add(i);
-                    y_data.add(y);
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    dataList.add(jsonObject);
                 }
                 break;
             case 3:
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i;
-                    x_data.add(i);
-                    y_data.add(y);
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    dataList.add(jsonObject);
                 }
                 break;
 
             case 4:
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i + k4 * i * i * i * i;
-                    x_data.add(i);
-                    y_data.add(y);
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    dataList.add(jsonObject);
 
                 }
                 break;
@@ -1180,17 +1201,11 @@ public class RationServiceImpl implements RationService {
         }
         RationFitCurveVO vo = new RationFitCurveVO();
         vo.setCoefficientList(list);
-        vo.setXList(x_data.stream()
-                .map(d -> BigDecimal.valueOf(d)
-                        .setScale(3, RoundingMode.HALF_UP)
-                        .doubleValue())
-                .collect(Collectors.toList()));
-        vo.setYList(y_data.stream()
-                .map(d -> BigDecimal.valueOf(d)
-                        .setScale(3, RoundingMode.HALF_UP)
-                        .doubleValue())
-                .collect(Collectors.toList()));
+        vo.setDataList(dataList);
+        vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
+        vo.setR(info.getR());
+        vo.setR2(info.getR2());
         return vo;
     }
 
@@ -1284,6 +1299,5 @@ public class RationServiceImpl implements RationService {
         boolean update = tMeasureTaskService.updateById(task);
         return update ? Result.ok() : Result.fail();
     }
-
 
 }

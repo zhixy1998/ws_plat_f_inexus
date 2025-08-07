@@ -58,7 +58,7 @@ public interface RationService {
 
     Result saveUnknowSampleData(RationDataVO dataInfo);
 
-    R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, String methodId);
+    R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter);
 
     Result<List<Map<String, String>>> queryStandSampleData(String taskId, Boolean allDisplay);
 

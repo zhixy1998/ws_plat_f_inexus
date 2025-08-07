@@ -243,7 +243,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 if (rationParameter.getZeroMethod() != null && !rationParameter.getZeroMethod().isEmpty()) {
                     StringBuilder zeroName = new StringBuilder();
                     for (String s : rationParameter.getZeroMethod()) {
-                        zeroName.append(s).append(",");
+                        zeroName.append(RationCurveParamEnums.getName(s)).append(",");
                     }
                     zeroName.deleteCharAt(zeroName.length() - 1);
                     rationParameter.setZeroMethodName(zeroName.toString());

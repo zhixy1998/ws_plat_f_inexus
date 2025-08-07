@@ -11,7 +11,7 @@ import java.util.List;
 
 public class RestUtil {
 
-    private static final String baseUrl = "http://192.168.32.62:8002/";
+    private static final String baseUrl = "http://192.168.51.35:8000/";
 
     public static String sum(String formula, String identity, String values) {
         RestTemplate restTemplate = new RestTemplate();
