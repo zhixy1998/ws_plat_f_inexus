@@ -2,10 +2,13 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import lombok.Data;
 
+/**
+ * 时间扫描方法参数
+ */
 @Data
 public class TimeSweepParamter extends MeasurePublicParameters{
-    // 光度模式
-    private String spectralBandwidth;
+    // 光度模式(1.abs 2.T% 3.Es 4.Er)
+    private String luminosity;
     // 波长值
     private String waveLength;
     // 扫描总时长

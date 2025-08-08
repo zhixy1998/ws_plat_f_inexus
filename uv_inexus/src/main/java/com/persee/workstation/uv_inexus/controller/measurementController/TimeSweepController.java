@@ -31,10 +31,24 @@ public class TimeSweepController {
         return timeSweepService.queryProjectAllMethods(projectId,measureForm);
     }
 
+    @GetMapping("queryMethodParameter")
+    @ApiOperation("查询方法参数接口")
+    public Result queryMethodParameter(@RequestParam String methodId) {
+        return timeSweepService.queryMethodParameter(methodId);
+    }
+
+    @PostMapping("updateMethodParameter")
+    @ApiOperation("修改方法参数接口")
+    public Result updateMethodParameter(@RequestBody TimeSweepMethodParameterDto params) {
+        return timeSweepService.updateMethodParameter(params);
+    }
+
     @GetMapping("sampleListPort")
     @ApiOperation("获取样本列表接口")
-    public Result sampleListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
-        return timeSweepService.sampleListPort(taskId,type);
+    public Result sampleListPort(@RequestParam String taskId,
+                                 @RequestParam(required = false) String type,
+                                 @RequestParam(required = false) Integer digit) {
+        return timeSweepService.sampleListPort(taskId,type, digit);
     }
 
     @DeleteMapping("deleteSampleListPort")
@@ -45,14 +59,22 @@ public class TimeSweepController {
 
     @GetMapping("changeTheListPort")
     @ApiOperation("获取变换列表接口")
-    public Result changeTheListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
-        return timeSweepService.changeTheListPort(taskId,type);
+    public Result changeTheListPort(@RequestParam String taskId,
+                                    @RequestParam(required = false) String type,
+                                    @RequestParam(required = false) Integer digit) {
+        return timeSweepService.changeTheListPort(taskId,type, digit);
     }
 
     @DeleteMapping("deleteChangeListPort")
     @ApiOperation("删除变换列表接口")
     public Result deleteChangeListPort(@RequestParam String analysisId) {
         return timeSweepService.deleteChangeListPort(analysisId);
+    }
+
+    @GetMapping("restoreDeletedListData")
+    @ApiOperation("恢复已删除数据接口")
+    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String paramId,@RequestParam String type){
+        return timeSweepService.restoreDeletedListData(taskId,paramId,type);
     }
 
     @GetMapping("setMethodParameters")
@@ -87,16 +109,44 @@ public class TimeSweepController {
         return timeSweepService.uploadImage(upload);
     }
 
+    @GetMapping("queryPeakValleyDataList")
+    @ApiOperation("查询峰谷数据列表接口")
+    public Result queryPeakValleyDataList(@RequestParam String dataId,
+                                          @RequestParam String type,
+                                          @RequestParam(required = false) Integer digit) {
+        return timeSweepService.queryPeakValleyDataList(dataId,type, digit);
+    }
+
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
     public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
         return timeSweepService.seekingPeaksAndValleysPort(paramDto);
     }
 
+    @PostMapping("addPeakValleyRemarks")
+    @ApiOperation("添加峰谷备注接口")
+    public Result addPeakValleyRemarks(@RequestBody PeakValleyMarkingDto paramDto){
+        return timeSweepService.addPeakValleyRemarks(paramDto);
+    }
+
+    @GetMapping("queryGaugePointDataList")
+    @ApiOperation("获取标记点数据列表")
+    public Result queryGaugePointDataList(@RequestParam String dataId,
+                                      @RequestParam String type,
+                                      @RequestParam(required = false) Integer digit) {
+        return timeSweepService.queryGaugePointDataList(dataId,type, digit);
+    }
+
     @PostMapping("addGaugePoint")
     @ApiOperation("添加标记点接口")
     public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto){
         return timeSweepService.addGaugePoint(paramDto);
+    }
+
+    @PostMapping("addGaugePointRemarks")
+    @ApiOperation("添加标记点备注接口")
+    public Result addGaugePointRemarks(@RequestBody PeakValleyMarkingDto paramDto){
+        return timeSweepService.addGaugePointRemarks(paramDto);
     }
 
     @GetMapping("/exportWord")
@@ -112,6 +162,12 @@ public class TimeSweepController {
                 ioException.printStackTrace();
             }
         }
+    }
+
+    @GetMapping("queryArithmeticSourceData")
+    @ApiOperation("查询运算源数据接口")
+    public Result queryArithmeticSourceData(@RequestParam String taskId) {
+        return timeSweepService.queryArithmeticSourceData(taskId);
     }
 
     @PostMapping("fourOperationsPort")

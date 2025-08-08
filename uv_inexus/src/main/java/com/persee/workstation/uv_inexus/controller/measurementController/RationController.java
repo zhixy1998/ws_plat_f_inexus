@@ -116,4 +116,12 @@ public class RationController {
                             @RequestParam String updateBy) {
         return rationService.zero(deviceSerialNumber, methodId, taskId, updateBy);
     }
+    @GetMapping("zero2")
+    @ApiOperation("校零接口2")
+    public Result photoZero2(@RequestParam String deviceSerialNumber,
+                            @RequestParam String methodId,
+                            @RequestParam String taskId,
+                            @RequestParam String updateBy) {
+        return rationService.zero2(deviceSerialNumber, methodId, taskId, updateBy);
+    }
 }

@@ -10,6 +10,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.SpectrumService;
@@ -239,7 +240,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         new Thread(() -> {
             while (Constants.endTime == null) {
                 try {
-                    Thread.sleep(1000);
+                    sleep(1000);
                 } catch (InterruptedException e) {
                     handleTransportError(session, e);
                 }
@@ -255,7 +256,9 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
             Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
             List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
+            List<Double> yDataFeng = (List<Double>) resultMap.get("peak_y");
             List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
+            List<Double> yDataGu = (List<Double>) resultMap1.get("valley_y");
             // 进行存储操作
             // 创建一个测量数据对象
             TMeasureData measureData = new TMeasureData();
@@ -271,14 +274,31 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             for (int i = 0; i < Constants.x_data.size(); i++) {
                 listData.add(Constants.x_data.get(i) + "," + Constants.y_data.get(i));
             }
+            List<PeakValleyMarking> peakValleys = new ArrayList<>();
+            List<PeakValleyMarking> markings = new ArrayList<>();
+
+            for (int i = 0; i < xDataFeng.size(); i++) {
+                PeakValleyMarking marking = new PeakValleyMarking();
+                marking.setX(xDataFeng.get(i).toString());
+                marking.setY(yDataFeng.get(i).toString());
+                marking.setType("波峰");
+                peakValleys.add(marking);
+            }
+            for (int i = 0; i < xDataGu.size(); i++) {
+                PeakValleyMarking marking = new PeakValleyMarking();
+                marking.setX(xDataGu.get(i).toString());
+                marking.setY(yDataGu.get(i).toString());
+                marking.setType("波谷");
+                markings.add(marking);
+            }
             measureData.setTaskId(taskId);
             measureData.setSampleKey(sampleId);
             measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
             measureData.setOriginalCalculationData(JSON.toJSONString(listData));
             measureData.setMeasurementStartTime(Constants.startTime);
             measureData.setMeasurementEndTime(Constants.endTime);
-            measureData.setPeak(JSON.toJSONString(xDataFeng));
-            measureData.setGrain(JSON.toJSONString(xDataGu));
+            measureData.setPeak(JSON.toJSONString(peakValleys));
+            measureData.setGrain(JSON.toJSONString(markings));
             measureData.setIsDelete("0");
             boolean save = traceDataService.save(measureData);
             if (!save) {

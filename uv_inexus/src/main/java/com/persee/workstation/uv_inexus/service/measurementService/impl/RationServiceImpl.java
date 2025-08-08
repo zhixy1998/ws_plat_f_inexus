@@ -1152,6 +1152,10 @@ public class RationServiceImpl implements RationService {
         double k4 = info.getK4() == null ? 0 : (double) Math.round(info.getK4() * 1000) / 1000;
 
 
+
+
+
+
         double step = 0.1;
         //采用3位小数来计算
         double minX = (double) Math.round(info.getMinX() * 1000) / 1000;
@@ -1296,6 +1300,102 @@ public class RationServiceImpl implements RationService {
         }
         task.setZeroParam(JSON.toJSONString(list));
 
+        boolean update = tMeasureTaskService.updateById(task);
+        return update ? Result.ok() : Result.fail();
+    }
+
+    @Override
+    public Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return Result.fail("未连接仪器");
+        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+
+        if (!StringUtils.hasText(taskId)){
+            //创建任务
+
+            //创建任务
+            TMeasureTask newTask = new TMeasureTask();
+
+            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+            newTask.setUserId(po.getId());
+            newTask.setProjectItemKey(method.getProjectItemKey());
+            newTask.setMethodKey(method.getId());
+            newTask.setMeasureType(method.getMeasurementType());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
+            newTask.setCreateTime(LocalDateTime.now());
+            boolean save = false;
+            for (int i = 0; i < 3; i++) {
+                if (tMeasureTaskService.save(newTask)) {
+                    save = true;
+                    break;
+                }
+            }
+            if (!save) {
+                return Result.fail("系统出错");
+            }
+            taskId = newTask.getId();
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
+            return Result.fail("缺少波长");
+        }
+        List<String> waveLength = parameter.getWaveLength();
+        // 通过序列号获取ip
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        if (RationCurveParamEnums.no_differential.equals(parameter.getDifferentialModeName())){
+            List<ChangeParam> list = new ArrayList<>();
+            for (String s : waveLength) {
+
+                double v = Double.parseDouble(s);
+                Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
+                devMessageUtil.wavelengthLocate(command, ip);
+
+                command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+                R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+                if (!zero.getSuccess()) {
+                    return Result.fail(zero.getMessage());
+                }
+                ChangeParam changeParam = zero.getData();
+                changeParam.setWl(s);
+                list.add(changeParam);
+            }
+            task.setZeroParam(JSON.toJSONString(list));
+        }else{
+            Map<String, List<ChangeParam>> map = new HashMap<>();
+            for (String s : waveLength) {
+                double startWaveLength = Double.parseDouble(s)+5;
+                double endWaveLength = Double.parseDouble(s)-5;
+                List<Command> commands = new ArrayList<>();
+                Command com1 = new Command(SetParamEnum.SetStartWl.getComId(), new Object[]{startWaveLength});
+                Command com2 = new Command(SetParamEnum.SetEndWl.getComId(), new Object[]{endWaveLength});
+                commands.add(com1);
+                commands.add(com2);
+                R<String> stringR = devMessageUtil.spectrumScanSet(commands,ip);
+                if (!stringR.getSuccess()) {
+                    return Result.fail(stringR.getMessage());
+                }
+                Command command = new Command(SetParamEnum.BaseLine.getComId(), new Object[]{});
+                R<List<ChangeParam>> listR = devMessageUtil.spectrumScanGetBaseline(command, ip);
+                if (!listR.getSuccess()) {
+                    return Result.fail(listR.getMessage());
+                }
+                List<ChangeParam> data = listR.getData();
+                map.put(s, data);
+            }
+            task.setZeroParam(JSON.toJSONString(map));
+        }
         boolean update = tMeasureTaskService.updateById(task);
         return update ? Result.ok() : Result.fail();
     }

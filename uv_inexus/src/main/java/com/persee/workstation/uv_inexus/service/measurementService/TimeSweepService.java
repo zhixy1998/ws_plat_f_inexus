@@ -15,17 +15,26 @@ public interface TimeSweepService {
     // 查询项目下的所有方法
     Result queryProjectAllMethods(String projectId, String measureForm);
 
+    // 查询方法参数接口
+    Result queryMethodParameter(String methodId);
+
+    // 修改方法参数接口
+    Result updateMethodParameter(TimeSweepMethodParameterDto params);
+
     // 查询样品列表接口
-    Result sampleListPort(String taskId, String type);
+    Result sampleListPort(String taskId, String type,Integer  digit);
 
     // 删除样品列表接口
     Result deleteSampleListPort(String sampleId, String taskId);
 
     // 获取变换列表接口
-    Result changeTheListPort(String taskId, String type);
+    Result changeTheListPort(String taskId, String type,Integer  digit);
 
     // 删除变换列表接口
     Result deleteChangeListPort(String analysisId);
+
+    // 恢复已删除数据接口
+    Result restoreDeletedListData(String taskId, String paramId, String type);
 
     // 设置方法参数接口
     Result setMethodParameters(String methodId, String deviceSerialNumber);
@@ -42,14 +51,29 @@ public interface TimeSweepService {
     // 图片上传
     Result uploadImage(SpectrumImageUpload upload);
 
+    // 获取峰谷数据列表
+    Result queryPeakValleyDataList(String dataId, String type, Integer digit);
+
     // 查询峰谷接口
     Result seekingPeaksAndValleysPort(SeekingPeaksValleysDto paramDto);
+
+    // 添加峰谷备注接口
+    Result addPeakValleyRemarks(PeakValleyMarkingDto paramDto);
+
+    // 查询标记点数据列表
+    Result queryGaugePointDataList(String dataId, String type, Integer digit);
 
     // 添加标记点接口
     Result addGaugePoint(AddGaugePointDto paramDto);
 
+    // 添加标记点备注
+    Result addGaugePointRemarks(PeakValleyMarkingDto paramDto);
+
     // 导出Word接口
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
+
+    // 查询运算源数据接口
+    Result queryArithmeticSourceData(String taskId);
 
     // 四则运算接口
     Result fourOperationsPort(FourOperationsParamDto paramDto);
@@ -68,4 +92,5 @@ public interface TimeSweepService {
 
     // 保存数据接口
     Result saveData(String taskId);
+
 }

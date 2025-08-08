@@ -10,6 +10,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.TMeasureDataService;
@@ -241,7 +242,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
         List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
+        List<Double> yDataFeng = (List<Double>) resultMap.get("peak_y");
         List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
+        List<Double> yDataGu = (List<Double>) resultMap1.get("valley_y");
         // 创建一个测量数据对象
         TMeasureData tMeasureData = new TMeasureData();
         // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
@@ -256,14 +259,30 @@ public class TimeWebSocket extends TextWebSocketHandler {
         for (int i = 0; i < x_data.size(); i++) {
             listData.add(x_data.get(i) + "," + y_data.get(i));
         }
+        List<PeakValleyMarking> peakValleys = new ArrayList<>();
+        List<PeakValleyMarking> markings = new ArrayList<>();
+        for (int i = 0; i < xDataFeng.size(); i++) {
+            PeakValleyMarking marking = new PeakValleyMarking();
+            marking.setX(xDataFeng.get(i).toString());
+            marking.setY(yDataFeng.get(i).toString());
+            marking.setType("波峰");
+            peakValleys.add(marking);
+        }
+        for (int i = 0; i < xDataGu.size(); i++) {
+            PeakValleyMarking marking = new PeakValleyMarking();
+            marking.setX(xDataGu.get(i).toString());
+            marking.setY(yDataGu.get(i).toString());
+            marking.setType("波谷");
+            markings.add(marking);
+        }
         tMeasureData.setTaskId(task.getId());
         tMeasureData.setSampleKey(sampleId);
         tMeasureData.setInstrumentData(JSON.toJSONString(originalData));
         tMeasureData.setOriginalCalculationData(JSON.toJSONString(listData));
         tMeasureData.setMeasurementStartTime(Constants.startTime);
         tMeasureData.setMeasurementEndTime(Constants.endTime);
-        tMeasureData.setPeak(JSON.toJSONString(xDataFeng));
-        tMeasureData.setGrain(JSON.toJSONString(xDataGu));
+        tMeasureData.setPeak(JSON.toJSONString(peakValleys));
+        tMeasureData.setGrain(JSON.toJSONString(markings));
         tMeasureData.setIsDelete("0");
         boolean save = tMeasureDataService.save(tMeasureData);
         if (!save) {

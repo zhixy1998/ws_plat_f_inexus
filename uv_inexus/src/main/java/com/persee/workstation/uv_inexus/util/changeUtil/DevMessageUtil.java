@@ -297,6 +297,36 @@ public class DevMessageUtil {
     }
 
     /**
+     * 定量测量(微分)：
+     */
+    public R<List<ChangeParam>> quantitativeDifferentialScan(List<Command> list, String deviceIp) {
+        R<DatagramSocket> re = messageUtil.getSocket();
+        if (!re.getSuccess()) {
+            log.info("绑定socket失败");
+            return R.fail(re.getMessage());
+        }
+        DatagramSocket socket = re.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            return R.fail("转换xml出错");
+        }
+        List<ChangeParam> changeParams = null;
+        for (Command command : list) {
+            String cmdId = command.getCmdId();
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse == null || parse.equals("false")) {
+                return R.fail("解析报文出错");
+            }
+            changeParams.add((ChangeParam) parse);
+        }
+        return R.ok(changeParams);
+    }
+
+    /**
      * 光谱扫描: 获取测量数据
      */
     public void getMeasureData(Command command, String deviceIp) {
@@ -317,6 +347,33 @@ public class DevMessageUtil {
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
         Constants.startTime = LocalDateTime.now();
         messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes);
+    }
+
+    /**
+     * 定量测量(微分): 获取测量数据
+     */
+    public List<ChangeParam> getQuantitativeDifferentialMeasureData(Command command, String deviceIp) {
+        R<DatagramSocket> re = messageUtil.getSocket();
+        if (!re.getSuccess()) {
+            log.info("绑定socket失败");
+            return null;
+        }
+        DatagramSocket socket = re.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            log.info("转换xml出错");
+            return null;
+        }
+        String cmdId = command.getCmdId();
+        Transition transition = xml.get(cmdId);
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        List<ChangeParam> changeParams = messageUtil.RationDifferentialCall(socket, deviceIp, cmdId, bytes);
+        if (changeParams == null) {
+            log.info("获取数据失败");
+            return null;
+        }
+        return changeParams;
     }
 
 

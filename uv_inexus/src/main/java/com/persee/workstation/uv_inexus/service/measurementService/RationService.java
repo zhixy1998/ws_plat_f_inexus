@@ -88,4 +88,5 @@ public interface RationService {
 
     Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 
+    Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 }
