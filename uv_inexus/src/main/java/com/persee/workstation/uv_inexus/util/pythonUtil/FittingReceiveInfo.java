@@ -11,6 +11,11 @@ public class FittingReceiveInfo {
      * Code，状态码
      */
     private Integer code;
+
+    /**
+     * Message，状态信息
+     */
+    private String message;
     /**
      * Coefficients，所有系数列表，顺序为 k0, k1, ..., kn
      */

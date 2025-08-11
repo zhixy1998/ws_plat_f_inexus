@@ -211,11 +211,12 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                     }
                 }
                 //拟合曲线
-                FittingReceiveInfo fittingReceiveInfo = rationService.fittingCurve(countData, empty, task.getMethodKey(), parameter.getWaveLengthParams());
-                if (fittingReceiveInfo == null) {
-                    sendAndClose(session, "曲线拟合失败");
+                R<FittingReceiveInfo> infoR = rationService.fittingCurve(countData, empty, task.getMethodKey(), parameter.getWaveLengthParams());
+                if (!infoR.getSuccess()) {
+                    sendAndClose(session, infoR.getMessage());
                     return;
                 }
+                FittingReceiveInfo fittingReceiveInfo = infoR.getData();
 
                 String fitParam = JSON.toJSONString(fittingReceiveInfo);
                 task.setFittingParam(fitParam);

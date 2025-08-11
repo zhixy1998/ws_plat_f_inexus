@@ -1626,7 +1626,11 @@ public class SpectrumServiceImpl implements SpectrumService {
                 if (!save){
                     return Result.ok("新增失败");
                 }
-                taskSpecimenList.add(new TaskSpecimen(sample.getId(),"0","0"));
+                TaskSpecimen newTaskSpecimen = new TaskSpecimen();
+                newTaskSpecimen.setSpecimenKey(sample.getId());
+                newTaskSpecimen.setDeleteType("0");
+                newTaskSpecimen.setIsTested("0");
+                taskSpecimenList.add(newTaskSpecimen);
             }
         }
 
@@ -2208,7 +2212,10 @@ public class SpectrumServiceImpl implements SpectrumService {
 
             vo.setSteps(steps.toString());
             vo.setDetectionStartTime(task.getStartTime().format(formatter));
-            vo.setDetectionEndTime(task.getEndTime().format(formatter));
+            if (task.getEndTime() != null) {
+                vo.setDetectionEndTime(task.getEndTime().format(formatter));
+            }
+
             vo.setDataType("测量数据");
 
             vo.setAmbientTemperature("26℃");

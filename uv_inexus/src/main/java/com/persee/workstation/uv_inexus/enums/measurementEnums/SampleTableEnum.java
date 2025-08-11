@@ -5,6 +5,7 @@ import lombok.Getter;
 @Getter
 public enum SampleTableEnum {
 
+    sampleId("sampleId", "样品ID"),
     sampleNumber("sampleNumber", "样品编号"),
     sampleType("sampleType", "样品类型"),
     sampleKind("sampleKind", "样品类别"),

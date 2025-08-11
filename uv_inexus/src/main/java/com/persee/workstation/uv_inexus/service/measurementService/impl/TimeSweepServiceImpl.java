@@ -740,7 +740,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 if (!save){
                     return Result.ok("新增失败");
                 }
-                taskSpecimenList.add(new TaskSpecimen(sample.getId(),"0","0"));
+                TaskSpecimen newTaskSpecimen = new TaskSpecimen();
+                newTaskSpecimen.setSpecimenKey(sample.getId());
+                newTaskSpecimen.setDeleteType("0");
+                newTaskSpecimen.setIsTested("0");
+                taskSpecimenList.add(newTaskSpecimen);
             }
         }
 

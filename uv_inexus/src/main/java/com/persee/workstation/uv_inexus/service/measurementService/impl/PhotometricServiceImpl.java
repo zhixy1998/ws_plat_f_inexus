@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
@@ -450,7 +451,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());
-        param.setLuminosity(WaveLengthEnum.getName(photometricParameter.getLuminosity()));
+        param.setLuminosityName(WaveLengthEnum.getName(photometricParameter.getLuminosity()));
+        param.setSamplePoolWayName(RepeatConfigEnum.getName(photometricParameter.getSamplePoolWay()));
 //        param.setPhotometricParameter(photometricParameter);
         return Result.ok(param);
     }
@@ -693,7 +695,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             map.put("dilutionRatio", sample.getDilutionRatio());
             map.put("sampleVolume", sample.getSampleVolume());
             map.put("deleteType", specimen.getDeleteType());
-            map.put("sampleLocation", sample.getSampleLocation());
+            map.put("sampleLocation", "样品池"+sample.getSampleLocation());
 
             if (StringUtils.hasText(sample.getNewColData())){
                 Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
@@ -832,14 +834,14 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     /**
      * 零点校零
-     * @param serialNumber
+     * @param deviceSerialNumber
      * @param methodId
      * @return
      */
     @Override
-    public Result zero(String serialNumber, String methodId, String taskId,String updateBy) {
+    public Result zero(String deviceSerialNumber, String methodId, String taskId,String updateBy) {
 
-        if (!StringUtils.hasText(serialNumber)) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
             return Result.fail("未连接仪器");
         }
 
@@ -886,7 +888,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
         List<String> waveLength = photometricParameter.getWaveLength();
         // 通过序列号获取ip
-        String ip = deviceInfoService.getIp(serialNumber);
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
         for (String s : waveLength) {
 

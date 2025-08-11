@@ -14,4 +14,8 @@ public class TaskSpecimen {
     private String deleteType;
     // 是否已测(0.未测,1.已测)
     private String isTested;
+    //样品种类
+    private String sampleType;
+    //样品类型
+    private String sampleKind;
 }
