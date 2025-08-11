@@ -33,9 +33,11 @@ public interface SpectrumService {
 
     Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
 
-    Result sampleListPort(String taskId,String type);
+    // 获取样本列表
+    Result sampleListPort(String taskId,String type,Integer digit);
 
-    Result changeTheListPort(String taskId,String type);
+    // 获取变换列表
+    Result changeTheListPort(String taskId,String type,Integer digit);
 
     Result smoothnessPort(SmoothnessDto paramDto);
 
@@ -43,6 +45,7 @@ public interface SpectrumService {
 
     Result queryMeasureGaugePoint(String measureId);
 
+    // 获取峰谷列表
     Result peakSearchingPort(SeekingPeaksValleysDto paramDto);
 
 
@@ -89,8 +92,14 @@ public interface SpectrumService {
     Result restoreDeletedListData(String taskId,String paramId, String type);
 
     // 查询峰谷接口
-    Result queryPeakAndValleysPort(String dataId, String type);
+    Result queryPeakAndValleysPort(String dataId, String type, Integer digit);
 
     // 查询标记点接口
-    Result queryGaugePointPort(String dataId, String type);
+    Result queryGaugePointPort(String dataId, String type, Integer digit);
+
+    // 添加峰谷备注接口
+    Result addPeakValleyRemarks(PeakValleyMarkingDto paramDto);
+
+    // 添加标记点备注接口
+    Result addGaugePointRemarks(PeakValleyMarkingDto paramDto);
 }

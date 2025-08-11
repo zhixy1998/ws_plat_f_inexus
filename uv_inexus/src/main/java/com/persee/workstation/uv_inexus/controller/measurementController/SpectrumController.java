@@ -106,8 +106,10 @@ public class SpectrumController {
 
     @GetMapping("sampleListPort")
     @ApiOperation("获取样本列表接口")
-    public Result sampleListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
-        return spectrumService.sampleListPort(taskId,type);
+    public Result sampleListPort(@RequestParam String taskId,
+                                 @RequestParam(required = false) String type,
+                                 @RequestParam(required = false) Integer digit) {
+        return spectrumService.sampleListPort(taskId,type,digit);
     }
 
 
@@ -120,8 +122,10 @@ public class SpectrumController {
 
     @GetMapping("changeTheListPort")
     @ApiOperation("获取变换列表接口")
-    public Result changeTheListPort(@RequestParam String taskId,@RequestParam(required = false) String type) {
-        return spectrumService.changeTheListPort(taskId,type);
+    public Result changeTheListPort(@RequestParam String taskId,
+                                    @RequestParam(required = false) String type,
+                                    @RequestParam(required = false) Integer digit) {
+        return spectrumService.changeTheListPort(taskId,type,digit);
     }
 
     @GetMapping("deleteChangeListPort")
@@ -158,20 +162,30 @@ public class SpectrumController {
     @GetMapping("queryPeakAndValleysPort")
     @ApiOperation("获取峰谷接口")
     public Result queryPeakAndValleysPort(@RequestParam String dataId,
-                                          @RequestParam String type) {
-        return spectrumService.queryPeakAndValleysPort(dataId,type);
+                                          @RequestParam String type,
+                                          @RequestParam(required = false) Integer digit) {
+        return spectrumService.queryPeakAndValleysPort(dataId,type, digit);
     }
+
     @PostMapping("seekingPeaksAndValleysPort")
     @ApiOperation("寻峰寻谷接口")
     public Result seekingPeaksAndValleysPort(@RequestBody SeekingPeaksValleysDto paramDto){
         return spectrumService.peakSearchingPort(paramDto);
     }
 
+    @PostMapping("addPeakValleyRemarks")
+    @ApiOperation("添加峰谷备注接口")
+    public Result addPeakValleyRemarks(@RequestBody PeakValleyMarkingDto paramDto){
+        return spectrumService.addPeakValleyRemarks(paramDto);
+    }
+
+
     @GetMapping("queryGaugePointPort")
     @ApiOperation("获取标记点接口")
     public Result queryGaugePointPort(@RequestParam String dataId,
-                                          @RequestParam String type) {
-        return spectrumService.queryGaugePointPort(dataId,type);
+                                      @RequestParam String type,
+                                      @RequestParam(required = false) Integer digit) {
+        return spectrumService.queryGaugePointPort(dataId,type, digit);
     }
 
     @PostMapping("addGaugePoint")
@@ -179,6 +193,13 @@ public class SpectrumController {
     public Result addGaugePoint(@RequestBody AddGaugePointDto paramDto){
         return spectrumService.addGaugePoint(paramDto);
     }
+
+    @PostMapping("addGaugePointRemarks")
+    @ApiOperation("添加标记点备注接口")
+    public Result addGaugePointRemarks(@RequestBody PeakValleyMarkingDto paramDto){
+        return spectrumService.addGaugePointRemarks(paramDto);
+    }
+
 
     @GetMapping("testStart")
     @ApiOperation("开始测试")

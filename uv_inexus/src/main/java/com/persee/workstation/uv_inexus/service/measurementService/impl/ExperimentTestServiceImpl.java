@@ -10,7 +10,9 @@ import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -233,6 +235,19 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 return photometricService.createMethodPort(methodDto, methodDto.getUpdateBy(), photometricParameter);
             case QUANTITATIVE_MEASUREMENT:
                 RationParameter rationParameter = convertParams(params, RationParameter.class);
+                rationParameter.setEnergyLampName(EnergyLampEnums.getName(rationParameter.getEnergyLamp()));
+                rationParameter.setCurveTypeName(RationCurveParamEnums.getName(rationParameter.getCurveType()));
+                rationParameter.setCoefficientModeName(RationCurveParamEnums.getName(rationParameter.getCoefficientMode()));
+                rationParameter.setEquationTypeName(RationCurveParamEnums.getName(rationParameter.getEquationType()));
+                rationParameter.setDifferentialModeName(RationCurveParamEnums.getName(rationParameter.getDifferentialMode()));
+                if (rationParameter.getZeroMethod() != null && !rationParameter.getZeroMethod().isEmpty()) {
+                    StringBuilder zeroName = new StringBuilder();
+                    for (String s : rationParameter.getZeroMethod()) {
+                        zeroName.append(RationCurveParamEnums.getName(s)).append(",");
+                    }
+                    zeroName.deleteCharAt(zeroName.length() - 1);
+                    rationParameter.setZeroMethodName(zeroName.toString());
+                }
                 return rationService.createMethodPort(methodDto, methodDto.getUpdateBy(), rationParameter);
             case SPECTRAL_SCAN:
                 SpectrumParameter spectrumParameter = convertParams(params, SpectrumParameter.class);
@@ -558,12 +573,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             // 根据任务id测量数据表
             List<TMeasureData> measureData = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("is_delete", "0"));
             if (measureData == null || measureData.size() == 0) {
-                return Result.fail("未查询到数据");
+                return Result.fail("未测量,请先测量");
             }
             List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_delete", "0"));
-            if (analysisData == null || analysisData.size() == 0) {
-                return Result.fail("未查询到数据");
-            }
 
             List<ReportDataVo> list = new ArrayList<>();
             for (TMeasureData data : measureData) {
@@ -578,17 +590,20 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 vo.setDataType("测量数据");
                 list.add(vo);
             }
-            for (TMeasureAnalysisData data : analysisData) {
-                ReportDataVo vo = new ReportDataVo();
-                // 根据data的样品id查询样品名称
-                vo.setName(data.getAnalysisName());
-                vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
-                vo.setValley(JSON.parseArray(data.getGrain(), String.class));
-                vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
-                vo.setParameterData(JSON.parseArray(data.getAnalysisResult(), String.class));
-                vo.setDataType("分析数据");
-                list.add(vo);
+            if (analysisData != null || analysisData.size() != 0) {
+                for (TMeasureAnalysisData data : analysisData) {
+                    ReportDataVo vo = new ReportDataVo();
+                    // 根据data的样品id查询样品名称
+                    vo.setName(data.getAnalysisName());
+                    vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
+                    vo.setValley(JSON.parseArray(data.getGrain(), String.class));
+                    vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
+                    vo.setParameterData(JSON.parseArray(data.getAnalysisResult(), String.class));
+                    vo.setDataType("分析数据");
+                    list.add(vo);
+                }
             }
+
             return Result.ok(list);
         }else if (reportName.equals("时间扫描表格")){
             return Result.ok("暂未开放");

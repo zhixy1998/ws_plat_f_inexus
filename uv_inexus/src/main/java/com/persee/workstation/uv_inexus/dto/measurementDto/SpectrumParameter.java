@@ -2,6 +2,9 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import lombok.Data;
 
+/**
+ * 光谱扫描方法参数
+ */
 @Data
 public class SpectrumParameter extends MeasurePublicParameters {
     // 光度模式(1.abs 2.T% 3.Es 4.Er)

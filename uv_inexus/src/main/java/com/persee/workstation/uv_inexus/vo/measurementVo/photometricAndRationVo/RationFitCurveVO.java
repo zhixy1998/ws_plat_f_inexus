@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo;
 
+import com.alibaba.fastjson.JSONObject;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -14,16 +15,22 @@ public class RationFitCurveVO {
     @ApiModelProperty("方程类型,Abs=f(C)..")
     private String equationType;
 
-    @ApiModelProperty("横坐标")
-    private List<Double> xList;
-
-    @ApiModelProperty("纵坐标值")
-    private List<Double> yList;
+    @ApiModelProperty("数据")
+    List<JSONObject> dataList;
 
     @ApiModelProperty("方程k值，从高次到低")
     private List<Double> coefficientList;
 
     @ApiModelProperty("曲线类型,一次曲线，二次曲线...")
     private String curveType;
+
+    @ApiModelProperty("具体方程")
+    private String equation;
+
+    @ApiModelProperty("R值 （标准差, 代表拟合准确率）")
+    private String R;
+
+    @ApiModelProperty("R2值 （标准差, 代表拟合准确率）")
+    private String R2;
 
 }

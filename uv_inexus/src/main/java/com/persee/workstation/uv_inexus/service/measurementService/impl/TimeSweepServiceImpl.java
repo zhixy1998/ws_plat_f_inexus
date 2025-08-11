@@ -11,6 +11,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
@@ -24,9 +25,11 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.QueryTimeMethodParamterVo;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.*;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,6 +40,8 @@ import org.springframework.web.client.RestTemplate;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -152,6 +157,80 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         return Result.ok(methods);
     }
 
+    /**
+     * 查询方法参数
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result queryMethodParameter(String methodId) {
+        // 根据方法id查询方法
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method==null){
+            return Result.fail("没有此方法");
+        }
+        if (method.getMeasurementParamInfo()==null||method.getMeasurementParamInfo()==""){
+            return Result.fail("此方法没有参数");
+        }
+        // 将方法参数转换成对象拷贝到QueryTimeMethodParamterVo中
+        QueryTimeMethodParamterVo timeSweepParamter = JSON.parseObject(method.getMeasurementParamInfo(), QueryTimeMethodParamterVo.class);
+        timeSweepParamter.setMethodId(methodId);
+        timeSweepParamter.setMethodName(method.getMethodName());
+        return Result.ok(timeSweepParamter);
+    }
+
+    /**
+     * 修改方法参数
+     * @param params
+     * @return
+     */
+    @Override
+    public Result updateMethodParameter(TimeSweepMethodParameterDto params) {
+        // TODO 修改方法目前只覆盖,后续再续逻辑
+//        // 根据方法名称查询方法表中是否有此数据
+//        List<TMeasureMethod> list = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodName, params.getMethodName()));
+//        if (list.size() > 0) {
+//            return Result.fail("方法名称重复");
+//        }
+//        // 根据用户名称进行查询用户表数据
+//        SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<SystemUserManagePO>().eq("user_name", params.getUpdateBy()));
+//        TMeasureMethod measureMethod = new TMeasureMethod();
+//        if (params.getProjectId()==null||params.getProjectId().equals("")){
+//            measureMethod.setIsSharingMethod("1");
+//        }else{
+//            measureMethod.setIsSharingMethod("0");
+//            measureMethod.setProjectItemKey(params.getProjectId());
+//        }
+//        measureMethod.setMethodName(params.getMethodName());
+//        measureMethod.setMeasurementType("时间扫描");
+//        // 将前端传过来的值复制到SpectrumParameter类中
+//        SpectrumParameter spectrumParameter = new SpectrumParameter();
+//        BeanUtils.copyProperties(params, spectrumParameter);
+//        measureMethod.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
+//        measureMethod.setMethodCreateTime(LocalDateTime.now());
+//        measureMethod.setMethodCreator(user.getUserName());
+//        boolean save = tMeasureMethodService.save(measureMethod);
+//        if (!save) {
+//            return Result.fail("创建失败");
+//        }
+//        return Result.ok(measureMethod.getId());
+
+        // 根据方法id查询方法
+        TMeasureMethod measureMethod = tMeasureMethodService.getById(params.getMethodId());
+        if (measureMethod==null){
+            return Result.fail("方法不存在");
+        }
+        // 将前端传过来的值复制到TimeSweepParamter类中
+        TimeSweepParamter timeSweepParamter = new TimeSweepParamter();
+        BeanUtils.copyProperties(params, timeSweepParamter);
+        measureMethod.setMeasurementParamInfo(JSON.toJSONString(timeSweepParamter));
+        measureMethod.setMethodName(params.getMethodName());
+        boolean update = tMeasureMethodService.updateById(measureMethod);
+        if (!update){
+            return Result.ok(new ArrayList<>());
+        }
+        return Result.ok(measureMethod.getId());
+    }
 
     /**
      * 样品列表
@@ -160,7 +239,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @return
      */
     @Override
-    public Result sampleListPort(String taskId,String type) {
+    public Result sampleListPort(String taskId,String type,Integer digit) {
         // TODO 暂时先切换成一个测量数据一个样品
 //        // 根据任务id查询任务数据
 //        TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -218,6 +297,12 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null){
+            return Result.ok(new ArrayList<>());
+        }
+        if (task.getSampleKey()==null||task.getSampleKey().equals("[]")){
+            return Result.ok(new ArrayList<>());
+        }
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
@@ -247,7 +332,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 // 根据样品id和任务id两个条件去查询测量数据
                 TMeasureData measureData = tMeasureDataService.getOne(eq);
                 vo.setMeasureId(measureData.getId());
-                vo.setData(getSampleData(measureData));
+                vo.setData(getSampleData(measureData,digit));
                 vo.setColor(byId.getColor());
                 vo.setSampleId(byId.getId());
                 vo.setDeleteType(taskSpeciman.getDeleteType());
@@ -290,7 +375,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @return
      */
     @Override
-    public Result changeTheListPort(String taskId,String type) {
+    public Result changeTheListPort(String taskId,String type, Integer digit) {
         // 根据任务id去查询分析数据
         QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("task_id", taskId);
@@ -313,8 +398,15 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             for (String s : results){
                 String[] split = s.split(",");
                 Map<String, Object> map = new HashMap<>();
-                map.put("x", split[0]);
-                map.put("y", split[1]);
+                if (digit!=null){
+                    BigDecimal value = new BigDecimal(split[1]);
+                    value = value.setScale(digit, RoundingMode.HALF_UP);
+                    map.put("x", split[0]);
+                    map.put("y", value.stripTrailingZeros().toPlainString());
+                }else{
+                    map.put("x", split[0]);
+                    map.put("y", split[1]);
+                }
                 if (gauges != null){
                     for (Double gauge : gauges) {
                         if (split[0].equals(String.valueOf(gauge))){
@@ -380,6 +472,47 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }else {
             return Result.fail(false);
         }
+    }
+
+    /**
+     * 恢复删除的数据
+     * @param taskId
+     * @param paramId
+     * @param type
+     * @return
+     */
+    @Override
+    public Result restoreDeletedListData(String taskId, String paramId, String type) {
+        // 校验传过来的数据
+        if (taskId == null || paramId == null || type == null) {
+            return Result.ok("参数错误");
+        }
+        // 根据类型判断是样品数据还是变换数据
+        if (type.equals("0")) {
+            // 根据任务id查询任务数据
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            if (task == null) {
+                return Result.fail("任务不存在");
+            }
+            List<TaskSpecimen> sampleList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen taskSpecimen : sampleList) {
+                if (taskSpecimen.getSpecimenKey().equals(paramId)) {
+                    taskSpecimen.setDeleteType("0");
+                    break;
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(sampleList));
+            tMeasureTaskService.updateById(task);
+        }else{
+            // 根据变换数据id查询变换数据
+            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(paramId);
+            if (byId == null) {
+                return Result.fail("变换数据不存在");
+            }
+            byId.setIsDelete("0");
+            tMeasureAnalysisDataService.updateById(byId);
+        }
+        return Result.ok();
     }
 
     /**
@@ -554,10 +687,12 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             tMeasureTaskService.save(task);
         }
         List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        for (TaskSpecimen taskSpecimen : taskSpecimenList) {
-            for (String delSampleId : paramDto.getDelSampleIds()) {
-                if (taskSpecimen.getSpecimenKey().equals(delSampleId)) {
-                    taskSpecimen.setDeleteType("1");
+        if (taskSpecimenList != null&&(paramDto.getDelSampleIds()!=null||paramDto.getDelSampleIds().isEmpty())) {
+            for (TaskSpecimen taskSpecimen : taskSpecimenList) {
+                for (String delSampleId : paramDto.getDelSampleIds()) {
+                    if (taskSpecimen.getSpecimenKey().equals(delSampleId)) {
+                        taskSpecimen.setDeleteType("1");
+                    }
                 }
             }
         }
@@ -639,6 +774,72 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
+     * 获取峰谷数据列表
+     * @param dataId
+     * @param type
+     * @param digit
+     * @return
+     */
+    @Override
+    public Result queryPeakValleyDataList(String dataId, String type, Integer digit) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<PeakValleyMarking> peaks = new ArrayList<>();
+        List<PeakValleyMarking> grains = new ArrayList<>();
+        List<PeakValleyMarking> dataAll = new ArrayList<>();
+        if (type.equals("0")){
+            TMeasureData measureData = tMeasureDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getPeak()!=null){
+                peaks = JSON.parseArray(measureData.getPeak(), PeakValleyMarking.class);
+                dataAll.addAll( peaks);
+            }
+            if (measureData.getGrain()!=null){
+                grains = JSON.parseArray(measureData.getGrain(), PeakValleyMarking.class);
+                dataAll.addAll( grains);
+            }
+            if (dataAll!=null && dataAll.size()!=0){
+                if (digit!=null){
+                    for (PeakValleyMarking data : dataAll){
+                        BigDecimal value = new BigDecimal(data.getY());
+                        value = value.setScale(digit, RoundingMode.HALF_UP);
+                        data.setY(value.stripTrailingZeros().toPlainString());
+                    }
+                }
+            }
+            return Result.ok(dataAll);
+        }else if (type.equals("1")){
+            TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getPeak()!=null){
+                peaks = JSON.parseArray(measureData.getPeak(), PeakValleyMarking.class);
+                dataAll.addAll( peaks);
+            }
+            if (measureData.getGrain()!=null){
+                grains = JSON.parseArray(measureData.getGrain(), PeakValleyMarking.class);
+                dataAll.addAll( grains);
+            }
+            if (dataAll!=null && dataAll.size()!=0){
+                if (digit!=null){
+                    for (PeakValleyMarking data : dataAll){
+                        BigDecimal value = new BigDecimal(data.getY());
+                        value = value.setScale(digit, RoundingMode.HALF_UP);
+                        data.setY(value.stripTrailingZeros().toPlainString());
+                    }
+                }
+            }
+            return Result.ok(dataAll);
+        }else{
+            return Result.ok(new ArrayList<>());
+        }
+    }
+
+    /**
      * 寻峰寻谷接口
      * @param paramDto
      * @return
@@ -681,50 +882,175 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         body.put("distance", paramDto.getDistance());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING_AND_VALLEY_SEARCHING, request, Map.class).getBody();
-        List<Map<String, Object>> listVos = new ArrayList<>();
-        List<String> xPeak = (List<String>) resultMap.get("peak_x");
-        List<String> yPeak = (List<String>) resultMap.get("peak_y");
-        List<String> xValley = (List<String>) resultMap.get("valley_x");
-        List<String> yValley = (List<String>) resultMap.get("valley_y");
-        int number=0;
+        List<PeakValleyMarking> peakData = new ArrayList<>();
+        List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
+        List<Double> yPeak = (List<Double>) resultMap.get("peak_y");
+        if(xPeak==null||yPeak==null){
+            return Result.fail("height参数太高");
+        }
         for (int i = 0; i < xPeak.size(); i++) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("serialNumber", ++number);
-            map.put("x", xPeak.get(i));
-            map.put("y", yPeak.get(i));
-            map.put("type", "波峰");
-            listVos.add(map);
+            PeakValleyMarking marking = new PeakValleyMarking();
+            marking.setX(xPeak.get(i).toString());
+            marking.setY(yPeak.get(i).toString());
+            marking.setType("波峰");
+            peakData.add(marking);
         }
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
+        List<Double> xValley = (List<Double>) resultMap.get("valley_x");
+        List<Double> yValley = (List<Double>) resultMap.get("valley_y");
         for (int i = 0; i < xValley.size(); i++) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("serialNumber", ++number);
-            map.put("x", xValley.get(i));
-            map.put("y", yValley.get(i));
-            map.put("type", "波谷");
-            listVos.add(map);
+            PeakValleyMarking marking = new PeakValleyMarking();
+            marking.setX(xValley.get(i).toString());
+            marking.setY(yValley.get(i).toString());
+            marking.setType("波谷");
+            valleyData.add(marking);
         }
+        Boolean flag;
         if (paramDto.getType().equals("0")){
             // 根据测量数据id查询出测量数据
             TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
             if (tMeasureData==null){
                 return Result.fail("测量数据不存在");
             }
-            tMeasureData.setPeak(JSON.toJSONString(xPeak));
-            tMeasureData.setGrain(JSON.toJSONString(xValley));
-            tMeasureDataService.updateById(tMeasureData);
+            tMeasureData.setPeak(JSON.toJSONString(peakData));
+            tMeasureData.setGrain(JSON.toJSONString(valleyData));
+            flag = tMeasureDataService.updateById(tMeasureData);
         }else if (paramDto.getType().equals("1")){
             TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
             if (tMeasureAnalysisData==null){
                 return Result.fail("分析数据不存在");
             }
-            tMeasureAnalysisData.setPeak(JSON.toJSONString(xPeak));
-            tMeasureAnalysisData.setGrain(JSON.toJSONString(xValley));
-            tMeasureAnalysisDataService.updateById(tMeasureAnalysisData);
+            tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+            tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+            flag=tMeasureAnalysisDataService.updateById(tMeasureAnalysisData);
         }else{
             return Result.fail("参数错误");
         }
-        return Result.ok(listVos);
+        return Result.ok(flag);
     }
+
+    /**
+     * 添加峰谷备注
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result addPeakValleyRemarks(PeakValleyMarkingDto paramDto) {
+        if (paramDto == null) {
+            return Result.fail("参数不能为空");
+        }
+        if (paramDto.getRemark()==null){
+            return Result.fail("请先添加备注");
+        }
+        if (paramDto.getDataType().equals("0")){
+            // 根据测量id去测量数据表中进行查询
+            TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            // 判断添加的备注是峰该是谷,如果是峰则取出峰的数据,如果是谷则取出谷的数据
+            List<PeakValleyMarking> list;
+            if (paramDto.getType().equals("0")){
+                list = JSON.parseArray(tMeasureData.getPeak(), PeakValleyMarking.class);
+            }else{
+                list = JSON.parseArray(tMeasureData.getGrain(), PeakValleyMarking.class);
+            }
+            // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
+            for (PeakValleyMarking marking : list) {
+                if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+                    marking.setRemark(paramDto.getRemark());
+                    break;
+                }
+            }
+            if (paramDto.getType().equals("0")){
+                tMeasureData.setPeak(JSON.toJSONString(list));
+            }else{
+                tMeasureData.setGrain(JSON.toJSONString(list));
+            }
+            tMeasureDataService.updateById(tMeasureData);
+            return Result.ok();
+        }else if (paramDto.getDataType().equals("1")){
+            // 根据测量id去分析数据表中进行查询
+            TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            // 判断添加的备注是峰该是谷,如果是峰则取出峰的数据,如果是谷则取出谷的数据
+            List<PeakValleyMarking> list;
+            if (paramDto.getType().equals("波峰")){
+                list = JSON.parseArray(tMeasureData.getPeak(), PeakValleyMarking.class);
+            }else{
+                list = JSON.parseArray(tMeasureData.getGrain(), PeakValleyMarking.class);
+            }
+            // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
+            for (PeakValleyMarking marking : list) {
+                if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+                    marking.setRemark(paramDto.getRemark());
+                    break;
+                }
+            }
+            if (paramDto.getType().equals("波峰")){
+                tMeasureData.setPeak(JSON.toJSONString(list));
+            }else{
+                tMeasureData.setGrain(JSON.toJSONString(list));
+            }
+            tMeasureAnalysisDataService.updateById(tMeasureData);
+            return Result.ok();
+        }else{
+            return Result.fail("参数错误");
+        }
+    }
+
+    /**
+     * 查询标记点数据列表
+     * @param dataId
+     * @param type
+     * @param digit
+     * @return
+     */
+    @Override
+    public Result queryGaugePointDataList(String dataId, String type, Integer digit) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<PeakValleyMarking> gaugePoints = new ArrayList<>();
+        if (type.equals("0")){
+            TMeasureData measureData = tMeasureDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getGaugePoint()!=null){
+                gaugePoints = JSON.parseArray(measureData.getGaugePoint(), PeakValleyMarking.class);
+                if (digit!=null) {
+                    for (PeakValleyMarking data : gaugePoints){
+                        BigDecimal value = new BigDecimal(data.getY());
+                        value = value.setScale(digit, RoundingMode.HALF_UP);
+                        data.setY(value.stripTrailingZeros().toPlainString());
+                    }
+                }
+            }
+            return Result.ok(gaugePoints);
+        }else if (type.equals("1")){
+            TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(dataId);
+            if (measureData == null) {
+                return Result.ok(new ArrayList<>());
+            }
+            if (measureData.getGaugePoint()!=null){
+                gaugePoints = JSON.parseArray(measureData.getGaugePoint(), PeakValleyMarking.class);
+                if (digit!=null) {
+                    for (PeakValleyMarking data : gaugePoints){
+                        BigDecimal value = new BigDecimal(data.getY());
+                        value = value.setScale(digit, RoundingMode.HALF_UP);
+                        data.setY(value.stripTrailingZeros().toPlainString());
+                    }
+                }
+            }
+            return Result.ok(gaugePoints);
+        }else{
+            return Result.ok(new ArrayList<>());
+        }
+    }
+
 
     /**
      * 添加标记点
@@ -733,6 +1059,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result addGaugePoint(AddGaugePointDto paramDto) {
+        if (paramDto.getGaugePoints().size()==0){
+            return Result.fail("请选择标记点");
+        }
         // 根据类型判断是测量数据还是分析数据
         if (paramDto.getType().equals("0")){
             // 根据数据id去测量数据中进行查询
@@ -740,7 +1069,38 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             if (tMeasureData==null){
                 return Result.fail("测量数据不存在");
             }
-            tMeasureData.setGaugePoint(JSON.toJSONString(paramDto.getGaugePoints()));
+            // 先判断标记点是否已经添加
+            if (tMeasureData.getGaugePoint()!=null){
+                List<PeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), PeakValleyMarking.class);
+                for (PeakValleyMarking marking : list) {
+                    for (String gaugePoint : paramDto.getGaugePoints()) {
+                        if (marking.getX().equals(gaugePoint)){
+                            return Result.fail("该标记点已添加");
+                        }
+                    }
+                }
+            }
+            List<PeakValleyMarking> markings = new ArrayList<>();
+            List<String> data = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+            for (String gaugePoint : paramDto.getGaugePoints()) {
+                for (String s : data) {
+                    String[] split = s.split(",");
+                    if (split[0].equals(gaugePoint)){
+                        PeakValleyMarking marking = new PeakValleyMarking();
+                        marking.setX(split[0]);
+                        marking.setY(split[1]);
+                        markings.add(marking);
+                        break;
+                    }
+                }
+            }
+            if (tMeasureData.getGaugePoint()==null){
+                tMeasureData.setGaugePoint(JSON.toJSONString(markings));
+            }else{
+                List<PeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), PeakValleyMarking.class);
+                list.addAll(markings);
+                tMeasureData.setGaugePoint(JSON.toJSONString(list));
+            }
             boolean update = tMeasureDataService.updateById(tMeasureData);
             return Result.ok(update);
         }else if (paramDto.getType().equals("1")){
@@ -749,11 +1109,83 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             if (analysisData==null){
                 return Result.fail("分析数据不存在");
             }
-            analysisData.setGaugePoint(JSON.toJSONString(paramDto.getGaugePoints()));
+            List<PeakValleyMarking> markings = new ArrayList<>();
+            List<String> data = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+            for (String gaugePoint : paramDto.getGaugePoints()) {
+                for (String s : data) {
+                    String[] split = s.split(",");
+                    if (split[0].equals(gaugePoint)){
+                        PeakValleyMarking marking = new PeakValleyMarking();
+                        marking.setX(split[0]);
+                        marking.setY(split[1]);
+                        markings.add(marking);
+                        break;
+                    }
+                }
+            }
+            if (analysisData.getGaugePoint()==null){
+                analysisData.setGaugePoint(JSON.toJSONString(markings));
+            }else{
+                List<PeakValleyMarking> list = JSON.parseArray(analysisData.getGaugePoint(), PeakValleyMarking.class);
+                list.addAll(markings);
+                analysisData.setGaugePoint(JSON.toJSONString(list));
+            }
             boolean update = tMeasureAnalysisDataService.updateById(analysisData);
             return Result.ok(update);
         }else {
             return Result.fail("type参数错误");
+        }
+    }
+
+    /**
+     * 添加标记点备注
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result addGaugePointRemarks(PeakValleyMarkingDto paramDto) {
+        if (paramDto == null) {
+            return Result.fail("参数不能为空");
+        }
+        if (paramDto.getRemark()==null){
+            return Result.fail("请先添加备注");
+        }
+        if (paramDto.getDataType().equals("0")){
+            // 根据测量id去测量数据表中进行查询
+            TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("测量数据不存在");
+            }
+            List<PeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), PeakValleyMarking.class);
+            // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
+            for (PeakValleyMarking marking : list) {
+                if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+                    marking.setRemark(paramDto.getRemark());
+                    break;
+                }
+            }
+            tMeasureData.setGaugePoint(JSON.toJSONString(list));
+            tMeasureDataService.updateById(tMeasureData);
+            return Result.ok();
+        }else if (paramDto.getDataType().equals("1")){
+            // 根据测量id去分析数据表中进行查询
+            TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
+            if (tMeasureData==null){
+                return Result.fail("分析数据不存在");
+            }
+            List<PeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), PeakValleyMarking.class);
+            // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
+            for (PeakValleyMarking marking : list) {
+                if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+                    marking.setRemark(paramDto.getRemark());
+                    break;
+                }
+            }
+            tMeasureData.setGaugePoint(JSON.toJSONString(list));
+            tMeasureAnalysisDataService.updateById(tMeasureData);
+            return Result.ok();
+        }else{
+            return Result.fail("参数错误");
         }
     }
 
@@ -789,6 +1221,39 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 生成 Word 文件
         generateWord(task, samples, measureDataList, response);
+    }
+
+    /**
+     * 查询算术源数据
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result queryArithmeticSourceData(String taskId) {
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null){
+            return Result.ok(new ArrayList<>());
+        }
+        if (task.getSampleKey()==null||task.getSampleKey().equals("[]")){
+            return Result.ok(new ArrayList<>());
+        }
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        List<Map<String,String>> list = new ArrayList<>();
+        for (TaskSpecimen taskSpeciman : taskSpecimen) {
+            if(taskSpeciman.getIsTested().equals("1")){
+                Map<String, String> map = new HashMap<>();
+                TMeasureData one = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>()
+                        .eq("task_id", taskId)
+                        .eq("sample_key", taskSpeciman.getSpecimenKey())
+                        .orderByDesc("serial_number")
+                        .last("limit 1"));
+                TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                map.put("measureId", one.getId());
+                map.put("sampleName", byId.getSampleName());
+                list.add(map);
+            }
+        }
+        return Result.ok(list);
     }
 
     /**
@@ -1233,25 +1698,35 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
     }
 
+
+
+
     /**
      * 获取样品的详细数据
      * @param measureData
      * @return
      */
-    public List<Map<String, Object>> getSampleData(TMeasureData measureData) {
+    public List<Map<String, Object>> getSampleData(TMeasureData measureData,Integer digit) {
         List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
-        List<Double> gauges = JSON.parseArray(measureData.getGaugePoint(), Double.class);
-        List<Double> peaks = JSON.parseArray(measureData.getPeak(), Double.class);
-        List<Double> grades = JSON.parseArray(measureData.getGrain(), Double.class);
+        List<PeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), PeakValleyMarking.class);
+        List<PeakValleyMarking> peaks = JSON.parseArray(measureData.getPeak(), PeakValleyMarking.class);
+        List<PeakValleyMarking> grades = JSON.parseArray(measureData.getGrain(), PeakValleyMarking.class);
         List<Map<String, Object>> resultList = new ArrayList<>();
         for (String s : list) {
             String[] split = s.split(",");
             Map<String, Object> map = new HashMap<>();
-            map.put("x", String.format("%.2f", Double.parseDouble(split[0])));
-            map.put("y", String.format("%.2f", Double.parseDouble(split[1])));
+            if (digit!=null){
+                BigDecimal value = new BigDecimal(split[1]);
+                value = value.setScale(digit, RoundingMode.HALF_UP);
+                map.put("x", split[0]);
+                map.put("y", value.stripTrailingZeros().toPlainString());
+            }else{
+                map.put("x", split[0]);
+                map.put("y", split[1]);
+            }
             if (gauges != null) {
-                for (Double gauge : gauges) {
-                    if (split[0].equals(String.valueOf(gauge))) {
+                for (PeakValleyMarking gauge : gauges) {
+                    if (split[0].equals(gauge.getX())) {
                         map.put("marked", "1");
                         break;
                     } else {
@@ -1262,8 +1737,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 map.put("marked", "0");
             }
             if (peaks != null) {
-                for (Double peak : peaks) {
-                    if (split[0].equals(String.valueOf(peak))) {
+                for (PeakValleyMarking peak : peaks) {
+                    if (split[0].equals(peak.getX())) {
                         map.put("feng", "1");
                         break;
                     } else {
@@ -1274,8 +1749,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 map.put("feng", "0");
             }
             if (grades != null) {
-                for (Double grade : grades) {
-                    if (split[0].equals(String.valueOf(grade))) {
+                for (PeakValleyMarking grade : grades) {
+                    if (split[0].equals(grade.getX())) {
                         map.put("gu", "1");
                         break;
                     } else {

@@ -58,7 +58,7 @@ public interface RationService {
 
     Result saveUnknowSampleData(RationDataVO dataInfo);
 
-    R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, String methodId);
+    R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter);
 
     Result<List<Map<String, String>>> queryStandSampleData(String taskId, Boolean allDisplay);
 
@@ -71,8 +71,22 @@ public interface RationService {
      */
     FittingReceiveInfo fittingCurve(List<RationCountDataInfo> originData, Boolean empty, String methodId, List<String> inputParam);
 
+    /**
+     * 获取曲线信息
+     */
     Result<RationFitCurveVO> queryCurveInfo(String taskId, String methodId);
 
+    /**
+     * 生成曲线数据
+     */
     RationFitCurveVO curveData(FittingReceiveInfo info);
 
+    /**
+     * 值计算
+     */
+    String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
+
+    Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy);
+
+    Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 }

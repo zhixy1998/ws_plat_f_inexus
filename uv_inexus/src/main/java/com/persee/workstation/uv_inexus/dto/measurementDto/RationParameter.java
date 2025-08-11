@@ -6,12 +6,14 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RoundingVO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
 /**
  * 定量测量参数
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 public class RationParameter extends MeasurePublicParameters{
     // 波长值
@@ -26,24 +28,39 @@ public class RationParameter extends MeasurePublicParameters{
     // 微分方式
     @ApiModelProperty("微分方式")
     private String differentialMode;
+
+    @ApiModelProperty("微分方式名称")
+    private String differentialModeName;
     // 曲线类型
     @ApiModelProperty("曲线类型")
     private String curveType;
+
+    @ApiModelProperty("曲线类型名称")
+    private String curveTypeName;
     // 方程类型
     @ApiModelProperty("方程类型")
     private String equationType;
+
+    @ApiModelProperty("方程类型名称")
+    private String equationTypeName;
     // 曲线公式
     @ApiModelProperty("曲线公式")
     private String curveFormula;
     // 系数方式(0.直接系数法 1.标准曲线法)
     @ApiModelProperty("系数方式,0.直接系数法 1.标准曲线法")
     private String coefficientMode;
+
+    @ApiModelProperty("系数方式名称")
+    private String coefficientModeName;
     // 系数参数(系数参数是系数方式延伸下来的参数,因为一个字段无法做到只能使用两个字段进行操作)
     @ApiModelProperty("系数参数")
     private List<String> coefficientParams;
     // 零点方式
     @ApiModelProperty("零点方式")
     private List<String> zeroMethod;
+
+    @ApiModelProperty("零点方式名称")
+    private String zeroMethodName;
     // 重复模式
     @ApiModelProperty("重复模式")
     private String repeatMode;

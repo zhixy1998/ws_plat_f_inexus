@@ -38,7 +38,6 @@ public class RationController {
     public Result<RationMethodParam> queryMethodParam(@RequestParam String methodId) {
         return rationService.queryMethodParam(methodId);
     }
-
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
     public Result getSampleList(@RequestParam String taskId,
@@ -93,5 +92,36 @@ public class RationController {
     public Result<List<Map<String, String>>> getStandSampleData(@RequestParam String taskId,
                                                                 @RequestParam Boolean allDisplay) {
         return rationService.queryStandSampleData(taskId, allDisplay);
+    }
+
+    @GetMapping("getUnknowSampleData")
+    @ApiOperation("获取未知样品数据接口")
+    public Result<List<Map<String, String>>> getUnknowSampleData(@RequestParam String taskId,
+                                                                 @RequestParam Boolean allDisplay) {
+        return rationService.queryUnknowSampleData(taskId, allDisplay);
+    }
+
+    @GetMapping("getCurveInfo")
+    @ApiOperation("获取曲线信息接口")
+    public Result<RationFitCurveVO> getCurveInfo(@RequestParam String taskId,
+                                                 @RequestParam String methodId) {
+        return rationService.queryCurveInfo(taskId, methodId);
+    }
+
+    @GetMapping("zero")
+    @ApiOperation("校零接口")
+    public Result photoZero(@RequestParam String deviceSerialNumber,
+                            @RequestParam String methodId,
+                            @RequestParam String taskId,
+                            @RequestParam String updateBy) {
+        return rationService.zero(deviceSerialNumber, methodId, taskId, updateBy);
+    }
+    @GetMapping("zero2")
+    @ApiOperation("校零接口2")
+    public Result photoZero2(@RequestParam String deviceSerialNumber,
+                            @RequestParam String methodId,
+                            @RequestParam String taskId,
+                            @RequestParam String updateBy) {
+        return rationService.zero2(deviceSerialNumber, methodId, taskId, updateBy);
     }
 }
