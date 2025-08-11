@@ -95,7 +95,12 @@ public class DevMessageUtil {
             if (cmdId.equals(FindDevEnum.Connect.getComId())) {
                 String cmdId1 = command.getCmdId();
                 if (cmdId1.equals(FindDevEnum.Connect.getComId())) {
-                    Object[] param = new Object[]{64, 194, 186, 169, 8, 100};
+                    String macAddress = NetworkUtils.getEthernetMacAddress();
+                    String[] macParts = macAddress.split(":");
+                    Object[] param = new Object[6];
+                    for (int i = 0; i < 6; i++){
+                        param[i] = Integer.parseInt(macParts[i], 16);
+                    }
                     command.setParams(param);
                 }
             }

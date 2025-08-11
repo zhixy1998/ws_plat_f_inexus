@@ -3,6 +3,7 @@ package org.example;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.aspectj.weaver.ast.Or;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -25,8 +26,8 @@ public class EtoX {
     private static FormulaEvaluator evaluator;
 
     public static void main(String[] args) throws Exception {
-        String excelPath = "C:\\Users\\wangwenbo\\Desktop\\T800指令.xlsx";
-        String outputXml = "D:\\project\\java\\T800.1.xml";
+        String excelPath = "C:\\Users\\wangwenbo\\Desktop\\T800.xlsx";
+        String outputXml = "D:\\project\\java\\T800.xml";
 
         FileInputStream fis = new FileInputStream(excelPath);
         Workbook workbook = new XSSFWorkbook(fis);
@@ -97,31 +98,13 @@ public class EtoX {
             int checksum = 0;
 
             for (Row row : rows) {
-                for (int i = 6; i <= 18; i++) {
+                for (int i = 6; i <= 22; i++) {
                     String val = getCellString(row, i).trim();
                     if (!val.isEmpty() && !val.equalsIgnoreCase("X")) {
                         sendList.add(val);
-//                        try {
-//                            int num;
-//                            if (val.matches("[0-9]+")) {
-//                                // 纯数字按十进制解析
-//                                num = Integer.parseInt(val, 10);
-//                            } else {
-//                                // 含字母，按16进制解析
-//                                num = Integer.parseInt(val, 16);
-//                            }
-//                            checksum += num;
-//                        } catch (NumberFormatException e) {
-//                            // 忽略格式错误
-//                        }
                     }
                 }
             }
-
-// 仅保留低8位
-//            int checksumByte = checksum & 0xFF;
-//            String checksumHex = String.format("%02X", checksumByte);
-//            sendList.add(checksumHex);
 
             appendElement(doc, sendBytes, "string", String.join(":", sendList));
 
@@ -205,4 +188,3 @@ public class EtoX {
         parent.appendChild(elem);
     }
 }
-

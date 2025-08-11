@@ -1,15 +1,11 @@
 package org.example;
 
-import jdk.internal.dynalink.beans.StaticClass;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import javax.swing.plaf.SeparatorUI;
-import javax.swing.text.Position;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.awt.*;
 import java.io.File;
 import java.util.*;
 import java.util.List;

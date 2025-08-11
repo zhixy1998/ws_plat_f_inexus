@@ -28,7 +28,7 @@ public class ProtocolItemCalculator {
         }
    }
 
-   public static String getEquationValue(String equationStr, Map<String, String>dicInput,String[] keyOut) {
+   public static String getEquationValue(String equationStr, Map<String, String>dicInput, String[] keyOut) {
        String strResult = equationStr;
        for (String func : new String[]{"TRUNC", "MOD"}) {
            if (equationStr.contains(func)) {
