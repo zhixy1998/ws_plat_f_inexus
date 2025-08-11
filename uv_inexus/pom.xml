@@ -124,13 +124,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-        <!-- 项目 A 的 pom.xml -->
+        <!-- 项目 激活 的 pom.xml -->
         <dependency>
             <groupId>com.example</groupId>
             <artifactId>activation_key-1.0-SNAPSHOT</artifactId>
             <version>1.0.0</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/src/main/resources/lib/activation_key-1.0-SNAPSHOT.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>org.mariuszgromada.math</groupId>
+            <artifactId>MathParser.org-mXparser</artifactId>
+            <version>6.1.0</version>
         </dependency>
         <!-- <dependency>
             <groupId>com.alibaba</groupId>

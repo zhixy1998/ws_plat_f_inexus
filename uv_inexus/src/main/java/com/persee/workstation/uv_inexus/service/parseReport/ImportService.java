@@ -357,15 +357,162 @@ public class ImportService {
 
     // --------------------------- 子表2：计算公式表导入 ---------------------------
     // 修改：返回当前表的错误信息列表
+    // @Transactional
+    // public List<String> importCalculationFormula(MultipartFile file) {
+    //     List<String> errorMessages = new ArrayList<>();
+    //     try {
+    //         Map<String, List<ExcelImageImportUtils.ImageInfo>> allImages = 
+    //             ExcelImageImportUtils.extractAllImages(file);
+    //         List<ExcelImageImportUtils.ImageInfo> formulaSheetImages = 
+    //             allImages.getOrDefault("计算公式表", new ArrayList<>());
+
+    //         List<CalculationFormulaExcelModel> list = EasyExcel.read(file.getInputStream())
+    //                 .head(CalculationFormulaExcelModel.class)
+    //                 .sheet("计算公式表")
+    //                 .doReadSync();
+
+    //         if (list == null || list.isEmpty()) {
+    //             return errorMessages; // 空表无错误
+    //         }
+
+    //         System.out.println("读取到 " + list.size() + " 条计算公式数据");
+    //         Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
+    //         List<CalculationFormula> validFormulas = new ArrayList<>();
+    //         int currentRow = 2;
+
+    //         // 步骤1：全量校验
+    //         for (CalculationFormulaExcelModel model : list) {
+    //             try {
+    //                 // 校验必填字段
+    //                 if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
+    //                     throw new IllegalArgumentException("标准标识不能为空");
+    //                 }
+    //                 if (model.getResultIdentity() == null || model.getResultIdentity().isEmpty()) {
+    //                     throw new IllegalArgumentException("结果标识不能为空");
+    //                 }
+    //                 if (model.getResultName() == null || model.getResultName().isEmpty()) {
+    //                     throw new IllegalArgumentException("结果名称不能为空");
+    //                 }
+    //                 if (model.getInputParam1Name() == null || model.getInputParam1Name().isEmpty()) {
+    //                     throw new IllegalArgumentException("输入参数名称1不能为空");
+    //                 }
+    //                 if (model.getInputParam1Identity() == null || model.getInputParam1Identity().isEmpty()) {
+    //                     throw new IllegalArgumentException("输入参数标识1不能为空");
+    //                 }
+    //                 if (model.getUnit() == null || model.getUnit().isEmpty()) {
+    //                     throw new IllegalArgumentException("单位不能为空");
+    //                 }
+    //                 if (model.getFormulaText() == null || model.getFormulaText().isEmpty()) {
+    //                     throw new IllegalArgumentException("公式文本不能为空");
+    //                 }
+
+    //                 // 获取主表ID
+    //                 String identityName = model.getDetectionId();
+    //                 Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
+    //                 if (detectionId == null) {
+    //                     throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
+    //                 }
+
+    //                 // 提取图片
+    //                 String base64Image = ExcelImageImportUtils.findImageByRow(formulaSheetImages, currentRow - 1);
+    //                 if (base64Image == null && model.getFormulaImage() != null && model.getFormulaImage().startsWith("data:image/")) {
+    //                     base64Image = model.getFormulaImage();
+    //                 }
+
+    //                 // 构建计算公式对象
+    //                 CalculationFormula formula = new CalculationFormula();
+    //                 formula.setDetectionId(detectionId.toString());
+    //                 formula.setResultIdentity(model.getResultIdentity());
+    //                 formula.setResultName(model.getResultName());
+    //                 formula.setUnit(model.getUnit());
+    //                 formula.setInputParam1Name(model.getInputParam1Name());
+    //                 formula.setInputParam1Identity(model.getInputParam1Identity());
+    //                 formula.setInputParam2Name(model.getInputParam2Name());
+    //                 formula.setInputParam2Identity(model.getInputParam2Identity());
+    //                 formula.setInputParam3Name(model.getInputParam3Name());
+    //                 formula.setInputParam3Identity(model.getInputParam3Identity());
+    //                 formula.setInputParam4Name(model.getInputParam4Name());
+    //                 formula.setInputParam4Identity(model.getInputParam4Identity());
+    //                 formula.setInputParam5Name(model.getInputParam5Name());
+    //                 formula.setInputParam5Identity(model.getInputParam5Identity());
+    //                 formula.setInputParam6Name(model.getInputParam6Name());
+    //                 formula.setInputParam6Identity(model.getInputParam6Identity());
+    //                 formula.setInputParam7Name(model.getInputParam7Name());
+    //                 formula.setInputParam7Identity(model.getInputParam7Identity());
+    //                 formula.setInputParam8Name(model.getInputParam8Name());
+    //                 formula.setInputParam8Identity(model.getInputParam8Identity());
+    //                 formula.setInputParam9Name(model.getInputParam9Name());
+    //                 formula.setInputParam9Identity(model.getInputParam9Identity());
+    //                 formula.setInputParam10Name(model.getInputParam10Name());
+    //                 formula.setInputParam10Identity(model.getInputParam10Identity());
+    //                 formula.setFormulaText(model.getFormulaText());
+    //                 formula.setFormulaImage(base64Image);
+    //                 formula.setDetectionLimit(model.getDetectionLimit());
+
+    //                 validFormulas.add(formula);
+    //             } catch (IllegalArgumentException e) {
+    //                 errorMessages.add("计算公式表 - 第 " + currentRow + " 行数据错误：" + e.getMessage());
+    //             } finally {
+    //                 currentRow++;
+    //             }
+    //         }
+
+    //         // 步骤2：当前表无错误时才执行数据操作
+    //         if (errorMessages.isEmpty()) {
+    //             // 步骤3：全量保存
+    //             currentRow = 2;
+    //             identityNameToDetectionIdMap.clear();
+    //             for (CalculationFormula formula : validFormulas) {
+    //                 try {
+    //                     String detectionId = formula.getDetectionId();
+    //                     String currentHash = generateFormulaHash(formula);
+
+    //                     List<CalculationFormula> dbFormulas = calculationFormulaMapper.selectByDetectionId(detectionId);
+    //                     Map<String, CalculationFormula> hashToFormulaMap = new HashMap<>();
+    //                     for (CalculationFormula dbFormula : dbFormulas) {
+    //                         hashToFormulaMap.put(generateFormulaHash(dbFormula), dbFormula);
+    //                     }
+
+    //                     if (hashToFormulaMap.containsKey(currentHash)) {
+    //                         System.out.println("第 " + currentRow + " 行: 公式记录未变更，标准标识ID: " + detectionId);
+    //                     } else {
+    //                         Optional<CalculationFormula> sameResultRecord = dbFormulas.stream()
+    //                                 .filter(f -> Objects.equals(f.getResultIdentity(), formula.getResultIdentity()))
+    //                                 .findFirst();
+
+    //                         if (sameResultRecord.isPresent()) {
+    //                             formula.setId(sameResultRecord.get().getId());
+    //                             calculationFormulaMapper.updateById(formula);
+    //                             System.out.println("第 " + currentRow + " 行: 更新公式记录，标准标识ID: " + detectionId);
+    //                         } else {
+    //                             calculationFormulaMapper.insert(formula);
+    //                             System.out.println("第 " + currentRow + " 行: 插入公式记录，标准标识ID: " + detectionId);
+    //                         }
+    //                     }
+    //                 } finally {
+    //                     currentRow++;
+    //                 }
+    //             }
+    //         }
+
+    //     } catch (Exception e) {
+    //         errorMessages.add("计算公式表：导入时发生异常: " + e.getMessage());
+    //     }
+    //     return errorMessages; // 返回当前表错误
+    // }
+
+    // 校验计算公式
     @Transactional
     public List<String> importCalculationFormula(MultipartFile file) {
         List<String> errorMessages = new ArrayList<>();
         try {
+            // 提取Excel中的图片（公式图片）
             Map<String, List<ExcelImageImportUtils.ImageInfo>> allImages = 
                 ExcelImageImportUtils.extractAllImages(file);
             List<ExcelImageImportUtils.ImageInfo> formulaSheetImages = 
                 allImages.getOrDefault("计算公式表", new ArrayList<>());
 
+            // 读取计算公式表数据
             List<CalculationFormulaExcelModel> list = EasyExcel.read(file.getInputStream())
                     .head(CalculationFormulaExcelModel.class)
                     .sheet("计算公式表")
@@ -378,12 +525,13 @@ public class ImportService {
             System.out.println("读取到 " + list.size() + " 条计算公式数据");
             Map<String, Integer> identityNameToDetectionIdMap = new HashMap<>();
             List<CalculationFormula> validFormulas = new ArrayList<>();
-            int currentRow = 2;
+            int currentRow = 2; // 行号从第2行开始（表头为第1行）
+            LaTeXConverter formulaValidator = new LaTeXConverter(); // 初始化公式校验器
 
             // 步骤1：全量校验
             for (CalculationFormulaExcelModel model : list) {
                 try {
-                    // 校验必填字段
+                    // 1. 基础必填字段校验
                     if (model.getDetectionId() == null || model.getDetectionId().isEmpty()) {
                         throw new IllegalArgumentException("标准标识不能为空");
                     }
@@ -406,20 +554,42 @@ public class ImportService {
                         throw new IllegalArgumentException("公式文本不能为空");
                     }
 
-                    // 获取主表ID
+                    // 2. 提取所有输入参数标识（用于公式校验）
+                    List<String> paramList = new ArrayList<>();
+                    // 依次添加1-10号参数标识（非空才加入）
+                    addParamIfValid(model.getInputParam1Identity(), paramList);
+                    addParamIfValid(model.getInputParam2Identity(), paramList);
+                    addParamIfValid(model.getInputParam3Identity(), paramList);
+                    addParamIfValid(model.getInputParam4Identity(), paramList);
+                    addParamIfValid(model.getInputParam5Identity(), paramList);
+                    addParamIfValid(model.getInputParam6Identity(), paramList);
+                    addParamIfValid(model.getInputParam7Identity(), paramList);
+                    addParamIfValid(model.getInputParam8Identity(), paramList);
+                    addParamIfValid(model.getInputParam9Identity(), paramList);
+                    addParamIfValid(model.getInputParam10Identity(), paramList);
+
+                    // 3. 调用公式校验方法
+                    String verifyResult = formulaValidator.verifyAndConvert(paramList, model.getFormulaText());
+                    System.out.println("paramList"+paramList);
+                    System.out.println("model.getFormulaText()"+model.getFormulaText());
+                    if (!"true".equals(verifyResult)) {
+                        throw new IllegalArgumentException(verifyResult);
+                    }
+
+                    // 4. 校验主表关联
                     String identityName = model.getDetectionId();
                     Integer detectionId = getDetectionId(identityName, identityNameToDetectionIdMap);
                     if (detectionId == null) {
                         throw new IllegalArgumentException("未找到匹配的标准标识: " + identityName);
                     }
 
-                    // 提取图片
+                    // 5. 处理公式图片
                     String base64Image = ExcelImageImportUtils.findImageByRow(formulaSheetImages, currentRow - 1);
                     if (base64Image == null && model.getFormulaImage() != null && model.getFormulaImage().startsWith("data:image/")) {
                         base64Image = model.getFormulaImage();
                     }
 
-                    // 构建计算公式对象
+                    // 6. 构建计算公式对象
                     CalculationFormula formula = new CalculationFormula();
                     formula.setDetectionId(detectionId.toString());
                     formula.setResultIdentity(model.getResultIdentity());
@@ -451,6 +621,7 @@ public class ImportService {
 
                     validFormulas.add(formula);
                 } catch (IllegalArgumentException e) {
+                    // 添加包含公式校验结果的错误信息
                     errorMessages.add("计算公式表 - 第 " + currentRow + " 行数据错误：" + e.getMessage());
                 } finally {
                     currentRow++;
@@ -498,7 +669,14 @@ public class ImportService {
         } catch (Exception e) {
             errorMessages.add("计算公式表：导入时发生异常: " + e.getMessage());
         }
-        return errorMessages; // 返回当前表错误
+        return errorMessages;
+    }
+
+    // 辅助方法：非空参数标识才加入列表
+    private void addParamIfValid(String paramIdentity, List<String> paramList) {
+        if (paramIdentity != null && !paramIdentity.trim().isEmpty()) {
+            paramList.add(paramIdentity.trim());
+        }
     }
 
     // 计算公式表哈希（原有逻辑不变）
