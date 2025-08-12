@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.standardPo.TReportStandardPretreatment;
@@ -583,9 +584,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 // 根据data的样品id查询样品名称
                 TMeasureSample sample = tMeasureSampleService.getById(data.getSampleKey());
                 vo.setName(sample.getSampleName());
-                vo.setPeak(JSON.parseArray(data.getPeak(), String.class));
-                vo.setValley(JSON.parseArray(data.getGrain(), String.class));
-                vo.setMarkPoint(JSON.parseArray(data.getGaugePoint(), String.class));
+                List<PeakValleyMarking> peak = JSON.parseArray(data.getPeak(), PeakValleyMarking.class);
+                vo.setPeak(peak.stream().map(x->x.getX()).collect(Collectors.toCollection(ArrayList::new)));
+                List<PeakValleyMarking> valley = JSON.parseArray(data.getPeak(), PeakValleyMarking.class);
+                vo.setValley(valley.stream().map(x->x.getX()).collect(Collectors.toCollection(ArrayList::new)));
+                List<PeakValleyMarking> markKing = JSON.parseArray(data.getPeak(), PeakValleyMarking.class);
+                vo.setMarkPoint(markKing.stream().map(x->x.getX()).collect(Collectors.toCollection(ArrayList::new)));
                 vo.setParameterData(JSON.parseArray(data.getOriginalCalculationData(), String.class));
                 vo.setDataType("测量数据");
                 list.add(vo);

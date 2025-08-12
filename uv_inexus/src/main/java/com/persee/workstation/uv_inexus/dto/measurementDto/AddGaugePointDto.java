@@ -6,9 +6,9 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class AddGaugePointDto extends PeakValleyMarking {
+public class AddGaugePointDto {
     // 标记点数组
-    private List<String> gaugePoints;
+    private List<PeakValleyMarking> gaugePoints;
     // 数据id
     private String dataId;
     // 类型(0.是测量数据1.是分析数据)

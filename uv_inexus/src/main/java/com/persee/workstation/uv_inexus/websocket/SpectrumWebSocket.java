@@ -116,6 +116,10 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
         // 将任务中的Rsd取出来
         List<ChangeParam> baselineData = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+        if (baselineData == null||baselineData.size()==0){
+            sendAndClose(session, "请先设置基线数据");
+            return;
+        }
         // 开始获取数据
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = new Command();
@@ -124,6 +128,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         devMessageUtil.getMeasureData(command, ip);
         // 往前端推送数据的线程
         new Thread(() -> {
+            System.err.println("----------------------------------进入推送数据的线程");
             try {
                 // 如果公共变量中没有数据的话就让他睡眠50毫秒
                 while (Constants.instrumentData.size() == 0) {
@@ -160,28 +165,28 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                                 Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
                                 x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
                                 y_data.add(Double.parseDouble(y));
-                                System.err.println("++++++++" + y);
+                                System.err.println("=============================================" + y);
                             } else if (spectrumParameter.getLuminosity().equals("2")) {
                                 String s = DataCountUtil.countTPercent(baselineData.get(0), Constants.measurd_data.get(0), 1.0);
                                 String y = DataCountUtil.changeTPercentOrAbs2(s, null);
                                 Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
                                 x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
                                 y_data.add(Double.parseDouble(y));
-                                System.err.println("++++++++" + y);
+                                System.err.println("=============================================" + y);
                             } else if (spectrumParameter.getLuminosity().equals("3")) {
                                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
                                 String y = String.valueOf((sData / (4095 * 32)) * 100);
                                 Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
                                 x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
                                 y_data.add(Double.parseDouble(y));
-                                System.err.println("++++++++" + y);
+                                System.err.println("=============================================" + y);
                             } else if (spectrumParameter.getLuminosity().equals("4")) {
                                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
                                 String y = String.valueOf((rData / (4095 * 32)) * 100);
                                 Constants.originalCalculationData.add(baselineData.get(0).getWl() + "," + y);
                                 x_data.add(Double.parseDouble(baselineData.get(0).getWl()));
                                 y_data.add(Double.parseDouble(y));
-                                System.err.println("++++++++" + y);
+                                System.err.println("=============================================" + y);
                             }
                             System.err.println("++++++++" + Constants.measurd_data.get(0));
                             System.err.println("++++++++" + baselineData.get(0));
@@ -225,8 +230,6 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                         if (session.isOpen()) {
                             session.sendMessage(new TextMessage(payload.toJSONString()));
                         }
-                    }else{
-                        sleep(50);
                     }
                 }
             } catch (Exception e) {
@@ -238,12 +241,21 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
 
         // 创建线程循环如果公共变量为空则进行一秒的睡眠
         new Thread(() -> {
+            System.err.println("-----------------------进入保存数据的线程");
             while (Constants.endTime == null) {
                 try {
                     sleep(1000);
                 } catch (InterruptedException e) {
                     handleTransportError(session, e);
                 }
+            }
+            if (Constants.x_data== null|| Constants.x_data.size()==0){
+                sendAndClose(session, "波长数据错误");
+                return;
+            }
+            if (Constants.y_data== null|| Constants.y_data.size()==0){
+                sendAndClose(session, "数据错误");
+                return;
             }
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);

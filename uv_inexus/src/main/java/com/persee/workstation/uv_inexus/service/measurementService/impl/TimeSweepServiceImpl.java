@@ -1077,8 +1077,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             if (tMeasureData.getGaugePoint()!=null){
                 List<PeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), PeakValleyMarking.class);
                 for (PeakValleyMarking marking : list) {
-                    for (String gaugePoint : paramDto.getGaugePoints()) {
-                        if (marking.getX().equals(gaugePoint)){
+                    for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
+                        if (Double.valueOf(marking.getX()).equals(Double.valueOf(gaugePoint.getX()))){
                             return Result.fail("该标记点已添加");
                         }
                     }
@@ -1086,10 +1086,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
             List<PeakValleyMarking> markings = new ArrayList<>();
             List<String> data = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
-            for (String gaugePoint : paramDto.getGaugePoints()) {
+            for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
                 for (String s : data) {
                     String[] split = s.split(",");
-                    if (split[0].equals(gaugePoint)){
+                    if (Double.valueOf(split[0]).equals(Double.valueOf(gaugePoint.getX()))){
                         PeakValleyMarking marking = new PeakValleyMarking();
                         marking.setX(split[0]);
                         marking.setY(split[1]);
@@ -1113,12 +1113,23 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             if (analysisData==null){
                 return Result.fail("分析数据不存在");
             }
+            // 先判断标记点是否已经添加
+            if (analysisData.getGaugePoint()!=null){
+                List<PeakValleyMarking> list = JSON.parseArray(analysisData.getGaugePoint(), PeakValleyMarking.class);
+                for (PeakValleyMarking marking : list) {
+                    for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
+                        if (Double.valueOf(marking.getX()).equals(Double.valueOf(gaugePoint.getX()))){
+                            return Result.fail("该标记点已添加");
+                        }
+                    }
+                }
+            }
             List<PeakValleyMarking> markings = new ArrayList<>();
             List<String> data = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
-            for (String gaugePoint : paramDto.getGaugePoints()) {
+            for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
                 for (String s : data) {
                     String[] split = s.split(",");
-                    if (split[0].equals(gaugePoint)){
+                    if (Double.valueOf(split[0]).equals(Double.valueOf(gaugePoint.getX()))){
                         PeakValleyMarking marking = new PeakValleyMarking();
                         marking.setX(split[0]);
                         marking.setY(split[1]);
@@ -1274,12 +1285,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         // 根据测量数据id查询测量数据
         TMeasureData measureData1 = tMeasureDataService.getById(paramDto.getMeasureDataId1());
-        List<String> list = new ArrayList<>();
-        List<String> list2 = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList1 = new ArrayList<>();
         List<String> yList2 = new ArrayList<>();
-        list = JSON.parseArray(measureData1.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData1.getOriginalCalculationData(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1292,7 +1301,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }else if (paramDto.getDataType().equals("1")){
             TMeasureData measureData2 = tMeasureDataService.getById(paramDto.getMeasureDataId2());
             // 将测量数据1和2的测量数据提取出来
-            list2=JSON.parseArray(measureData2.getOriginalCalculationData(), String.class);
+            List<String> list2 = JSON.parseArray(measureData2.getOriginalCalculationData(), String.class);
             for (String s : list2) {
                 String[] split = s.split(",");
                 yList2.add(split[1]);
@@ -1328,8 +1337,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         // 将分析数据存储到分析数据表中
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
@@ -1342,8 +1369,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("0");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -1374,10 +1401,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         // 根据测量数据id查询测量数据
         TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
-        List<String> list = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1401,8 +1427,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         // 将分析数据存储到分析数据表中
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
@@ -1415,8 +1459,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("1");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -1451,10 +1495,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         // 根据测量数据的id查询出测量数据
         TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
-        List<String> list = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
         for (String s : list){
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1478,8 +1521,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
@@ -1491,8 +1552,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("2");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -1527,10 +1588,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         // 根据测量数据的id查询出测量数据
         TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
-        List<String> list = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
         for (String s : list){
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1555,8 +1615,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
@@ -1568,8 +1646,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("3");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -1610,7 +1688,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }else if (spectrumParameter.getLuminosity().equals("2")){
                 type = 1;
             }else {
-                return Result.fail("请选择正确的光谱类型");
+                return Result.fail("您当前的光度模式不支持进行转换");
             }
         }else if (paramDto.getDataType().equals("2")){
             if (spectrumParameter.getLuminosity().equals("1")){
@@ -1618,16 +1696,16 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }else if (spectrumParameter.getLuminosity().equals("3")){
                 type = 3;
             }else {
-                return Result.fail("请选择正确的光谱类型");
+                return Result.fail("您当前的光度模式不支持进行转换");
             }
         }else{
-            return Result.fail("测量数据光度模式错误!");
+            return Result.fail("您当前的光度模式不支持进行转换!");
         }
         // 根据测量数据id查询测量数据
         TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(),String.class);
+        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1649,8 +1727,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisData.setTaskId(measureData.getTaskId());
@@ -1662,8 +1758,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("4");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);

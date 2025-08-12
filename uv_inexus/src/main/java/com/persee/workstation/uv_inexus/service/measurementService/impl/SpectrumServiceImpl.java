@@ -309,6 +309,20 @@ public class SpectrumServiceImpl implements SpectrumService {
         QueryMethodParameterVo queryMethodParameterVo = JSON.parseObject(method.getMeasurementParamInfo(), QueryMethodParameterVo.class);
         queryMethodParameterVo.setMethodName(method.getMethodName());
         queryMethodParameterVo.setMethodId(method.getId());
+        if (queryMethodParameterVo.getLuminosity().equals("1")
+        && queryMethodParameterVo.getLuminosity().equals("2")
+        && queryMethodParameterVo.getLuminosity().equals("3")
+        && queryMethodParameterVo.getLuminosity().equals("4")){
+            return Result.fail("请选择正确的光度模式");
+        }
+        queryMethodParameterVo.setLuminosityName(queryMethodParameterVo.getLuminosity().equals("1")?"Abs":queryMethodParameterVo.getLuminosity().equals("2")?"T%":queryMethodParameterVo.getLuminosity().equals("3")?"Es":"Er");
+        if (queryMethodParameterVo.getScanSpeed().equals("0")
+        && queryMethodParameterVo.getScanSpeed().equals("1")
+        && queryMethodParameterVo.getScanSpeed().equals("2")
+        && queryMethodParameterVo.getScanSpeed().equals("3")){
+            return Result.fail("请选择正确的扫描速度");
+        }
+        queryMethodParameterVo.setScanSpeedName(queryMethodParameterVo.getScanSpeed().equals("0")?"慢速":queryMethodParameterVo.getScanSpeed().equals("1")?"中速":queryMethodParameterVo.getScanSpeed().equals("2")?"快速":"极快");
         return Result.ok(queryMethodParameterVo);
     }
 
@@ -503,8 +517,26 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         // 将分析数据存储到分析数据表中
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
@@ -517,8 +549,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("0");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -581,8 +613,26 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         // 将分析数据存储到分析数据表中
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
@@ -595,8 +645,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("1");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -629,12 +679,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
         // 获取方法表中的方法参数信息
         String measurementParamInfo = method.getMeasurementParamInfo();
-        SpectrumParameter spectrumParameter = null;
-        try {
-            spectrumParameter = objectMapper.readValue(measurementParamInfo, SpectrumParameter.class);
-        } catch (JsonProcessingException e) {
-            return Result.fail("数据转换失败");
-        }
+        SpectrumParameter spectrumParameter = JSON.parseObject(measurementParamInfo, SpectrumParameter.class);
         Integer type = null;
         if(paramDto.getDataType().equals("1")){
             if (spectrumParameter.getLuminosity().equals("1")){
@@ -642,7 +687,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             }else if (spectrumParameter.getLuminosity().equals("2")){
                 type = 1;
             }else {
-                return Result.fail("请选择正确的光谱类型");
+                return Result.fail("您当前的光度模式不支持进行转换");
             }
         }else if (paramDto.getDataType().equals("2")){
             if (spectrumParameter.getLuminosity().equals("1")){
@@ -650,10 +695,10 @@ public class SpectrumServiceImpl implements SpectrumService {
             }else if (spectrumParameter.getLuminosity().equals("3")){
                 type = 3;
             }else {
-                return Result.fail("请选择正确的光谱类型");
+                return Result.fail("您当前的光度模式不支持进行转换");
             }
         }else{
-            return Result.fail("测量数据光度模式错误!");
+            return Result.fail("您当前的光度模式不支持进行转换!");
         }
         // 根据测量数据id查询测量数据
         TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
@@ -686,8 +731,26 @@ public class SpectrumServiceImpl implements SpectrumService {
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisData.setTaskId(measureData.getTaskId());
@@ -699,8 +762,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("4");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -851,9 +914,18 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setColor(tMeasureAnalysisData.getColor());
             vo.setDeleteType(tMeasureAnalysisData.getIsDelete());
             List<String> results = JSON.parseArray(tMeasureAnalysisData.getAnalysisResult(), String.class);
-            List<Double> gauges = JSON.parseArray(tMeasureAnalysisData.getGaugePoint(), Double.class);
-            List<Double> peaks = JSON.parseArray(tMeasureAnalysisData.getPeak(), Double.class);
-            List<Double> grades = JSON.parseArray(tMeasureAnalysisData.getGrain(), Double.class);
+            List<PeakValleyMarking> gauges=new ArrayList<>();
+            if (tMeasureAnalysisData.getGaugePoint() != null&&!tMeasureAnalysisData.getGaugePoint().isEmpty()){
+                gauges = JSON.parseArray(tMeasureAnalysisData.getGaugePoint(), PeakValleyMarking.class);
+             }
+            List<PeakValleyMarking> peaks=new ArrayList<>();
+            if (tMeasureAnalysisData.getPeak() != null&&!tMeasureAnalysisData.getPeak().isEmpty()){
+                peaks = JSON.parseArray(tMeasureAnalysisData.getPeak(), PeakValleyMarking.class);
+            }
+            List<PeakValleyMarking> grades=new ArrayList<>();
+            if (tMeasureAnalysisData.getGrain() != null&&!tMeasureAnalysisData.getGrain().isEmpty()){
+                grades = JSON.parseArray(tMeasureAnalysisData.getGrain(), PeakValleyMarking.class);
+            }
             List<Map<String, Object>> resultList = new ArrayList<>();
             for (String s : results){
                 String[] split = s.split(",");
@@ -868,8 +940,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                     map.put("y", split[1]);
                 }
                 if (gauges != null){
-                    for (Double gauge : gauges) {
-                        if (split[0].equals(String.valueOf(gauge))){
+                    for (PeakValleyMarking gauge : gauges) {
+                        if (split[0].equals(String.valueOf(gauge.getX()))){
                             map.put("marked","1");
                             break;
                         }else{
@@ -879,9 +951,9 @@ public class SpectrumServiceImpl implements SpectrumService {
                 }else{
                     map.put("marked","0");
                 }
-                if (grades != null){
-                    for (Double peak : peaks) {
-                        if (split[0].equals(String.valueOf(peak))){
+                if (peaks != null){
+                    for (PeakValleyMarking peak : peaks) {
+                        if (split[0].equals(String.valueOf(peak.getX()))){
                             map.put("feng","1");
                             break;
                         }else{
@@ -892,8 +964,8 @@ public class SpectrumServiceImpl implements SpectrumService {
                     map.put("feng","0");
                 }
                 if (grades != null){
-                    for (Double grade : grades){
-                        if (split[0].equals(String.valueOf(grade))){
+                    for (PeakValleyMarking grade : grades){
+                        if (split[0].equals(String.valueOf(grade.getX()))){
                             map.put("gu","1");
                             break;
                         }else{
@@ -961,8 +1033,26 @@ public class SpectrumServiceImpl implements SpectrumService {
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
@@ -974,8 +1064,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("2");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -1042,8 +1132,26 @@ public class SpectrumServiceImpl implements SpectrumService {
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
         TMeasureAnalysisData tMeasureAnalysisData = new TMeasureAnalysisData();
         tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
         tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
@@ -1055,8 +1163,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
         tMeasureAnalysisData.setAnalysisType("3");
-        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakX));
-        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyX));
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
@@ -1334,8 +1442,8 @@ public class SpectrumServiceImpl implements SpectrumService {
             if (tMeasureData.getGaugePoint()!=null){
                 List<PeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), PeakValleyMarking.class);
                 for (PeakValleyMarking marking : list) {
-                    for (String gaugePoint : paramDto.getGaugePoints()) {
-                        if (marking.getX().equals(gaugePoint)){
+                    for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
+                        if (Double.valueOf(marking.getX()).equals(Double.valueOf(gaugePoint.getX()))){
                             return Result.fail("该标记点已添加");
                         }
                     }
@@ -1343,10 +1451,10 @@ public class SpectrumServiceImpl implements SpectrumService {
             }
             List<PeakValleyMarking> markings = new ArrayList<>();
             List<String> data = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
-            for (String gaugePoint : paramDto.getGaugePoints()) {
+            for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
                 for (String s : data) {
                     String[] split = s.split(",");
-                    if (split[0].equals(gaugePoint)){
+                    if (Double.valueOf(split[0]).equals(Double.valueOf(gaugePoint.getX()))){
                         PeakValleyMarking marking = new PeakValleyMarking();
                         marking.setX(split[0]);
                         marking.setY(split[1]);
@@ -1370,12 +1478,23 @@ public class SpectrumServiceImpl implements SpectrumService {
             if (analysisData==null){
                 return Result.fail("分析数据不存在");
             }
+            // 先判断标记点是否已经添加
+            if (analysisData.getGaugePoint()!=null){
+                List<PeakValleyMarking> list = JSON.parseArray(analysisData.getGaugePoint(), PeakValleyMarking.class);
+                for (PeakValleyMarking marking : list) {
+                    for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
+                        if (Double.valueOf(marking.getX()).equals(Double.valueOf(gaugePoint.getX()))){
+                            return Result.fail("该标记点已添加");
+                        }
+                    }
+                }
+            }
             List<PeakValleyMarking> markings = new ArrayList<>();
             List<String> data = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
-            for (String gaugePoint : paramDto.getGaugePoints()) {
+            for (PeakValleyMarking gaugePoint : paramDto.getGaugePoints()) {
                 for (String s : data) {
                     String[] split = s.split(",");
-                    if (split[0].equals(gaugePoint)){
+                    if (Double.valueOf(split[0]).equals(Double.valueOf(gaugePoint.getX()))){
                         PeakValleyMarking marking = new PeakValleyMarking();
                         marking.setX(split[0]);
                         marking.setY(split[1]);
@@ -2212,10 +2331,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
             vo.setSteps(steps.toString());
             vo.setDetectionStartTime(task.getStartTime().format(formatter));
-            if (task.getEndTime() != null) {
+            if (task.getEndTime() != null){
                 vo.setDetectionEndTime(task.getEndTime().format(formatter));
             }
-
             vo.setDataType("测量数据");
 
             vo.setAmbientTemperature("26℃");
@@ -2231,7 +2349,7 @@ public class SpectrumServiceImpl implements SpectrumService {
 
             return Result.ok(vo);
 
-        } else {
+        } else if (task.getMeasureType().equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())) {
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             SpectralReportVo vo = new SpectralReportVo();
@@ -2255,10 +2373,10 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setSampleName(byId.getSampleName());
             vo.setSampleNumber(byId.getSampleNumber());
             vo.setDataType("测量数据");
-            vo.setScanSpeed(methodparam.getScanSpeed());
+            vo.setScanSpeed(methodparam.getScanSpeed()=="0"?"慢速":methodparam.getScanSpeed()=="1"?"中速":methodparam.getScanSpeed()=="2"?"快速":"极快");
             vo.setInstrumentWavelength(methodparam.getWaveLengthInterval());
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-            vo.setLuminosityMode(methodparam.getLuminosity());
+            vo.setLuminosityMode(methodparam.getLuminosity()=="1"?"Abs":methodparam.getLuminosity()=="2"?"T%":methodparam.getLuminosity()=="3"?"Es":"Er");
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
             vo.setReferenceMethod(method.getMethodName());
             vo.setRemark(data.getRemark());
@@ -2266,7 +2384,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());
-            vo.setEnergyLight(methodparam.getEnergyLamp());
+            vo.setEnergyLight(methodparam.getEnergyLamp()=="0"?"钨灯":methodparam.getEnergyLamp()=="1"?"氘灯":"汞灯");
             vo.setStairCorrection(methodparam.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setSpectrumScanImage(data.getDataImage());
             vo.setOriginalData(data.getOriginalCalculationData());
@@ -2277,6 +2395,10 @@ public class SpectrumServiceImpl implements SpectrumService {
             vo.setRemark(data.getRemark());
             vo.setSpectrumScanImage(data.getDataImage());
             return Result.ok(vo);
+        }else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
+            return Result.ok();
+        }else{
+            return Result.ok();
         }
     }
 

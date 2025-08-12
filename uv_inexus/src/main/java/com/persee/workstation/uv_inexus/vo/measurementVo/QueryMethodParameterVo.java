@@ -7,4 +7,6 @@ import lombok.Data;
 public class QueryMethodParameterVo extends SpectrumParameter {
     private String methodId;
     private String methodName;
+    private String luminosityName;
+    private String scanSpeedName;
 }
