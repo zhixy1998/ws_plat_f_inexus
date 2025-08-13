@@ -14,10 +14,10 @@ import org.mariuszgromada.math.mxparser.Expression;
 public class LaTeXConverter {
 
     /**
-     * 验证LaTeX公式并检查参数是否存在于列表中
+     * 验证LaTeX公式并检查参数是否与列表完全匹配（不多不少）
      * @param paramList 允许的参数列表
      * @param latexFormula LaTeX公式字符串
-     * @return "true" 如果公式有效且所有参数都在列表中；否则返回错误信息
+     * @return "true" 如果公式有效且参数完全匹配；否则返回错误信息
      */
     public String verifyAndConvert(List<String> paramList, String latexFormula) {
         try {
@@ -46,18 +46,35 @@ public class LaTeXConverter {
                 return "公式格式错误: 缺少等号";
             }
 
-            // 4. 提取并检查参数
+            // 4. 提取并检查参数（完全匹配：数量和内容都必须一致）
             Set<String> formulaParams = extractParameters(rightHandSide);
             Set<String> paramSet = paramList.stream()
                     .map(String::trim)
                     .collect(Collectors.toSet());
 
-            List<String> missingParams = formulaParams.stream()
+            // 检查是否有多余的参数
+            List<String> extraParams = formulaParams.stream()
                     .filter(param -> !paramSet.contains(param))
                     .collect(Collectors.toList());
 
-            if (!missingParams.isEmpty()) {
-                return "公式中参数不存在: " + String.join(", ", missingParams);
+            // 检查是否有缺失的参数
+            List<String> missingParams = paramSet.stream()
+                    .filter(param -> !formulaParams.contains(param))
+                    .collect(Collectors.toList());
+
+            // 构建错误信息
+            if (!extraParams.isEmpty() || !missingParams.isEmpty()) {
+                StringBuilder errorMsg = new StringBuilder("参数不匹配: ");
+                if (!extraParams.isEmpty()) {
+                    errorMsg.append("公式包含多余参数: ").append(String.join(", ", extraParams));
+                }
+                if (!missingParams.isEmpty()) {
+                    if (!extraParams.isEmpty()) {
+                        errorMsg.append("; ");
+                    }
+                    errorMsg.append("公式缺少参数: ").append(String.join(", ", missingParams));
+                }
+                return errorMsg.toString();
             }
 
             return "true";
@@ -172,16 +189,25 @@ public class LaTeXConverter {
     // 测试方法
     public static void main(String[] args) {
         LaTeXConverter converter = new LaTeXConverter();
-        String latex = "x=a*V*V2*10^(-4)/(m*V1)";
-
-        // 测试合法参数
-        List<String> validParams = Arrays.asList("V1", "V2", "V3", "V4", "V6");
-        String result = converter.verifyAndConvert(validParams, latex);
-        System.out.println("验证结果: " + result);
-
-        // 测试非法参数
-        List<String> invalidParams = Arrays.asList("V1", "2V", "V_2", "123");
-        result = converter.verifyAndConvert(invalidParams, latex);
-        System.out.println("验证结果: " + result);
+        
+        // 测试1: 参数完全匹配
+        String latex1 = "x = a * V * V2 * 10^(-4) / (m * V1)";
+        List<String> params1 = Arrays.asList("a", "V", "V2", "m", "V1");
+        System.out.println("测试1结果: " + converter.verifyAndConvert(params1, latex1)); 
+        
+        // 测试2: 公式参数多于列表
+        String latex2 = "x = a * V * V2 * b / (m * V1)"; // 多了b
+        List<String> params2 = Arrays.asList("a", "V", "V2", "m", "V1");
+        System.out.println("测试2结果: " + converter.verifyAndConvert(params2, latex2)); 
+        
+        // 测试3: 公式参数少于列表
+        String latex3 = "x = a * V / (m * V1)"; // 少了V2
+        List<String> params3 = Arrays.asList("a", "V", "V2", "m", "V1");
+        System.out.println("测试3结果: " + converter.verifyAndConvert(params3, latex3)); 
+        
+        // 测试4: 两者参数完全不同
+        String latex4 = "x = p * q";
+        List<String> params4 = Arrays.asList("a", "b");
+        System.out.println("测试4结果: " + converter.verifyAndConvert(params4, latex4)); 
     }
 }
