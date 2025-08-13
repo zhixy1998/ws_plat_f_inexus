@@ -89,14 +89,14 @@ public class RationController {
 
     @GetMapping("getStandSampleData")
     @ApiOperation("获取标准样品数据接口")
-    public Result<List<Map<String, String>>> getStandSampleData(@RequestParam String taskId,
+    public Result<List<Map<String, Object>>> getStandSampleData(@RequestParam String taskId,
                                                                 @RequestParam Boolean allDisplay) {
         return rationService.queryStandSampleData(taskId, allDisplay);
     }
 
     @GetMapping("getUnknowSampleData")
     @ApiOperation("获取未知样品数据接口")
-    public Result<List<Map<String, String>>> getUnknowSampleData(@RequestParam String taskId,
+    public Result<List<Map<String, Object>>> getUnknowSampleData(@RequestParam String taskId,
                                                                  @RequestParam Boolean allDisplay) {
         return rationService.queryUnknowSampleData(taskId, allDisplay);
     }

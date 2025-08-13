@@ -89,7 +89,7 @@ public interface PhotometricService {
     /**
      * 校零
      */
-    Result zero(String serialNumber, String methodId, String taskId,String updateBy);
+    Result zero(String deviceSerialNumber, String methodId, String taskId,String updateBy);
 
     /**
      * 保存按钮

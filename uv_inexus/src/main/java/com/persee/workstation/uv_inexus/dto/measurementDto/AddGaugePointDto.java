@@ -1,12 +1,11 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
-import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
-public class AddGaugePointDto extends PeakValleyMarking {
+public class AddGaugePointDto {
     // 标记点数组
     private List<String> gaugePoints;
     // 数据id

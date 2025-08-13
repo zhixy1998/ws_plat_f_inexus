@@ -104,11 +104,11 @@ public class PhotometricController {
 
     @GetMapping("zero")
     @ApiOperation("校零接口")
-    public Result photoZero(@RequestParam String serialNumber,
+    public Result photoZero(@RequestParam String deviceSerialNumber,
                        @RequestParam String methodId,
                             @RequestParam String taskId,
                             @RequestParam String updateBy) {
-        return photometricService.zero(serialNumber,methodId, taskId,updateBy);
+        return photometricService.zero(deviceSerialNumber,methodId, taskId,updateBy);
     }
 
     @GetMapping("saveTask")

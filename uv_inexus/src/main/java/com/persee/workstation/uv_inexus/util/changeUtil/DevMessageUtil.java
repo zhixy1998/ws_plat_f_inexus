@@ -510,6 +510,7 @@ public class DevMessageUtil {
             return null;
         }
         ChangeParam changeParam = (ChangeParam) parse;
+        Constants.timeChangeparam=changeParam;
         return changeParam;
     }
 }

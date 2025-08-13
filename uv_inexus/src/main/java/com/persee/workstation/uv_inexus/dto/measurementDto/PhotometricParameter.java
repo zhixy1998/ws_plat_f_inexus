@@ -17,6 +17,8 @@ public class PhotometricParameter extends MeasurePublicParameters {
     // 光度模式(1.Abs 2.T% 3.Es 4.ER)
     @ApiModelProperty("光度模式")
     private String luminosity;
+    @ApiModelProperty("光度模式名称")
+    private String luminosityName;
     // 波长值(波长值是多个值,不连续的)
     @ApiModelProperty("波长值")
     private List<String> waveLength;
@@ -35,6 +37,9 @@ public class PhotometricParameter extends MeasurePublicParameters {
     // 样品池方式(0: 单池重复后再移动 1: 依次移动并重复)
     @ApiModelProperty("样品池方式")
     private String samplePoolWay;
+
+    @ApiModelProperty("样品池方式名称")
+    private String samplePoolWayName;
     // 输入参数
     @ApiModelProperty("输入参数")
     private List<InputParam> sampleInputParams;

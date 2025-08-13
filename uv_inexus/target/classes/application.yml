@@ -13,7 +13,7 @@ spring:
   datasource:
     url: jdbc:mysql://192.168.51.33:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
-    password: wddw@13579
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
 #  datasource:
 #    url: jdbc:mysql://192.168.51.38:3308/t800_uv_inexus_test?useSSL=false&serverTimezone=UTC

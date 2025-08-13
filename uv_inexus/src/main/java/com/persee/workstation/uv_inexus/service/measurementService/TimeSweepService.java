@@ -69,6 +69,9 @@ public interface TimeSweepService {
     // 添加标记点备注
     Result addGaugePointRemarks(PeakValleyMarkingDto paramDto);
 
+    // 更新数据颜色接口
+    Result updateDataColor(UpdateDataColorDto paramDto);
+
     // 导出Word接口
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 
@@ -92,5 +95,4 @@ public interface TimeSweepService {
 
     // 保存数据接口
     Result saveData(String taskId);
-
 }

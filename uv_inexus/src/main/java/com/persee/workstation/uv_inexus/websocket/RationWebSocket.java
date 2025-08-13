@@ -6,10 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.measurementService.*;
@@ -18,10 +15,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationWavelengthDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -120,6 +114,8 @@ public class RationWebSocket extends TextWebSocketHandler {
             return;
         }
 
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
         TMeasureMethod byId = tMeasureMethodService.getById(task.getMethodKey());
         RationParameter parameter = JSON.parseObject(byId.getMeasurementParamInfo(), RationParameter.class);
 
@@ -128,6 +124,9 @@ public class RationWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "缺少波长， 无法测量");
             return;
         }
+
+        String ip = infoService.getIp(deviceSerialNumber);
+
 
         if (StringUtils.hasText(sampleId)) {
             //单样品重测
@@ -144,7 +143,7 @@ public class RationWebSocket extends TextWebSocketHandler {
         } else {
 
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
                 List<RationDataVO> data = new ArrayList<>();
                 List<Double> emptyData = new ArrayList<>();
 
@@ -152,28 +151,54 @@ public class RationWebSocket extends TextWebSocketHandler {
 
                 Map<String, String> points = new HashMap<>();
 
-                if (parameter.getRepeatMode().equals("重复")) {
-                    //重复测量，单独处理！
-                    return;
-                }
+
 
                 boolean empty = false;
                 double minuend = 0;
+                List<RationCountDataInfo> countData = new ArrayList<>();
                 for (TaskSpecimen specimen : taskSpecimen) {
 
-                    if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
+                    if (specimen.getDeleteType().equals(right)) {
                         System.out.println("删除的样品,不需要测量");
                         continue;
                     }
 
                     TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
+                    if (specimen.getIsTested().equals(right)) {
+                        log.info("已测的样品，获取之前测量数据，为了拟合曲线");
+                        LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+                        queryWrapper.eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
+                                .eq(TMeasureAnalysisData::getTaskId, taskId)
+                                .orderByDesc(TMeasureAnalysisData::getAnalysisName).last("limit 1");
+                        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(queryWrapper);
+                        if (one != null) {
+                            List<RationCountDataInfo> array = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
+                            if (array != null && !array.isEmpty()) {
+                                List<RationCountDataInfo> absDataList = array.stream()
+                                        .filter(arr -> SampleTableEnum.Abs.getIdentity().equals(arr.getIdentity())
+                                                || SampleTableEnum.sumAbs.getIdentity().equals(arr.getIdentity()))
+                                        .collect(Collectors.toList());
+                                countData.addAll(absDataList);
+                            }
+                        }
+                        continue;
+                    }
+
                     if (!sample.getSampleKind().equals(sampleKind)) {
                         log.info("不是需要的样品，跳过");
                         continue;
                     }
-                    //标准样品
-                    R<RationDataVO> r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
+                    R<RationDataVO> r;
+
+                    if (parameter.getRepeatMode().equals("单池重复")) {
+                        //重复测量，单独处理！
+                        r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
+
+                    } else {
+                        r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                    }
+
                     if (!r.getSuccess()) {
                         sendAndClose(session, r.getMessage());
                         return;
@@ -189,7 +214,7 @@ public class RationWebSocket extends TextWebSocketHandler {
                     specimen.setIsTested(right);
                     data.add(r.getData());
                 }
-                List<RationCountDataInfo> countData = new ArrayList<>();
+
                 if (empty) {
                     for (RationDataVO dataVO : data) {
                         RationCountDataInfo yAbs = new RationCountDataInfo();
@@ -246,15 +271,19 @@ public class RationWebSocket extends TextWebSocketHandler {
                         rationService.saveStandSampleData(dataVO);
                     }
                 }
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+//                tMeasureTaskService.updateById(task);
                 //拟合曲线
-                FittingReceiveInfo fittingReceiveInfo = rationService.fittingCurve(countData, empty, task.getMethodKey(), inputParam);
-                if (fittingReceiveInfo == null) {
-                    sendAndClose(session, "曲线拟合失败");
+                R<FittingReceiveInfo> infoR = rationService.fittingCurve(countData, empty, task.getMethodKey(), inputParam);
+
+                if (!infoR.getSuccess()) {
+                    sendAndClose(session, infoR.getMessage());
                     return;
                 }
-
+                FittingReceiveInfo fittingReceiveInfo = infoR.getData();
                 String fitParam = JSON.toJSONString(fittingReceiveInfo);
                 task.setFittingParam(fitParam);
+                tMeasureTaskService.updateById(task);
 
                 //绘图
                 RationFitCurveVO curveData = rationService.curveData(fittingReceiveInfo);
@@ -270,18 +299,10 @@ public class RationWebSocket extends TextWebSocketHandler {
                     session.sendMessage(new TextMessage(payload.toJSONString()));
                 }
 
-                task.setSampleKey(JSON.toJSONString(taskSpecimen));
-                tMeasureTaskService.updateById(task);
 
             } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
-                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
                 List<RationDataVO> data = new ArrayList<>();
                 List<Double> emptyData = new ArrayList<>();
-
-                if (parameter.getRepeatMode().equals("重复")) {
-                    //重复测量，单独处理！
-                    return;
-                }
 
                 boolean empty = false;
                 double minuend = 0;
@@ -299,7 +320,14 @@ public class RationWebSocket extends TextWebSocketHandler {
                         continue;
                     }
                     //未知样品普通测
-                    R<RationDataVO> r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
+                    R<RationDataVO> r;
+                    if (parameter.getRepeatMode().equals("单池重复")) {
+                        //重复测量，单独处理！
+                        r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
+
+                    } else {
+                        r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                    }
                     if (!r.getSuccess()) {
                         sendAndClose(session, r.getMessage());
                         return;
@@ -313,8 +341,14 @@ public class RationWebSocket extends TextWebSocketHandler {
                     specimen.setIsTested(right);
                     data.add(r.getData());
                 }
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+//                tMeasureTaskService.updateById(task);
                 List<RationCountDataInfo> countData = new ArrayList<>();
-                FittingReceiveInfo fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+                FittingReceiveInfo fittingInfo = null;
+                if (StringUtils.hasText(task.getFittingParam())) {
+                     fittingInfo= JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+                }
+
                 if (empty) {
                     for (RationDataVO dataVO : data) {
                         RationCountDataInfo yAbs = new RationCountDataInfo();
@@ -331,12 +365,15 @@ public class RationWebSocket extends TextWebSocketHandler {
 
                         yAbs.setColValue(value - minuend);
                         dataVO.getCountData().add(yAbs);
-                        String ans = rationService.valueCalculate(fittingInfo, yAbs.getColValue(), parameter.getEquationType());
+                        String ans = null;
+                        if (fittingInfo != null) {
+                            ans = rationService.valueCalculate(fittingInfo, yAbs.getColValue(), parameter.getEquationType());
+                        }
 
                         RationCountDataInfo valueData = new RationCountDataInfo();
                         valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
                         valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
-                        valueData.setColValue(Double.valueOf(ans));
+                        valueData.setColValue(ans==null? null : Double.valueOf(ans));
                         dataVO.getCountData().add(valueData);
                         rationService.saveUnknowSampleData(dataVO);
 
@@ -346,17 +383,35 @@ public class RationWebSocket extends TextWebSocketHandler {
                         jsonObject.put("value", valueData.getColValue());
                         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
+                        JSONObject point = new JSONObject();
+                        if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                            point.put("x", yAbs.getColValue());
+                            point.put("y", ans);
+                        } else {
+                            point.put("x", ans);
+                            point.put("y", yAbs.getColValue());
+                        }
+                        if (session.isOpen()) {
+                            JSONObject payload = new JSONObject();
+                            payload.put("point", point);
+                            payload.put("equationType", RationCurveParamEnums.getName(parameter.getEquationType()));
+                            session.sendMessage(new TextMessage(payload.toJSONString()));
+                        }
+
                     }
                 } else {
                     for (RationDataVO dataVO : data) {
                         countData.addAll(dataVO.getCountData());
                         double value = dataVO.getCountData().get(0).getColValue();
-                        String ans = rationService.valueCalculate(fittingInfo, value, parameter.getEquationType());
+                        String ans = null;
+                        if (fittingInfo != null) {
+                            ans = rationService.valueCalculate(fittingInfo, value, parameter.getEquationType());
+                        }
 
                         RationCountDataInfo valueData = new RationCountDataInfo();
                         valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
                         valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
-                        valueData.setColValue(Double.valueOf(ans));
+                        valueData.setColValue(ans==null? null : Double.valueOf(ans));
                         dataVO.getCountData().add(valueData);
 
                         JSONObject jsonObject = new JSONObject();
@@ -364,18 +419,31 @@ public class RationWebSocket extends TextWebSocketHandler {
                         jsonObject.put("key", valueData.getIdentity());
                         jsonObject.put("value", valueData.getColValue());
                         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                        JSONObject point = new JSONObject();
+                        if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                            point.put("x", value);
+                            point.put("y", ans);
+                        } else {
+                            point.put("x", ans);
+                            point.put("y", value);
+                        }
+                        if (session.isOpen()) {
+                            JSONObject payload = new JSONObject();
+                            payload.put("point", point);
+                            payload.put("equationType", RationCurveParamEnums.getName(parameter.getEquationType()));
+                            session.sendMessage(new TextMessage(payload.toJSONString()));
+                        }
                         rationService.saveStandSampleData(dataVO);
                     }
                 }
 
-                task.setSampleKey(JSON.toJSONString(taskSpecimen));
-                tMeasureTaskService.updateById(task);
+
 
             } else {
                 sendAndClose(session, "请选择样品类型");
                 return;
             }
-
 
             List<RationDataVO> data = new ArrayList<>();
 
@@ -394,7 +462,7 @@ public class RationWebSocket extends TextWebSocketHandler {
 
 
     //单个样品普通不微分测量
-    public R<RationDataVO> singleSampleSimpleMeasure(TMeasureSample sample, RationParameter parameter, TMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
+    public R<RationDataVO> singleSampleSimpleMeasure(TMeasureSample sample, RationParameter parameter, TMeasureTask task, String ip, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
 
@@ -414,7 +482,6 @@ public class RationWebSocket extends TextWebSocketHandler {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             list.add(new Command("Measure", new Object[]{}));
 
-            String ip = infoService.getIp(deviceSerialNumber);
             R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
             if (!res.getSuccess()) {
                 log.info("测量出错");
@@ -494,8 +561,8 @@ public class RationWebSocket extends TextWebSocketHandler {
         return R.ok();
     }
 
-    public R<RationDataVO> singleSampleRepeatMeasure(TMeasureSample sample, RationParameter parameter, TMeasureTask task, String deviceSerialNumber, String sessionId){
-        Integer repeatCount = Integer.valueOf(parameter.getRepeatCount());
+    public R<RationDataVO> singleSampleRepeatMeasure(TMeasureSample sample, RationParameter parameter, TMeasureTask task, String ip, String sessionId) throws IOException {
+        int repeatCount = Integer.parseInt(parameter.getRepeatCount());
 
         WebSocketSession session = sessions.get(sessionId);
 
@@ -507,19 +574,18 @@ public class RationWebSocket extends TextWebSocketHandler {
 
         List<String> waveLengths = parameter.getWaveLength();
 
+        LocalDateTime startTime = LocalDateTime.now();
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
 
         for (int i = 0; i < repeatCount; i++) {
             list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
             list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
-            LocalDateTime startTime = LocalDateTime.now();
             for (String waveLength : waveLengths) {
                 list.add(new Command("SetWl", new Object[]{waveLength}));
                 list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
                 list.add(new Command("Measure", new Object[]{}));
 
-                String ip = infoService.getIp(deviceSerialNumber);
                 R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
                 if (!res.getSuccess()) {
                     log.info("测量出错");
@@ -548,6 +614,21 @@ public class RationWebSocket extends TextWebSocketHandler {
 
                 originDataList.add(originDataInfo);
 
+                if (session.isOpen()) {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("sampleId", sample.getId());
+                    jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
+                    jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.abs.getCode() + "-" + i);
+                    jsonObject.put("value", originDataInfo.getAbsValue());
+                    session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                    jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
+                    jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.tPercent.getCode() + "-" + i);
+                    jsonObject.put("value", originDataInfo.getTPercentValue());
+                    session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                }
+
                 list.clear();
             }
 
@@ -558,12 +639,31 @@ public class RationWebSocket extends TextWebSocketHandler {
                         RationWavelengthDataInfo::getWavelength,
                         Collectors.averagingDouble(info -> Double.parseDouble(info.getAbsValue()))
                 ));
+        Map<String, Double> tPercentValues = originDataList.stream()
+                .collect(Collectors.groupingBy(
+                        RationWavelengthDataInfo::getWavelength,
+                        Collectors.averagingDouble(info -> Double.parseDouble(info.getTPercentValue()))
+                ));
         for (String waveLength : waveLengths) {
             RationWavelengthDataInfo info = new RationWavelengthDataInfo();
             info.setWavelength(waveLength);
             info.setAbsValue(String.valueOf(avgAbsValues.get(waveLength)));
             info.setIdentity("result");
-            info.setTPercentValue("");
+            info.setTPercentValue(String.valueOf(tPercentValues.get(waveLength)));
+
+            if (session.isOpen()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sample.getId());
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
+                jsonObject.put("value", info.getAbsValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
+                jsonObject.put("value", info.getTPercentValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+            }
+
             originDataList.add(info);
         }
         LocalDateTime endTime = LocalDateTime.now();
@@ -572,18 +672,61 @@ public class RationWebSocket extends TextWebSocketHandler {
         if (!absValue.getSuccess()) {
             return R.fail(absValue.getMessage());
         }
-        countData.add(absValue.getData());
+        RationCountDataInfo data = absValue.getData();
+        countData.add(data);
+        if (session.isOpen()) {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sampleId", sample.getId());
+            jsonObject.put("key", data.getIdentity());
+            jsonObject.put("value", data.getColValue());
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
-
+            jsonObject.put("key", "samplingTime");
+            jsonObject.put("value", startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+        }
         ans.setTaskId(task.getId());
         ans.setSampleId(sample.getId());
         ans.setStartTime(task.getStartTime());
         ans.setEndTime(task.getEndTime());
+        ans.setCountData(countData);
+        ans.setEndTime(endTime);
+        ans.setMachineData(machineData);
+        ans.setWavelengthData(originDataList);
+
+        return R.ok(ans);
+
+    }
+
+    public List<RationEmptyInfo> emptySampleCheck(List<TaskSpecimen> specimenList, String taskId, String deviceIp, String sampleKind, RationParameter parameter) {
+        //查找空白样，然后测量，计算，最后返回一个空白样的信息，id，结果，，空白样测量完直接存放，区分标准和未知样，标准样的数据对未知样影响
+
+        if (parameter.getRepeatMode().equals("重复")) {
+            //重复单独处理
+        }
+        if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            for (TaskSpecimen specimen : specimenList) {
+
+                if (specimen.getDeleteType().equals(right)) {
+                    log.info("跳过删除的样品");
+                    continue;
+                }
+
+                if (!specimen.getSampleKind().equals(sampleKind) || !specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) ) {
+                    log.info("跳过非空白样和非标准样品");
+                    continue;
+                }
+
+//                R<RationDataVO> res = singleSampleSimpleMeasure(specimen, parameter, tMeasureTaskService.getById(taskId), deviceIp, session.getId());
+
+            }
+        } else {
+
+        }
 
         return null;
 
     }
-
 
     /**
      * 收到前端消息时触发
@@ -611,11 +754,12 @@ public class RationWebSocket extends TextWebSocketHandler {
     /**
      * 前端连接关闭时触发
      * @param session
-     * @param status
+     * @param closeStatus
      */
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) {
         sessions.remove(session.getId());
+        status = 0;
         System.out.println("连接关闭: " + session.getId());
     }
 
@@ -627,6 +771,7 @@ public class RationWebSocket extends TextWebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
+        status = 0;
         System.out.println("连接异常: " + exception.getMessage());
     }
 

@@ -141,6 +141,12 @@ public class SpectrumController {
         return spectrumService.restoreDeletedListData(taskId,paramId,type);
     }
 
+    @PostMapping("updateDataColor")
+    @ApiOperation("更新数据颜色接口")
+    public Result updateDataColor(@RequestBody UpdateDataColorDto paramDto){
+        return spectrumService.updateDataColor(paramDto);
+    }
+
     @GetMapping("queryAnalysisGaugePoint")
     @ApiOperation("获取分析标记点接口")
     public Result queryAnalysisGaugePoint(@RequestParam String analysisId) {

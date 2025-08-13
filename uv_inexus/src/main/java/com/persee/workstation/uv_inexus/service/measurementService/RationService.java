@@ -60,16 +60,16 @@ public interface RationService {
 
     R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter);
 
-    Result<List<Map<String, String>>> queryStandSampleData(String taskId, Boolean allDisplay);
+    Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay);
 
-    Result<List<Map<String, String>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
+    Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
 
     /**
      * 拟合曲线
      * @param originData 原始数据
      * @param empty 是否有空白样品
      */
-    FittingReceiveInfo fittingCurve(List<RationCountDataInfo> originData, Boolean empty, String methodId, List<String> inputParam);
+    R<FittingReceiveInfo> fittingCurve(List<RationCountDataInfo> originData, Boolean empty, String methodId, List<String> inputParam);
 
     /**
      * 获取曲线信息

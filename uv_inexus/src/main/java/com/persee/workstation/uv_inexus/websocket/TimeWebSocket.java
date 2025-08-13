@@ -167,7 +167,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
                 }
                 originalData.add(changeParam);
                 // 计算当前 y 值
-                if (param.getSpectralBandwidth().equals("1")){
+                if (param.getLuminosity().equals("1")){
                     String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
                     String y = DataCountUtil.changeTPercentOrAbs2(null, s);
                     x_data.add(xValue);
@@ -175,8 +175,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
+                    System.err.println("-------------------------------"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
-                }else if (param.getSpectralBandwidth().equals("2")){
+                }else if (param.getLuminosity().equals("2")){
                     String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
                     String y = DataCountUtil.changeTPercentOrAbs2(s,null);
                     x_data.add(xValue);
@@ -184,8 +185,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
+                    System.err.println("-------------------------------"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
-                }else if (param.getSpectralBandwidth().equals("3")){
+                }else if (param.getLuminosity().equals("3")){
                     Double sData = Double.valueOf(changeParam.getS());
                     String y = String.valueOf((sData / (4095 * 32)) * 100);
                     x_data.add(xValue);
@@ -193,8 +195,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
+                    System.err.println("-------------------------------"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
-                }else if (param.getSpectralBandwidth().equals("4")){
+                }else if (param.getLuminosity().equals("4")){
                     Double rData = Double.valueOf(changeParam.getR());
                     String y = String.valueOf((rData / (4095 * 32)) * 100);
                     x_data.add(xValue);
@@ -202,9 +205,11 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
+                    System.err.println("-------------------------------"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
                 }else{
                     session.close();
+                    sendAndClose(session,"光度模式错误");
                 }
                 counter[0]++;
             } catch (IOException e) {
