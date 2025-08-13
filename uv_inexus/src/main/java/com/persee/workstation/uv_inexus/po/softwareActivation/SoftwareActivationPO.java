@@ -37,7 +37,7 @@ public class SoftwareActivationPO extends BasePO {
 
     // 激活状态
     @TableField("activation_status") 
-    private String activationStatus;
+    private int activationStatus;
 
     // 激活时间，假设数据库中是datetime类型，这里使用Date类型，也可根据实际情况调整为LocalDateTime
     @TableField("activation_time") 
@@ -54,4 +54,7 @@ public class SoftwareActivationPO extends BasePO {
     // 附加功能
     @TableField("additional_functions") 
     private String additionalFunctions;
+
+    @TableField("is_add_status")
+    private int isAddStatus;
 }

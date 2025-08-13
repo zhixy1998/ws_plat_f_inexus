@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.controller.softwareActivation;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -21,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.softwareActivation.SoftwareActivationPO;
 import com.persee.workstation.uv_inexus.service.activationKeyService.DecryptService;
+import com.persee.workstation.uv_inexus.service.softwareActivation.DeviceDiscoveryService;
 import com.persee.workstation.uv_inexus.service.softwareActivation.SoftwareActivationService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
@@ -40,6 +44,9 @@ public class SoftwareActivationController {
 
     @Autowired
     private DecryptService decryptService;
+    
+    @Autowired
+    private DeviceDiscoveryService deviceDiscoveryService;
 
     /**
      * 软件激活接口：通过ID查询设备，验证激活码并更新状态
@@ -93,14 +100,16 @@ public class SoftwareActivationController {
                 return Result.fail(400, "激活码中的日期格式错误（应为yyyy-MM-dd）:" + e.getMessage());
             }
 
-            // 7. （可选）验证过期时间是否有效
+            // 7. 验证过期时间是否有效
             // if (activationExpirationDate.isBefore(LocalDate.now())) {
             //     return Result.fail(403, "激活码已过期（过期时间:" + expirationDateStr + "）");
             // }
 
             // 8. 更新设备激活状态
-            activationPO.setActivationStatus("已激活");
-            activationPO.setActivationTime(LocalDate.now().toString());  // 记录激活时间
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String fullTime = LocalDateTime.now().format(formatter);
+            activationPO.setActivationStatus(1);
+            activationPO.setActivationTime(fullTime);  // 记录激活时间
             activationPO.setExpirationDate(expirationDateStr);  // 更新过期时间
             softwareActivationService.updateById(activationPO);
 
@@ -210,4 +219,31 @@ public class SoftwareActivationController {
         boolean isSuccess = softwareActivationService.removeByIds(ids);
         return isSuccess ? Result.ok() : Result.fail(500, "批量删除失败");
     }
+
+    /**
+     * 分页查询新增的设备数据（支持搜索）
+     */
+    @GetMapping("/addDevice")
+    @ApiOperation("新增设备并分页查询（支持控制是否执行新增）")
+    public Result<PageView<DeviceInfoDTO>> addAndGetDevices(
+            @RequestParam(defaultValue = "false") boolean needAdd, // 控制是否执行新增，默认不新增
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam Map<String, String> searchParams) {
+
+        // 只有当needAdd=true时，才执行新增逻辑
+        if (needAdd) {
+            List<DeviceInfoDTO> addedDevices = deviceDiscoveryService.addNonDuplicateDevicesToDb();
+            System.out.println("执行新增操作，共新增 {} 条设备"+ addedDevices.size());
+        } else {
+            System.out.println("不执行新增操作，仅查询现有数据");
+        }
+
+        // 执行分页查询（始终查询isAddStatus=1的设备）
+        Page<DeviceInfoDTO> page = new Page<>(pageNum, pageSize);
+        IPage<DeviceInfoDTO> resultPage = deviceDiscoveryService.getAddedDevicesPage(page, searchParams);
+
+        return Result.ok(new PageView<>(resultPage));
+    }
+    
 }
