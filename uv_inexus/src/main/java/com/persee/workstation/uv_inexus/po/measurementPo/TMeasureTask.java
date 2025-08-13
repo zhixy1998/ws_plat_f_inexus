@@ -72,5 +72,8 @@ public class TMeasureTask{
     // 是否删除
     @TableField("is_delete")
     private String isDelete;
+
+    @TableField("table_info")
+    private String tableInfo;
 }
 
