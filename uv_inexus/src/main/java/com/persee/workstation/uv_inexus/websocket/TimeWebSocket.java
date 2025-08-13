@@ -135,7 +135,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
         List<ChangeParam> originalData = new ArrayList<>();
 
         // 扫描的总个数
-        Integer totalTime = Integer.valueOf(param.getTotalNumber());
+        Integer totalTime = Integer.valueOf(param.getTotalNumber())+1;
         // 时间间隔
         Integer interval = Integer.valueOf(param.getIntervalTime());
         // 扫描的单位
@@ -247,9 +247,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
         List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
-        List<Double> yDataFeng = (List<Double>) resultMap.get("peak_y");
+        List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
         List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
-        List<Double> yDataGu = (List<Double>) resultMap1.get("valley_y");
+        List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
         // 创建一个测量数据对象
         TMeasureData tMeasureData = new TMeasureData();
         // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
@@ -269,14 +269,14 @@ public class TimeWebSocket extends TextWebSocketHandler {
         for (int i = 0; i < xDataFeng.size(); i++) {
             PeakValleyMarking marking = new PeakValleyMarking();
             marking.setX(xDataFeng.get(i).toString());
-            marking.setY(yDataFeng.get(i).toString());
+            marking.setY(yDataFeng.get(i));
             marking.setType("波峰");
             peakValleys.add(marking);
         }
         for (int i = 0; i < xDataGu.size(); i++) {
             PeakValleyMarking marking = new PeakValleyMarking();
             marking.setX(xDataGu.get(i).toString());
-            marking.setY(yDataGu.get(i).toString());
+            marking.setY(yDataGu.get(i));
             marking.setType("波谷");
             markings.add(marking);
         }
@@ -298,6 +298,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
         for (TaskSpecimen taskSpecimen : specimen) {
             if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
                 taskSpecimen.setIsTested("1");
+                break;
             }
         }
         task.setSampleKey(JSON.toJSONString(specimen));

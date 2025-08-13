@@ -947,7 +947,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (paramDto.getRemark()==null){
             return Result.fail("请先添加备注");
         }
-        if (paramDto.getDataType().equals("波峰")){
+        if (paramDto.getDataType().equals("0")){
             // 根据测量id去测量数据表中进行查询
             TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getDataId());
             if (tMeasureData==null){
@@ -967,7 +967,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                     break;
                 }
             }
-            if (paramDto.getType().equals("0")){
+            if (paramDto.getType().equals("波峰")){
                 tMeasureData.setPeak(JSON.toJSONString(list));
             }else{
                 tMeasureData.setGrain(JSON.toJSONString(list));

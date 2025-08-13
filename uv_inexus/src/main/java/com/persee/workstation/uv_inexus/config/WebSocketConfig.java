@@ -21,9 +21,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeWebSocket TimeWebSocket;
 
     @Autowired
-    private TimeWebSocket2 TimeWebSocket2;
-
-    @Autowired
     private RationWebSocket RationWebSocket;
 
     // 注册WebSocket处理器
@@ -37,8 +34,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(RationWebSocket, "/ws/ration")
                 .setAllowedOrigins("*");
         registry.addHandler(TimeWebSocket, "/ws/timeScan")
-                .setAllowedOrigins("*");
-        registry.addHandler(TimeWebSocket2, "/ws/timeScan2")
                 .setAllowedOrigins("*");
 
     }
