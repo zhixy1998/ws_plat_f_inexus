@@ -2326,9 +2326,15 @@ public class SpectrumServiceImpl implements SpectrumService {
                             .last("LIMIT 1");
                     TMeasureData one = tMeasureDataService.getOne(wrapper);
                     if (one != null) {
-                        vo.setDetectionStartTime(one.getMeasurementStartTime().format(formatter));
-                        vo.setDetectionEndTime(one.getMeasurementEndTime().format(formatter));
-                        vo.setOriginalData(one.getInstrumentData());
+                        if (one.getMeasurementStartTime() != null) {
+                            vo.setDetectionStartTime(one.getMeasurementStartTime().format(formatter));
+                        }
+                        if (one.getMeasurementEndTime() != null) {
+                            vo.setDetectionEndTime(one.getMeasurementEndTime().format(formatter));
+                        }
+                        if (one.getInstrumentData() != null) {
+                            vo.setOriginalData(one.getInstrumentData());
+                        }
                     }
                 }
             }

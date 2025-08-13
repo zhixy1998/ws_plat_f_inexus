@@ -7,11 +7,13 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodPara
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.InputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskHeadSnapshot;
+import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
-
 
 import java.io.File;
 import java.util.List;
@@ -105,5 +107,20 @@ public interface PhotometricService {
      * 导出到word
      */
     R<File> downloadWord(String taskId, Boolean allDisplay);
+
+    /**
+     * 查询可绑定的方法参数
+     */
+    R<List<InputParam>> queryInputParam(String methodId);
+
+    /**
+     * 查询绑定映射关系
+     */
+    R<List<InputParamMapTableHead>> queryInputParamMapTableHead(String taskId);
+
+    /**
+     * 保存映射关系及表头信息
+     */
+    R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshot taskHeadSnapshot);
 
 }
