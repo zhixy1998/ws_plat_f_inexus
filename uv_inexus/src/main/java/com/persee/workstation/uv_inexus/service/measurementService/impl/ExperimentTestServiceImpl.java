@@ -489,8 +489,14 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result assignMethodPort(String methodType, String projectId) {
         // 根据方法判定是否是测量方法
         MeasureTypeEnum.fromDescription(methodType);
+        if (methodType == null || methodType.equals("")){
+            return Result.ok(new ArrayList<>());
+        }
         // 根据项目id和方法类型查询方法表数据
         List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType));
+        if (list == null || list.size() == 0){
+            return Result.ok(new ArrayList<>());
+        }
         return Result.ok(list);
     }
 
@@ -762,6 +768,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         List<MethodBaseVo> methodVo;
         if (methodName == null || methodName.isEmpty()) {
             List<TMeasureMethod> methods = tMeasureMethodService.list();  // 查询所有方法
+            if (methods == null || methods.isEmpty()){
+                return Result.ok(new ArrayList<>());
+            }
             methodVo = methods.stream()
                     .map(method -> {
                         // 将TMeasureMethod拷贝到MethodBaseVo
@@ -771,7 +780,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         vo.setCreator(method.getMethodCreator());
                         vo.setCreateTime(method.getMethodCreateTime().format(formatter));
                         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
-                        vo.setProject(project.getProjectName());
+                        if (project != null){
+                            vo.setProject(project.getProjectName());
+                        }
                         return vo;
                     })
                     .collect(Collectors.toList());

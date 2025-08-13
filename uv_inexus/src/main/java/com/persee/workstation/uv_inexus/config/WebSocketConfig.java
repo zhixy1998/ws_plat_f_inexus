@@ -1,9 +1,6 @@
 package com.persee.workstation.uv_inexus.config;
 
-import com.persee.workstation.uv_inexus.websocket.PhotometricWebSocket;
-import com.persee.workstation.uv_inexus.websocket.RationWebSocket;
-import com.persee.workstation.uv_inexus.websocket.SpectrumWebSocket;
-import com.persee.workstation.uv_inexus.websocket.TimeWebSocket;
+import com.persee.workstation.uv_inexus.websocket.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -24,6 +21,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeWebSocket TimeWebSocket;
 
     @Autowired
+    private TimeWebSocket2 TimeWebSocket2;
+
+    @Autowired
     private RationWebSocket RationWebSocket;
 
     // 注册WebSocket处理器
@@ -37,6 +37,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(RationWebSocket, "/ws/ration")
                 .setAllowedOrigins("*");
         registry.addHandler(TimeWebSocket, "/ws/timeScan")
+                .setAllowedOrigins("*");
+        registry.addHandler(TimeWebSocket2, "/ws/timeScan2")
                 .setAllowedOrigins("*");
 
     }

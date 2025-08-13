@@ -149,6 +149,12 @@ public class TimeSweepController {
         return timeSweepService.addGaugePointRemarks(paramDto);
     }
 
+    @PostMapping("updateDataColor")
+    @ApiOperation("更新数据颜色接口")
+    public Result updateDataColor(@RequestBody UpdateDataColorDto paramDto){
+        return timeSweepService.updateDataColor(paramDto);
+    }
+
     @GetMapping("/exportWord")
     @ApiOperation("导出Word接口")
     public void exportWord(@RequestParam String taskId, HttpServletResponse response) {

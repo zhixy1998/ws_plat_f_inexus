@@ -30,7 +30,7 @@ public enum MeasureTypeEnum {
                 return type;
             }
         }
-        throw new IllegalArgumentException("未知的测量类型: " + description);
+        return null;
     }
 
 

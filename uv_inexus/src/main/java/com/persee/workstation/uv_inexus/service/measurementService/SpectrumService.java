@@ -102,4 +102,6 @@ public interface SpectrumService {
 
     // 添加标记点备注接口
     Result addGaugePointRemarks(PeakValleyMarkingDto paramDto);
+
+    Result updateDataColor(UpdateDataColorDto paramDto);
 }

@@ -67,6 +67,8 @@ public class Constants {
 
     public static volatile List<ChangeParam> measurd_data = new ArrayList<>();
 
+    public static volatile ChangeParam timeChangeparam = new ChangeParam();
+
 //    public static volatile List<String> r_data = new ArrayList<>();
 //    public static volatile List<String> s_data = new ArrayList<>();
 //    public static volatile List<String> d_data = new ArrayList<>();

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 
 @Slf4j
 public class DataCountUtil {
@@ -30,24 +31,22 @@ public class DataCountUtil {
 
 
     public static String changeTPercentOrAbs2(String abs, String tPercent) {
-
         if (abs != null) {
-            // 吸光度不为空，计算透光率
+            // 吸光度 -> 透光率
             BigDecimal absorbance = new BigDecimal(abs);
             log.info("吸光度不为空，计算透光率");
 
             // v = 10^(-abs) * 100
-            BigDecimal ten = new BigDecimal("10");
-            BigDecimal minusAbs = absorbance.negate();
-            BigDecimal power = ten.pow(minusAbs.intValue(), MathContext.DECIMAL128);  // 精度高一点
-            BigDecimal result = power.multiply(new BigDecimal("100"));
+            double powerValue = Math.pow(10, absorbance.negate().doubleValue());
+            BigDecimal result = BigDecimal.valueOf(powerValue)
+                    .multiply(new BigDecimal("100"))
+                    .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
 
-            System.out.println("透光率: " + result.stripTrailingZeros().toPlainString());
-            return result.stripTrailingZeros().toPlainString();
+            return result.toPlainString();
         }
 
         if (tPercent != null) {
-            // 透光率不为空，计算吸光度
+            // 透光率 -> 吸光度
             BigDecimal t = new BigDecimal(tPercent);
             log.info("透光率不为空，计算吸光度");
 
@@ -55,10 +54,10 @@ public class DataCountUtil {
 
             // -log10(ratio)
             double logValue = Math.log10(ratio.doubleValue());
-            BigDecimal absorbance = BigDecimal.valueOf(-logValue);
+            BigDecimal absorbance = BigDecimal.valueOf(-logValue)
+                    .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
 
-            System.out.println("吸光度: " + absorbance.stripTrailingZeros().toPlainString());
-            return absorbance.stripTrailingZeros().toPlainString();
+            return absorbance.toPlainString();
         }
 
         return null;
