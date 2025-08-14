@@ -98,7 +98,7 @@ public class EtoX {
             int checksum = 0;
 
             for (Row row : rows) {
-                for (int i = 6; i <= 22; i++) {
+                for (int i = 6; i <= 24; i++) {
                     String val = getCellString(row, i).trim();
                     if (!val.isEmpty() && !val.equalsIgnoreCase("X")) {
                         sendList.add(val);

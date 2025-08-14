@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.measurementService.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
@@ -864,6 +865,12 @@ public class RationServiceImpl implements RationService {
             map.put(SampleTableEnum.dilutionRatio.getIdentity(), sample.getDilutionRatio());
             map.put(SampleTableEnum.amount.getIdentity(), sample.getSampleVolume());
 
+            if (StringUtils.hasText(sample.getNewColData())){
+                Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
+
+                map.putAll(object);
+            }
+
             //数据信息,repeat：false-不重复，true-重复
             if (!repeat) {
                 LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
@@ -992,6 +999,11 @@ public class RationServiceImpl implements RationService {
             map.put(SampleTableEnum.normalConcentration.getIdentity(), sample.getNormalConcentration());
             map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+sample.getSampleLocation());
 
+            if (StringUtils.hasText(sample.getNewColData())){
+                Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
+
+                map.putAll(object);
+            }
 
             //数据信息,repeat：false-不重复，true-重复
             if (!repeat) {

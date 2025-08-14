@@ -18,4 +18,10 @@ public class CreateTaskParamDto {
     private List<Map<String, String>> specimens;
 
     private List<HeadVO> heads;
+
+    private List<HeadVO> rationStandHeads;
+    private List<HeadVO> rationUnknowHeads;
+
+    private List<Map<String, String>> rationStandData;
+    private List<Map<String, String>> rationUnknowData;
 }

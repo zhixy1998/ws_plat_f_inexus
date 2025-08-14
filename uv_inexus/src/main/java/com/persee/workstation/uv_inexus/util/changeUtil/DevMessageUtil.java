@@ -504,7 +504,7 @@ public class DevMessageUtil {
         Transition transition = xml.get(cmdId);
         // 发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        List<byte[]> responses = messageUtil.singleSendAndReceive2(socket, deviceIp, cmdId, bytes);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse==null || parse.equals("false")) {
             return null;

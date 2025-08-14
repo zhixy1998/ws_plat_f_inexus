@@ -294,7 +294,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // TODO 所有测量的创建任务需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
-            case QUANTITATIVE_MEASUREMENT:
                 if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
                     for (Map<String, String> cols : paramDto.getSpecimens()) {
                         String jsonString = JSON.toJSONString(cols);
@@ -314,6 +313,57 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         taskSpecimen.setSpecimenKey(sample.getId());
                         taskSpecimen.setDeleteType("0");
                         taskSpecimen.setIsTested("0");
+                        list.add(taskSpecimen);
+                    }
+                }
+            case QUANTITATIVE_MEASUREMENT:
+                if (paramDto.getRationStandData() != null && !paramDto.getRationStandData().isEmpty()) {
+                    for (Map<String, String> map : paramDto.getRationStandData()) {
+                        String jsonString = JSON.toJSONString(map);
+                        TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
+                        if (paramDto.getRationStandHeads() != null) {
+                            sample.setHeads(JSON.toJSONString(paramDto.getRationStandHeads()));
+                            JSONObject newColData = new JSONObject();
+                            for (HeadVO head : paramDto.getRationStandHeads()) {
+                                String s = map.get(head.getIdentity());
+                                newColData.put(head.getIdentity(), s);
+                            }
+                            sample.setNewColData(JSON.toJSONString(newColData));
+                        }
+                        sample.setColor("#000000");
+                        sample.setSampleKind(SampleTypeEnum.kind_stand.getIdentity());
+                        tMeasureSampleService.save(sample);
+                        TaskSpecimen taskSpecimen = new TaskSpecimen();
+                        taskSpecimen.setSpecimenKey(sample.getId());
+                        taskSpecimen.setDeleteType("0");
+                        taskSpecimen.setIsTested("0");
+                        taskSpecimen.setSampleKind(SampleTypeEnum.kind_stand.getIdentity());
+                        taskSpecimen.setSampleType(sample.getSampleType());
+                        list.add(taskSpecimen);
+                    }
+                }
+                if (paramDto.getRationUnknowData() != null && !paramDto.getRationUnknowData().isEmpty()) {
+                    for (Map<String, String> map : paramDto.getRationUnknowData()) {
+                        String jsonString = JSON.toJSONString(map);
+                        TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
+                        if (paramDto.getRationUnknowHeads() != null) {
+                            sample.setHeads(JSON.toJSONString(paramDto.getRationUnknowHeads()));
+                            JSONObject newColData = new JSONObject();
+                            for (HeadVO head : paramDto.getRationUnknowHeads()) {
+                                String s = map.get(head.getIdentity());
+                                newColData.put(head.getIdentity(), s);
+                            }
+                            sample.setNewColData(JSON.toJSONString(newColData));
+                        }
+                        sample.setColor("#000000");
+                        sample.setSampleKind(SampleTypeEnum.kind_unknown.getIdentity());
+                        tMeasureSampleService.save(sample);
+                        TaskSpecimen taskSpecimen = new TaskSpecimen();
+                        taskSpecimen.setSpecimenKey(sample.getId());
+                        taskSpecimen.setDeleteType("0");
+                        taskSpecimen.setIsTested("0");
+                        taskSpecimen.setSampleKind(SampleTypeEnum.kind_unknown.getIdentity());
+                        taskSpecimen.setSampleType(sample.getSampleType());
                         list.add(taskSpecimen);
                     }
                 }
