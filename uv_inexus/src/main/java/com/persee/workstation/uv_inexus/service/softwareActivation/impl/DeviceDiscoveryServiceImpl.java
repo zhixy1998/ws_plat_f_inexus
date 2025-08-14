@@ -29,6 +29,11 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
     private final DeviceDiscoveryServiceMapper softwareActivationMapper;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    
+    // 状态定义
+    private static final int STATUS_HISTORY = 0;
+    private static final int STATUS_NEW = 1;
+    private static final int STATUS_DUPLICATE = 2;
 
 
     @Override
@@ -43,16 +48,12 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         List<DeviceInfoDTO> mockData = new ArrayList<>();
         String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
         
-        // 生成模拟数据时，确保包含所有必要字段
         mockData.add(buildDeviceInfo("DEV001", "192.168.51.10", "Windows设备", currentTime));
         mockData.add(buildDeviceInfo("DEV002", "192.168.51.11", "Linux设备", currentTime));
         mockData.add(buildDeviceInfo("DEV003", "192.168.51.12", "嵌入式设备", currentTime));
         mockData.add(buildDeviceInfo("DEV004", "192.168.51.13", "Windows设备", currentTime));
         mockData.add(buildDeviceInfo("DEV005", "192.168.51.14", "新增设备", currentTime));
         
-        log.info("生成5条模拟设备数据：{}", mockData.stream()
-                .map(DeviceInfoDTO::getDeviceNumber)
-                .collect(Collectors.joining(",")));
         return mockData;
     }
 
@@ -60,132 +61,204 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<DeviceInfoDTO> addNonDuplicateDevicesToDb() {
-        // 1. 重置所有设备的isAddStatus为0
-        LambdaUpdateWrapper<SoftwareActivationPO> resetWrapper = new LambdaUpdateWrapper<>();
-        resetWrapper.set(SoftwareActivationPO::getIsAddStatus, 0);
-        int resetCount = softwareActivationMapper.update(null, resetWrapper);
-        log.info("已将数据库中 {} 条设备的isAddStatus重置为0", resetCount);
-
-        // 2. 获取模拟数据
-        List<DeviceInfoDTO> allDevices = generateMockDeviceData();
-        List<String> allDeviceNumbers = allDevices.stream()
-                .map(DeviceInfoDTO::getDeviceNumber)
-                .collect(Collectors.toList());
-        log.info("待检查的设备号：{}", String.join(",", allDeviceNumbers));
-
-        // 3. 查询数据库中已存在的设备
-        LambdaQueryWrapper<SoftwareActivationPO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.in(SoftwareActivationPO::getDeviceNumber, allDeviceNumbers);
-        List<SoftwareActivationPO> existingPOs = softwareActivationMapper.selectList(queryWrapper);
-        List<String> existingNumbers = existingPOs.stream()
-                .map(SoftwareActivationPO::getDeviceNumber)
-                .collect(Collectors.toList());
-        log.info("数据库中已存在的设备号：{}", existingNumbers.isEmpty() ? "无" : String.join(",", existingNumbers));
-
-        // 4. 筛选新设备（数据库中不存在的）
-        List<DeviceInfoDTO> newDevices = allDevices.stream()
-                .filter(device -> !existingNumbers.contains(device.getDeviceNumber()))
-                .distinct()
-                .collect(Collectors.toList());
-        log.info("筛选出的新设备（待插入）：{}", newDevices.stream()
-                .map(DeviceInfoDTO::getDeviceNumber)
-                .collect(Collectors.joining(",")));
-
-        if (newDevices.isEmpty()) {
-            log.info("无新设备需要新增");
+        return addNonDuplicateDevicesToDb1(null);
+    }
+    
+    /**
+     * 带参处理方法：自动新增/更新符合条件的设备
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<DeviceInfoDTO> addNonDuplicateDevicesToDb1(Map<String, String> searchParams) {
+        log.info("===== 自动执行设备处理（新增/更新） =====");
+        
+        // 1. 用搜索参数过滤模拟数据（模糊匹配）
+        List<DeviceInfoDTO> filteredDevices = getFilteredDevices(searchParams);
+        if (filteredDevices.isEmpty()) {
+            log.info("无符合条件的设备，无需处理");
             return new ArrayList<>();
         }
+        String targetNumbers = filteredDevices.stream()
+               .map(DeviceInfoDTO::getDeviceNumber)
+               .collect(Collectors.joining(","));
+        log.info("过滤后待处理设备：{}条，编号：{}", filteredDevices.size(), targetNumbers);
 
-        // 5. 插入新设备（关键：补全所有非空字段）
-        List<DeviceInfoDTO> resultDevices = new ArrayList<>();
+        // 2. 数据库中精确匹配设备编号
+        Map<String, SoftwareActivationPO> existingMap = getExistingDevicesFromDb(filteredDevices);
+        log.info("数据库中已存在的设备：{}", existingMap.keySet().stream().collect(Collectors.joining(",")));
+
+        // 3. 处理设备：已存在则更新状态为2，不存在则新增为1
+        List<DeviceInfoDTO> result = new ArrayList<>();
         String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
-        
-        for (DeviceInfoDTO dto : newDevices) {
-            // 补全所有可能的非空字段（根据数据库表结构调整）
-            dto.setActivationStatus(0); // 未激活
-            // dto.setActivationTime(currentTime); // 激活时间（必须赋值，若数据库非空）
-            dto.setModificationTime(currentTime); // 修改时间
-            // dto.setExpirationDate("9999-12-31 23:59:59"); // 过期时间（必须赋值，符合DATETIME格式）
-            dto.setAdditionalFunctions("默认功能");
-            dto.setIsAddStatus(1); // 标记为新增
-            
-            // 转换为PO并插入
-            SoftwareActivationPO po = convertToPO(dto);
-            int insertResult = softwareActivationMapper.insert(po); // 执行插入并获取结果
-            if (insertResult > 0) {
-                log.info("设备 {} 插入成功，ID: {}", dto.getDeviceNumber(), po.getId());
-                dto.setId(po.getId());
-                resultDevices.add(dto);
+
+        for (DeviceInfoDTO device : filteredDevices) {
+            String deviceNumber = device.getDeviceNumber();
+            log.info("\n----- 处理设备：{} -----", deviceNumber);
+
+            if (existingMap.containsKey(deviceNumber)) {
+                // 已存在：更新状态为重复设备（2）
+                updateToDuplicate(device, existingMap.get(deviceNumber), currentTime);
             } else {
-                log.error("设备 {} 插入失败", dto.getDeviceNumber());
+                // 不存在：强制新增为新设备（1）
+                forceAddNewDevice(device, currentTime);
             }
+            result.add(device);
         }
 
-        log.info("本次共成功新增 {} 条设备", resultDevices.size());
-        return resultDevices;
+        log.info("===== 设备处理完成 =====");
+        return result;
     }
 
 
     @Override
     public IPage<DeviceInfoDTO> getAddedDevicesPage(Page<DeviceInfoDTO> page, Map<String, String> searchParams) {
-        log.info("Service分页查询触发：查询isAddStatus=1的设备"); // 确认是否进入该方法
-
+        log.info("===== 启动分页查询 =====");
+        
+        // 自动处理设备（新增/更新）
+        addNonDuplicateDevicesToDb1(searchParams);
+        
+        // 1. 构建查询条件，添加排序规则
         LambdaQueryWrapper<SoftwareActivationPO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SoftwareActivationPO::getIsAddStatus, 1); // 只查新增标记的数据
-
-        // 支持设备号搜索
-        if (searchParams.containsKey("deviceNumber") && !searchParams.get("deviceNumber").isEmpty()) {
-            queryWrapper.like(SoftwareActivationPO::getDeviceNumber, searchParams.get("deviceNumber"));
-            log.info("搜索设备号：{}", searchParams.get("deviceNumber"));
+        queryWrapper.in(SoftwareActivationPO::getIsAddStatus, STATUS_NEW, STATUS_DUPLICATE, STATUS_HISTORY)
+                // 关键：按isAddStatus降序排序（2 → 1 → 0）
+                .orderByDesc(SoftwareActivationPO::getIsAddStatus); 
+        
+        // 模糊查询条件
+        if (searchParams!= null && searchParams.containsKey("deviceNumber")) {
+            String keyword = searchParams.get("deviceNumber").trim().toLowerCase();
+            if (!keyword.isEmpty()) {
+                queryWrapper.like(SoftwareActivationPO::getDeviceNumber, keyword);
+                log.info("数据库模糊查询条件：deviceNumber LIKE %{}%，排序：isAddStatus DESC", keyword);
+            }
         }
 
-        // 执行查询
+        // 2. 执行分页查询（已包含排序）
         Page<SoftwareActivationPO> poPage = softwareActivationMapper.selectPage(
-            new Page<>(page.getCurrent(), page.getSize()), queryWrapper);
-        log.info("数据库查询结果：总条数={}, 数据={}", 
-                poPage.getTotal(), 
-                poPage.getRecords().stream().map(SoftwareActivationPO::getDeviceNumber).collect(Collectors.joining(",")));
+                new Page<>(page.getCurrent(), page.getSize()), queryWrapper);
+        log.info("数据库查询结果：总记录数={}，按isAddStatus降序排序", poPage.getTotal());
 
-        // 转换为DTO
+        // 3. 转换为DTO返回
         List<DeviceInfoDTO> dtoList = poPage.getRecords().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
 
         Page<DeviceInfoDTO> resultPage = new Page<>();
         resultPage.setRecords(dtoList);
         resultPage.setTotal(poPage.getTotal());
         resultPage.setCurrent(poPage.getCurrent());
         resultPage.setSize(poPage.getSize());
+
+        log.info("===== 分页查询结束 =====");
         return resultPage;
     }
 
 
-    // 构建DeviceInfoDTO（补全所有必要字段）
+    // 获取过滤后的设备列表（模拟数据模糊查询）
+    private List<DeviceInfoDTO> getFilteredDevices(Map<String, String> searchParams) {
+        List<DeviceInfoDTO> allDevices = generateMockDeviceData();
+        if (searchParams == null || searchParams.isEmpty()) {
+            return allDevices;
+        }
+
+        String keyword = searchParams.getOrDefault("deviceNumber", "").trim().toLowerCase();
+        if (keyword.isEmpty()) {
+            return allDevices;
+        }
+
+        List<DeviceInfoDTO> filtered = allDevices.stream()
+               .filter(device -> device.getDeviceNumber()!= null 
+                        && device.getDeviceNumber().toLowerCase().contains(keyword))
+               .collect(Collectors.toList());
+        log.info("模拟数据模糊过滤结果：关键词'{}'，匹配{}条设备", keyword, filtered.size());
+        return filtered;
+    }
+
+
+    // 从数据库查询已存在的设备（精确匹配编号）
+    private Map<String, SoftwareActivationPO> getExistingDevicesFromDb(List<DeviceInfoDTO> devices) {
+        List<String> deviceNumbers = devices.stream()
+               .map(DeviceInfoDTO::getDeviceNumber)
+               .collect(Collectors.toList());
+        LambdaQueryWrapper<SoftwareActivationPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(SoftwareActivationPO::getDeviceNumber, deviceNumbers);
+        List<SoftwareActivationPO> existingPOs = softwareActivationMapper.selectList(queryWrapper);
+        return existingPOs.stream()
+               .collect(Collectors.toMap(SoftwareActivationPO::getDeviceNumber, po -> po));
+    }
+
+
+    // 更新重复设备状态
+    private void updateToDuplicate(DeviceInfoDTO device, SoftwareActivationPO existingPO, String currentTime) {
+        String deviceNumber = device.getDeviceNumber();
+        LambdaUpdateWrapper<SoftwareActivationPO> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SoftwareActivationPO::getId, existingPO.getId())
+                   .set(SoftwareActivationPO::getIsAddStatus, STATUS_NEW)
+                   .set(SoftwareActivationPO::getModificationTime, currentTime);
+        int updateRows = softwareActivationMapper.update(null, updateWrapper);
+        log.info("设备{}：已存在，状态更新为2（重复），影响行数={}", deviceNumber, updateRows);
+        device.setIsAddStatus(STATUS_NEW);
+        device.setId(existingPO.getId());
+    }
+
+
+    // 强制新增设备
+    private void forceAddNewDevice(DeviceInfoDTO device, String currentTime) {
+        String deviceNumber = device.getDeviceNumber();
+        log.info("设备{}：数据库不存在，执行新增", deviceNumber);
+        
+        // 构建PO对象
+        device.setIsAddStatus(STATUS_DUPLICATE);
+        device.setModificationTime(currentTime);
+        SoftwareActivationPO newPO = convertToPO(device);
+        
+        // 执行插入
+        int insertRows = softwareActivationMapper.insert(newPO);
+        log.info("设备{}：插入数据库，影响行数={}", deviceNumber, insertRows);
+        
+        // 验证插入结果
+        if (insertRows <= 0) {
+            log.error("设备{}：插入失败，重试一次", deviceNumber);
+            insertRows = softwareActivationMapper.insert(newPO);
+            if (insertRows <= 0) {
+                throw new RuntimeException("设备" + deviceNumber + "新增失败");
+            }
+        }
+        
+        // 确认新增成功
+        SoftwareActivationPO insertedPO = softwareActivationMapper.selectOne(
+            new LambdaQueryWrapper<SoftwareActivationPO>()
+               .eq(SoftwareActivationPO::getDeviceNumber, deviceNumber)
+               .eq(SoftwareActivationPO::getIsAddStatus, STATUS_DUPLICATE)
+        );
+        if (insertedPO == null) {
+            throw new RuntimeException("设备" + deviceNumber + "新增后查询不到");
+        }
+        
+        log.info("设备{}：新增成功，ID={}", deviceNumber, insertedPO.getId());
+        device.setId(insertedPO.getId());
+    }
+
+
+    // 构建设备DTO
     private DeviceInfoDTO buildDeviceInfo(String deviceNumber, String ip, String type, String currentTime) {
         DeviceInfoDTO dto = new DeviceInfoDTO();
         dto.setDeviceNumber(deviceNumber);
         dto.setDeviceIp(ip);
         dto.setType(type);
-        dto.setActivationStatus(0);
-        // dto.setActivationTime(currentTime);
         dto.setModificationTime(currentTime);
-        // dto.setExpirationDate("9999-12-31 23:59:59");
         dto.setAdditionalFunctions("默认功能");
-        dto.setIsAddStatus(1);
         return dto;
     }
 
 
-    // DTO转PO（确保所有字段映射，尤其是非空字段）
+    // DTO转PO
     private SoftwareActivationPO convertToPO(DeviceInfoDTO dto) {
         SoftwareActivationPO po = new SoftwareActivationPO();
         po.setDeviceNumber(dto.getDeviceNumber());
         po.setDeviceIp(dto.getDeviceIp());
         po.setType(dto.getType());
-        po.setActivationStatus(dto.getActivationStatus());
-        po.setActivationTime(dto.getActivationTime()); // 关键：映射激活时间
         po.setModificationTime(dto.getModificationTime());
-        po.setExpirationDate(dto.getExpirationDate()); // 关键：映射过期时间
+        po.setActivationStatus(dto.getActivationStatus());
         po.setAdditionalFunctions(dto.getAdditionalFunctions());
         po.setIsAddStatus(dto.getIsAddStatus());
         return po;
@@ -199,12 +272,31 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         dto.setDeviceNumber(po.getDeviceNumber());
         dto.setDeviceIp(po.getDeviceIp());
         dto.setType(po.getType());
-        dto.setActivationStatus(po.getActivationStatus());
-        // dto.setActivationTime(po.getActivationTime());
         dto.setModificationTime(po.getModificationTime());
-        // dto.setExpirationDate(po.getExpirationDate());
+        dto.setActivationStatus(po.getActivationStatus());
         dto.setAdditionalFunctions(po.getAdditionalFunctions());
         dto.setIsAddStatus(po.getIsAddStatus());
         return dto;
+    }
+
+    /**
+     * 重置所有设备的isAddStatus为0（历史状态）
+     * 前端关闭弹窗时调用
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean resetAllDeviceAddStatus() {
+        log.info("===== 执行所有设备isAddStatus重置为0 =====");
+        
+        // 构建更新条件：更新所有记录的isAddStatus为0
+        LambdaUpdateWrapper<SoftwareActivationPO> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.set(SoftwareActivationPO::getIsAddStatus, STATUS_HISTORY);
+        
+        // 执行更新
+        int updateRows = softwareActivationMapper.update(null, updateWrapper);
+        log.info("重置完成，共影响{}条记录", updateRows);
+        
+        // 返回更新结果（只要影响行数≥0就视为成功，即使没有数据可更新）
+        return updateRows >= 0;
     }
 }

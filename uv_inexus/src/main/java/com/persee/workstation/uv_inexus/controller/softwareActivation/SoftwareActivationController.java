@@ -224,26 +224,35 @@ public class SoftwareActivationController {
      * 分页查询新增的设备数据（支持搜索）
      */
     @GetMapping("/addDevice")
-    @ApiOperation("新增设备并分页查询（支持控制是否执行新增）")
+    @ApiOperation("自动新增设备并分页查询（保留needAdd参数用于其他用途）")
     public Result<PageView<DeviceInfoDTO>> addAndGetDevices(
-            @RequestParam(defaultValue = "false") boolean needAdd, // 控制是否执行新增，默认不新增
+            @RequestParam(defaultValue = "false") boolean needAdd, // 保留参数用于其他逻辑
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam Map<String, String> searchParams) {
 
-        // 只有当needAdd=true时，才执行新增逻辑
+        // needAdd参数可用于其他业务逻辑（不影响设备自动新增）
         if (needAdd) {
-            List<DeviceInfoDTO> addedDevices = deviceDiscoveryService.addNonDuplicateDevicesToDb();
-            System.out.println("执行新增操作，共新增 {} 条设备"+ addedDevices.size());
-        } else {
-            System.out.println("不执行新增操作，仅查询现有数据");
+            // log.info("needAdd为true，执行其他关联操作（不影响设备新增）");
+            // 此处可添加needAdd相关的其他业务逻辑
         }
 
-        // 执行分页查询（始终查询isAddStatus=1的设备）
+        // 执行分页查询（内部会自动处理设备新增/更新，与needAdd无关）
         Page<DeviceInfoDTO> page = new Page<>(pageNum, pageSize);
         IPage<DeviceInfoDTO> resultPage = deviceDiscoveryService.getAddedDevicesPage(page, searchParams);
 
         return Result.ok(new PageView<>(resultPage));
+    }
+
+    /**
+     * 重置所有设备的isAddStatus为0
+     * 前端关闭弹窗时调用
+     */
+    @PostMapping("/resetAllAddStatus")
+    @ApiOperation("关闭弹窗时重置所有设备状态为历史状态")
+    public Result<Boolean> resetAllDeviceAddStatus() {
+        boolean result = deviceDiscoveryService.resetAllDeviceAddStatus();
+        return result ? Result.ok() : Result.fail(500,"设备状态重置失败");
     }
     
 }

@@ -65,24 +65,10 @@ public class SoftwareActivationServiceImpl extends ServiceImpl<SoftwareActivatio
         }
 
         // 按激活时间倒序排序（最新的在前）
-        queryWrapper.orderByDesc(SoftwareActivationPO::getActivationTime);
+        // 先按创建时间降序，再按激活时间降序
+        queryWrapper.orderByDesc(SoftwareActivationPO::getCreated);
 
         // 执行分页查询
         return baseMapper.selectPage(page, queryWrapper);
     }
-
-    /**
-     * 统计激活状态分布
-     */
-    // @Override
-    // public List<Map<String, Object>> countByActivationStatus() {
-    //     // 按激活状态分组统计数量（使用MyBatis-Plus的groupBy）
-    //     LambdaQueryWrapper<SoftwareActivationPO> queryWrapper = new LambdaQueryWrapper<>();
-    //     queryWrapper.select(
-    //             SoftwareActivationPO::getActivationStatus, 
-    //             "COUNT(*) as count"  // 统计每个状态的数量
-    //     ).groupBy(SoftwareActivationPO::getActivationStatus);
-
-    //     return baseMapper.selectMaps(queryWrapper);
-    // }
 }
