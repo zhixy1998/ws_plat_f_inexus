@@ -31,6 +31,12 @@ public class TMeasureAnalysisData {
     @TableField("sample_key")
     private String sampleKey;
 
+    @TableField("measure_data_id")
+    private String measureDataId;
+
+    @TableField("data_version")
+    private Integer dataVersion;
+
     // 分析参数
     @TableField("analysis_param")
     private String analysisParam;
