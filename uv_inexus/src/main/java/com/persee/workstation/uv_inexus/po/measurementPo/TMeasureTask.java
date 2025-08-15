@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -75,5 +76,9 @@ public class TMeasureTask{
 
     @TableField("table_info")
     private String tableInfo;
+
+    // 图片数据
+    @TableField(typeHandler = JacksonTypeHandler.class, value = "image_data")
+    private String imageData;
 }
 

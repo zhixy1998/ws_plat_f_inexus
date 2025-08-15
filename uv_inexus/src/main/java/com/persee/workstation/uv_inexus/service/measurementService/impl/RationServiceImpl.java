@@ -921,7 +921,7 @@ public class RationServiceImpl implements RationService {
                         for (RationWavelengthDataInfo dataInfo : list) {
                             Map<String, String> children = new HashMap<>();
 
-                            if (dataInfo.getIdentity().equals(RationDataIdentityEnums.result.getIdentity())) {
+                            if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
                                 map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue());
                                 map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue());
                             } else {
@@ -1056,7 +1056,7 @@ public class RationServiceImpl implements RationService {
                         for (RationWavelengthDataInfo dataInfo : list) {
                             Map<String, String> children = new HashMap<>();
 
-                            if (dataInfo.getIdentity().equals(RationDataIdentityEnums.result.getIdentity())) {
+                            if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
                                 map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue());
                                 map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue());
                             } else {

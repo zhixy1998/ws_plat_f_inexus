@@ -501,7 +501,7 @@ public class RationWebSocket extends TextWebSocketHandler {
             String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
             RationWavelengthDataInfo originDataInfo = new RationWavelengthDataInfo();
-            originDataInfo.setIdentity(RationDataIdentityEnums.result.getIdentity());
+            originDataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
             originDataInfo.setWavelength(waveLength);
 
             originDataInfo.setAbsValue(data);
@@ -579,8 +579,6 @@ public class RationWebSocket extends TextWebSocketHandler {
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
 
         for (int i = 0; i < repeatCount; i++) {
-            list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
-            list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
             for (String waveLength : waveLengths) {
                 list.add(new Command("SetWl", new Object[]{waveLength}));
                 list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
@@ -592,7 +590,7 @@ public class RationWebSocket extends TextWebSocketHandler {
                     return R.fail("测量出错");
                 }
                 ChangeParam response = res.getData();
-                response.setWl(response.getWl() + "-" + i);
+                response.setWl(waveLength + "-" + i);
                 machineData.add(response);
                 ChangeParam originRsd = new ChangeParam();
                 List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
@@ -606,7 +604,7 @@ public class RationWebSocket extends TextWebSocketHandler {
                 String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
                 RationWavelengthDataInfo originDataInfo = new RationWavelengthDataInfo();
-                originDataInfo.setIdentity(RationDataIdentityEnums.middle.getIdentity() + "-" + i);
+                originDataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + i);
                 originDataInfo.setWavelength(waveLength);
 
                 originDataInfo.setAbsValue(data);

@@ -31,9 +31,11 @@ public class TMeasureAnalysisData {
     @TableField("sample_key")
     private String sampleKey;
 
+    // 测量数据id
     @TableField("measure_data_id")
     private String measureDataId;
 
+    // 数据版本
     @TableField("data_version")
     private Integer dataVersion;
 

@@ -18,4 +18,13 @@ public class PhotometricOriginDataInfo {
     @ApiModelProperty("T%的值")
     private String tPercentValue;
 
+    @ApiModelProperty("ER的值")
+    private String erValue;
+
+    @ApiModelProperty("ES的值")
+    private String esValue;
+
+    @ApiModelProperty("标识")
+    private String identity;
+
 }

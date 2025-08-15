@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.util;
 
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
 
@@ -96,5 +97,19 @@ public class DataCountUtil {
         double ans = a2/a1 * 100;
         System.out.println("ans:" + ans);
         return String.valueOf(ans);
+    }
+
+    public static String countErOrEs(ChangeParam real, String identity){
+
+        String value = null;
+        if(identity.equals(WaveLengthEnum.es.getCode())){
+            double s = Double.parseDouble(real.getS());
+            value = String.valueOf((s / (4095 * 32)) * 100);
+        }
+        if(identity.equals(WaveLengthEnum.er.getCode())){
+            double r = Double.parseDouble(real.getR());
+            value = String.valueOf((r / (4095 * 32)) * 100);
+        }
+        return value;
     }
 }
