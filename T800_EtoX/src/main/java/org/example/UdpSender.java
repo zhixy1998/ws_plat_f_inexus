@@ -21,8 +21,8 @@ public class UdpSender {
         try (DynamicCommandService service = new DynamicCommandService(LOCAL_IP, LOCAL_PORT, REMOTE_PORT, "D:\\project\\java\\T800.xml")) {
 
             // 定义多个命令及其参数
-            String[] commandIds = {"Search", "80"};  // 假设要发送的指令ID
-            Object[][] paramsArray = {new Object[]{0}, new Object[]{800}};  // 每个命令对应的参数
+            String[] commandIds = {"Search", "Set", "41"};  // 假设要发送的指令ID
+            Object[][] paramsArray = {new Object[]{1}, new Object[]{800,600}, new Object[]{1}};  // 每个命令对应的参数
 
             // 遍历命令并发送
             for (int i = 0; i < commandIds.length; i++) {

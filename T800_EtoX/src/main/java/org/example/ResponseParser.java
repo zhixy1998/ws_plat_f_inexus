@@ -1,123 +1,147 @@
 package org.example;
 
-import org.apache.tomcat.util.net.TLSClientHelloExtractor;
-
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ResponseParser {
 
-    public static String result = "false";
-
-    public static Object parse(List<byte[]> responses, byte[] sendBytes){
-
+    /**
+     * 解析响应报文，支持多 TLV，对应发送报文 V 做比对
+     * @param responses 接收到的报文列表
+     * @param sendBytes 发送报文字节数组
+     * @return 每个 TLV 的解析结果
+     */
+    public static List<Object> parse(List<byte[]> responses, byte[] sendBytes){
+        List<Object> results = new ArrayList<>();
         if (responses == null || responses.isEmpty()) {
             System.out.println("无回复报文");
+            return results;
         }
 
         // 获取最后一条回应报文
-        byte[] lastResponse = responses.get(responses.size() - 1);
-
-        int messageLength = ((lastResponse[6] & 0xFF) << 8) | (lastResponse[7] & 0xFF);
-        if (messageLength > lastResponse.length){
-            System.out.println("消息长度不正确");
-        }
-
-        int checksumIndex = messageLength - 1;
-
-        int tlvIndex = 8;//TLV从第8个字节开始
-        while (tlvIndex + 4 <= checksumIndex){
-            int tHigh = lastResponse[tlvIndex] & 0xFF;
-            int tLow = lastResponse[tlvIndex + 1] & 0xFF;
-
-            int lHigh = lastResponse[tlvIndex + 2] & 0xFF;
-            int lLow = lastResponse[tlvIndex + 3] & 0xFF;
-            int vLen= (lHigh << 8) | lLow;
-
-            //边界检查
-            if (tlvIndex + 4 + vLen > checksumIndex){
-                System.out.println("超过边界");
-                break;
-            }
-
-            //根据T不同进行解析
-            if(tHigh == 0 || tHigh == 10){
-                return paresSetParam(responses,sendBytes);
-            }else if(tHigh == 2 && tLow == 50){
-                return paresSearch(responses);
-            }
-        }
-        return responses;
-    }
-
-    private static Object paresSearch(List<byte[]> responses) {
-        if (responses == null || responses.isEmpty()) {
-            return "No responses received.";
-        }
-
-        // 获取最后一条回应报文
-        byte[] lastResponse = responses.get(responses.size() - 1);
-
-        // 检查报文长度，确保包含了仪器 MAC 地址和 IP 地址
-        if (lastResponse.length < 43) {
-            return "Invalid response length.";
-        }
-
-        // 提取仪器 MAC 地址 (假设它从字节 12 到字节 17)
-        byte[] macAddressBytes = new byte[6];
-        System.arraycopy(lastResponse, 12, macAddressBytes, 0, 6);
-        String macAddress = bytesToHex(macAddressBytes);
-
-        // 提取仪器 IP 地址 (假设它从字节 20 到字节 23)
-        byte[] ipAddressBytes = new byte[4];
-        System.arraycopy(lastResponse, 20, ipAddressBytes, 0, 4);
-        String ipAddress = String.format("%d.%d.%d.%d", ipAddressBytes[0] & 0xFF, ipAddressBytes[1] & 0xFF, ipAddressBytes[2] & 0xFF, ipAddressBytes[3] & 0xFF);
-
-        // 返回解析后的结果
-        return new String[] { "MAC 地址: " + macAddress , "IP 地址: " + ipAddress };
-    }
-
-    // 将字节数组转换为十六进制字符串
-    private static String bytesToHex(byte[] bytes) {
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : bytes) {
-            hexString.append(String.format("%02X", b));
-        }
-        return hexString.toString();
-    }
-
-    private static Object paresSetParam(List<byte[]> responses, byte[] sendBytes) {
-        if (responses == null || responses.isEmpty()) {
-            result = "false";
-            return false;
-        }
-
         byte[] last = responses.get(responses.size() - 1);
-        if(last.length < 13){
-            result = "false";
-            return false;
-        }
 
-        // 计算校验和
+        // 校验和
         int calculatedChecksum = 0;
-        for (int i = 0; i < last.length - 1; i++) {  // 校验和不包括最后一个字节
+        for (int i = 0; i < last.length - 1; i++) {
             calculatedChecksum += last[i];
         }
+        calculatedChecksum &= 0xFF;
 
-        // 取低8位的和作为校验和
-        calculatedChecksum = calculatedChecksum & 0xFF;
-
-        // 获取报文中的校验和
-        int receivedChecksum = last[last.length - 1];
-
-        // 比较计算的校验和与接收到的校验和
-        if (calculatedChecksum == receivedChecksum) {
-            boolean isEqual = last[12] == sendBytes[12] &&
-                    last[13] == sendBytes[13];
-            result = isEqual ? "true" : "false";
-            return result;
-        } else {
-            result = "false";
-            return false;
+        int receivedChecksum = last[last.length - 1] & 0xFF;
+        if (calculatedChecksum != receivedChecksum) {
+            System.out.println("校验和错误");
+            return results;
         }
+
+        // 拆分发送报文的 TLV V 部分，用于一一对应
+        List<byte[]> sendVList = extractSendTLVVs(sendBytes);
+
+        int tlvIndex = 8; // TLV 从第 8 个字节开始
+        int checksumIndex = last.length - 1;
+        int sendVIndex = 0; // 对应发送报文的 V 下标
+
+        while (tlvIndex + 4 <= checksumIndex && sendVIndex < sendVList.size()) {
+            int tHigh = last[tlvIndex] & 0xFF;
+            int tLow  = last[tlvIndex + 1] & 0xFF;
+
+            int lHigh = last[tlvIndex + 2] & 0xFF;
+            int lLow  = last[tlvIndex + 3] & 0xFF;
+
+            int vLen = (lHigh << 8) | lLow;
+
+            if (tlvIndex + 4 + vLen > checksumIndex) break;
+
+            byte[] vBytes = new byte[vLen];
+            System.arraycopy(last, tlvIndex + 4, vBytes, 0, vLen);
+
+            int typeKey = (tHigh << 8) | tLow;
+
+            switch (typeKey) {
+                case 0x0A01: case 0x0A02: case 0x0A03:
+
+                case 0x0606: case 0x0601: case 0x0607:
+
+                case 0x0605: case 0x0602:
+
+                    results.add(compareVWithSend(vBytes, sendVList.get(sendVIndex)));
+                    break;
+                case 0x0232:
+
+                    results.add(parseSearchV(vBytes));
+                    break;
+
+                default:
+                    System.out.println("未处理的 TLV 类型：" + String.format("0x%04X", typeKey));
+                    break;
+            }
+
+            tlvIndex += 4 + vLen;
+            sendVIndex++;
+        }
+
+        return results;
+    }
+
+    /**
+     * 对比响应 V 和发送 V 是否一致
+     */
+    private static boolean compareVWithSend(byte[] vBytes, byte[] sendVBytes){
+        if (vBytes.length != sendVBytes.length) return false;
+        for (int i = 0; i < vBytes.length; i++) {
+            if (vBytes[i] != sendVBytes[i]) return false;
+        }
+        return true;
+    }
+
+    /**
+     * 解析 Search 类型 TLV V
+     */
+    private static List<Object> parseSearchV(byte[] vBytes){
+        if (vBytes.length < 11) return Arrays.asList("Invalid V length");
+
+        byte[] macBytes = new byte[6];
+        System.arraycopy(vBytes, 0, macBytes, 0, 6);
+        String mac = bytesToHex(macBytes);
+
+        String ip = String.format("%d.%d.%d.%d",
+                vBytes[6] & 0xFF,
+                vBytes[7] & 0xFF,
+                vBytes[8] & 0xFF,
+                vBytes[9] & 0xFF);
+
+        List<Object> res = new ArrayList<>();
+        res.add(mac);
+        res.add(ip);
+        return res;
+    }
+
+    /**
+     * 提取发送报文的 TLV V 部分
+     */
+    private static List<byte[]> extractSendTLVVs(byte[] sendBytes){
+        List<byte[]> vList = new ArrayList<>();
+        int index = 8; // TLV 从第 8 个字节开始
+        while (index + 4 <= sendBytes.length - 1) {
+            int lHigh = sendBytes[index + 2] & 0xFF;
+            int lLow  = sendBytes[index + 3] & 0xFF;
+            int vLen = (lHigh << 8) | lLow;
+
+            if (index + 4 + vLen > sendBytes.length - 1) break;
+
+            byte[] vBytes = new byte[vLen];
+            System.arraycopy(sendBytes, index + 4, vBytes, 0, vLen);
+            vList.add(vBytes);
+
+            index += 4 + vLen;
+        }
+        return vList;
+    }
+
+    private static String bytesToHex(byte[] bytes){
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) sb.append(String.format("%02X", b));
+        return sb.toString();
     }
 }

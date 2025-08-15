@@ -5,12 +5,14 @@ import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 public class CommandExecutor implements AutoCloseable{
     private final String localIp;
     private final int localPort;
     private final int remotePort;
     private DatagramSocket socket;
+
 
     public CommandExecutor(String localIp, int localPort, int remotePort) throws SocketException {
         this.localIp = localIp;
@@ -24,11 +26,12 @@ public class CommandExecutor implements AutoCloseable{
         socket.setSoTimeout(3000);
     }
 
-    public List<byte[]> sendAndReceive(String cmdId, byte[] sendBytes) throws Exception{
+
+    public List<byte[]> sendAndReceive(String cmdId, byte[] sendBytes, String sendIp) throws Exception{
         List<byte[]> responses = new ArrayList<>();
 
         //发送主命令
-        DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length, InetAddress.getByName("255.255.255.255"), remotePort);
+        DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length, InetAddress.getByName(sendIp), remotePort);
         socket.send(packet);
 
         System.out.print("发送指令 [" + cmdId + "] 报文：");
