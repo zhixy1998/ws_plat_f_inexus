@@ -53,4 +53,7 @@ public interface ExperimentTestService {
 
     // 最近创建的任务
     Result recentlyCreatedTasks(String updateBy, String measureType);
+
+    // 获取报告参数
+    Result obtainReportParameters(String taskId);
 }

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
 
 @Slf4j
 public class DataCountUtil {
@@ -42,8 +43,9 @@ public class DataCountUtil {
             BigDecimal result = BigDecimal.valueOf(powerValue)
                     .multiply(new BigDecimal("100"))
                     .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
-
-            return result.toPlainString();
+            DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
+            String formatted = df.format(result);
+            return formatted;
         }
 
         if (tPercent != null) {
@@ -57,8 +59,9 @@ public class DataCountUtil {
             double logValue = Math.log10(ratio.doubleValue());
             BigDecimal absorbance = BigDecimal.valueOf(-logValue)
                     .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
-
-            return absorbance.toPlainString();
+            DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
+            String formatted = df.format(absorbance);
+            return formatted;
         }
 
         return null;

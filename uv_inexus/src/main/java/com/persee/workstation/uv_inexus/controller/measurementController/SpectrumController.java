@@ -61,11 +61,6 @@ public class SpectrumController {
         return spectrumService.queryMeasuredData(dataVo);
     }
 
-    @GetMapping("obtainReportParameters")
-    @ApiOperation("获取报告参数接口")
-    public Result obtainReportParameters(@RequestParam String taskId) {
-        return spectrumService.obtainReportParameters(taskId);
-    }
 
 
     @GetMapping("queryMeasurementParameters")

@@ -19,8 +19,6 @@ public interface SpectrumService {
 
     Result updateMethodParameter(SpectralMethodParameterDto methodDto);
 
-    Result obtainReportParameters(String taskId);
-
     void testPythonProt();
 
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);

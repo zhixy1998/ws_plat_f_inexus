@@ -70,15 +70,15 @@ public class TMeasureTask{
     @TableField("device_serial_number")
     private String deviceSerialNumber;
 
+    // 图片数据
+    @TableField(typeHandler = JacksonTypeHandler.class, value = "image_data")
+    private String imageData;
+
     // 是否删除
     @TableField("is_delete")
     private String isDelete;
 
     @TableField("table_info")
     private String tableInfo;
-
-    // 图片数据
-    @TableField(typeHandler = JacksonTypeHandler.class, value = "image_data")
-    private String imageData;
 }
 
