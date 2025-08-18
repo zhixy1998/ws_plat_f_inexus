@@ -7,6 +7,8 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodPara
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
@@ -76,7 +78,8 @@ public interface PhotometricService {
     /**
      * 计算公式
      */
-    R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String methodId);
+//    R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String taskId);
+    R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter);
 
     /**
      * 测量及分析后数据保存，如有记录，认为是重测，做覆盖操作

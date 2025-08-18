@@ -1,11 +1,13 @@
 package com.persee.workstation.uv_inexus.util;
 
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
 
 @Slf4j
 public class DataCountUtil {
@@ -41,8 +43,9 @@ public class DataCountUtil {
             BigDecimal result = BigDecimal.valueOf(powerValue)
                     .multiply(new BigDecimal("100"))
                     .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
-
-            return result.toPlainString();
+            DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
+            String formatted = df.format(result);
+            return formatted;
         }
 
         if (tPercent != null) {
@@ -56,8 +59,9 @@ public class DataCountUtil {
             double logValue = Math.log10(ratio.doubleValue());
             BigDecimal absorbance = BigDecimal.valueOf(-logValue)
                     .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
-
-            return absorbance.toPlainString();
+            DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
+            String formatted = df.format(absorbance);
+            return formatted;
         }
 
         return null;
@@ -96,5 +100,19 @@ public class DataCountUtil {
         double ans = a2/a1 * 100;
         System.out.println("ans:" + ans);
         return String.valueOf(ans);
+    }
+
+    public static String countErOrEs(ChangeParam real, String identity){
+
+        String value = null;
+        if(identity.equals(WaveLengthEnum.es.getCode())){
+            double s = Double.parseDouble(real.getS());
+            value = String.valueOf((s / (4095 * 32)) * 100);
+        }
+        if(identity.equals(WaveLengthEnum.er.getCode())){
+            double r = Double.parseDouble(real.getR());
+            value = String.valueOf((r / (4095 * 32)) * 100);
+        }
+        return value;
     }
 }

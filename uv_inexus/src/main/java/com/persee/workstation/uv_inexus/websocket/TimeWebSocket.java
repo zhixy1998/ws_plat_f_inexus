@@ -153,7 +153,8 @@ public class TimeWebSocket extends TextWebSocketHandler {
                 // 计算当前执行的时间差（x 值）
                 long currentTime = System.currentTimeMillis();
                 double elapsedTime = (currentTime - startTime) / 1000.0;  // 毫秒转为秒
-
+                System.out.println("Elapsed time: " + elapsedTime + " seconds");
+                System.err.println("-------------------------------"+System.currentTimeMillis());
                 // 更新 x 值
                 BigDecimal xValue  = BigDecimal.valueOf(Math.floor(elapsedTime));
 
@@ -161,6 +162,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
                 String ip = deviceInfoService.getIp(deviceSerialNumber);
                 Command command = new Command(SetParamEnum.Measure.getComId(),new Object[]{});
                 ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
+                System.err.println("+++++++++++++++++++++++++++++++"+System.currentTimeMillis());
                 if (changeParam == null) {
                     scheduler.shutdown();
                     sendAndClose(session,"扫描失败");
@@ -175,8 +177,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
-                    System.err.println("-------------------------------"+y);
+                    System.out.println("____"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
+                    System.err.println("==============================="+System.currentTimeMillis());
                 }else if (param.getLuminosity().equals("2")){
                     String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
                     String y = DataCountUtil.changeTPercentOrAbs2(s,null);
@@ -185,8 +188,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
-                    System.err.println("-------------------------------"+y);
+                    System.out.println("-------------------------------"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
+                    System.err.println("==============================="+System.currentTimeMillis());
                 }else if (param.getLuminosity().equals("3")){
                     Double sData = Double.valueOf(changeParam.getS());
                     String y = String.valueOf((sData / (4095 * 32)) * 100);
@@ -195,8 +199,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
-                    System.err.println("-------------------------------"+y);
+                    System.out.println("-------------------------------"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
+                    System.err.println("==============================="+System.currentTimeMillis());
                 }else if (param.getLuminosity().equals("4")){
                     Double rData = Double.valueOf(changeParam.getR());
                     String y = String.valueOf((rData / (4095 * 32)) * 100);
@@ -205,8 +210,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
                     JSONObject point = new JSONObject();
                     point.put("x", xValue);
                     point.put("y", y);
-                    System.err.println("-------------------------------"+y);
+                    System.out.println("-------------------------------"+y);
                     session.sendMessage(new TextMessage(point.toJSONString()));
+                    System.err.println("==============================="+System.currentTimeMillis());
                 }else{
                     session.close();
                     sendAndClose(session,"光度模式错误");
@@ -215,7 +221,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }, 0, interval, scanUnit.equals("0")?TimeUnit.MINUTES:TimeUnit.SECONDS); // 每隔 1 秒执行一次,参数分别是 延迟时间、执行间隔、执行间隔单位
+        }, 0, interval, TimeUnit.SECONDS); // 每隔 1 秒执行一次,参数分别是 延迟时间、执行间隔、执行间隔单位
     }
 
     /**

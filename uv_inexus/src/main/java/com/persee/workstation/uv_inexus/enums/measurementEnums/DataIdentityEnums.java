@@ -3,7 +3,7 @@ package com.persee.workstation.uv_inexus.enums.measurementEnums;
 import lombok.Getter;
 
 @Getter
-public enum RationDataIdentityEnums {
+public enum DataIdentityEnums {
     result("result", "结果"),
     middle("middle", "中值"),
     sd("sd", "标准差"),
@@ -14,13 +14,13 @@ public enum RationDataIdentityEnums {
     private final String name;
 
 
-    RationDataIdentityEnums(String identity, String name){
+    DataIdentityEnums(String identity, String name){
         this.identity = identity;
         this.name = name;
     }
 
     public static String getName(String identity) {
-        for (RationDataIdentityEnums c : RationDataIdentityEnums.values()) {
+        for (DataIdentityEnums c : DataIdentityEnums.values()) {
             if (c.getIdentity().equals(identity)) {
                 return c.name;
             }

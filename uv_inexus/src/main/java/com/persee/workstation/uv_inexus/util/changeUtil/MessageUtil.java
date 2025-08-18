@@ -47,10 +47,11 @@ public class MessageUtil {
 
     /**
      * 光谱扫描调用
+     *
      * @param scanSocket 获取socket
-     * @param sendIp  机器ip
-     * @param cmdId  指令
-     * @param sendBytes 发送报文
+     * @param sendIp     机器ip
+     * @param cmdId      指令
+     * @param sendBytes  发送报文
      */
     public void scanSendAndDeal(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
 
@@ -75,14 +76,17 @@ public class MessageUtil {
 
             long lastReceiveTime = System.currentTimeMillis();
 
-            new Thread(() -> {scanReceiveAndDeal(scanSocket);}).start();
-        }catch (Exception e) {
+            new Thread(() -> {
+                scanReceiveAndDeal(scanSocket);
+            }).start();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     /**
      * 非光谱扫描指令使用的发送
+     *
      * @param currentSocket
      * @param sendIp
      * @param cmdId
@@ -147,7 +151,7 @@ public class MessageUtil {
             }
 
             return responses;
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
@@ -157,6 +161,7 @@ public class MessageUtil {
 
     /**
      * 非光谱扫描指令使用的发送2(用于时间扫描)
+     *
      * @param currentSocket
      * @param sendIp
      * @param cmdId
@@ -165,7 +170,7 @@ public class MessageUtil {
      */
     public List<byte[]> singleSendAndReceive2(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
         try {
-
+            System.err.println("////////////////////////////"+System.currentTimeMillis());
             List<byte[]> responses = new ArrayList<>();
 
             // 发送命令
@@ -178,50 +183,31 @@ public class MessageUtil {
             System.out.println();
 
             // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("InitSlit1Motor")
-                    || cmdId.equalsIgnoreCase("SetSlit1")
-                    || cmdId.equalsIgnoreCase("InitWlMotor")
-                    || cmdId.equalsIgnoreCase("InitLampMotor")
-                    || cmdId.equalsIgnoreCase("CheckWLamp")
-                    || cmdId.equalsIgnoreCase("CheckDLamp")
-                    || cmdId.equalsIgnoreCase("CheckWl")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
+            boolean isSlowCommand = cmdId.equalsIgnoreCase("Scan");
             int timeoutMs = isSlowCommand ? 10000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
 
-            long lastReceiveTime = System.currentTimeMillis();
-
             int count = 0;
             while (Constants.isRunning) {
-                try {
-                    DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
-                    currentSocket.receive(receivePacket);
-                    count++;
+                DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                currentSocket.receive(receivePacket);
+                count++;
 
-                    byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
-                    responses.add(reply);
+                byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+                responses.add(reply);
 
-                    System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
-                    System.out.print("十六进制回应：");
-                    for (byte b : reply) System.out.printf("%02X ", b);
-                    System.out.println();
+                System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                System.out.print("十六进制回应：");
+                for (byte b : reply) System.out.printf("%02X ", b);
+                System.out.println();
 
-                    lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1 && cmdId != "BaseLine" && cmdId != "BaseLineFast") {
-                        currentSocket.setSoTimeout(50);
-                        timeoutMs = 50;
-                    }
-
-                } catch (SocketTimeoutException e) {
-                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
+                if (count==3){
+                    break;
                 }
             }
-
+            System.err.println("[[[[[[[[[[[[[[[[[[[[[[[[[[[["+System.currentTimeMillis());
             return responses;
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
@@ -230,10 +216,11 @@ public class MessageUtil {
 
     /**
      * 定量测量微分调用
+     *
      * @param scanSocket 获取socket
-     * @param sendIp  机器ip
-     * @param cmdId  指令
-     * @param sendBytes 发送报文
+     * @param sendIp     机器ip
+     * @param cmdId      指令
+     * @param sendBytes  发送报文
      */
     public List<ChangeParam> RationDifferentialCall(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
 
@@ -257,19 +244,17 @@ public class MessageUtil {
             scanSocket.setSoTimeout(timeoutMs);
 
             List<ChangeParam> changeParams = parseScanFast(scanSocket);
-            if (changeParams==null){
+            if (changeParams == null) {
                 return null;
             }
             return changeParams;
 
 
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
-
-
 
 
 //    public List<byte[]> singleSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
@@ -360,17 +345,6 @@ public class MessageUtil {
 //    }
 
 
-
-
-
-
-
-
-
-
-
-
-
     public List<byte[]> quickSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
         try {
 
@@ -430,7 +404,7 @@ public class MessageUtil {
             }
 
             return responses;
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
@@ -439,6 +413,7 @@ public class MessageUtil {
 
     /**
      * 扫描接收并处理
+     *
      * @param scanSocket
      */
     private void scanReceiveAndDeal(DatagramSocket scanSocket) {
@@ -461,14 +436,12 @@ public class MessageUtil {
                     }
                 }
 
-                if(data[3] == 0x01&&changeParam!=null){
+                if (data[3] == 0x01 && changeParam != null) {
                     int s = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     changeParam.setS(String.valueOf(s));
-                    changeParam.setWl(String.valueOf(s/50.0f));
+                    changeParam.setWl(String.valueOf(s / 50.0f));
                     System.out.println("s = " + s);
-                }
-
-                else if(data[3] == 0x02&&changeParam!=null){
+                } else if (data[3] == 0x02 && changeParam != null) {
                     int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     int r = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                     changeParam.setD(String.valueOf(d));
@@ -519,14 +492,12 @@ public class MessageUtil {
                     }
                 }
 
-                if(data[3] == 0x01&&changeParam!=null){
+                if (data[3] == 0x01 && changeParam != null) {
                     int s = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     changeParam.setS(String.valueOf(s));
-                    changeParam.setWl(String.valueOf(s/50.0f));
+                    changeParam.setWl(String.valueOf(s / 50.0f));
                     System.out.println("s = " + s);
-                }
-
-                else if(data[3] == 0x02&&changeParam!=null){
+                } else if (data[3] == 0x02 && changeParam != null) {
                     int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     int r = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                     changeParam.setD(String.valueOf(d));
@@ -541,7 +512,7 @@ public class MessageUtil {
                     changeParamList.add(changeParam);
                     changeParam = null;  // 清空临时对象，准备接收下一个
                 }
-            }catch (Exception e){
+            } catch (Exception e) {
                 System.out.println("扫描结束");
                 return changeParamList;
             }
@@ -550,9 +521,9 @@ public class MessageUtil {
     }
 
 
-
     /**
      * 获取本机以太网IPv4地址
+     *
      * @return
      */
     private String getEthernetIPv4() {
@@ -566,14 +537,15 @@ public class MessageUtil {
                 String name = ni.getName().toLowerCase();
                 String displayName = ni.getDisplayName().toLowerCase();
                 //保留有线以太网接口（常见关键词）
-                if (!(name.contains("eth") || displayName.contains("ethernet") || displayName.contains("以太网"))) continue;
-
+                if (!(name.contains("eth") || displayName.contains("ethernet") || displayName.contains("以太网")))
+                    continue;
 
 
                 //排除 VMware、VirtualBox、Wi-Fi 等虚拟或无线网卡
                 if (name.contains("vmnet") || displayName.contains("vmware")) continue;
                 if (name.contains("vbox") || displayName.contains("virtualbox")) continue;
-                if (name.contains("wlan") || displayName.contains("wi-fi") || displayName.contains("wireless")) continue;
+                if (name.contains("wlan") || displayName.contains("wi-fi") || displayName.contains("wireless"))
+                    continue;
                 if (displayName.contains("virtual ethernet") || displayName.contains("以太网")) continue;
 
 
@@ -594,7 +566,6 @@ public class MessageUtil {
         }
         return null;
     }
-
 
 
 }

@@ -1,7 +1,7 @@
 package com.persee.workstation.uv_inexus.constant;
 
 public class PythonPathConstant {
-    private static String httpUrl= "http://192.168.51.26:8000/";
+    private static String httpUrl= "http://192.168.51.38:8002/";
     // 最小二乘接口路径
     public final static String LEAST_SQUARE_FIT = httpUrl+"least_squares_fitting";
     // 计算浓度或吸收率接口路径

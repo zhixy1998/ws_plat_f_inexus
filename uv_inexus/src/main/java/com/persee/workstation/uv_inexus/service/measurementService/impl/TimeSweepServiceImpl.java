@@ -1299,7 +1299,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<Map<String,String>> list = new ArrayList<>();
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
-            if(taskSpeciman.getIsTested().equals("1")){
+            if(taskSpeciman.getIsTested().equals("1")&&taskSpeciman.getDeleteType().equals("0")){
                 Map<String, String> map = new HashMap<>();
                 TMeasureData one = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>()
                         .eq("task_id", taskId)

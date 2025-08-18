@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
@@ -529,8 +530,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (method == null) {
             return Result.fail("方法不存在");
         }
-        PhotometricParameter Parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        List<String> waveLengths = Parameter.getWaveLength();
+        PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+        List<String> waveLengths = parameter.getWaveLength();
         LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
 
         if (StringUtils.hasText(taskId)) {
@@ -566,8 +567,19 @@ public class PhotometricServiceImpl implements PhotometricService {
             for (String waveLength : waveLengths) {
                 StringBuilder s1 = new StringBuilder();
                 StringBuilder s2 = new StringBuilder();
+
+                if (parameter.getLuminosity().equals(WaveLengthEnum.es.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())) {
+                    String luminosity = parameter.getLuminosity();
+                    String name = WaveLengthEnum.getName(luminosity);
+
+                    s1.append(waveLength).append(name);
+                    s2.append(waveLength).append("-").append(luminosity);
+                    ans.add(new HeadVO(s1.toString(), s2.toString()));
+                    continue;
+                }
+
                 if (!allDisplay) {
-                    String luminosity = Parameter.getLuminosity();
+                    String luminosity = parameter.getLuminosity();
                     String name = WaveLengthEnum.getName(luminosity);
 
                     s1.append(waveLength).append(name);
@@ -589,9 +601,9 @@ public class PhotometricServiceImpl implements PhotometricService {
                 ans.add(headVO2);
             }
         }
-        if (Parameter.getResultParams() != null && !Parameter.getResultParams().isEmpty()) {
+        if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
 
-            for (PreCountResultParam param : Parameter.getResultParams()) {
+            for (PreCountResultParam param : parameter.getResultParams()) {
                 StringBuilder s2 = new StringBuilder();
                 String s1 = param.getResultName() + "(" + param.getUnit() + ")";
                 s2.append(param.getResultIdentity()).append("-").append(param.getFormulaText());
@@ -603,9 +615,11 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(new ArrayList<>(ans));
     }
 
-    @Override
-    public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String methodId) {
+//    @Override
+    public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String taskId) {
         TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        String methodId = task.getMethodKey();
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
 
         if (!StringUtils.hasText(method.getMeasurementParamInfo())) {
@@ -680,6 +694,87 @@ public class PhotometricServiceImpl implements PhotometricService {
         return R.ok(countList);
     }
 
+    @Override
+    public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter) {
+
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            return R.fail("缺少分析参数，无法计算分析");
+        }
+        TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+        if (snapshot.getMapRelation() == null || snapshot.getMapRelation().isEmpty()) {
+            return R.fail("缺少映射关系，无法计算分析");
+        }
+        String jsonString = JSON.toJSONString(sample);
+        JSONObject allData = JSON.parseObject(jsonString);
+        if (StringUtils.hasText(sample.getNewColData())) {
+            JSONObject object = JSONObject.parseObject(sample.getNewColData());
+            allData.putAll(object);
+        }
+        LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureAnalysisData::getTaskId, task.getId())
+                .eq(TMeasureAnalysisData::getSampleKey, sample.getId())
+                .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                .last("limit 1");
+        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(queryWrapper);
+        if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
+            String analysisParam = one.getAnalysisParam();
+            JSONObject object = JSON.parseObject(analysisParam);
+            allData.putAll(object);
+        }
+
+        for (PhotometricOriginDataInfo dataInfo : vo) {
+            JSONObject object = new JSONObject();
+            if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
+                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue()==null?0:dataInfo.getAbsValue());
+                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue()==null?0:dataInfo.getTPercentValue());
+                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.es.getCode(), dataInfo.getEsValue()==null?0:dataInfo.getEsValue());
+                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.er.getCode(), dataInfo.getErValue()==null?0:dataInfo.getErValue());
+                allData.putAll(object);
+            }
+        }
+
+        StringBuilder values = new StringBuilder();
+
+        StringBuilder identity = new StringBuilder();
+
+        for (InputParam inputParam : parameter.getSampleInputParams()) {
+            boolean b = snapshot.getMapRelation().stream().anyMatch(
+                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity()));
+
+            Optional<InputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
+                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
+            if (!mapTableHead.isPresent()) {
+                return R.fail("缺少参数映射：" + inputParam.getParamName());
+            }
+            identity.append(mapTableHead.get().getHeadIdentity()).append(",");
+            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            if (!StringUtils.hasText(s)) {
+                return R.fail("缺少数据！");
+            }
+            values.append(s).append(",");
+        }
+        identity.deleteCharAt(identity.length()-1);
+        values.deleteCharAt(values.length()-1);
+
+        List<PhotometricCountDataInfo> countList = new ArrayList<>();
+        for (PreCountResultParam param : parameter.getResultParams()) {
+            String[] split = param.getFormulaText().split("=");
+            String text = split[split.length - 1];
+            String result = RestUtil.sum(text, identity.toString(), values.toString());
+            PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
+            BeanUtils.copyProperties(param, countDataInfo);
+            JSONObject resultJson = JSONObject.parseObject(result);
+
+            if (!resultJson.get("code").equals("0") || !resultJson.get("code").equals(0)) {
+                return R.fail("公式计算出错！" + resultJson.get("message"));
+            }
+            countDataInfo.setCountValue(resultJson.get("result").toString());
+            countList.add(countDataInfo);
+        }
+
+        return R.ok(countList);
+    }
+
 
     @Override
     public Result<List<Map<String, String>>> queryData(String taskId, Boolean allDisplay) {
@@ -724,9 +819,12 @@ public class PhotometricServiceImpl implements PhotometricService {
                 if (StringUtils.hasText(data.getOriginalCalculationData())){
                     List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
 
+
                     for (PhotometricOriginDataInfo wlData : wlDataList) {
-                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
-                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue());
+                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue() == null ? null : wlData.getAbsValue());
+                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue() == null ? null : wlData.getTPercentValue());
+
+
 
                         map.put("samplingTime", data.getSamplingTime());
 

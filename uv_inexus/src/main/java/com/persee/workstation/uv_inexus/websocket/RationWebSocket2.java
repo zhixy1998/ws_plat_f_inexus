@@ -400,7 +400,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
             String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
             RationWavelengthDataInfo originDataInfo = new RationWavelengthDataInfo();
-            originDataInfo.setIdentity(RationDataIdentityEnums.result.getIdentity());
+            originDataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
             originDataInfo.setWavelength(waveLength);
 
             originDataInfo.setAbsValue(data);

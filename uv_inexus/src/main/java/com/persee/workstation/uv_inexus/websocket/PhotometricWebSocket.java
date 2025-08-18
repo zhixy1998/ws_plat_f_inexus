@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -139,7 +141,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             }
             removeOldData(taskId, sampleId);
 
-            singleSampleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+            singleSampleMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
 
         } else {
             for (TaskSpecimen specimen : taskSpecimen) {
@@ -147,7 +149,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
                     System.out.println("删除的样品,不需要测量");
                     continue;
                 }
-                R<Boolean> r = singleSampleMeasure(specimen, parameter, taskId, task.getMethodKey(), deviceSerialNumber, session.getId());
+                R<Boolean> r = singleSampleMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
                 if (!r.getSuccess()) {
                     sendAndClose(session, "测量失败");
                     return;
@@ -196,13 +198,12 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         }
     }
 
-    public R<Boolean> singleSampleMeasure(TaskSpecimen specimen, PhotometricParameter parameter, String taskId, String methodId, String deviceSerialNumber, String sessionId) throws IOException {
+    public R<Boolean> singleSampleMeasure(TaskSpecimen specimen, PhotometricParameter parameter, TMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
 
         String sampleKey = specimen.getSpecimenKey();
         TMeasureSample sample = tMeasureSampleService.getById(sampleKey);
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
 
         List<PhotometricOriginDataInfo> originDataList = new ArrayList<>();
         List<Command> list = new ArrayList<>();
@@ -234,38 +235,14 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
                     break;
                 }
             }
-            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
-            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
-
-            PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
-            originDataInfo.setMode(parameter.getLuminosity());
-            originDataInfo.setWavelength(waveLength);
-            if (parameter.getLuminosity().equals(WaveLengthEnum.abs.getCode())) {
-                originDataInfo.setAbsValue(data);
-                originDataInfo.setTPercentValue(tPercent);
-
-            } else {
-                originDataInfo.setTPercentValue(tPercent);
-                originDataInfo.setAbsValue(data);
-            }
-            originDataList.add(originDataInfo);
-
-            if (session.isOpen()) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("sampleId", sampleKey);
-                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
-                jsonObject.put("value", originDataInfo.getAbsValue());
-                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-
-                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
-                jsonObject.put("value", originDataInfo.getTPercentValue());
-                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-
-            }
+            //处理数据
+            PhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), response, params, null);
+            originDataList.add(dataInfo);
             list.clear();
         }
 
-        R<List<PhotometricCountDataInfo>> countedData = photometricService.formula(originDataList, sampleKey, methodId);
+
+        R<List<PhotometricCountDataInfo>> countedData = photometricService.formula(originDataList, sample, task, parameter);
 
         if (!countedData.getSuccess()) {
             log.info("计算出错");
@@ -295,9 +272,8 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         LocalDateTime endTime = LocalDateTime.now();
 
         PhotometricSampleAndDataVO sampleAndDataVO = new PhotometricSampleAndDataVO();
-        sampleAndDataVO.setTaskId(taskId);
+        sampleAndDataVO.setTaskId(task.getId());
         sampleAndDataVO.setSampleId(sampleKey);
-        sampleAndDataVO.setSample(sample);
         sampleAndDataVO.setWavelengthData(originDataList);
         sampleAndDataVO.setCountData(countDataInfos);
         sampleAndDataVO.setMachineData(machineData);
@@ -307,6 +283,190 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         photometricService.savePhotometricMeasureData(sampleAndDataVO);
         return R.ok();
     }
+
+
+
+    public R<PhotometricSampleAndDataVO> singleSampleRepeatMeasure(TaskSpecimen specimen, PhotometricParameter parameter, TMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
+
+        WebSocketSession session = sessions.get(sessionId);
+
+        String sampleKey = specimen.getSpecimenKey();
+        TMeasureSample sample = tMeasureSampleService.getById(sampleKey);
+
+        List<PhotometricOriginDataInfo> originDataList = new ArrayList<>();
+        List<Command> list = new ArrayList<>();
+        List<ChangeParam> machineData = new ArrayList<>();
+
+        List<String> waveLengths = parameter.getWaveLength();
+
+        list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        LocalDateTime startTime = LocalDateTime.now();
+        for (int i = 0; i < Integer.parseInt(parameter.getRepetitionTime()); i++) {
+
+            for (String waveLength : waveLengths) {
+                list.add(new Command("SetWl", new Object[]{waveLength}));
+                list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+                list.add(new Command("Measure", new Object[]{}));
+
+                String ip = infoService.getIp(deviceSerialNumber);
+                R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                if (!res.getSuccess()) {
+                    log.info("测量出错");
+                    return R.fail("测量出错");
+                }
+                ChangeParam response = res.getData();
+                response.setWl(waveLength + "-" + i);
+                machineData.add(response);
+                List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+
+                PhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), response, params, DataIdentityEnums.middle.getIdentity()+ i);
+
+                originDataList.add(dataInfo);
+                list.clear();
+            }
+        }
+        //循环测完，开始计算平均值
+        if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())) {
+            Map<String, Double> erValues = originDataList.stream()
+                    .collect(Collectors.groupingBy(
+                            PhotometricOriginDataInfo::getWavelength,
+                            Collectors.averagingDouble(info -> Double.parseDouble(info.getErValue()))
+                    ));
+            for (String waveLength : waveLengths) {
+                PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
+                originDataInfo.setMode(parameter.getLuminosity());
+                originDataInfo.setWavelength(waveLength);
+                originDataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
+                originDataInfo.setErValue(String.valueOf(erValues.get(waveLength)));
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.er.getCode());
+                jsonObject.put("value", originDataInfo.getErValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                originDataList.add(originDataInfo);
+            }
+
+        } else if (parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+            Map<String, Double> esValues = originDataList.stream()
+                    .collect(Collectors.groupingBy(
+                            PhotometricOriginDataInfo::getWavelength,
+                            Collectors.averagingDouble(info -> Double.parseDouble(info.getEsValue()))
+                    ));
+            for (String waveLength : waveLengths) {
+                PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
+                originDataInfo.setMode(parameter.getLuminosity());
+                originDataInfo.setWavelength(waveLength);
+                originDataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
+                originDataInfo.setEsValue(String.valueOf(esValues.get(waveLength)));
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.es.getCode());
+                jsonObject.put("value", originDataInfo.getEsValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                originDataList.add(originDataInfo);
+            }
+        } else {
+            Map<String, Double> avgAbsValues = originDataList.stream()
+                    .collect(Collectors.groupingBy(
+                            PhotometricOriginDataInfo::getWavelength,
+                            Collectors.averagingDouble(info -> Double.parseDouble(info.getAbsValue()))
+                    ));
+            Map<String, Double> tPercentValues = originDataList.stream()
+                    .collect(Collectors.groupingBy(
+                            PhotometricOriginDataInfo::getWavelength,
+                            Collectors.averagingDouble(info -> Double.parseDouble(info.getTPercentValue()))
+                    ));
+
+            for (String waveLength : waveLengths) {
+                PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
+                originDataInfo.setMode(parameter.getLuminosity());
+                originDataInfo.setWavelength(waveLength);
+                originDataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
+                originDataInfo.setAbsValue(String.valueOf(avgAbsValues.get(waveLength)));
+                originDataInfo.setTPercentValue(String.valueOf(tPercentValues.get(waveLength)));
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", sampleKey);
+
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
+                jsonObject.put("value", originDataInfo.getAbsValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
+                jsonObject.put("value", originDataInfo.getTPercentValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                originDataList.add(originDataInfo);
+            }
+        }
+        PhotometricSampleAndDataVO sampleAndDataVO = new PhotometricSampleAndDataVO();
+        sampleAndDataVO.setSampleId(sampleKey);
+        sampleAndDataVO.setTaskId(task.getId());
+        sampleAndDataVO.setWavelengthData(originDataList);
+        sampleAndDataVO.setMachineData(machineData);
+        sampleAndDataVO.setStartTime(startTime);
+        sampleAndDataVO.setEndTime(LocalDateTime.now());
+
+        return R.ok(sampleAndDataVO);
+    }
+
+    private PhotometricOriginDataInfo dealAndSendMessage(WebSocketSession session, String waveLength, String sampleKey, String luminosity, ChangeParam response ,List<ChangeParam> params, String identity) throws IOException {
+
+        PhotometricOriginDataInfo originDataInfo = new PhotometricOriginDataInfo();
+        originDataInfo.setMode(luminosity);
+        originDataInfo.setWavelength(waveLength);
+        originDataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("sampleId", sampleKey);
+        if (identity != null) {
+            jsonObject.put("identity",  identity);
+        }
+
+        if (luminosity.equals(WaveLengthEnum.er.getCode())) {
+            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.er.getCode());
+            originDataInfo.setErValue(s);
+
+            jsonObject.put("key", waveLength + "-" + WaveLengthEnum.er.getCode());
+            jsonObject.put("value", originDataInfo.getErValue());
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+        } else if (luminosity.equals(WaveLengthEnum.es.getCode())) {
+            String s = DataCountUtil.countErOrEs(response, WaveLengthEnum.es.getCode());
+            originDataInfo.setEsValue(s);
+
+            jsonObject.put("key", waveLength + "-" + WaveLengthEnum.es.getCode());
+            jsonObject.put("value", originDataInfo.getEsValue());
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+        } else {
+            ChangeParam originRsd = new ChangeParam();
+            for (ChangeParam param : params) {
+                if (param.getWl().equals(waveLength)) {
+                    BeanUtils.copyProperties(param, originRsd);
+                    break;
+                }
+            }
+            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
+            String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+            originDataInfo.setAbsValue(data);
+            originDataInfo.setTPercentValue(tPercent);
+
+            jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
+            jsonObject.put("value", originDataInfo.getAbsValue());
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+            jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
+            jsonObject.put("value", originDataInfo.getTPercentValue());
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+        }
+        return originDataInfo;
+    }
+
 
 
     /**
