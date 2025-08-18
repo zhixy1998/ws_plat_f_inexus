@@ -38,7 +38,6 @@ public class SoftwareActivationPO extends BasePO {
     private String type;
 
     // 激活状态
-    @JsonSerialize(using = NullToDashSerializer.class)
     @TableField("activation_status") 
     private int activationStatus;
 
