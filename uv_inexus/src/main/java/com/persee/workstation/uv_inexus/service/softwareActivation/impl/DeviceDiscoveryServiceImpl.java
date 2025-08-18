@@ -127,7 +127,7 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         if (searchParams!= null && searchParams.containsKey("deviceNumber")) {
             String keyword = searchParams.get("deviceNumber").trim().toLowerCase();
             if (!keyword.isEmpty()) {
-                queryWrapper.like(SoftwareActivationPO::getDeviceNumber, keyword);
+                queryWrapper.eq(SoftwareActivationPO::getDeviceNumber, keyword);
                 log.info("数据库模糊查询条件：deviceNumber LIKE %{}%，排序：isAddStatus DESC", keyword);
             }
         }
