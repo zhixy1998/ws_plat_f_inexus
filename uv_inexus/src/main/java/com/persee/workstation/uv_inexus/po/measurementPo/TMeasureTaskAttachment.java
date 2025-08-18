@@ -30,12 +30,6 @@ public class TMeasureTaskAttachment implements Serializable {
     private String taskId;
 
     /**
-     * 表格信息，保护映射信息和样品表头信息
-     */
-    @TableField("table_info")
-    private String tableInfo;
-
-    /**
      * 平行样
      */
     @TableField("parallel_sample")
