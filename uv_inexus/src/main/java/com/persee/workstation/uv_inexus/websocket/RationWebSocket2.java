@@ -475,6 +475,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
         list.add(new Command(SetParamEnum.SetCellPos.getComId(), new Object[]{sample.getSampleLocation()}));
         list.add(new Command(SetParamEnum.SetScanWlInterval.getComId(), new Object[]{1}));
 
+        List<List<String>> originDataList = new ArrayList<>();
         for (String waveLength : parameter.getWaveLength()) {
             List<String> params = new ArrayList<>();
             list.add(new Command(SetParamEnum.SetStartWl.getComId(), new Object[]{Double.valueOf(waveLength)+5}));

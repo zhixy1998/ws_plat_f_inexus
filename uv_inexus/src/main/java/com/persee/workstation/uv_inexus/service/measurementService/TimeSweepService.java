@@ -2,8 +2,10 @@ package com.persee.workstation.uv_inexus.service.measurementService;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
 
 import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 
 public interface TimeSweepService {
     // 查询项目任务方法接口
@@ -95,4 +97,9 @@ public interface TimeSweepService {
 
     // 保存数据接口
     Result saveData(String taskId);
+
+    // 查询报告表格数据接口
+    List<List<PeakValleyMarking>> queryReportFormData(String taskId);
+
+
 }

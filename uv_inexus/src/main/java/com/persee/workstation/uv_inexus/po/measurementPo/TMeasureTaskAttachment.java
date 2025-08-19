@@ -6,16 +6,12 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.io.Serializable;
-
 /**
  * 附属表实体类
  */
 @Data
 @TableName("t_measure_task_attachment")
-public class TMeasureTaskAttachment implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class TMeasureTaskAttachment {
 
     /**
      * 附属id

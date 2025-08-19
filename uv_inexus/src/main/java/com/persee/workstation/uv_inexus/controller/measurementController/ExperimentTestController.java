@@ -111,7 +111,8 @@ public class ExperimentTestController {
 
     @GetMapping("reportDataQuery")
     @ApiOperation("报告表格数据查询")
-    public Result reportDataQuery(@RequestParam String taskId,@RequestParam String reportName){
+    public Result reportDataQuery(@RequestParam String taskId,
+                                  @RequestParam String reportName){
         return experimentTestService.reportDataQuery(taskId,reportName);
     }
 

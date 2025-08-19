@@ -33,6 +33,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportDataVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -86,6 +87,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     // 标准预处理服务
     @Autowired
     private StandardPretreatmentService standardPretreatmentService;
+
+    @Autowired
+    private TMeasureTaskAttachmentService tMeasureTaskAttachmentService;
 
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -427,6 +431,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (!save) {
             return Result.fail("保存失败");
         }
+        TMeasureTaskAttachment tMeasureTaskAttachment = new TMeasureTaskAttachment();
+        tMeasureTaskAttachment.setTaskId(tMeasureTask.getId());
+        tMeasureTaskAttachmentService.save(tMeasureTaskAttachment);
         ProjectTaskMethodVo vo = new ProjectTaskMethodVo();
         vo.setTaskId(tMeasureTask.getId());
         vo.setTaskName(tMeasureTask.getTaskName());
@@ -673,7 +680,40 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
             return Result.ok(list);
         }else if (reportName.equals("时间扫描表格")){
-            return Result.ok("暂未开放");
+            TimeSweepReportDataVo vo = new TimeSweepReportDataVo();
+
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+
+            TimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+
+
+            List<HeadVO> heads = new ArrayList<>();
+            heads.add(new HeadVO("序号", "serialNumber"));
+            heads.add(new HeadVO("峰/谷", "type"));
+            heads.add(new HeadVO("波长(nm)", "waveLength"));
+            heads.add(new HeadVO(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":"3".equals(param.getLuminosity())?"Es":"Er", "luminosity"));
+            heads.add(new HeadVO("注释", "remark"));
+            vo.setHeadList(heads);
+
+
+            List<List<PeakValleyMarking>> list = timeSweepService.queryReportFormData(taskId);
+            List<Map<String, String>> dataList = new ArrayList<>();
+            int i = 1;
+            for (List<PeakValleyMarking> markings : list) {
+                for (PeakValleyMarking marking : markings) {
+                    Map<String, String> map = new HashMap<>();
+                    map.put("serialNumber", String.valueOf(i));
+                    map.put("type", marking.getType());
+                    map.put("waveLength", marking.getX());
+                    map.put("luminosity", marking.getY());
+                    map.put("remark", marking.getRemark()==null||marking.getRemark().equals("")?"":marking.getRemark());
+                    dataList.add(map);
+                }
+                i++;
+            }
+            vo.setDataList(dataList);
+
+            return Result.ok(vo);
         }else{
             return Result.fail("类型错误,请重新选择");
         }

@@ -105,6 +105,8 @@ public class SpectrumServiceImpl implements SpectrumService {
     // 标准预处理服务
     @Autowired
     private StandardPretreatmentService standardPretreatmentService;
+    @Autowired
+    private TMeasureTaskAttachmentService tMeasureTaskAttachmentService;
 
 
     /**
@@ -444,6 +446,9 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result fourOperationsPort(FourOperationsParamDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
         if (analysisData.size()>0){
@@ -515,21 +520,21 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
-        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
         List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
-        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
         for (int i = 0; i < peakX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(peakX.get(i).toString());
-            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
             peakValleyMarking.setType("波峰");
             peakData.add(peakValleyMarking);
         }
         for (int i = 0; i < valleyX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(valleyX.get(i).toString());
-            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
             peakValleyMarking.setType("波谷");
             valleyData.add(peakValleyMarking);
         }
@@ -571,6 +576,9 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result advancedOperationsPort(AdvancedOperationsDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
         if (analysisData.size()>0){
@@ -611,21 +619,21 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
-        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
         List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
-        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
         for (int i = 0; i < peakX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(peakX.get(i).toString());
-            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
             peakValleyMarking.setType("波峰");
             peakData.add(peakValleyMarking);
         }
         for (int i = 0; i < valleyX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(valleyX.get(i).toString());
-            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
             peakValleyMarking.setType("波谷");
             valleyData.add(peakValleyMarking);
         }
@@ -666,6 +674,9 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result luminanceModeConversionPort(LuminosityConversionDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
         if (analysisData.size()>0){
@@ -729,21 +740,21 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
-        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
         List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
-        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
         for (int i = 0; i < peakX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(peakX.get(i).toString());
-            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
             peakValleyMarking.setType("波峰");
             peakData.add(peakValleyMarking);
         }
         for (int i = 0; i < valleyX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(valleyX.get(i).toString());
-            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
             peakValleyMarking.setType("波谷");
             valleyData.add(peakValleyMarking);
         }
@@ -987,6 +998,9 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result smoothnessPort(SmoothnessDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
         if (analysisData.size()>0){
@@ -1031,21 +1045,21 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
-        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
         List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
-        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
         for (int i = 0; i < peakX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(peakX.get(i).toString());
-            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
             peakValleyMarking.setType("波峰");
             peakData.add(peakValleyMarking);
         }
         for (int i = 0; i < valleyX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(valleyX.get(i).toString());
-            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
             peakValleyMarking.setType("波谷");
             valleyData.add(peakValleyMarking);
         }
@@ -1085,6 +1099,9 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result differentialPort(DifferentialDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()));
         if (analysisData.size()>0){
@@ -1130,21 +1147,21 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
-        List<Double> peakY = (List<Double>) resultMap1.get("peak_y");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
         List<PeakValleyMarking> valleyData = new ArrayList<>();
         List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
-        List<Double> valleyY = (List<Double>) resultMap2.get("valley_y");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
         for (int i = 0; i < peakX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(peakX.get(i).toString());
-            peakValleyMarking.setY(peakY.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
             peakValleyMarking.setType("波峰");
             peakData.add(peakValleyMarking);
         }
         for (int i = 0; i < valleyX.size(); i++) {
             PeakValleyMarking peakValleyMarking = new PeakValleyMarking();
             peakValleyMarking.setX(valleyX.get(i).toString());
-            peakValleyMarking.setY(valleyY.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
             peakValleyMarking.setType("波谷");
             valleyData.add(peakValleyMarking);
         }
@@ -1684,6 +1701,12 @@ public class SpectrumServiceImpl implements SpectrumService {
             task.setProjectItemKey(method.getProjectItemKey());
             task.setIsDelete("0");
             tMeasureTaskService.save(task);
+            TMeasureTaskAttachment tMeasureTaskAttachment = new TMeasureTaskAttachment();
+            tMeasureTaskAttachment.setTaskId(task.getId());
+            boolean save = tMeasureTaskAttachmentService.save(tMeasureTaskAttachment);
+            if (!save) {
+                return Result.fail("保存任务附属失败");
+            }
         }
         List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         if (taskSpecimenList != null&&(paramDto.getDelSampleIds()!=null||paramDto.getDelSampleIds().isEmpty())) {
@@ -1784,18 +1807,37 @@ public class SpectrumServiceImpl implements SpectrumService {
     public Result uploadImage(SpectrumImageUpload upload) {
         String s = upload.getImage().split(",")[1];
         byte[] bytes = Base64.decodeBase64(s);
-        if (upload.getType().equals("0")){
-            TMeasureData byId = tMeasureDataService.getById(upload.getId());
-            byId.setDataImage(bytes);
-            boolean update = tMeasureDataService.updateById(byId);
-            return Result.ok(update);
-        }else if (upload.getType().equals("1")){
-            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(upload.getId());
-            byId.setAnalysisDataImage(bytes);
-            boolean update = tMeasureAnalysisDataService.updateById(byId);
-            return Result.ok(update);
+        if (upload.getImageType().equals("0")){
+            if (upload.getType().equals("0")){
+                TMeasureData byId = tMeasureDataService.getById(upload.getId());
+                byId.setDataImage(bytes);
+                boolean update = tMeasureDataService.updateById(byId);
+                return Result.ok(update);
+            }else if (upload.getType().equals("1")){
+                TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(upload.getId());
+                byId.setAnalysisDataImage(bytes);
+                boolean update = tMeasureAnalysisDataService.updateById(byId);
+                return Result.ok(update);
+            }else{
+                return Result.fail("type类型错误");
+            }
         }else{
-            return Result.fail("type类型错误");
+            // 根据任务id查询任务附属表的内容
+            TMeasureTaskAttachment byId = tMeasureTaskAttachmentService.getById(upload.getId());
+            if (byId == null){
+                return Result.fail("任务附属不存在");
+            }
+            if ("0".equals(upload.getImageType())){
+                byId.setOverlapImage(bytes);
+            }else if ("1".equals(upload.getImageType())){
+                byId.setTiledImage(bytes);
+            }else if ("2".equals(upload.getImageType())){
+                byId.setAddrImage(bytes);
+            }else{
+                return Result.fail("Type类型错误");
+            }
+            boolean update = tMeasureTaskAttachmentService.updateById(byId);
+            return Result.ok(update);
         }
     }
 
@@ -1942,6 +1984,12 @@ public class SpectrumServiceImpl implements SpectrumService {
             task.setStartTime(LocalDateTime.now());
             task.setDeviceSerialNumber(deviceSerialNumber);
             tMeasureTaskService.save(task);
+            TMeasureTaskAttachment taskAttachment = new TMeasureTaskAttachment();
+            taskAttachment.setTaskId(task.getId());
+            boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
+            if (!save){
+                return Result.fail("保存失败");
+            }
         }
         // 将listR中的数据保存到task的校零参数中
         task.setZeroParam(JSON.toJSONString(listR.getData()));
