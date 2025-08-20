@@ -137,6 +137,17 @@
             <artifactId>MathParser.org-mXparser</artifactId>
             <version>6.1.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+            <version>5.7.3</version> <!-- 版本可根据你的 Spring Boot 版本选择，如 5.7.x 或 6.x -->
+        </dependency>
         <!-- <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
