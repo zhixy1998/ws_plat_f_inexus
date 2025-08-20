@@ -17,16 +17,16 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @ApiModel("权限关联表")
-@TableName("t_sys_role_permission")
-public class SysRolePermissionPO extends BasePO {
+@TableName("t_sys_group_permission")
+public class SysGroupPermissionPO extends BasePO {
 
     @TableId(type = IdType.AUTO)
     @ApiModelProperty("关联ID")
     private String id;
 
-    @TableField("role_id")
+    @TableField("group_id")
     @ApiModelProperty("角色ID，关联角色表")
-    private String roleId;
+    private String groupId;
 
     @TableField("perm_id")
     @ApiModelProperty("权限ID，关联权限表")
