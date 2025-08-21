@@ -17,4 +17,6 @@ public class DifferentialDto {
     private String coefficient;
     // 分析数据名称
     private String analysisDataName;
+    // 任务id
+    private String taskId;
 }

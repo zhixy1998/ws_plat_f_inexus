@@ -2,8 +2,6 @@ package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import lombok.Data;
 
-import java.util.List;
-
 @Data
 public class SpectralReportVo {
 
@@ -45,6 +43,8 @@ public class SpectralReportVo {
     private String StairCorrection;
     // 光谱扫描图片
     private byte[] SpectrumScanImage;
+    // 时间扫描图片
+    private byte[] TimeScanImage;
     // 原始数据
     private String OriginalData;
     // 增益

@@ -36,7 +36,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -246,116 +245,20 @@ public class SpectrumWebSocket2 extends TextWebSocketHandler {
                         }
                     }
                 }else{
-                    // ===== 重复模式：手动发命令 N 次，分组采集，然后平均 =====
-                    List<List<Double>> allY = new ArrayList<>();
-                    List<Double> xRef = null;
-
-                    // 用于避免保存线程过早执行
-                    final boolean[] repeatCompleted = {false};
-                    final LocalDateTime[] lastEndTime = {null};
-
+                    // ===== 重复模式 =====
                     for (int r = 0; r < repeatCount; r++) {
-                        // 第1次：如果外面没发命令，这里补发；如果你外面已经发了，可按需保留
-                        devMessageUtil.getMeasureData(command, ip);
+                        doOneMeasurement(session, command, spectrumParameter, task, taskId, sampleId, deviceSerialNumber,ip);
 
-                        // 等待本组数据开始进入
-                        while (Constants.instrumentData.size() == 0) {
-                            sleep(20);
-                        }
-
-                        // 每次都用一份“新的”基线数据副本（避免 remove 破坏）
-                        List<ChangeParam> baselineCopy = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-
-                        List<Double> x = new ArrayList<>();
-                        List<Double> y = new ArrayList<>();
-
-                        // 阻塞消费：直到遇到 EndData 或 baselineCopy 用完
-                        while (true) {
-                            // 先看是否已到本组结束标记
-                            List<String> snapshot = new ArrayList<>(Constants.instrumentData);
-                            if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
-                                // 把当前剩余的 measurd_data 也吃干净
-                                while (!baselineCopy.isEmpty() && !Constants.measurd_data.isEmpty()) {
-                                    calcOnePoint(spectrumParameter, baselineCopy, x, y);
-                                }
-                                break;
-                            }
-                            // 平时持续把已有的数据吃掉
-                            while (!baselineCopy.isEmpty() && !Constants.measurd_data.isEmpty()) {
-                                calcOnePoint(spectrumParameter, baselineCopy, x, y);
-                            }
-                            sleep(10);
-                        }
-
-                        // 记录一次的 x 作为参考
-                        if (xRef == null) xRef = new ArrayList<>(x);
-                        allY.add(y);
-
-                        // 记录本次结束时间（如果你的驱动会写入）
-                        lastEndTime[0] = Constants.endTime;
-
-                        // 不是最后一次则等待间隔
+                        // 如果不是最后一次 → 等待 interval 再来下一次
                         if (r < repeatCount - 1) {
-                            // 清理“上一组”的结束标记，避免干扰下一组逻辑
-                            Constants.instrumentData.clear();
-                            Constants.measurd_data.clear();
-                            Constants.originalCalculationData.clear();
-                            // 重置 endTime，防止保存线程提前触发
-                            Constants.endTime = null;
-
-                            sleep(repeatInterval);
+                            try { sleep(repeatInterval); } catch (InterruptedException e) { handleTransportError(session, e); }
                         }
                     }
 
-                    // 求平均
-                    List<Double> avgY = new ArrayList<>();
-                    for (int i = 0; i < xRef.size(); i++) {
-                        double sum = 0;
-                        for (List<Double> yi : allY) sum += yi.get(i);
-                        avgY.add(sum / repeatCount);
-                    }
-
-                    // 门限消除（可选，保持你原逻辑）
-                    Map<String, Object> resultMap = new HashMap<>();
-                    if ("true".equals(spectrumParameter.getLadderCorrection())) {
-                        SystemAlgorithmConfVO systemAlgorithmConfVO = systemAlgorithmConfService.queryAlgorithmConf();
-                        if (systemAlgorithmConfVO == null) {
-                            session.sendMessage(new TextMessage("门限消除算法配置为空"));
-                        } else {
-                            HttpHeaders headers = new HttpHeaders();
-                            headers.setContentType(MediaType.APPLICATION_JSON);
-                            Map<String, Object> body = new HashMap<>();
-                            body.put("x_data", xRef);
-                            body.put("y_data", avgY);
-                            body.put("k", systemAlgorithmConfVO.getIntegratingSphere());
-                            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-                            resultMap = restTemplate.postForEntity(PythonPathConstant.REMOVE_STEP_OR_SPIKES, request, Map.class).getBody();
-                        }
-                    }
-                    if (resultMap != null && resultMap.size() > 0) {
-                        avgY = (List<Double>) resultMap.get("smoothed_data");
-                    }
-
-                    // 汇总到全局（供保存线程用）
-                    xRef.stream().map(String::valueOf).forEach(Constants.x_data::add);
-                    avgY.stream().map(String::valueOf).forEach(Constants.y_data::add);
-
-                    // 推给前端（一次性推平均值）
-                    JSONArray dataArray = new JSONArray();
-                    for (int j = 0; j < xRef.size(); j++) {
-                        JSONObject point = new JSONObject();
-                        point.put("x", xRef.get(j));
-                        point.put("y", avgY.get(j));
-                        dataArray.add(point);
-                    }
+                    // 全部完成后再告诉前端 finish
                     JSONObject payload = new JSONObject();
-                    payload.put("data", dataArray);
-                    if (session.isOpen()) {
-                        session.sendMessage(new TextMessage(payload.toJSONString()));
-                    }
-
-                    // 标记重复已完成，并恢复 endTime（用于保存）
-                    Constants.endTime = lastEndTime[0];
+                    payload.put("result", "finish");
+                    sendAndClose(session, String.valueOf(payload));
                 }
 
 
@@ -613,6 +516,116 @@ public class SpectrumWebSocket2 extends TextWebSocketHandler {
         Constants.measurd_data.remove(0);
         baselineCopy.remove(0);
     }
+
+
+    // 每次测量
+    private void doOneMeasurement(WebSocketSession session,
+                                  Command command,
+                                  SpectrumParameter spectrumParameter,
+                                  TMeasureTask task,
+                                  String taskId,
+                                  String sampleId,
+                                  String deviceSerialNumber,
+                                  String  ip) throws IOException {
+
+        // 1. 发送测量命令
+        devMessageUtil.getMeasureData(command, ip);
+
+        List<ChangeParam> baselineCopy = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+        List<Double> x = new ArrayList<>();
+        List<Double> y = new ArrayList<>();
+
+        // 2. 采集数据，实时推送（每 10 条推一次）
+        int pushCount = 0;
+        while (true) {
+            List<String> snapshot = new ArrayList<>(Constants.instrumentData);
+            if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
+                while (!baselineCopy.isEmpty() && !Constants.measurd_data.isEmpty()) {
+                    calcOnePoint(spectrumParameter, baselineCopy, x, y);
+                    pushCount = pushDataIfNeeded(session, x, y, pushCount);
+                }
+                break;
+            }
+            while (!baselineCopy.isEmpty() && !Constants.measurd_data.isEmpty()) {
+                calcOnePoint(spectrumParameter, baselineCopy, x, y);
+                pushCount = pushDataIfNeeded(session, x, y, pushCount);
+            }
+            try { sleep(10); } catch (InterruptedException e) { handleTransportError(session, e); }
+        }
+
+        // 3. 保存一次完整测量
+        saveOneMeasurement(task, taskId, sampleId, deviceSerialNumber, x, y);
+
+        // 4. 清理缓存
+        Constants.instrumentData.clear();
+        Constants.measurd_data.clear();
+        Constants.originalCalculationData.clear();
+        Constants.endTime = null;
+    }
+
+    // 推送逻辑：每 10 个点推送一次
+    private int pushDataIfNeeded(WebSocketSession session, List<Double> x, List<Double> y, int pushCount) throws IOException {
+        if (x.size() >= (pushCount + 1) * 10) {
+            JSONArray dataArray = new JSONArray();
+            for (int i = pushCount * 10; i < x.size(); i++) {
+                JSONObject point = new JSONObject();
+                point.put("x", x.get(i));
+                point.put("y", y.get(i));
+                dataArray.add(point);
+            }
+            JSONObject payload = new JSONObject();
+            payload.put("data", dataArray);
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(payload.toJSONString()));
+            }
+            pushCount++;
+        }
+        return pushCount;
+    }
+
+    // 保存一次测量结果
+    private void saveOneMeasurement(TMeasureTask task,
+                                    String taskId,
+                                    String sampleId,
+                                    String deviceSerialNumber,
+                                    List<Double> x,
+                                    List<Double> y) {
+        List<String> listData = new ArrayList<>();
+        for (int i = 0; i < x.size(); i++) {
+            listData.add(x.get(i) + "," + y.get(i));
+        }
+
+        TMeasureData measureData = new TMeasureData();
+        TMeasureData lastData = tMeasureDataService.getOne(
+                new QueryWrapper<TMeasureData>()
+                        .eq("task_id", taskId)
+                        .eq("sample_key", sampleId)
+                        .orderByDesc("serial_number")
+                        .last("LIMIT 1")
+        );
+        measureData.setSerialNumber(lastData != null ? lastData.getSerialNumber() + 1 : 1);
+        measureData.setTaskId(taskId);
+        measureData.setSampleKey(sampleId);
+        measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
+        measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+        measureData.setMeasurementStartTime(Constants.startTime);
+        measureData.setMeasurementEndTime(Constants.endTime);
+        measureData.setIsDelete("0");
+
+        traceDataService.save(measureData);
+
+        // 更新任务状态
+        List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        for (TaskSpecimen taskSpecimen : specimen) {
+            if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                taskSpecimen.setIsTested("1");
+            }
+        }
+        task.setSampleKey(JSON.toJSONString(specimen));
+        task.setDeviceSerialNumber(deviceSerialNumber);
+        tMeasureTaskService.updateById(task);
+    }
+
 
 
 }

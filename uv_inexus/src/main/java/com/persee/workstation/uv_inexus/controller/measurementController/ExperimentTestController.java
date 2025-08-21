@@ -1,10 +1,13 @@
 package com.persee.workstation.uv_inexus.controller.measurementController;
 
+import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.MethodExportRequest;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
@@ -12,8 +15,17 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -112,8 +124,9 @@ public class ExperimentTestController {
     @GetMapping("reportDataQuery")
     @ApiOperation("报告表格数据查询")
     public Result reportDataQuery(@RequestParam String taskId,
-                                  @RequestParam String reportName){
-        return experimentTestService.reportDataQuery(taskId,reportName);
+                                  @RequestParam String reportName,
+                                  @RequestParam String sampleId){
+        return experimentTestService.reportDataQuery(taskId,reportName,sampleId);
     }
 
     @GetMapping("obtainReportParameters")
@@ -150,6 +163,37 @@ public class ExperimentTestController {
         return experimentTestService.listOfMethods(methodName,pageNum,pageSize, sort);
     }
 
+
+    @PostMapping("methodExport")
+    @ApiOperation("导出方法")
+    public ResponseEntity<Resource> exportMethod(@RequestBody MethodExportRequest ids, HttpServletResponse response) throws IOException {
+        List<TMeasureMethod> methods = experimentTestService.exportMethod(ids.getIds());
+        if (methods.isEmpty()) {
+            throw new RuntimeException("方法不存在");
+        }
+
+        String json;
+        if (methods.size() == 1) {
+            json = JSON.toJSONString(methods.get(0), true); // 单个
+        } else {
+            json = JSON.toJSONString(methods, true); // 多个
+        }
+
+        // 转换成字节数组资源
+        ByteArrayResource resource = new ByteArrayResource(json.getBytes(StandardCharsets.UTF_8));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=methods.json")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(resource.contentLength())
+                .body(resource);
+    }
+
+    @PostMapping("methodImport")
+    @ApiOperation("导入方法")
+    public Result importMethod(@RequestParam("file") MultipartFile file) {
+        return experimentTestService.importMethod(file);
+    }
 
 
 

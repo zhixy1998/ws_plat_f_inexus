@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.controller.measurementController;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/timeSweep/")
@@ -41,6 +43,12 @@ public class TimeSweepController {
     @ApiOperation("修改方法参数接口")
     public Result updateMethodParameter(@RequestBody TimeSweepMethodParameterDto params) {
         return timeSweepService.updateMethodParameter(params);
+    }
+
+    @GetMapping("querySampleHeads")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+        return timeSweepService.querySampleHeads(taskId);
     }
 
     @GetMapping("sampleListPort")
@@ -155,7 +163,14 @@ public class TimeSweepController {
         return timeSweepService.updateDataColor(paramDto);
     }
 
-    @GetMapping("/exportWord")
+    @PostMapping("gainStatementData")
+    @ApiOperation("获取报表内容数据")
+    public Result gainStatementData(@RequestParam String taskId) {
+        return timeSweepService.gainStatementData(taskId);
+    }
+
+
+    @GetMapping("exportWord")
     @ApiOperation("导出Word接口")
     public void exportWord(@RequestParam String taskId, HttpServletResponse response) {
         try {

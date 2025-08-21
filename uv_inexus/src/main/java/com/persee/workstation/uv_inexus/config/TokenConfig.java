@@ -22,7 +22,7 @@ public class TokenConfig implements WebMvcConfigurer {
         List<String> excludePath = new ArrayList<>();
         excludePath.add("/user_register"); //注册
         excludePath.add("/com/persee/workstation/uv-inexus/system/login"); //登录
-        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/spectrumScanning/obtainReportParameters"); //登录
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/obtainReportParameters"); //登录
         excludePath.add("/com/persee/workstation/uv-inexus/system/logout"); //登出
         excludePath.add("/static/**");  //静态资源
         excludePath.add("/assets/**");  //静态资源

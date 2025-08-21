@@ -4,6 +4,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.measurementService.SpectrumService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/spectrumScanning/")
@@ -218,6 +220,13 @@ public class SpectrumController {
     @ApiOperation("设置参数接口")
     public Result setUpParametersPort(@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
         return spectrumService.setUpParametersPort(methodId,deviceSerialNumber);
+    }
+
+
+    @GetMapping("querySampleHeads")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+        return spectrumService.querySampleHeads(taskId);
     }
 
     @GetMapping("querySampleList")

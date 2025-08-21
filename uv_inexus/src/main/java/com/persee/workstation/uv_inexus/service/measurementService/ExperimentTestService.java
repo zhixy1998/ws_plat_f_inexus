@@ -5,8 +5,10 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,7 +39,7 @@ public interface ExperimentTestService {
 
 
 
-    Result reportDataQuery(String taskId, String reportName);
+    Result reportDataQuery(String taskId, String reportName,String sampleId);
 
     Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType);
 
@@ -56,4 +58,10 @@ public interface ExperimentTestService {
 
     // 获取报告参数
     Result obtainReportParameters(String taskId);
+
+    // 导出方法
+    List<TMeasureMethod> exportMethod(List<String> ids);
+
+    // 导入方法
+    Result importMethod(MultipartFile file);
 }

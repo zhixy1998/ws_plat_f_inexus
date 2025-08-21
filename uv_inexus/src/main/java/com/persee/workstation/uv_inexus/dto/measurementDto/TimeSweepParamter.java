@@ -19,6 +19,6 @@ public class TimeSweepParamter extends MeasurePublicParameters{
     private String intervalTime;
     // 扫描总个数
     private String totalNumber;
-    // 多联池模式(0.顺序单池连续采样,1.循环多池交替采样)
+    // 多联池模式(0.单测一个样品,1.顺序单池连续采样,2.循环多池交替采样)
     private String multiPoolMode;
 }

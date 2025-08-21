@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.measurementService;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.List;
@@ -22,6 +23,9 @@ public interface TimeSweepService {
 
     // 修改方法参数接口
     Result updateMethodParameter(TimeSweepMethodParameterDto params);
+
+    // 查询样品头接口
+    Result<List<HeadVO>> querySampleHeads(String taskId);
 
     // 查询样品列表接口
     Result sampleListPort(String taskId, String type,Integer  digit);
@@ -74,6 +78,9 @@ public interface TimeSweepService {
     // 更新数据颜色接口
     Result updateDataColor(UpdateDataColorDto paramDto);
 
+    // 获取报表内容数据
+    Result gainStatementData(String taskId);
+
     // 导出Word接口
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 
@@ -99,7 +106,6 @@ public interface TimeSweepService {
     Result saveData(String taskId);
 
     // 查询报告表格数据接口
-    List<List<PeakValleyMarking>> queryReportFormData(String taskId);
-
+    List<PeakValleyMarking>queryReportFormData(String taskId,String sampleId);
 
 }

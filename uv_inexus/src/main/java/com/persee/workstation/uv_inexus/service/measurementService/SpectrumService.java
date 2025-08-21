@@ -2,8 +2,10 @@ package com.persee.workstation.uv_inexus.service.measurementService;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 
 import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 
 /**
  * 光谱扫描服务
@@ -101,5 +103,9 @@ public interface SpectrumService {
     // 添加标记点备注接口
     Result addGaugePointRemarks(PeakValleyMarkingDto paramDto);
 
+    // 修改数据颜色接口
     Result updateDataColor(UpdateDataColorDto paramDto);
+
+    // 查询样本头信息
+    Result<List<HeadVO>> querySampleHeads(String taskId);
 }

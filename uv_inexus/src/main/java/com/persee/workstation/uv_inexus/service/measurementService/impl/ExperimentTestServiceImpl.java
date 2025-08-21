@@ -38,7 +38,10 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -585,7 +588,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result reportDataQuery(String taskId,String reportName) {
+    public Result reportDataQuery(String taskId,String reportName,String sampleId) {
 
         if ((taskId == null)) {
             return Result.fail("任务id不能为空");
@@ -696,23 +699,20 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setHeadList(heads);
 
 
-            List<List<PeakValleyMarking>> list = timeSweepService.queryReportFormData(taskId);
+            List<PeakValleyMarking> list = timeSweepService.queryReportFormData(taskId,sampleId);
             List<Map<String, String>> dataList = new ArrayList<>();
             int i = 1;
-            for (List<PeakValleyMarking> markings : list) {
-                for (PeakValleyMarking marking : markings) {
-                    Map<String, String> map = new HashMap<>();
-                    map.put("serialNumber", String.valueOf(i));
-                    map.put("type", marking.getType());
-                    map.put("waveLength", marking.getX());
-                    map.put("luminosity", marking.getY());
-                    map.put("remark", marking.getRemark()==null||marking.getRemark().equals("")?"":marking.getRemark());
-                    dataList.add(map);
-                }
+            for (PeakValleyMarking marking : list) {
+                Map<String, String> map = new HashMap<>();
+                map.put("serialNumber", String.valueOf(i));
+                map.put("type", marking.getType());
+                map.put("waveLength", marking.getX());
+                map.put("luminosity", marking.getY());
+                map.put("remark", marking.getRemark()==null||marking.getRemark().equals("")?"":marking.getRemark());
+                dataList.add(map);
                 i++;
             }
             vo.setDataList(dataList);
-
             return Result.ok(vo);
         }else{
             return Result.fail("类型错误,请重新选择");
@@ -1206,11 +1206,58 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setGain(methodparam.getGain().toString());
             vo.setScanInterval(methodparam.getIntervalTime());
             vo.setMethodName(method.getMethodName());
-            vo.setSpectrumScanImage(data.getDataImage());
+            vo.setTimeScanImage(data.getDataImage());
             return Result.ok(vo);
         }else{
             return Result.ok();
         }
+    }
+
+    /**
+     * 导出方法
+     * @param ids
+     * @return
+     */
+    @Override
+    public List<TMeasureMethod> exportMethod(List<String> ids) {
+        return tMeasureMethodService.listByIds(ids);
+    }
+
+    /**
+     * 导入方法
+     * @param file
+     * @return
+     */
+    @Override
+    public Result importMethod(MultipartFile file) {
+        String json = null;
+        try {
+            json = new String(file.getBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        List<TMeasureMethod> methodList = new ArrayList<>();
+        try {
+            // 尝试解析成数组
+            methodList = JSON.parseArray(json, TMeasureMethod.class);
+        } catch (Exception e) {
+            // 如果不是数组，那就是单个对象
+            TMeasureMethod method = JSON.parseObject(json, TMeasureMethod.class);
+            methodList.add(method);
+        }
+
+        for (TMeasureMethod method : methodList) {
+            // 判断是否存在
+            TMeasureMethod exist = tMeasureMethodService.getById(method.getId());
+            if (exist != null) {
+                // 这里根据需求选择覆盖 or 新建
+                method.setId(UUID.randomUUID().toString()); // 新建
+            }
+            tMeasureMethodService.save(method);
+        }
+
+        return Result.ok("成功导入 " + methodList.size() + " 个方法");
     }
 
 
