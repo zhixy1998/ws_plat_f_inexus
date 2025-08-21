@@ -1,13 +1,16 @@
 package com.persee.workstation.uv_inexus.util;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.List;
 
 @Slf4j
 public class DataCountUtil {
@@ -19,14 +22,20 @@ public class DataCountUtil {
             log.info("吸光度不为空，计算透光率");
             double v = Math.pow(10, -i) * 100;
             System.out.println("透光率:" + v);
-            return String.format("%.2f", v);
+            BigDecimal bd = new BigDecimal(v);
+            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+
+            return String.valueOf(bd);
         }
         if (tPercent != null) {
             double d = Double.parseDouble(tPercent);
             log.info("透光率不为空，计算吸光度");
             double re = - Math.log10(d / 100.0);
             System.out.println("吸光度:" + re);
-            return String.format("%.2f", re);
+            BigDecimal bd = new BigDecimal(re);
+            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+
+            return String.valueOf(bd);
         }
         return null;
     }
@@ -113,6 +122,95 @@ public class DataCountUtil {
             double r = Double.parseDouble(real.getR());
             value = String.valueOf((r / (4095 * 32)) * 100);
         }
+        if (StringUtils.hasText(value)) {
+            BigDecimal bd = new BigDecimal(value);
+            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+            value = String.valueOf(bd);
+        }
         return value;
+    }
+
+    /**
+     * 使用BigDecimal格式化数字到指定小数位数
+     * @param value 需要格式化的值
+     * @return 格式化后的字符串
+     */
+    public static String formatValueWithBigDecimal(Integer digit, String value) {
+        try {
+            BigDecimal bd = new BigDecimal(value);
+            bd = bd.setScale(digit, RoundingMode.HALF_UP);
+            return bd.toString();
+        } catch (NumberFormatException e) {
+            return value; // 如果转换失败，返回原始值
+        }
+    }
+
+    private static double formatValue(Integer digit, double value) {
+        BigDecimal bd = new BigDecimal(value);
+        bd = bd.setScale(digit, RoundingMode.HALF_UP);
+        return bd.doubleValue();
+    }
+
+    /**
+     * 计算数组的平均值
+     */
+    public static double calculateMean(List<Double> data, Integer  digit) {
+        if (data == null || data.isEmpty()) {
+            throw new IllegalArgumentException("数据不能为空");
+        }
+
+        double sum = 0.0;
+        for (double value : data) {
+            value = formatValue(digit, value);
+            sum += value;
+        }
+        double ans = sum / data.size();
+        return formatValue(digit, ans);
+    }
+    /**
+     * 计算样本标准差 (Sample Standard Deviation)
+     */
+    public static Double calculateSD(List<Double> data, Integer digit) {
+        if (data == null || data.size() < 2) {
+            log.error("数据至少需要两个值来计算标准差");
+            return null;
+        }
+
+        double mean = calculateMean(data, digit);
+        double sumSquaredDifferences = 0.0;
+
+        for (double value : data) {
+            value = formatValue(digit, value);
+            double difference = value - mean;
+            sumSquaredDifferences += difference * difference;
+        }
+
+        // 使用 N-1 作为分母 (样本标准差)
+        double ans = Math.sqrt(sumSquaredDifferences / (data.size() - 1));
+        return formatValue(digit, ans);
+    }
+
+    /**
+     * 计算相对标准差 (RSD)
+     */
+    public static Double calculateRSD(List<Double> data, Integer digit) {
+        if (data == null || data.size() < 2) {
+            log.info("数据至少需要两个值来计算RSD");
+            return null;
+        }
+
+        double mean = calculateMean(data, digit);
+        if (mean == 0) {
+            log.info("平均值为0时无法计算相对标准差");
+            return null;
+        }
+
+        Double sd = calculateSD(data, digit);
+        if (sd == null) {
+            log.info("样本标准差计算出错");
+            return null;
+        }
+        double ans = (sd / Math.abs(mean)) * 100;
+        return formatValue(digit, ans);
     }
 }

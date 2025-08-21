@@ -8,10 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.dao.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.*;
@@ -23,6 +20,7 @@ import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoServ
 import com.persee.workstation.uv_inexus.service.measurementService.*;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.standardService.TReportStandardPretreatmentService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -46,8 +44,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum.sampleId;
+
 @Slf4j
 @Service("photometricService")
 public class PhotometricServiceImpl implements PhotometricService {
@@ -480,7 +482,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         List<HeadVO> heads = new ArrayList<>();
 
-        List<Map<String, String>> data = new ArrayList<>();
+        List<Map<String, Object>> data = new ArrayList<>();
         PhotometricReportDataVO ans = new PhotometricReportDataVO();
 
         heads.add(new HeadVO("样品编号", "sampleNumber"));
@@ -495,7 +497,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
             for (TaskSpecimen specimen : taskSpecimen) {
-                Map<String, String> map = new HashMap<>();
+                Map<String, Object> map = new HashMap<>();
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 map.put("sampleName", sample.getSampleName());
                 map.put("sampleNumber", sample.getSampleNumber());
@@ -541,7 +543,6 @@ public class PhotometricServiceImpl implements PhotometricService {
                 TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
                 if (snapshot != null && snapshot.getTaskHeads() != null && !snapshot.getTaskHeads().isEmpty()) {
                     ans.addAll(snapshot.getTaskHeads());
-                    return Result.ok(new ArrayList<>(ans));
                 }
             }
 
@@ -615,87 +616,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(new ArrayList<>(ans));
     }
 
-//    @Override
-    public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String taskId) {
-        TMeasureSample sample = tMeasureSampleService.getById(sampleId);
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        String methodId = task.getMethodKey();
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-
-        if (!StringUtils.hasText(method.getMeasurementParamInfo())) {
-            return R.fail("未查询到该方法参数");
-        }
-
-        PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-
-        List<PreCountResultParam> resultParams = parameter.getResultParams();
-
-        StringBuilder values = new StringBuilder();
-
-        StringBuilder identity = new StringBuilder();
-
-        String luminosity = parameter.getLuminosity();
-        if (!StringUtils.hasText(luminosity)) {
-            luminosity = "1";
-        }
-
-        for (InputParam inputParam : parameter.getSampleInputParams()) {
-            identity.append(inputParam.getResultIdentity()).append(",");
-            if (StringUtils.hasText(sample.getHeads())) {
-                List<HeadVO> vos = JSON.parseArray(sample.getHeads(), HeadVO.class);
-                boolean flag = false;
-                for (HeadVO head : vos) {
-                    JSONObject jsonObject = JSON.parseObject(sample.getNewColData());
-                    if (head.getName().equals(inputParam.getParamName())) {
-                        values.append(jsonObject.getString(head.getIdentity())).append(",");
-                        flag = true;
-                    }
-                }
-                if (!flag) {
-                    String s = String.valueOf((Math.random() * 10) + 1);
-                    values.append(s).append(",");
-                }
-            }else {
-                String s = String.valueOf((Math.random() * 10) + 1);
-                values.append(s).append(",");
-            }
-        }
-
-        for (int i = 0; i < vo.size(); i++) {
-            PhotometricOriginDataInfo info = vo.get(i);
-            if (WaveLengthEnum.abs.getCode().equals(luminosity)){
-//                identity.append(info.getWavelength()).append("abs").append(",");
-
-                identity.append("A").append(i+1).append(",");
-
-                values.append(info.getAbsValue()).append(",");
-            } else {
-//                identity.append(info.getWavelength()).append("t").append(",");
-                identity.append("A").append(i+1).append(",");
-                values.append(info.getTPercentValue()).append(",");
-            }
-        }
-
-        identity.deleteCharAt(identity.length()-1);
-        values.deleteCharAt(values.length()-1);
-
-        List<PhotometricCountDataInfo> countList = new ArrayList<>();
-        for (PreCountResultParam param : resultParams) {
-            String[] split = param.getFormulaText().split("=");
-            String text = split[split.length - 1];
-            String result = RestUtil.sum(text, identity.toString(), values.toString());
-            PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
-            BeanUtils.copyProperties(param, countDataInfo);
-            JSONObject jsonObject = JSONObject.parseObject(result);
-            countDataInfo.setCountValue(jsonObject.get("result").toString());
-            countList.add(countDataInfo);
-        }
-
-        return R.ok(countList);
-    }
-
     @Override
-    public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter) {
+    public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter, Integer digit) {
 
         if (!StringUtils.hasText(task.getTableInfo())) {
             return R.fail("缺少分析参数，无法计算分析");
@@ -723,13 +645,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
         for (PhotometricOriginDataInfo dataInfo : vo) {
-            JSONObject object = new JSONObject();
             if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue()==null?0:dataInfo.getAbsValue());
-                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue()==null?0:dataInfo.getTPercentValue());
-                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.es.getCode(), dataInfo.getEsValue()==null?0:dataInfo.getEsValue());
-                object.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.er.getCode(), dataInfo.getErValue()==null?0:dataInfo.getErValue());
-                allData.putAll(object);
+                allData.putAll(dataInfo.getData());
             }
         }
 
@@ -746,11 +663,12 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (!mapTableHead.isPresent()) {
                 return R.fail("缺少参数映射：" + inputParam.getParamName());
             }
-            identity.append(mapTableHead.get().getHeadIdentity()).append(",");
+            identity.append(mapTableHead.get().getParamIdentity()).append(",");
             String s = allData.getString(mapTableHead.get().getHeadIdentity());
             if (!StringUtils.hasText(s)) {
                 return R.fail("缺少数据！");
             }
+            s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
         identity.deleteCharAt(identity.length()-1);
@@ -765,7 +683,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             BeanUtils.copyProperties(param, countDataInfo);
             JSONObject resultJson = JSONObject.parseObject(result);
 
-            if (!resultJson.get("code").equals("0") || !resultJson.get("code").equals(0)) {
+            if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
                 return R.fail("公式计算出错！" + resultJson.get("message"));
             }
             countDataInfo.setCountValue(resultJson.get("result").toString());
@@ -777,31 +695,48 @@ public class PhotometricServiceImpl implements PhotometricService {
 
 
     @Override
-    public Result<List<Map<String, String>>> queryData(String taskId, Boolean allDisplay) {
+    public Result<List<Map<String, Object>>> queryData(String taskId, Boolean allDisplay, List<String> option) {
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
             return Result.fail("未选择任务");
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        List<Map<String, Object>> ans = new ArrayList<>();
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            log.info("未找到样品");
+            return Result.ok(ans);
+        }
+
+        boolean repeat = false;
+        int repeatTime = 0;
+        if (StringUtils.hasText(task.getMethodKey())) {
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
+                PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+                if (StringUtils.hasText(parameter.getRepetitionPattern()) && parameter.getRepetitionPattern().equals("单池重复")) {
+                    repeat = true;
+                    repeatTime = Integer.parseInt(parameter.getRepetitionTime());
+                }
+            }
+        }
+
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        List<Map<String, String>> ans = new ArrayList<>();
 
         for (TaskSpecimen specimen : taskSpecimen) {
             if (!allDisplay && specimen.getDeleteType().equals("1")) {
                 continue;
             }
 
-            Map<String, String> map = new HashMap<>();
+            Map<String, Object> map = new HashMap<>();
             TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
-            map.put("sampleId", sample.getId());
-            map.put("sampleName", sample.getSampleName());
-            map.put("sampleNumber", sample.getSampleNumber());
-            map.put("sampleType", sample.getSampleType());
-//            map.put("dilutionRatio", sample.getDilutionRatio());
-//            map.put("sampleVolume", sample.getSampleVolume());
-            map.put("deleteType", specimen.getDeleteType());
-            map.put("sampleLocation", "样品池"+sample.getSampleLocation());
+            //样品信息
+            map.put(sampleId.getIdentity(), sample.getId());
+            map.put(SampleTableEnum.sampleName.getIdentity(), sample.getSampleName());
+            map.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber());
+            map.put(SampleTableEnum.sampleType.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+            map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+ sample.getSampleLocation());
+
 
             if (StringUtils.hasText(sample.getNewColData())){
                 Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
@@ -815,22 +750,52 @@ public class PhotometricServiceImpl implements PhotometricService {
                     .orderByDesc(TMeasureData::getSerialNumber)
                     .last("limit 1");
             TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-            if (data != null) {
-                if (StringUtils.hasText(data.getOriginalCalculationData())){
-                    List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
+            if (!repeat) {
+                if (data != null) {
+                    if (StringUtils.hasText(data.getOriginalCalculationData())){
+                        List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
 
-
-                    for (PhotometricOriginDataInfo wlData : wlDataList) {
-                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue() == null ? null : wlData.getAbsValue());
-                        map.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), wlData.getTPercentValue() == null ? null : wlData.getTPercentValue());
-
-
-
-                        map.put("samplingTime", data.getSamplingTime());
-
+                        for (PhotometricOriginDataInfo wlData : wlDataList) {
+                            map.putAll(wlData.getData());
+                            map.put("samplingTime", data.getSamplingTime());
+                        }
                     }
                 }
-                map.put("remark", data.getRemark());
+            } else {
+                if (data != null) {
+                    if (StringUtils.hasText(data.getOriginalCalculationData())){
+                        Map<String, Map<String, String>> childrenList = new HashMap<>();
+
+                        List<Map<String, String>> middle = new ArrayList<>();
+                        List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
+
+                        for (PhotometricOriginDataInfo wlData : wlDataList) {
+
+                            Map<String, String> originData = wlData.getData();
+                            repeatTime = repeatTime + 1;
+
+                            if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
+                                map.putAll(originData);
+                                Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
+                                if (!ch.isEmpty()) {
+                                    childrenList.putAll(ch);
+                                }
+                            } else {
+
+                                Map<String, String> children = new HashMap<>(originData);
+                                String[] split = wlData.getIdentity().split("-");
+                                children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                                children.put(SampleTableEnum.samplingTime.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+                                childrenList.putIfAbsent(wlData.getIdentity(), children);
+                            }
+                        }
+                        map.put("samplingTime", data.getSamplingTime());
+                        childrenList.forEach((key, value) -> middle.add(value));
+                        map.put("children", middle);
+                    }
+                    map.put("remark", data.getRemark());
+                }
             }
 
             LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
@@ -858,8 +823,71 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Result.ok(ans);
     }
 
+    private static Map<String, Map<String, String>> extracted(List<String> option, PhotometricOriginDataInfo wlData,  TMeasureSample sample) {
+
+        Map<String, String> originData = wlData.getData();
+        Map<String, Map<String, String>> ans = new HashMap<>();
+        String mapName = wlData.getWavelength() + "-" + wlData.getMode();
+
+        RepeatMeasureData absData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode());
+        RepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
+
+        if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
+            if (!option.isEmpty()) {
+                for (String s : option) {
+                    Map<String, String> children = new HashMap<>();
+                    if (DataIdentityEnums.avg.getIdentity().equals(s)) {
+                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
+                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
+                    }
+                    if (DataIdentityEnums.sd.getIdentity().equals(s)) {
+                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
+                    }
+                    if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
+                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
+                        children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
+                    }
+                }
+            }
+        } else {
+            if (!option.isEmpty()) {
+                for (String s : option) {
+                    Map<String, String> children = new HashMap<>();
+                    if (DataIdentityEnums.avg.getIdentity().equals(s)) {
+                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                        children.put(mapName, originData.get(mapName));
+                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
+                    }
+                    if (DataIdentityEnums.sd.getIdentity().equals(s)) {
+                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                        RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
+                        children.put(mapName, measureData.getSd());
+                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
+                    }
+                    if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
+                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
+                        children.put(mapName, measureData.getRsd());
+                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
+                    }
+                }
+            }
+        }
+
+        return ans;
+    }
+
     @Override
-    public Result savePhotometricMeasureData(PhotometricSampleAndDataVO sampleAndDataVO) {
+    public R<String> savePhotometricMeasureData(PhotometricSampleAndDataVO sampleAndDataVO) {
 
         String taskId = sampleAndDataVO.getTaskId();
         String sampleId = sampleAndDataVO.getSampleId();
@@ -874,7 +902,8 @@ public class PhotometricServiceImpl implements PhotometricService {
             tMeasureData.setSerialNumber(0);
         }
 
-        if (tMeasureData.getOriginalCalculationData() != null) {
+        if (StringUtils.hasText(tMeasureData.getOriginalCalculationData()) || StringUtils.hasText(tMeasureData.getInstrumentData())) {
+            tMeasureData = new TMeasureData();
             tMeasureData.setSerialNumber(tMeasureData.getSerialNumber() + 1);
         }
         tMeasureData.setTaskId(taskId);
@@ -885,27 +914,46 @@ public class PhotometricServiceImpl implements PhotometricService {
         tMeasureData.setMeasurementEndTime(sampleAndDataVO.getEndTime());
         tMeasureData.setSamplingTime(sampleAndDataVO.getSampleTime());
 
-
         tMeasureData.setIsDelete(createType);
         tMeasureDataService.saveOrUpdate(tMeasureData);
+
+        return R.ok(tMeasureData.getId());
+    }
+
+    @Override
+    public R<Boolean> saveCountData(PhotometricSampleAndDataVO countData, String dataId) {
+
+        if (countData.getCountData() == null || countData.getCountData().isEmpty()) {
+            return R.fail("没有要保存的数据");
+        }
+        String taskId = countData.getTaskId();
+        String sampleId = countData.getSampleId();
 
         LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
                 .eq(TMeasureAnalysisData::getSampleKey, sampleId)
-                .eq(TMeasureAnalysisData::getAnalysisName, tMeasureData.getSerialNumber());
+                .orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
         TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
         if (analysisData != null) {
-            analysisData.setAnalysisResult(JSON.toJSONString(sampleAndDataVO.getCountData()));
+            if (StringUtils.hasText(analysisData.getMeasureDataId())) {
+                analysisData.setId(null);
+                analysisData.setDataVersion(analysisData.getDataVersion() + 1);
+            }
+            analysisData.setMeasureDataId(dataId);
+
+            analysisData.setAnalysisResult(JSON.toJSONString(countData.getCountData()));
         } else {
             analysisData = new TMeasureAnalysisData();
             analysisData.setTaskId(taskId);
             analysisData.setSampleKey(sampleId);
-            analysisData.setAnalysisResult(JSON.toJSONString(sampleAndDataVO.getCountData()));
-
+            analysisData.setAnalysisResult(JSON.toJSONString(countData.getCountData()));
+            analysisData.setDataVersion(0);
+            analysisData.setMeasureDataId(dataId);
         }
         analysisData.setIsDelete(createType);
         tMeasureAnalysisDataService.saveOrUpdate(analysisData);
-        return Result.ok(true);
+        return R.ok(true);
+
     }
 
     @Override
@@ -1087,7 +1135,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         heads.add(new HeadVO("备注", "remark"));
         heads.add(new HeadVO("采样时间", "samplingTime"));
 
-        List<Map<String, String>> data = queryData(taskId, allDisplay).getData();
+        List<Map<String, Object>> data = queryData(taskId, allDisplay, new ArrayList<>()).getData();
 
 
         XWPFDocument doc = new XWPFDocument();
@@ -1116,7 +1164,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         table.setWidth("100%");
         int i = 0;
-        for (Map<String, String> map : data) {
+        for (Map<String, Object> map : data) {
             XWPFTableRow headerRow = table.getRow(0);
             if(headerRow != null) {
                 XWPFTableCell cell = headerRow.getCell(0);
@@ -1128,7 +1176,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 int m = 1;
                 for (HeadVO head : heads) {
 
-                    String cellData = map.get(head.getIdentity());
+                    String cellData = String.valueOf(map.get(head.getIdentity()));
 
                     if (head.getIdentity().equals("sampleType")) {
                         cellData = SampleTypeEnum.getName(cellData);

@@ -7,12 +7,15 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.measurementPo.SampleHeadTemplatePO;
 import com.persee.workstation.uv_inexus.service.measurementService.SampleHeadTemplateService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -58,7 +61,7 @@ public class SampleHeadTemplateServiceImpl implements SampleHeadTemplateService 
     }
 
     @Override
-    public R<List<SampleHeadTemplatePO>> queryTemplate(String measureType, String search) {
+    public R<List<SampleTemplateVO>> queryTemplate(String measureType, String search) {
 
         LambdaQueryWrapper<SampleHeadTemplatePO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SampleHeadTemplatePO::getMeasureType, measureType);
@@ -69,7 +72,15 @@ public class SampleHeadTemplateServiceImpl implements SampleHeadTemplateService 
                     .or().like(SampleHeadTemplatePO::getHeads, search);
         }
         List<SampleHeadTemplatePO> poList = dao.selectList(queryWrapper);
-        return R.ok(poList);
+        List<SampleTemplateVO> voList = new ArrayList<>();
+        for (SampleHeadTemplatePO templatePO : poList) {
+            SampleTemplateVO vo = new SampleTemplateVO();
+            BeanUtils.copyProperties(templatePO,vo);
+            vo.setTemplateHeads(JSON.parseArray(templatePO.getHeads(), HeadVO.class));
+            voList.add(vo);
+        }
+
+        return R.ok(voList);
     }
 
     @Override

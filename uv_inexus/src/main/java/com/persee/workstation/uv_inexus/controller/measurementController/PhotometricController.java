@@ -2,9 +2,15 @@ package com.persee.workstation.uv_inexus.controller.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.InputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.service.measurementService.PhotometricService;
+import com.persee.workstation.uv_inexus.service.measurementService.SampleHeadTemplateService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
@@ -18,7 +24,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
 import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +37,9 @@ public class PhotometricController {
 
     @Autowired
     private PhotometricService photometricService;
+
+    @Autowired
+    SampleHeadTemplateService sampleHeadTemplateService;
 
     @PostMapping("updateMethodParameter")
     @ApiOperation("方法参数修改接口")
@@ -91,9 +101,10 @@ public class PhotometricController {
 
     @GetMapping("queryDataInfo")
     @ApiOperation("获取数据信息接口")
-    public Result<List<Map<String, String>>> queryDataInfo(@RequestParam String taskId,
-                                                           @RequestParam Boolean allDisplay) {
-        return photometricService.queryData(taskId, allDisplay);
+    public Result<List<Map<String, Object>>> queryDataInfo(@RequestParam String taskId,
+                                                           @RequestParam Boolean allDisplay,
+                                                           @RequestParam List<String> option) {
+        return photometricService.queryData(taskId, allDisplay, option);
     }
 
     @PostMapping("saveDataInfo")
@@ -150,5 +161,72 @@ public class PhotometricController {
     public Result queryNewMethodTask(@RequestParam String taskId) {
         return photometricService.getInfoByTaskId(taskId);
     }
+
+    @ApiOperation("保存样品模板")
+    @PostMapping("saveSampleTemplate")
+    public Result saveSampleTemplate(@RequestBody SampleHeadTemplateDTO templateDto) {
+        R<Boolean> r = sampleHeadTemplateService.createTemplate(templateDto);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @ApiOperation("查询样品模板")
+    @GetMapping("querySampleTemplate")
+    public Result<List<SampleTemplateVO>> querySampleTemplate(@RequestParam String measureType, @RequestParam String search) {
+        R<List<SampleTemplateVO>> r = sampleHeadTemplateService.queryTemplate(measureType, search);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @ApiOperation("删除样品模板")
+    @GetMapping("deleteSampleTemplate")
+    public Result<Boolean> deleteSampleTemplate(@RequestParam String templateId, @RequestParam String updateBy) {
+        R<Boolean> r = sampleHeadTemplateService.deleteTemplate(templateId, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+
+    @ApiOperation("查询可绑定的方法参数")
+    @GetMapping("queryInputParam")
+    public Result<List<InputParam>> queryInputParam(@RequestParam String methodId) {
+        R<List<InputParam>> r = photometricService.queryInputParam(methodId);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @ApiOperation("保存映射关系及表头信息")
+    @PostMapping("saveInputParamMapTableHead")
+    public Result<Boolean> saveInputParamMapTableHead(@RequestBody TaskHeadSnapshot taskHeadSnapshot) {
+        R<Boolean> r = photometricService.saveInputParamMapTableHead(taskHeadSnapshot);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+    @ApiOperation("查询已绑定的映射信息")
+    @GetMapping("queryInputParamMapTableHead")
+    public Result<List<InputParamMapTableHead>> queryInputParamMapTableHead(@RequestParam String taskId) {
+        R<List<InputParamMapTableHead>> r = photometricService.queryInputParamMapTableHead(taskId);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
 
 }

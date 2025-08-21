@@ -73,18 +73,19 @@ public interface PhotometricService {
     /**
      * 查询数据信息
      */
-    Result<List<Map<String, String>>> queryData(String taskId, Boolean allDisplay);
+    Result<List<Map<String, Object>>> queryData(String taskId, Boolean allDisplay, List<String> option);
 
     /**
      * 计算公式
      */
-//    R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, String sampleId, String taskId);
-    R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter);
+    R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter, Integer digit);
 
     /**
      * 测量及分析后数据保存，如有记录，认为是重测，做覆盖操作
      */
-    Result savePhotometricMeasureData(PhotometricSampleAndDataVO vo);
+    R<String> savePhotometricMeasureData(PhotometricSampleAndDataVO vo);
+
+    R<Boolean> saveCountData(PhotometricSampleAndDataVO countData, String dataId);
 
     /**
      * 前端调用保存数据，用于保存相关内容，如采样时间，备注等

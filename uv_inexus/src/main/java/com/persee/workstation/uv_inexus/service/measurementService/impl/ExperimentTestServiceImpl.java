@@ -618,10 +618,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setHeadList(heads);
 
 
-            List<Map<String, String>> list = photometricService.queryData(taskId, false).getData();
+            List<Map<String, Object>> list = photometricService.queryData(taskId, false, new ArrayList<>()).getData();
 
-            for (Map<String, String> stringMap : list) {
-                stringMap.put("sampleType", SampleTypeEnum.getName(stringMap.get("sampleType")));
+            for (Map<String, Object> stringMap : list) {
+                stringMap.put("sampleType", SampleTypeEnum.getName(String.valueOf(stringMap.get("sampleType"))));
             }
 
             vo.setDataList(list);

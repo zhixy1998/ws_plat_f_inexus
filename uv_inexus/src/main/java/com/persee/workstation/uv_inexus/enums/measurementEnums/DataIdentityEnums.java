@@ -6,7 +6,8 @@ import lombok.Getter;
 public enum DataIdentityEnums {
     result("result", "结果"),
     middle("middle", "中值"),
-    sd("sd", "标准差"),
+    avg("avg", "Avg"),
+    sd("sd", "SD"),
     rsd("rsd", "RSD");
 
     private final String identity;

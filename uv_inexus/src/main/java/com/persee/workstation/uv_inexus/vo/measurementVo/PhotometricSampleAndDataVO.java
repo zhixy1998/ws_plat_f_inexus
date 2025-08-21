@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.vo.measurementVo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
+import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -13,10 +15,14 @@ public class PhotometricSampleAndDataVO {
 
     private String taskId;
 
+    private TMeasureTask task;
+
+    private TMeasureSample sample;
+
     private String sampleId;
 
-    LocalDateTime startTime;
-    LocalDateTime endTime;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
 
     @ApiModelProperty("备注")
     private String remark;
