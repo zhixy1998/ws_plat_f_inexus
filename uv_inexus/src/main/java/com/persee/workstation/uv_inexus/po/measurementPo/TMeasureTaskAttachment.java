@@ -32,6 +32,12 @@ public class TMeasureTaskAttachment {
     private String parallelSample;
 
     /**
+     * 数据参数，任务所需要的参数，例如小数位数，sd,red，以及是否显示删除数据和是否同时显示abs和t%
+     */
+    @TableField("data_param")
+    private String dataParam;
+
+    /**
      * 重叠图像
      */
     @TableField("overlap_image")
