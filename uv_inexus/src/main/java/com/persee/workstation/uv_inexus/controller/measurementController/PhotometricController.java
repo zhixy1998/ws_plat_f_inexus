@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotoQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO;
 import com.persee.workstation.uv_inexus.model.R;
@@ -99,12 +100,10 @@ public class PhotometricController {
         return photometricService.tableHead(taskId, methodId, allDisplay);
     }
 
-    @GetMapping("queryDataInfo")
+    @PostMapping("queryDataInfo")
     @ApiOperation("获取数据信息接口")
-    public Result<List<Map<String, Object>>> queryDataInfo(@RequestParam String taskId,
-                                                           @RequestParam Boolean allDisplay,
-                                                           @RequestParam List<String> option) {
-        return photometricService.queryData(taskId, allDisplay, option);
+    public Result<List<Map<String, Object>>> queryDataInfo(@RequestBody PhotoQueryDataDTO queryDataDTO) {
+        return photometricService.queryData(queryDataDTO);
     }
 
     @PostMapping("saveDataInfo")

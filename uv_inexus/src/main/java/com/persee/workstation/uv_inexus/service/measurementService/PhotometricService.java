@@ -1,10 +1,7 @@
 package com.persee.workstation.uv_inexus.service.measurementService;
 
 import com.alibaba.fastjson.JSONObject;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
@@ -73,7 +70,7 @@ public interface PhotometricService {
     /**
      * 查询数据信息
      */
-    Result<List<Map<String, Object>>> queryData(String taskId, Boolean allDisplay, List<String> option);
+    Result<List<Map<String, Object>>> queryData(PhotoQueryDataDTO queryDataDTO);
 
     /**
      * 计算公式

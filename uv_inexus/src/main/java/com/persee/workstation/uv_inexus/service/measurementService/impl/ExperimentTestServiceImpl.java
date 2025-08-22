@@ -624,8 +624,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             heads.add(new HeadVO("采样时间", "samplingTime"));
             vo.setHeadList(heads);
 
+            PhotoQueryDataDTO queryDataDTO = new PhotoQueryDataDTO();
+            queryDataDTO.setOption(new ArrayList<>());
+            queryDataDTO.setTaskId(taskId);
+            queryDataDTO.setAllDisplay(false);
 
-            List<Map<String, Object>> list = photometricService.queryData(taskId, false, new ArrayList<>()).getData();
+            List<Map<String, Object>> list = photometricService.queryData(queryDataDTO).getData();
 
             for (Map<String, Object> stringMap : list) {
                 stringMap.put("sampleType", SampleTypeEnum.getName(String.valueOf(stringMap.get("sampleType"))));
