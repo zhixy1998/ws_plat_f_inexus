@@ -1,9 +1,8 @@
-package org.example;
+package EtoX;
 
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.aspectj.weaver.ast.Or;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -26,8 +25,8 @@ public class EtoX {
     private static FormulaEvaluator evaluator;
 
     public static void main(String[] args) throws Exception {
-        String excelPath = "C:\\Users\\wangwenbo\\Desktop\\T800.xlsx";
-        String outputXml = "D:\\project\\java\\T800.xml";
+        String excelPath = "C:\\Users\\wangwenbo\\Desktop\\T800新.xlsx";
+        String outputXml = "D:\\project\\java\\T800新.xml";
 
         FileInputStream fis = new FileInputStream(excelPath);
         Workbook workbook = new XSSFWorkbook(fis);
