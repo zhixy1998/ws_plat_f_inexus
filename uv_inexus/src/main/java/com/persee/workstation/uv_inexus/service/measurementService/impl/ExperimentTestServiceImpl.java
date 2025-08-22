@@ -322,6 +322,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                             sample.setNewColData(JSON.toJSONString(newColData));
                         }
                         sample.setColor("#000000");
+                        sample.setDataBulk(0);
                         tMeasureSampleService.save(sample);
                         TaskSpecimen taskSpecimen = new TaskSpecimen();
                         taskSpecimen.setSpecimenKey(sample.getId());
@@ -345,6 +346,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                             sample.setNewColData(JSON.toJSONString(newColData));
                         }
                         sample.setColor("#000000");
+                        sample.setDataBulk(0);
                         sample.setSampleKind(SampleTypeEnum.kind_stand.getIdentity());
                         tMeasureSampleService.save(sample);
                         TaskSpecimen taskSpecimen = new TaskSpecimen();
@@ -371,6 +373,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         }
                         sample.setColor("#000000");
                         sample.setSampleKind(SampleTypeEnum.kind_unknown.getIdentity());
+                        sample.setDataBulk(0);
                         tMeasureSampleService.save(sample);
                         TaskSpecimen taskSpecimen = new TaskSpecimen();
                         taskSpecimen.setSpecimenKey(sample.getId());
@@ -394,7 +397,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleLocation(specimen.getSampleLocation());
                     sample.setColor("#000000");
                     sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
-                    sample.setColor("");
+                    sample.setDataBulk(0);
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());
@@ -414,6 +417,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     sample.setSampleName(specimen.getSampleName());
                     sample.setSampleLocation(specimen.getSampleLocation());
                     sample.setColor("#000000");
+                    sample.setDataBulk(0);
                     tMeasureSampleService.save(sample);
                     TaskSpecimen taskSpecimen = new TaskSpecimen();
                     taskSpecimen.setSpecimenKey(sample.getId());

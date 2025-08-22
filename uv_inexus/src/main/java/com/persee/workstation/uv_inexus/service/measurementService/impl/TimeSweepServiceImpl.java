@@ -997,6 +997,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
+                newSample.setDataBulk(0);
                 log.info("新增的样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());

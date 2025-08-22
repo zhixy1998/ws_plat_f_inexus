@@ -2038,6 +2038,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
                 log.info("新增的样品：{}", newSample);
+                newSample.setDataBulk(0);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
                 taskSpecimen.add(specimen);

@@ -1,15 +1,10 @@
 package com.persee.workstation.uv_inexus.po.measurementPo;
 
-import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import io.netty.handler.codec.json.JsonObjectDecoder;
 import lombok.Data;
-
-import java.util.List;
 
 /**
  * 样品信息表(TMeasureSample)表实体类
@@ -77,5 +72,9 @@ public class TMeasureSample{
 
     @TableField("new_col_data")
     private String newColData;
+
+    // 数据量
+    @TableField("data_bulk")
+    private Integer dataBulk;
 }
 
