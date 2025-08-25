@@ -51,16 +51,16 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
             return Result.fail("用户所在小组未配置权限");
         }
 
-        // 3. 查询权限详情（只查菜单类型的权限），并提取 path 字段
+        // 3. 查询权限详情（只查菜单类型的权限），并提取 name 字段
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
                 .eq("perm_type", 1); // 只筛选菜单类型的权限
-        List<String> routePaths = sysPermissionMapper.selectList(permQuery).stream()
-                .map(SysPermissionPO::getPath) // 提取 path 字段
-                .filter(path -> path != null && !path.isEmpty()) // 过滤空值
+        List<String> routeNames = sysPermissionMapper.selectList(permQuery).stream()
+                .map(SysPermissionPO::getPermName) // 提取 name 字段
+                .filter(name -> name != null && !name.isEmpty()) // 过滤空值
                 .distinct() // 去重
                 .collect(Collectors.toList());
 
-        return Result.ok(routePaths);
+        return Result.ok(routeNames);
     }
 }

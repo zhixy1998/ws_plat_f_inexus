@@ -24,6 +24,10 @@ public class SysPermissionPO extends BasePO {
     @ApiModelProperty("权限ID")
     private String id;
 
+    @TableField("title")
+    @ApiModelProperty("路由路径，仅菜单权限需要")
+    private String title;
+
     @TableField("perm_name")
     @ApiModelProperty("权限名称")
     private String permName;
