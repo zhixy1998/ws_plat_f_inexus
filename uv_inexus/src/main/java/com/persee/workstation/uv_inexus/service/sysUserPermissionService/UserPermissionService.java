@@ -13,5 +13,5 @@ public interface UserPermissionService {
     Result<List<PermissionDTO>> getUserPermissions(String userId);
 
     // 新增方法：查询parent_id为0的所有权限的path值
-    Result<List<String>> getRootPermissionPaths();
+    Result<List<String>> getRootPermissionPaths(String userId);
 }

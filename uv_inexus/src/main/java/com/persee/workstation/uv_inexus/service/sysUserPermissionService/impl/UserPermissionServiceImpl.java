@@ -89,18 +89,71 @@ public class UserPermissionServiceImpl implements UserPermissionService {
     }
 
     // 新增方法实现：查询parent_id=0的path列表
-    @Override
-    public Result<List<String>> getRootPermissionPaths() {
-        // 1. 构造查询条件：parent_id = 0
-        QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
-        permQuery.eq("parent_id", 0); // 只筛选菜单类型的权限
-        List<String> routeNames = sysPermissionMapper.selectList(permQuery).stream()
-                .map(SysPermissionPO::getPermName) // 提取 name 字段
-                .filter(name -> name != null && !name.isEmpty()) // 过滤空值
-                .distinct() // 去重
+    // @Override
+    // public Result<List<String>> getRootPermissionPaths() {
+    //     // 1. 构造查询条件：parent_id = 0
+    //     QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
+    //     permQuery.eq("parent_id", 0); // 只筛选菜单类型的权限
+    //     List<String> routeNames = sysPermissionMapper.selectList(permQuery).stream()
+    //             .map(SysPermissionPO::getPermName) // 提取 name 字段
+    //             .filter(name -> name != null && !name.isEmpty()) // 过滤空值
+    //             .distinct() // 去重
+    //             .collect(Collectors.toList());
+
+    //     // 4. 返回结果
+    //     return Result.ok(routeNames);
+    // }
+    /**
+     * 根据用户ID查询其关联的、parent_id=0的权限path列表（仅返回path字符串）
+     */
+    public Result<List<String>> getRootPermissionPaths(String userId) {
+        // 1. 校验用户是否存在
+        SysUserPO userPO = sysUserMapper.selectById(userId);
+        if (userPO == null) {
+            return Result.fail("用户不存在");
+        }
+
+        // 2. 根据用户ID查询关联的小组ID（用户-小组关联表）
+        QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
+        userGroupQuery.eq("user_id", userId);
+        List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
+        if (userGroupList.isEmpty()) {
+            return Result.fail("该用户未关联任何小组");
+        }
+
+        // 提取小组ID列表
+        List<String> groupIds = userGroupList.stream()
+                .map(SysUserGroupPO::getGroupId)
                 .collect(Collectors.toList());
 
-        // 4. 返回结果
-        return Result.ok(routeNames);
+        // 3. 根据小组ID查询关联的权限ID（小组-权限关联表）
+        QueryWrapper<SysGroupPermissionPO> groupPermQuery = new QueryWrapper<>();
+        groupPermQuery.in("group_id", groupIds);
+        List<SysGroupPermissionPO> groupPermList = sysGroupPermissionMapper.selectList(groupPermQuery);
+        if (groupPermList.isEmpty()) {
+            return Result.ok(new ArrayList<>()); // 无权限时返回空列表，避免null
+        }
+
+        // 提取权限ID列表（去重）
+        List<String> permIds = groupPermList.stream()
+                .map(SysGroupPermissionPO::getPermId)
+                .distinct()  // 避免权限重复
+                .collect(Collectors.toList());
+
+        // 4. 根据权限ID查询：parent_id=0的权限，仅查path字段（优化性能）
+        QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
+        permQuery.in("id", permIds)
+                .eq("parent_id", 0)
+                .select("path"); // 只查询path字段，减少数据传输
+
+        List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
+
+        // 5. 提取path字段为纯字符串列表，过滤空值
+        List<String> rootPermissionPaths = permissionList.stream()
+                .map(SysPermissionPO::getPath) // 仅提取path字段
+                .filter(path -> path != null && !path.trim().isEmpty()) // 过滤null/空字符串/纯空格
+                .collect(Collectors.toList());
+
+        return Result.ok(rootPermissionPaths);
     }
 }
