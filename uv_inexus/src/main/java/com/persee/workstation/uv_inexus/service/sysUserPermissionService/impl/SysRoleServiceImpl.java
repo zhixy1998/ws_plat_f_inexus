@@ -2,26 +2,47 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysRoleService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 @Service
 public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> implements SysRoleService {
 
+    @Autowired
+    private SysUserGroupMapper sysUserGroupMapper;
+    
+    @Autowired
+    private SysGroupMapper sysGroupMapper;
+    
+    @Autowired
+    private SysUserMapper sysUserMapper;
+    
     // 分页查询：返回封装后的 Result<PageView>
     @Override
     public Result<PageView<SysRolePO>> getRolePage(Page<SysRolePO> page, RoleQueryDTO queryDTO) {
@@ -121,5 +142,99 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         // 2. 执行删除
         baseMapper.deleteById(id);
         return Result.ok("角色删除成功");  // 修正描述错误
+    }
+
+    @Override
+    public Result<RoleTreeDTO> getUserRoleGroupTree(String userId) {
+        try {
+            // 1. 根据用户ID查询所属的用户组
+            LambdaQueryWrapper<SysUserGroupPO> userGroupWrapper = new LambdaQueryWrapper<>();
+            userGroupWrapper.eq(SysUserGroupPO::getUserId, userId);
+            List<SysUserGroupPO> userGroups = sysUserGroupMapper.selectList(userGroupWrapper);
+            
+            if (userGroups == null || userGroups.isEmpty()) {
+                return Result.fail("该用户未分配任何组");
+            }
+            
+            // 2. 从用户组中获取第一个组的角色ID（假设用户只属于同一角色的组）
+            String firstGroupId = userGroups.get(0).getGroupId();
+            SysGroupPO firstGroup = sysGroupMapper.selectById(firstGroupId);
+            if (firstGroup == null) {
+                return Result.fail("用户所属组不存在");
+            }
+            
+            String roleId = firstGroup.getRoleId();
+            if (roleId == null) {
+                return Result.fail("用户所属组未分配角色");
+            }
+            
+            // 3. 查询角色信息
+            SysRolePO role = baseMapper.selectById(roleId);
+            if (role == null) {
+                return Result.fail("角色不存在");
+            }
+            
+            // 4. 转换为RoleTreeDTO
+            RoleTreeDTO roleTreeDTO = new RoleTreeDTO();
+            roleTreeDTO.setId(role.getId());
+            roleTreeDTO.setRoleName(role.getRoleName());
+            roleTreeDTO.setRoleCode(role.getRoleCode());
+            roleTreeDTO.setStatus(role.getStatus());
+            
+            // 5. 查询该角色下的所有组
+            LambdaQueryWrapper<SysGroupPO> groupWrapper = new LambdaQueryWrapper<>();
+            groupWrapper.eq(SysGroupPO::getRoleId, roleId);
+            groupWrapper.eq(SysGroupPO::getStatus, 1); // 只查询启用的组
+            List<SysGroupPO> groups = sysGroupMapper.selectList(groupWrapper);
+            
+            // 6. 转换组信息并查询每个组下的用户
+            List<GroupTreeDTO> groupTreeDTOs = groups.stream().map(group -> {
+                GroupTreeDTO groupDTO = new GroupTreeDTO();
+                groupDTO.setId(group.getId());
+                groupDTO.setGroupName(group.getGroupName());
+                groupDTO.setDescription(group.getDescription());
+                groupDTO.setStatus(group.getStatus());
+                
+                // 查询该组下的所有用户
+                LambdaQueryWrapper<SysUserGroupPO> ugWrapper = new LambdaQueryWrapper<>();
+                ugWrapper.eq(SysUserGroupPO::getGroupId, group.getId());
+                List<SysUserGroupPO> userGroupRelations = sysUserGroupMapper.selectList(ugWrapper);
+                
+                // 获取用户ID列表
+                List<String> userIds = userGroupRelations.stream()
+                        .map(SysUserGroupPO::getUserId)
+                        .collect(Collectors.toList());
+                
+                // 查询用户信息
+                if (!userIds.isEmpty()) {
+                    LambdaQueryWrapper<SysUserPO> userWrapper = new LambdaQueryWrapper<>();
+                    userWrapper.in(SysUserPO::getId, userIds);
+                    userWrapper.eq(SysUserPO::getStatus, 1); // 只查询启用的用户
+                    List<SysUserPO> users = sysUserMapper.selectList(userWrapper);
+                    
+                    // 转换为UserTreeDTO
+                    List<UserTreeDTO> userDTOs = users.stream().map(user -> {
+                        UserTreeDTO userDTO = new UserTreeDTO();
+                        userDTO.setId(user.getId());
+                        userDTO.setUsername(user.getUsername());
+                        userDTO.setRealName(user.getRealName());
+                        userDTO.setPhone(user.getPhone());
+                        userDTO.setStatus(user.getStatus());
+                        return userDTO;
+                    }).collect(Collectors.toList());
+                    
+                    groupDTO.setUserList(userDTOs);
+                }
+                
+                return groupDTO;
+            }).collect(Collectors.toList());
+            
+            roleTreeDTO.setGroupList(groupTreeDTOs);
+            
+            return Result.ok(roleTreeDTO);
+        } catch (Exception e) {
+            log.error("查询用户角色组树形结构失败", e);
+            return Result.fail("查询失败：" + e.getMessage());
+        }
     }
 }

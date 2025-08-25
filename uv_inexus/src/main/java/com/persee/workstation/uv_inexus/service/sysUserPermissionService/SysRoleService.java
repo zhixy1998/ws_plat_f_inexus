@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
@@ -41,4 +42,11 @@ public interface SysRoleService extends IService<SysRolePO> {
      * 根据ID删除单个角色
      */
     Result<String> deleteById(String id);
+
+    /**
+     * 根据用户ID查询其所在角色及该角色下所有组和用户的树形结构
+     * @param userId 用户ID
+     * @return 角色树形结构
+     */
+    Result<RoleTreeDTO> getUserRoleGroupTree(String userId);
 }

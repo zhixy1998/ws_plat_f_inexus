@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysRoleService;
@@ -25,6 +26,7 @@ import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/role")
@@ -74,5 +76,13 @@ public class RoleController {
     @ApiOperation("根据ID删除单个角色")
     public Result<String> deleteById(@PathVariable String id) {
         return sysRoleService.deleteById(id);
+    }
+    
+    @GetMapping("/user-role-tree")
+    @ApiOperation("根据用户ID查询角色及下属组和用户树形结构")
+    public Result<RoleTreeDTO> getUserRoleGroupTree(
+            @ApiParam(value = "用户ID", required = true) 
+            @RequestParam String userId) {
+        return sysRoleService.getUserRoleGroupTree(userId);
     }
 }
