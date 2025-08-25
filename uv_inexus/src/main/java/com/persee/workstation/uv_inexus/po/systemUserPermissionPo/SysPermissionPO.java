@@ -38,11 +38,15 @@ public class SysPermissionPO extends BasePO {
 
     @TableField("parent_id")
     @ApiModelProperty("父权限ID，用于构建权限层级")
-    private Long parentId;
+    private String parentId;
 
     @TableField("path")
     @ApiModelProperty("路由路径，仅菜单权限需要")
     private String path;
+
+    @TableField("redirect")
+    @ApiModelProperty("重定向")
+    private String redirect;
 
     @TableField("component")
     @ApiModelProperty("前端组件路径，仅菜单权限需要")
@@ -59,4 +63,14 @@ public class SysPermissionPO extends BasePO {
     @TableField("status")
     @ApiModelProperty("状态：1-启用，0-禁用")
     private Integer status;
+
+    // 补充 hidden 字段，对应数据库表可能有的 hidden 字段，若没有需确认是否要新增
+    @TableField("hidden") 
+    @ApiModelProperty("是否隐藏：1-是，0-否")
+    private Integer hidden;
+
+    // 补充 noAuth 字段，对应数据库表可能有的 no_auth 字段，若没有需确认是否要新增
+    @TableField("no_auth") 
+    @ApiModelProperty("是否无需权限：1-是，0-否")
+    private Integer noAuth; 
 }
