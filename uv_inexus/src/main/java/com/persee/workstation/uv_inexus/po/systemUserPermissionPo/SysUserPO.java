@@ -30,6 +30,10 @@ public class SysUserPO extends BasePO {
     @ApiModelProperty("用户名")
     private String username;
 
+    @TableField("token")
+    @ApiModelProperty("token")
+    private String token;
+
     @TableField("password")
     @ApiModelProperty("密码（加密存储）")
     private String password;

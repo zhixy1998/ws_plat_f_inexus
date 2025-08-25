@@ -11,4 +11,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 public interface UserPermissionService {
     // 根据用户ID查询所有权限
     Result<List<PermissionDTO>> getUserPermissions(String userId);
+
+    // 新增方法：查询parent_id为0的所有权限的path值
+    Result<List<String>> getRootPermissionPaths();
 }

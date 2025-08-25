@@ -31,4 +31,11 @@ public class UserPermissionController {
             @RequestParam String userId) {
         return userPermissionService.getUserPermissions(userId);
     }
+
+    @GetMapping("/role-path")
+    @ApiOperation("查询parent_id为0的所有权限的path值")
+    public Result<List<String>> getRootPermissionPaths() {
+        // 调用Service层获取parent_id=0的path列表
+        return userPermissionService.getRootPermissionPaths();
+    }
 }

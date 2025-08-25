@@ -1,12 +1,13 @@
 package com.persee.workstation.uv_inexus.config;
 
-import com.persee.workstation.uv_inexus.util.tokenUtil.TokenInterceptor;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.persee.workstation.uv_inexus.util.tokenUtil.TokenInterceptor;
 
 @Configuration
 public class TokenConfig implements WebMvcConfigurer {

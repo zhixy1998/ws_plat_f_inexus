@@ -87,4 +87,20 @@ public class UserPermissionServiceImpl implements UserPermissionService {
 
         return Result.ok(permissionDTOs);
     }
+
+    // 新增方法实现：查询parent_id=0的path列表
+    @Override
+    public Result<List<String>> getRootPermissionPaths() {
+        // 1. 构造查询条件：parent_id = 0
+        QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
+        permQuery.eq("parent_id", 0); // 只筛选菜单类型的权限
+        List<String> routeNames = sysPermissionMapper.selectList(permQuery).stream()
+                .map(SysPermissionPO::getPermName) // 提取 name 字段
+                .filter(name -> name != null && !name.isEmpty()) // 过滤空值
+                .distinct() // 去重
+                .collect(Collectors.toList());
+
+        // 4. 返回结果
+        return Result.ok(routeNames);
+    }
 }
