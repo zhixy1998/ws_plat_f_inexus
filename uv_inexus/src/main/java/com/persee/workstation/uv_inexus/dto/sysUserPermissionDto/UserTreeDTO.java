@@ -13,6 +13,9 @@ public class UserTreeDTO {
     @ApiModelProperty("用户ID")
     private String id;
 
+    @ApiModelProperty("密码")
+    private String password;
+
     @ApiModelProperty("用户名")
     private String username;
 
@@ -21,6 +24,9 @@ public class UserTreeDTO {
 
     @ApiModelProperty("手机号")
     private String phone;
+
+    @ApiModelProperty("邮箱")
+    private String email;
 
     @ApiModelProperty("用户状态（1-启用，0-禁用）")
     private Integer status;

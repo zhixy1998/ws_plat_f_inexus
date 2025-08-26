@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysRoleService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
@@ -84,5 +85,16 @@ public class RoleController {
             @ApiParam(value = "用户ID", required = true) 
             @RequestParam String userId) {
         return sysRoleService.getUserRoleGroupTree(userId);
+    }
+
+    // 新增接口：根据角色ID查询下属所有组信息
+    @GetMapping("/groups")
+    @ApiOperation("根据角色ID查询下属所有启用组")
+    @ApiParam(name = "id", value = "角色ID", required = true, example = "1001")
+    public Result<List<SysGroupPO>> getRoleGroups(
+            @RequestParam(required = true) String id // 角色ID，参数名与你现有接口保持一致（如/getRoleById的id）
+    ) {
+        // 直接调用Service层方法，返回结果（与现有接口风格一致）
+        return sysRoleService.getGroupsByRoleId(id);
     }
 }

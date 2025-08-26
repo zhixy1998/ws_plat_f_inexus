@@ -237,4 +237,36 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             return Result.fail("查询失败：" + e.getMessage());
         }
     }
+
+    /**
+     * 新增实现：根据角色ID查询下属所有组信息
+     */
+    @Override
+    public Result<List<SysGroupPO>> getGroupsByRoleId(String roleId) {
+        try {
+            // 1. 校验角色是否存在
+            SysRolePO rolePO = baseMapper.selectById(roleId);
+            if (rolePO == null) {
+                return Result.fail("角色不存在");
+            }
+            
+            // 2. 校验角色状态（只查询启用的角色）
+            if (rolePO.getStatus() != 1) {
+                return Result.fail("该角色已禁用，无法查询下属组");
+            }
+            
+            // 3. 使用MyBatis-Plus的LambdaQueryWrapper查询
+            LambdaQueryWrapper<SysGroupPO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(SysGroupPO::getRoleId, roleId)  // 匹配角色ID
+                       .eq(SysGroupPO::getStatus, 1)       // 只查询启用状态的组
+                       .orderByAsc(SysGroupPO::getGroupName); // 按组名称升序排列
+            
+            // 执行查询
+            List<SysGroupPO> groupList = sysGroupMapper.selectList(queryWrapper);
+            
+            return Result.ok(groupList);
+        } catch (Exception e) {
+            return Result.fail("查询失败：" + e.getMessage());
+        }
+    }
 }

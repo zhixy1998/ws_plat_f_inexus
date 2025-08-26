@@ -39,6 +39,10 @@ public class UserSaveDTO {
     @Email(message = "邮箱格式不正确")
     private String email;
 
+    @ApiModelProperty(value = "角色id")
+    @Pattern(regexp = "^[0-9]+$", message = "角色ID必须为数字")
+    private String roleId;
+
     @ApiModelProperty(value = "状态（1-启用，0-禁用）", required = true)
     private Integer status;
 

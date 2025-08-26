@@ -8,6 +8,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
@@ -49,4 +50,7 @@ public interface SysRoleService extends IService<SysRolePO> {
      * @return 角色树形结构
      */
     Result<RoleTreeDTO> getUserRoleGroupTree(String userId);
+
+    // 新增方法：根据角色ID查询下属组信息
+    Result<List<SysGroupPO>> getGroupsByRoleId(String roleId);
 }

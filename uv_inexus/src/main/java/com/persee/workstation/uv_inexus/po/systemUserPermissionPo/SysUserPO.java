@@ -54,6 +54,10 @@ public class SysUserPO extends BasePO {
     @ApiModelProperty("状态：1-启用，0-禁用")
     private Integer status;
 
+    @TableField("role_id")
+    @ApiModelProperty("角色id")
+    private Integer roleId;
+
     @TableField("last_login_time")
     @ApiModelProperty("最后登录时间")
     private LocalDateTime lastLoginTime;
