@@ -1,6 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
-import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import lombok.Data;
 
 @Data

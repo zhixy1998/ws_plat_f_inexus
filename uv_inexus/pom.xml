@@ -137,6 +137,13 @@
             <artifactId>MathParser.org-mXparser</artifactId>
             <version>6.1.0</version>
         </dependency>
+
+        <!-- 动态数据源依赖，用于实现多数据源切换 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>dynamic-datasource-spring-boot-starter</artifactId>
+            <version>3.3.2</version>
+        </dependency>
         <!-- <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>

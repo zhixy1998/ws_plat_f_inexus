@@ -1,8 +1,8 @@
 package com.persee.workstation.uv_inexus.util;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;

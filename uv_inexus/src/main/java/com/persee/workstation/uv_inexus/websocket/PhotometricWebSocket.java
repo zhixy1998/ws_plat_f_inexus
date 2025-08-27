@@ -9,10 +9,10 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
