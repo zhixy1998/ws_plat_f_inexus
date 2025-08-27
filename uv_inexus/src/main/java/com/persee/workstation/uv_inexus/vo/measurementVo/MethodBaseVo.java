@@ -14,6 +14,8 @@ public class MethodBaseVo {
     private String createTime;
     // 所属项目
     private String project;
+    // 测量类型
+    private String measurementType;
     // 最近使用时间
     private String recentUsageTime;
 }

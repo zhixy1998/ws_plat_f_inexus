@@ -64,4 +64,13 @@ public interface ExperimentTestService {
 
     // 导入方法
     Result importMethod(MultipartFile file);
+
+    // 清除项目
+    Result clearProject(String projectId);
+
+    // 清除任务
+    Result clearTask(String taskId);
+
+    // 清除方法
+    Result clearMethod(String methodId);
 }

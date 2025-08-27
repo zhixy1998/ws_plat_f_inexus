@@ -58,7 +58,7 @@ public interface TimeSweepService {
     Result uploadImage(SpectrumImageUpload upload);
 
     // 获取峰谷数据列表
-    Result queryPeakValleyDataList(String dataId, String type, Integer digit);
+    Result queryPeakValleyDataList(String dataId,  Integer digit);
 
     // 查询峰谷接口
     Result seekingPeaksAndValleysPort(SeekingPeaksValleysDto paramDto);
@@ -67,7 +67,7 @@ public interface TimeSweepService {
     Result addPeakValleyRemarks(PeakValleyMarkingDto paramDto);
 
     // 查询标记点数据列表
-    Result queryGaugePointDataList(String dataId, String type, Integer digit);
+    Result queryGaugePointDataList(String dataId, Integer digit);
 
     // 添加标记点接口
     Result addGaugePoint(AddGaugePointDto paramDto);

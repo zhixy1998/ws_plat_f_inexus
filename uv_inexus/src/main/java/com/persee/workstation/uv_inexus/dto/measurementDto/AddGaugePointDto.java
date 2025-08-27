@@ -10,6 +10,4 @@ public class AddGaugePointDto {
     private List<String> gaugePoints;
     // 数据id
     private String dataId;
-    // 类型(0.是测量数据1.是分析数据)
-    private String type;
 }

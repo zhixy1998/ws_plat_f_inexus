@@ -67,10 +67,13 @@ public interface SpectrumService {
 
     void testStart();
 
+    // 获取样本列表
     Result querySampleList(String taskId);
 
+    // 新增或删除样本
     Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto);
 
+    // 删除样本
     Result deleteSamplePort(String sampleId, String taskId);
 
     Result uploadImage(SpectrumImageUpload upload);
@@ -92,10 +95,10 @@ public interface SpectrumService {
     Result restoreDeletedListData(String taskId,String paramId, String type);
 
     // 查询峰谷接口
-    Result queryPeakAndValleysPort(String dataId, String type, Integer digit);
+    Result queryPeakAndValleysPort(String dataId, Integer digit);
 
     // 查询标记点接口
-    Result queryGaugePointPort(String dataId, String type, Integer digit);
+    Result queryGaugePointPort(String dataId, Integer digit);
 
     // 添加峰谷备注接口
     Result addPeakValleyRemarks(PeakValleyMarkingDto paramDto);

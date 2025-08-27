@@ -120,9 +120,8 @@ public class TimeSweepController {
     @GetMapping("queryPeakValleyDataList")
     @ApiOperation("查询峰谷数据列表接口")
     public Result queryPeakValleyDataList(@RequestParam String dataId,
-                                          @RequestParam String type,
                                           @RequestParam(required = false) Integer digit) {
-        return timeSweepService.queryPeakValleyDataList(dataId,type, digit);
+        return timeSweepService.queryPeakValleyDataList(dataId, digit);
     }
 
     @PostMapping("seekingPeaksAndValleysPort")
@@ -140,9 +139,8 @@ public class TimeSweepController {
     @GetMapping("queryGaugePointDataList")
     @ApiOperation("获取标记点数据列表")
     public Result queryGaugePointDataList(@RequestParam String dataId,
-                                      @RequestParam String type,
                                       @RequestParam(required = false) Integer digit) {
-        return timeSweepService.queryGaugePointDataList(dataId,type, digit);
+        return timeSweepService.queryGaugePointDataList(dataId, digit);
     }
 
     @PostMapping("addGaugePoint")

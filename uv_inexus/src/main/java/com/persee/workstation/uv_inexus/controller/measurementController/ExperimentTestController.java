@@ -196,5 +196,24 @@ public class ExperimentTestController {
     }
 
 
+    @DeleteMapping("clearProject")
+    @ApiOperation("清除项目")
+    public Result clearProject(@RequestParam String projectId) {
+        return experimentTestService.clearProject(projectId);
+    }
+
+    @DeleteMapping("clearTask")
+    @ApiOperation("清除任务")
+    public Result clearTask(@RequestParam String taskId) {
+        return experimentTestService.clearTask(taskId);
+    }
+
+    @DeleteMapping("clearMethod")
+    @ApiOperation("清除方法")
+    public Result clearMethod(@RequestParam String methodId) {
+        return experimentTestService.clearMethod(methodId);
+    }
+
+
 
 }

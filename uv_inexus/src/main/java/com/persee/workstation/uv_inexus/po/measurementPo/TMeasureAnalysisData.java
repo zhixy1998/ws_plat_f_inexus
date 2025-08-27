@@ -19,6 +19,10 @@ public class TMeasureAnalysisData {
     @TableId(value = "id",type = IdType.ASSIGN_UUID)// 假设id是主键
     private String id;
 
+    // 分析编号
+    @TableField("analysis_number")
+    private Integer analysisNumber;
+
     // 分析名称
     @TableField("analysis_name")
     private String analysisName;
@@ -47,7 +51,7 @@ public class TMeasureAnalysisData {
     @TableField("analysis_result")
     private String analysisResult;
 
-    // 变换类型 (0.四则运算 1.高级运算 2.平滑 3.微分 4.光度模式转换)
+    // 变换类型 (0.四则运算 1.高级运算 2.平滑 3.微分 4.光度模式转换.5.原始计算数据  )
     @TableField("analysis_type")
     private String analysisType;
 

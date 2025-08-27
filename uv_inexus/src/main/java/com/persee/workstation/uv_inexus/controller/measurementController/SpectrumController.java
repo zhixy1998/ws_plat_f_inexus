@@ -150,12 +150,6 @@ public class SpectrumController {
         return spectrumService.queryAnalysisGaugePoint(analysisId);
     }
 
-    @PostMapping("addMeasureDataGaugePointPort")
-    @ApiOperation("添加测量标记点接口")
-    public Result addMeasureDataGaugePointPort(@RequestBody MeasureDataGaugePointDto paramDto){
-        return spectrumService.addMeasureDataGaugePointPort(paramDto);
-    }
-
     @PostMapping("addAnalysisDataGaugePointPort")
     @ApiOperation("添加分析标记点接口")
     public Result addAnalysisDataGaugePointPort(@RequestBody AnalysisDataGaugePointDto paramDto){
@@ -165,9 +159,8 @@ public class SpectrumController {
     @GetMapping("queryPeakAndValleysPort")
     @ApiOperation("获取峰谷接口")
     public Result queryPeakAndValleysPort(@RequestParam String dataId,
-                                          @RequestParam String type,
                                           @RequestParam(required = false) Integer digit) {
-        return spectrumService.queryPeakAndValleysPort(dataId,type, digit);
+        return spectrumService.queryPeakAndValleysPort(dataId, digit);
     }
 
     @PostMapping("seekingPeaksAndValleysPort")
@@ -186,9 +179,8 @@ public class SpectrumController {
     @GetMapping("queryGaugePointPort")
     @ApiOperation("获取标记点接口")
     public Result queryGaugePointPort(@RequestParam String dataId,
-                                      @RequestParam String type,
                                       @RequestParam(required = false) Integer digit) {
-        return spectrumService.queryGaugePointPort(dataId,type, digit);
+        return spectrumService.queryGaugePointPort(dataId, digit);
     }
 
     @PostMapping("addGaugePoint")

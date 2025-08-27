@@ -386,44 +386,48 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
                 break;
             case SPECTRAL_SCAN:
-                for (Map<String, String> map: paramDto.getSpecimens()) {
-                    String jsonString = JSON.toJSONString(map);
+                if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
+                    for (Map<String, String> map: paramDto.getSpecimens()) {
+                        String jsonString = JSON.toJSONString(map);
 
-                    SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
-                    // 创建样品表
-                    TMeasureSample sample = new TMeasureSample();
-                    sample.setSampleNumber(specimen.getSampleNumber());
-                    sample.setSampleName(specimen.getSampleName());
-                    sample.setSampleLocation(specimen.getSampleLocation());
-                    sample.setColor("#000000");
-                    sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
-                    sample.setDataBulk(0);
-                    tMeasureSampleService.save(sample);
-                    TaskSpecimen taskSpecimen = new TaskSpecimen();
-                    taskSpecimen.setSpecimenKey(sample.getId());
-                    taskSpecimen.setDeleteType("0");
-                    taskSpecimen.setIsTested("0");
-                    list.add(taskSpecimen);
+                        SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
+                        // 创建样品表
+                        TMeasureSample sample = new TMeasureSample();
+                        sample.setSampleNumber(specimen.getSampleNumber());
+                        sample.setSampleName(specimen.getSampleName());
+                        sample.setSampleLocation(specimen.getSampleLocation());
+                        sample.setColor("#000000");
+                        sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
+                        sample.setDataBulk(0);
+                        tMeasureSampleService.save(sample);
+                        TaskSpecimen taskSpecimen = new TaskSpecimen();
+                        taskSpecimen.setSpecimenKey(sample.getId());
+                        taskSpecimen.setDeleteType("0");
+                        taskSpecimen.setIsTested("0");
+                        list.add(taskSpecimen);
+                    }
                 }
                 break;
             case TIME_SCAN:
-                for (Map<String, String> map: paramDto.getSpecimens()) {
-                    String jsonString = JSON.toJSONString(map);
+                if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
+                    for (Map<String, String> map: paramDto.getSpecimens()) {
+                        String jsonString = JSON.toJSONString(map);
 
-                    SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
-                    // 创建样品表
-                    TMeasureSample sample = new TMeasureSample();
-                    sample.setSampleNumber(specimen.getSampleNumber());
-                    sample.setSampleName(specimen.getSampleName());
-                    sample.setSampleLocation(specimen.getSampleLocation());
-                    sample.setColor("#000000");
-                    sample.setDataBulk(0);
-                    tMeasureSampleService.save(sample);
-                    TaskSpecimen taskSpecimen = new TaskSpecimen();
-                    taskSpecimen.setSpecimenKey(sample.getId());
-                    taskSpecimen.setDeleteType("0");
-                    taskSpecimen.setIsTested("0");
-                    list.add(taskSpecimen);
+                        SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
+                        // 创建样品表
+                        TMeasureSample sample = new TMeasureSample();
+                        sample.setSampleNumber(specimen.getSampleNumber());
+                        sample.setSampleName(specimen.getSampleName());
+                        sample.setSampleLocation(specimen.getSampleLocation());
+                        sample.setColor("#000000");
+                        sample.setDataBulk(0);
+                        tMeasureSampleService.save(sample);
+                        TaskSpecimen taskSpecimen = new TaskSpecimen();
+                        taskSpecimen.setSpecimenKey(sample.getId());
+                        taskSpecimen.setDeleteType("0");
+                        taskSpecimen.setIsTested("0");
+                        list.add(taskSpecimen);
+                    }
                 }
                 break;
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
@@ -883,6 +887,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         vo.setId(method.getId());
                         vo.setMethodName(method.getMethodName());
                         vo.setCreator(method.getMethodCreator());
+                        vo.setMeasurementType(method.getMeasurementType());
                         vo.setCreateTime(method.getMethodCreateTime().format(formatter));
                         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
                         if (project != null){
@@ -900,6 +905,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         vo.setId(method.getId());
                         vo.setMethodName(method.getMethodName());
                         vo.setCreator(method.getMethodCreator());
+                        vo.setMeasurementType(method.getMeasurementType());
                         vo.setCreateTime(method.getMethodCreateTime().format(formatter));
                         TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
                         vo.setProject(project.getProjectName());
@@ -1266,6 +1272,106 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         return Result.ok("成功导入 " + methodList.size() + " 个方法");
+    }
+
+    /**
+     * 清空项目
+     * @param projectId
+     * @return
+     */
+    @Override
+    public Result clearProject(String projectId) {
+        // 校验：检查项目是否存在
+        TMeasureProject project = tMeasureProjectService.getById(projectId);
+        if (project == null) {
+            return Result.fail("项目不存在");
+        }
+
+        // 1. 判断任务是否为空
+        long taskCount = tMeasureTaskService.count(new QueryWrapper<TMeasureTask>().eq("project_id", projectId));
+        if (taskCount > 0) {
+            return Result.fail("请先删除所有任务");
+        }
+
+        // 2. 将所有该项目的方法的 projectId 字段清空
+        List<TMeasureMethod> methods = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_id", projectId));
+        if (!methods.isEmpty()) {
+            for (TMeasureMethod method : methods) {
+                method.setProjectItemKey(null);
+            }
+            tMeasureMethodService.updateBatchById(methods);
+        }
+
+        // 3. 删除项目
+        boolean removed = tMeasureProjectService.removeById(projectId);
+        if ( removed){
+            return Result.ok("项目已清空");
+        }else {
+            return Result.fail("项目清空失败");
+        }
+
+    }
+
+    /**
+     * 清除任务
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result clearTask(String taskId) {
+        // 校验：检查任务是否存在
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        // 1. 删除任务样品表
+        tMeasureSampleService.remove(new QueryWrapper<TMeasureSample>().eq("task_id", taskId));
+
+        // 2. 删除任务测量数据
+        tMeasureDataService.remove(new QueryWrapper<TMeasureData>().eq("task_id", taskId));
+
+        // 3. 删除任务分析数据
+        tMeasureAnalysisDataService.remove(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId));
+
+        // 4. 删除任务附属信息（比如附件、扩展表等）
+        tMeasureTaskAttachmentService.remove(new QueryWrapper<TMeasureTaskAttachment>().eq("task_id", taskId));
+
+        // 5. 删除任务本身
+        boolean removed = tMeasureTaskService.removeById(taskId);
+        if (removed){
+            return Result.ok("任务已删除");
+        }else  {
+            return Result.fail("任务删除失败");
+        }
+    }
+
+    /**
+     * 清除方法
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result clearMethod(String methodId) {
+        // 校验：检查方法是否存在
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+
+        // 1. 判断是否有任务在使用该方法
+        long taskCount = tMeasureTaskService.count(new QueryWrapper<TMeasureTask>().eq("method_key", methodId));
+        if (taskCount > 0) {
+            return Result.fail("请先删除使用该方法的所有任务");
+        }
+
+        // 2. 删除方法
+        boolean removed = tMeasureMethodService.removeById(methodId);
+        if (removed){
+            return Result.ok("方法已删除");
+        }else {
+            return Result.fail("方法删除失败");
+        }
     }
 
 
