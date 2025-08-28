@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureSampleMapper;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
  * @since 2025-06-12 10:05:08
  */
 @Service("FMeasureSampleService")
+@DS("concise")
 public class FMeasureSampleServiceImpl extends ServiceImpl<FMeasureSampleMapper, FMeasureSample> implements FMeasureSampleService {
 
 }

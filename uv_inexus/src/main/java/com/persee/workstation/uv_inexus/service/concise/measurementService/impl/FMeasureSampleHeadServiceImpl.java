@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureSampleHeadMapper;
@@ -21,6 +22,7 @@ import java.util.List;
 
 @Service("FMeasureSampleHeadService")
 @Slf4j
+@DS("concise")
 public class FMeasureSampleHeadServiceImpl
         extends ServiceImpl<FMeasureSampleHeadMapper, FMeasureSampleHead> 
         implements FMeasureSampleHeadService{

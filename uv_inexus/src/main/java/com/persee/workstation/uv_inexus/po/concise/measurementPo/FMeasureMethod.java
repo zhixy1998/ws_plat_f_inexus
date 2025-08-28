@@ -57,13 +57,15 @@ public class FMeasureMethod {
     @TableField("method_creator")
     private String methodCreator;
 
-    // 预留字段2 ~ 预留字段5
-    @TableField("field2")
-    private String field2;
+    // 是否草稿(0.不是草稿 1.是草稿)
+    @TableField("is_draft")
+    private String isDraft;
 
-    @TableField("field3")
-    private String field3;
+    // 使用状态
+    @TableField("use_state")
+    private String useState;
 
+    // 预留字段4 ~ 预留字段5
     @TableField("field4")
     private String field4;
 
