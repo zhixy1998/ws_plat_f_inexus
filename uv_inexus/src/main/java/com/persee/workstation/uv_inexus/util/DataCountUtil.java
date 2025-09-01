@@ -77,28 +77,24 @@ public class DataCountUtil {
     }
 
     public static String countTPercent(ChangeParam origin, ChangeParam real, Double z){
-
-        System.out.println("origin:" + origin.getD());
-        System.out.println("origin:" + origin.getR());
-        System.out.println("origin:" + origin.getS());
-
-        System.out.println("real:" + real.getD());
-        System.out.println("real:" + real.getR());
-        System.out.println("real:" + real.getS());
-
-        double r0 = Double.parseDouble(origin.getR());
-        double s0 = Double.parseDouble(origin.getS());
-        double d0 = Double.parseDouble(origin.getD());
-
         double d1 = Double.parseDouble(real.getD());
         double r1 = Double.parseDouble(real.getR());
         double s1 = Double.parseDouble(real.getS());
+        double a1;
+        if (origin == null){
+            a1 = 1;
+            System.out.println("a1:" + a1);
+        }else{
+            double r0 = Double.parseDouble(origin.getR());
+            double s0 = Double.parseDouble(origin.getS());
+            double d0 = Double.parseDouble(origin.getD());
 
-        double v0 = z * d0;
-        double m1 = r0- v0;
-        double m2 = s0- v0;
-        double a1 = m2/m1;
-        System.out.println("a1:" + a1);
+            double v0 = z * d0;
+            double m1 = r0- v0;
+            double m2 = s0- v0;
+            a1 = m2/m1;
+            System.out.println("a1:" + a1);
+        }
 
         double v1 = z * d1;
         double m3 = r1- v1;

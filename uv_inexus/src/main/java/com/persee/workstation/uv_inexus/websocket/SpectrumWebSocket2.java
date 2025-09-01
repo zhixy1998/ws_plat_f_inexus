@@ -139,6 +139,7 @@ public class SpectrumWebSocket2 extends TextWebSocketHandler {
             try {
 
                 if (!repeatMode) {
+                    // 不重复
                     for (int i = 0; i < newSampleData.size(); i++) {
                         // 预留: 设置样品池位置
 
@@ -159,7 +160,22 @@ public class SpectrumWebSocket2 extends TextWebSocketHandler {
                         }
                     }
                 }else{
+                    // 单池重复
+                    for (int i = 0; i < newSampleData.size(); i++) {
+                        // 预留: 设置样品池位置
+                        for (int r = 0; r < repeatCount; r++) {
+                            doOneMeasurement(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber,ip);
 
+                            // 如果不是最后一次 → 等待 interval 再来下一次
+                            if (r < repeatCount - 1) {
+                                try { sleep(repeatInterval); } catch (InterruptedException e) { handleTransportError(session, e); }
+                            }
+                        }
+                    }
+                    // 全部完成后再告诉前端 finish
+                    JSONObject payload = new JSONObject();
+                    payload.put("result", "finish");
+                    sendAndClose(session, String.valueOf(payload));
                 }
 
             }catch (Exception e) {
@@ -244,7 +260,12 @@ public class SpectrumWebSocket2 extends TextWebSocketHandler {
         // 1. 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
 
-        List<ChangeParam> baselineCopy = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+        List<ChangeParam> baselineCopy = new ArrayList<>();
+        if (!task.getZeroParam().isEmpty()){
+            baselineCopy = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+        }else{
+            baselineCopy = null;
+        }
         List<Double> x = new ArrayList<>();
         List<Double> y = new ArrayList<>();
 
