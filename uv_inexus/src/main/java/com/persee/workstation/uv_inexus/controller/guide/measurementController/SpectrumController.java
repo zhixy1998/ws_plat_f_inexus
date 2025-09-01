@@ -112,8 +112,8 @@ public class SpectrumController {
 
     @GetMapping("deleteSampleListPort")
     @ApiOperation("删除样品列表接口")
-    public Result deleteSampleListPort(@RequestParam String taskId,@RequestParam String sampleId) {
-        return spectrumService.deleteSampleListPort(taskId,sampleId);
+    public Result deleteSampleListPort(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String analysisId) {
+        return spectrumService.deleteSampleListPort(taskId,sampleId,analysisId);
     }
 
 
@@ -134,8 +134,8 @@ public class SpectrumController {
 
     @GetMapping("restoreDeletedListData")
     @ApiOperation("恢复已删除数据接口")
-    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String paramId,@RequestParam String type){
-        return spectrumService.restoreDeletedListData(taskId,paramId,type);
+    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String type,@RequestParam String analysisId){
+        return spectrumService.restoreDeletedListData(taskId,sampleId,type,analysisId);
     }
 
     @PostMapping("updateDataColor")

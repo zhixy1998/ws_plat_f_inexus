@@ -239,7 +239,6 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                                 dataArray.add(point);
                             }
                             payload.put("data", dataArray);
-                            payload.put("key", sample.getDataBulk()+1);
                             if (session.isOpen()) {
                                 session.sendMessage(new TextMessage(payload.toJSONString()));
                             }
@@ -256,10 +255,9 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
 //                    tMeasureSampleService.updateById(sample);
 //                    sendAndClose(session, String.valueOf(payload));
                 }else{
-                    Integer dataBulk = sample.getDataBulk()+1;
                     // ===== 重复模式 =====
-                    for (int r = 0; r < repeatCount; r++,dataBulk++) {
-                        doOneMeasurement(session, command, spectrumParameter, task, taskId, sampleId, deviceSerialNumber,ip,dataBulk);
+                    for (int r = 0; r < repeatCount; r++) {
+                        doOneMeasurement(session, command, spectrumParameter, task, taskId, sampleId, deviceSerialNumber,ip);
 
                         // 如果不是最后一次 → 等待 interval 再来下一次
                         if (r < repeatCount - 1) {
@@ -270,7 +268,6 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                     // 全部完成后再告诉前端 finish
                     JSONObject payload = new JSONObject();
                     payload.put("result", "finish");
-                    sample.setDataBulk(dataBulk-1);
                     tMeasureSampleService.updateById(sample);
                     sendAndClose(session, String.valueOf(payload));
                 }
@@ -412,7 +409,6 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             System.err.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
             JSONObject payload = new JSONObject();
             payload.put("result", "finish");
-            sample.setDataBulk(sample.getDataBulk() + 1);
             tMeasureSampleService.updateById(sample);
             // 将公共的变量中的数据清除
             sendAndClose(session, String.valueOf(payload));
@@ -565,8 +561,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                                   String taskId,
                                   String sampleId,
                                   String deviceSerialNumber,
-                                  String  ip,
-                                  Integer executionCount) throws IOException {
+                                  String  ip) throws IOException {
 
         // 1. 发送测量命令
         devMessageUtil.getMeasureData(command, ip);

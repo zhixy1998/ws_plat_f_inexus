@@ -289,221 +289,110 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result sampleListPort(String taskId,String type,Integer digit) {
-
-        // 根据任务id查询任务数据
+        // 先对前端传过来的数据进行校验
+        if (taskId == null || taskId.equals("")) {
+            return Result.fail("任务id不能为空");
+        }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        // 根据任务中的方法id查找方法并获取里面的方法参数
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
-        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-            // 如果type为空同时删除类型为1则跳过
-            if (type == null && taskSpeciman.getDeleteType().equals("1")) continue;
-            SampleListVo vo = new SampleListVo();
-            // 根据样品id查询样品数据
-            TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-            vo.setTitle(byId.getSampleName());
-            if (taskSpeciman.getIsTested().equals("0")) {
-                vo.setData(null);
-                vo.setMeasureId(null);
-                vo.setSampleId(byId.getId());
-                vo.setColor(byId.getColor());
+        // 判断是否是重复模式
+        if ("不重复".equals(spectrumParameter.getRepetitionPattern())){
+            // 不重复模式
+            for (TaskSpecimen taskSpeciman : taskSpecimen) {
+                SampleListVo vo = new SampleListVo();
+                // 根据样品id查询样品数据
+                TMeasureSample sample = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null){
+                    return Result.fail("样品不存在");
+                }
+                // 如果没有测量数据则设置为无测量数据的参数返回
+                if (taskSpeciman.getIsTested().equals("0")){
+                    vo.setTitle(sample.getSampleName());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisId(null);
+                    vo.setAnalysisNumber(1);
+                    vo.setColor(null);
+                    vo.setData(null);
+                }else{
+                    QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("task_id", taskId);
+                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                    queryWrapper.eq("analysis_type", "5");
+                    queryWrapper.eq("is_delete", "0");
+                    queryWrapper.orderByDesc("analysis_number");
+                    queryWrapper.last("limit 1");
+                    TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
+                    if (measureData == null){
+                        return Result.fail("无测量数据");
+                    }
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(measureData.getId());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                    vo.setColor(measureData.getColor());
+                    vo.setData(getSampleData(measureData,digit));
+                }
                 vo.setType("0");
                 vo.setDeleteType(taskSpeciman.getDeleteType());
-                listVos.add(vo);
-            } else {
-                // 根据样品id和任务id两个条件去查询测量数据
-                QueryWrapper<TMeasureAnalysisData> eq = new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", byId.getId());
-                if (type == null) {
-                    eq.eq("is_delete", "0");
+            }
+        }else {
+            // 重复模式
+            if (spectrumParameter.getRepetitionTime() == null || spectrumParameter.getRepetitionTime().equals("")) {
+                return Result.fail("请填写重复次数");
+            }
+            Integer count = Integer.valueOf(spectrumParameter.getRepetitionTime());
+            for (TaskSpecimen taskSpeciman : taskSpecimen) {
+                // 根据样品id查询样品数据
+                TMeasureSample sample = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null){
+                    return Result.fail("样品不存在");
                 }
-                // 增加查询条件,按照序列号从大到小排序
-                eq.orderByDesc("analysis_number");
-                // 根据样品id和任务id两个条件去查询测量数据
-                List<TMeasureAnalysisData> measureDataList = tMeasureAnalysisDataService.list(eq);
-                for (TMeasureAnalysisData measureData : measureDataList) {
-                    if (measureDataList.size() > 1) {
-                        SampleListVo vos = new SampleListVo();
-                        vos.setTitle(byId.getSampleName() + "(" + measureData.getAnalysisNumber() + ")");
-                        vos.setMeasureId(measureData.getId());
-                        vos.setSampleId(byId.getId());
-                        vos.setData(getSampleData(measureData,digit));
-                        vos.setColor(byId.getColor());
-                        vos.setDeleteType(taskSpeciman.getDeleteType());
-                        vos.setType("0");
-                        listVos.add(vos);
+                // 根据方法中的方法参数的重复次数进行循环
+                for (int i = 0; i < count; i++) {
+                    SampleListVo vo = new SampleListVo();
+                    if (taskSpeciman.getIsTested().equals("0")){
+                        vo.setTitle(sample.getSampleName());
+                        vo.setAnalysisId( null);
+                        vo.setSampleId(taskSpeciman.getSpecimenKey());
+                        vo.setAnalysisNumber(i+1);
+                        vo.setColor(null);
+                        vo.setData(null);
                     }else{
-                        vo.setMeasureId(measureData.getId());
-                        vo.setData(getSampleData(measureData, digit));
-                        vo.setColor(byId.getColor());
-                        vo.setSampleId(byId.getId());
-                        vo.setDeleteType(taskSpeciman.getDeleteType());
-                        vo.setType("0");
-                        listVos.add(vo);
+                        QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                        queryWrapper.eq("task_id", taskId);
+                        queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                        queryWrapper.eq("analysis_type", "5");
+                        queryWrapper.eq("is_delete", "0");
+                        queryWrapper.eq("analysis_number", i+1);
+                        queryWrapper.last("limit 1");
+                        TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
+                        if (measureData == null){
+                            return Result.fail("无测量数据");
+                        }
+                        vo.setTitle(sample.getSampleName());
+                        vo.setAnalysisId(measureData.getId());
+                        vo.setSampleId(taskSpeciman.getSpecimenKey());
+                        vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                        vo.setColor(measureData.getColor());
+                        vo.setData(getSampleData(measureData,digit));
                     }
+                    vo.setType("0");
+                    vo.setDeleteType(taskSpeciman.getDeleteType());
+                    listVos.add(vo);
                 }
             }
         }
         return Result.ok(listVos);
-
-        // TODO 暂时先切换成一个测量数据一个样品
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(taskId);
-//        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//        List<SampleListVo> listVos = new ArrayList<>();
-//        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-//            // 如果type为空同时删除类型为1则跳过
-//            if (type == null && taskSpeciman.getDeleteType().equals("1")) continue;
-//            SampleListVo vo = new SampleListVo();
-//            // 根据样品id查询样品数据
-//            TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-//            vo.setTitle(byId.getSampleName());
-//            if (taskSpeciman.getIsTested().equals("0")) {
-//                vo.setData(null);
-//                vo.setMeasureId(null);
-//                vo.setSampleId(byId.getId());
-//                vo.setColor(byId.getColor());
-//                vo.setType("0");
-//                vo.setDeleteType(taskSpeciman.getDeleteType());
-//                listVos.add(vo);
-//            } else {
-//                // 根据样品id和任务id两个条件去查询测量数据
-//                QueryWrapper<TMeasureData> eq = new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId());
-//                if (type == null) {
-//                    eq.eq("is_delete", "0");
-//                }
-//                // 增加查询条件,按照序列号从大到小排序
-//                eq.orderByDesc("serial_number");
-//                // 根据样品id和任务id两个条件去查询测量数据
-//                List<TMeasureData> measureDataList = tMeasureDataService.list(eq);
-//                for (TMeasureData measureData : measureDataList) {
-//                    if (measureDataList.size() > 1) {
-//                        SampleListVo vos = new SampleListVo();
-//                        vos.setTitle(byId.getSampleName() + "(" + measureData.getSerialNumber() + ")");
-//                        vos.setMeasureId(measureData.getId());
-//                        vos.setSampleId(byId.getId());
-//                        vos.setData(getSampleData(measureData));
-//                        vos.setColor(byId.getColor());
-//                        vos.setDeleteType(taskSpeciman.getDeleteType());
-//                        vos.setType("0");
-//                        listVos.add(vos);
-//                    }else{
-//                        vo.setMeasureId(measureData.getId());
-//                        vo.setData(getSampleData(measureData));
-//                        vo.setColor(byId.getColor());
-//                        vo.setSampleId(byId.getId());
-//                        vo.setDeleteType(taskSpeciman.getDeleteType());
-//                        vo.setType("0");
-//                        listVos.add(vo);
-//                    }
-//                }
-//            }
-//        }
-//        return Result.ok(listVos);
-
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(taskId);
-//        if (task == null){
-//            return Result.ok(new ArrayList<>());
-//        }
-//        if (task.getSampleKey()==null||task.getSampleKey().equals("[]")){
-//            return Result.ok(new ArrayList<>());
-//        }
-//        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//        List<SampleListVo> listVos = new ArrayList<>();
-//        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-//            // 如果type为空同时删除类型为1则跳过
-//            if (type == null && taskSpeciman.getDeleteType().equals("1")) continue;
-//            SampleListVo vo = new SampleListVo();
-//            // 根据样品id查询样品数据
-//            TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-//            vo.setTitle(byId.getSampleName());
-//            if (taskSpeciman.getIsTested().equals("0")) {
-//                vo.setData(null);
-//                vo.setMeasureId(null);
-//                vo.setSampleId(byId.getId());
-//                vo.setColor(byId.getColor());
-//                vo.setType("0");
-//                vo.setDeleteType(taskSpeciman.getDeleteType());
-//                listVos.add(vo);
-//            } else {
-//                // 根据样品id和任务id两个条件去查询测量数据
-//                QueryWrapper<TMeasureData> eq = new QueryWrapper<TMeasureData>().eq("task_id", taskId).eq("sample_key", byId.getId());
-//                if (type == null) {
-//                    eq.eq("is_delete", "0");
-//                }
-//                // 增加查询条件,按照序列号从大到小排序
-//                eq.orderByDesc("serial_number");
-//                eq.last("limit 1");
-//                // 根据样品id和任务id两个条件去查询测量数据
-//                TMeasureData measureData = tMeasureDataService.getOne(eq);
-//                vo.setMeasureId(measureData.getId());
-//                vo.setData(getSampleData(measureData,digit));
-//                vo.setColor(byId.getColor());
-//                vo.setSampleId(byId.getId());
-//                vo.setDeleteType(taskSpeciman.getDeleteType());
-//                vo.setType("0");
-//                listVos.add(vo);
-//            }
-//        }
-//        return Result.ok(listVos);
-
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(taskId);
-//        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//
-//        List<SampleWithMeasuresVo> resultList = new ArrayList<>();
-//
-//        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-//            // 如果type为空同时删除类型为1则跳过
-//            if (type == null && "1".equals(taskSpeciman.getDeleteType())) continue;
-//
-//            // 根据样品id查询样品数据
-//            TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-//
-//            SampleWithMeasuresVo sampleVo = new SampleWithMeasuresVo();
-//            sampleVo.setSampleId(byId.getId());
-//            sampleVo.setTitle(byId.getSampleName());
-//            sampleVo.setColor(byId.getColor());
-//            sampleVo.setDeleteType(taskSpeciman.getDeleteType());
-//            sampleVo.setType("0");
-//
-//            List<MeasureVo> measureVos = new ArrayList<>();
-//
-//            if ("0".equals(taskSpeciman.getIsTested())) {
-//                // 没有测量数据则不对他进行任何操作
-//            } else {
-//                // 根据样品id和任务id两个条件去查询测量数据
-//                QueryWrapper<TMeasureData> eq = new QueryWrapper<TMeasureData>()
-//                        .eq("task_id", taskId)
-//                        .eq("sample_key", byId.getId());
-//                if (type == null) {
-//                    eq.eq("is_delete", "0");
-//                }
-//                // 按照序列号从大到小排序
-//                eq.orderByDesc("serial_number");
-//
-//                List<TMeasureData> measureDataList = tMeasureDataService.list(eq);
-//
-//                for (TMeasureData measureData : measureDataList) {
-//                    MeasureVo mvo = new MeasureVo();
-//                    mvo.setMeasureId(measureData.getId());
-//                    mvo.setSerialNumber(measureData.getSerialNumber().toString());
-//                    // 如果有多个测量数据，加上序号
-//                    if (measureDataList.size() > 1) {
-//                        mvo.setTitle(byId.getSampleName() + "(" + measureData.getSerialNumber() + ")");
-//                    } else {
-//                        mvo.setTitle(byId.getSampleName());
-//                    }
-//                    mvo.setData(getSampleData(measureData, digit));
-//                    mvo.setType("0");
-//                    measureVos.add(mvo);
-//                }
-//                sampleVo.setChildren(measureVos);
-//            }
-//
-//            resultList.add(sampleVo);
-//        }
-//
-//        return Result.ok(resultList);
     }
 
     /**
@@ -550,7 +439,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<SampleListVo> listVos = new ArrayList<>();
         for (TMeasureAnalysisData tMeasureAnalysisData : list) {
             SampleListVo vo = new SampleListVo();
-            vo.setMeasureId(tMeasureAnalysisData.getId());
+            vo.setAnalysisId(tMeasureAnalysisData.getId());
             vo.setTitle(tMeasureAnalysisData.getAnalysisName());
             vo.setColor(tMeasureAnalysisData.getColor());
             vo.setDeleteType(tMeasureAnalysisData.getIsDelete());
@@ -1051,7 +940,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
-                newSample.setDataBulk(0);
                 log.info("新增的样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());

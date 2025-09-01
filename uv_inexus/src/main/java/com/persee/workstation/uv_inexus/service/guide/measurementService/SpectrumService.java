@@ -8,29 +8,87 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
- * 光谱扫描服务
+ * 光谱扫描服务接口
+ * 该接口定义了光谱扫描相关的各种操作方法，包括数据查询、方法管理、参数处理等功能
  */
 public interface SpectrumService {
+    /**
+     * 查询测量数据
+     * @param dataVo 查询测量数据的参数对象
+     * @return 返回查询结果
+     */
     Result queryMeasuredData(QueryMeasuredDataVo dataVo);
 
+    /**
+     * 查询项目任务方法
+     * @param updateBy 更新人
+     * @param measureType 测量类型
+     * @return 返回查询结果
+     */
     Result queryProjectTaskMethod(String updateBy,String measureType);
 
+    /**
+     * 查询项目所有方法
+     * @param projectId 项目ID
+     * @param measureForm 测量形式
+     * @return 返回查询结果
+     */
     Result queryProjectAllMethods(String projectId,  String measureForm);
 
+    /**
+     * 查询方法参数
+     * @param methodId 方法ID
+     * @return 返回查询结果
+     */
     Result queryMethodParameter(String methodId);
 
+    /**
+     * 更新方法参数
+     * @param methodDto 方法参数数据传输对象
+     * @return 返回操作结果
+     */
     Result updateMethodParameter(SpectralMethodParameterDto methodDto);
 
+    /**
+     * 测试Python协议
+     */
     void testPythonProt();
 
+    /**
+     * 创建方法端口
+     * @param methodDto 方法参数请求对象
+     * @param updateBy 更新人
+     * @param spectrumParameter 光谱参数
+     * @return 返回操作结果
+     */
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
 
+    /**
+     * 查询测量参数
+     * @param taskId 任务ID
+     * @return 返回查询结果
+     */
     Result queryMeasurementParameters(String taskId);
 
+    /**
+     * 四则运算端口
+     * @param paramDto 四则运算参数对象
+     * @return 返回运算结果
+     */
     Result fourOperationsPort(FourOperationsParamDto paramDto);
 
+    /**
+     * 高级运算端口
+     * @param paramDto 高级运算参数对象
+     * @return 返回运算结果
+     */
     Result advancedOperationsPort(AdvancedOperationsDto paramDto);
 
+    /**
+     * 亮度模式转换端口
+     * @param paramDto 亮度转换参数对象
+     * @return 返回转换结果
+     */
     Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
 
     // 获取样本列表
@@ -39,20 +97,25 @@ public interface SpectrumService {
     // 获取变换列表
     Result changeTheListPort(String taskId,String type,Integer digit);
 
+    // 平滑度接口
     Result smoothnessPort(SmoothnessDto paramDto);
 
+    // 获取差分列表
     Result differentialPort(DifferentialDto paramDto);
 
+    // 获取测量点列表
     Result queryMeasureGaugePoint(String measureId);
 
     // 获取峰谷列表
     Result peakSearchingPort(SeekingPeaksValleysDto paramDto);
 
-
+    // 获取谷列表
     Result valleySearchingPort(String measureDataId);
 
+    // 获取转换谷列表
     Result conversionValleySearching(String measureDataId);
 
+    // 新增测量点
     Result addMeasureDataGaugePointPort(MeasureDataGaugePointDto paramDto);
 
     Result queryAnalysisGaugePoint(String analysisId);
@@ -78,11 +141,18 @@ public interface SpectrumService {
 
     Result uploadImage(SpectrumImageUpload upload);
 
+/**
+ * 根据任务ID和类型查询任务图片
+ * @param id 任务ID，用于唯一标识一个任务
+ * @param type 图片类型，用于区分不同类型的图片
+ * @return 返回查询结果，包含图片信息或错误信息
+ */
     Result queryTheTaskImage(String id, String type);
 
     Result deleteChangeListPort(String analysisId);
 
-    Result deleteSampleListPort(String taskId, String sampleId);
+    // 删除变换列表
+    Result deleteSampleListPort(String taskId, String sampleId,String analysisId);
 
     Result saveData(String taskId);
 
@@ -92,7 +162,8 @@ public interface SpectrumService {
 
     void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 
-    Result restoreDeletedListData(String taskId,String paramId, String type);
+    // 恢复删除列表数据
+    Result restoreDeletedListData(String taskId,String sampleId, String type,String analysisId);
 
     // 查询峰谷接口
     Result queryPeakAndValleysPort(String dataId, Integer digit);

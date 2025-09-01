@@ -72,9 +72,5 @@ public class TMeasureSample{
 
     @TableField("new_col_data")
     private String newColData;
-
-    // 数据量
-    @TableField("data_bulk")
-    private Integer dataBulk;
 }
 
