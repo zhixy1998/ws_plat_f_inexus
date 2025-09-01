@@ -905,6 +905,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 }
                 vo.setType("0");
                 vo.setDeleteType(taskSpeciman.getDeleteType());
+                listVos.add(vo);
             }
         }else {
             // 重复模式
@@ -913,6 +914,9 @@ public class SpectrumServiceImpl implements SpectrumService {
             }
             Integer count = Integer.valueOf(spectrumParameter.getRepetitionTime());
             for (TaskSpecimen taskSpeciman : taskSpecimen) {
+                if (type==null&& taskSpeciman.getDeleteType().equals("1")){
+                    continue;
+                }
                 // 根据样品id查询样品数据
                 TMeasureSample sample = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                 if (sample == null){
