@@ -63,12 +63,17 @@ public class CommandExecutor implements AutoCloseable{
                 for (byte b : reply) System.out.printf("%02X ", b);
                 System.out.println();
 
-                lastReceiveTime = System.currentTimeMillis();
-                socket.setSoTimeout(4500);
+                //  每收一条就解析
+                List<byte[]> oneResponseList = new ArrayList<>();
+                oneResponseList.add(reply);
 
-                return responses;
-            }catch (SocketException e){
-                if (System.currentTimeMillis() - lastReceiveTime >= 5000) break;
+                List<Object> result = ResponseParser.parseMultipleResponses(oneResponseList, sendBytes);
+                System.out.println("解析结果：" + result);
+
+                lastReceiveTime = System.currentTimeMillis();
+
+            }catch (SocketTimeoutException e){
+                if (System.currentTimeMillis() - lastReceiveTime >= 1000) break;
             }
         }
         return responses;
