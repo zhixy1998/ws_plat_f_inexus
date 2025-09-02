@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -34,7 +35,6 @@ public class UserController {
     @Autowired
     private SysUserService sysUserService;
 
-    // UserController.java
     @GetMapping("/")
     @ApiOperation("分页查询用户")
     public Result<PageView<SysUserPO>> getUserPage(
@@ -42,14 +42,14 @@ public class UserController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             UserQueryDTO queryDTO) {
         Page<SysUserPO> page = new Page<>(pageNum, pageSize);
-        System.out.println("222222222222222222"+page);
+        // System.out.println("222222222222222222"+page);
         // 直接返回封装后的 Result<PageView<SysUserPO>>
         return sysUserService.getUserPage(page, queryDTO); 
     }
 
     @GetMapping("/{id}")
-    @ApiOperation("根据ID查询用户")
-    public Result<SysUserPO> getUserById(@PathVariable String id) {
+    @ApiOperation("根据ID查询用户（含组、角色信息）")
+    public Result<UserDetailDTO> getUserById(@PathVariable String id) { // 返回类型改为UserDetailDTO
         return sysUserService.getUserById(id);
     }
 

@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -35,7 +36,7 @@ public interface SysUserService extends IService<SysUserPO> {
     /**
      * 根据ID查询用户
      */
-    Result<SysUserPO> getUserById(String id);
+    Result<UserDetailDTO> getUserById(String id);
 
     /**
      * 根据ID删除单个用户

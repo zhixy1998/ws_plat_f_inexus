@@ -38,6 +38,14 @@ public class SysUserPO extends BasePO {
     @ApiModelProperty("密码（加密存储）")
     private String password;
 
+    @TableField("position")
+    @ApiModelProperty("职务")
+    private String position;
+
+    @TableField("remarks")
+    @ApiModelProperty("备注")
+    private String remarks;
+
     @TableField("real_name")
     @ApiModelProperty("真实姓名")
     private String realName;

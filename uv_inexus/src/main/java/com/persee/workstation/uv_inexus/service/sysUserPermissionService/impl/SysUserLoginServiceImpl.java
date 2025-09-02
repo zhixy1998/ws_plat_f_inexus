@@ -52,7 +52,7 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
             return R.fail("用户名不存在或已被禁用");
         }
 
-        // 4. 密码校验：用你的PasswordUtils匹配（明文 vs BCrypt加密密码）→ 核心修复！
+        // 4. 密码校验：用PasswordUtils匹配（明文 vs BCrypt加密密码）→ 核心修复！
         String encodedPassword = userPO.getPassword(); // 数据库中存储的BCrypt加密密码
         boolean isPasswordMatch = PasswordUtils.matches(rawPassword, encodedPassword);
         if (!isPasswordMatch) {
@@ -72,6 +72,8 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
         } else {
             // 旧Token过期/不存在：生成新Token（JWT工具类需确保正确）
             token = JWTUtils.getToken(username); // 建议在JWT中加入用户ID，增强安全性
+            System.out.println("111111111111111111"+token);
+
             // 更新数据库：存储新Token + 最后登录时间
             int updateRows = sysUserDAO.updateTokenAndLoginTime(username, token, now);
             if (updateRows <= 0) {

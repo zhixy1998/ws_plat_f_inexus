@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.BeanUtils;
@@ -44,7 +45,111 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             return Result.fail("用户不存在");
         }
 
-        // 2. 根据用户ID查询关联的小组ID（用户-小组关联表）
+        // 2. 查用户关联的小组ID
+        QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
+        userGroupQuery.eq("user_id", userId);
+        List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
+        if (userGroupList.isEmpty()) {
+            return Result.fail("该用户未关联任何小组");
+        }
+        List<String> groupIds = userGroupList.stream()
+                .map(SysUserGroupPO::getGroupId)
+                .collect(Collectors.toList());
+
+        // 3. 查小组关联的权限ID（去重）
+        QueryWrapper<SysGroupPermissionPO> groupPermQuery = new QueryWrapper<>();
+        groupPermQuery.in("group_id", groupIds);
+        List<SysGroupPermissionPO> groupPermList = sysGroupPermissionMapper.selectList(groupPermQuery);
+        if (groupPermList.isEmpty()) {
+            return Result.ok(new ArrayList<>()); // 无权限返回空列表
+        }
+        List<String> permIds = groupPermList.stream()
+                .map(SysGroupPermissionPO::getPermId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 4. 查权限详情：SQL层面排除“首页”（源头过滤，关键修改1）
+        QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
+        permQuery.in("id", permIds)
+                .ne("title", "首页") // 核心：排除数据库中title为“首页”的权限
+                .orderByAsc("sort"); // 数据库预排序，提升效率
+        List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
+
+        // 5. 转换为DTO + 二次排除“首页”（双重保险）+ 扁平列表排序（关键修改2）
+        List<PermissionDTO> flatPermissionDTOs = permissionList.stream()
+                .map(perm -> {
+                    PermissionDTO dto = new PermissionDTO();
+                    BeanUtils.copyProperties(perm, dto);
+                    return dto;
+                })
+                // 二次排除：避免SQL筛选失效（如字段映射问题），字段改为title（关键）
+                .filter(dto -> dto.getTitle() == null || !"首页".equals(dto.getTitle()))
+                // 扁平列表按sort升序，为树形排序打基础
+                .sorted((d1, d2) -> {
+                    int sort1 = (d1.getSort() == null) ? 0 : d1.getSort(); // 处理null
+                    int sort2 = (d2.getSort() == null) ? 0 : d2.getSort();
+                    return Integer.compare(sort1, sort2); // 升序：小→大
+                })
+                .collect(Collectors.toList());
+
+        // 6. 构建树形结构（含全层级排序）
+        List<PermissionDTO> treePermissionDTOs = buildPermissionTree(flatPermissionDTOs);
+
+        return Result.ok(treePermissionDTOs);
+    }
+
+    // ------------------------------ 树形结构组装 + 全层级sort排序（核心方法） ------------------------------
+    private List<PermissionDTO> buildPermissionTree(List<PermissionDTO> flatPermissions) {
+        // 1. 构建权限ID映射，O(1)快速查找父权限
+        Map<String, PermissionDTO> permissionMap = flatPermissions.stream()
+                .collect(Collectors.toMap(
+                        PermissionDTO::getId,
+                        dto -> dto,
+                        (existing, replacement) -> existing // 重复ID保留第一个
+                ));
+
+        // 2. 遍历建立父子关系 + 子权限内部排序
+        List<PermissionDTO> rootPermissions = new ArrayList<>();
+        for (PermissionDTO currentPerm : flatPermissions) {
+            Integer parentId = currentPerm.getParentId();
+            // 判断根权限（parentId为null/0或父权限不存在）
+            if (parentId == null || parentId == 0 || !permissionMap.containsKey(parentId.toString())) {
+                rootPermissions.add(currentPerm);
+            } else {
+                // 非根权限：添加到父权限的children，并立即排序
+                PermissionDTO parentPerm = permissionMap.get(parentId.toString());
+                if (parentPerm.getChildren() == null) {
+                    parentPerm.setChildren(new ArrayList<>());
+                }
+                parentPerm.getChildren().add(currentPerm);
+                // 子权限内部按sort升序（关键：确保子集有序）
+                parentPerm.setChildren(sortPermissionBySort(parentPerm.getChildren()));
+            }
+        }
+
+        // 3. 根权限按sort升序（关键：确保父级有序）
+        return sortPermissionBySort(rootPermissions);
+    }
+
+    // ------------------------------ 通用工具：按sort升序排序（复用） ------------------------------
+    private List<PermissionDTO> sortPermissionBySort(List<PermissionDTO> permissions) {
+        return permissions.stream()
+                .sorted((p1, p2) -> {
+                    int sort1 = (p1.getSort() == null) ? 0 : p1.getSort();
+                    int sort2 = (p2.getSort() == null) ? 0 : p2.getSort();
+                    return Integer.compare(sort1, sort2);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ------------------------------ 原有方法：getRootPermissionPaths（同步排除首页） ------------------------------
+    @Override
+    public Result<List<String>> getRootPermissionPaths(String userId) {
+        SysUserPO userPO = sysUserMapper.selectById(userId);
+        if (userPO == null) {
+            return Result.fail("用户不存在");
+        }
+
         QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
         userGroupQuery.eq("user_id", userId);
         List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
@@ -52,12 +157,10 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             return Result.fail("该用户未关联任何小组");
         }
 
-        // 提取小组ID列表
         List<String> groupIds = userGroupList.stream()
                 .map(SysUserGroupPO::getGroupId)
                 .collect(Collectors.toList());
 
-        // 3. 根据小组ID查询关联的权限ID（小组-权限关联表）
         QueryWrapper<SysGroupPermissionPO> groupPermQuery = new QueryWrapper<>();
         groupPermQuery.in("group_id", groupIds);
         List<SysGroupPermissionPO> groupPermList = sysGroupPermissionMapper.selectList(groupPermQuery);
@@ -65,93 +168,23 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             return Result.ok(new ArrayList<>());
         }
 
-        // 提取权限ID列表（去重）
         List<String> permIds = groupPermList.stream()
                 .map(SysGroupPermissionPO::getPermId)
-                .distinct()  // 避免权限重复
+                .distinct()
                 .collect(Collectors.toList());
 
-        // 4. 根据权限ID查询权限详情
-        QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
-        permQuery.in("id", permIds);
-        List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
-
-        // 5. 转换为DTO返回
-        List<PermissionDTO> permissionDTOs = permissionList.stream()
-                .map(perm -> {
-                    PermissionDTO dto = new PermissionDTO();
-                    BeanUtils.copyProperties(perm, dto);
-                    return dto;
-                })
-                .collect(Collectors.toList());
-
-        return Result.ok(permissionDTOs);
-    }
-
-    // 新增方法实现：查询parent_id=0的path列表
-    // @Override
-    // public Result<List<String>> getRootPermissionPaths() {
-    //     // 1. 构造查询条件：parent_id = 0
-    //     QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
-    //     permQuery.eq("parent_id", 0); // 只筛选菜单类型的权限
-    //     List<String> routeNames = sysPermissionMapper.selectList(permQuery).stream()
-    //             .map(SysPermissionPO::getPermName) // 提取 name 字段
-    //             .filter(name -> name != null && !name.isEmpty()) // 过滤空值
-    //             .distinct() // 去重
-    //             .collect(Collectors.toList());
-
-    //     // 4. 返回结果
-    //     return Result.ok(routeNames);
-    // }
-    /**
-     * 根据用户ID查询其关联的、parent_id=0的权限path列表（仅返回path字符串）
-     */
-    public Result<List<String>> getRootPermissionPaths(String userId) {
-        // 1. 校验用户是否存在
-        SysUserPO userPO = sysUserMapper.selectById(userId);
-        if (userPO == null) {
-            return Result.fail("用户不存在");
-        }
-
-        // 2. 根据用户ID查询关联的小组ID（用户-小组关联表）
-        QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
-        userGroupQuery.eq("user_id", userId);
-        List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
-        if (userGroupList.isEmpty()) {
-            return Result.fail("该用户未关联任何小组");
-        }
-
-        // 提取小组ID列表
-        List<String> groupIds = userGroupList.stream()
-                .map(SysUserGroupPO::getGroupId)
-                .collect(Collectors.toList());
-
-        // 3. 根据小组ID查询关联的权限ID（小组-权限关联表）
-        QueryWrapper<SysGroupPermissionPO> groupPermQuery = new QueryWrapper<>();
-        groupPermQuery.in("group_id", groupIds);
-        List<SysGroupPermissionPO> groupPermList = sysGroupPermissionMapper.selectList(groupPermQuery);
-        if (groupPermList.isEmpty()) {
-            return Result.ok(new ArrayList<>()); // 无权限时返回空列表，避免null
-        }
-
-        // 提取权限ID列表（去重）
-        List<String> permIds = groupPermList.stream()
-                .map(SysGroupPermissionPO::getPermId)
-                .distinct()  // 避免权限重复
-                .collect(Collectors.toList());
-
-        // 4. 根据权限ID查询：parent_id=0的权限，仅查path字段（优化性能）
+        // 同步排除“首页”+按sort排序（与主方法逻辑一致）
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
                 .eq("parent_id", 0)
-                .select("path"); // 只查询path字段，减少数据传输
-
+                .ne("title", "首页") // 排除首页
+                .orderByAsc("sort") // 按sort升序
+                .select("path");
         List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
 
-        // 5. 提取path字段为纯字符串列表，过滤空值
         List<String> rootPermissionPaths = permissionList.stream()
-                .map(SysPermissionPO::getPath) // 仅提取path字段
-                .filter(path -> path != null && !path.trim().isEmpty()) // 过滤null/空字符串/纯空格
+                .map(SysPermissionPO::getPath)
+                .filter(path -> path != null && !path.trim().isEmpty())
                 .collect(Collectors.toList());
 
         return Result.ok(rootPermissionPaths);

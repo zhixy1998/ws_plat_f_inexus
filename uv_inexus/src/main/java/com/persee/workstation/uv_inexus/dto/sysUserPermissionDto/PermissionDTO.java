@@ -1,5 +1,7 @@
 package com.persee.workstation.uv_inexus.dto.sysUserPermissionDto;
 
+import java.util.List;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -16,6 +18,9 @@ public class PermissionDTO {
     @ApiModelProperty("权限名称")
     private String permName;
 
+    @ApiModelProperty("标题名称")
+    private String title;
+
     @ApiModelProperty("权限编码（如：user:add）")
     private String permCode;
 
@@ -23,7 +28,7 @@ public class PermissionDTO {
     private Integer permType;
 
     @ApiModelProperty("父权限ID，用于构建权限层级")
-    private Long parentId;
+    private Integer parentId;
 
     @ApiModelProperty("路由路径，仅菜单权限需要")
     private String path;
@@ -49,4 +54,7 @@ public class PermissionDTO {
 
     @ApiModelProperty("更新时间")
     private String updateTime;
+
+    // 新增：子权限列表（核心字段，实现树形结构）
+    private List<PermissionDTO> children;
 }

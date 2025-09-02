@@ -19,7 +19,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/com/persee/workstation/uv-inexus/system")
+@RequestMapping("/com/persee/workstation/uv-inexus/system1")
 @ApiModel("系统配置")
 @Slf4j
 public class SystemctlController {

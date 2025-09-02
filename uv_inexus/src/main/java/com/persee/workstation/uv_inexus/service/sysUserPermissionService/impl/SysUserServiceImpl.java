@@ -8,23 +8,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 import com.persee.workstation.uv_inexus.utils.PasswordUtils.PasswordUtils;
-
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> implements SysUserService {
 
@@ -34,6 +37,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
     @Autowired
     private SysUserGroupMapper sysUserGroupMapper;
 
+    @Autowired
+    private SysRoleMapper sysRoleMapper;
     // 注入小组Mapper用于校验小组是否存在
     @Autowired
     private SysGroupMapper sysGroupMapper;
@@ -160,12 +165,48 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
     }
 
     @Override
-    public Result<SysUserPO> getUserById(String id) {
+    public Result<UserDetailDTO> getUserById(String id) {
+        // 1. 查询用户基本信息
         SysUserPO userPO = baseMapper.selectById(id);
         if (userPO == null) {
             return Result.fail("用户不存在");
         }
-        return Result.ok(userPO);
+
+        // 2. 转换用户信息到DTO
+        UserDetailDTO userDetail = new UserDetailDTO();
+        BeanUtils.copyProperties(userPO, userDetail);
+
+        // 3. 查询用户关联的小组（用户-小组关联表）
+        List<SysUserGroupPO> userGroups = sysUserGroupMapper.selectList(
+            new LambdaQueryWrapper<SysUserGroupPO>()
+                .eq(SysUserGroupPO::getUserId, id)
+        );
+
+        // 4. 若有小组，查询小组信息
+        if (!userGroups.isEmpty()) {
+            // 取第一个关联的小组（若需多组，可循环处理）
+            SysUserGroupPO firstUserGroup = userGroups.get(0);
+            SysGroupPO groupPO = sysGroupMapper.selectById(firstUserGroup.getGroupId());
+            
+            if (groupPO != null) {
+                // 复制小组信息到DTO
+                userDetail.setGroupId(groupPO.getId());
+                userDetail.setGroupName(groupPO.getGroupName());
+                userDetail.setGroupDescription(groupPO.getDescription());
+
+                // 5. 根据小组关联的角色ID查询角色信息
+                SysRolePO rolePO = sysRoleMapper.selectById(groupPO.getRoleId());
+                if (rolePO != null) {
+                    // 复制角色信息到DTO
+                    userDetail.setRoleId(rolePO.getId());
+                    userDetail.setRoleName(rolePO.getRoleName());
+                    userDetail.setRoleCode(rolePO.getRoleCode());
+                    userDetail.setRoleDescription(rolePO.getDescription());
+                }
+            }
+        }
+
+        return Result.ok(userDetail);
     }
 
     @Override

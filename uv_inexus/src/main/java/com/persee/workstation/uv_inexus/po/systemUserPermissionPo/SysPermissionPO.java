@@ -42,7 +42,7 @@ public class SysPermissionPO extends BasePO {
 
     @TableField("parent_id")
     @ApiModelProperty("父权限ID，用于构建权限层级")
-    private String parentId;
+    private Integer parentId;
 
     @TableField("path")
     @ApiModelProperty("路由路径，仅菜单权限需要")

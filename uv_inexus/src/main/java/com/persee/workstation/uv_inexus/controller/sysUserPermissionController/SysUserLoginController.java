@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
  * 用户登录控制器
  */
 @RestController
-@RequestMapping("/com/persee/workstation/uv-inexus/system1")
+@RequestMapping("/com/persee/workstation/uv-inexus/system")
 @Api(tags = "用户登录接口") // Swagger标签（替代@ApiModel，更规范）
 @Slf4j
 @RequiredArgsConstructor
@@ -48,5 +48,11 @@ public class SysUserLoginController {
             log.info("登录失败，username={}，原因：{}", loginDTO.getUserName(), loginResult.getMessage());
             return Result.fail(loginResult.getMessage());
         }
+    }
+
+    @PostMapping("/logout")
+    @ApiOperation("用户登出接口")
+    public Result<Boolean> loginOut(){
+        return Result.ok(true);
     }
 }
