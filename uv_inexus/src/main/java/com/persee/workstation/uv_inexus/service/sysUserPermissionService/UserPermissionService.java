@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService;
 import java.util.List;
 
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 
 /**
@@ -14,4 +15,8 @@ public interface UserPermissionService {
 
     // 新增方法：查询parent_id为0的所有权限的path值
     Result<List<String>> getRootPermissionPaths(String userId);
+
+    // 根据权限类型和角色ID查询树形权限结构
+    Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndRole(
+            List<Integer> permTypeList, String roleId);
 }

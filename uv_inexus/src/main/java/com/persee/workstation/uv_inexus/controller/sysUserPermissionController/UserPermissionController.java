@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
 
@@ -39,5 +42,27 @@ public class UserPermissionController {
             @RequestParam String userId) {
         // 调用Service层，直接返回path列表
         return userPermissionService.getRootPermissionPaths(userId);
+    }
+    /**
+     * 新增：按权限类型筛选+角色权限标记，返回权限树形结构
+     * @param permType 权限类型（1-菜单路由，2-操作权限，3-数据权限，为空查全部）
+     * @param roleId 角色ID（用于标记该角色是否拥有权限）
+     * @return 权限树形列表（根节点为parent_id=0的权限）
+     */
+    @GetMapping("/tree")
+    @ApiOperation("根据权限类型和角色ID查询树形权限结构")
+    public Result<List<PermissionTreeDTO>> getPermissionTree(
+            @ApiParam(value = "权限类型：1-菜单路由权限，2-操作权限，3-数据权限，多个用逗号分隔，如1,2,3，null表示所有类型")
+            @RequestParam(required = false) String permType,  // 修改为String类型接收多个值
+            @ApiParam(value = "角色ID", required = true)
+            @RequestParam String roleId) {
+        // 将字符串转换为Integer列表
+        List<Integer> permTypeList = null;
+        if (permType != null && !permType.isEmpty()) {
+            permTypeList = Arrays.stream(permType.split(","))
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList());
+        }
+        return userPermissionService.getPermissionTreeByTypeAndRole(permTypeList, roleId);
     }
 }

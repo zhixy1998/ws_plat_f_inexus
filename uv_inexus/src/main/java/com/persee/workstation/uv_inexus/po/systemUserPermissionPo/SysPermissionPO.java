@@ -37,7 +37,7 @@ public class SysPermissionPO extends BasePO {
     private String permCode;
 
     @TableField("perm_type")
-    @ApiModelProperty("权限类型：1-菜单路由权限，2-数据权限，3-操作权限")
+    @ApiModelProperty("权限类型：1-菜单路由权限，2-操作权限，3-数据权限")
     private Integer permType;
 
     @TableField("parent_id")

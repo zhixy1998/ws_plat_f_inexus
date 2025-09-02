@@ -1,8 +1,11 @@
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.BeanUtils;
@@ -15,6 +18,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMa
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
@@ -188,5 +192,103 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                 .collect(Collectors.toList());
 
         return Result.ok(rootPermissionPaths);
+    }
+
+    @Override
+    public Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndRole(List<Integer> permTypeList, String roleId) {
+        try {
+            // 1. 查询该角色拥有的所有权限ID
+            Set<String> rolePermIds = getRolePermissionIds(roleId);
+            
+            // 2. 查询符合权限类型的所有权限
+            List<SysPermissionPO> permissions = queryPermissionsByType(permTypeList);
+            
+            // 3. 转换为树形结构DTO并设置isHave属性
+            List<PermissionTreeDTO> treeList = buildPermissionTree(permissions, rolePermIds);
+            
+            return Result.ok(treeList);
+        } catch (Exception e) {
+            return Result.fail("查询权限树形结构失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取角色拥有的所有权限ID
+     */
+    private Set<String> getRolePermissionIds(String roleId) {
+        QueryWrapper<SysGroupPermissionPO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("group_id", roleId);
+        List<SysGroupPermissionPO> groupPermissions = sysGroupPermissionMapper.selectList(queryWrapper);
+        
+        return groupPermissions.stream()
+                .map(SysGroupPermissionPO::getPermId)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * 根据权限类型列表查询权限
+     */
+    private List<SysPermissionPO> queryPermissionsByType(List<Integer> permTypeList) {
+        QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
+        // 如果有指定权限类型，则使用in查询
+        if (permTypeList != null && !permTypeList.isEmpty()) {
+            queryWrapper.in("perm_type", permTypeList);
+        }
+        // 可以根据需要添加其他条件，如状态为启用等
+        queryWrapper.eq("status", 1);
+        return sysPermissionMapper.selectList(queryWrapper);
+    }
+
+    /**
+     * 构建权限树形结构
+     */
+    private List<PermissionTreeDTO> buildPermissionTree(List<SysPermissionPO> permissions, Set<String> rolePermIds) {
+        // 实现逻辑不变
+        List<PermissionTreeDTO> allNodes = permissions.stream().map(po -> {
+            PermissionTreeDTO dto = new PermissionTreeDTO();
+            BeanUtils.copyProperties(po, dto);
+            // 设置是否拥有该权限
+            dto.setIsHave(rolePermIds.contains(po.getId()));
+            return dto;
+        }).collect(Collectors.toList());
+
+        Map<String, PermissionTreeDTO> nodeMap = new HashMap<>();
+        for (PermissionTreeDTO node : allNodes) {
+            nodeMap.put(node.getId(), node);
+        }
+        
+        List<PermissionTreeDTO> rootNodes = new ArrayList<>();
+        for (PermissionTreeDTO node : allNodes) {
+            String parentId = String.valueOf(node.getParentId());
+            if ("0".equals(parentId)) {
+                rootNodes.add(node);
+            } else {
+                PermissionTreeDTO parentNode = nodeMap.get(parentId);
+                if (parentNode != null) {
+                    if (parentNode.getChildren() == null) {
+                        parentNode.setChildren(new ArrayList<>());
+                    }
+                    parentNode.getChildren().add(node);
+                }
+            }
+        }
+        
+        sortChildren(rootNodes);
+        return rootNodes;
+    }
+
+    /**
+     * 递归排序子节点
+     */
+    private void sortChildren(List<PermissionTreeDTO> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return;
+        }
+        
+        nodes.sort(Comparator.comparingInt(PermissionTreeDTO::getSort));
+        
+        for (PermissionTreeDTO node : nodes) {
+            sortChildren(node.getChildren());
+        }
     }
 }
