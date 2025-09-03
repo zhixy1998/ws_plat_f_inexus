@@ -1,5 +1,7 @@
 package org.example;
 
+import net.bytebuddy.asm.Advice;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -70,7 +72,7 @@ public class ResponseParser {
                 System.arraycopy(recvBytes, tlvIndex + 4, vBytes, 0, vLen);
 
                 // 对比 T/V
-                boolean tMatch = compareTBytes(recvTBytes, sendTList.get(sendIndex));
+                boolean tMatch = compareVBytes(recvTBytes, sendTList.get(sendIndex));
                 boolean vMatch = compareVBytes(vBytes, sendVList.get(sendIndex));
 
                 int typeKey = (recvTBytes[0] & 0xFF) << 8 | (recvTBytes[1] & 0xFF);
@@ -110,7 +112,7 @@ public class ResponseParser {
     }
 
     /**
-     * 比较 T：发送T的低字节 == 接收T的低字节 + 1
+     * 比较 T：发送T的低字节 == 接收T的低字节
      */
     private static boolean compareTBytes(byte[] recvT, byte[] sendT){
         if (recvT.length < 2 || sendT.length < 2) return false;
@@ -118,7 +120,7 @@ public class ResponseParser {
         int recvTLow = recvT[1] & 0xFF;
         int sendTLow = sendT[1] & 0xFF;
 
-        return sendTLow == (recvTLow + 1);
+        return sendTLow == recvTLow;
     }
 
     /**
@@ -199,5 +201,70 @@ public class ResponseParser {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) sb.append(String.format("%02X", b));
         return sb.toString();
+    }
+
+    //解析下位机自动上报的报文
+    public static List<Object> parsePassiveReport(byte[] recvBytes) {
+        List<Object> results = new ArrayList<>();
+
+        if (recvBytes == null || recvBytes.length < 9) {
+            results.add("报文为空或长度不足");
+            return results;
+        }
+
+        // ---------------- 校验和 ----------------
+        int calculatedChecksum = 0;
+        for (int i = 0; i < recvBytes.length - 1; i++) {
+            calculatedChecksum += recvBytes[i];
+        }
+        calculatedChecksum &= 0xFF;
+        int receivedChecksum = recvBytes[recvBytes.length - 1] & 0xFF;
+
+        if (calculatedChecksum != receivedChecksum) {
+            results.add("校验和错误");
+            return results;
+        }
+
+        // ---------------- 解析 TLV ----------------
+        int tlvIndex = 8; // TLV 从第 8 个字节开始
+        int checksumIndex = recvBytes.length - 1;
+        int tlvCounter = 0;
+
+        while (tlvIndex + 4 <= checksumIndex) {
+            // 提取 T (2字节)
+            byte[] tBytes = new byte[2];
+            System.arraycopy(recvBytes, tlvIndex, tBytes, 0, 2);
+
+            // 提取 L (2字节，大端)
+            int lHigh = recvBytes[tlvIndex + 2] & 0xFF;
+            int lLow = recvBytes[tlvIndex + 3] & 0xFF;
+            int vLen = (lHigh << 8) | lLow;
+
+            if (tlvIndex + 4 + vLen > checksumIndex) break; // 防越界
+
+            // 提取 V
+            byte[] vBytes = new byte[vLen];
+            System.arraycopy(recvBytes, tlvIndex + 4, vBytes, 0, vLen);
+
+            // 转换 key
+            int typeKey = (tBytes[0] & 0xFF) << 8 | (tBytes[1] & 0xFF);
+            String typeHex = String.format("0x%04X", typeKey);
+
+            // 解析
+            if (typeKey == 0x13FD){
+                    int x = ((recvBytes[5] & 0xFF) << 8) | (recvBytes[6] & 0xFF);
+                    int y = ((recvBytes[8] & 0xFF) << 16) | ((recvBytes[9] & 0xFF) << 8) | (recvBytes[10] & 0xFF);
+                    double result_x = x / 50.0;
+                    double result_y = y / 8388607.0 * 100;
+
+                    results.add("X=" + result_x);
+                    results.add("Y=" + result_y);
+            }
+            // 移动到下一个 TLV
+            tlvIndex += 4 + vLen;
+            tlvCounter++;
+        }
+
+        return results;
     }
 }
