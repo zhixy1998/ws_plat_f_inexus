@@ -15,7 +15,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private SpectrumWebSocket spectrumWebSocket;
 
     @Autowired
-    private SpectrumWebSocket2 spectrumWebSocket2;
+    private SpectrumOneMeasureWebSocket spectrumOneMeasureWebSocket;
 
     @Autowired
     private PhotometricWebSocket photometricWebSocket;
@@ -44,7 +44,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*");
         registry.addHandler(TimeWebSocket, "/ws/timeScan")
                 .setAllowedOrigins("*");
-        registry.addHandler(spectrumWebSocket2, "/ws/device2")
+        registry.addHandler(spectrumOneMeasureWebSocket, "/ws/deviceOneMeasure")
                 .setAllowedOrigins("*");
         registry.addHandler(myWebSocketHandler, "/ws/myWebSocket")
                 .setAllowedOrigins("*");

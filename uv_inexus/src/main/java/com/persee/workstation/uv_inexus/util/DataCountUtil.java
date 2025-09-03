@@ -77,6 +77,7 @@ public class DataCountUtil {
     }
 
     public static String countTPercent(ChangeParam origin, ChangeParam real, Double z){
+
         double d1 = Double.parseDouble(real.getD());
         double r1 = Double.parseDouble(real.getR());
         double s1 = Double.parseDouble(real.getS());

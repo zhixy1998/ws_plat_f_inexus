@@ -439,16 +439,20 @@ public class SpectrumServiceImpl implements SpectrumService {
         List<Map<String,String>> list = new ArrayList<>();
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
             if(taskSpeciman.getIsTested().equals("1")&&taskSpeciman.getDeleteType().equals("0")){
-                Map<String, String> map = new HashMap<>();
-                TMeasureData one = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>()
+
+                List<TMeasureData> measureDataList = tMeasureDataService.list(new QueryWrapper<TMeasureData>()
                         .eq("task_id", taskId)
                         .eq("sample_key", taskSpeciman.getSpecimenKey())
-                        .orderByDesc("serial_number")
-                        .last("limit 1"));
+                        .orderByAsc("serial_number"));
                 TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-                map.put("measureId", one.getId());
-                map.put("sampleName", byId.getSampleName());
-                list.add(map);
+                for (TMeasureData tMeasureData : measureDataList) {
+                    Map<String, String> map = new HashMap<>();
+                    map.put("measureId", tMeasureData.getId());
+                    map.put("sampleName", byId.getSampleName()+"-"+tMeasureData.getSerialNumber());
+                    list.add(map);
+                }
+
+
             }
         }
         return Result.ok(list);
@@ -922,11 +926,12 @@ public class SpectrumServiceImpl implements SpectrumService {
                 if (sample == null){
                     return Result.fail("样品不存在");
                 }
+                int key = 0;
                 // 根据方法中的方法参数的重复次数进行循环
                 for (int i = 0; i < count; i++) {
                     SampleListVo vo = new SampleListVo();
                     if (taskSpeciman.getIsTested().equals("0")){
-                        vo.setTitle(sample.getSampleName());
+                        vo.setTitle(sample.getSampleName()+"-"+(++key));
                         vo.setAnalysisId( null);
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(i+1);
@@ -940,13 +945,13 @@ public class SpectrumServiceImpl implements SpectrumService {
                         if (type==null){
                             queryWrapper.eq("is_delete", "0");
                         }
-                        queryWrapper.eq("analysis_number", i+1);
+                        queryWrapper.eq("analysis_number", (key+1));
                         queryWrapper.last("limit 1");
                         TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
                         if (measureData == null){
                             return Result.fail("无测量数据");
                         }
-                        vo.setTitle(sample.getSampleName()+"-"+i+1);
+                        vo.setTitle(sample.getSampleName()+"-"+(++key));
                         vo.setAnalysisId(measureData.getId());
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(measureData.getAnalysisNumber());

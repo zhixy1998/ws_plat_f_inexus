@@ -1321,16 +1321,33 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         // 1. 删除任务样品表
-        tMeasureSampleService.remove(new QueryWrapper<TMeasureSample>().eq("task_id", taskId));
+        List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (specimen != null && !specimen.isEmpty()) {
+            for (TaskSpecimen taskSpecimen : specimen) {
+                boolean update = tMeasureSampleService.removeById(taskSpecimen.getSpecimenKey());
+                if (!update) {
+                    return Result.fail("任务样品删除失败,请重新删除");
+                }
+            }
+        }
 
         // 2. 删除任务测量数据
-        tMeasureDataService.remove(new QueryWrapper<TMeasureData>().eq("task_id", taskId));
+        boolean measureData = tMeasureDataService.remove(new QueryWrapper<TMeasureData>().eq("task_id", taskId));
+        if (!measureData) {
+            return Result.fail("任务测量数据删除失败,请重新删除");
+        }
 
         // 3. 删除任务分析数据
-        tMeasureAnalysisDataService.remove(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId));
+        boolean analysisData = tMeasureAnalysisDataService.remove(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId));
+        if (!analysisData) {
+            return Result.fail("任务分析数据删除失败,请重新删除");
+        }
 
         // 4. 删除任务附属信息（比如附件、扩展表等）
-        tMeasureTaskAttachmentService.remove(new QueryWrapper<TMeasureTaskAttachment>().eq("task_id", taskId));
+        boolean taskAttacthment = tMeasureTaskAttachmentService.remove(new QueryWrapper<TMeasureTaskAttachment>().eq("task_id", taskId));
+        if (!taskAttacthment) {
+            return Result.fail("任务附属信息删除失败,请重新删除");
+        }
 
         // 5. 删除任务本身
         boolean removed = tMeasureTaskService.removeById(taskId);
