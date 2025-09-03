@@ -16,15 +16,13 @@ public class JWTUtils {
         return JWT.create()
                 .withIssuer("auth0")
                 .withClaim("userName",userName)
-                .withExpiresAt(new Date(System.currentTimeMillis()+1000*60*60*8))//设置有效期
+                .withExpiresAt(new Date(System.currentTimeMillis()+1000*60*60*99))//设置有效期
                 .sign(Algorithm.HMAC256(KEY));
     }
 
 
     /**
      * 签名验证
-     * @param token
-     * @return
      */
     public static boolean verify(String token){
 

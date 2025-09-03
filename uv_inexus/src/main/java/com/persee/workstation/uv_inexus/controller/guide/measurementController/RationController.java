@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
@@ -92,6 +93,12 @@ public class RationController {
     public Result<List<Map<String, Object>>> getStandSampleData(@RequestParam String taskId,
                                                                 @RequestParam Boolean allDisplay) {
         return rationService.queryStandSampleData(taskId, allDisplay);
+    }
+
+    @PostMapping("querySampleData")
+    @ApiOperation("查询样品数据接口")
+    public Result<RationSampleDataVO> querySampleData(@RequestBody QueryDataDTO queryDataDTO) {
+        return rationService.querySampleData(queryDataDTO);
     }
 
     @GetMapping("getUnknowSampleData")

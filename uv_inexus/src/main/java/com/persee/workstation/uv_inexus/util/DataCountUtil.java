@@ -105,7 +105,9 @@ public class DataCountUtil {
 
         double ans = a2/a1 * 100;
         System.out.println("ans:" + ans);
-        return String.valueOf(ans);
+        BigDecimal bd = new BigDecimal(ans);
+        bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+        return String.valueOf(bd);
     }
 
     public static String countErOrEs(ChangeParam real, String identity){
@@ -141,6 +143,18 @@ public class DataCountUtil {
             return value; // 如果转换失败，返回原始值
         }
     }
+
+    public static Double formatValue(Integer digit, Double value) {
+        try {
+            BigDecimal bd = new BigDecimal(value);
+            bd = bd.setScale(digit, RoundingMode.HALF_UP);
+            return Double.valueOf(String.valueOf(bd));
+        } catch (NumberFormatException e) {
+            return value; // 如果转换失败，返回原始值
+        }
+    }
+
+
 
     private static double formatValue(Integer digit, double value) {
         BigDecimal bd = new BigDecimal(value);

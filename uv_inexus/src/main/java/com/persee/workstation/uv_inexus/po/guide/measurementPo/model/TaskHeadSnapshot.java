@@ -1,6 +1,5 @@
 package com.persee.workstation.uv_inexus.po.guide.measurementPo.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -20,7 +19,6 @@ public class TaskHeadSnapshot {
     private List<InputParamMapTableHead> mapRelation;
 
     @ApiModelProperty("样品表头")
-    @JsonIgnore
     private List<HeadVO> sampleHeads;
 
 }

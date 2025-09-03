@@ -6,6 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
@@ -13,10 +14,13 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -24,6 +28,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +70,13 @@ public class RationServiceImpl implements RationService {
     DeviceInfoService deviceInfoService;
 
     @Autowired
+    TMeasureTaskAttachmentService taskAttachmentService;
+
+    @Autowired
     DevMessageUtil devMessageUtil;
+
+    @Autowired
+    RestUtil restUtil;
 
 
     @Value("1")
@@ -257,6 +268,9 @@ public class RationServiceImpl implements RationService {
         if (StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (!StringUtils.hasText(measureSample.getSampleKind()) || !measureSample.getSampleKind().equals(sampleKind)) {
                     continue;
@@ -685,15 +699,17 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
-    public Result saveStandSampleData(RationDataVO dataInfo) {
+    public R<String> saveRationSampleMeasureData(RationDataVO dataInfo) {
 
         String sampleId = dataInfo.getSampleId();
         String taskId = dataInfo.getTaskId();
+
         LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureData::getTaskId, taskId)
                 .eq(TMeasureData::getSampleKey, sampleId)
-                .orderByDesc(TMeasureData::getSerialNumber);
-        List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+                .orderByDesc(TMeasureData::getSerialNumber)
+                .last("limit 1");
+        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
 
         TMeasureData tMeasureData = new TMeasureData();
         tMeasureData.setTaskId(taskId);
@@ -704,8 +720,7 @@ public class RationServiceImpl implements RationService {
         tMeasureData.setMeasurementEndTime(dataInfo.getEndTime());
         tMeasureData.setSamplingTime(dataInfo.getSampleTime());
 
-        if (list != null && !list.isEmpty()) {
-            TMeasureData data = list.get(0);
+        if (data != null) {
             tMeasureData.setSerialNumber(data.getSerialNumber() + 1);
         } else {
             tMeasureData.setSerialNumber(0);
@@ -713,39 +728,46 @@ public class RationServiceImpl implements RationService {
         tMeasureData.setIsDelete(createType);
         tMeasureDataService.save(tMeasureData);
 
-
         LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
                 .eq(TMeasureAnalysisData::getSampleKey, sampleId)
-                .eq(TMeasureAnalysisData::getAnalysisName, tMeasureData.getId() + "-"+tMeasureData.getSerialNumber());
-        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-        if (one != null) {
-            one.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
-            one.setIsDelete(createType);
-            tMeasureAnalysisDataService.save(one);
+                .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                .last("limit 1");
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+        if (analysisData != null && analysisData.getMeasureDataId() == null) {
+
+            analysisData.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
+            analysisData.setMeasureDataId(tMeasureData.getId());
+            analysisData.setIsDelete(createType);
+            tMeasureAnalysisDataService.updateById(analysisData);
+
         } else {
-            TMeasureAnalysisData analysisData = new TMeasureAnalysisData();
+            analysisData = new TMeasureAnalysisData();
             analysisData.setTaskId(taskId);
             analysisData.setSampleKey(sampleId);
+            analysisData.setMeasureDataId(tMeasureData.getId());
+            analysisData.setDataVersion(0);
             analysisData.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
-            analysisData.setAnalysisName(String.valueOf(tMeasureData.getSerialNumber()));
             analysisData.setIsDelete(createType);
             tMeasureAnalysisDataService.save(analysisData);
         }
-        return Result.ok(true);
+
+
+        return R.ok(tMeasureData.getId());
 
     }
 
     @Override
-    public Result saveUnknowSampleData(RationDataVO dataInfo) {
-
+    public R<RationSaveCountDataInfo> saveSampleMeasureData(RationDataVO dataInfo) {
         String sampleId = dataInfo.getSampleId();
         String taskId = dataInfo.getTaskId();
+
         LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureData::getTaskId, taskId)
                 .eq(TMeasureData::getSampleKey, sampleId)
-                .orderByDesc(TMeasureData::getSerialNumber);
-        List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+                .orderByDesc(TMeasureData::getSerialNumber)
+                .last("limit 1");
+        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
 
         TMeasureData tMeasureData = new TMeasureData();
         tMeasureData.setTaskId(taskId);
@@ -756,8 +778,7 @@ public class RationServiceImpl implements RationService {
         tMeasureData.setMeasurementEndTime(dataInfo.getEndTime());
         tMeasureData.setSamplingTime(dataInfo.getSampleTime());
 
-        if (list != null && !list.isEmpty()) {
-            TMeasureData data = list.get(0);
+        if (data != null) {
             tMeasureData.setSerialNumber(data.getSerialNumber() + 1);
         } else {
             tMeasureData.setSerialNumber(0);
@@ -765,27 +786,135 @@ public class RationServiceImpl implements RationService {
         tMeasureData.setIsDelete(createType);
         tMeasureDataService.save(tMeasureData);
 
-
         LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
                 .eq(TMeasureAnalysisData::getSampleKey, sampleId)
-                .eq(TMeasureAnalysisData::getAnalysisName, tMeasureData.getId() + "-"+tMeasureData.getSerialNumber());
-        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-        if (one != null) {
-            one.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
-            one.setIsDelete(createType);
-            tMeasureAnalysisDataService.save(one);
+                .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                .last("limit 1");
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+        if (analysisData != null && analysisData.getMeasureDataId() == null) {
+
+            analysisData.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
+            analysisData.setMeasureDataId(tMeasureData.getId());
+            analysisData.setIsDelete(createType);
+            tMeasureAnalysisDataService.updateById(analysisData);
+
         } else {
-            TMeasureAnalysisData analysisData = new TMeasureAnalysisData();
+            analysisData = new TMeasureAnalysisData();
             analysisData.setTaskId(taskId);
             analysisData.setSampleKey(sampleId);
+            analysisData.setMeasureDataId(tMeasureData.getId());
+            analysisData.setDataVersion(0);
             analysisData.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
-            analysisData.setAnalysisName(String.valueOf(tMeasureData.getSerialNumber()));
             analysisData.setIsDelete(createType);
             tMeasureAnalysisDataService.save(analysisData);
         }
-        return Result.ok(true);
 
+        RationSaveCountDataInfo countDataInfo = new RationSaveCountDataInfo();
+        countDataInfo.setTaskId(taskId);
+        countDataInfo.setSampleId(sampleId);
+        countDataInfo.setMeasureDataId(tMeasureData.getId());
+        countDataInfo.setAnalyzeDataId(analysisData.getId());
+        countDataInfo.setCountData(dataInfo.getCountData());
+
+        return R.ok(countDataInfo);
+    }
+
+    @Override
+    public R<Boolean> saveAnalyzeData(RationSaveCountDataInfo countData) {
+        String taskId = countData.getTaskId();
+        String sampleId = countData.getSampleId();
+        String measureDataId = countData.getMeasureDataId();
+        TMeasureAnalysisData analysisData;
+        if (StringUtils.hasText(countData.getAnalyzeDataId())) {
+            analysisData = tMeasureAnalysisDataService.getById(countData.getAnalyzeDataId());
+        } else {
+            LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                    .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                    .eq(TMeasureAnalysisData::getMeasureDataId, measureDataId)
+                    .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                    .last("limit 1");
+            analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+        }
+
+        if (analysisData == null) {
+            analysisData = new TMeasureAnalysisData();
+            analysisData.setTaskId(taskId);
+            analysisData.setSampleKey(sampleId);
+            analysisData.setMeasureDataId(measureDataId);
+            analysisData.setDataVersion(0);
+            analysisData.setIsDelete(createType);
+            analysisData.setAnalysisResult(JSON.toJSONString(countData.getCountData()));
+            tMeasureAnalysisDataService.save(analysisData);
+        } else {
+            if (!analysisData.getMeasureDataId().equals(measureDataId)) {
+                analysisData.setMeasureDataId(measureDataId);
+            }
+            analysisData.setAnalysisResult(JSON.toJSONString(countData.getCountData()));
+            tMeasureAnalysisDataService.updateById(analysisData);
+        }
+
+        return R.ok(true);
+
+    }
+
+    @Override
+    public void saveEmptySampleData(List<RationSaveCountDataInfo> emptySampleList) {
+        for (RationSaveCountDataInfo emptyData : emptySampleList) {
+            LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TMeasureAnalysisData::getTaskId, emptyData.getTaskId())
+                    .eq(TMeasureAnalysisData::getSampleKey, emptyData.getSampleId())
+                    .eq(TMeasureAnalysisData::getMeasureDataId, emptyData.getMeasureDataId())
+                    .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                    .last("limit 1");
+            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+            if (analysisData != null) {
+                analysisData.setAnalysisResult(JSON.toJSONString(emptyData.getCountData()));
+                tMeasureAnalysisDataService.updateById(analysisData);
+            } else {
+                analysisData = new TMeasureAnalysisData();
+                analysisData.setTaskId(emptyData.getTaskId());
+                analysisData.setSampleKey(emptyData.getSampleId());
+                analysisData.setMeasureDataId(emptyData.getMeasureDataId());
+                analysisData.setDataVersion(0);
+                analysisData.setAnalysisResult(JSON.toJSONString(emptyData.getCountData()));
+                analysisData.setIsDelete(createType);
+                tMeasureAnalysisDataService.save(analysisData);
+            }
+        }
+    }
+
+    @Override
+    public R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter, Integer  digit) {
+
+        List<String> waveLength = parameter.getWaveLength();
+        List<String> lengthParams = parameter.getWaveLengthParams();
+        double ans = 0;
+
+        for (int i = 0; i < waveLength.size(); i++) {
+            double value = Double.MIN_VALUE;
+            for (RationWavelengthDataInfo dataInfo : originData) {
+                if (waveLength.get(i).equals(dataInfo.getWavelength()) && dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
+                    value = DataCountUtil.formatValue(digit, Double.parseDouble(dataInfo.getAbsValue()));
+                }
+            }
+            if (value == Double.MIN_VALUE) {
+                return R.fail("未找到对应波长数据");
+            }
+            if (i < lengthParams.size()) {
+                value = value * Double.parseDouble(lengthParams.get(i));
+            } else {
+                value = value * 1;
+            }
+            ans += value;
+        }
+        RationCountDataInfo countDataInfo = new RationCountDataInfo();
+        countDataInfo.setColValue(DataCountUtil.formatValue(digit, ans));
+        countDataInfo.setIdentity(SampleTableEnum.Abs.getIdentity());
+        countDataInfo.setHeadName(SampleTableEnum.Abs.getName());
+
+        return R.ok(countDataInfo);
     }
 
     @Override
@@ -953,6 +1082,280 @@ public class RationServiceImpl implements RationService {
         }
         return Result.ok(ans);
     }
+
+    @Override
+    public Result<RationSampleDataVO> querySampleData(QueryDataDTO queryDataDTO) {
+
+        String taskId = queryDataDTO.getTaskId();
+        Boolean allDisplay = queryDataDTO.getAllDisplay();
+        Integer digit = queryDataDTO.getDigit();
+        List<String> option = queryDataDTO.getOption();
+
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("未选择任务");
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            log.info("未查询到任务信息");
+            return Result.fail("任务不存在");
+        }
+
+        if (digit == null) {
+            digit = Constants.DEFAULT_DECIMAL_NUM;
+            queryDataDTO.setDigit(digit);
+        }
+
+        if(queryDataDTO.getAllDisplay() == null) {
+            allDisplay = false;
+            queryDataDTO.setAllDisplay(allDisplay);
+        }
+        TMeasureTaskAttachment attachment;
+        boolean recount = false;
+
+        R<TMeasureTaskAttachment> r = taskAttachmentService.queryByTaskId(taskId);
+        if (!r.getSuccess()) {
+            log.info("未查询到任务附件信息");
+            attachment = new TMeasureTaskAttachment();
+            attachment.setTaskId(taskId);
+            attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+            taskAttachmentService.save(attachment);
+            recount = true;
+        } else {
+            attachment = r.getData();
+
+            if (!StringUtils.hasText(attachment.getDataParam())) {
+                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+                taskAttachmentService.saveOrUpdate(attachment);
+                recount = true;
+            } else {
+                QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
+                if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
+                    recount = true;
+
+                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+                    taskAttachmentService.saveOrUpdate(attachment);
+                }
+            }
+        }
+
+        if (recount) {
+            changeStandSampleDataDigit(taskId, digit);
+            changeUnknowSampleDigit(taskId, digit);
+        }
+        /*
+        查询数据
+        */
+        RationSampleDataVO dataVO = new RationSampleDataVO();
+
+        List<Map<String, Object>> standSampleData = new ArrayList<>();
+        List<Map<String, Object>> unknowSampleData = new ArrayList<>();
+        boolean repeat = false;
+        if (StringUtils.hasText(task.getMethodKey())) {
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
+                RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+                if (StringUtils.hasText(parameter.getRepeatMode()) && parameter.getRepeatMode().equals("单池重复")) {
+                    repeat = true;
+                }
+            }
+        }
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            log.info("没有样品");
+            dataVO.setStandSampleData(standSampleData);
+            dataVO.setUnknowSampleData(unknowSampleData);
+            return Result.ok(dataVO);
+        }
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+            if (!allDisplay && specimen.getDeleteType().equals("1")) {
+                continue;
+            }
+            if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                Map<String, Object> singleSampleData = getSingleSampleData(task, sample, repeat, option, digit);
+
+                standSampleData.add(singleSampleData);
+            } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+
+                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                Map<String, Object> sampleData = getSingleSampleData(task, sample, repeat, option, digit);
+
+                unknowSampleData.add(sampleData);
+
+            } else {
+                log.info("类型出错");
+            }
+        }
+        dataVO.setUnknowSampleData(unknowSampleData);
+        dataVO.setStandSampleData(standSampleData);
+        return Result.ok(dataVO);
+
+    }
+
+    private Map<String, Map<String, String>> extracted(List<String> option, RationWavelengthDataInfo wlData, TMeasureSample sample) {
+
+        Map<String, Map<String, String>> ans = new HashMap<>();
+
+        RepeatMeasureData absData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode());
+        RepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
+
+        if (option != null && !option.isEmpty()) {
+            for (String s : option) {
+                Map<String, String> children = new HashMap<>();
+                if (DataIdentityEnums.avg.getIdentity().equals(s)) {
+                    children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(),wlData.getTPercentValue());
+                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getIdentity(), children);
+                }
+                if (DataIdentityEnums.sd.getIdentity().equals(s)) {
+                    children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
+                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getIdentity(), children);
+                }
+                if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
+                    children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
+                    children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
+                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
+                }
+            }
+        }
+        return ans;
+    }
+
+    public Map<String, Object> getSingleSampleData(TMeasureTask task, TMeasureSample sample, Boolean repeat, List<String> option, Integer digit) {
+
+        String sampleId = sample.getId();
+        String taskId = task.getId();
+
+        Map<String, Object> map = new HashMap<>();
+        //样品信息
+        map.put(SampleTableEnum.sampleId.getIdentity(), sample.getId());
+        map.put(SampleTableEnum.sampleName.getIdentity(), sample.getSampleName());
+        map.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber());
+        map.put(SampleTableEnum.sampleType.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+        map.put(SampleTableEnum.sampleKind.getIdentity(), sample.getSampleKind());
+        map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+sample.getSampleLocation());
+
+        if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            map.put(SampleTableEnum.normalConcentration.getIdentity(), sample.getNormalConcentration());
+        }
+
+        if (StringUtils.hasText(sample.getNewColData())) {
+            Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {
+            });
+
+            map.putAll(object);
+        }
+
+        //数据信息,repeat：false-不重复，true-重复
+        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                .eq(TMeasureData::getSampleKey, sampleId)
+                .orderByDesc(TMeasureData::getSerialNumber).last("limit 1");
+        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+        if (!repeat) {
+            if (data != null) {
+
+                if (StringUtils.hasText(data.getOriginalCalculationData())) {
+                    List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
+                    for (RationWavelengthDataInfo dataInfo : list) {
+                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getAbsValue()));
+                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
+                    }
+                }
+
+                map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
+                map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+
+                LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                        .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                        .eq(TMeasureAnalysisData::getMeasureDataId, data.getId())
+                        .orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+
+                TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                if (one != null && one.getAnalysisResult() != null) {
+                    List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
+                    for (RationCountDataInfo countData : countDataList) {
+                        map.put(countData.getIdentity(), String.valueOf(countData.getColValue()));
+                    }
+                }
+
+            }
+        } else {
+            //重复模式，获取数据方式待定----暂时先以不重复做回显
+            if (data != null) {
+                map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
+                map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+                if (StringUtils.hasText(data.getOriginalCalculationData())) {
+                    Map<String, Map<String, String>> childrenList = new HashMap<>();
+                    List<Map<String, String>> middle = new ArrayList<>();
+                    List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
+                    for (RationWavelengthDataInfo dataInfo : list) {
+                        Map<String, String> children = new HashMap<>();
+
+                        if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
+                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
+                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
+
+                            Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample);
+                            if (!ch.isEmpty()) {
+                                for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
+                                    String key = entry.getKey();
+                                    Map<String, String> value = entry.getValue();
+
+                                    if (childrenList.containsKey(key)) {
+                                        // 如果键已存在，将新值中的键值对合并到现有Map中
+                                        Map<String, String> existingMap = childrenList.get(key);
+                                        // 将value中的所有键值对放入existingMap中（相同键会覆盖，新键会添加）
+                                        existingMap.putAll(value);
+                                    } else {
+                                        // 如果键不存在，直接添加（创建副本以避免引用问题）
+                                        childrenList.put(key, new HashMap<>(value));
+                                    }
+                                }
+                            }
+
+                        } else {
+
+                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
+                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getTPercentValue()));
+                            String[] split = dataInfo.getIdentity().split("-");
+                            children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                            childrenList.computeIfAbsent(dataInfo.getIdentity(), k -> new HashMap<>()).putAll(children);
+                        }
+                    }
+                    childrenList.forEach((key, value) -> middle.add(value));
+                    map.put("children", middle);
+                }
+
+                LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                        .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                        .eq(TMeasureAnalysisData::getMeasureDataId, data.getId())
+                        .orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+
+                TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                if (one != null && one.getAnalysisResult() != null) {
+                    List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
+                    for (RationCountDataInfo countData : countDataList) {
+                        map.put(countData.getIdentity(), String.valueOf(countData.getColValue()));
+                    }
+                }
+
+            }
+        }
+        return map;
+    }
+
 
     @Override
     public Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay) {
@@ -1136,7 +1539,7 @@ public class RationServiceImpl implements RationService {
             param.setY_data(data.stream().mapToDouble(Double::doubleValue).toArray());
             param.setX_data(inputParam.stream().mapToDouble(Double::parseDouble).toArray());
         }
-        String s = RestUtil.dataFit(param);
+        String s = restUtil.dataFit(param);
         FittingReceiveInfo info = JSON.parseObject(s, FittingReceiveInfo.class);
         if (info == null) {
             log.info("数据拟合失败");
@@ -1217,11 +1620,6 @@ public class RationServiceImpl implements RationService {
         double k3 = info.getK3() == null ? 0 : (double) Math.round(info.getK3() * 1000) / 1000;
         double k4 = info.getK4() == null ? 0 : (double) Math.round(info.getK4() * 1000) / 1000;
 
-
-
-
-
-
         double step = 0.1;
         //采用3位小数来计算
         double minX = (double) Math.round(info.getMinX() * 1000) / 1000;
@@ -1279,6 +1677,34 @@ public class RationServiceImpl implements RationService {
         return vo;
     }
 
+    /**
+     * 值计算
+     * @param info 曲线信息
+     * @param value 待计算的值
+     * @param equationType 曲线类型
+     * @param digit 小数位数
+     * @return
+     */
+    @Override
+    public String valueCalculate(FittingReceiveInfo info, Double value, String equationType, Integer digit) {
+
+        String s = "";
+        String ans = null;
+
+        if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
+        } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
+            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+        }
+        if (StringUtils.hasText(s)) {
+            JSONObject jsonObject = JSON.parseObject(s);
+
+            String mid = jsonObject.get("value").toString();
+            ans = DataCountUtil.formatValueWithBigDecimal(digit, mid);
+        }
+        return ans;
+    }
+
     @Override
     public String valueCalculate(FittingReceiveInfo info, Double value, String equationType) {
 
@@ -1286,14 +1712,575 @@ public class RationServiceImpl implements RationService {
         String ans = null;
 
         if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-            s = RestUtil.concentrationCalculate(info.getCoefficients(), value, 1);
+            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
         } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-            s = RestUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
         }
         if (StringUtils.hasText(s)) {
             JSONObject jsonObject = JSON.parseObject(s);
 
             ans = jsonObject.get("value").toString();
+        }
+        return ans;
+    }
+
+    @Override
+    public R<List<RationCountDataInfo>> formula(List<RationWavelengthDataInfo> vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Integer digit) {
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            return R.fail("缺少分析参数，无法计算分析");
+        }
+        TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+        if (snapshot.getMapRelation() == null || snapshot.getMapRelation().isEmpty()) {
+            return R.fail("缺少映射关系，无法计算分析");
+        }
+        String jsonString = JSON.toJSONString(sample);
+        JSONObject allData = JSON.parseObject(jsonString);
+        if (StringUtils.hasText(sample.getNewColData())) {
+            JSONObject object = JSONObject.parseObject(sample.getNewColData());
+            allData.putAll(object);
+        }
+        LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureAnalysisData::getTaskId, task.getId())
+                .eq(TMeasureAnalysisData::getSampleKey, sample.getId())
+                .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                .last("limit 1");
+        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(queryWrapper);
+        if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
+            String analysisParam = one.getAnalysisParam();
+            JSONObject object = JSON.parseObject(analysisParam);
+            allData.putAll(object);
+        }
+
+        for (RationWavelengthDataInfo dataInfo : vo) {
+            if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
+                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), dataInfo.getAbsValue()==null? null :dataInfo.getAbsValue());
+                allData.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), dataInfo.getTPercentValue()==null? null :dataInfo.getTPercentValue());
+            }
+        }
+
+        StringBuilder values = new StringBuilder();
+
+        StringBuilder identity = new StringBuilder();
+
+        for (InputParam inputParam : parameter.getSampleInputParams()) {
+            boolean b = snapshot.getMapRelation().stream().anyMatch(
+                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity()));
+
+            Optional<InputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
+                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
+            if (!mapTableHead.isPresent()) {
+                return R.fail("缺少参数映射：" + inputParam.getParamName());
+            }
+            identity.append(mapTableHead.get().getParamIdentity()).append(",");
+            String s = allData.getString(mapTableHead.get().getHeadIdentity());
+            if (!StringUtils.hasText(s)) {
+                return R.fail("缺少数据！");
+            }
+            s = DataCountUtil.formatValueWithBigDecimal(digit, s);
+            values.append(s).append(",");
+        }
+        identity.deleteCharAt(identity.length()-1);
+        values.deleteCharAt(values.length()-1);
+
+        List<RationCountDataInfo> countList = new ArrayList<>();
+        for (PreCountResultParam param : parameter.getResultParams()) {
+            String[] split = param.getFormulaText().split("=");
+            String text = split[split.length - 1];
+            String result = restUtil.sum(text, identity.toString(), values.toString());
+            RationCountDataInfo countDataInfo = new RationCountDataInfo();
+            BeanUtils.copyProperties(param, countDataInfo);
+            JSONObject resultJson = JSONObject.parseObject(result);
+
+            if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
+                return R.fail("公式计算出错！" + resultJson.get("message"));
+            }
+            countDataInfo.setColValue((Double) resultJson.get("result"));
+            countList.add(countDataInfo);
+        }
+
+        return R.ok(countList);
+    }
+
+    @Override
+    public R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit) {
+        /*
+        数位数的影响---测量数据不影响，平均值，sd，rsd影响
+        abs,sumAbs，曲线拟合，拟合浓度，公式计算都会受影响
+        首先，平均值，sd,rsd计算abs
+        然后，sumAbs计算
+        最后，曲线拟合，
+        拟合浓度，公式计算
+        标准样品和未知样品，需要一起查询
+       不然针对api操作，会出现小数位数不一致的问题
+       那重新计算，应该针对单样品？
+       光度可以针对任务，定量应该针对样品来操作
+         */
+        String dealSampleKind = SampleTypeEnum.kind_stand.getIdentity();
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            log.info("没有样品");
+            return R.fail("没有样品");
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        boolean repeat = parameter.getRepeatMode().equals("单池重复");
+
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        boolean empty = false;
+        boolean lastIsEmpty = false;
+        Double minuend = 0.0;
+        //存放空白样数据（计算后的值）
+        List<RationSaveCountDataInfo> emptyDataList = new ArrayList<>();
+        //存放空白样计算出的Abs的值
+        List<RationCountDataInfo> emptyList = new ArrayList<>();
+
+        //参与曲线拟合的数据
+        List<RationCountDataInfo> fitCurveData = new ArrayList<>();
+        //参与曲线拟合的参数
+        List<String> fitCurveParams = new ArrayList<>();
+
+        empty = taskSpecimen.stream()
+                .anyMatch(specimen ->
+                        specimen.getSpecimenKey().equals(dealSampleKind)
+                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
+                );
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+
+            if (specimen.getDeleteType().equals(deleteType)) {
+                log.info("删除的样品");
+                continue;
+            }
+            if (specimen.getIsTested().equals(noTested)) {
+                log.info("没有测过的样品，跳过");
+                continue;
+            }
+
+            if (!specimen.getSampleKind().equals(dealSampleKind)) {
+                log.info("不是需要处理的样品，跳过");
+                continue;
+            }
+
+            TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                    .orderByDesc(TMeasureData::getSerialNumber)
+                    .last("limit 1");
+            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+            if (data == null) {
+                log.info("没有测量数据");
+                continue;
+            }
+            if (!StringUtils.hasText(data.getOriginalCalculationData())) {
+                log.info("没有测量数据");
+                continue;
+            }
+            List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
+            if (list == null || list.isEmpty()) {
+                log.info("没有测量数据");
+                continue;
+            }
+            RationCountDataInfo ansData;
+            RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
+            dealData.setSampleId(specimen.getSpecimenKey());
+            dealData.setTaskId(taskId);
+            dealData.setMeasureDataId(data.getId());
+
+            if (repeat) {
+                List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
+                R<RationCountDataInfo> absValue = countAbsValue(wavelengthDataInfos, parameter, digit);
+                if (!absValue.getSuccess()) {
+                    log.info("计算abs失败");
+                    RationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
+                    if (value == null) {
+                        return R.fail("数据处理出错且没有找到旧数据，处理失败");
+                    }
+                    fitCurveData.add(value);
+                    fitCurveParams.add(sample.getNormalConcentration());
+
+                    continue;
+                }
+                ansData = absValue.getData();
+
+            } else {
+
+                R<RationCountDataInfo> absValue = countAbsValue(list, parameter, digit);
+                if (!absValue.getSuccess()) {
+                    log.info("重新计算abs失败");
+                    RationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
+                    if (value == null) {
+                        return R.fail("数据处理出错且没有找到旧数据，处理失败");
+                    }
+                    fitCurveData.add(value);
+                    fitCurveParams.add(sample.getNormalConcentration());
+
+                    continue;
+                }
+                ansData = absValue.getData();
+            }
+
+            if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+
+                empty = true;
+                RationCountDataInfo yAbs = new RationCountDataInfo();
+                yAbs.setHeadName(SampleTableEnum.sumAbs.getName());
+                yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                yAbs.setColValue(0.0);
+
+                List<RationCountDataInfo> currentList = new ArrayList<>();
+
+                if (lastIsEmpty) {
+                    emptyList.add(ansData);
+
+                    double sub = 0.0;
+                    //计算平均值
+                    for (RationCountDataInfo dataInfo : emptyList) {
+                        sub += dataInfo.getColValue();
+                    }
+                    minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
+                    //添加到空白列表
+                    currentList.add(ansData);
+                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    currentList.add(yAbs);
+                    dealData.setCountData(currentList);
+                    emptyDataList.add(dealData);
+
+                    for (RationSaveCountDataInfo emptyData : emptyDataList) {
+                        List<RationCountDataInfo> emList = emptyData.getCountData();
+                        List<RationCountDataInfo> newList = new ArrayList<>();
+
+                        for (RationCountDataInfo dataInfo : emList) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                                newList.add(dataInfo);
+                                yAbs.setColValue(dataInfo.getColValue() - minuend);
+                                newList.add(yAbs);
+                            }
+                        }
+                        emptyData.setCountData(newList);
+                    }
+                } else {
+                    emptyList.clear();
+                    emptyDataList.clear();
+                    emptyList.add(ansData);
+                    minuend = ansData.getColValue();
+                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    currentList.add(yAbs);
+                    currentList.add(ansData);
+                    dealData.setCountData(currentList);
+                    emptyDataList.add(dealData);
+
+                }
+                saveEmptySampleData(emptyDataList);
+                lastIsEmpty = true;
+
+            } else {
+                List<RationCountDataInfo> currentList = new ArrayList<>();
+
+                //测量过的数据，非空白样，添加标准浓度为了拟合曲线
+                //TODO 未来需要添加质量和浓度的区分
+                fitCurveParams.add(sample.getNormalConcentration());
+
+                if (empty) {
+                    RationCountDataInfo sumAbsData = new RationCountDataInfo();
+                    sumAbsData.setHeadName(SampleTableEnum.sumAbs.getName());
+                    sumAbsData.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                    sumAbsData.setColValue(ansData.getColValue() - minuend);
+                    currentList.add(sumAbsData);
+                    currentList.add(ansData);
+                    dealData.setCountData(currentList);
+                    fitCurveData.add(sumAbsData);
+                } else {
+                    currentList.add(ansData);
+                    dealData.setCountData(currentList);
+                    fitCurveData.add(ansData);
+                }
+                saveAnalyzeData(dealData);
+                lastIsEmpty = false;
+            }
+            specimen.setIsTested(tested);
+        }
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+
+        //拟合曲线
+        R<FittingReceiveInfo> infoR = fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
+        if (infoR.getSuccess()) {
+            log.info("拟合曲线成功，修改任务中的拟合参数");
+            task.setFittingParam(JSON.toJSONString(infoR.getData()));
+        }
+        tMeasureTaskService.updateById(task);
+        return R.ok();
+    }
+
+    @Override
+    public R<Boolean> changeUnknowSampleDigit(String taskId, Integer digit) {
+        String dealSampleKind = SampleTypeEnum.kind_unknown.getIdentity();
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            log.info("没有样品");
+            return R.fail("没有样品");
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        boolean repeat = parameter.getRepeatMode().equals("单池重复");
+
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        boolean empty = false;
+        boolean lastIsEmpty = false;
+        Double minuend = 0.0;
+        //存放空白样数据（计算后的值）
+        List<RationSaveCountDataInfo> emptyDataList = new ArrayList<>();
+        //存放空白样计算出的Abs的值
+        List<RationCountDataInfo> emptyList = new ArrayList<>();
+
+        empty = taskSpecimen.stream()
+                .anyMatch(specimen ->
+                        specimen.getSpecimenKey().equals(dealSampleKind)
+                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
+                );
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+
+            if (specimen.getDeleteType().equals(deleteType)) {
+                log.info("删除的样品");
+                continue;
+            }
+            if (specimen.getIsTested().equals(noTested)) {
+                log.info("没有测过的样品，跳过");
+                continue;
+            }
+
+            if (!specimen.getSampleKind().equals(dealSampleKind)) {
+                log.info("不是需要处理的样品，跳过");
+                continue;
+            }
+
+            TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                    .orderByDesc(TMeasureData::getSerialNumber)
+                    .last("limit 1");
+            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+            if (data == null) {
+                log.info("没有测量数据");
+                continue;
+            }
+            if (!StringUtils.hasText(data.getOriginalCalculationData())) {
+                log.info("没有测量数据");
+                continue;
+            }
+            List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
+            if (list == null || list.isEmpty()) {
+                log.info("没有测量数据");
+                continue;
+            }
+            RationCountDataInfo ansData;
+            RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
+            dealData.setSampleId(specimen.getSpecimenKey());
+            dealData.setTaskId(taskId);
+            dealData.setMeasureDataId(data.getId());
+
+            if (repeat) {
+                List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
+                R<RationCountDataInfo> absValue = countAbsValue(wavelengthDataInfos, parameter, digit);
+                if (!absValue.getSuccess()) {
+                    log.info("当前样品处理出错，跳过");
+                    continue;
+                }
+                ansData = absValue.getData();
+
+            } else {
+                R<RationCountDataInfo> absValue = countAbsValue(list, parameter, digit);
+                if (!absValue.getSuccess()) {
+                    log.info("计算abs出错，跳过");
+                    continue;
+                }
+                ansData = absValue.getData();
+            }
+
+            if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+
+                empty = true;
+                RationCountDataInfo yAbs = new RationCountDataInfo();
+                yAbs.setHeadName(SampleTableEnum.sumAbs.getName());
+                yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                yAbs.setColValue(0.0);
+
+                List<RationCountDataInfo> currentList = new ArrayList<>();
+
+                if (lastIsEmpty) {
+                    emptyList.add(ansData);
+
+                    double sub = 0.0;
+                    //计算平均值
+                    for (RationCountDataInfo dataInfo : emptyList) {
+                        sub += dataInfo.getColValue();
+                    }
+                    minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
+                    //添加到空白列表
+                    currentList.add(ansData);
+                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    currentList.add(yAbs);
+                    dealData.setCountData(currentList);
+                    emptyDataList.add(dealData);
+
+                    for (RationSaveCountDataInfo emptyData : emptyDataList) {
+                        List<RationCountDataInfo> emList = emptyData.getCountData();
+                        List<RationCountDataInfo> newList = new ArrayList<>();
+
+                        for (RationCountDataInfo dataInfo : emList) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                                newList.add(dataInfo);
+                                yAbs.setColValue(dataInfo.getColValue() - minuend);
+                                newList.add(yAbs);
+                            }
+                        }
+                        emptyData.setCountData(newList);
+                    }
+                } else {
+                    emptyList.clear();
+                    emptyDataList.clear();
+                    emptyList.add(ansData);
+                    minuend = ansData.getColValue();
+                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    currentList.add(yAbs);
+                    currentList.add(ansData);
+                    dealData.setCountData(currentList);
+                    emptyDataList.add(dealData);
+
+                }
+                saveEmptySampleData(emptyDataList);
+                lastIsEmpty = true;
+            } else {
+                List<RationCountDataInfo> currentList = new ArrayList<>();
+                /*
+                未知样品
+                计算对象：countData
+                首先，有空白，就计算sumAbs值，并且赋值到countData中
+                然后，根据曲线计算，公式计算
+                最后保存，计算完，abs值就保存一次，但是要注意替换。
+                 */
+                double toCountData = 0.0;
+
+                if (empty) {
+                    RationCountDataInfo sumAbsData = new RationCountDataInfo();
+                    sumAbsData.setHeadName(SampleTableEnum.sumAbs.getName());
+                    sumAbsData.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                    sumAbsData.setColValue(ansData.getColValue() - minuend);
+                    toCountData = sumAbsData.getColValue();
+                    currentList.add(sumAbsData);
+                } else {
+                    toCountData = ansData.getColValue();
+                }
+                currentList.add(ansData);
+                /*
+                获取拟合的值
+                 */
+                FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+
+                String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
+                RationCountDataInfo valueData = new RationCountDataInfo();
+                valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
+                valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+                valueData.setColValue(ans==null? null : Double.valueOf(ans));
+                currentList.add(valueData);
+
+                //TODO 公式计算，待做
+                dealData.setCountData(currentList);
+                saveAnalyzeData(dealData);
+                lastIsEmpty = false;
+            }
+        }
+        return R.ok();
+    }
+
+    public RationCountDataInfo getAbsValue(String taskId, String sampleId, String measureDataId, Boolean empty) {
+        LambdaQueryWrapper<TMeasureAnalysisData> query = new LambdaQueryWrapper<>();
+        query.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                .eq(TMeasureAnalysisData::getMeasureDataId, measureDataId).orderByDesc(TMeasureAnalysisData::getDataVersion);
+        List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(query);
+        if (list != null && !list.isEmpty()) {
+            if (empty) {
+                for (TMeasureAnalysisData analysisData : list) {
+                    if (analysisData.getAnalysisResult() != null) {
+                        List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
+                        for (RationCountDataInfo dataInfo : countDataInfoList) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.sumAbs.getIdentity())) {
+                                return dataInfo;
+                            }
+                        }
+                    }
+                }
+            } else {
+                for (TMeasureAnalysisData analysisData : list) {
+                    if (analysisData.getAnalysisResult() != null) {
+                        List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
+                        for (RationCountDataInfo dataInfo : countDataInfoList) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                                return dataInfo;
+                            }
+                        }
+                    }
+                }
+
+            }
+
+        }
+        return null;
+
+    }
+    public List<RationWavelengthDataInfo> countRepeatData(List<RationWavelengthDataInfo> originData, Integer digit) {
+
+        List<RationWavelengthDataInfo> ans = new ArrayList<>();
+
+        Map<String, List<Double>> absValue = new HashMap<>();
+        Map<String, List<Double>> tPercentValue = new HashMap<>();
+        Map<String, RationWavelengthDataInfo> dataMap = new HashMap<>();
+        Set<String> wavelengthSet = new HashSet<>();
+
+        for (RationWavelengthDataInfo data : originData) {
+            if (data.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
+                dataMap.putIfAbsent(data.getWavelength(), data);
+                continue;
+            }
+            ans.add(data);
+            double abs = Double.parseDouble(data.getAbsValue());
+            double tPercent = Double.parseDouble(data.getTPercentValue());
+
+            absValue.computeIfAbsent(data.getWavelength(), k -> new ArrayList<>()).add(abs);
+            tPercentValue.computeIfAbsent(data.getWavelength(), k -> new ArrayList<>()).add(tPercent);
+            wavelengthSet.add(data.getWavelength());
+        }
+
+        for (String wavelength : wavelengthSet) {
+            RationWavelengthDataInfo dataInfo = dataMap.get(wavelength);
+            RepeatMeasureData repeatData;
+            Map<String, RepeatMeasureData> otherData = new HashMap<>();
+
+            List<Double> allAbs = absValue.get(wavelength);
+            double mean = DataCountUtil.calculateMean(allAbs, digit);
+            Double absSD = DataCountUtil.calculateSD(allAbs, digit);
+            Double absRsd = DataCountUtil.calculateRSD(allAbs, digit);
+            repeatData = new RepeatMeasureData(absSD == null ? "未检出" :String.valueOf(absSD), absRsd == null ? "未检出" :String.valueOf(absRsd));
+            otherData.put(wavelength + "-" + WaveLengthEnum.abs.getCode(), repeatData);
+
+            List<Double> allPercent = tPercentValue.get(wavelength);
+            double meanT = DataCountUtil.calculateMean(allPercent, digit);
+            Double percentSD = DataCountUtil.calculateSD(allPercent, digit);
+            Double percentRsd = DataCountUtil.calculateRSD(allPercent, digit);
+            repeatData = new RepeatMeasureData(percentSD == null ? "未检出" :String.valueOf(percentSD), percentRsd == null ? "未检出" :String.valueOf(percentRsd));
+            otherData.put(wavelength + "-" + WaveLengthEnum.abs.getCode(), repeatData);
+
+            dataInfo.setAbsValue(String.valueOf(mean));
+            dataInfo.setTPercentValue(String.valueOf(meanT));
+            dataInfo.setOtherData(otherData);
+
+            ans.add(dataInfo);
         }
         return ans;
     }

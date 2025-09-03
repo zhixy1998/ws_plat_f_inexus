@@ -1,19 +1,24 @@
 package com.persee.workstation.uv_inexus.util.pythonUtil;
 
 import com.alibaba.fastjson.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
+@Service("RestUtil")
 public class RestUtil {
+    @Value("${python-code.baseUrl}")
+    String baseUrl;
 
-    private static final String baseUrl = "http://192.168.51.38:8002/";
+//    private static final String baseUrl = "http://192.168.51.38:8002/";
 
-    public static String sum(String formula, String identity, String values) {
+    public String sum(String formula, String identity, String values) {
         RestTemplate restTemplate = new RestTemplate();
         String url = baseUrl + "algebraic_operations";
 
@@ -32,7 +37,7 @@ public class RestUtil {
         return response.getBody();
     }
 
-    public static String dataFit(FittingParam param) {
+    public String dataFit(FittingParam param) {
         RestTemplate restTemplate = new RestTemplate();
         String url = baseUrl + "least_squares_fitting";
 
@@ -49,7 +54,7 @@ public class RestUtil {
     }
 
     //根据吸光度计算拟合浓度
-    public static String concentrationCalculate(List<Double> coefficient, Double value, Integer mode) {
+    public String concentrationCalculate(List<Double> coefficient, Double value, Integer mode) {
         RestTemplate restTemplate = new RestTemplate();
         String url = baseUrl + "calculate_concentration_or_abs";
 

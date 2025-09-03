@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class PhotoQueryDataDTO {
+public class QueryDataDTO {
     private String taskId;
     @ApiModelProperty("是否显示被删除的数据")
     private Boolean allDisplay;

@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
@@ -54,15 +56,23 @@ public interface RationService {
      */
     Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay);
 
-    Result saveStandSampleData(RationDataVO dataInfo);
+    R<String> saveRationSampleMeasureData(RationDataVO dataInfo);
+    R<RationSaveCountDataInfo> saveSampleMeasureData(RationDataVO dataInfo);
 
-    Result saveUnknowSampleData(RationDataVO dataInfo);
+    R<Boolean> saveAnalyzeData(RationSaveCountDataInfo countData);
 
+    void saveEmptySampleData(List<RationSaveCountDataInfo> emptySampleList);
+
+    R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter, Integer digit);
     R<RationCountDataInfo> countAbsValue(List<RationWavelengthDataInfo> originData, RationParameter parameter);
 
     Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay);
+    Result<RationSampleDataVO> querySampleData(QueryDataDTO queryDataDTO);
+
 
     Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
+
+
 
     /**
      * 拟合曲线
@@ -84,7 +94,13 @@ public interface RationService {
     /**
      * 值计算
      */
+    String valueCalculate(FittingReceiveInfo info, Double value, String equationType, Integer digit);
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
+
+    R<List<RationCountDataInfo>> formula(List<RationWavelengthDataInfo> vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Integer digit);
+
+    R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);
+    R<Boolean> changeUnknowSampleDigit(String taskId, Integer digit);
 
     Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 

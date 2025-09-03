@@ -201,13 +201,13 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         yAbs.setColValue(value - minuend);
                         dataVO.getCountData().add(yAbs);
                         countData.add(yAbs);
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
 
                     }
                 } else {
                     for (RationDataVO dataVO : data) {
                         countData.addAll(dataVO.getCountData());
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
                     }
                 }
                 //拟合曲线
@@ -297,7 +297,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
                         valueData.setColValue(Double.valueOf(ans));
                         dataVO.getCountData().add(valueData);
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
 
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("sampleId", dataVO.getSampleId());
@@ -323,7 +323,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         jsonObject.put("key", valueData.getIdentity());
                         jsonObject.put("value", valueData.getColValue());
                         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
                     }
                 }
 

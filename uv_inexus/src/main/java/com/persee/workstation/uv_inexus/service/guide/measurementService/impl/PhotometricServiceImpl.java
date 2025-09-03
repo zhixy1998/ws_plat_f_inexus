@@ -85,6 +85,9 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Autowired
     DevMessageUtil devMessageUtil;
 
+    @Autowired
+    RestUtil restUtil;
+
     @Value("1")
     String deleteType;
 
@@ -417,10 +420,10 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result<List<HeadVO>> querySampleHeads(String taskId) {
 
-        List<HeadVO> ans = new ArrayList<>();
+        LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
 
         if (!StringUtils.hasText(taskId)) {
-            return Result.ok(ans);
+            return Result.ok(new ArrayList<>(ans));
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -431,15 +434,18 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
+                if(specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
 
-                if (heads != null && !heads.equals(ans)) {
+                if (heads != null) {
                     ans.addAll(heads);
                 }
             }
         }
-        return Result.ok(ans);
+        return Result.ok(new ArrayList<>(ans));
     }
 
     @Override
@@ -579,7 +585,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
                     s1.append(waveLength).append(name);
                     s2.append(waveLength).append("-").append(luminosity);
-                    ans.add(new HeadVO(s1.toString(), s2.toString()));
+                    ans.add(new HeadVO(s1.toString(), s2.toString(), "measureData"));
                     continue;
                 }
 
@@ -589,20 +595,20 @@ public class PhotometricServiceImpl implements PhotometricService {
 
                     s1.append(waveLength).append(name);
                     s2.append(waveLength).append("-").append(luminosity);
-                    ans.add(new HeadVO(s1.toString(), s2.toString()));
+                    ans.add(new HeadVO(s1.toString(), s2.toString(), "measureData"));
                     continue;
                 }
 
                 s1.append(waveLength).append(WaveLengthEnum.abs.getName());
                 s2.append(waveLength).append("-").append(WaveLengthEnum.abs.getCode());
-                HeadVO headVO1 = new HeadVO(s1.toString(), s2.toString());
+                HeadVO headVO1 = new HeadVO(s1.toString(), s2.toString(), "measureData");
                 ans.add(headVO1);
 
                 s1.setLength(0);
                 s2.setLength(0);
                 s1.append(waveLength).append(WaveLengthEnum.tPercent.getName());
                 s2.append(waveLength).append("-").append(WaveLengthEnum.tPercent.getCode());
-                HeadVO headVO2 = new HeadVO(s1.toString(), s2.toString());
+                HeadVO headVO2 = new HeadVO(s1.toString(), s2.toString(), "measureData");
                 ans.add(headVO2);
             }
         }
@@ -612,7 +618,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 StringBuilder s2 = new StringBuilder();
                 String s1 = param.getResultName() + "(" + param.getUnit() + ")";
                 s2.append(param.getResultIdentity()).append("-").append(param.getFormulaText());
-                HeadVO headVO = new HeadVO(s1, s2.toString());
+                HeadVO headVO = new HeadVO(s1, s2.toString(), "countData");
                 ans.add(headVO);
             }
         }
@@ -682,7 +688,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         for (PreCountResultParam param : parameter.getResultParams()) {
             String[] split = param.getFormulaText().split("=");
             String text = split[split.length - 1];
-            String result = RestUtil.sum(text, identity.toString(), values.toString());
+            String result = restUtil.sum(text, identity.toString(), values.toString());
             PhotometricCountDataInfo countDataInfo = new PhotometricCountDataInfo();
             BeanUtils.copyProperties(param, countDataInfo);
             JSONObject resultJson = JSONObject.parseObject(result);
@@ -699,7 +705,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
 
     @Override
-    public Result<List<Map<String, Object>>> queryData(PhotoQueryDataDTO queryDataDTO) {
+    public Result<List<Map<String, Object>>> queryData(QueryDataDTO queryDataDTO) {
         String taskId = queryDataDTO.getTaskId();
         Boolean allDisplay = queryDataDTO.getAllDisplay();
         List<String> option = queryDataDTO.getOption();
@@ -805,7 +811,6 @@ public class PhotometricServiceImpl implements PhotometricService {
                         List<Map<String, String>> middle = new ArrayList<>();
                         List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
 
-                        ;
                         PhotometricOriginDataInfo dataInfo = reCountData(wlDataList, digit);
                         for (PhotometricOriginDataInfo wlData : wlDataList) {
 
@@ -816,7 +821,20 @@ public class PhotometricServiceImpl implements PhotometricService {
                                 map.putAll(wlData.getData());
                                 Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
                                 if (!ch.isEmpty()) {
-                                    childrenList.putAll(ch);
+                                    for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
+                                        String key = entry.getKey();
+                                        Map<String, String> value = entry.getValue();
+
+                                        if (childrenList.containsKey(key)) {
+                                            // 如果键已存在，将新值中的键值对合并到现有Map中
+                                            Map<String, String> existingMap = childrenList.get(key);
+                                            // 将value中的所有键值对放入existingMap中（相同键会覆盖，新键会添加）
+                                            existingMap.putAll(value);
+                                        } else {
+                                            // 如果键不存在，直接添加（创建副本以避免引用问题）
+                                            childrenList.put(key, new HashMap<>(value));
+                                        }
+                                    }
                                 }
                             } else {
                                 Map<String, String> originData = wlData.getData();
@@ -1241,7 +1259,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         heads.add(new HeadVO("备注", "remark"));
         heads.add(new HeadVO("采样时间", "samplingTime"));
 
-        PhotoQueryDataDTO queryDataDTO = new PhotoQueryDataDTO();
+        QueryDataDTO queryDataDTO = new QueryDataDTO();
         queryDataDTO.setOption(new ArrayList<>());
         queryDataDTO.setTaskId(taskId);
         queryDataDTO.setAllDisplay(allDisplay);

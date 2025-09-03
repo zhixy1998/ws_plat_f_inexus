@@ -70,7 +70,7 @@ public interface PhotometricService {
     /**
      * 查询数据信息
      */
-    Result<List<Map<String, Object>>> queryData(PhotoQueryDataDTO queryDataDTO);
+    Result<List<Map<String, Object>>> queryData(QueryDataDTO queryDataDTO);
 
     /**
      * 计算公式

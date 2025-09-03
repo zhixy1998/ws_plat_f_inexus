@@ -623,7 +623,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             heads.add(new HeadVO("采样时间", "samplingTime"));
             vo.setHeadList(heads);
 
-            PhotoQueryDataDTO queryDataDTO = new PhotoQueryDataDTO();
+            QueryDataDTO queryDataDTO = new QueryDataDTO();
             queryDataDTO.setOption(new ArrayList<>());
             queryDataDTO.setTaskId(taskId);
             queryDataDTO.setAllDisplay(false);

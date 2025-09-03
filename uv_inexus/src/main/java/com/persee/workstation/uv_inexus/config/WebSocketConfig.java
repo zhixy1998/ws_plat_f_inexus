@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeWebSocket TimeWebSocket;
 
     @Autowired
-    private RationWebSocket RationWebSocket;
+    private RationMeasureWebSocket RationWebSocket;
 
     @Autowired
     private MyWebSocketHandler myWebSocketHandler;
