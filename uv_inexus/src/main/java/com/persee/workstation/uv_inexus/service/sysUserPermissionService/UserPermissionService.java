@@ -17,6 +17,6 @@ public interface UserPermissionService {
     Result<List<String>> getRootPermissionPaths(String userId);
 
     // 根据权限类型和角色ID查询树形权限结构
-    Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndRole(
-            List<Integer> permTypeList, String roleId);
+    Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndUser(
+            List<Integer> permTypeList, String userId);
 }

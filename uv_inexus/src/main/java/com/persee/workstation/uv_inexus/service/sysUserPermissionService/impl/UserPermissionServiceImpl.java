@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,6 +12,8 @@ import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermissionMapper;
@@ -65,77 +68,67 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         groupPermQuery.in("group_id", groupIds);
         List<SysGroupPermissionPO> groupPermList = sysGroupPermissionMapper.selectList(groupPermQuery);
         if (groupPermList.isEmpty()) {
-            return Result.ok(new ArrayList<>()); // 无权限返回空列表
+            return Result.ok(new ArrayList<>());
         }
         List<String> permIds = groupPermList.stream()
                 .map(SysGroupPermissionPO::getPermId)
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 4. 查权限详情：SQL层面排除“首页”（源头过滤，关键修改1）
+        // 4. 查权限详情并排除"首页"
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
-                .ne("title", "首页") // 核心：排除数据库中title为“首页”的权限
-                .orderByAsc("sort"); // 数据库预排序，提升效率
+                .ne("title", "首页")
+                .orderByAsc("sort");
         List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
 
-        // 5. 转换为DTO + 二次排除“首页”（双重保险）+ 扁平列表排序（关键修改2）
+        // 5. 转换为DTO并处理排序
         List<PermissionDTO> flatPermissionDTOs = permissionList.stream()
                 .map(perm -> {
                     PermissionDTO dto = new PermissionDTO();
                     BeanUtils.copyProperties(perm, dto);
                     return dto;
                 })
-                // 二次排除：避免SQL筛选失效（如字段映射问题），字段改为title（关键）
                 .filter(dto -> dto.getTitle() == null || !"首页".equals(dto.getTitle()))
-                // 扁平列表按sort升序，为树形排序打基础
                 .sorted((d1, d2) -> {
-                    int sort1 = (d1.getSort() == null) ? 0 : d1.getSort(); // 处理null
+                    int sort1 = (d1.getSort() == null) ? 0 : d1.getSort();
                     int sort2 = (d2.getSort() == null) ? 0 : d2.getSort();
-                    return Integer.compare(sort1, sort2); // 升序：小→大
+                    return Integer.compare(sort1, sort2);
                 })
                 .collect(Collectors.toList());
 
-        // 6. 构建树形结构（含全层级排序）
+        // 6. 构建树形结构
         List<PermissionDTO> treePermissionDTOs = buildPermissionTree(flatPermissionDTOs);
 
         return Result.ok(treePermissionDTOs);
     }
 
-    // ------------------------------ 树形结构组装 + 全层级sort排序（核心方法） ------------------------------
     private List<PermissionDTO> buildPermissionTree(List<PermissionDTO> flatPermissions) {
-        // 1. 构建权限ID映射，O(1)快速查找父权限
         Map<String, PermissionDTO> permissionMap = flatPermissions.stream()
                 .collect(Collectors.toMap(
                         PermissionDTO::getId,
                         dto -> dto,
-                        (existing, replacement) -> existing // 重复ID保留第一个
+                        (existing, replacement) -> existing
                 ));
 
-        // 2. 遍历建立父子关系 + 子权限内部排序
         List<PermissionDTO> rootPermissions = new ArrayList<>();
         for (PermissionDTO currentPerm : flatPermissions) {
             Integer parentId = currentPerm.getParentId();
-            // 判断根权限（parentId为null/0或父权限不存在）
             if (parentId == null || parentId == 0 || !permissionMap.containsKey(parentId.toString())) {
                 rootPermissions.add(currentPerm);
             } else {
-                // 非根权限：添加到父权限的children，并立即排序
                 PermissionDTO parentPerm = permissionMap.get(parentId.toString());
                 if (parentPerm.getChildren() == null) {
                     parentPerm.setChildren(new ArrayList<>());
                 }
                 parentPerm.getChildren().add(currentPerm);
-                // 子权限内部按sort升序（关键：确保子集有序）
                 parentPerm.setChildren(sortPermissionBySort(parentPerm.getChildren()));
             }
         }
 
-        // 3. 根权限按sort升序（关键：确保父级有序）
         return sortPermissionBySort(rootPermissions);
     }
 
-    // ------------------------------ 通用工具：按sort升序排序（复用） ------------------------------
     private List<PermissionDTO> sortPermissionBySort(List<PermissionDTO> permissions) {
         return permissions.stream()
                 .sorted((p1, p2) -> {
@@ -146,7 +139,6 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                 .collect(Collectors.toList());
     }
 
-    // ------------------------------ 原有方法：getRootPermissionPaths（同步排除首页） ------------------------------
     @Override
     public Result<List<String>> getRootPermissionPaths(String userId) {
         SysUserPO userPO = sysUserMapper.selectById(userId);
@@ -177,12 +169,11 @@ public class UserPermissionServiceImpl implements UserPermissionService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 同步排除“首页”+按sort排序（与主方法逻辑一致）
         QueryWrapper<SysPermissionPO> permQuery = new QueryWrapper<>();
         permQuery.in("id", permIds)
                 .eq("parent_id", 0)
-                .ne("title", "首页") // 排除首页
-                .orderByAsc("sort") // 按sort升序
+                .ne("title", "首页")
+                .orderByAsc("sort")
                 .select("path");
         List<SysPermissionPO> permissionList = sysPermissionMapper.selectList(permQuery);
 
@@ -194,101 +185,166 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         return Result.ok(rootPermissionPaths);
     }
 
+    /**
+     * 核心方法：按用户→小组→权限逻辑查询树形权限结构
+     */
     @Override
-    public Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndRole(List<Integer> permTypeList, String roleId) {
+    public Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndUser(List<Integer> permTypeList, String userId) {
         try {
-            // 1. 查询该角色拥有的所有权限ID
-            Set<String> rolePermIds = getRolePermissionIds(roleId);
+            // 1. 校验用户ID有效性
+            if (!StringUtils.hasText(userId)) {
+                return Result.fail("用户ID不能为空");
+            }
             
-            // 2. 查询符合权限类型的所有权限
-            List<SysPermissionPO> permissions = queryPermissionsByType(permTypeList);
-            
-            // 3. 转换为树形结构DTO并设置isHave属性
-            List<PermissionTreeDTO> treeList = buildPermissionTree(permissions, rolePermIds);
-            
-            return Result.ok(treeList);
+            // 2. 验证用户存在性
+            SysUserPO userPO = sysUserMapper.selectById(userId.trim());
+            if (userPO == null) {
+                return Result.fail("用户不存在（userId：" + userId + "）");
+            }
+
+            // 3. 查询用户关联的所有小组ID
+            List<String> groupIds = getGroupIdsByUserId(userId.trim());
+            if (CollectionUtils.isEmpty(groupIds)) {
+                return Result.fail("用户未关联任何小组（userId：" + userId + "）");
+            }
+
+            // 4. 查询这些小组拥有的所有权限ID（去重）
+            Set<String> userGroupPermIds = getPermIdsByGroupIds(groupIds);
+
+            // 5. 查询符合权限类型的所有权限（全量权限）
+            List<SysPermissionPO> allPermissions = queryPermissionsByType(permTypeList);
+            if (CollectionUtils.isEmpty(allPermissions)) {
+                return Result.ok(new ArrayList<>());
+            }
+
+            // 6. 构建树形结构并标记权限拥有状态
+            List<PermissionTreeDTO> permissionTree = buildPermissionTree(allPermissions, userGroupPermIds);
+
+            return Result.ok(permissionTree);
+
         } catch (Exception e) {
-            return Result.fail("查询权限树形结构失败: " + e.getMessage());
+            e.printStackTrace();
+            return Result.fail("查询权限树形结构失败：" + e.getMessage());
         }
     }
 
     /**
-     * 获取角色拥有的所有权限ID
+     * 根据用户ID查询关联的所有小组ID
      */
-    private Set<String> getRolePermissionIds(String roleId) {
+    private List<String> getGroupIdsByUserId(String userId) {
+        QueryWrapper<SysUserGroupPO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id", userId)
+                    .select("group_id");
+
+        List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(queryWrapper);
+        if (CollectionUtils.isEmpty(userGroupList)) {
+            return new ArrayList<>();
+        }
+
+        return userGroupList.stream()
+                .map(SysUserGroupPO::getGroupId)
+                .filter(groupId -> StringUtils.hasText(groupId))
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 根据小组ID列表查询所有关联的权限ID
+     */
+    private Set<String> getPermIdsByGroupIds(List<String> groupIds) {
         QueryWrapper<SysGroupPermissionPO> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("group_id", roleId);
-        List<SysGroupPermissionPO> groupPermissions = sysGroupPermissionMapper.selectList(queryWrapper);
-        
-        return groupPermissions.stream()
+        queryWrapper.in("group_id", groupIds)
+                    .select("perm_id");
+
+        List<SysGroupPermissionPO> groupPermList = sysGroupPermissionMapper.selectList(queryWrapper);
+        // 用 new HashSet<>() 替换 Set.of()，返回可变空集合
+        if (CollectionUtils.isEmpty(groupPermList)) {
+            return new HashSet<>(); 
+        }
+
+        return groupPermList.stream()
                 .map(SysGroupPermissionPO::getPermId)
+                .filter(permId -> StringUtils.hasText(permId))
+                .distinct()
                 .collect(Collectors.toSet());
     }
 
     /**
-     * 根据权限类型列表查询权限
+     * 根据权限类型查询权限列表
      */
     private List<SysPermissionPO> queryPermissionsByType(List<Integer> permTypeList) {
         QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
-        // 如果有指定权限类型，则使用in查询
+        // 按类型筛选（如无类型限制则查询所有）
         if (permTypeList != null && !permTypeList.isEmpty()) {
             queryWrapper.in("perm_type", permTypeList);
         }
-        // 可以根据需要添加其他条件，如状态为启用等
-        queryWrapper.eq("status", 1);
+        // 只查询启用状态的权限，排除"首页"
+        queryWrapper.eq("status", 1)
+                    .ne("title", "首页")
+                    .orderByAsc("sort");
+        
         return sysPermissionMapper.selectList(queryWrapper);
     }
 
     /**
-     * 构建权限树形结构
+     * 构建权限树形结构并标记是否拥有该权限
      */
-    private List<PermissionTreeDTO> buildPermissionTree(List<SysPermissionPO> permissions, Set<String> rolePermIds) {
-        // 实现逻辑不变
+    private List<PermissionTreeDTO> buildPermissionTree(List<SysPermissionPO> permissions, Set<String> userGroupPermIds) {
+        // 1. 转换PO为DTO并设置基础属性
         List<PermissionTreeDTO> allNodes = permissions.stream().map(po -> {
             PermissionTreeDTO dto = new PermissionTreeDTO();
             BeanUtils.copyProperties(po, dto);
-            // 设置是否拥有该权限
-            dto.setIsHave(rolePermIds.contains(po.getId()));
+            // 核心：判断当前权限是否在用户所属小组的权限集合中
+            dto.setIsHave(userGroupPermIds.contains(po.getId()));
+            dto.setChildren(new ArrayList<>()); // 初始化子列表，避免null
             return dto;
         }).collect(Collectors.toList());
 
+        // 2. 构建ID到DTO的映射，便于快速查找父节点
         Map<String, PermissionTreeDTO> nodeMap = new HashMap<>();
         for (PermissionTreeDTO node : allNodes) {
             nodeMap.put(node.getId(), node);
         }
         
+        // 3. 构建树形结构（区分根节点和子节点）
         List<PermissionTreeDTO> rootNodes = new ArrayList<>();
         for (PermissionTreeDTO node : allNodes) {
-            String parentId = String.valueOf(node.getParentId());
-            if ("0".equals(parentId)) {
+            Integer parentId = node.getParentId();
+            String parentIdStr = parentId != null ? parentId.toString() : "0";
+            
+            // 根节点：parentId为0或父节点不存在
+            if ("0".equals(parentIdStr) || !nodeMap.containsKey(parentIdStr)) {
                 rootNodes.add(node);
             } else {
-                PermissionTreeDTO parentNode = nodeMap.get(parentId);
-                if (parentNode != null) {
-                    if (parentNode.getChildren() == null) {
-                        parentNode.setChildren(new ArrayList<>());
-                    }
-                    parentNode.getChildren().add(node);
-                }
+                // 子节点：添加到父节点的children列表
+                PermissionTreeDTO parentNode = nodeMap.get(parentIdStr);
+                parentNode.getChildren().add(node);
             }
         }
         
-        sortChildren(rootNodes);
+        // 4. 对树形结构进行排序（按sort字段升序）
+        sortPermissionTree(rootNodes);
+        
         return rootNodes;
     }
 
     /**
-     * 递归排序子节点
+     * 递归排序树形结构的所有节点（按sort字段升序）
      */
-    private void sortChildren(List<PermissionTreeDTO> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
+    private void sortPermissionTree(List<PermissionTreeDTO> nodes) {
+        if (CollectionUtils.isEmpty(nodes)) {
             return;
         }
         
-        nodes.sort(Comparator.comparingInt(PermissionTreeDTO::getSort));
+        // 对当前层级节点按sort排序
+        nodes.sort(Comparator.comparingInt(node -> {
+            Integer sort = node.getSort();
+            return sort != null ? sort : 0;
+        }));
         
+        // 递归排序子节点
         for (PermissionTreeDTO node : nodes) {
-            sortChildren(node.getChildren());
+            sortPermissionTree(node.getChildren());
         }
     }
 }
