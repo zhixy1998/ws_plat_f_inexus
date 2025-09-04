@@ -18,7 +18,7 @@ public interface UserPermissionService {
 
     // 根据权限类型和角色ID查询树形权限结构
     Result<List<PermissionTreeDTO>> getPermissionTreeByTypeAndUser(
-            List<Integer> permTypeList, String userId);
+            List<Integer> permTypeList, String groupId);
 
     /**
      * 更新小组权限关系
