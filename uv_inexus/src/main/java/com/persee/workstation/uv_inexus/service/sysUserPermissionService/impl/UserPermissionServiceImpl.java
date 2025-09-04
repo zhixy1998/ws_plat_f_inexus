@@ -347,4 +347,62 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             sortPermissionTree(node.getChildren());
         }
     }
+
+
+    @Override
+    public Result<Boolean> updateGroupPermissions(String groupId, List<String> targetPermIds) {
+        try {
+            // 1. 校验参数
+            if (!StringUtils.hasText(groupId)) {
+                return Result.fail("小组ID不能为空");
+            }
+            if (CollectionUtils.isEmpty(targetPermIds)) {
+                return Result.fail("权限ID列表不能为空");
+            }
+
+            // 2. 查询小组当前已有的权限
+            QueryWrapper<SysGroupPermissionPO> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("group_id", groupId);
+            List<SysGroupPermissionPO> existingPerms = sysGroupPermissionMapper.selectList(queryWrapper);
+
+            // 3. 计算需要新增和删除的权限
+            Set<String> existingPermIds = existingPerms.stream()
+                    .map(SysGroupPermissionPO::getPermId)
+                    .collect(Collectors.toSet());
+            Set<String> targetPermIdSet = new HashSet<>(targetPermIds);
+
+            // 4. 删除不需要的权限
+            List<String> toDeletePermIds = existingPermIds.stream()
+                    .filter(id -> !targetPermIdSet.contains(id))
+                    .collect(Collectors.toList());
+            if (!CollectionUtils.isEmpty(toDeletePermIds)) {
+                QueryWrapper<SysGroupPermissionPO> deleteWrapper = new QueryWrapper<>();
+                deleteWrapper.eq("group_id", groupId)
+                            .in("perm_id", toDeletePermIds);
+                sysGroupPermissionMapper.delete(deleteWrapper);
+            }
+
+            // 5. 新增需要的权限
+            List<String> toAddPermIds = targetPermIdSet.stream()
+                    .filter(id -> !existingPermIds.contains(id))
+                    .collect(Collectors.toList());
+            if (!CollectionUtils.isEmpty(toAddPermIds)) {
+                List<SysGroupPermissionPO> newPermRelations = toAddPermIds.stream()
+                        .map(permId -> {
+                            SysGroupPermissionPO po = new SysGroupPermissionPO();
+                            po.setGroupId(groupId);
+                            po.setPermId(permId);
+                            return po;
+                        })
+                        .collect(Collectors.toList());
+                sysGroupPermissionMapper.insertBatch(newPermRelations); // 假设Mapper有批量插入方法
+            }
+
+            return Result.ok(Boolean.TRUE);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.fail("更新小组权限失败：" + e.getMessage());
+        }
+    }
 }

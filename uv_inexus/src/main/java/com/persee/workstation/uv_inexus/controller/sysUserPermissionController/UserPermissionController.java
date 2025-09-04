@@ -1,11 +1,13 @@
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -64,5 +66,17 @@ public class UserPermissionController {
                     .collect(Collectors.toList());
         }
         return userPermissionService.getPermissionTreeByTypeAndUser(permTypeList, userId);
+    }
+
+    @PostMapping("/update-group-perm")
+    @ApiOperation("更新小组权限关系")
+    public Result<Boolean> updateGroupPermissions(
+            @ApiParam(value = "小组ID", required = true) @RequestParam String groupId,
+            @ApiParam(value = "权限ID列表（逗号分隔）", required = true) @RequestParam String permIds) {
+        // 分割字符串为List
+        List<String> permIdList = permIds.split(",").length > 0 
+                ? Arrays.asList(permIds.split(",")) 
+                : new ArrayList<>();
+        return userPermissionService.updateGroupPermissions(groupId, permIdList);
     }
 }
