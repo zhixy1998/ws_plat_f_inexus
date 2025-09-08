@@ -3,6 +3,7 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.persee.workstation.uv_inexus.websocket.MeasureWebSocketHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
@@ -130,6 +131,7 @@ public class ResponseDeal {
         try {
             // 倒数第二条
             byte[] secondLast = responses.get(responses.size() - 2);
+            int wl0 = (((secondLast[5] & 0xFF) << 8) | (secondLast[6] & 0xFF));
             int s0 = ((secondLast[8] & 0xFF) << 16) | ((secondLast[9] & 0xFF) << 8) | (secondLast[10] & 0xFF);
             param.setS(String.valueOf(s0));
 
@@ -141,12 +143,17 @@ public class ResponseDeal {
             param.setD(String.valueOf(d0));
             param.setR(String.valueOf(r0));
 
+            double result_x = wl0 / 50.0;
+            double result_y = s0 / 8388607.0 * 100;
+
+            String raw = result_x + "," + result_y;
+            MeasureWebSocketHandler.addData(raw); // 放入队列
+
 
         } catch (Exception e) {
             System.out.println("Zero解析异常: " + e.getMessage());
             return null;
         }
-
         return param;
     }
 
@@ -253,6 +260,25 @@ public class ResponseDeal {
         return isEqual;
     }
 
+    /*
+        处理查找searcharound指令
+    * */
+    public static int[] parseSearch(List<byte[]> responses){
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            return null;
+        }
+
+        int[] result = new int[6];
+
+        for(int i = 10; i <= 15;i++){
+            byte[] data = responses.get(i);
+            result [i-10] = data[i] & 0xff;
+        }
+
+        System.out.println(result);
+        return result;
+    }
 
     public static List<ChangeParam> parseBaseLine(List<byte[]> responses) {
         List<ChangeParam> resultList = new ArrayList<>(); // 用来存储每条回应的解析结果

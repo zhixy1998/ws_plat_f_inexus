@@ -32,6 +32,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Autowired
     private BaseLineebSocket baseLineebSocket;
 
+    @Autowired
+    MeasureWebSocketHandler measureWebSocketHandler;
+
     // 注册WebSocket处理器
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
@@ -49,6 +52,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(myWebSocketHandler, "/ws/myWebSocket")
                 .setAllowedOrigins("*");
         registry.addHandler(baseLineebSocket, "/ws/baseLine")
+                .setAllowedOrigins("*");
+        registry.addHandler(measureWebSocketHandler, "/ws/measure")
                 .setAllowedOrigins("*");
 
     }
