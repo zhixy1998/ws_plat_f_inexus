@@ -3,7 +3,7 @@ package com.persee.workstation.uv_inexus.dto.parseReport;
 import java.util.List;
 import java.util.Map;
 
-import com.persee.workstation.uv_inexus.po.parseReport.Detection;
+import com.persee.workstation.uv_inexus.po.guide.parseReport.Detection;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;

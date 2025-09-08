@@ -7,16 +7,11 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.measurementPo.model.PeakValleyMarking;
-import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureDataService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.measurementService.TMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.measurementService.TimeSweepService;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -64,6 +59,12 @@ public class TimeWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private TMeasureDataService tMeasureDataService;
+
+    @Autowired
+    private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
+    private TMeasureSampleService tMeasureSampleService;
 
     @Autowired
     private DevMessageUtil devMessageUtil;
@@ -292,12 +293,38 @@ public class TimeWebSocket extends TextWebSocketHandler {
         tMeasureData.setOriginalCalculationData(JSON.toJSONString(listData));
         tMeasureData.setMeasurementStartTime(Constants.startTime);
         tMeasureData.setMeasurementEndTime(Constants.endTime);
-        tMeasureData.setPeak(JSON.toJSONString(peakValleys));
-        tMeasureData.setGrain(JSON.toJSONString(markings));
         tMeasureData.setIsDelete("0");
         boolean save = tMeasureDataService.save(tMeasureData);
         if (!save) {
             sendAndClose(session, "保存测量数据失败");
+            return;
+        }
+
+        TMeasureAnalysisData analysisData = new TMeasureAnalysisData();
+        TMeasureAnalysisData analysisDataLast = tMeasureAnalysisDataService.getOne(
+                new QueryWrapper<TMeasureAnalysisData>()
+                        .eq("task_id", task.getId())
+                        .eq("sample_key", sampleId)
+                        .orderByDesc("analysis_number")
+                        .last("LIMIT 1")
+        );
+        analysisData.setAnalysisNumber(analysisDataLast != null ? analysisDataLast.getAnalysisNumber() + 1 : 1);
+        // 根据样品id查询样品数据
+        TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+        analysisData.setAnalysisName(sample.getSampleName()+"("+analysisData.getAnalysisNumber()+")");
+        analysisData.setTaskId(task.getId());
+        analysisData.setSampleKey(sampleId);
+        analysisData.setMeasureDataId(tMeasureData.getId());
+        analysisData.setAnalysisParam(JSON.toJSONString(originalData));
+        analysisData.setAnalysisResult(JSON.toJSONString(listData));
+        analysisData.setAnalysisType("5");
+        analysisData.setPeak(com.alibaba.fastjson2.JSON.toJSONString(peakValleys));
+        analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(markings));
+        analysisData.setColor("#000000");
+        analysisData.setIsDelete("0");
+        boolean save1 = tMeasureAnalysisDataService.save(analysisData);
+        if (!save1) {
+            sendAndClose(session, "保存分析数据失败");
             return;
         }
         List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);

@@ -22,13 +22,11 @@ public class UserController {
     @Autowired
     private OrderInfoService orderInfoService;
 
-    @DS("ds1")
     @GetMapping("selectAll")
     public List<UserInfo> hello(){
         return userService.selectAll();
     }
 
-    @DS("ds2")
     @GetMapping("selectAll2")
     public List<OrderInfo> hello2(){
         return orderInfoService.selectAll();

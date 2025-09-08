@@ -3,6 +3,9 @@ package com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+
 @Data
 public class RationWavelengthDataInfo {
 
@@ -17,5 +20,11 @@ public class RationWavelengthDataInfo {
 
     @ApiModelProperty("T%的值")
     private String tPercentValue;
+
+    @ApiModelProperty("数据值")
+    private Map<String, RepeatMeasureData> otherData;
+
+    @ApiModelProperty("测量时间")
+    private LocalDateTime measureTime;
 
 }

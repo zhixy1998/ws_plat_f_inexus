@@ -10,4 +10,6 @@ public class AdvancedOperationsDto {
     private String dataType;
     // 分析数据名称
     private String analysisDataName;
+    // 任务id
+    private String taskId;
 }

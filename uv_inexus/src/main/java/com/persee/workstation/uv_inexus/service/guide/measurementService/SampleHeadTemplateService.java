@@ -1,0 +1,16 @@
+package com.persee.workstation.uv_inexus.service.guide.measurementService;
+
+import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
+
+import java.util.List;
+
+public interface SampleHeadTemplateService {
+
+    R<Boolean> createTemplate(SampleHeadTemplateDTO templateDto);
+
+    R<List<SampleTemplateVO>> queryTemplate(String measureType, String search);
+
+    R<Boolean> deleteTemplate(String templateId, String updateBy);
+}

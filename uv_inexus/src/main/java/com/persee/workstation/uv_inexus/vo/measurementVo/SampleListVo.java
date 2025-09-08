@@ -10,9 +10,11 @@ public class SampleListVo {
     // 标题
     private String title;
     // 测量id
-    private String measureId;
+    private String analysisId;
     // 样品id
     private String sampleId;
+    // 分析编号
+    private Integer analysisNumber;
     // 颜色
     private String color;
     // 数据

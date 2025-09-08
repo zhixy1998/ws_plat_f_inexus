@@ -94,4 +94,11 @@ public class Constants {
 
     public static final String GET_CURRENT_GROUP = "current_group";
 
+    /**
+     * 小数位数默认值
+     */
+    public static final Integer DEFAULT_DECIMAL_NUM = 4;
+
+    public static final Integer DEFAULT_DECIMAL_NUM_MAX = 12;
+
 }

@@ -6,13 +6,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureSample;
-import com.persee.workstation.uv_inexus.po.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.service.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.measurementService.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureData;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -201,13 +201,13 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         yAbs.setColValue(value - minuend);
                         dataVO.getCountData().add(yAbs);
                         countData.add(yAbs);
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
 
                     }
                 } else {
                     for (RationDataVO dataVO : data) {
                         countData.addAll(dataVO.getCountData());
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
                     }
                 }
                 //拟合曲线
@@ -297,7 +297,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
                         valueData.setColValue(Double.valueOf(ans));
                         dataVO.getCountData().add(valueData);
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
 
                         JSONObject jsonObject = new JSONObject();
                         jsonObject.put("sampleId", dataVO.getSampleId());
@@ -323,7 +323,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         jsonObject.put("key", valueData.getIdentity());
                         jsonObject.put("value", valueData.getColValue());
                         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-                        rationService.saveStandSampleData(dataVO);
+                        rationService.saveRationSampleMeasureData(dataVO);
                     }
                 }
 
@@ -475,6 +475,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
         list.add(new Command(SetParamEnum.SetCellPos.getComId(), new Object[]{sample.getSampleLocation()}));
         list.add(new Command(SetParamEnum.SetScanWlInterval.getComId(), new Object[]{1}));
 
+        List<List<String>> originDataList = new ArrayList<>();
         for (String waveLength : parameter.getWaveLength()) {
             List<String> params = new ArrayList<>();
             list.add(new Command(SetParamEnum.SetStartWl.getComId(), new Object[]{Double.valueOf(waveLength)+5}));

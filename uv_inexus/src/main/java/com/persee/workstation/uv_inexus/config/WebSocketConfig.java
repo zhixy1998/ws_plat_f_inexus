@@ -15,7 +15,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private SpectrumWebSocket spectrumWebSocket;
 
     @Autowired
-    private SpectrumWebSocket2 spectrumWebSocket2;
+    private SpectrumOneMeasureWebSocket spectrumOneMeasureWebSocket;
 
     @Autowired
     private PhotometricWebSocket photometricWebSocket;
@@ -24,7 +24,13 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeWebSocket TimeWebSocket;
 
     @Autowired
-    private RationWebSocket RationWebSocket;
+    private RationMeasureWebSocket RationWebSocket;
+
+    @Autowired
+    private MyWebSocketHandler myWebSocketHandler;
+
+    @Autowired
+    private BaseLineebSocket baseLineebSocket;
 
     // 注册WebSocket处理器
     @Override
@@ -38,7 +44,11 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*");
         registry.addHandler(TimeWebSocket, "/ws/timeScan")
                 .setAllowedOrigins("*");
-        registry.addHandler(spectrumWebSocket2, "/ws/device2")
+        registry.addHandler(spectrumOneMeasureWebSocket, "/ws/deviceOneMeasure")
+                .setAllowedOrigins("*");
+        registry.addHandler(myWebSocketHandler, "/ws/myWebSocket")
+                .setAllowedOrigins("*");
+        registry.addHandler(baseLineebSocket, "/ws/baseLine")
                 .setAllowedOrigins("*");
 
     }

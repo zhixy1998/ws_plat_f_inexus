@@ -8,11 +8,11 @@ public class DynamicCommandService implements AutoCloseable{
 
     private final Map<String, ProtocolItem> protocolMap;
     private final CommandExecutor executor;
-    public static String sendIp = "255.255.255.255";
+    public static String sendIp = "192.168.51.36";
 
     public DynamicCommandService(String localIp, int localPort, int remotePort, String xmlPath) throws Exception {
         this.protocolMap = ProtocolItem.loadFormXml(xmlPath); // 修改点①
-        this.executor = new CommandExecutor(localIp, localPort, remotePort);
+        this.executor = new CommandExecutor(localIp, localPort, remotePort, xmlPath);
     }
 
     public List<byte[]> executeCommand(String cmdId, Object[] params) throws Exception {
@@ -22,18 +22,9 @@ public class DynamicCommandService implements AutoCloseable{
         }
 
         byte[] sendBytes = cmd.calcSendBytes(params);  // 生成发送字节
-        List<byte[]> responses = executor.sendAndReceive(cmdId, sendBytes, sendIp);  // 发送并接收
-        Object parse = ResponseParser.parse(responses, sendBytes);// 解析回应
+        executor.sendCommand(cmdId, sendBytes, sendIp);// 发送报文
 
-        if (parse instanceof String[]) {
-            System.out.println(Arrays.toString((String[]) parse));  // 打印数组内容
-        } else if (parse instanceof String) {
-            System.out.println(parse);  // 直接打印字符串内容
-        } else {
-            System.out.println(parse.toString());  // 确保调用 toString() 方法
-        }
-
-        return responses;
+        return null;
     }
 
     @Override

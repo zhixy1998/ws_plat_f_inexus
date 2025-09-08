@@ -98,26 +98,23 @@ public class ProtocolItem {
     }
 
     //指令组包
-    public byte[] calcSendBytes(Object[] para){
+    public byte[] calcSendBytes(Object[] para) {
 
         System.out.println("SendBytes before processing: " + Arrays.toString(SendBytes));
 
-
-        if (SendBytes == null || SendBytes.length == 0){
+        if (SendBytes == null || SendBytes.length == 0) {
             System.err.println("错误：SendBytes为空！");
             return new byte[0];
         }
 
-//        String[] sendByteStr = SendBytes[0].split(":");
         Object[] cmd = new Object[SendBytes.length];
-//        System.out.println(sendByteStr);
-
         Map<String, String> valueDic = new HashMap<>();
         Map<String, String> typeDic = new HashMap<>();
         getInputValueDic(para, valueDic, typeDic);
 
         Map<String, List<Integer>> positions = new HashMap<>();
 
+        // 第一轮：替换固定值、输入值
         for (int i = 0; i < SendBytes.length; i++) {
             String token = SendBytes[i];
             System.out.print("token=" + token + " -> ");
@@ -128,78 +125,108 @@ public class ProtocolItem {
 
                 if (value != null && !value.isEmpty()) {
                     if ("3".equals(type)) {
-                        // 立即用 toBytes 处理字符串（假设这个 slot 是 1 字节）
                         byte[] bytes = ProtocolItemCalculator.toBytes(value, 1, "3");
                         cmd[i] = bytes.length == 1 ? bytes[0] : bytes[bytes.length - 1];
                         System.out.println("string type -> " + Arrays.toString(bytes));
                     } else if ("0".equals(type)) {
                         try {
-                            cmd[i] = Integer.parseInt(value); // 单字节数值
+                            cmd[i] = Integer.parseInt(value);
                             System.out.println("replaced with (type0) " + value);
                         } catch (NumberFormatException e) {
                             System.err.println("parseInt 失败 value=" + value);
                             cmd[i] = 0;
                         }
+                    } else if ("12".equals(type)) {
+                        try {
+                            cmd[i] = Integer.parseInt(value) & 0xFFF; // 12bit 先存整数
+                            System.out.println("type12 -> " + cmd[i]);
+                        } catch (Exception e) {
+                            cmd[i] = 0;
+                        }
                     } else {
-                        // 其他类型也可以直接放到 positions 让后面统一处理
                         cmd[i] = value;
                         System.out.println("other type=" + type + " value='" + value + "'");
                     }
                 } else {
-                    System.out.println("value empty, use 0");
                     cmd[i] = 0;
+                    System.out.println("value empty, use 0");
                 }
             } else if (ProtocolItemCalculator.isNumeric(token)) {
                 cmd[i] = ProtocolItemCalculator.eval(token);
                 System.out.println("numeric literal -> " + cmd[i]);
             } else {
-                System.out.println("no mapping, default 0");
                 cmd[i] = 0;
+                System.out.println("no mapping, default 0");
                 positions.computeIfAbsent(token, k -> new ArrayList<>()).add(i);
             }
         }
 
-
-        for (String key : positions.keySet()){
+        // 第二轮：处理表达式占位符
+        for (String key : positions.keySet()) {
             String[] tmp = new String[1];
             String result = ProtocolItemCalculator.getEquationValue(key, valueDic, tmp);
-
-            if (result == null || result.isEmpty()) {
-                System.out.println("[跳过] key=" + key + " 的表达式为空！");
-                continue;
-            }
-
-            if (tmp[0] == null || !typeDic.containsKey(tmp[0])) {
-                System.err.println("[错误] 未找到字段类型，key=" + key + ", tmp[0]=" + tmp[0]);
-                continue;
-            }
+            if (result == null || result.isEmpty()) continue;
+            if (tmp[0] == null || !typeDic.containsKey(tmp[0])) continue;
 
             String type = typeDic.get(tmp[0]);
             List<Integer> indexList = positions.get(key);
-            byte[] valueBytes = ProtocolItemCalculator.toBytes(result, indexList.size(), type);
 
-            for (int i = 0; i < indexList.size(); i++) {
-                cmd[indexList.get(i)] = valueBytes.length == 1 ? valueBytes[0] : valueBytes[i];
+            if ("12".equals(type)) {
+                int val = Integer.parseInt(result) & 0xFFF;
+                cmd[indexList.get(0)] = val;
+            } else {
+                byte[] valueBytes = ProtocolItemCalculator.toBytes(result, indexList.size(), type);
+                for (int i = 0; i < indexList.size(); i++) {
+                    cmd[indexList.get(i)] = valueBytes.length == 1 ? valueBytes[0] : valueBytes[i];
+                }
             }
         }
 
-        byte[] base = new byte[cmd.length];
+        // 新增：连续位拼接 8bit/12bit
+        List<Integer> bitWidths = new ArrayList<>();
+        List<Integer> values = new ArrayList<>();
         for (int i = 0; i < cmd.length; i++) {
-            base[i] = (byte) (cmd[i] instanceof Number ? ((Number) cmd[i]).intValue() : 0);
+            int val = 0;
+            int bitWidth = 8;
+            if (cmd[i] instanceof Number) {
+                val = ((Number) cmd[i]).intValue();
+            }
+            String type = typeDic.getOrDefault(SendBytes[i], "0");
+            if ("12".equals(type)) bitWidth = 12;
+            bitWidths.add(bitWidth);
+            values.add(val);
         }
 
-        System.out.println(Arrays.toString(base));  // 打印最终的字节数组
+        List<Byte> out = new ArrayList<>();
+        int bitBuffer = 0;
+        int bitCount = 0;
 
+        for (int i = 0; i < values.size(); i++) {
+            bitBuffer = (bitBuffer << bitWidths.get(i)) | values.get(i);
+            bitCount += bitWidths.get(i);
+
+            while (bitCount >= 8) {
+                bitCount -= 8;
+                out.add((byte) ((bitBuffer >> bitCount) & 0xFF));
+            }
+        }
+
+        if (bitCount > 0) {
+            out.add((byte) ((bitBuffer << (8 - bitCount)) & 0xFF));
+        }
+
+        byte[] base = new byte[out.size()];
+        for (int i = 0; i < out.size(); i++) base[i] = out.get(i);
+
+        System.out.println("拼包结果 (不含校验和): " + Arrays.toString(base));
+
+        // 校验和
         int checksum = 0;
-        for (byte b : base) {
-            checksum += Byte.toUnsignedInt(b);
-        }
-        byte cs = (byte) (checksum & 0xFF);
-
+        for (byte b : base) checksum += Byte.toUnsignedInt(b);
         byte[] withChecksum = Arrays.copyOf(base, base.length + 1);
-        withChecksum[withChecksum.length - 1] = cs;
+        withChecksum[withChecksum.length - 1] = (byte) (checksum & 0xFF);
 
-        System.out.println(Arrays.toString(withChecksum));
+        System.out.println("最终报文 (含校验和): " + Arrays.toString(withChecksum));
         return withChecksum;
     }
 }

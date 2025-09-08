@@ -14,6 +14,9 @@ public class HeadVO {
     @ApiModelProperty("标识")
     private String identity;
 
+    @ApiModelProperty("打印标题")
+    private String printTitle;
+
     @ApiModelProperty("定位")
     private String locate;
 
