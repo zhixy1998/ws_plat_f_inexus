@@ -71,6 +71,7 @@ public class MeasureData {
                     }
                 }
 
+
             } catch (Exception e) {
                 log.print("Measure 循环线程启动失败");
             }

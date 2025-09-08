@@ -66,5 +66,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(measureWebSocketHandler, "/ws/measure")
                 .setAllowedOrigins("*");
 
+
     }
 }
