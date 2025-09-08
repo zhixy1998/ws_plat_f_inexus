@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.MethodManagementMapper;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.ProjectManagementMapper;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.TaskManagementMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureMethodMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureProjectMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
@@ -34,11 +37,11 @@ import java.util.List;
 public class DataManagementServiceImpl implements DataManagementService {
 
     @Autowired
-    private MethodManagementMapper methodManagementMapper;
+    private TMeasureMethodMapper methodManagementMapper;
     @Autowired
-    private ProjectManagementMapper projectManagementMapper;
+    private TMeasureProjectMapper projectManagementMapper;
     @Autowired
-    private TaskManagementMapper taskManagementMapper;
+    private TMeasureTaskMapper taskManagementMapper;
     @Autowired
     private SystemUserManageDAO systemUserManageDAO;
 
@@ -51,8 +54,8 @@ public class DataManagementServiceImpl implements DataManagementService {
      */
     @Override
     public R<List<Integer>> getMethodsAndSuccessful(String userKey) {
-        QueryWrapper<SystemUserManagePO> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_name", userKey);
+        LambdaQueryWrapper<SystemUserManagePO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SystemUserManagePO::getUserName, userKey);
         SystemUserManagePO user = systemUserManageDAO.selectOne(queryWrapper);
         String userName = user.getUserName();
         Integer methodsNum = methodManagementMapper.getMethodsNum(userName);
@@ -64,7 +67,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         if (tMeasureMethods.isEmpty()) {
             return R.ok(new ArrayList<>());
         }
-        Integer finishedMethodsNum = new Integer("0");
+        int finishedMethodsNum = 0;
         for (TMeasureMethod tMeasureMethod : tMeasureMethods) {
             String methodId = tMeasureMethod.getId();
             Integer taskByMethods = taskManagementMapper.getTaskByMethodId(methodId);
