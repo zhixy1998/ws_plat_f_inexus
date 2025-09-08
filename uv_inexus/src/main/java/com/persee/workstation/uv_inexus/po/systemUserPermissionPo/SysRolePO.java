@@ -36,6 +36,10 @@ public class SysRolePO extends BasePO {
     @ApiModelProperty("角色描述")
     private String description;
 
+    @TableField("perm_ids")
+    @ApiModelProperty("权限json")
+    private String perm_ids;
+
     @TableField("status")
     @ApiModelProperty("状态：1-启用，0-禁用")
     private Integer status;
