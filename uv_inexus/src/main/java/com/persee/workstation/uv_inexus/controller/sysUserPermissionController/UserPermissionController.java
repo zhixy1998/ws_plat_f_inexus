@@ -52,11 +52,11 @@ public class UserPermissionController {
      * @return 权限树形列表（根节点为parent_id=0的权限）
      */
     @GetMapping("/tree")
-    @ApiOperation("根据权限类型和角色ID查询树形权限结构")
+    @ApiOperation("根据权限类型和组ID查询树形权限结构")
     public Result<List<PermissionTreeDTO>> getPermissionTree(
             @ApiParam(value = "权限类型：1-菜单路由权限，2-操作权限，3-数据权限，多个用逗号分隔，如1,2,3，null表示所有类型")
             @RequestParam(required = false) String permType,  // 修改为String类型接收多个值
-            @ApiParam(value = "角色ID", required = true)
+            @ApiParam(value = "组ID", required = true)
             @RequestParam String groupId) {
         // 将字符串转换为Integer列表
         List<Integer> permTypeList = null;

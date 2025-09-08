@@ -48,6 +48,9 @@ public class PermissionDTO {
     @ApiModelProperty("权限描述")
     private String description;
 
+    @ApiModelProperty("是否隐藏")
+    private Integer hidden;
+
     // 如果权限表有创建时间、修改时间等字段，也一并添加
     @ApiModelProperty("创建时间")
     private String createTime;
