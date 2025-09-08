@@ -1,9 +1,14 @@
 package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemManageDTO;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemManageService;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.ConfigVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.LongDistanceConfigVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemManageVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -80,6 +85,37 @@ public class SystemManageServiceImpl implements SystemManageService {
             log.info("没有用户记录");
             return true;
         }
+    }
+
+    @Override
+    public Result<String> changeLanguage(String language) {
+       Integer res =  dao.changeLanguage(language);
+       if (res == 1) {
+           return Result.ok(language);
+       }
+       return Result.fail("fail");
+    }
+
+    @Override
+    public Result<Boolean> setConfiguration(ConfigVO configVO) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String configJson = objectMapper.writeValueAsString(configVO);
+        Integer res = dao.setConfiguration(configJson);
+        if (res == 1) {
+            return Result.ok(true);
+        }
+        return Result.fail();
+    }
+
+    @Override
+    public Result<Boolean> longDistanceConfig(LongDistanceConfigVO longDistanceConfigVO) {
+        Integer remoteControl = longDistanceConfigVO.getRemote_control();
+        Integer remoteDataAccess = longDistanceConfigVO.getRemote_data_access();
+       Integer res = dao.longDistanceConfig(remoteDataAccess,remoteControl);
+        if (res == 1) {
+            return Result.ok(true);
+        }
+        return Result.fail();
     }
 
 

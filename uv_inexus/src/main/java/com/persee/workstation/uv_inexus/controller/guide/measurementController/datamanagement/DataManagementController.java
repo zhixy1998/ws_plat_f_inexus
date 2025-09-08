@@ -7,6 +7,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.SelectMethodsByTypeRe
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@ApiModel("数据管理接口")
+@Api("数据管理接口")
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
 public class DataManagementController {
     @Autowired
