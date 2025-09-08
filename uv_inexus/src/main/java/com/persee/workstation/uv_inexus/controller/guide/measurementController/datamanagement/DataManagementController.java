@@ -24,7 +24,6 @@ public class DataManagementController {
     @Autowired
     private DataManagementService dataManagementService;
 
-
     /**
      * 项目
      *
