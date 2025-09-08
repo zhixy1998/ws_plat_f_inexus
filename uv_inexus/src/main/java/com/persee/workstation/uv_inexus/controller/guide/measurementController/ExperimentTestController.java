@@ -1,15 +1,15 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.alibaba.fastjson.JSON;
-import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.MethodExportRequest;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.SampleHeadTemplateService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import io.swagger.annotations.ApiModel;
@@ -34,6 +34,9 @@ import java.util.List;
 public class ExperimentTestController {
     @Autowired
     private ExperimentTestService experimentTestService;
+
+    @Autowired
+    SampleHeadTemplateService sampleHeadTemplateService;
 
 
     @GetMapping("recentlyAccomplishTask")
@@ -214,6 +217,37 @@ public class ExperimentTestController {
         return experimentTestService.clearMethod(methodId);
     }
 
+    @ApiOperation("保存样品模板")
+    @PostMapping("saveSampleTemplate")
+    public Result saveSampleTemplate(@RequestBody SampleHeadTemplateDTO templateDto) {
+        R<Boolean> r = sampleHeadTemplateService.createTemplate(templateDto);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
 
+    @ApiOperation("查询样品模板")
+    @GetMapping("querySampleTemplate")
+    public Result<List<SampleTemplateVO>> querySampleTemplate(@RequestParam String measureType, @RequestParam String search) {
+        R<List<SampleTemplateVO>> r = sampleHeadTemplateService.queryTemplate(measureType, search);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @ApiOperation("删除样品模板")
+    @GetMapping("deleteSampleTemplate")
+    public Result<Boolean> deleteSampleTemplate(@RequestParam String templateId, @RequestParam String updateBy) {
+        R<Boolean> r = sampleHeadTemplateService.deleteTemplate(templateId, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
 
 }
