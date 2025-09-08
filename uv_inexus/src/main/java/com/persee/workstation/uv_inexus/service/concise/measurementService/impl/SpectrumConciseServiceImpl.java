@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private FMeasureMethodService fMeasureMethodService;
+    @Autowired
+    private TMeasureMethodService tMeasureMethodService;
 
     /**
      * 查询最近方法数据
@@ -68,15 +72,21 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (measureType == null){
             return Result.fail("方法类型不能为空");
         }
+        if (peageNum == null){
+            peageNum = 1;
+        }
+        if (pageSize == null){
+            pageSize = 10;
+        }
         // 设置查询条件
-        QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
+        QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
         wrapper.eq("method_creator",updateBy);
         wrapper.eq("measurement_type",measureType);
         if (methodName != null){
             wrapper.like("method_name",methodName);
         }
         // 分页查询
-        Page<FMeasureMethod> page = fMeasureMethodService.page(new Page<>(peageNum, pageSize), wrapper);
+        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(peageNum, pageSize), wrapper);
         return Result.ok(page);
     }
 }

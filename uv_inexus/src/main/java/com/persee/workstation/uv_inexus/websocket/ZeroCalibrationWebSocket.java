@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.websocket;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
@@ -10,10 +11,10 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TimeSweepService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -29,7 +30,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * 用于处理WebSocket连接的建立、消息接收和连接关闭等事件
  */
 @Component
-public class BaseLineebSocket extends TextWebSocketHandler {
+public class ZeroCalibrationWebSocket extends TextWebSocketHandler {
     // 创建日志记录器，用于记录类中的日志信息
     private static final Logger log = LoggerFactory.getLogger(MyWebSocketHandler.class);
 
@@ -57,8 +57,9 @@ public class BaseLineebSocket extends TextWebSocketHandler {
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
 
+
     @Autowired
-    private SpectrumService spectrumService;
+    private TimeSweepService timeSweepService;
 
     @Autowired
     private TMeasureTaskService tMeasureTaskService;
@@ -109,11 +110,11 @@ public class BaseLineebSocket extends TextWebSocketHandler {
      * @throws Exception 可能抛出的异常
      */
     @Override
-    protected void handleTextMessage(WebSocketSession session, org.springframework.web.socket.TextMessage message) throws Exception {
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
         // 回显
-        session.sendMessage(new org.springframework.web.socket.TextMessage("服务端已收到: " + message.getPayload()));
+        session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
     }
 
     /**
@@ -158,6 +159,11 @@ public class BaseLineebSocket extends TextWebSocketHandler {
     }
 
 
+    /**
+     * 运行业务逻辑
+     * @param session
+     * @throws InterruptedException
+     */
     private void runBusinessLogic(WebSocketSession session) throws InterruptedException {
         // 检查线程中断
         checkInterrupted(session);
@@ -175,34 +181,52 @@ public class BaseLineebSocket extends TextWebSocketHandler {
             sendAndClose(session, "设备编号不能为空");
             return;
         }
+        TMeasureMethod methodData = tMeasureMethodService.getById(methodId);
+        if (methodData == null) {
+            sendAndClose(session, "方法不存在");
+            return;
+        }
+        TimeSweepParamter timeSweepParamter = JSON.parseObject(methodData.getMeasurementParamInfo(), TimeSweepParamter.class);
+        if (timeSweepParamter.getWaveLength() == null || timeSweepParamter.getWaveLength().isEmpty()) {
+            sendAndClose(session, "波长不能为空");
+            return;
+        }
 
+        // 检测中断
         checkInterrupted(session);
-        Result result = spectrumService.setUpParametersPort(methodId, deviceSerialNumber);
+
+        // 设置参数
+        Result result = timeSweepService.setMethodParameters(methodId, deviceSerialNumber);
         if (result.getCode() != 200) {
             sendAndClose(session, "设置参数失败");
             return;
         }
 
+        // 检测中断
         checkInterrupted(session);
         String ip = deviceInfoService.getIp(deviceSerialNumber);
-        Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
-        R<List<ChangeParam>> listR = devMessageUtil.spectrumScanGetBaseline(command, ip);
-        if (!listR.getSuccess()) {
-            sendAndClose(session, listR.getMessage());
+        // 定位当前波长
+        Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{Double.parseDouble(timeSweepParamter.getWaveLength())});
+        devMessageUtil.wavelengthLocate(command, ip);
+
+        // 进行校零
+        command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+        R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+        if (!zero.getSuccess()) {
+            sendAndClose(session, zero.getMessage());
             return;
         }
 
+        // 检测中断
         checkInterrupted(session);
-        TMeasureTask task;
-        if (taskId != null && !taskId.equals("")) {
+        TMeasureTask task =null;
+        if (taskId != null && !taskId.equals("")){
             task = tMeasureTaskService.getById(taskId);
-        } else {
+        }else{
             task = new TMeasureTask();
             TMeasureMethod method = tMeasureMethodService.getById(methodId);
-            SystemUserManagePO user = systemUserManageDAO
-                    .selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
+            SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
             task.setUserId(user.getId());
-
             String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             String collect = new Random().ints(8, 0, chars.length())
                     .mapToObj(i -> String.valueOf(chars.charAt(i)))
@@ -215,19 +239,18 @@ public class BaseLineebSocket extends TextWebSocketHandler {
             task.setProjectItemKey(method.getProjectItemKey());
             task.setStartTime(LocalDateTime.now());
             task.setDeviceSerialNumber(deviceSerialNumber);
-            tMeasureTaskService.save(task);
-
+            boolean save1 = tMeasureTaskService.save(task);
             TMeasureTaskAttachment taskAttachment = new TMeasureTaskAttachment();
             taskAttachment.setTaskId(task.getId());
             boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
-            if (!save) {
+            if (!save || !save1) {
                 sendAndClose(session, "保存失败");
                 return;
             }
         }
 
         checkInterrupted(session);
-        task.setZeroParam(JSON.toJSONString(listR.getData()));
+        task.setZeroParam(JSON.toJSONString(zero.getData()));
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
             sendAndClose(session, "保存失败");

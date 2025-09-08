@@ -5,7 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import java.util.Date;
+
+import java.time.LocalDateTime;
 
 @Data
 @TableName("t_measure_analysis_image")
@@ -18,7 +19,7 @@ public class TMeasureAnalysisImage {
     private String analysisId;   // 关联的分析数据ID
 
     @TableField("image_base64")
-    private String imageBase64;  // 图片的Base64编码
+    private byte[] imageBase64;  // 图片的Base64编码
 
     @TableField("image_name")
     private String imageName;    // 图片名称
@@ -27,7 +28,7 @@ public class TMeasureAnalysisImage {
     private String imageType;    // 图片类型(jpg/png等)
 
     @TableField("create_time")
-    private Date createTime;     // 创建时间
+    private LocalDateTime createTime;     // 创建时间
 
     @TableField("remarks")
     private String remarks;      // 备注信息

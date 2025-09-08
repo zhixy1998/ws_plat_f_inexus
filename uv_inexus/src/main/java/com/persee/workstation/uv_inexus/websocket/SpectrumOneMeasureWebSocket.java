@@ -69,7 +69,8 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private TMeasureSampleService tMeasureSampleService;
     @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
-
+    @Autowired
+    private TMeasureAnalysisImageService tMeasureAnalysisImageService;
 
     /**
      * 当WebSocket连接建立后调用此方法
@@ -461,7 +462,7 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
         // 根据样品的key查询该样品的参数
         TMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
-        
+
         // 根据任务中的方法id查询方法参数
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
@@ -492,6 +493,9 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 analysisData.setColor("#000000");
                 analysisData.setIsDelete("0");
                 tMeasureAnalysisDataService.save(analysisData);
+                TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
+                tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
+                tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
             }else{
                 // 如果是重复模式的情况下,根据重复次数创建三个测量数据,并且将测量好的数据存储到对应的编号中
                 Integer RepetitionTime = Integer.valueOf(spectrumParameter.getRepetitionTime());
@@ -521,7 +525,10 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         analysisData.setColor("#000000");
                         analysisData.setIsDelete("0");
                         boolean save1 = tMeasureAnalysisDataService.save(analysisData);
-                        if(!(save&&save1)){
+                        TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
+                        tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
+                        boolean save2 = tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
+                        if(!(save&&save1&&save2)){
                             sendAndClose( session, "数据保存失败");
                             return;
                         }
@@ -551,10 +558,14 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         analysisData.setColor("#000000");
                         analysisData.setIsDelete("0");
                         boolean save1 = tMeasureAnalysisDataService.save(analysisData);
-                        if(!(save&&save1)){
+                        TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
+                        tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
+                        boolean save2 = tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
+                        if(!(save&&save1&&save2)){
                             sendAndClose( session, "数据保存失败");
                             return;
                         }
+
                     }
                 }
             }
@@ -610,14 +621,62 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
         // 更新任务状态
         List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        for (TaskSpecimen taskSample : specimen) {
-            if (taskSample.getSpecimenKey().equals(sampleId)) {
-                taskSample.setIsTested("1");
+        // 如果不是重复模式的情况直接更新任务状态
+        if(spectrumParameter.getRepetitionPattern().equals("不重复")){
+            for (TaskSpecimen taskSample : specimen) {
+                if (taskSample.getSpecimenKey().equals(sampleId)) {
+                    taskSample.setIsTested("1");
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(specimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            boolean update = tMeasureTaskService.updateById(task);
+            if (!update) {
+                sendAndClose(session, "更新任务失败");
+                return;
+            }
+        }else{
+            // 如果是重复模式的情况，需要判断是否全部测完
+            // 根据重复次数遍历
+            boolean success = false;
+            Integer count = Integer.valueOf(spectrumParameter.getRepetitionTime());
+            for (int i = 0; i < count; i++) {
+                // 根据任务id,样品id和编号查询分析数据
+                QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", taskId);
+                queryWrapper.eq("sample_key", sampleId);
+                queryWrapper.eq("analysis_number", i+1);
+                queryWrapper.eq("analysis_type", "5");
+                queryWrapper.last("limit 1");
+                TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+                if(analysisData==null){
+                    sendAndClose( session, "数据保存失败");
+                }
+                // 判断数据是否不为空或者不为null
+                if(analysisData.getAnalysisResult()==null){
+                    success=true;
+                    break;
+                }
+            }
+
+            if (success){
+                // 不更新任务状态
+            }else{
+                for (TaskSpecimen taskSample : specimen) {
+                    if (taskSample.getSpecimenKey().equals(sampleId)) {
+                        taskSample.setIsTested("1");
+                    }
+                }
+                task.setSampleKey(JSON.toJSONString(specimen));
+                task.setDeviceSerialNumber(deviceSerialNumber);
+                boolean update = tMeasureTaskService.updateById(task);
+                if (!update) {
+                    sendAndClose(session, "更新任务失败");
+                    return;
+                }
             }
         }
-        task.setSampleKey(JSON.toJSONString(specimen));
-        task.setDeviceSerialNumber(deviceSerialNumber);
-        tMeasureTaskService.updateById(task);
+
     }
 
     /**

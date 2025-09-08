@@ -73,6 +73,10 @@ public class Constants {
 //    public static volatile List<String> s_data = new ArrayList<>();
 //    public static volatile List<String> d_data = new ArrayList<>();
 
+    public static volatile List<String> s_data = new ArrayList<>();
+    public static volatile List<String> d_data = new ArrayList<>();
+    public static volatile List<String> r_data = new ArrayList<>();
+
     public static final String EndData = "0D0A,000";
 
     //等待操作，所有操作执行完成后恢复需要该状态，异常之后，也要恢复该状态
@@ -101,4 +105,8 @@ public class Constants {
 
     public static final Integer DEFAULT_DECIMAL_NUM_MAX = 12;
 
+    //全局变量用来判断前端是否请求结束
+
+
+    public static volatile boolean Running = true;
 }

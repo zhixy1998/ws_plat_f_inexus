@@ -24,13 +24,22 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeWebSocket TimeWebSocket;
 
     @Autowired
+    private TimeWebSocket2 TimeWebSocket2;
+
+    @Autowired
     private RationMeasureWebSocket RationWebSocket;
 
     @Autowired
     private MyWebSocketHandler myWebSocketHandler;
 
     @Autowired
-    private BaseLineebSocket baseLineebSocket;
+    private BaseLineWebSocket baseLineWebSocket;
+
+    @Autowired
+    private ZeroCalibrationWebSocket zeroCalibrationWebSocket;
+
+    @Autowired
+    MeasureWebSocketHandler measureWebSocketHandler;
 
     // 注册WebSocket处理器
     @Override
@@ -48,8 +57,15 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*");
         registry.addHandler(myWebSocketHandler, "/ws/myWebSocket")
                 .setAllowedOrigins("*");
-        registry.addHandler(baseLineebSocket, "/ws/baseLine")
+        registry.addHandler(baseLineWebSocket, "/ws/baseLine")
                 .setAllowedOrigins("*");
+        registry.addHandler(zeroCalibrationWebSocket, "/ws/zeroCalibration")
+                .setAllowedOrigins("*");
+        registry.addHandler(TimeWebSocket2, "/ws/timeScan2")
+                .setAllowedOrigins("*");
+        registry.addHandler(measureWebSocketHandler, "/ws/measure")
+                .setAllowedOrigins("*");
+
 
     }
 }
