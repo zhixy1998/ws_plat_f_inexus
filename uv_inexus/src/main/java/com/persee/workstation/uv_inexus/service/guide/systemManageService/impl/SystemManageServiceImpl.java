@@ -58,7 +58,6 @@ public class SystemManageServiceImpl implements SystemManageService {
     public Boolean saveSystemManage(SystemManageDTO dto) {
         SystemManagePO po = dao.selectById(userId);
         if (po == null) {
-
             po = new SystemManagePO();
             BeanUtils.copyProperties(dto, po);
             po.setId(userId);
@@ -82,4 +81,6 @@ public class SystemManageServiceImpl implements SystemManageService {
             return true;
         }
     }
+
+
 }

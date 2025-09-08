@@ -20,4 +20,17 @@ public class SystemBusinessParamPO extends BasePO {
     @TableField("peak_valley_diff")
     private String peakValleyDiff;
 
+
+    @ApiModelProperty("自动保存间隔")
+    @TableField("auto_save_time")
+    private String autoSaveTime;
+
+    @ApiModelProperty("自动登出时间")
+    @TableField("auto_leave_time")
+    private String autoLeaveTime;
+
+    @TableField("exe_file_path")
+    @ApiModelProperty("exe文件路径")
+    private String filePath;
+
 }
