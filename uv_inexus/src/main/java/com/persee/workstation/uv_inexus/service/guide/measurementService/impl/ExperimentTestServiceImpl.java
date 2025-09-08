@@ -28,6 +28,7 @@ import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretre
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
@@ -1134,6 +1135,115 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
             return Result.ok(vo);
 
+        } else if (task.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+            SpectralReportVo vo = new SpectralReportVo();
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+
+            if (StringUtils.hasText(task.getSampleKey())) {
+                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
+                for (TaskSpecimen specimen : taskSpecimen) {
+                    if (specimen.getDeleteType().equals("1")) {
+                        continue;
+                    }
+                    if (!specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        continue;
+                    }
+                    if (specimen.getIsTested().equals("0")) {
+                        continue;
+                    }
+                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                    vo.setStandardConcentration(sample.getNormalConcentration());
+                    vo.setSampleName(sample.getSampleName());
+                    vo.setSampleNumber(sample.getSampleNumber());
+                    LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
+                    wrapper.eq(TMeasureData::getTaskId, taskId)
+                            .eq(TMeasureData::getSampleKey, sample.getId())
+                            .orderByDesc(TMeasureData::getSerialNumber)
+                            .last("LIMIT 1");
+                    TMeasureData measureData = tMeasureDataService.getOne(wrapper);
+                    vo.setSamplingTime(measureData.getSamplingTime());
+                    if (measureData.getMeasurementStartTime() != null) {
+                        vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
+                    }
+                    if (measureData.getMeasurementEndTime() != null) {
+                        vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
+                    }
+                }
+            }
+            
+            if (StringUtils.hasText(task.getFittingParam())){
+                FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+                StringBuilder param = new StringBuilder();
+                for (Double coefficient : fittingReceiveInfo.getCoefficients()) {
+                    param.append(coefficient).append(",");
+                }
+                param.deleteCharAt(param.length() - 1);
+                vo.setCurveParams(param.toString());
+                vo.setR(fittingReceiveInfo.getR());
+                vo.setCurveFormula(fittingReceiveInfo.getEquation());
+                vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree()));
+            }
+
+            StringBuilder wave = new StringBuilder();
+            if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()) {
+                for (String s : parameter.getWaveLength()) {
+                    wave.append(s).append(",");
+                }
+            }
+            if (wave.length() > 0) {
+                wave.deleteCharAt(wave.length() - 1);
+            }
+            vo.setInstrumentWavelength(wave.toString());
+
+            vo.setReferenceMethod(method.getMethodName());
+            vo.setReferenceStandard(parameter.getReferenceStandardName());
+
+            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            vo.setSpectrumBandwidth(parameter.getSpectralBandwidth());
+
+            vo.setInstrumentName("紫外可见分光光度计");
+            vo.setInstrumentModel("T600");
+
+            StringBuilder steps = new StringBuilder();
+            parameter.getPreProcessParameters().forEach(preProcessParameter -> {
+                steps.append(preProcessParameter).append("\n");
+            });
+
+            StringBuilder result = new StringBuilder();
+            parameter.getResultParams().forEach(resultParam -> {
+                result.append(resultParam.getFormulaText()).append("\n");
+            });
+            vo.setCalculationFormula(result.toString());
+
+            result.setLength(0);
+            parameter.getSampleInputParams().forEach(sampleInputParam -> {
+                result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
+            });
+            vo.setFormulaParams(result.toString());
+
+            vo.setSteps(steps.toString());
+            vo.setDetectionStartTime(task.getStartTime().format(formatter));
+            if (task.getEndTime() != null){
+                vo.setDetectionEndTime(task.getEndTime().format(formatter));
+            }
+            vo.setDataType("测量数据");
+
+            vo.setAmbientTemperature("26℃");
+            vo.setRelativeHumidity("60%");
+            vo.setSampleState("正常");
+            vo.setColorPlateWavelength("1");
+
+            vo.setProject(project.getProjectName());
+            vo.setDetector(user.getUserName());
+            vo.setEnergyLight(parameter.getEnergyLamp());
+            vo.setMethodName(method.getMethodName());
+            return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())) {
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

@@ -75,4 +75,15 @@ public class SpectralReportVo {
     private String sampleState;
     //样品采样时间
     private String samplingTime;
+    //标准浓度
+    private String standardConcentration;
+    //曲线公式
+    private String curveFormula;
+    //曲线参数，k0，k1，k2，k3，k4---k0代表截距（参考曲线拟合）
+    private String curveParams;
+    //R
+    private String R;
+    //曲线类型：一次曲线，二次曲线
+    private String curveType;
+
 }
