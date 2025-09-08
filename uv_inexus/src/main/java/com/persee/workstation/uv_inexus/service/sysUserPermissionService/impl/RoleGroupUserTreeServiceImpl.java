@@ -30,7 +30,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
 
     private static final Logger log = LoggerFactory.getLogger(RoleGroupUserTreeServiceImpl.class);
     // 常量：超级管理员角色编码（统一定义，避免硬编码）
-    private static final String SUPER_ADMIN_ROLE_CODE = "SUPER_ADMIN";
+    private static final String SUPER_ADMIN_ROLE_CODE = "SYSTEM_USER_MANAGEMENT";
 
     @Autowired
     private SysRoleMapper sysRoleMapper;
