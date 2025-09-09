@@ -12,6 +12,7 @@ import com.persee.workstation.uv_inexus.model.R; // 原有统一返回类
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
 import com.persee.workstation.uv_inexus.util.tokenUtil.JWTUtils; // 原有JWT工具类
+import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
 import com.persee.workstation.uv_inexus.utils.PasswordUtils.PasswordUtils;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 
@@ -88,6 +89,11 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
         BeanUtils.copyProperties(userPO, loginVO); // 拷贝用户ID、姓名、手机号等基础信息
         loginVO.setToken(token); // 填充Token
         loginVO.setLastLoginTime(now); // 填充本次登录时间（实时更新）
+        loginVO.setId(userPO.getId()); // 从数据库查的真实ID
+        loginVO.setUsername(loginDTO.getUserName()); // 登录用户名
+        // System.out.println("wewrwerwe"+userPO.getId());
+        // System.out.println("qweqeqweqweqwe"+loginDTO.getUserName());
+        UserContext.setCurrentUser(loginVO);
 
         // 7. 返回成功结果
         return R.ok(loginVO);

@@ -10,6 +10,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result; // 原有统一响应类（与R对应）
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 
 import io.swagger.annotations.Api;
@@ -36,6 +37,7 @@ public class SysUserLoginController {
      */
     @PostMapping("/login")
     @ApiOperation("用户登录接口")
+    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true)
     public Result<LoginUserInfoVO> login(@Validated @RequestBody UserLoginDTO loginDTO) {
         log.info("接收登录请求，username={}", loginDTO.getUserName());
         // 调用Service层逻辑
@@ -52,6 +54,7 @@ public class SysUserLoginController {
 
     @PostMapping("/logout")
     @ApiOperation("用户登出接口")
+    @OperateLog(module = "用户登出", description = "用户登出", recordParams = true)
     public Result<Boolean> loginOut(){
         return Result.ok(true);
     }

@@ -30,6 +30,7 @@ public class TokenConfig implements WebMvcConfigurer {
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/reportDataQuery");
 
         registry.addInterceptor(tokenInterceptor)
+                // .excludePathPatterns("/login", "/logout") // 排除不需要验证的接口
                 .addPathPatterns("/com/persee/workstation/uv-inexus/**")
                 .excludePathPatterns(excludePath);
         WebMvcConfigurer.super.addInterceptors(registry);

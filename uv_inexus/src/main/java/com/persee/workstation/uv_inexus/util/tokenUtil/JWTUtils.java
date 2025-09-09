@@ -1,11 +1,13 @@
 package com.persee.workstation.uv_inexus.util.tokenUtil;
 
+import java.util.Date;
+
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-
-import java.util.Date;
+import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
+import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 
 public class JWTUtils {
     private static final String KEY = "px_iNexus";
@@ -33,8 +35,16 @@ public class JWTUtils {
             System.out.println("issuer: " + jwt.getIssuer());
             System.out.println("username: " + jwt.getClaim("userName").asString());
             System.out.println("过期时间：      " + jwt.getExpiresAt());
+            // 存储到UserContext（供日志切面使用）
+            String userName = jwt.getClaim("userName").asString();
+            LoginUserInfoVO userVO = new LoginUserInfoVO();
+            userVO.setUsername(userName); // 设置用户名
+            UserContext.setCurrentUser(userVO); // 存入ThreadLocal
+            
             return true;
-        } catch (Exception e){
+        } catch (Exception e) {
+            // 验证失败时清除可能的残留信息
+            UserContext.clear();
             return false;
         }
 

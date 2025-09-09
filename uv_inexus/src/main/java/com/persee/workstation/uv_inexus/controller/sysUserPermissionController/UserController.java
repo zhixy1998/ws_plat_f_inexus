@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import io.swagger.annotations.Api;
@@ -55,6 +56,7 @@ public class UserController {
 
     @PostMapping("/addUser")
     @ApiOperation("新增用户")
+    @OperateLog(module = "用户管理", description = "新增用户", recordParams = true)
     public Result<String> addUser(@RequestBody @Valid UserSaveDTO saveDTO) {
         return sysUserService.addUser(saveDTO);
     }
