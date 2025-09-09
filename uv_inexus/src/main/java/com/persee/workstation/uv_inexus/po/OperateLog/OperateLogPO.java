@@ -24,7 +24,7 @@ public class OperateLogPO {
     /**
      * 操作用户ID（关联sys_user.id）
      */
-    private String userId;
+    // private String userId;
 
     /**
      * 操作用户名（冗余存储，便于快速查询）

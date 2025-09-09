@@ -74,11 +74,11 @@ public class OperateLogAspect {
             // -------------------------- 5. 现在再获取用户信息（Service已存储，能拿到值） --------------------------
             LoginUserInfoVO currentUser = UserContext.getCurrentUser();
             if (currentUser != null) {
-                logPO.setUserId(currentUser.getId());
+                // logPO.setUserId(currentUser.getId());
                 logPO.setUsername(currentUser.getUsername());
                 log.info("日志切面获取到用户信息：id={}, username={}", currentUser.getId(), currentUser.getUsername());
             } else {
-                logPO.setUserId("anonymous");
+                // logPO.setUserId("anonymous");
                 logPO.setUsername("anonymous");
                 log.warn("日志切面未获取到用户信息，记录为匿名");
             }
