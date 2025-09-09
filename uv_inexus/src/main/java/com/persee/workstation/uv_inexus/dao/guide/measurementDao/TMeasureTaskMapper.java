@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.dao.guide.measurementDao;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import org.apache.ibatis.annotations.Param;
 
@@ -17,6 +18,8 @@ import java.util.List;
 public interface TMeasureTaskMapper extends BaseMapper<TMeasureTask> {
 
     List<TaskBaseVO> getAllTask(@Param("projectId") String projectId, @Param("measureType") String measureType);
+
+    List<HeadVO> getPreHead(@Param("measure_type") String measureType, @Param("sample_kind") String sampleKind);
 
 }
 

@@ -40,6 +40,7 @@ public interface ExperimentTestService {
 
 
     Result reportDataQuery(String taskId, String reportName,String sampleId);
+    Result newReportTableDataQuery(String taskId, String sampleId);
 
     Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType);
 

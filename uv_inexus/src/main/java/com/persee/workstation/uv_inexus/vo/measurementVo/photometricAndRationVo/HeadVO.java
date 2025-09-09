@@ -31,4 +31,10 @@ public class HeadVO {
         this.identity = identity;
         this.locate = locate;
     }
+    public HeadVO(String name, String identity, String locate, String printTitle) {
+        this.name = name;
+        this.identity = identity;
+        this.printTitle = printTitle;
+        this.locate = locate;
+    }
 }
