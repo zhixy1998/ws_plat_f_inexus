@@ -17,4 +17,7 @@ public class FindDeviceVO {
 
     @ApiModelProperty("机器ip地址")
     private String ip;
+
+    @ApiModelProperty("附件类型")
+    private Integer attachmentType;
 }

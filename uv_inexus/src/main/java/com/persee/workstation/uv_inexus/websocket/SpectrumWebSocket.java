@@ -35,8 +35,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.lang.Thread.sleep;
-
 @Component
 public class SpectrumWebSocket extends TextWebSocketHandler {
 
@@ -151,7 +149,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                         // 预留: 设置样品池位置
 
 
-                        doOneMeasurement(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, 1);
+                        doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, 1);
                         newSampleData.get(i).setIsTested("1");
                         if ((i + 1) != newSampleData.size()) {
                             JSONObject payload = new JSONObject();
@@ -170,7 +168,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                         // 预留: 设置样品池位置
 
 
-                        for (int r = 0; r < repeatCount; r++) {
+                        for (int r = 0; r < repetitionTime; r++) {
                             // 根据样品id,任务id和遍历的r+1查询分析数据
                             QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                             queryWrapper.eq("task_id", taskId);
@@ -184,18 +182,8 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                             if (measureData != null && measureData.getIsDelete().equals("1")) {
                                 continue;
                             }
-                            doOneMeasurement(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, r + 1);
+                            doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, r + 1);
 
-                            // 如果不是最后一次 → 等待 interval 再来下一次
-                            if (r < repeatCount - 1) {
-                                try {
-                                    sleep(repeatInterval);
-                                } catch (InterruptedException e) {
-                                    handleTransportError(session, e);
-                                    Thread.currentThread().interrupt();
-                                    return;
-                                }
-                            }
                         }
                     }
                     // 全部完成后再告诉前端 finish
@@ -287,37 +275,156 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         return null;
     }
 
+//
+//    // 每次测量
+//    private void doOneMeasurement(WebSocketSession session,
+//                                  Command command,
+//                                  SpectrumParameter spectrumParameter,
+//                                  TMeasureTask task,
+//                                  String taskId,
+//                                  String sampleId,
+//                                  String deviceSerialNumber,
+//                                  String ip,
+//                                  Integer count) throws IOException {
+//
+//        // 1. 发送测量命令
+//        devMessageUtil.getMeasureData(command, ip);
+//
+//        List<ChangeParam> baselineCopy = new ArrayList<>();
+//        if (task.getZeroParam() != null && !task.getZeroParam().isEmpty()) {
+//            baselineCopy = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+//        } else {
+//            baselineCopy = null;
+//        }
+//        List<Double> x = new ArrayList<>();
+//        List<Double> y = new ArrayList<>();
+//
+//        // 2. 采集数据，实时推送（每 10 条推一次）
+//        int pushCount = 0;
+//        while (true) {
+//            if (Thread.currentThread().isInterrupted()) {
+//                System.out.println("线程被中断，终止任务");
+//                return;
+//            }
+//            List<String> snapshot = new ArrayList<>(Constants.instrumentData);
+//            if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
+//                while (!Constants.measurd_data.isEmpty()) {
+//                    calcOnePoint(spectrumParameter, baselineCopy, x, y);
+//                    pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId);
+//                }
+//                break;
+//            }
+//            while (!Constants.measurd_data.isEmpty()) {
+//                calcOnePoint(spectrumParameter, baselineCopy, x, y);
+//                pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId);
+//            }
+//            try {
+//                sleep(10);
+//            } catch (InterruptedException e) {
+//                handleTransportError(session, e);
+//                Thread.currentThread().interrupt();
+//                return;
+//            }
+//        }
+//
+//        // 3. 推送最后不足10条的数据
+//        pushRemainingData(session, x, y, pushCount, count, sampleId);
+//
+//        // 4. 保存一次完整测量
+//        saveOneMeasurement(task, taskId, sampleId, deviceSerialNumber, x, y, session, count);
+//
+//        // 5. 清理缓存
+//        Constants.instrumentData.clear();
+//        Constants.measurd_data.clear();
+//        Constants.originalCalculationData.clear();
+//        Constants.endTime = null;
+//    }
 
-    // 每次测量
-    private void doOneMeasurement(WebSocketSession session,
-                                  Command command,
-                                  SpectrumParameter spectrumParameter,
-                                  TMeasureTask task,
-                                  String taskId,
-                                  String sampleId,
-                                  String deviceSerialNumber,
-                                  String ip,
-                                  Integer count) throws IOException {
 
-        // 1. 发送测量命令
+    // doOneMeasurementSerial 改造
+    private void doOneMeasurementSerial(WebSocketSession session,
+                                        Command command,
+                                        SpectrumParameter spectrumParameter,
+                                        TMeasureTask task,
+                                        String taskId,
+                                        String sampleId,
+                                        String deviceSerialNumber,
+                                        String ip,
+                                        Integer count) throws IOException {
+
+        // 1. 抢锁
+        try {
+            Constants.MEASURE_LOCK.lockInterruptibly();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+
+        MeasurementResult result = null;
+
+        try {
+            // 清空全局缓存
+            Constants.instrumentData.clear();
+            Constants.measurd_data.clear();
+            Constants.originalCalculationData.clear();
+            Constants.startTime = LocalDateTime.now();
+            Constants.endTime = null;
+
+            // 采集数据 & 返回测量结果
+            result = doOneMeasurementCore(session, command, spectrumParameter, task,
+                    taskId, sampleId, deviceSerialNumber, ip, count);
+
+        } finally {
+            // 出锁前先生成快照
+            if (result == null) {
+                result = new MeasurementResult(
+                        Collections.emptyList(),
+                        Collections.emptyList(),
+                        new ArrayList<>(Constants.instrumentData),
+                        new ArrayList<>(Constants.originalCalculationData)
+                );
+            }
+            Constants.instrumentData.clear();
+            Constants.measurd_data.clear();
+            Constants.originalCalculationData.clear();
+            Constants.startTime = null;
+            Constants.endTime = null;
+            Constants.MEASURE_LOCK.unlock();
+        }
+
+        // 出锁后保存
+        saveOneMeasurementWithSnapshots(task, taskId, sampleId, deviceSerialNumber,
+                result.x, result.y, session, count,
+                result.instrumentSnapshot, result.originalCalcSnapshot);
+    }
+
+
+    // doOneMeasurementCore 改造，返回 MeasurementResult
+    private MeasurementResult doOneMeasurementCore(WebSocketSession session,
+                                                   Command command,
+                                                   SpectrumParameter spectrumParameter,
+                                                   TMeasureTask task,
+                                                   String taskId,
+                                                   String sampleId,
+                                                   String deviceSerialNumber,
+                                                   String ip,
+                                                   Integer count) throws IOException {
+        // 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
 
-        List<ChangeParam> baselineCopy = new ArrayList<>();
-        if (task.getZeroParam() != null && !task.getZeroParam().isEmpty()) {
-            baselineCopy = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-        } else {
-            baselineCopy = null;
-        }
+        List<ChangeParam> baselineCopy = (task.getZeroParam() != null && !task.getZeroParam().isEmpty())
+                ? JSON.parseArray(task.getZeroParam(), ChangeParam.class)
+                : null;
+
         List<Double> x = new ArrayList<>();
         List<Double> y = new ArrayList<>();
 
-        // 2. 采集数据，实时推送（每 10 条推一次）
         int pushCount = 0;
+
         while (true) {
-            if (Thread.currentThread().isInterrupted()) {
-                System.out.println("线程被中断，终止任务");
-                return;
-            }
+            if (Thread.currentThread().isInterrupted() || !session.isOpen()) return null;
+
+            // 采集 & 计算一个点
             List<String> snapshot = new ArrayList<>(Constants.instrumentData);
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
                 while (!Constants.measurd_data.isEmpty()) {
@@ -326,31 +433,30 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
                 }
                 break;
             }
+
             while (!Constants.measurd_data.isEmpty()) {
                 calcOnePoint(spectrumParameter, baselineCopy, x, y);
                 pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId);
             }
-            try {
-                sleep(10);
-            } catch (InterruptedException e) {
-                handleTransportError(session, e);
+
+            try { Thread.sleep(10); } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return;
+                return null;
             }
         }
 
-        // 3. 推送最后不足10条的数据
+        // 推送剩余数据
         pushRemainingData(session, x, y, pushCount, count, sampleId);
 
-        // 4. 保存一次完整测量
-        saveOneMeasurement(task, taskId, sampleId, deviceSerialNumber, x, y, session, count);
-
-        // 5. 清理缓存
-        Constants.instrumentData.clear();
-        Constants.measurd_data.clear();
-        Constants.originalCalculationData.clear();
-        Constants.endTime = null;
+        // 返回快照 + x/y
+        return new MeasurementResult(
+                x,
+                y,
+                new ArrayList<>(Constants.instrumentData),
+                new ArrayList<>(Constants.originalCalculationData)
+        );
     }
+
 
 
     // 推送逻辑：每 10 个点推送一次
@@ -468,15 +574,26 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
     }
 
     // 保存一次测量结果
-    private void saveOneMeasurement(TMeasureTask task,
-                                    String taskId,
-                                    String sampleId,
-                                    String deviceSerialNumber,
-                                    List<Double> x,
-                                    List<Double> y,
-                                    WebSocketSession session,
-                                    Integer number) {
+    /**
+     * 使用快照保存一次测量结果，避免与全局变量冲突
+     */
+    private void saveOneMeasurementWithSnapshots(TMeasureTask task,
+                                                 String taskId,
+                                                 String sampleId,
+                                                 String deviceSerialNumber,
+                                                 List<Double> x,
+                                                 List<Double> y,
+                                                 WebSocketSession session,
+                                                 Integer number,
+                                                 List<String> instrumentSnapshot,
+                                                 List<String> originalCalcSnapshot) {
 
+        if (instrumentSnapshot == null || originalCalcSnapshot == null) {
+            sendAndClose(session, "测量数据为空，无法保存");
+            return;
+        }
+
+        // 1. 处理峰谷数据（假设你原来调用了 Python 接口）
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
@@ -487,13 +604,12 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+
         List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
         List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
         List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
         List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
-        // 进行存储操作
-        // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
-        // 如果发现测量数据表中有数据则将最大的序列号拿出来加1并放入新建的测量数据对象中
+
         List<PeakValleyMarking> peakValleys = new ArrayList<>();
         List<PeakValleyMarking> markings = new ArrayList<>();
 
@@ -512,36 +628,33 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             markings.add(marking);
         }
 
+        // 2. 保存测量数据
+        List<String> listData = new ArrayList<>(originalCalcSnapshot); // 使用快照
 
-        List<String> listData = new ArrayList<>();
-        for (int i = 0; i < x.size(); i++) {
-            listData.add(x.get(i) + "," + y.get(i));
-        }
-
-        // 将任务中的样品数据取出来
         List<TaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         TaskSpecimen taskSpecimen = null;
         for (TaskSpecimen data : sampleData) {
             if (data.getSpecimenKey().equals(sampleId)) {
                 taskSpecimen = data;
+                break;
             }
         }
         if (taskSpecimen == null) {
             sendAndClose(session, "未找到该样品");
             return;
         }
-        // 根据样品的key查询该样品的参数
-        TMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
 
-        // 根据任务中的方法id查询方法参数
+        TMeasureSample sample = tMeasureSampleService.getById(taskSpecimen.getSpecimenKey());
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-        if (spectrumParameter.getRepetitionPattern().equals("不重复")) {
+
+        if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
+            // 普通模式
             TMeasureData measureData = new TMeasureData();
             measureData.setSerialNumber(1);
             measureData.setTaskId(taskId);
             measureData.setSampleKey(sampleId);
-            measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
+            measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot)); // 使用快照
             measureData.setOriginalCalculationData(JSON.toJSONString(listData));
             measureData.setMeasurementStartTime(Constants.startTime);
             measureData.setMeasurementEndTime(Constants.endTime);
@@ -554,7 +667,7 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             analysisData.setTaskId(taskId);
             analysisData.setSampleKey(sampleId);
             analysisData.setMeasureDataId(measureData.getId());
-            analysisData.setAnalysisParam(JSON.toJSONString(Constants.instrumentData));
+            analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
             analysisData.setAnalysisResult(JSON.toJSONString(listData));
             analysisData.setAnalysisType("5");
             analysisData.setPeak(JSON.toJSONString(peakValleys));
@@ -562,102 +675,86 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
             analysisData.setColor("#000000");
             analysisData.setIsDelete("0");
             tMeasureAnalysisDataService.save(analysisData);
+
             TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
             tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
             tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
 
-
-            for (TaskSpecimen taskSample : sampleData) {
-                if (taskSample.getSpecimenKey().equals(sampleId)) {
-                    taskSpecimen.setIsTested("1");
-                }
-            }
-            task.setSampleKey(JSON.toJSONString(sampleData));
-            task.setDeviceSerialNumber(deviceSerialNumber);
-            boolean update = tMeasureTaskService.updateById(task);
-            if (!update) {
-                sendAndClose(session, "更新任务失败");
-                return;
-            }
         } else {
-            // 如果是重复模式的情况下 根据样品id,任务id,编号查询分析数据是否存在
-            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("analysis_number", number));
-            TMeasureData measureData = new TMeasureData();
-            measureData.setSerialNumber(number);
-            measureData.setTaskId(taskId);
-            measureData.setSampleKey(sampleId);
-            measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
-            measureData.setOriginalCalculationData(JSON.toJSONString(listData));
-            measureData.setMeasurementStartTime(Constants.startTime);
-            measureData.setMeasurementEndTime(Constants.endTime);
-            measureData.setIsDelete("0");
-            boolean save = traceDataService.save(measureData);
+            // 重复模式
+            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(
+                    new QueryWrapper<TMeasureAnalysisData>()
+                            .eq("task_id", taskId)
+                            .eq("sample_key", sampleId)
+                            .eq("analysis_number", number)
+            );
 
-            TMeasureAnalysisData analysis = new TMeasureAnalysisData();
-            analysis.setAnalysisNumber(number);
-            analysis.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
-            analysis.setTaskId(taskId);
-            analysis.setSampleKey(sampleId);
-            analysis.setMeasureDataId(measureData.getId());
-            analysis.setAnalysisParam(JSON.toJSONString(Constants.instrumentData));
-            analysis.setAnalysisResult(JSON.toJSONString(listData));
-            analysis.setAnalysisType("5");
-            analysis.setPeak(JSON.toJSONString(peakValleys));
-            analysis.setGrain(JSON.toJSONString(markings));
-            analysis.setColor("#000000");
-            analysis.setIsDelete("0");
-            boolean save1 = tMeasureAnalysisDataService.save(analysisData);
-            TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
-            tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
-            boolean save2 = tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
-            if (!(save && save1 && save2)) {
-                sendAndClose(session, "数据保存失败");
-                return;
-            }
+            if (analysisData != null && analysisData.getAnalysisResult() == null) {
+                // 更新已有分析数据
+                TMeasureData measureData = tMeasureDataService.getOne(
+                        new QueryWrapper<TMeasureData>()
+                                .eq("task_id", taskId)
+                                .eq("sample_key", sampleId)
+                                .eq("serial_number", number)
+                );
+                measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
+                measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+                measureData.setMeasurementStartTime(Constants.startTime);
+                measureData.setMeasurementEndTime(Constants.endTime);
+                traceDataService.updateById(measureData);
 
+                analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
+                analysisData.setAnalysisResult(JSON.toJSONString(listData));
+                analysisData.setPeak(JSON.toJSONString(peakValleys));
+                analysisData.setGrain(JSON.toJSONString(markings));
+                analysisData.setColor("#000000");
+                tMeasureAnalysisDataService.updateById(analysisData);
 
-        }
+            } else {
+                // 新增分析数据
+                TMeasureData measureData = new TMeasureData();
+                measureData.setSerialNumber(number);
+                measureData.setTaskId(taskId);
+                measureData.setSampleKey(sampleId);
+                measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
+                measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+                measureData.setMeasurementStartTime(Constants.startTime);
+                measureData.setMeasurementEndTime(Constants.endTime);
+                measureData.setIsDelete("0");
+                traceDataService.save(measureData);
 
-        // 如果是重复模式的情况，需要判断是否全部测完
-        // 根据重复次数遍历
-        boolean success = false;
-        Integer count = Integer.valueOf(spectrumParameter.getRepetitionTime());
-        for (int i = 0; i < count; i++) {
-            // 根据任务id,样品id和编号查询分析数据
-            QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("task_id", taskId);
-            queryWrapper.eq("sample_key", sampleId);
-            queryWrapper.eq("analysis_number", i + 1);
-            queryWrapper.eq("analysis_type", "5");
-            queryWrapper.last("limit 1");
-            TMeasureAnalysisData oneData = tMeasureAnalysisDataService.getOne(queryWrapper);
-            if (oneData == null) {
-                sendAndClose(session, "数据保存失败");
-            }
-            // 判断数据是否不为空或者不为null
-            if (oneData.getAnalysisResult() == null) {
-                success = true;
-                break;
-            }
-        }
-        if (success) {
-            // 不更新任务状态
-        } else {
-            for (TaskSpecimen taskSample : sampleData) {
-                if (taskSample.getSpecimenKey().equals(sampleId)) {
-                    taskSample.setIsTested("1");
-                }
-            }
-            task.setSampleKey(JSON.toJSONString(sampleData));
-            task.setDeviceSerialNumber(deviceSerialNumber);
-            boolean update = tMeasureTaskService.updateById(task);
-            if (!update) {
-                sendAndClose(session, "更新任务失败");
-                return;
+                TMeasureAnalysisData analysis = new TMeasureAnalysisData();
+                analysis.setAnalysisNumber(number);
+                analysis.setAnalysisName(sample.getSampleName() + "-" + number);
+                analysis.setTaskId(taskId);
+                analysis.setSampleKey(sampleId);
+                analysis.setMeasureDataId(measureData.getId());
+                analysis.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
+                analysis.setAnalysisResult(JSON.toJSONString(listData));
+                analysis.setAnalysisType("5");
+                analysis.setPeak(JSON.toJSONString(peakValleys));
+                analysis.setGrain(JSON.toJSONString(markings));
+                analysis.setColor("#000000");
+                analysis.setIsDelete("0");
+                tMeasureAnalysisDataService.save(analysis);
+
+                TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
+                tMeasureAnalysisImage.setAnalysisId(analysis.getId());
+                tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
             }
         }
 
+        // 更新任务状态
+        for (TaskSpecimen taskSample : sampleData) {
+            if (taskSample.getSpecimenKey().equals(sampleId)) {
+                taskSample.setIsTested("1");
+            }
+        }
+        task.setSampleKey(JSON.toJSONString(sampleData));
+        task.setDeviceSerialNumber(deviceSerialNumber);
+        tMeasureTaskService.updateById(task);
     }
+
 
     /**
      * 发送消息并关闭连接
@@ -691,5 +788,22 @@ public class SpectrumWebSocket extends TextWebSocketHandler {
         Constants.endTime = null;
     }
 
+
+    // 返回测量结果的类
+    class MeasurementResult {
+        List<Double> x;
+        List<Double> y;
+        List<String> instrumentSnapshot;
+        List<String> originalCalcSnapshot;
+
+        MeasurementResult(List<Double> x, List<Double> y,
+                          List<String> instrumentSnapshot,
+                          List<String> originalCalcSnapshot) {
+            this.x = x;
+            this.y = y;
+            this.instrumentSnapshot = instrumentSnapshot;
+            this.originalCalcSnapshot = originalCalcSnapshot;
+        }
+    }
 
 }

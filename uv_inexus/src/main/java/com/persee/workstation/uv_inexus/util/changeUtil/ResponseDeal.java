@@ -58,8 +58,9 @@ public class ResponseDeal {
             case "Dark":
             case "DisConnect":
             case "DisConnectIAP":
-            case "GetAccessoryType":
                 return parseBooleanFrom5thByte(responses);
+            case "GetAccessoryType":
+                return parseType(responses);
             case "Measure":
             case "Zero":
                 return parseZero(responses);
@@ -116,6 +117,19 @@ public class ResponseDeal {
         sn.insert(2, "-");
 
         return sn.toString(); // 存储到全局变量
+    }
+
+    /**
+     * 附件类型解析
+     */
+    private static Integer parseType(List<byte[]> responses) {
+        if (responses ==  null || responses.isEmpty()) {
+            return -1;
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        // 转成无符号 int
+        return last[4] & 0xFF;
     }
     /*
         S、D、R解析

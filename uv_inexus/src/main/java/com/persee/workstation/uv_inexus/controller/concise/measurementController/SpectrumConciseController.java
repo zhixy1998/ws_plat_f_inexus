@@ -25,6 +25,20 @@ public class SpectrumConciseController {
         return spectrumConciseService.queryNearestMethodData(updateBy,measureType);
     }
 
+    @GetMapping("queryNearestSampleData")
+    @ApiOperation("查询最近样品数据")
+    public Result queryNearestSampleData(@RequestParam String methodId,
+                                         @RequestParam(required = false) String type,
+                                         @RequestParam(required = false) Integer digit) {
+        return spectrumConciseService.querySampleDataList(methodId,type,digit);
+    }
+
+    @GetMapping("queryNearestMeasureData")
+    @ApiOperation("查询最近测量数据")
+    public Result queryNearestMeasureData(@RequestParam String methodId) {
+        return spectrumConciseService.queryNearestMeasureData(methodId);
+    }
+
     @GetMapping("searchMethodButton")
     @ApiOperation("查找方法按钮")
     public Result searchMethodButton(@RequestParam Integer peageNum,
