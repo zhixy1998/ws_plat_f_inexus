@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
@@ -54,6 +55,33 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.ok(new ArrayList<>());
         }
         return Result.ok(method);
+    }
+
+    /**
+     * 查询最近样品数据
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result queryNearestSampleData(String methodId) {
+        if (methodId == null){
+            return Result.fail("方法id不能为空");
+        }
+
+        // 根据任务id去查询最近创建的任务
+        QueryWrapper<TMeasureTask> wrapper = new QueryWrapper<>();
+        wrapper.eq("method_id",methodId);
+        return null;
+    }
+
+    /**
+     * 查询最近测量数据
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result queryNearestMeasureData(String methodId) {
+        return null;
     }
 
     /**

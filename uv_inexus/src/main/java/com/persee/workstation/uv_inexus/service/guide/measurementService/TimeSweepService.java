@@ -40,7 +40,7 @@ public interface TimeSweepService {
     Result deleteChangeListPort(String analysisId);
 
     // 恢复已删除数据接口
-    Result restoreDeletedListData(String taskId, String paramId, String type);
+    Result restoreDeletedListData(String taskId,String sampleId, String type,String analysisId);
 
     // 设置方法参数接口
     Result setMethodParameters(String methodId, String deviceSerialNumber);

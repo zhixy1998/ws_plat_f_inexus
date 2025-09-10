@@ -27,6 +27,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeWebSocket2 TimeWebSocket2;
 
     @Autowired
+    private TimeOneMeasureWebSocket timeOneMeasureWebSocket;
+
+    @Autowired
     private RationMeasureWebSocket RationWebSocket;
 
     @Autowired
@@ -47,13 +50,15 @@ public class WebSocketConfig implements WebSocketConfigurer {
         // 添加处理器，并设置允许的来源
         registry.addHandler(spectrumWebSocket, "/ws/device")
                 .setAllowedOrigins("*");
+        registry.addHandler(spectrumOneMeasureWebSocket, "/ws/deviceOneMeasure")
+                .setAllowedOrigins("*");
         registry.addHandler(photometricWebSocket, "/ws/photometric")
                 .setAllowedOrigins("*");
         registry.addHandler(RationWebSocket, "/ws/ration")
                 .setAllowedOrigins("*");
         registry.addHandler(TimeWebSocket, "/ws/timeScan")
                 .setAllowedOrigins("*");
-        registry.addHandler(spectrumOneMeasureWebSocket, "/ws/deviceOneMeasure")
+        registry.addHandler(timeOneMeasureWebSocket, "/ws/timeOneMeasure")
                 .setAllowedOrigins("*");
         registry.addHandler(myWebSocketHandler, "/ws/myWebSocket")
                 .setAllowedOrigins("*");

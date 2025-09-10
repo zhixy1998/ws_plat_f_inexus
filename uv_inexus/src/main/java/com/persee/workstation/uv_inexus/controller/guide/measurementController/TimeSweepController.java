@@ -59,7 +59,7 @@ public class TimeSweepController {
         return timeSweepService.sampleListPort(taskId,type, digit);
     }
 
-    @DeleteMapping("deleteSampleListPort")
+    @GetMapping("deleteSampleListPort")
     @ApiOperation("删除样品列表接口")
     public Result deleteSampleListPort(@RequestParam String sampleId,@RequestParam String taskId) {
         return timeSweepService.deleteSampleListPort(sampleId,taskId);
@@ -81,8 +81,8 @@ public class TimeSweepController {
 
     @GetMapping("restoreDeletedListData")
     @ApiOperation("恢复已删除数据接口")
-    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String paramId,@RequestParam String type){
-        return timeSweepService.restoreDeletedListData(taskId,paramId,type);
+    public Result restoreDeletedListData(@RequestParam String taskId,@RequestParam String sampleId,@RequestParam String type,@RequestParam String analysisId){
+        return timeSweepService.restoreDeletedListData(taskId,sampleId,type,analysisId);
     }
 
     @GetMapping("setMethodParameters")

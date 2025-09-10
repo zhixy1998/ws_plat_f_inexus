@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Constants {
     public Constants() {
@@ -49,6 +50,8 @@ public class Constants {
     public static volatile LocalDateTime endTime = null;
 
     public static volatile Boolean isRunning = true;
+
+    public static final ReentrantLock MEASURE_LOCK = new ReentrantLock(true);
 
     public static volatile List<String> field1Values = new CopyOnWriteArrayList<>();
     // 存储原始的数据
