@@ -610,21 +610,6 @@ public class RationServiceImpl implements RationService {
             return Result.ok(new ArrayList<>(ans));
         }
 
-        if (StringUtils.hasText(task.getTableInfo())) {
-            RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
-            if (shot != null && shot.getStandHead() != null) {
-                if (shot.getStandHead().getTaskHeads() != null) {
-                    ans.addAll(shot.getStandHead().getTaskHeads());
-                }
-                if (shot.getStandHead().getSampleHeads() != null) {
-                    ans.addAll(shot.getStandHead().getSampleHeads());
-                }
-            }
-        } else {
-            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
-            ans.addAll(preHead);
-        }
-
         boolean empty = false;
         if (StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -649,6 +634,22 @@ public class RationServiceImpl implements RationService {
                 }
             }
         }
+
+        if (StringUtils.hasText(task.getTableInfo())) {
+            RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
+            if (shot != null && shot.getStandHead() != null) {
+                if (shot.getStandHead().getSampleHeads() != null) {
+                    ans.addAll(shot.getStandHead().getSampleHeads());
+                }
+                if (shot.getStandHead().getTaskHeads() != null) {
+                    ans.addAll(shot.getStandHead().getTaskHeads());
+                }
+            }
+        } else {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            ans.addAll(preHead);
+        }
+
         List<HeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty);
         return Result.ok(result);
 
@@ -657,6 +658,11 @@ public class RationServiceImpl implements RationService {
     private List<HeadVO> dealHeads(List<HeadVO> heads, RationParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty) {
         List<String> waveLength = parameter.getWaveLength();
         Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
+        Map<String, Integer> los = new HashMap<>();
+        for (int i = 0; i < heads.size(); i++) {
+            los.put(heads.get(i).getIdentity(), i);
+        }
+        int num = heads.size() - 1;
 
         for (String s : waveLength) {
             String identity = s + "-"+ WaveLengthEnum.abs.getCode();
@@ -666,13 +672,17 @@ public class RationServiceImpl implements RationService {
 
             if (!map.containsKey(identity)) {
                 HeadVO newHead = new HeadVO(absName, identity, TableHeadILocateEnums.measure.getIdentity(), absName);
-                heads.add(newHead);
+                heads.add(num, newHead);
+                num++;
+            } else {
+                num = los.get(identity);
             }
 
             if (allDisplay) {
                 if (!map.containsKey(tPercentIdentity)) {
+                    num++;
                     HeadVO newHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
-                    heads.add(newHead);
+                    heads.add(num + 1, newHead);
                 }
             } else {
                 if (map.containsKey(tPercentIdentity)) {
@@ -741,20 +751,6 @@ public class RationServiceImpl implements RationService {
             ans.addAll(preHead);
             return Result.ok(new ArrayList<>(ans));
         }
-
-        if (StringUtils.hasText(task.getTableInfo())) {
-            RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
-            if (shot != null && shot.getUnknownHead() != null) {
-
-                if (shot.getUnknownHead().getTaskHeads() != null) {
-                    ans.addAll(shot.getUnknownHead().getTaskHeads());
-                }
-                if (shot.getUnknownHead().getSampleHeads() != null) {
-                    ans.addAll(shot.getUnknownHead().getSampleHeads());
-                }
-            }
-        }
-
         boolean empty = false;
         if (StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -778,6 +774,20 @@ public class RationServiceImpl implements RationService {
                 }
             }
         }
+        if (StringUtils.hasText(task.getTableInfo())) {
+            RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
+            if (shot != null && shot.getUnknownHead() != null) {
+                if (shot.getUnknownHead().getSampleHeads() != null) {
+                    ans.addAll(shot.getUnknownHead().getSampleHeads());
+                }
+                if (shot.getUnknownHead().getTaskHeads() != null) {
+                    ans.addAll(shot.getUnknownHead().getTaskHeads());
+                }
+
+            }
+        }
+
+
         List<HeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty);
         return Result.ok(result);
     }
@@ -2574,10 +2584,14 @@ public class RationServiceImpl implements RationService {
 
         if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
             TaskHeadSnapshot standHead = shot.getStandHead();
-            ans = standHead.getMapRelation();
+            if (standHead != null && standHead.getMapRelation() != null) {
+                ans = standHead.getMapRelation();
+            }
         } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
             TaskHeadSnapshot unknownHead = shot.getUnknownHead();
-            ans = unknownHead.getMapRelation();
+            if (unknownHead != null && unknownHead.getMapRelation() != null) {
+                ans = unknownHead.getMapRelation();
+            }
         }
         return R.ok(ans);
 

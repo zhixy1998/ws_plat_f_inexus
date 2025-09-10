@@ -446,7 +446,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.ok(preHead);
         } else {
             TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
-            if (snapshot.getSampleHeads() != null && snapshot.getSampleHeads().isEmpty()) {
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
                 return Result.ok(snapshot.getSampleHeads());
             } else {
                 List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
@@ -595,63 +595,20 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         }
 
+        List<HeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay);
 
-        if (waveLengths != null && !waveLengths.isEmpty()) {
-
-            for (String waveLength : waveLengths) {
-                StringBuilder s1 = new StringBuilder();
-                StringBuilder s2 = new StringBuilder();
-
-                if (parameter.getLuminosity().equals(WaveLengthEnum.es.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())) {
-                    String luminosity = parameter.getLuminosity();
-                    String name = WaveLengthEnum.getName(luminosity);
-
-                    s1.append(waveLength).append(name);
-                    s2.append(waveLength).append("-").append(luminosity);
-                    ans.add(new HeadVO(s1.toString(), s2.toString(), "measureData"));
-                    continue;
-                }
-
-                if (!allDisplay) {
-                    String luminosity = parameter.getLuminosity();
-                    String name = WaveLengthEnum.getName(luminosity);
-
-                    s1.append(waveLength).append(name);
-                    s2.append(waveLength).append("-").append(luminosity);
-                    ans.add(new HeadVO(s1.toString(), s2.toString(), "measureData"));
-                    continue;
-                }
-
-                s1.append(waveLength).append(WaveLengthEnum.abs.getName());
-                s2.append(waveLength).append("-").append(WaveLengthEnum.abs.getCode());
-                HeadVO headVO1 = new HeadVO(s1.toString(), s2.toString(), "measureData");
-                ans.add(headVO1);
-
-                s1.setLength(0);
-                s2.setLength(0);
-                s1.append(waveLength).append(WaveLengthEnum.tPercent.getName());
-                s2.append(waveLength).append("-").append(WaveLengthEnum.tPercent.getCode());
-                HeadVO headVO2 = new HeadVO(s1.toString(), s2.toString(), "measureData");
-                ans.add(headVO2);
-            }
-        }
-        if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
-
-            for (PreCountResultParam param : parameter.getResultParams()) {
-                StringBuilder s2 = new StringBuilder();
-                String s1 = param.getResultName() + "(" + param.getUnit() + ")";
-                s2.append(param.getResultIdentity()).append("-").append(param.getFormulaText());
-                HeadVO headVO = new HeadVO(s1, s2.toString(), "countData");
-                ans.add(headVO);
-            }
-        }
-
-        return Result.ok(new ArrayList<>(ans));
+        return Result.ok(vos);
     }
 
-    private List<HeadVO> dealHeads(List<HeadVO> heads, PhotometricParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty) {
+    private List<HeadVO> dealHeads(List<HeadVO> heads, PhotometricParameter parameter, String sampleKind, Boolean allDisplay) {
         List<String> waveLength = parameter.getWaveLength();
         Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
+        Map<String, Integer> los = new HashMap<>();
+        for (int i = 0; i < heads.size(); i++) {
+            los.put(heads.get(i).getIdentity(), i);
+        }
+        int num = heads.size() - 1;
+
         String mode = parameter.getLuminosity();
         if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
             for (String s : waveLength) {
@@ -659,7 +616,10 @@ public class PhotometricServiceImpl implements PhotometricService {
                 String name = s + WaveLengthEnum.getName(mode);
                 if (!map.containsKey(identity)) {
                     HeadVO newHead = new HeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
-                    heads.add(newHead);
+                    heads.add(num, newHead);
+                    num++;
+                } else {
+                    num = los.get(identity);
                 }
             }
         } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
@@ -671,12 +631,16 @@ public class PhotometricServiceImpl implements PhotometricService {
 
                 if (!map.containsKey(absIdentity)) {
                     HeadVO newHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
-                    heads.add(newHead);
+                    heads.add(num, newHead);
+                    num++;
+                } else {
+                    num = los.get(absIdentity);
                 }
                 if (allDisplay) {
                     if (!map.containsKey(tPercentIdentity)) {
+                        num++;
                         HeadVO newHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
-                        heads.add(newHead);
+                        heads.add(num + 1, newHead);
                     }
                 } else {
                     if (map.containsKey(tPercentIdentity)) {
