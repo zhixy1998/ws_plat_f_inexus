@@ -99,7 +99,7 @@ public class DevMessageUtil {
                     findDeviceVO.setIsInited(2);
                 }
             }
-            if (cmdId.equals(FindDevEnum.GetAccessoryType.getComId()) {
+            if (cmdId.equals(FindDevEnum.GetAccessoryType.getComId())) {
 
                 Integer s = (Integer) parse;
                 findDeviceVO.setAttachmentType(s);
