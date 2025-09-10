@@ -59,7 +59,7 @@ public class FMeasureMethod {
 
     // 方法使用时间
     @TableField("method_use_time")
-    private String methodUseTime;
+    private LocalDateTime methodUseTime;
 
     // 是否草稿(0.不是草稿 1.是草稿)
     @TableField("is_draft")
