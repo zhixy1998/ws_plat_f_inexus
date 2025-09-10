@@ -135,6 +135,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (!StringUtils.hasText(methodDto.getMethodId())) {
             return Result.fail("缺少方法");
         }
+        if(methodDto.getMethodName().length() >= 256){
+            return Result.fail("方法名格式错误");
+        }
         // 根据方法id查询方法
         TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getMethodId());
         if (measureMethod==null){
@@ -467,6 +470,9 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         if (!StringUtils.hasText(method.getMeasurementParamInfo())) {
             return Result.fail("未查询到该方法参数");
+        }
+        if(methodId.length() != 32){
+            return  Result.fail("方法参数格式错误");
         }
         PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
 
@@ -1492,6 +1498,9 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result<InputParam> insertMethodParameter(InputParam methodParameter) {
+        if(methodParameter.getParamName().length() >= 256){
+            return Result.fail("名称格式错误");
+        }
         String methodMark = methodParameter.getResultIdentity();
         String regex = "^[A-Z]\\d{1,99}$";
         Pattern pattern = Pattern.compile(regex);

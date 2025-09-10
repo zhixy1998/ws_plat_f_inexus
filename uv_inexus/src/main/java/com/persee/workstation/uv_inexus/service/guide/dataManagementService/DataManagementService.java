@@ -6,9 +6,11 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SelectMethodsByTypeResult;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
+
 
 
 import java.util.List;
@@ -16,11 +18,11 @@ import java.util.List;
 public interface DataManagementService {
 
 
-    R<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam);
+    Result<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam);
 
 
 
-    R<MethodAndTasks> getMethodsAndTasksNum(String userKey);
+    Result<MethodAndTasks> getMethodsAndTasksNum(String userKey);
 
-    R<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam);
+    Result<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam);
 }

@@ -12,6 +12,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SelectMethodsByTypeResult;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
@@ -50,7 +51,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 方法任务全部数据返回
  */
     @Override
-    public R<MethodAndTasks> getMethodsAndTasksNum(String userKey) {
+    public Result<MethodAndTasks> getMethodsAndTasksNum(String userKey) {
         LambdaQueryWrapper<SystemUserManagePO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SystemUserManagePO::getUserName, userKey);
         SystemUserManagePO user = systemUserManageDAO.selectOne(queryWrapper);
@@ -78,7 +79,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             methodAndTasks.setMethodCounts(results);
         } catch (Exception e) {
             log.error("根据类型分类查询方法失败", e);
-            return R.fail("查询失败");
+            return Result.fail("查询失败");
         }
         //任务统计封装
         TaskCount taskCount = new TaskCount();
@@ -93,18 +94,18 @@ public class DataManagementServiceImpl implements DataManagementService {
         taskCount.setAll(getTaskCountByTimeRange(null, null)); // 所有数据
 
         // 将任务统计结果设置到 methodAndTasks 中
-        methodAndTasks.setTaskCounts(taskCount); // 确保 MethodAndTasks 类中有 taskCount 字段
+        methodAndTasks.setTaskCounts(taskCount);
 
-        return R.ok(methodAndTasks);
+        return Result.ok(methodAndTasks);
 
 
     }
 
     @Override
-    public R<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam) {
+    public Result<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam) {
       // 参数校验
       if (projectQueryParam == null) {
-          return R.fail("查询参数不能为空");
+          return Result.fail("查询参数不能为空");
       }
 
         // 分页参数默认值设置
@@ -131,7 +132,7 @@ public class DataManagementServiceImpl implements DataManagementService {
                 .collect(Collectors.toList());
         dtoPage.setRecords(dtoList);
 
-        return R.ok(dtoPage);
+        return Result.ok(dtoPage);
     }
 
     private ProjectManagementDto projectConvertToDto(TMeasureProject tMeasureProject) {
@@ -196,10 +197,10 @@ public class DataManagementServiceImpl implements DataManagementService {
     查询全部任务
      */
     @Override
-    public R<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam) {
+    public Result<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam) {
         // 参数校验
         if (taskQueryParam == null) {
-            return R.fail("查询参数不能为空");
+            return Result.fail("查询参数不能为空");
         }
 
         // 分页参数默认值设置
@@ -231,7 +232,7 @@ public class DataManagementServiceImpl implements DataManagementService {
                 .collect(Collectors.toList());
         dtoPage.setRecords(dtoList);
 
-        return R.ok(dtoPage);
+        return Result.ok(dtoPage);
     }
 
     private TaskManagementDto convertToDto(TMeasureTask entity) {

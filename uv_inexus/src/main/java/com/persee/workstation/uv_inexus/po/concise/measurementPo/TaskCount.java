@@ -17,6 +17,4 @@ public class TaskCount {
     private TaskCountByTime threeYears;
     @ApiModelProperty("所有")
     private TaskCountByTime all;
-
-
 }
