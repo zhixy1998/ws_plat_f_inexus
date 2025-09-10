@@ -132,6 +132,13 @@ public class ExperimentTestController {
         return experimentTestService.reportDataQuery(taskId,reportName,sampleId);
     }
 
+    @GetMapping("queryReportTableData")
+    @ApiOperation("查询报告表格数据")
+    public Result reportTableDataQuery(@RequestParam String taskId,
+                                  @RequestParam String sampleId){
+        return experimentTestService.newReportTableDataQuery(taskId, sampleId);
+    }
+
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告通用数据接口")
     public Result obtainReportParameters(@RequestParam String taskId) {

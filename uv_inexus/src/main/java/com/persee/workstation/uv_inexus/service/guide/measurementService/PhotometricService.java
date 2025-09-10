@@ -7,7 +7,6 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
@@ -87,7 +86,7 @@ public interface PhotometricService {
     /**
      * 前端调用保存数据，用于保存相关内容，如采样时间，备注等
      */
-    Result saveDataInfo(RemarkChangeSaveVO vo);
+    Result saveDataInfo(SaveDataVO vo);
 
     /**
      * 校零
@@ -122,7 +121,7 @@ public interface PhotometricService {
     /**
      * 保存映射关系及表头信息
      */
-    R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshot taskHeadSnapshot);
+    R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO taskHeadSnapshot);
 
     Result<InputParam> insertMethodParameter(InputParam methodParameterDto);
 }

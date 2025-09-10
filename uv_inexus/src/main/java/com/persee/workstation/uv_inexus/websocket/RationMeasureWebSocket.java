@@ -80,10 +80,10 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
     TMeasureTaskAttachmentService attachmentService;
 
     @Value("1")
-    private String right;
+    String right;
 
     @Value("0")
-    private String error;
+    String error;
 
     private static volatile int status = 0;
 
@@ -355,6 +355,8 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
                 }
                 specimen.setIsTested(right);
             }
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            tMeasureTaskService.updateById(task);
 
             //所有样品测完，拟合曲线
             //拟合曲线
@@ -1005,11 +1007,11 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
         }
         ans.setTaskId(task.getId());
         ans.setSampleId(sample.getId());
-        ans.setStartTime(task.getStartTime());
-        ans.setEndTime(task.getEndTime());
-        ans.setCountData(countData);
+        ans.setStartTime(startTime);
         ans.setEndTime(endTime);
+        ans.setCountData(countData);
         ans.setMachineData(machineData);
+        ans.setSampleTime(startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         ans.setWavelengthData(originDataList);
 
         return R.ok(ans);

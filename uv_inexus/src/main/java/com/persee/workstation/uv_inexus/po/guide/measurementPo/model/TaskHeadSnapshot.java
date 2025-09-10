@@ -12,7 +12,7 @@ public class TaskHeadSnapshot {
     @ApiModelProperty("任务id")
     private String taskId;
 
-    @ApiModelProperty("任务表头信息，包含全部表头")
+    @ApiModelProperty("任务表头信息，包含除样品和公式外，所有表头")
     private List<HeadVO> taskHeads;
 
     @ApiModelProperty("映射关系")

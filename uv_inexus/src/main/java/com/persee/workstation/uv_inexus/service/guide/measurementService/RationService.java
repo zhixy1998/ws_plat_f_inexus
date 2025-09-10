@@ -6,7 +6,9 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
 import java.util.List;
@@ -72,8 +74,6 @@ public interface RationService {
 
     Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
 
-
-
     /**
      * 拟合曲线
      * @param originData 原始数据
@@ -105,4 +105,21 @@ public interface RationService {
     Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 
     Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy);
+
+    /**
+     * 查询可绑定的方法参数
+     */
+    R<List<InputParam>> queryInputParam(String methodId);
+
+    /**
+     * 查询绑定映射关系
+     */
+    R<List<InputParamMapTableHead>> queryInputParamMapTableHead(String taskId, String sampleKind);
+
+    /**
+     * 保存映射关系及表头信息
+     */
+    R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO taskHeadSnapshot);
+
+
 }
