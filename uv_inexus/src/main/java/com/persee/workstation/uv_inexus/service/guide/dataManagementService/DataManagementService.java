@@ -6,28 +6,21 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SelectMethodsByTypeResult;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 
 
 import java.util.List;
 
 public interface DataManagementService {
-    R<List<MethodManagementDto>> getMethodManagement();
 
 
-    R<Page<MethodManagementDto>> selectMethods(String selectParm, Integer pageNum, Integer pageSize);
+    R<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam);
 
-    R<List<SelectMethodsByTypeResult>> selectMethodsByType();
 
-    R<List<ProjectManagementDto>> getProjectsManagementList();
 
-    R<List<TaskManagementDto>> getTasksManagementList();
+    R<MethodAndTasks> getMethodsAndTasksNum(String userKey);
 
-    R<Page<ProjectManagementDto>> selectProjects(String selectParm, Integer pageNum, Integer pageSize);
-
-    R<List<Integer>> getMethodsAndTasks(String userKey);
-
-    R<List<Integer>> getMethodsAndSuccessful(String userKey);
-
-    R<List<Integer>> getTasksAndSuccessful(String userKey);
-
+    R<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam);
 }

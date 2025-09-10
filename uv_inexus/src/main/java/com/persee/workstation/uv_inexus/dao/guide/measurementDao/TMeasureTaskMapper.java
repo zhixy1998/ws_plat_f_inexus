@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 测量任务表(TMeasureTask)表数据库访问层
@@ -27,6 +28,7 @@ public interface TMeasureTaskMapper extends BaseMapper<TMeasureTask> {
     Integer getFinishTaskNum(String userId);
 
     List<TaskBaseVO> getAllTask(@Param("projectId") String projectId, @Param("measureType") String measureType);
-
+    @Select("select method_key from t_measure_task where user_id = #{userId}")
+    Set<String> selectMethodIds(String userId);
 }
 

@@ -25,5 +25,9 @@ public interface TMeasureMethodMapper extends BaseMapper<TMeasureMethod> {
     List<SelectMethodsByTypeResult> selectMethodsGroupByType();
 
     @Select("select count(*) from t_measure_method where method_creator = #{methodCreator}")
-    Integer getMethodsNum(@Param("methodCreator") String userKey);}
+    Integer getMethodsNum(@Param("methodCreator") String userKey);
+
+    @Select("select * from t_measure_method where method_creator = #{userName}")
+    List<TMeasureMethod> selectMethods(@Param("userName") String userName);
+}
 

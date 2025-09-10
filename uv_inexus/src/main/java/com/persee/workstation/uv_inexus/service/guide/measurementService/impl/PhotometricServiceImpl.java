@@ -47,6 +47,8 @@ import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum.sampleId;
@@ -125,7 +127,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public Result updateMethodParameter(PhotometricMethodParameterDto methodDto) {
+    public Result<String> updateMethodParameter(PhotometricMethodParameterDto methodDto) {
         // 根据方法id查询当前方法
         if (!StringUtils.hasText(methodDto.getMethodId())) {
             return Result.fail("缺少方法");
@@ -1407,6 +1409,19 @@ public class PhotometricServiceImpl implements PhotometricService {
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
         return tMeasureTaskService.updateById(task) ? R.ok(true) : R.fail("保存失败");
+    }
+
+    @Override
+    public Result<InputParam> insertMethodParameter(InputParam methodParameter) {
+        String methodMark = methodParameter.getResultIdentity();
+        String regex = "^[A-Z]\\d{1,99}$";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(methodMark);
+        boolean res = matcher.matches();
+        if (!res) {
+            return Result.fail();
+        }
+        return Result.ok(methodParameter);
     }
 
 

@@ -1,9 +1,6 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
@@ -42,10 +39,17 @@ public class PhotometricController {
     @Autowired
     SampleHeadTemplateService sampleHeadTemplateService;
 
+
     @PostMapping("updateMethodParameter")
     @ApiOperation("方法参数修改接口")
-    public Result updateMethodParameter(@RequestBody PhotometricMethodParameterDto methodDto) {
+    public Result<String> updateMethodParameter(@RequestBody PhotometricMethodParameterDto methodDto) {
         return photometricService.updateMethodParameter(methodDto);
+    }
+    @PostMapping
+    @ApiOperation("新增样品输入参数")
+    public Result<InputParam> insertMethodParameter(@RequestBody InputParam methodParameterDto) {
+        return photometricService.insertMethodParameter(methodParameterDto);
+
     }
 
     @GetMapping("queryMethodParam")
