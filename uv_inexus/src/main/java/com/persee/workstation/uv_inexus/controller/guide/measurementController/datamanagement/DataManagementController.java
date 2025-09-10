@@ -26,7 +26,6 @@ public class DataManagementController {
     @ApiOperation("总任务数，已完成任务数，已完成方法数，已完成任务数")
     public Result<MethodAndTasks> getMethodsAndTasksNum(@RequestParam("updateBy") String userKey) {
         return dataManagementService.getMethodsAndTasksNum(userKey);
-
     }
     //项目列表
     @PostMapping("/getProjectsManagementList")
