@@ -10,8 +10,8 @@ public interface SpectrumConciseService {
     // 查询最近方法数据
     Result queryNearestMethodData(String updateBy, String measureType);
 
-    // 查询最近样品数据
-    Result queryNearestSampleData(String methodId);
+    // 查询样品数据列表
+    Result querySampleDataList(String methodId,String type,Integer digit);
 
     // 查询最近测量数据
     Result queryNearestMeasureData(String methodId);

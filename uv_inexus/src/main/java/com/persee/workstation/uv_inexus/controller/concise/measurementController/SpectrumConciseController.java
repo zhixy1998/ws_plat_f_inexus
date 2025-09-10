@@ -27,8 +27,10 @@ public class SpectrumConciseController {
 
     @GetMapping("queryNearestSampleData")
     @ApiOperation("查询最近样品数据")
-    public Result queryNearestSampleData(@RequestParam String methodId) {
-        return spectrumConciseService.queryNearestSampleData(methodId);
+    public Result queryNearestSampleData(@RequestParam String methodId,
+                                         @RequestParam(required = false) String type,
+                                         @RequestParam(required = false) Integer digit) {
+        return spectrumConciseService.querySampleDataList(methodId,type,digit);
     }
 
     @GetMapping("queryNearestMeasureData")
