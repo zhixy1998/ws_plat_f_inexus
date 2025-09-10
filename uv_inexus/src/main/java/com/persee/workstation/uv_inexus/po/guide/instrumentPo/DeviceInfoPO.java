@@ -37,4 +37,8 @@ public class DeviceInfoPO extends BasePO {
     @ApiModelProperty("端口号")
     @TableField("device_port")
     private Integer devicePort;
+
+    @ApiModelProperty("附件类型")
+    @TableField("attachment_type")
+    private Integer attachmentType;
 }

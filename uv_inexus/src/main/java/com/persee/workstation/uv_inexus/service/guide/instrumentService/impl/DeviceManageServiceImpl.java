@@ -90,6 +90,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         vo.setConnectMessage(connect);
 
+        String attachmentType = infoService.getAttachmentType(deviceSerialNumber);
+        vo.setAppendMessage(attachmentType);
+
         for (InitRecordPO recordPO : initList) {
             DeviceInitInfo info = new DeviceInitInfo();
             info.setInitTaskNum(recordPO.getInitTaskNum());

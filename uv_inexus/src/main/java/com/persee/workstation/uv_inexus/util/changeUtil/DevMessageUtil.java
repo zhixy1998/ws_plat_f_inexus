@@ -98,8 +98,11 @@ public class DevMessageUtil {
                 } else {
                     findDeviceVO.setIsInited(2);
                 }
+            }
+            if (cmdId.equals(FindDevEnum.GetAccessoryType.getComId()) {
 
-
+                Integer s = (Integer) parse;
+                findDeviceVO.setAttachmentType(s);
             }
         }
         return R.ok(findDeviceVO);
