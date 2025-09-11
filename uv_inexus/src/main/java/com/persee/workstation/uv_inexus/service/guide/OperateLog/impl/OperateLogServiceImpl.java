@@ -1,5 +1,7 @@
 package com.persee.workstation.uv_inexus.service.guide.OperateLog.impl;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -16,50 +18,59 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 操作日志服务实现类
+ * 操作日志服务实现类（已修复无效字段问题）
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor // 构造器注入，替代@Autowired
+@RequiredArgsConstructor
 public class OperateLogServiceImpl implements OperateLogService {
 
-    // 注入日志DAO（继承MyBatis-Plus的BaseMapper，自带selectPage等方法）
     private final OperateLogMapper operateLogMapper;
+
+    // 表t_sys_operate_log中存在的有效查询字段（白名单）
+    // 请根据你的实际表结构修改此列表
+    private static final List<String> VALID_FIELDS = Arrays.asList(
+        "username",    // 操作用户名
+        "module",      // 操作模块
+        "description", // 操作描述
+        "ip",          // 操作IP
+        "status",      // 操作状态
+        "method"       // 调用方法
+    );
 
     @Override
     public IPage<OperateLogPO> findLogPage(Page<OperateLogPO> page, Map<String, String> params) {
-        // 1. 构建查询条件（动态模糊查询）
         QueryWrapper<OperateLogPO> queryWrapper = new QueryWrapper<>();
         
-        // 2. 遍历参数，忽略分页相关参数（pageNum、pageSize），其他参数做模糊匹配
+        // 遍历参数，只处理白名单中的字段
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            String key = entry.getKey(); // 查询字段名（需与OperateLogPO的属性名一致）
-            String value = entry.getValue(); // 查询关键词
+            String key = entry.getKey();
+            String value = entry.getValue();
             
-            // 跳过分页参数，避免错误查询
-            if ("pageNum".equals(key) || "pageSize".equals(key)) {
+            // 1. 跳过分页参数和无效字段
+            if ("pageNum".equals(key) || "pageSize".equals(key) || !VALID_FIELDS.contains(key)) {
+                // 记录无效字段（便于调试）
+                if (!VALID_FIELDS.contains(key) && !"pageNum".equals(key) && !"pageSize".equals(key)) {
+                    log.warn("忽略无效查询字段: {}", key);
+                }
                 continue;
             }
             
-            // 关键词非空时，添加模糊查询条件（like '%value%'）
+            // 2. 有效字段且值非空时，添加模糊查询条件
             if (StringUtils.isNotBlank(value)) {
                 queryWrapper.like(key, value);
-                log.info("添加模糊查询条件：{} LIKE %{}%", key, value);
+                log.info("添加查询条件: {} LIKE %{}%", key, value);
             }
         }
         
-        // 3. 按日志记录时间倒序（最新的日志排在前面，符合业务习惯）
+        // 3. 按创建时间倒序
         queryWrapper.orderByDesc("create_time");
         
-        // 4. 调用MyBatis-Plus分页查询方法
+        // 4. 执行分页查询
         IPage<OperateLogPO> resultPage = operateLogMapper.selectPage(page, queryWrapper);
         
-        // 5. 打印分页日志（调试用）
-        log.info("日志分页查询结果：总记录数={}, 当前页={}, 页大小={}, 当前页记录数={}",
-                resultPage.getTotal(),
-                resultPage.getCurrent(),
-                resultPage.getSize(),
-                resultPage.getRecords().size());
+        log.info("日志查询结果: 总记录数={}, 当前页={}", 
+                resultPage.getTotal(), resultPage.getCurrent());
         
         return resultPage;
     }
