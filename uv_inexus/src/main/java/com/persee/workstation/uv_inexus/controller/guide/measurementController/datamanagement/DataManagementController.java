@@ -3,10 +3,12 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController.
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.UnFinishTasksAndNum;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import io.swagger.annotations.Api;
@@ -21,7 +23,13 @@ public class DataManagementController {
     @Autowired
     private DataManagementService dataManagementService;
 
+    @PostMapping("/unFinishTasksAndNum")
+    @ApiOperation("查询未完成任务")
+    public Result<UnFinishTasksAndNum>  unFinishTasksAndNum(@RequestBody UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
+      return   dataManagementService.unFinishTasksAndNum(unFinishTasksAndNumParam);
 
+
+    }
     @GetMapping("/methodsAndTasksNum")
     @ApiOperation("总任务数，已完成任务数，已完成方法数，已完成任务数")
     public Result<MethodAndTasks> getMethodsAndTasksNum(@RequestParam("updateBy") String userKey) {

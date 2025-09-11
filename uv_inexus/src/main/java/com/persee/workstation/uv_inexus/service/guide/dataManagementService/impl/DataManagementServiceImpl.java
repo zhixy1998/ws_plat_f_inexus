@@ -1,24 +1,24 @@
 package com.persee.workstation.uv_inexus.service.guide.dataManagementService.impl;
 
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureMethodMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureProjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SelectMethodsByTypeResult;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
-import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
+
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import lombok.extern.slf4j.Slf4j;
@@ -26,10 +26,15 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+
 import java.time.LocalDateTime;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 
 @Service
 @Slf4j
@@ -43,13 +48,15 @@ public class DataManagementServiceImpl implements DataManagementService {
     private TMeasureTaskMapper taskManagementMapper;
     @Autowired
     private SystemUserManageDAO systemUserManageDAO;
+    @Autowired
+    private ObjectMapper objectMapper;
 
 
     //方法
-    
-/*
-方法任务全部数据返回
- */
+
+    /*
+    方法任务全部数据返回
+     */
     @Override
     public Result<MethodAndTasks> getMethodsAndTasksNum(String userKey) {
         LambdaQueryWrapper<SystemUserManagePO> queryWrapper = new LambdaQueryWrapper<>();
@@ -103,10 +110,10 @@ public class DataManagementServiceImpl implements DataManagementService {
 
     @Override
     public Result<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam) {
-      // 参数校验
-      if (projectQueryParam == null) {
-          return Result.fail("查询参数不能为空");
-      }
+        // 参数校验
+        if (projectQueryParam == null) {
+            return Result.fail("查询参数不能为空");
+        }
 
         // 分页参数默认值设置
         int pageNum = projectQueryParam.getPage() != null ? projectQueryParam.getPage() : 1;
@@ -135,19 +142,81 @@ public class DataManagementServiceImpl implements DataManagementService {
         return Result.ok(dtoPage);
     }
 
+    @Override
+    public Result<UnFinishTasksAndNum> unFinishTasksAndNum(UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
+        if (unFinishTasksAndNumParam == null) {
+            return Result.fail("参数不能为空");
+        }
+        if (unFinishTasksAndNumParam.getNeedSelectNum() == null || unFinishTasksAndNumParam.getNeedSelectNum() == 0) {
+            return Result.fail("数量不能为0");
+        }
+        if (unFinishTasksAndNumParam.getNeedSelectNum() > 50){
+            return Result.fail("数量不能大于50");
+        }
+        String taskType = unFinishTasksAndNumParam.getTaskType();
+        int needSelectNum = unFinishTasksAndNumParam.getNeedSelectNum();
+        LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureTask::getMeasureType, taskType);
+        List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(queryWrapper);
+        List<TMeasureTaskDto> newDtolist = new ArrayList<>();
+        for (int i = 0; i < tMeasureTasks.size(); i++) {
+            String taskString = "";
+            if (tMeasureTasks.get(i).getIsDelete().equals("1")) {
+                taskString = TaskEnum.getTaskStr("1");
+            } else {
+                taskString = TaskEnum.getTaskStr("0");
+            }
+
+
+            TMeasureTaskDto tMeasureTaskDto = new TMeasureTaskDto();
+            BeanUtils.copyProperties(tMeasureTasks.get(i), tMeasureTaskDto);
+            tMeasureTaskDto.setStatus(taskString);
+
+            String methodKey =tMeasureTasks.get(i).getMethodKey();
+            LambdaQueryWrapper<TMeasureMethod> queryWrapper1 = new LambdaQueryWrapper<>();
+            queryWrapper1.eq(TMeasureMethod::getId, methodKey);
+            TMeasureMethod tMeasureMethod = methodManagementMapper.selectOne(queryWrapper1);
+            String methodName = tMeasureMethod.getMethodName();
+            tMeasureTaskDto.setMethodName(methodName);
+
+            String projectItemKey = tMeasureTasks.get(i).getProjectItemKey();
+            LambdaQueryWrapper<TMeasureProject> queryWrapper2 = new LambdaQueryWrapper<>();
+            queryWrapper2.eq(TMeasureProject::getId, projectItemKey);
+            TMeasureProject tMeasureProject = projectManagementMapper.selectOne(queryWrapper2);
+            String projectName = tMeasureProject.getProjectName();
+            tMeasureTaskDto.setProjectName(projectName);
+            String sampleKey = tMeasureTasks.get(i).getSampleKey();
+
+            List<TaskSpecimen> taskSpecimens = com.alibaba.fastjson.JSON.parseArray(sampleKey, TaskSpecimen.class);
+            tMeasureTaskDto.setSampleNumber(taskSpecimens.size());
+            newDtolist.add(tMeasureTaskDto);
+        }
+
+        UnFinishTasksAndNum unFinishTasksAndNum = new UnFinishTasksAndNum();
+        List<TMeasureTaskDto> newList = new ArrayList<>();
+        for (int i = 0; i <(needSelectNum < newDtolist.size() ? needSelectNum : newDtolist.size()); i++) {
+            TMeasureTaskDto tMeasureTaskDto = newDtolist.get(i);
+            newList.add(tMeasureTaskDto);
+        }
+        unFinishTasksAndNum.setTasks(newList);
+        return Result.ok(unFinishTasksAndNum);
+
+
+    }
+
     private ProjectManagementDto projectConvertToDto(TMeasureProject tMeasureProject) {
         String id = tMeasureProject.getId();
         ProjectManagementDto dto = new ProjectManagementDto();
         BeanUtils.copyProperties(tMeasureProject, dto);
         LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TMeasureTask::getProjectItemKey,id);
+        queryWrapper.eq(TMeasureTask::getProjectItemKey, id);
         List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(queryWrapper);
         int size = tMeasureTasks.size();
         Long size1 = (long) size;
         dto.setTaskNum(size1);
 
         LambdaQueryWrapper<TMeasureMethod> meQueryWrapper = new LambdaQueryWrapper<>();
-        meQueryWrapper.eq(TMeasureMethod::getProjectItemKey,id);
+        meQueryWrapper.eq(TMeasureMethod::getProjectItemKey, id);
         List<TMeasureMethod> tMeasureMethods = methodManagementMapper.selectList(meQueryWrapper);
 
         int size3 = tMeasureMethods.size();
@@ -239,11 +308,11 @@ public class DataManagementServiceImpl implements DataManagementService {
         TaskManagementDto dto = new TaskManagementDto();
         BeanUtils.copyProperties(entity, dto);
         LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TMeasureMethod::getId,entity.getMethodKey());
+        queryWrapper.eq(TMeasureMethod::getId, entity.getMethodKey());
         TMeasureMethod tMeasureMethod = methodManagementMapper.selectOne(queryWrapper);
         dto.setMethodName(tMeasureMethod.getMethodName());
         LambdaQueryWrapper<TMeasureProject> proQueryWrapper = new LambdaQueryWrapper<>();
-        proQueryWrapper.eq(TMeasureProject::getId,entity.getProjectItemKey());
+        proQueryWrapper.eq(TMeasureProject::getId, entity.getProjectItemKey());
         TMeasureProject tMeasureProject = projectManagementMapper.selectOne(proQueryWrapper);
         dto.setProjectName(tMeasureProject.getProjectName());
         return dto;
