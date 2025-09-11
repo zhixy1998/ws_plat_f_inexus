@@ -575,7 +575,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 }
             }
         } else {
-            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
             ans.addAll(preHead);
         }
 
@@ -595,32 +595,41 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         }
 
-        List<HeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay);
+        List<HeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay);
 
         return Result.ok(vos);
     }
 
-    private List<HeadVO> dealHeads(List<HeadVO> heads, PhotometricParameter parameter, String sampleKind, Boolean allDisplay) {
+    private List<HeadVO> dealHeads(List<HeadVO> heads, PhotometricParameter parameter, Boolean allDisplay) {
         List<String> waveLength = parameter.getWaveLength();
         Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
-        Map<String, Integer> los = new HashMap<>();
-        for (int i = 0; i < heads.size(); i++) {
-            los.put(heads.get(i).getIdentity(), i);
+
+        Map<String, List<HeadVO>> headsMap = new HashMap<>();
+
+        Map<String, HeadVO> analyzeMap = new HashMap<>();
+
+        for (HeadVO head : heads) {
+            headsMap.computeIfAbsent(head.getLocate(), k -> new ArrayList<>()).add(head);
+            if (head.getLocate().equals(TableHeadILocateEnums.measure.getIdentity())) {
+                map.put(head.getIdentity(), head);
+            }
+            if (head.getLocate().equals(TableHeadILocateEnums.analyze.getIdentity())) {
+                analyzeMap.put(head.getIdentity(), head);
+            }
         }
-        int num = heads.size() - 1;
+
+        List<HeadVO> allMeasureHeads = new ArrayList<>();
 
         String mode = parameter.getLuminosity();
         if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
             for (String s : waveLength) {
                 String identity = s + "-"+ mode;
                 String name = s + WaveLengthEnum.getName(mode);
-                if (!map.containsKey(identity)) {
-                    HeadVO newHead = new HeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
-                    heads.add(num, newHead);
-                    num++;
-                } else {
-                    num = los.get(identity);
+                HeadVO newHead = new HeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
+                if (map.containsKey(identity)) {
+                    newHead = map.get(identity);
                 }
+                allMeasureHeads.add(newHead);
             }
         } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
             for (String s : waveLength) {
@@ -629,43 +638,61 @@ public class PhotometricServiceImpl implements PhotometricService {
                 String absName = s + WaveLengthEnum.abs.getName();
                 String tPercentName = s + WaveLengthEnum.tPercent.getName();
 
-                if (!map.containsKey(absIdentity)) {
-                    HeadVO newHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
-                    heads.add(num, newHead);
-                    num++;
-                } else {
-                    num = los.get(absIdentity);
+                HeadVO absHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
+                HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
+
+                if (map.containsKey(absIdentity)) {
+                    absHead = map.get(absIdentity);
                 }
+                allMeasureHeads.add(absHead);
+
                 if (allDisplay) {
-                    if (!map.containsKey(tPercentIdentity)) {
-                        num++;
-                        HeadVO newHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
-                        heads.add(num + 1, newHead);
-                    }
-                } else {
                     if (map.containsKey(tPercentIdentity)) {
-                        HeadVO vo = map.get(tPercentIdentity);
-                        heads.remove(vo);
+                        tPercentHead = map.get(tPercentIdentity);
                     }
+                    allMeasureHeads.add(tPercentHead);
                 }
             }
-
         }
+        List<HeadVO> ans = new ArrayList<>();
+        List<HeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
+        if (systemHeads != null) ans.addAll(systemHeads);
+
+        List<HeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
+        if (sampleHeads != null) ans.addAll(sampleHeads);
+        ans.addAll(allMeasureHeads);
+        List<HeadVO> taskHeads = headsMap.get(TableHeadILocateEnums.data.getIdentity());
+        if (taskHeads != null)ans.addAll(taskHeads);
 
         List<PreCountResultParam> resultParams = parameter.getResultParams();
+        List<HeadVO> headAnalyze = new ArrayList<>();
         for (PreCountResultParam results : resultParams) {
             //TODO 方法参数标识待定，后续再改动
             if (!StringUtils.hasText(results.getParam())) {
                 results.setParam(results.getResultIdentity() + "-" + results.getFormulaText());
             }
-            if (!map.containsKey(results.getParam())) {
-                String name = results.getResultName() + "(" + results.getUnit() + ")";
-                HeadVO newHead = new HeadVO(name, results.getParam(), TableHeadILocateEnums.analyze.getIdentity(), name);
-                heads.add(newHead);
+            String name = results.getResultName() + "(" + results.getUnit() + ")";
+            HeadVO analyzeHead = new HeadVO(name, results.getParam(), TableHeadILocateEnums.analyze.getIdentity(), name);
+
+            if (analyzeMap.containsKey(results.getParam())) {
+                analyzeHead = analyzeMap.get(results.getParam());
             }
+            headAnalyze.add(analyzeHead);
+        }
+        ans.addAll(headAnalyze);
+
+        List<HeadVO> other = headsMap.get(TableHeadILocateEnums.other.getIdentity());
+        if (other == null || other.isEmpty()) {
+            other = new ArrayList<>();
+            HeadVO samplingTimeHead = new HeadVO(SampleTableEnum.samplingTime.getName(), SampleTableEnum.samplingTime.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.samplingTime.getName());
+            HeadVO remark = new HeadVO(SampleTableEnum.remark.getName(), SampleTableEnum.remark.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.remark.getName());
+            other.add(samplingTimeHead);
+            other.add(remark);
         }
 
-        return heads;
+        ans.addAll(other);
+
+        return ans;
     }
 
     @Override

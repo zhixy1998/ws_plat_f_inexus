@@ -8,6 +8,7 @@ public enum TableHeadILocateEnums {
     sample("sample", "样品表头"),
     data("data","测量页用户新增表头"),
     measure("measure", "后端添加测量表头"),
+    other("other", "其他表头,如采样时间，备注等"),
     analyze("analyze", "方法来的分析表头");
 
     private final String identity;
