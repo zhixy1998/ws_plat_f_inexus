@@ -22,4 +22,7 @@ public interface SystemManageService {
     Result<Boolean> longDistanceConfig(LongDistanceConfigVO longDistanceConfigVO);
 
     Result<SystemManagerConf> changeSystemManagerConf(SystemManagerConf systemManagerConf) throws JsonProcessingException;
+
+    Result<SystemManagerConf> getSystemManagerConf() throws JsonProcessingException;
+
 }

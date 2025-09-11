@@ -1,5 +1,8 @@
 package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
+import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
@@ -34,6 +37,8 @@ public class SystemManageServiceImpl implements SystemManageService {
 
     @Value("${sys-manage-default.userId}")
     String userId;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public SystemManageVO getSystemManage() {
@@ -90,11 +95,11 @@ public class SystemManageServiceImpl implements SystemManageService {
 
     @Override
     public Result<String> changeLanguage(String language) {
-       Integer res =  dao.changeLanguage(language);
-       if (res == 1) {
-           return Result.ok(language);
-       }
-       return Result.fail("fail");
+        Integer res = dao.changeLanguage(language);
+        if (res == 1) {
+            return Result.ok(language);
+        }
+        return Result.fail("fail");
     }
 
     @Override
@@ -112,7 +117,7 @@ public class SystemManageServiceImpl implements SystemManageService {
     public Result<Boolean> longDistanceConfig(LongDistanceConfigVO longDistanceConfigVO) {
         Integer remoteControl = longDistanceConfigVO.getRemote_control();
         Integer remoteDataAccess = longDistanceConfigVO.getRemote_data_access();
-       Integer res = dao.longDistanceConfig(remoteDataAccess,remoteControl);
+        Integer res = dao.longDistanceConfig(remoteDataAccess, remoteControl);
         if (res == 1) {
             return Result.ok(true);
         }
@@ -123,11 +128,12 @@ public class SystemManageServiceImpl implements SystemManageService {
     public Result<SystemManagerConf> changeSystemManagerConf(SystemManagerConf systemManagerConf) throws JsonProcessingException {
         String language = systemManagerConf.getLanguage();
         SystemManagerConf newConf = new SystemManagerConf();
-        Integer res =  dao.changeLanguage(language);
+        Integer res = dao.changeLanguage(language);
         if (res == 0) {
             return Result.fail("语言修改失败");
         }
         newConf.setLanguage(language);
+
         ConfigVO configVO = systemManagerConf.getConfig();
         ObjectMapper objectMapper = new ObjectMapper();
         String configJson = objectMapper.writeValueAsString(configVO);
@@ -139,7 +145,7 @@ public class SystemManageServiceImpl implements SystemManageService {
         LongDistanceConfigVO longDistanceConfigVO = systemManagerConf.getLongDistanceConfigVO();
         Integer remoteControl = longDistanceConfigVO.getRemote_control();
         Integer remoteDataAccess = longDistanceConfigVO.getRemote_data_access();
-        Integer res2 = dao.longDistanceConfig(remoteDataAccess,remoteControl);
+        Integer res2 = dao.longDistanceConfig(remoteDataAccess, remoteControl);
         if (res2 == 0) {
             return Result.fail("远程访问配置修改失败");
         }
@@ -147,6 +153,37 @@ public class SystemManageServiceImpl implements SystemManageService {
         return Result.ok(newConf);
     }
 
+    @Override
+    public Result<SystemManagerConf> getSystemManagerConf() throws JsonProcessingException {
+        SystemManagerConf systemManagerConf = new SystemManagerConf();
+        SystemManagePO systemManagePO = dao.selectById(userId);
+        systemManagerConf.setLanguage(systemManagePO.getLanguage());
+        String configuration = systemManagePO.getConfiguration();
+        ConfigVO config = objectMapper.readValue(configuration, ConfigVO.class);
+        systemManagerConf.setConfig(config);
+        LongDistanceConfigVO longDistanceConfigVO = getLongDistanceConfigVO(systemManagePO);
+        systemManagerConf.setLongDistanceConfigVO(longDistanceConfigVO);
+        return Result.ok(systemManagerConf);
     }
+
+    private static LongDistanceConfigVO getLongDistanceConfigVO(SystemManagePO systemManagePO) {
+        LongDistanceConfigVO longDistanceConfigVO = new LongDistanceConfigVO();
+        Boolean remoteControl = systemManagePO.getRemoteControl();
+        if (remoteControl) {
+            longDistanceConfigVO.setRemote_control(1);
+        } else {
+            longDistanceConfigVO.setRemote_control(0);
+        }
+
+        Boolean remoteDataAccess = systemManagePO.getRemoteDataAccess();
+        if (remoteDataAccess) {
+            longDistanceConfigVO.setRemote_data_access(1);
+        } else {
+            longDistanceConfigVO.setRemote_data_access(0);
+        }
+        return longDistanceConfigVO;
+    }
+
+}
 
 

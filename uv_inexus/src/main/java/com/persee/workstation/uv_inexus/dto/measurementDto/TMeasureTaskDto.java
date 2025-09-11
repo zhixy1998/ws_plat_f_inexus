@@ -1,10 +1,13 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import org.apache.commons.codec.language.bm.Rule;
 
 import java.time.LocalDateTime;
+import java.util.regex.Pattern;
 
 @Data
 public class TMeasureTaskDto {
@@ -28,13 +31,16 @@ public class TMeasureTaskDto {
     @ApiModelProperty("样品数量")
 
     private Integer sampleNumber;
+    @JsonFormat(timezone = "GMT+8", pattern = "yyyy-MM-dd HH:mm:ss")
     @ApiModelProperty("创建时间--未完成任务")
 
     private LocalDateTime createTime;
     @ApiModelProperty("开始时间--已完成任务")
+    @JsonFormat(timezone = "GMT+8", pattern = "yyyy-MM-dd HH:mm:ss")
 
     private LocalDateTime startTime;
     @ApiModelProperty("结束时间--已完成任务")
+    @JsonFormat(timezone = "GMT+8", pattern = "yyyy-MM-dd HH:mm:ss")
 
     private LocalDateTime endTime;
 

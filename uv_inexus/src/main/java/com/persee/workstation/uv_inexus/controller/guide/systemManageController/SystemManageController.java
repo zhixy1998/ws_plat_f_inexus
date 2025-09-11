@@ -40,6 +40,12 @@ public class SystemManageController {
     public Result<SystemManagerConf> changeSystemManagerConf(@RequestBody SystemManagerConf systemManagerConf) throws JsonProcessingException {
         return systemManageService.changeSystemManagerConf(systemManagerConf);
     }
+
+    @ApiOperation("获取系统管理配置")
+    @PostMapping("/getSystemConfig")
+    public Result<SystemManagerConf> getSystemManagerConf() throws JsonProcessingException {
+        return systemManageService.getSystemManagerConf();
+    }
 //
 //    @ApiOperation("认证物联代理配置信息")
 //    @PostMapping("/setConfiguration")
