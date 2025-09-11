@@ -24,5 +24,6 @@ public interface DataManagementService {
 
     Result<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam);
 
-    Result<UnFinishTasksAndNum> unFinishTasksAndNum(UnFinishTasksAndNumParam unFinishTasksAndNumParam);
+    Result<UnFinishTasksAndNum> getTasks(UnFinishTasksAndNumParam unFinishTasksAndNumParam);
+
 }

@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.guide.dataManagementService.impl;
 
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
@@ -9,6 +10,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureMethodMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureProjectMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureSampleMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -50,6 +52,8 @@ public class DataManagementServiceImpl implements DataManagementService {
     private SystemUserManageDAO systemUserManageDAO;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private TMeasureSampleMapper sampleManagementMapper;
 
 
     //方法
@@ -143,40 +147,48 @@ public class DataManagementServiceImpl implements DataManagementService {
     }
 
     @Override
-    public Result<UnFinishTasksAndNum> unFinishTasksAndNum(UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
+    public Result<UnFinishTasksAndNum> getTasks(UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
         if (unFinishTasksAndNumParam == null) {
             return Result.fail("参数不能为空");
         }
         if (unFinishTasksAndNumParam.getNeedSelectNum() == null || unFinishTasksAndNumParam.getNeedSelectNum() == 0) {
             return Result.fail("数量不能为0");
         }
-        if (unFinishTasksAndNumParam.getNeedSelectNum() > 50){
+        if (unFinishTasksAndNumParam.getNeedSelectNum() >50){
             return Result.fail("数量不能大于50");
         }
+        if (unFinishTasksAndNumParam.getTaskType().isEmpty()) {
+            return Result.fail("类型不能为空");
+        }
+        String status = unFinishTasksAndNumParam.getStatus();
+
         String taskType = unFinishTasksAndNumParam.getTaskType();
         int needSelectNum = unFinishTasksAndNumParam.getNeedSelectNum();
+        String selectKey = unFinishTasksAndNumParam.getSelectKey();
         LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureTask::getMeasureType, taskType);
+        queryWrapper.eq(TMeasureTask::getIsDelete, status);
+        queryWrapper.like(TMeasureTask::getTaskName, selectKey);
         List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(queryWrapper);
+
+        UnFinishTasksAndNum unFinishTasksAndNum = new UnFinishTasksAndNum();
+        int size = Math.min(tMeasureTasks.size(), needSelectNum);
+
         List<TMeasureTaskDto> newDtolist = new ArrayList<>();
-        for (int i = 0; i < tMeasureTasks.size(); i++) {
-            String taskString = "";
-            if (tMeasureTasks.get(i).getIsDelete().equals("1")) {
-                taskString = TaskEnum.getTaskStr("1");
-            } else {
-                taskString = TaskEnum.getTaskStr("0");
-            }
+        for (int i = 0; i < size; i++) {
 
-
+            String taskString = TaskEnum.getTaskStr(tMeasureTasks.get(i).getIsDelete());
             TMeasureTaskDto tMeasureTaskDto = new TMeasureTaskDto();
+
             BeanUtils.copyProperties(tMeasureTasks.get(i), tMeasureTaskDto);
             tMeasureTaskDto.setStatus(taskString);
 
-            String methodKey =tMeasureTasks.get(i).getMethodKey();
+            String methodKey = tMeasureTasks.get(i).getMethodKey();
             LambdaQueryWrapper<TMeasureMethod> queryWrapper1 = new LambdaQueryWrapper<>();
             queryWrapper1.eq(TMeasureMethod::getId, methodKey);
             TMeasureMethod tMeasureMethod = methodManagementMapper.selectOne(queryWrapper1);
             String methodName = tMeasureMethod.getMethodName();
+            tMeasureTaskDto.setMethodId(methodKey);
             tMeasureTaskDto.setMethodName(methodName);
 
             String projectItemKey = tMeasureTasks.get(i).getProjectItemKey();
@@ -185,20 +197,28 @@ public class DataManagementServiceImpl implements DataManagementService {
             TMeasureProject tMeasureProject = projectManagementMapper.selectOne(queryWrapper2);
             String projectName = tMeasureProject.getProjectName();
             tMeasureTaskDto.setProjectName(projectName);
-            String sampleKey = tMeasureTasks.get(i).getSampleKey();
+            tMeasureTaskDto.setProjectId(projectItemKey);
 
-            List<TaskSpecimen> taskSpecimens = com.alibaba.fastjson.JSON.parseArray(sampleKey, TaskSpecimen.class);
-            tMeasureTaskDto.setSampleNumber(taskSpecimens.size());
+            String sampleKey = tMeasureTasks.get(i).getSampleKey();
+            List<TaskSpecimen> taskSpecimens = JSON.parseArray(sampleKey, TaskSpecimen.class);
+            int count =0;
+            for (int j = 0; j < taskSpecimens.size(); j++) {
+                String deleteType = taskSpecimens.get(j).getDeleteType();
+                if (deleteType.equals("0")) {
+                    count++;
+                }
+            }
+            tMeasureTaskDto.setSampleNumber(count);
+
+
+            tMeasureTaskDto.setCreateTime(tMeasureTasks.get(i).getCreateTime());
+            tMeasureTaskDto.setStartTime(tMeasureTasks.get(i).getStartTime());
+            tMeasureTaskDto.setEndTime(tMeasureTasks.get(i).getEndTime());
             newDtolist.add(tMeasureTaskDto);
         }
 
-        UnFinishTasksAndNum unFinishTasksAndNum = new UnFinishTasksAndNum();
-        List<TMeasureTaskDto> newList = new ArrayList<>();
-        for (int i = 0; i <(needSelectNum < newDtolist.size() ? needSelectNum : newDtolist.size()); i++) {
-            TMeasureTaskDto tMeasureTaskDto = newDtolist.get(i);
-            newList.add(tMeasureTaskDto);
-        }
-        unFinishTasksAndNum.setTasks(newList);
+        unFinishTasksAndNum.setTasks(newDtolist);
+
         return Result.ok(unFinishTasksAndNum);
 
 

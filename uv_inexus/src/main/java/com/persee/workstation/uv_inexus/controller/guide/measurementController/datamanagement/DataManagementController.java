@@ -23,10 +23,10 @@ public class DataManagementController {
     @Autowired
     private DataManagementService dataManagementService;
 
-    @PostMapping("/unFinishTasksAndNum")
-    @ApiOperation("查询未完成任务")
+    @PostMapping("Tasks")
+    @ApiOperation("查询已完成和未完成任务")
     public Result<UnFinishTasksAndNum>  unFinishTasksAndNum(@RequestBody UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
-      return   dataManagementService.unFinishTasksAndNum(unFinishTasksAndNumParam);
+      return   dataManagementService.getTasks(unFinishTasksAndNumParam);
 
 
     }

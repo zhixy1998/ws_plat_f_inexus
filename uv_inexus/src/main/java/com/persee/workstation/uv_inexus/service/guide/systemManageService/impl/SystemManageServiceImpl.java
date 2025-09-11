@@ -6,6 +6,7 @@ import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDA
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemManageDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagePO;
+import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagerConf;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemManageService;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.ConfigVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.LongDistanceConfigVO;
@@ -118,5 +119,34 @@ public class SystemManageServiceImpl implements SystemManageService {
         return Result.fail();
     }
 
+    @Override
+    public Result<SystemManagerConf> changeSystemManagerConf(SystemManagerConf systemManagerConf) throws JsonProcessingException {
+        String language = systemManagerConf.getLanguage();
+        SystemManagerConf newConf = new SystemManagerConf();
+        Integer res =  dao.changeLanguage(language);
+        if (res == 0) {
+            return Result.fail("语言修改失败");
+        }
+        newConf.setLanguage(language);
+        ConfigVO configVO = systemManagerConf.getConfig();
+        ObjectMapper objectMapper = new ObjectMapper();
+        String configJson = objectMapper.writeValueAsString(configVO);
+        Integer res1 = dao.setConfiguration(configJson);
+        if (res1 == 0) {
+            return Result.fail("物联代理配置信息修改失败");
+        }
+        newConf.setConfig(configVO);
+        LongDistanceConfigVO longDistanceConfigVO = systemManagerConf.getLongDistanceConfigVO();
+        Integer remoteControl = longDistanceConfigVO.getRemote_control();
+        Integer remoteDataAccess = longDistanceConfigVO.getRemote_data_access();
+        Integer res2 = dao.longDistanceConfig(remoteDataAccess,remoteControl);
+        if (res2 == 0) {
+            return Result.fail("远程访问配置修改失败");
+        }
+        newConf.setLongDistanceConfigVO(longDistanceConfigVO);
+        return Result.ok(newConf);
+    }
 
-}
+    }
+
+
