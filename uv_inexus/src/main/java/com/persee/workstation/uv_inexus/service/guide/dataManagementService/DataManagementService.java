@@ -26,4 +26,6 @@ public interface DataManagementService {
 
     Result<UnFinishTasksAndNum> getTasks(UnFinishTasksAndNumParam unFinishTasksAndNumParam);
 
+
+    Result<String> formulaCheck(FormulaCheckParam formulaCheckParam);
 }

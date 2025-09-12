@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQuer
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
+import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -154,7 +155,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         if (unFinishTasksAndNumParam.getNeedSelectNum() == null || unFinishTasksAndNumParam.getNeedSelectNum() == 0) {
             return Result.fail("数量不能为0");
         }
-        if (unFinishTasksAndNumParam.getNeedSelectNum() >50){
+        if (unFinishTasksAndNumParam.getNeedSelectNum() > 50) {
             return Result.fail("数量不能大于50");
         }
         if (unFinishTasksAndNumParam.getTaskType().isEmpty()) {
@@ -201,7 +202,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
             String sampleKey = tMeasureTasks.get(i).getSampleKey();
             List<TaskSpecimen> taskSpecimens = JSON.parseArray(sampleKey, TaskSpecimen.class);
-            int count =0;
+            int count = 0;
             for (int j = 0; j < taskSpecimens.size(); j++) {
                 String deleteType = taskSpecimens.get(j).getDeleteType();
                 if (deleteType.equals("0")) {
@@ -337,6 +338,19 @@ public class DataManagementServiceImpl implements DataManagementService {
         dto.setProjectName(tMeasureProject.getProjectName());
         return dto;
     }
+
+    LaTeXConverter converter = new LaTeXConverter();
+
+    //公式校验
+    public Result<String> formulaCheck(FormulaCheckParam formulaCheckParam) {
+        String res = converter.verifyFormulasAgainstParamList(formulaCheckParam.getTotalParamList(), formulaCheckParam.getLatexFormulaList());
+        return Result.ok(res);
+    }
+
+//    public Result<String> formulaCheck(List<String> paramList, String latexFormula) {
+//        String res = converter.verifyAndConvert(paramList, latexFormula);
+//        return Result.ok(res);
+//}
 
 
 }

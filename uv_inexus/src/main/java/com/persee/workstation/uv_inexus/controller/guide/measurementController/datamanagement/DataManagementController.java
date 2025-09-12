@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController.datamanagement;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.measurementDto.FormulaCheckParam;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
@@ -25,22 +26,25 @@ public class DataManagementController {
 
     @PostMapping("Tasks")
     @ApiOperation("查询已完成和未完成任务")
-    public Result<UnFinishTasksAndNum>  unFinishTasksAndNum(@RequestBody UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
-      return   dataManagementService.getTasks(unFinishTasksAndNumParam);
+    public Result<UnFinishTasksAndNum> unFinishTasksAndNum(@RequestBody UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
+        return dataManagementService.getTasks(unFinishTasksAndNumParam);
 
 
     }
+
     @GetMapping("/methodsAndTasksNum")
     @ApiOperation("总任务数，已完成任务数，已完成方法数，已完成任务数")
     public Result<MethodAndTasks> getMethodsAndTasksNum(@RequestParam("updateBy") String userKey) {
         return dataManagementService.getMethodsAndTasksNum(userKey);
     }
+
     //项目列表
     @PostMapping("/getProjectsManagementList")
     @ApiOperation("所有项目查询")
     public Result<Page<ProjectManagementDto>> getProjectsManagementList(@RequestBody ProjectQueryParam projectQueryParam) {
         return dataManagementService.getProjectsManagementList(projectQueryParam);
     }
+
     //任务
     @PostMapping("/getTasksManagementList")
     @ApiOperation("任务分页分类查询")
@@ -48,4 +52,9 @@ public class DataManagementController {
         return dataManagementService.getTasksManagementList(taskQueryParam);
     }
 
+//    @PostMapping("/formulaCheck")
+//    @ApiOperation("公式校验")
+//    public Result<String> formulaCheck(@RequestBody FormulaCheckParam formulaCheckParam) {
+//        return dataManagementService.formulaCheck(formulaCheckParam);
+//    }
 }
