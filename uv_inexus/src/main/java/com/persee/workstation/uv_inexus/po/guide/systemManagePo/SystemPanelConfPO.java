@@ -21,4 +21,12 @@ public class SystemPanelConfPO extends BasePO {
     @ApiModelProperty("项目统计面板开关")
     @TableField(value = "project_statistics_switch")
     private Boolean projectStatisticsSwitch;
+
+    @ApiModelProperty("任务列表面板开关")
+    @TableField(value = "task_list_switch")
+    private Boolean taskListSwitch;
+
+    @ApiModelProperty("面板顺序")
+    @TableField(value = "panel_order")
+    private String panelOrder;
 }

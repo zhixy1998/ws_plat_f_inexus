@@ -11,6 +11,9 @@ public class SystemPanelConfDTO {
     @ApiModelProperty("项目统计面板开关")
     private Boolean projectStatisticsSwitch;
 
+    @ApiModelProperty("任务列表面板开关")
+    private Boolean taskListSwitch;
+
     @ApiModelProperty(value = "用户")
     private String updateBy;
 }

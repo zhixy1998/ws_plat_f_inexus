@@ -554,9 +554,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail("方法不存在");
         }
         PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        List<String> waveLengths = parameter.getWaveLength();
         LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
-
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
