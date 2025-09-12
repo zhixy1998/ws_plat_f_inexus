@@ -277,6 +277,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             po.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
             po.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
             po.setIsDevOpened(1);
+            po.setAttachmentType(deviceVO.getAttachmentType());
             po.setDevicePort(sendPort);
             deviceVO.setIsDevOpened(1);
 
