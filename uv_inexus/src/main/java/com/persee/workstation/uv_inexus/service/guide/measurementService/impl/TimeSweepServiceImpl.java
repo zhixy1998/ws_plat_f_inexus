@@ -1373,11 +1373,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("请选择数据类型");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData1 = tMeasureDataService.getById(paramDto.getMeasureDataId1());
+        TMeasureAnalysisData measureData1 = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId1());
         List<String> xList = new ArrayList<>();
         List<String> yList1 = new ArrayList<>();
         List<String> yList2 = new ArrayList<>();
-        List<String> list = JSON.parseArray(measureData1.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData1.getAnalysisResult(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1502,10 +1502,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("请选择变换类型");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1611,11 +1611,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
         for (String s : list){
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1720,11 +1720,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
         for (String s : list){
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1851,10 +1851,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("您当前的光度模式不支持进行转换!");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);

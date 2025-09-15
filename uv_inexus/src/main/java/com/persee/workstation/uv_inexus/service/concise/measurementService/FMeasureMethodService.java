@@ -9,6 +9,5 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
  */
 public interface FMeasureMethodService extends IService<FMeasureMethod> {
 
-
 }
 

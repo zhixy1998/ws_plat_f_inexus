@@ -1,9 +1,6 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
 import io.swagger.annotations.ApiModel;
@@ -140,6 +137,40 @@ public class SpectrumConciseController {
         return spectrumConciseService.queryHistoryTask(pageNum, pageSize, updateBy, measureType, taskName);
     }
 
+    @GetMapping("queryArithmeticSourceData")
+    @ApiOperation("查询运算源数据接口")
+    public Result queryArithmeticSourceData(@RequestParam String taskId) {
+        return spectrumConciseService.queryArithmeticSourceData(taskId);
+    }
 
+    @PostMapping("fourOperationsPort")
+    @ApiOperation("四则运算接口")
+    public Result fourOperationsPort(@RequestBody FFourOperationsParamDto paramDto){
+        return spectrumConciseService.fourOperationsPort(paramDto);
+    }
+
+    @PostMapping("advancedOperationsPort")
+    @ApiOperation("高级运算接口")
+    public Result advancedOperationsPort(@RequestBody FAdvancedOperationsDto paramDto){
+        return spectrumConciseService.advancedOperationsPort(paramDto);
+    }
+
+    @PostMapping("smoothnessPort")
+    @ApiOperation("平滑接口")
+    public Result smoothnessPort(@RequestBody FSmoothnessDto paramDto){
+        return spectrumConciseService.smoothnessPort(paramDto);
+    }
+
+    @PostMapping("differentialPort")
+    @ApiOperation("微分接口")
+    public Result differentialPort(@RequestBody FDifferentialDto paramDto){
+        return spectrumConciseService.differentialPort(paramDto);
+    }
+
+    @PostMapping("luminanceModeConversionPort")
+    @ApiOperation("光度模式转换")
+    public Result luminanceModeConversionPort(@RequestBody FLuminosityConversionDto paramDto){
+        return spectrumConciseService.luminanceModeConversionPort(paramDto);
+    }
 
 }

@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.config;
 
 import com.persee.workstation.uv_inexus.websocket.*;
+import com.persee.workstation.uv_inexus.websocket.concise.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -42,6 +43,24 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private ZeroCalibrationWebSocket zeroCalibrationWebSocket;
 
     @Autowired
+    private ConciseSpectrumWebSocket conciseSpectrumWebSocket;
+
+    @Autowired
+    private ConciseSpectrumOneMeasureWebSocket conciseSpectrumOneMeasureWebSocket;
+
+    @Autowired
+    private ConciseBaseLineWebSocket conciseBaseLineWebSocket;
+
+    @Autowired
+    private ConciseTimeWebSocket conciseTimeWebSocket;
+
+    @Autowired
+    private ConciseTimeOneMeasureWebSocket conciseTimeOneMeasureWebSocket;
+
+    @Autowired
+    private ConciseZeroCalibrationWebSocket conciseZeroCalibrationWebSocket;
+
+    @Autowired
     MeasureWebSocketHandler measureWebSocketHandler;
 
     // 注册WebSocket处理器
@@ -70,6 +89,19 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*");
         registry.addHandler(measureWebSocketHandler, "/ws/measure")
                 .setAllowedOrigins("*");
+        registry.addHandler(conciseSpectrumWebSocket, "/ws/concise/scan")
+                .setAllowedOrigins("*");
+        registry.addHandler(conciseSpectrumOneMeasureWebSocket, "/ws/concise/onceScan")
+                .setAllowedOrigins("*");
+        registry.addHandler(conciseBaseLineWebSocket, "/ws/concise/baseLine")
+                .setAllowedOrigins("*");
+        registry.addHandler(conciseTimeWebSocket, "/ws/concise/timeScan")
+                .setAllowedOrigins("*");
+        registry.addHandler(conciseTimeOneMeasureWebSocket, "/ws/concise/timeOneMeasure")
+                .setAllowedOrigins("*");
+        registry.addHandler(conciseZeroCalibrationWebSocket, "/ws/concise/zeroCalibration")
+                .setAllowedOrigins("*");
+
 
 
     }

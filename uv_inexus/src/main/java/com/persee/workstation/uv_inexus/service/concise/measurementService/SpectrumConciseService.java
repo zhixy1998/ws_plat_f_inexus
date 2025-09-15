@@ -1,9 +1,6 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
 
@@ -66,5 +63,21 @@ public interface SpectrumConciseService {
     // 查询历史任务接口
     Result queryHistoryTask(Integer pageNum, Integer pageSize, String updateBy, String measureType, String taskName);
 
+    // 查询算术源数据接口
+    Result queryArithmeticSourceData(String taskId);
 
+    // 四则运算接口
+    Result fourOperationsPort(FFourOperationsParamDto paramDto);
+
+    // 高级运算接口
+    Result advancedOperationsPort(FAdvancedOperationsDto paramDto);
+
+    // 平滑接口
+    Result smoothnessPort(FSmoothnessDto paramDto);
+
+    // 微分接口
+    Result differentialPort(FDifferentialDto paramDto);
+
+    // 光度模式转换
+    Result luminanceModeConversionPort(FLuminosityConversionDto paramDto);
 }

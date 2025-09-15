@@ -17,6 +17,5 @@ import org.springframework.stereotype.Service;
 @Service("FMeasureMethodService")
 @DS("concise")
 public class FMeasureMethodServiceImpl extends ServiceImpl<FMeasureMethodMapper, FMeasureMethod> implements FMeasureMethodService {
-
 }
 
