@@ -1,5 +1,23 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
@@ -13,20 +31,10 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Map;
+import io.swagger.annotations.ApiParam;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/photometricMeasurement/")
@@ -127,31 +135,43 @@ public class PhotometricController {
     }
 
     @GetMapping("downloadDoc")
-    @ApiOperation("下载文档接口")
-    public ResponseEntity downloadDoc(@RequestParam String taskId, @RequestParam Boolean allDisplay) throws Exception {
-        R<File> r = photometricService.downloadWord(taskId, allDisplay);
-        if (r.getSuccess()) {
-            File file = r.getData();
+    @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
+    public ResponseEntity<?> downloadDoc(
+            @ApiParam("任务ID") @RequestParam String taskId,
+            @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
+            @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType) throws Exception {
+        
+        // 调用 Service 层的多格式导出方法
+        R<File> result = photometricService.downloadFile(taskId, allDisplay, fileType);
+        
+        if (result.getSuccess()) {
+            File file = result.getData();
             FileInputStream fis = new FileInputStream(file);
             InputStreamResource resource = new InputStreamResource(fis);
 
+            // 编码文件名（避免中文乱码）
             String fileName = URLEncoder.encode(file.getName(), "UTF-8");
-            //删除临时文件
+            
+            // 异步删除临时文件（10秒后）
             new Thread(() -> {
                 try {
                     Thread.sleep(10000);
-                    System.out.println("删除文件");
-                    boolean delete = file.delete();
-                    System.out.println("删除结果：" + delete);
+                    boolean deleteSuccess = file.delete();
+                    System.out.println("临时文件删除结果：" + deleteSuccess);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }).start();
-            return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
+
+            // 构造响应头，指定下载和文件类型
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(resource);
         }
-        return null;
+        
+        // 导出失败时，返回错误信息
+        return ResponseEntity.badRequest().body("导出失败：" );
     }
 
     @GetMapping("queryNewMethodTaskInfo")
