@@ -1,13 +1,12 @@
 package com.persee.workstation.uv_inexus.config;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.persee.workstation.uv_inexus.util.tokenUtil.TokenInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import com.persee.workstation.uv_inexus.util.tokenUtil.TokenInterceptor;
+import java.util.ArrayList;
+import java.util.List;
 
 @Configuration
 public class TokenConfig implements WebMvcConfigurer {
@@ -28,6 +27,7 @@ public class TokenConfig implements WebMvcConfigurer {
         excludePath.add("/static/**");  //静态资源
         excludePath.add("/assets/**");  //静态资源
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/reportDataQuery");
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/queryReportTableData");
 
         registry.addInterceptor(tokenInterceptor)
                 // .excludePathPatterns("/login", "/logout") // 排除不需要验证的接口

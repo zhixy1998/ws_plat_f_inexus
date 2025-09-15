@@ -17,4 +17,7 @@ public class PreCountResultParam {
 
     @ApiModelProperty("公式")
     private String formulaText;
+
+    @ApiModelProperty("参数名")
+    private String param;
 }

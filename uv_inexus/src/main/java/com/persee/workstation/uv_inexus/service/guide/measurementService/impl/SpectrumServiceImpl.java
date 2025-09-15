@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -516,17 +517,13 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("请选择数据类型");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData1 = tMeasureDataService.getById(paramDto.getMeasureDataId1());
+        TMeasureAnalysisData measureData1 = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId1());
         List<String> list = new ArrayList<>();
         List<String> list2 = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList1 = new ArrayList<>();
         List<String> yList2 = new ArrayList<>();
-        try {
-            list = objectMapper.readValue(measureData1.getOriginalCalculationData(), ArrayList.class);
-        } catch (JsonProcessingException e) {
-            return Result.fail("数据转换失败");
-        }
+        list = JSON.parseArray(measureData1.getAnalysisResult(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -656,12 +653,12 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("请选择变换类型");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         List<String> list = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         try {
-            list = objectMapper.readValue(measureData.getOriginalCalculationData(), ArrayList.class);
+            list = objectMapper.readValue(measureData.getAnalysisResult(), ArrayList.class);
         } catch (JsonProcessingException e) {
             return Result.fail("数据转换失败");
         }
@@ -791,12 +788,12 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("您当前的光度模式不支持进行转换!");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         List<String> list = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         try {
-            list = objectMapper.readValue(measureData.getOriginalCalculationData(), ArrayList.class);
+            list = objectMapper.readValue(measureData.getAnalysisResult(), ArrayList.class);
         }catch (JsonProcessingException e){
             return Result.fail("数据转换失败");
         }
@@ -1117,13 +1114,13 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
         List<String> list = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         try {
-            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), ArrayList.class);
+            list=objectMapper.readValue(tMeasureData.getAnalysisResult(), ArrayList.class);
         } catch (JsonProcessingException e) {
             return Result.fail("数据转换失败");
         }
@@ -1231,13 +1228,13 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
         List<String> list = new ArrayList<>();
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         try {
-            list=objectMapper.readValue(tMeasureData.getOriginalCalculationData(), ArrayList.class);
+            list=objectMapper.readValue(tMeasureData.getAnalysisResult(), ArrayList.class);
         } catch (JsonProcessingException e) {
             return Result.fail("数据转换失败");
         }
@@ -2604,6 +2601,19 @@ public class SpectrumServiceImpl implements SpectrumService {
         return Result.ok(ans);
     }
 
+    @Override
+    public Result testCompare(String taskId, SpectrumParameter spectrumParameter) {
+        // 根据任务id查询出任务,再根据任务中的方法id找到方法并且再提取出方法参数
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        TMeasureMethod byId = tMeasureMethodService.getById(task.getMethodKey());
+
+        SpectrumParameter spectrumParameter1 = JSON.parseObject(byId.getMeasurementParamInfo(), SpectrumParameter.class);
+
+        String dbJson = JSON.toJSONString(spectrumParameter1, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(spectrumParameter, SerializerFeature.SortField);
+
+        return Result.ok(dbJson.equals(frontJson));
+    }
 
     /**
      * 获取样品的详细数据

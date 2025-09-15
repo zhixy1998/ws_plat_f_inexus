@@ -7,6 +7,7 @@ import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
@@ -62,6 +63,8 @@ public class PhotometricServiceImpl implements PhotometricService {
     TMeasureSampleService tMeasureSampleService;
     @Autowired
     SystemUserManageDAO userManageDAO;
+    @Autowired
+    TMeasureTaskMapper tMeasureTaskMapper;
     @Autowired
     TMeasureMethodService tMeasureMethodService;
     @Autowired
@@ -212,14 +215,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (!StringUtils.hasText(dto.getMethodId())) {
             return Result.fail("请先创建方法");
         }
-        if(dto.getNewSamples() == null) {
-            dto.setNewSamples(new ArrayList<>());
-        }
-        if (dto.getDelSampleIds() == null) {
-            dto.setDelSampleIds(new ArrayList<>());
-        }
-        if (dto.getNewSamples().isEmpty() && dto.getDelSampleIds().isEmpty()) {
-            return Result.ok("没有要新增或删除的样品！");
+        if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
+            return Result.fail("至少需要一个表头");
         }
 
         if (dto.getHeads() != null && dto.getHeads().size() > 10) {
@@ -279,6 +276,19 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
         }
 
+        TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
+
+        if (StringUtils.hasText(task.getTableInfo())) {
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+        }
+
+        if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
+            taskHeadSnapshot.setSampleHeads(dto.getHeads());
+        }
+        taskHeadSnapshot.setTaskId(task.getId());
+        task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
+
+
         for (Map<String, String> map : dto.getNewSamples()) {
             String jsonString = JSON.toJSONString(map);
             SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
@@ -287,16 +297,16 @@ public class PhotometricServiceImpl implements PhotometricService {
             newSample.setId(sample.getSampleId());
 
             if (dto.getHeads() != null) {
-
-                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
-
                 JSONObject newColData = new JSONObject();
 
                 for (HeadVO head : dto.getHeads()) {
+                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                        continue;
+                    }
                     String s = map.get(head.getIdentity());
                     newColData.put(head.getIdentity(), s);
                 }
-
+                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
                 newSample.setNewColData(JSON.toJSONString(newColData));
             }
 
@@ -306,6 +316,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
+                specimen.setSampleType(newSample.getSampleType());
                 log.info("新增的样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
@@ -420,10 +431,9 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result<List<HeadVO>> querySampleHeads(String taskId) {
 
-        LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
-
         if (!StringUtils.hasText(taskId)) {
-            return Result.ok(new ArrayList<>(ans));
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+            return Result.ok(preHead);
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -431,21 +441,18 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail("任务不存在");
         }
 
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                if(specimen.getDeleteType().equals(deleteType)) {
-                    continue;
-                }
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-
-                if (heads != null) {
-                    ans.addAll(heads);
-                }
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+            return Result.ok(preHead);
+        } else {
+            TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+                return Result.ok(preHead);
             }
         }
-        return Result.ok(new ArrayList<>(ans));
     }
 
     @Override
@@ -538,92 +545,152 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay) {
+        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
+            return Result.fail("请选择方法或任务");
+        }
+
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             return Result.fail("方法不存在");
         }
         PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
-        List<String> waveLengths = parameter.getWaveLength();
         LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            ans.addAll(preHead);
+            return Result.ok(new ArrayList<>(ans));
+        }
 
-        if (StringUtils.hasText(taskId)) {
-            TMeasureTask task = tMeasureTaskService.getById(taskId);
-
-            if (task != null && StringUtils.hasText(task.getTableInfo())) {
-                TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
-                if (snapshot != null && snapshot.getTaskHeads() != null && !snapshot.getTaskHeads().isEmpty()) {
+        if (StringUtils.hasText(task.getTableInfo())) {
+            TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+            if (snapshot != null) {
+                if (snapshot.getTaskHeads()!= null && !snapshot.getTaskHeads().isEmpty()) {
                     ans.addAll(snapshot.getTaskHeads());
                 }
+                if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                    ans.addAll(snapshot.getSampleHeads());
+                }
             }
+        } else {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
+            ans.addAll(preHead);
+        }
 
-            if (task != null && StringUtils.hasText(task.getSampleKey())) {
+        if (StringUtils.hasText(task.getSampleKey())) {
 
-                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-                for (TaskSpecimen specimen : taskSpecimen) {
-                    TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                    if (StringUtils.hasText(measureSample.getHeads())){
-                        List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen specimen : taskSpecimen) {
+                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (StringUtils.hasText(measureSample.getHeads())){
+                    List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
 
-                        if (heads != null && !heads.isEmpty()) {
-                            ans.addAll(heads);
-                        }
+                    if (heads != null && !heads.isEmpty()) {
+                        ans.addAll(heads);
                     }
                 }
+            }
 
+        }
+
+        List<HeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay);
+
+        return Result.ok(vos);
+    }
+
+    private List<HeadVO> dealHeads(List<HeadVO> heads, PhotometricParameter parameter, Boolean allDisplay) {
+        List<String> waveLength = parameter.getWaveLength();
+        Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
+
+        Map<String, List<HeadVO>> headsMap = new HashMap<>();
+
+        Map<String, HeadVO> analyzeMap = new HashMap<>();
+
+        for (HeadVO head : heads) {
+            headsMap.computeIfAbsent(head.getLocate(), k -> new ArrayList<>()).add(head);
+            if (head.getLocate().equals(TableHeadILocateEnums.measure.getIdentity())) {
+                map.put(head.getIdentity(), head);
+            }
+            if (head.getLocate().equals(TableHeadILocateEnums.analyze.getIdentity())) {
+                analyzeMap.put(head.getIdentity(), head);
             }
         }
 
-        if (waveLengths != null && !waveLengths.isEmpty()) {
+        List<HeadVO> allMeasureHeads = new ArrayList<>();
 
-            for (String waveLength : waveLengths) {
-                StringBuilder s1 = new StringBuilder();
-                StringBuilder s2 = new StringBuilder();
-
-                if (parameter.getLuminosity().equals(WaveLengthEnum.es.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())) {
-                    String luminosity = parameter.getLuminosity();
-                    String name = WaveLengthEnum.getName(luminosity);
-
-                    s1.append(waveLength).append(name);
-                    s2.append(waveLength).append("-").append(luminosity);
-                    ans.add(new HeadVO(s1.toString(), s2.toString(), "measureData"));
-                    continue;
+        String mode = parameter.getLuminosity();
+        if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
+            for (String s : waveLength) {
+                String identity = s + "-"+ mode;
+                String name = s + WaveLengthEnum.getName(mode);
+                HeadVO newHead = new HeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
+                if (map.containsKey(identity)) {
+                    newHead = map.get(identity);
                 }
+                allMeasureHeads.add(newHead);
+            }
+        } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())) {
+            for (String s : waveLength) {
+                String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
+                String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
+                String absName = s + WaveLengthEnum.abs.getName();
+                String tPercentName = s + WaveLengthEnum.tPercent.getName();
 
-                if (!allDisplay) {
-                    String luminosity = parameter.getLuminosity();
-                    String name = WaveLengthEnum.getName(luminosity);
+                HeadVO absHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
+                HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
 
-                    s1.append(waveLength).append(name);
-                    s2.append(waveLength).append("-").append(luminosity);
-                    ans.add(new HeadVO(s1.toString(), s2.toString(), "measureData"));
-                    continue;
+                if (map.containsKey(absIdentity)) {
+                    absHead = map.get(absIdentity);
                 }
+                allMeasureHeads.add(absHead);
 
-                s1.append(waveLength).append(WaveLengthEnum.abs.getName());
-                s2.append(waveLength).append("-").append(WaveLengthEnum.abs.getCode());
-                HeadVO headVO1 = new HeadVO(s1.toString(), s2.toString(), "measureData");
-                ans.add(headVO1);
-
-                s1.setLength(0);
-                s2.setLength(0);
-                s1.append(waveLength).append(WaveLengthEnum.tPercent.getName());
-                s2.append(waveLength).append("-").append(WaveLengthEnum.tPercent.getCode());
-                HeadVO headVO2 = new HeadVO(s1.toString(), s2.toString(), "measureData");
-                ans.add(headVO2);
+                if (allDisplay) {
+                    if (map.containsKey(tPercentIdentity)) {
+                        tPercentHead = map.get(tPercentIdentity);
+                    }
+                    allMeasureHeads.add(tPercentHead);
+                }
             }
         }
-        if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+        List<HeadVO> ans = new ArrayList<>();
+        List<HeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
+        if (systemHeads != null) ans.addAll(systemHeads);
 
-            for (PreCountResultParam param : parameter.getResultParams()) {
-                StringBuilder s2 = new StringBuilder();
-                String s1 = param.getResultName() + "(" + param.getUnit() + ")";
-                s2.append(param.getResultIdentity()).append("-").append(param.getFormulaText());
-                HeadVO headVO = new HeadVO(s1, s2.toString(), "countData");
-                ans.add(headVO);
+        List<HeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
+        if (sampleHeads != null) ans.addAll(sampleHeads);
+        ans.addAll(allMeasureHeads);
+        List<HeadVO> taskHeads = headsMap.get(TableHeadILocateEnums.data.getIdentity());
+        if (taskHeads != null)ans.addAll(taskHeads);
+
+        List<PreCountResultParam> resultParams = parameter.getResultParams();
+        List<HeadVO> headAnalyze = new ArrayList<>();
+        for (PreCountResultParam results : resultParams) {
+            //TODO 方法参数标识待定，后续再改动
+            if (!StringUtils.hasText(results.getParam())) {
+                results.setParam(results.getResultIdentity() + "-" + results.getFormulaText());
             }
+            String name = results.getResultName() + "(" + results.getUnit() + ")";
+            HeadVO analyzeHead = new HeadVO(name, results.getParam(), TableHeadILocateEnums.analyze.getIdentity(), name);
+
+            if (analyzeMap.containsKey(results.getParam())) {
+                analyzeHead = analyzeMap.get(results.getParam());
+            }
+            headAnalyze.add(analyzeHead);
+        }
+        ans.addAll(headAnalyze);
+
+        List<HeadVO> other = headsMap.get(TableHeadILocateEnums.other.getIdentity());
+        if (other == null || other.isEmpty()) {
+            other = new ArrayList<>();
+            HeadVO samplingTimeHead = new HeadVO(SampleTableEnum.samplingTime.getName(), SampleTableEnum.samplingTime.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.samplingTime.getName());
+            HeadVO remark = new HeadVO(SampleTableEnum.remark.getName(), SampleTableEnum.remark.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.remark.getName());
+            other.add(samplingTimeHead);
+            other.add(remark);
         }
 
-        return Result.ok(new ArrayList<>(ans));
+        ans.addAll(other);
+
+        return ans;
     }
 
     @Override
@@ -1081,7 +1148,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public Result saveDataInfo(RemarkChangeSaveVO vo) {
+    public Result saveDataInfo(SaveDataVO vo) {
         if (!StringUtils.hasText(vo.getTaskId())) {
             return Result.fail("缺少任务id");
         }
@@ -1380,30 +1447,31 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshot taskHeadSnapshot) {
+    public R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO snapshotDTO) {
 
-        if (!StringUtils.hasText(taskHeadSnapshot.getTaskId())) {
+        if (!StringUtils.hasText(snapshotDTO.getTaskId())) {
             return R.fail("未选择任务");
         }
 
-        TMeasureTask task = tMeasureTaskService.getById(taskHeadSnapshot.getTaskId());
+        TMeasureTask task = tMeasureTaskService.getById(snapshotDTO.getTaskId());
         if (task == null) {
             return R.fail("任务不存在");
         }
-        LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
 
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-
-                if (heads != null && !heads.isEmpty()) {
-                    ans.addAll(heads);
-                }
+        TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
+        List<HeadVO> taskHeads = new ArrayList<>();
+        List<HeadVO> sampleHeads = new ArrayList<>();
+        for (HeadVO head : snapshotDTO.getTaskHeads()) {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity()) || head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                sampleHeads.add(head);
+            } else {
+                taskHeads.add(head);
             }
         }
-        taskHeadSnapshot.setSampleHeads(new ArrayList<>(ans));
+        BeanUtils.copyProperties(snapshotDTO, taskHeadSnapshot);
+        taskHeadSnapshot.setTaskHeads(taskHeads);
+        taskHeadSnapshot.setSampleHeads(sampleHeads);
+
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
         return tMeasureTaskService.updateById(task) ? R.ok(true) : R.fail("保存失败");

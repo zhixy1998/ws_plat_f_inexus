@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -15,6 +16,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.CalculationFormula;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.StandardPretreatment;
@@ -30,10 +32,7 @@ import com.persee.workstation.uv_inexus.service.guide.standardService.TReportSta
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportDataVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -648,6 +647,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail(reportCount.getMessage());
         }
         else if(reportName.equals("定量测量表格")){
+            RationReportDataVO vo = new RationReportDataVO();
+            rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false);
+
+            return Result.ok("暂未开放");
+        } else if (reportName.equals("定量测定原始记录表格")) {
             return Result.ok("暂未开放");
         }
         else if (reportName.equals("光谱扫描表格")) {
@@ -724,6 +728,80 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.ok(vo);
         }else{
             return Result.fail("类型错误,请重新选择");
+        }
+    }
+
+    @Override
+    public Result newReportTableDataQuery(String taskId, String sampleId) {
+
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请选择任务");
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        switch (task.getMeasureType()) {
+            case "光度测量": {
+                PhotometricReportDataVO vo = new PhotometricReportDataVO();
+                Result<List<HeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), true);
+                if (result.getCode() == 200) {
+                    List<HeadVO> vos = result.getData();
+                    vo.setHeadList(vos);
+                }
+                QueryDataDTO queryDataDTO = new QueryDataDTO();
+                queryDataDTO.setTaskId(taskId);
+                queryDataDTO.setAllDisplay(true);
+                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+                queryDataDTO.setOption(new ArrayList<>());
+                Result<List<Map<String, Object>>> data = photometricService.queryData(queryDataDTO);
+                if (data.getCode() == 200) {
+                    vo.setDataList(data.getData());
+                }
+                if (StringUtils.hasText(task.getTableInfo())) {
+                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+                    if (snapshot != null && snapshot.getMapRelation() != null) {
+                        vo.setMapRelation(snapshot.getMapRelation());
+                    }
+                }
+                return Result.ok(vo);
+            }
+            case "定量测定":  {
+                    RationReportDataVO vo = new RationReportDataVO();
+                Result<List<HeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true);
+                if (standHeads.getCode() == 200) {
+                    vo.setStandHeadList(standHeads.getData());
+                }
+                Result<List<HeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), true);
+                if (unknowHeads.getCode() == 200) {
+                    vo.setUnknowHeadList(unknowHeads.getData());
+                }
+                QueryDataDTO queryDataDTO = new QueryDataDTO();
+                queryDataDTO.setTaskId(taskId);
+                queryDataDTO.setAllDisplay(true);
+                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+                queryDataDTO.setOption(new ArrayList<>());
+                Result<RationSampleDataVO> data = rationService.querySampleData(queryDataDTO);
+                if (data.getCode() == 200) {
+                    RationSampleDataVO sampleDataVO = data.getData();
+                    vo.setStandDataList(sampleDataVO.getStandSampleData());
+                    vo.setUnknowDataList(sampleDataVO.getUnknowSampleData());
+                }
+                RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
+                if (shot != null && shot.getUnknownHead() != null) {
+                    TaskHeadSnapshot unknownHead = shot.getUnknownHead();
+                    vo.setMapRelation(unknownHead.getMapRelation());
+                }
+
+                return Result.ok(vo);
+            }
+            case "光谱扫描":
+                return Result.fail("该类型任务暂未开发");
+
+            case "时间扫描":
+                return Result.fail("时间扫描任务暂未开发");
+            default:
+                return Result.fail("类型错误,请重新选择");
         }
     }
 

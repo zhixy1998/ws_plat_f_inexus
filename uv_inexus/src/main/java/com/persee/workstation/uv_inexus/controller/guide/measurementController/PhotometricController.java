@@ -1,21 +1,18 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.SampleHeadTemplateService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RemarkChangeSaveVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,9 +35,6 @@ public class PhotometricController {
 
     @Autowired
     PhotometricService photometricService;
-
-    @Autowired
-    SampleHeadTemplateService sampleHeadTemplateService;
 
     @PostMapping("updateMethodParameter")
     @ApiOperation("方法参数修改接口")
@@ -107,7 +101,7 @@ public class PhotometricController {
 
     @PostMapping("saveDataInfo")
     @ApiOperation("保存数据接口,备注等")
-    public Result saveData(@RequestBody RemarkChangeSaveVO vo) {
+    public Result saveData(@RequestBody SaveDataVO vo) {
         return photometricService.saveDataInfo(vo);
     }
 
@@ -160,40 +154,6 @@ public class PhotometricController {
         return photometricService.getInfoByTaskId(taskId);
     }
 
-    @ApiOperation("保存样品模板")
-    @PostMapping("saveSampleTemplate")
-    public Result saveSampleTemplate(@RequestBody SampleHeadTemplateDTO templateDto) {
-        R<Boolean> r = sampleHeadTemplateService.createTemplate(templateDto);
-        if (r.getSuccess()) {
-            return Result.ok();
-        } else {
-            return Result.fail(r.getMessage());
-        }
-    }
-
-    @ApiOperation("查询样品模板")
-    @GetMapping("querySampleTemplate")
-    public Result<List<SampleTemplateVO>> querySampleTemplate(@RequestParam String measureType, @RequestParam String search) {
-        R<List<SampleTemplateVO>> r = sampleHeadTemplateService.queryTemplate(measureType, search);
-        if (r.getSuccess()) {
-            return Result.ok(r.getData());
-        } else {
-            return Result.fail(r.getMessage());
-        }
-    }
-
-    @ApiOperation("删除样品模板")
-    @GetMapping("deleteSampleTemplate")
-    public Result<Boolean> deleteSampleTemplate(@RequestParam String templateId, @RequestParam String updateBy) {
-        R<Boolean> r = sampleHeadTemplateService.deleteTemplate(templateId, updateBy);
-        if (r.getSuccess()) {
-            return Result.ok();
-        } else {
-            return Result.fail(r.getMessage());
-        }
-    }
-
-
     @ApiOperation("查询可绑定的方法参数")
     @GetMapping("queryInputParam")
     public Result<List<InputParam>> queryInputParam(@RequestParam String methodId) {
@@ -207,7 +167,7 @@ public class PhotometricController {
 
     @ApiOperation("保存映射关系及表头信息")
     @PostMapping("saveInputParamMapTableHead")
-    public Result<Boolean> saveInputParamMapTableHead(@RequestBody TaskHeadSnapshot taskHeadSnapshot) {
+    public Result<Boolean> saveInputParamMapTableHead(@RequestBody TaskHeadSnapshotDTO taskHeadSnapshot) {
         R<Boolean> r = photometricService.saveInputParamMapTableHead(taskHeadSnapshot);
         if (r.getSuccess()) {
             return Result.ok();

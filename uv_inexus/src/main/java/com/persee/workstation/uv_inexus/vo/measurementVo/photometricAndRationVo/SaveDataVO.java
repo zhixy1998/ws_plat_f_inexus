@@ -4,7 +4,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 @Data
-public class RemarkChangeSaveVO {
+public class SaveDataVO {
     @ApiModelProperty("任务id")
     private String taskId;
 

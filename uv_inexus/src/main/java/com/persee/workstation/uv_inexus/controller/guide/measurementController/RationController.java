@@ -3,8 +3,12 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -130,5 +134,37 @@ public class RationController {
                             @RequestParam String taskId,
                             @RequestParam String updateBy) {
         return rationService.zero2(deviceSerialNumber, methodId, taskId, updateBy);
+    }
+
+    @ApiOperation("查询可绑定的方法参数")
+    @GetMapping("queryInputParam")
+    public Result<List<InputParam>> queryInputParam(@RequestParam String methodId) {
+        R<List<InputParam>> r = rationService.queryInputParam(methodId);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @ApiOperation("保存映射关系及表头信息")
+    @PostMapping("saveInputParamMapTableHead")
+    public Result<Boolean> saveInputParamMapTableHead(@RequestBody TaskHeadSnapshotDTO taskHeadSnapshot) {
+        R<Boolean> r = rationService.saveInputParamMapTableHead(taskHeadSnapshot);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+    @ApiOperation("查询已绑定的映射信息")
+    @GetMapping("queryInputParamMapTableHead")
+    public Result<List<InputParamMapTableHead>> queryInputParamMapTableHead(@RequestParam String taskId, @RequestParam String sampleKind) {
+        R<List<InputParamMapTableHead>> r = rationService.queryInputParamMapTableHead(taskId, sampleKind);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 }

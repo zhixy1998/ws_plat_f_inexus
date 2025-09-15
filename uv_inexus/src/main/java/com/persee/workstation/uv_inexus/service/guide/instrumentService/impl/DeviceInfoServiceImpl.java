@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,17 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     public String getIp(String deviceSerialNumber) {
         if (StringUtils.hasText(deviceSerialNumber)) {
             return dao.getIp(deviceSerialNumber);
+        } else {
+            log.info("未传入序列号");
+            return null;
+        }
+    }
+
+    @Override
+    public String getAttachmentType(String deviceSerialNumber) {
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            DeviceAttachmentTypeVO attachmentInfo = dao.getAttachmentInfo(deviceSerialNumber);
+            return attachmentInfo.getAttachmentName();
         } else {
             log.info("未传入序列号");
             return null;

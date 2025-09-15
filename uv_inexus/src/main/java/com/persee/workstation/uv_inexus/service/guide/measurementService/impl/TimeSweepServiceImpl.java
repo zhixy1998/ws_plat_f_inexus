@@ -304,9 +304,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<SampleListVo> listVos = new ArrayList<>();
 
         for (TaskSpecimen taskSpeciman : taskSpecimen) {
-            if (taskSpeciman.getDeleteType().equals("1")){
-                continue;
-            }
             SampleListVo vo = new SampleListVo();
             TMeasureSample sample =  tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
             if (sample==null){
@@ -332,7 +329,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 queryWrapper.last("limit 1");
                 TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
                 if (measureData == null){
-                    return Result.fail("无测量数据");
+//                    return Result.fail("无测量数据");
+                    continue;
                 }
                 vo.setTitle(sample.getSampleName());
                 vo.setAnalysisId(measureData.getId());
@@ -500,17 +498,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
     /**
      * 恢复删除的数据
-     * @param taskId
-     * @param paramId
-     * @param type
-     * @return
      */
     @Override
-    public Result restoreDeletedListData(String taskId, String paramId, String type) {
-        // 校验传过来的数据
-        if (taskId == null || paramId == null || type == null) {
-            return Result.ok("参数错误");
-        }
+    public Result restoreDeletedListData(String taskId,String sampleId, String type,String analysisId) {
         // 根据类型判断是样品数据还是变换数据
         if (type.equals("0")) {
             // 根据任务id查询任务数据
@@ -520,42 +510,39 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
             List<TaskSpecimen> sampleList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen taskSpecimen : sampleList) {
-                if (taskSpecimen.getSpecimenKey().equals(paramId)) {
+                if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
                     taskSpecimen.setDeleteType("0");
                     break;
                 }
             }
             task.setSampleKey(JSON.toJSONString(sampleList));
-            boolean update = tMeasureTaskService.updateById(task);
-
-            QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("task_id", taskId);
-            queryWrapper.eq("sample_key", paramId);
-            queryWrapper.eq("analysis_type", "5");
-            queryWrapper.eq("is_delete", "1");
-            queryWrapper.orderByDesc("analysis_number");
-            queryWrapper.last("limit 1");
-            TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
-            if (measureData == null){
-                return Result.fail("无测量数据");
+            boolean update1 = tMeasureTaskService.updateById(task);
+            // 根据分析id查询分析数据
+            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(analysisId);
+            if (byId == null) {
+                return Result.fail("分析数据不存在");
             }
-            measureData.setIsDelete("0");
-            boolean update1 = tMeasureAnalysisDataService.updateById(measureData);
-            if (update&&update1){
+            byId.setIsDelete("0");
+            boolean update = tMeasureAnalysisDataService.updateById(byId);
+            if (update1 && update){
                 return Result.ok(true);
-            }else {
+            }else{
                 return Result.fail(false);
             }
         }else{
             // 根据变换数据id查询变换数据
-            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(paramId);
+            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(analysisId);
             if (byId == null) {
                 return Result.fail("变换数据不存在");
             }
             byId.setIsDelete("0");
-            tMeasureAnalysisDataService.updateById(byId);
+            boolean update = tMeasureAnalysisDataService.updateById(byId);
+            if (update){
+                return Result.ok(update);
+            }else{
+                return Result.fail(false);
+            }
         }
-        return Result.ok();
     }
 
     /**
@@ -1386,11 +1373,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("请选择数据类型");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData1 = tMeasureDataService.getById(paramDto.getMeasureDataId1());
+        TMeasureAnalysisData measureData1 = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId1());
         List<String> xList = new ArrayList<>();
         List<String> yList1 = new ArrayList<>();
         List<String> yList2 = new ArrayList<>();
-        List<String> list = JSON.parseArray(measureData1.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData1.getAnalysisResult(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1515,10 +1502,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("请选择变换类型");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1624,11 +1611,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
         for (String s : list){
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1733,11 +1720,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
-        TMeasureData tMeasureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         // 将测量数据中的原始计算数据转换成List
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(tMeasureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
         for (String s : list){
             String[] split = s.split(",");
             xList.add(split[0]);
@@ -1864,10 +1851,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.fail("您当前的光度模式不支持进行转换!");
         }
         // 根据测量数据id查询测量数据
-        TMeasureData measureData = tMeasureDataService.getById(paramDto.getMeasureDataId());
+        TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
-        List<String> list = JSON.parseArray(measureData.getOriginalCalculationData(), String.class);
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);

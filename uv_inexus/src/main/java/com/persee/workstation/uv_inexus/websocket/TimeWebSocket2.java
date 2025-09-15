@@ -14,7 +14,9 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -30,9 +32,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 
 /**
  * WebSocket处理器类，继承自TextWebSocketHandler
@@ -95,14 +95,9 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
         // 解析参数
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
-        String sampleId= getQueryParam(query, "sampleId");
         String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
         if (taskId == null) {
             sendAndClose(session, "缺少 taskId 参数");
-            return;
-        }
-        if (sampleId == null) {
-            sendAndClose(session, "缺少 sampleId 参数");
             return;
         }
         if (deviceSerialNumber == null) {
@@ -112,7 +107,7 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
 
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task.getSampleKey()==null||task.getSampleKey().equals("")) {
+        if (task.getSampleKey()==null|| task.getSampleKey().isEmpty()) {
             sendAndClose(session, "请先创建样品");
             return;
         }
@@ -122,7 +117,7 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
         TimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
 
         Thread taskThread = new Thread(() -> {
-            startTimedTask(session,timeSweepParameter,deviceSerialNumber,sampleId,task); // 启动推送任务
+            startTimedTask(session,timeSweepParameter,deviceSerialNumber,task); // 启动推送任务
         });
 
         taskThreads.put(session.getId(), taskThread);
@@ -134,42 +129,95 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
      * 启动定时任务，每隔 1 秒推送数据给前端
      * @param session
      */
-    private void startTimedTask(WebSocketSession session,TimeSweepParamter param,String deviceSerialNumber,String sampleId,TMeasureTask task) {
-        // 创建一个单线程的定时任务执行器
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private void startTimedTask(WebSocketSession session,TimeSweepParamter param,String deviceSerialNumber,TMeasureTask task) {
 
-        Constants.startTime = LocalDateTime.now();
-        final long startTime = System.currentTimeMillis();  // 记录任务开始的时间
-        final double intervalTime = Double.parseDouble(param.getIntervalTime());
-        final int[] counter = {0}; // 记录执行次数
-        List<BigDecimal> x_data = new ArrayList<>();
-        List<BigDecimal> y_data = new ArrayList<>();
-        List<ChangeParam> originalData = new ArrayList<>();
+
 
         // 扫描的总个数
         Integer totalTime = Integer.valueOf(param.getTotalNumber())+1;
         // 时间间隔
         Integer interval = Integer.valueOf(param.getIntervalTime());
         // 扫描的单位
-        String scanUnit = param.getScanUnit();
+        TimeUnit timeUnit = param.getScanUnit().equals("0") ? TimeUnit.MINUTES : TimeUnit.SECONDS;
 
         // 获取任务的校零参数
-        ChangeParam baselineData = new ChangeParam();
-        if (task.getZeroParam()!=null||!task.getZeroParam().equals("")){
-            baselineData = JSON.parseObject(task.getZeroParam(), ChangeParam.class);
-        }else{
-            baselineData = null;
+        final ChangeParam baselineData = (task.getZeroParam() != null && !task.getZeroParam().equals(""))
+                ? JSON.parseObject(task.getZeroParam(), ChangeParam.class)
+                : null;
+        // 获取任务样品参数
+        List<TaskSpecimen> specimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        List<TaskSpecimen> newSampleData = new ArrayList<>();
+        for (TaskSpecimen taskSpecimen : specimenList) {
+            // 样品未测量并且未删除
+            if ("0".equals(taskSpecimen.getDeleteType()) && "0".equals(taskSpecimen.getIsTested())) {
+                newSampleData.add(taskSpecimen);
+            }
+        }
+
+        if (newSampleData.isEmpty() && !specimenList.isEmpty()){
+            sendAndClose(session, "您的样品已测完,请重新添加样品");
         }
 
         // 根据多联池模式进行校验
         if (param.getMultiPoolMode().equals("0")){
+            // 单池重复连续采样
+            for (TaskSpecimen specimen : newSampleData) {
+                ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+                CountDownLatch latch = new CountDownLatch(1); // 用来等定时任务结束
+                final int[] counter = {0};
+                final long startTime = System.currentTimeMillis();
+                final long intervalTime = Long.parseLong(param.getIntervalTime());
+
+                List<BigDecimal> x_data = new ArrayList<>();
+                List<BigDecimal> y_data = new ArrayList<>();
+                List<ChangeParam> originalData = new ArrayList<>();
+
+                scheduler.scheduleAtFixedRate(() -> {
+                    if (counter[0] >= totalTime || !session.isOpen()) {
+                        scheduler.shutdown();
+                        latch.countDown(); // 通知主线程：这个 specimen 完成了
+                        return;
+                    }
+
+                    BigDecimal xValue = BigDecimal.valueOf(
+                            Math.floor((System.currentTimeMillis() - startTime) / 1000.0)
+                    );
+
+                    String ip = deviceInfoService.getIp(deviceSerialNumber);
+                    Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
+                    ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
+
+                    if (changeParam == null) {
+                        scheduler.shutdown();
+                        sendAndClose(session, "扫描失败");
+                        latch.countDown();
+                        return;
+                    }
+                    originalData.add(changeParam);
+
+                    try {
+                        calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    counter[0]++;
+                }, 0, intervalTime, timeUnit);
+
+                try {
+                    latch.await(); // ⬅️ 等待当前 specimen 的定时器跑完
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
 
         }else if (param.getMultiPoolMode().equals("1")){
+            // 多池重复交替采样
+
+            sendAndClose(session, "暂不支持多池重复交替采样");
 
         }else{
             sendAndClose(session, "多联池模式参数错误");
-            // 将线程停止
-            scheduler.shutdown();
             return;
         }
 
@@ -256,6 +304,58 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
 //                e.printStackTrace();
 //            }
 //        }, 0, interval, TimeUnit.SECONDS); // 每隔 1 秒执行一次,参数分别是 延迟时间、执行间隔、执行间隔单位
+    }
+
+
+    private void calculateAndPushYValue(
+            TimeSweepParamter param,
+            ChangeParam baselineData,
+            ChangeParam changeParam,
+            BigDecimal xValue,
+            List<BigDecimal> x_data,
+            List<BigDecimal> y_data,
+            WebSocketSession session) throws IOException {
+
+        if (param.getLuminosity().equals("1")) {
+            String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
+            String y = DataCountUtil.changeTPercentOrAbs2(null, s);
+            x_data.add(xValue);
+            y_data.add(new BigDecimal(y));
+            JSONObject point = new JSONObject();
+            point.put("x", xValue);
+            point.put("y", y);
+            session.sendMessage(new TextMessage(point.toJSONString()));
+        } else if (param.getLuminosity().equals("2")) {
+            String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
+            String y = DataCountUtil.changeTPercentOrAbs2(s, null);
+            x_data.add(xValue);
+            y_data.add(new BigDecimal(y));
+            JSONObject point = new JSONObject();
+            point.put("x", xValue);
+            point.put("y", y);
+            session.sendMessage(new TextMessage(point.toJSONString()));
+        } else if (param.getLuminosity().equals("3")) {
+            Double sData = Double.valueOf(changeParam.getS());
+            String y = String.valueOf((sData / (4095 * 32)) * 100);
+            x_data.add(xValue);
+            y_data.add(new BigDecimal(y));
+            JSONObject point = new JSONObject();
+            point.put("x", xValue);
+            point.put("y", y);
+            session.sendMessage(new TextMessage(point.toJSONString()));
+        } else if (param.getLuminosity().equals("4")) {
+            Double rData = Double.valueOf(changeParam.getR());
+            String y = String.valueOf((rData / (4095 * 32)) * 100);
+            x_data.add(xValue);
+            y_data.add(new BigDecimal(y));
+            JSONObject point = new JSONObject();
+            point.put("x", xValue);
+            point.put("y", y);
+            session.sendMessage(new TextMessage(point.toJSONString()));
+        } else {
+            sendAndClose(session, "光度模式错误");
+            session.close();
+        }
     }
 
 

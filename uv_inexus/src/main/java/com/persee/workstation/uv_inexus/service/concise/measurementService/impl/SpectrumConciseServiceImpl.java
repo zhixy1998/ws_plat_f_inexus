@@ -1,17 +1,40 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 简洁模式: 光谱扫描服务业务层实现
@@ -22,71 +45,1746 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private FMeasureMethodService fMeasureMethodService;
+
+    @Autowired
+    private FMeasureTaskService fMeasureTaskService;
+
+    @Autowired
+    private FMeasureSampleService fMeasureSampleService;
+
+    @Autowired
+    private FMeasureDataService fMeasureDataService;
+
+    @Autowired
+    private FMeasureAnalysisDataService fMeasureAnalysisDataService;
+
+
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
 
+    @Autowired
+    private DeviceInfoService deviceInfoService;
+
+    @Autowired
+    private DevMessageUtil devMessageUtil;
+
+
+    @Autowired
+    private RestTemplate restTemplate;
+
     /**
      * 查询最近方法数据
+     *
      * @param updateBy
      * @param measureType
      * @return
      */
     @Override
-    public Result queryNearestMethodData(String updateBy,String measureType) {
-        if (updateBy == null){
+    public Result queryNearestMethodData(String updateBy, String measureType) {
+        if (updateBy == null) {
             return Result.fail("更新人不能为空");
         }
 
-        if (measureType == null){
+        if (measureType == null) {
             return Result.fail("方法类型不能为空");
         }
 
         QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
-        wrapper.eq("method_creator",updateBy);
-        wrapper.eq("is_draft","0");
-        wrapper.eq("measurement_type",measureType);
-        wrapper.orderByDesc("method_create_time");
+        wrapper.eq("method_creator", updateBy);
+        wrapper.eq("is_draft", "0");
+        wrapper.eq("measurement_type", measureType);
+        wrapper.orderByDesc("method_use_time");
         wrapper.last("LIMIT 1");
 
         FMeasureMethod method = fMeasureMethodService.getById(wrapper);
 
-        if (method==null){
-            return Result.ok(new ArrayList<>());
+        if (method == null) {
+            // todo 查询对应类型的默认方法
+
         }
-        return Result.ok(method);
+
+        // 根据方法id查询出最近创建的任务
+        QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
+        taskWrapper.eq("method_id", method.getId());
+        taskWrapper.orderByDesc("create_time");
+        taskWrapper.last("LIMIT 1");
+        FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("method", method);
+        if (task != null) {
+            map.put("taskId", task.getId());
+        }
+        return Result.ok(map);
     }
 
     /**
      * 查找方法按钮
+     *
      * @param updateBy
      * @param measureType
      * @param methodName
      * @return
      */
     @Override
-    public Result searchMethodButton(Integer peageNum,Integer pageSize,String updateBy, String measureType, String methodName) {
+    public Result searchMethodButton(Integer pageNum, Integer pageSize, String updateBy, String measureType, String methodName) {
         // 对传入的参数进行校验
-        if (updateBy == null){
+        if (updateBy == null) {
             return Result.fail("用户不能为空");
         }
-        if (measureType == null){
+        if (measureType == null) {
             return Result.fail("方法类型不能为空");
         }
-        if (peageNum == null){
-            peageNum = 1;
+        if (pageNum == null) {
+            pageNum = 1;
         }
-        if (pageSize == null){
+        if (pageSize == null) {
             pageSize = 10;
         }
         // 设置查询条件
         QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
-        wrapper.eq("method_creator",updateBy);
-        wrapper.eq("measurement_type",measureType);
-        if (methodName != null){
-            wrapper.like("method_name",methodName);
+        wrapper.eq("method_creator", updateBy);
+        wrapper.eq("measurement_type", measureType);
+        if (methodName != null) {
+            wrapper.like("method_name", methodName);
         }
         // 分页查询
-        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(peageNum, pageSize), wrapper);
+        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), wrapper);
         return Result.ok(page);
+    }
+
+    /**
+     * 应用接口
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result use(FUseMethodDto paramDto) {
+        // 1. 判断来源
+        if ("0".equals(paramDto.getType())) {
+            return createNewMethod(paramDto);
+        }
+
+        // 2. 查询历史方法
+        FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
+        if (method == null) {
+            return createNewMethod(paramDto); // 没有历史记录 → 新建
+        }
+
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
+        FSpectrumParameter newParam = new FSpectrumParameter();
+        // 将方法参数拷贝出来
+        BeanUtils.copyProperties(newParam, paramDto);
+
+        // 3. 参数比较
+        boolean sameParam = compareParam(parameter, newParam);
+
+        if (sameParam) {
+            if (method.getId().equals(paramDto.getMethodId())){
+                return Result.fail("请勿重复使用");
+            }else{
+                return Result.ok(method);
+            }
+        }else{
+            if (paramDto.getState().equals("0")){
+            // 保存
+                return createNewMethod(paramDto);
+            }else{
+            // 覆盖
+                method.setMeasurementParamInfo(JSON.toJSONString(newParam));
+                return fMeasureMethodService.updateById(method) ? Result.ok() : Result.fail();
+            }
+        }
+    }
+
+
+    /**
+     * 查询样品数据列表
+     *
+     * @param taskId
+     * @param type
+     * @param digit
+     * @return
+     */
+    @Override
+    public Result querySampleDataList(String taskId, String type, Integer digit) {
+        if (taskId == null) {
+            return Result.fail("方法id不能为空");
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("该方法下没有草稿,请新建草稿");
+        }
+        // 根据方法id查询方法
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        List<FSampleListVo> listVos = new ArrayList<>();
+        // 判断是否是重复模式
+        if ("不重复".equals(parameter.getRepetitionPattern())) {
+            // 不重复模式
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                FSampleListVo vo = new FSampleListVo();
+                // 根据样品id查询样品数据
+                FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null) {
+                    return Result.fail("样品不存在");
+                }
+                // 如果没有测量数据则设置为无测量数据的参数返回
+                if (taskSpeciman.getIsTested().equals("0")) {
+                    vo.setTitle(sample.getSampleName());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisId(null);
+                    vo.setAnalysisNumber(1);
+                    vo.setColor(null);
+                    vo.setData(null);
+                } else {
+                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("task_id", task.getId());
+                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                    queryWrapper.eq("analysis_type", "5");
+                    queryWrapper.orderByDesc("analysis_number");
+                    if (type == null) {
+                        queryWrapper.eq("is_delete", "0");
+                    }
+                    queryWrapper.last("limit 1");
+                    FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+                    if (measureData == null) {
+                        return Result.fail("无测量数据");
+                    }
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(measureData.getId());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                    vo.setColor(measureData.getColor());
+                    if (measureData.getAnalysisResult() == null) {
+                        vo.setData(null);
+                    } else {
+                        vo.setData(getSampleData(measureData, digit));
+                    }
+                }
+                vo.setType("0");
+                vo.setDeleteType(taskSpeciman.getDeleteType());
+                listVos.add(vo);
+            }
+        } else {
+            // 重复模式
+            if (parameter.getRepetitionTime() == null || parameter.getRepetitionTime().equals("")) {
+                return Result.fail("请填写重复次数");
+            }
+            Integer count = Integer.valueOf(parameter.getRepetitionTime());
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if (type == null && taskSpeciman.getDeleteType().equals("1")) {
+                    continue;
+                }
+                // 根据样品id查询样品数据
+                FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null) {
+                    return Result.fail("样品不存在");
+                }
+                int key = 0;
+                // 根据方法中的方法参数的重复次数进行循环
+                for (int i = 0; i < count; i++) {
+                    FSampleListVo vo = new FSampleListVo();
+                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("task_id", task.getId());
+                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                    queryWrapper.eq("analysis_type", "5");
+                    if (type == null) {
+                        queryWrapper.eq("is_delete", "0");
+                    }
+                    queryWrapper.eq("analysis_number", (i + 1));
+                    queryWrapper.last("limit 1");
+                    FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+                    if (measureData == null && taskSpeciman.getIsTested().equals("0")) {
+                        vo.setTitle(sample.getSampleName() + "-" + (i + 1));
+                        vo.setAnalysisId(null);
+                        vo.setSampleId(taskSpeciman.getSpecimenKey());
+                        vo.setAnalysisNumber(i + 1);
+                        vo.setColor(null);
+                        vo.setData(null);
+                        vo.setDeleteType("0");
+                    } else {
+                        vo.setTitle(sample.getSampleName() + "-" + (i + 1));
+                        vo.setAnalysisId(measureData.getId());
+                        vo.setSampleId(taskSpeciman.getSpecimenKey());
+                        vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                        vo.setColor(measureData.getColor());
+                        if (measureData.getAnalysisResult() == null) {
+                            vo.setData(null);
+                        } else {
+                            vo.setData(getSampleData(measureData, digit));
+                        }
+                        vo.setDeleteType(measureData.getIsDelete());
+                    }
+                    vo.setType("0");
+
+                    listVos.add(vo);
+                }
+            }
+        }
+        return Result.ok(listVos);
+    }
+
+    /**
+     * 删除样品列表
+     *
+     * @param taskId
+     * @param sampleId
+     * @param analysisId
+     * @return
+     */
+    @Override
+    public Result deleteSampleListPort(String taskId, String sampleId, String analysisId) {
+        // 校验传过来的参数
+        if (taskId == null || sampleId == null || analysisId == null) {
+            return Result.fail("参数错误");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        List<FTaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        // 根据任务id查询方法表数据并取出方法参数
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        // 判断是否是重复模式
+        if (spectrumParameter.getRepetitionPattern().equals("不重复")) {
+            // 根据分析id查询分析数据
+            FMeasureAnalysisData byId = fMeasureAnalysisDataService.getById(analysisId);
+            if (byId == null) {
+                return Result.fail("分析数据不存在");
+            }
+            byId.setIsDelete("1");
+            boolean update = fMeasureAnalysisDataService.updateById(byId);
+            // 循环遍历样品列表找到该样品
+            for (FTaskSpecimen taskSpecimen : taskSpecimenList) {
+                if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                    taskSpecimen.setDeleteType("1");
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(taskSpecimenList));
+            boolean update1 = fMeasureTaskService.updateById(task);
+            if (update && update1) {
+                return Result.ok("成功删除数据");
+            } else {
+                return Result.fail("删除数据失败");
+            }
+        } else {
+            // 根据分析id查询分析数据
+            FMeasureAnalysisData byId = fMeasureAnalysisDataService.getById(analysisId);
+            if (byId == null) {
+                return Result.fail("分析数据不存在");
+            }
+            byId.setIsDelete("1");
+            boolean update = fMeasureAnalysisDataService.updateById(byId);
+            // 查询跟这个样品和任务id关联的分析数据
+            List<FMeasureAnalysisData> list = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("is_delete", "0"));
+            if (list.size() == 0) {
+                // 循环遍历样品列表找到该样品
+                for (FTaskSpecimen taskSpecimen : taskSpecimenList) {
+                    if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                        taskSpecimen.setDeleteType("1");
+                        break;
+                    }
+                }
+                task.setSampleKey(JSON.toJSONString(taskSpecimenList));
+                boolean update1 = fMeasureTaskService.updateById(task);
+                if (update && update1) {
+                    return Result.ok("成功删除数据");
+                } else {
+                    return Result.fail("删除数据失败");
+                }
+            }
+            if (update) {
+                return Result.ok("成功删除数据");
+            } else {
+                return Result.fail("删除数据失败");
+            }
+        }
+    }
+
+    /**
+     * 查询分析数据列表
+     *
+     * @param taskId
+     * @param type
+     * @param digit
+     * @return
+     */
+    @Override
+    public Result queryAnalysisDataList(String taskId, String type, Integer digit) {
+        if (taskId == null) {
+            return Result.fail("方法id不能为空");
+        }
+
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("该方法下没有草稿,请新建草稿");
+        }
+        // 根据方法id查询方法
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+
+        // 根据任务id去查询分析数据
+        QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("task_id", task.getId());
+        queryWrapper.ne("analysis_type", "5");
+        if (type == null || type.isEmpty()) {
+            queryWrapper.eq("is_delete", "0");
+        }
+        List<FMeasureAnalysisData> list = fMeasureAnalysisDataService.list(queryWrapper);
+        List<FSampleListVo> listVos = new ArrayList<>();
+        for (FMeasureAnalysisData fMeasureAnalysisData : list) {
+            FSampleListVo vo = new FSampleListVo();
+            vo.setAnalysisId(fMeasureAnalysisData.getId());
+            vo.setTitle(fMeasureAnalysisData.getAnalysisName());
+            vo.setColor(fMeasureAnalysisData.getColor());
+            vo.setDeleteType(fMeasureAnalysisData.getIsDelete());
+            List<String> results = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
+            List<FPeakValleyMarking> gauges = JSON.parseArray(fMeasureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
+            List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
+            List<FPeakValleyMarking> grades = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
+            List<Map<String, Object>> resultList = new ArrayList<>();
+            for (String s : results) {
+                String[] split = s.split(",");
+                Map<String, Object> map = new HashMap<>();
+                if (digit != null) {
+                    BigDecimal value = new BigDecimal(split[1]);
+                    value = value.setScale(digit, RoundingMode.HALF_UP);
+                    map.put("x", split[0]);
+                    map.put("y", value.stripTrailingZeros().toPlainString());
+                } else {
+                    map.put("x", split[0]);
+                    map.put("y", split[1]);
+                }
+                if (gauges != null) {
+                    for (FPeakValleyMarking gauge : gauges) {
+                        if (split[0].equals(gauge.getX())) {
+                            map.put("marked", "1");
+                            break;
+                        } else {
+                            map.put("marked", "0");
+                        }
+                    }
+                } else {
+                    map.put("marked", "0");
+                }
+                if (grades != null) {
+                    for (FPeakValleyMarking peak : peaks) {
+                        if (split[0].equals(peak.getX())) {
+                            map.put("feng", "1");
+                            break;
+                        } else {
+                            map.put("feng", "0");
+                        }
+                    }
+                } else {
+                    map.put("feng", "0");
+                }
+                if (grades != null) {
+                    for (FPeakValleyMarking grade : grades) {
+                        if (split[0].equals(grade.getX())) {
+                            map.put("gu", "1");
+                            break;
+                        } else {
+                            map.put("gu", "0");
+                        }
+                    }
+                } else {
+                    map.put("gu", "0");
+                }
+                resultList.add(map);
+            }
+            vo.setData(resultList);
+            vo.setType("1");
+            listVos.add(vo);
+        }
+        return Result.ok(listVos);
+    }
+
+    /**
+     * 删除分析数据列表接口
+     *
+     * @param analysisId
+     * @return
+     */
+    @Override
+    public Result deleteChangeListPort(String analysisId) {
+        // 根据analysisId查询测量数据
+        FMeasureAnalysisData byId = fMeasureAnalysisDataService.getById(analysisId);
+        if (byId == null) {
+            return Result.fail("分析数据不存在");
+        }
+        // 删除测量数据
+        byId.setIsDelete("1");
+        boolean update = fMeasureAnalysisDataService.updateById(byId);
+        if (update) {
+            return Result.ok(true);
+        } else {
+            return Result.fail(false);
+        }
+    }
+
+    /**
+     * 恢复删除的数据
+     *
+     * @param taskId
+     * @param sampleId
+     * @param type
+     * @param analysisId
+     * @return
+     **/
+    @Override
+    public Result restoreDeletedListData(String taskId, String sampleId, String type, String analysisId) {
+        // 根据类型判断是样品数据还是变换数据
+        if (type.equals("0")) {
+            // 根据任务id查询任务数据
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            if (task == null) {
+                return Result.fail("任务不存在");
+            }
+            List<FTaskSpecimen> sampleList = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FTaskSpecimen taskSpecimen : sampleList) {
+                if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
+                    taskSpecimen.setDeleteType("0");
+                    break;
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(sampleList));
+            boolean update1 = fMeasureTaskService.updateById(task);
+            // 根据分析id查询分析数据
+            FMeasureAnalysisData byId = fMeasureAnalysisDataService.getById(analysisId);
+            if (byId == null) {
+                return Result.fail("分析数据不存在");
+            }
+            byId.setIsDelete("0");
+            boolean update = fMeasureAnalysisDataService.updateById(byId);
+            if (update1 && update) {
+                return Result.ok(true);
+            } else {
+                return Result.fail(false);
+            }
+        } else {
+            // 根据变换数据id查询变换数据
+            FMeasureAnalysisData byId = fMeasureAnalysisDataService.getById(analysisId);
+            if (byId == null) {
+                return Result.fail("变换数据不存在");
+            }
+            byId.setIsDelete("0");
+            boolean update = fMeasureAnalysisDataService.updateById(byId);
+            if (update) {
+                return Result.ok(update);
+            } else {
+                return Result.fail(false);
+            }
+        }
+    }
+
+    /**
+     * 更新数据颜色接口
+     *
+     * @param paramDto
+     * @return
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result updateDataColor(FUpdateDataColorDto paramDto) {
+        // 参数校验
+        if (paramDto == null || paramDto.getDataId() == null || paramDto.getDataId().trim().isEmpty()) {
+            return Result.fail("参数不能为空");
+        }
+
+        String dataId = paramDto.getDataId();
+        String color = paramDto.getColor();
+
+        boolean updated = false;
+
+
+        // 分析数据
+        FMeasureAnalysisData analysis = fMeasureAnalysisDataService.getById(dataId);
+        if (analysis == null) {
+            return Result.fail("样品数据不存在");
+        }
+        analysis.setColor(color);
+        updated = fMeasureAnalysisDataService.updateById(analysis);
+
+
+        if (!updated) {
+            return Result.fail("更新失败");
+        }
+
+        return Result.ok();
+    }
+
+    /**
+     * 获取分析标记点接口
+     *
+     * @param dataId
+     * @param digit
+     * @return
+     */
+    @Override
+    public Result queryGaugePoint(String dataId, Integer digit) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<FPeakValleyMarking> gaugePoints = new ArrayList<>();
+        FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getById(dataId);
+        if (measureData == null) {
+            return Result.ok(new ArrayList<>());
+        }
+        if (measureData.getGaugePoint() != null) {
+            gaugePoints = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
+            if (digit != null) {
+                for (FPeakValleyMarking data : gaugePoints) {
+                    BigDecimal value = new BigDecimal(data.getY());
+                    value = value.setScale(digit, RoundingMode.HALF_UP);
+                    data.setY(value.stripTrailingZeros().toPlainString());
+                }
+            }
+        }
+        return Result.ok(gaugePoints);
+    }
+
+    /**
+     * 添加标记点接口
+     *
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result addGaugePointPort(FAddGaugePointDto paramDto) {
+        if (paramDto.getGaugePoints() == null || paramDto.getGaugePoints().isEmpty()) {
+            return Result.fail("请选择标记点");
+        }
+        // 读取原数据
+        String gaugePointJson;
+        List<String> rawData;
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
+        if (analysisData == null) {
+            return Result.fail("分析数据不存在");
+        }
+        gaugePointJson = analysisData.getGaugePoint();
+        rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+
+
+        // 原标记点集合
+        List<FPeakValleyMarking> oldList = gaugePointJson == null
+                ? new ArrayList<>()
+                : JSON.parseArray(gaugePointJson, FPeakValleyMarking.class);
+
+        // 先构造原有标记点 Map（X -> 对象）
+        Map<String, FPeakValleyMarking> oldMap = oldList.stream()
+                .collect(Collectors.toMap(
+                        m -> normalizeNumberString(m.getX()),
+                        m -> m,
+                        (a, b) -> a
+                ));
+
+        // 构造新的最终集合（保证顺序）
+        Map<String, FPeakValleyMarking> finalMap = new LinkedHashMap<>();
+
+        // 遍历前端传的 X 值
+        for (String xStr : paramDto.getGaugePoints()) {
+            String normX = normalizeNumberString(xStr);
+            FPeakValleyMarking existing = oldMap.get(normX);
+
+            if (existing != null) {
+                // 已存在则直接用旧值
+                finalMap.put(normX, existing);
+            } else {
+                // 新增点时，从原始数据中查找对应 Y
+                for (String s : rawData) {
+                    String[] split = s.split(",");
+                    String rawNormX = normalizeNumberString(split[0]);
+                    if (normX.equals(rawNormX)) {
+                        FPeakValleyMarking newMark = new FPeakValleyMarking();
+                        newMark.setX(split[0]);
+                        newMark.setY(split[1]);
+                        finalMap.put(normX, newMark);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 保存更新
+        String updatedJson = JSON.toJSONString(new ArrayList<>(finalMap.values()));
+        FMeasureAnalysisData analysisData1 = fMeasureAnalysisDataService.getById(paramDto.getDataId());
+        analysisData1.setGaugePoint(updatedJson);
+        boolean update = fMeasureAnalysisDataService.updateById(analysisData1);
+        return update ? Result.ok(true) : Result.fail(false);
+    }
+
+    /**
+     * 添加标记点备注接口
+     *
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result addGaugePointRemarks(FPeakValleyMarkingDto paramDto) {
+        if (paramDto == null) {
+            return Result.fail("参数不能为空");
+        }
+        if (paramDto.getRemark() == null) {
+            return Result.fail("请先添加备注");
+        }
+        // 根据测量id去分析数据表中进行查询
+        FMeasureAnalysisData tMeasureData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
+        if (tMeasureData == null) {
+            return Result.fail("分析数据不存在");
+        }
+        List<FPeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), FPeakValleyMarking.class);
+        // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
+        for (FPeakValleyMarking marking : list) {
+            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+                marking.setRemark(paramDto.getRemark());
+                break;
+            }
+        }
+        tMeasureData.setGaugePoint(JSON.toJSONString(list));
+        boolean update = fMeasureAnalysisDataService.updateById(tMeasureData);
+        return update ? Result.ok() : Result.fail();
+    }
+
+    /**
+     * 获取峰谷接口
+     *
+     * @param dataId
+     * @param digit
+     * @return
+     */
+    @Override
+    public Result queryPeakAndValleysPort(String dataId, Integer digit) {
+        if ((dataId == null || dataId.equals(""))) {
+            return Result.ok(new ArrayList<>());
+        }
+        List<FPeakValleyMarking> peaks = new ArrayList<>();
+        List<FPeakValleyMarking> grains = new ArrayList<>();
+        List<FPeakValleyMarking> dataAll = new ArrayList<>();
+        FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getById(dataId);
+        if (measureData == null) {
+            return Result.ok(new ArrayList<>());
+        }
+        if (measureData.getPeak() != null) {
+            peaks = JSON.parseArray(measureData.getPeak(), FPeakValleyMarking.class);
+            dataAll.addAll(peaks);
+        }
+        if (measureData.getGrain() != null) {
+            grains = JSON.parseArray(measureData.getGrain(), FPeakValleyMarking.class);
+            dataAll.addAll(grains);
+        }
+        if (dataAll != null && dataAll.size() != 0) {
+            if (digit != null) {
+                for (FPeakValleyMarking data : dataAll) {
+                    BigDecimal value = new BigDecimal(data.getY());
+                    value = value.setScale(digit, RoundingMode.HALF_UP);
+                    data.setY(value.stripTrailingZeros().toPlainString());
+                }
+            }
+        }
+        return Result.ok(dataAll);
+    }
+
+    /**
+     * 寻峰寻谷接口
+     *
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
+        paramDto.setHeight(paramDto.getHeight() / 100);
+        FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
+        if (fMeasureAnalysisData == null) {
+            return Result.fail("测量数据不存在");
+        }
+        List<String> list = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
+        // 分割测量数据
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        for (String s : list) {
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("x_data", xList);
+        body.put("y_data", yList);
+        body.put("peak_height", paramDto.getHeight());
+        body.put("valley_height", paramDto.getHeight());
+        body.put("distance", paramDto.getDistance());
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING_AND_VALLEY_SEARCHING, request, Map.class).getBody();
+        List<FPeakValleyMarking> peakData = new ArrayList<>();
+        List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
+        List<String> yPeak = (List<String>) resultMap.get("peak_y");
+        if (xPeak == null || yPeak == null) {
+            return Result.fail("height参数太高");
+        }
+        for (int i = 0; i < xPeak.size(); i++) {
+            FPeakValleyMarking marking = new FPeakValleyMarking();
+            marking.setX(xPeak.get(i).toString());
+            marking.setY(yPeak.get(i));
+            marking.setType("波峰");
+            peakData.add(marking);
+        }
+        List<FPeakValleyMarking> valleyData = new ArrayList<>();
+        List<Double> xValley = (List<Double>) resultMap.get("valley_x");
+        List<String> yValley = (List<String>) resultMap.get("valley_y");
+        for (int i = 0; i < xValley.size(); i++) {
+            FPeakValleyMarking marking = new FPeakValleyMarking();
+            marking.setX(xValley.get(i).toString());
+            marking.setY(yValley.get(i));
+            marking.setType("波谷");
+            valleyData.add(marking);
+        }
+        Boolean flag;
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
+        if (analysisData == null) {
+            return Result.fail("分析数据不存在");
+        }
+        analysisData.setPeak(JSON.toJSONString(peakData));
+        analysisData.setGrain(JSON.toJSONString(valleyData));
+        flag = fMeasureAnalysisDataService.updateById(analysisData);
+        return flag ? Result.ok() : Result.fail("数据保存失败");
+    }
+
+    /**
+     * 添加峰谷备注接口
+     *
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result addPeakValleyRemarks(FPeakValleyMarkingDto paramDto) {
+        if (paramDto == null) {
+            return Result.fail("参数不能为空");
+        }
+        if (paramDto.getRemark() == null) {
+            return Result.fail("请先添加备注");
+        }
+        // 根据测量id去分析数据表中进行查询
+        FMeasureAnalysisData tMeasureData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
+        if (tMeasureData == null) {
+            return Result.fail("测量数据不存在");
+        }
+        // 判断添加的备注是峰该是谷,如果是峰则取出峰的数据,如果是谷则取出谷的数据
+        List<FPeakValleyMarking> list;
+        if (paramDto.getType().equals("波峰")) {
+            list = JSON.parseArray(tMeasureData.getPeak(), FPeakValleyMarking.class);
+        } else {
+            list = JSON.parseArray(tMeasureData.getGrain(), FPeakValleyMarking.class);
+        }
+        // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
+        for (FPeakValleyMarking marking : list) {
+            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+                marking.setRemark(paramDto.getRemark());
+                break;
+            }
+        }
+        if (paramDto.getType().equals("波峰")) {
+            tMeasureData.setPeak(JSON.toJSONString(list));
+        } else {
+            tMeasureData.setGrain(JSON.toJSONString(list));
+        }
+        boolean update = fMeasureAnalysisDataService.updateById(tMeasureData);
+        return update ? Result.ok() : Result.fail();
+    }
+
+    /**
+     * 设置测量参数接口
+     *
+     * @param methodId
+     * @param deviceSerialNumber
+     * @return
+     */
+    @Override
+    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+        // 根据序列号查询设备ip
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        // 根据methodId去方法表中查询数据
+        FMeasureMethod tMeasureMethod = fMeasureMethodService.getOne(new QueryWrapper<FMeasureMethod>().eq("id", methodId).eq("measurement_type", "光谱扫描"));
+        if (tMeasureMethod == null) {
+            return Result.fail("方法不存在");
+        }
+
+        FSpectrumParameter scanParamInfo = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), FSpectrumParameter.class);
+
+        List<Command> commands = new ArrayList<>();
+
+        // 光度模式
+        Command com1 = new Command();
+        com1.setCmdId(SetParamEnum.SetPhotoMode.getComId());
+        com1.setParams(new Object[]{scanParamInfo.getLuminosity()});
+        commands.add(com1);
+        // 开始波长
+        Command com2 = new Command();
+        com2.setCmdId(SetParamEnum.SetStartWl.getComId());
+        com2.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
+        commands.add(com2);
+        // 结束波长
+        Command com3 = new Command();
+        com3.setCmdId(SetParamEnum.SetEndWl.getComId());
+        com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
+        commands.add(com3);
+        // 波长间隔
+        Command com4 = new Command();
+        com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
+        com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
+        commands.add(com4);
+        // 扫描速度
+        Command com5 = new Command();
+        com5.setCmdId(SetParamEnum.SetScanSpeed.getComId());
+        com5.setParams(new Object[]{scanParamInfo.getScanSpeed()});
+        commands.add(com5);
+        // 换灯波长
+        Command com6 = new Command();
+        com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
+        com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        commands.add(com6);
+        // 能量灯
+        Command com7 = new Command();
+        com7.setCmdId(SetParamEnum.SetLampPos.getComId());
+        com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
+        commands.add(com7);
+        // 增益
+        Command com8 = new Command();
+        com8.setCmdId(SetParamEnum.SetGain.getComId());
+        com8.setParams(new Object[]{scanParamInfo.getGain()});
+        commands.add(com8);
+        R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
+        return Result.ok(stringR.getData());
+    }
+
+    /**
+     * 查询历史方法接口
+     *
+     * @param pageNum
+     * @param pageSize
+     * @param updateBy
+     * @param measureType
+     * @param methodName
+     * @return
+     */
+    @Override
+    public Result queryHistoryMethod(Integer pageNum, Integer pageSize, String updateBy, String measureType, String methodName) {
+        if (pageNum == null) {
+            pageNum = 1;
+        }
+        if (pageSize == null) {
+            pageSize = 10;
+        }
+        // 根据方法的用户名,测量类型,分页查询,如果有方法名称就加个方法名的模糊查询,如果没有就不加这个条件
+        Page<FMeasureMethod> page = new Page<>(pageNum, pageSize);
+        QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("update_by", updateBy)
+                .eq("measurement_type", measureType)
+                .orderByDesc("method_use_time");
+        if (methodName != null) {
+            queryWrapper.like("method_name", methodName);
+        }
+        Page<FMeasureMethod> methodPage = fMeasureMethodService.page(page, queryWrapper);
+        if (methodPage.getTotal() == 0){
+            return Result.fail("没有查询到数据");
+        }
+
+        return Result.ok(methodPage);
+    }
+
+    /**
+     * 查询历史任务接口
+     * @param pageNum
+     * @param pageSize
+     * @param updateBy
+     * @param measureType
+     * @param taskName
+     * @return
+     */
+    @Override
+    public Result queryHistoryTask(Integer pageNum, Integer pageSize, String updateBy, String measureType, String taskName) {
+        if (pageNum == null) {
+            pageNum = 1;
+        }
+        if (pageSize == null) {
+            pageSize = 10;
+        }
+        // 根据任务的创建人,测量类型,分页查询,如果有任务名称就加个任务名称的模糊查询,如果没有就不加这个条件
+        Page<FMeasureTask> page = new Page<>(pageNum, pageSize);
+        QueryWrapper<FMeasureTask> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("create_by", updateBy)
+                .eq("measurement_type", measureType)
+                .orderByDesc("create_time");
+        if (taskName != null) {
+            queryWrapper.like("task_name", taskName);
+        }
+        Page<FMeasureTask> taskPage = fMeasureTaskService.page(page, queryWrapper);
+        return Result.ok(taskPage);
+    }
+
+    /**
+     * 查询算术源数据接口
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result queryArithmeticSourceData(String taskId) {
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.ok(new ArrayList<>());
+        }
+        if (task.getSampleKey()==null||task.getSampleKey().equals("[]")){
+            return Result.ok(new ArrayList<>());
+        }
+        // 根据任务的方法key查询方法参数
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        List<Map<String,String>> list = new ArrayList<>();
+        // 判断是否是重复模式
+        if ("不重复".equals(spectrumParameter.getRepetitionPattern())){
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if(taskSpeciman.getIsTested().equals("1")&&taskSpeciman.getDeleteType().equals("0")){
+                    FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(new QueryWrapper<FMeasureAnalysisData>()
+                            .eq("task_id", taskId)
+                            .eq("sample_key", taskSpeciman.getSpecimenKey())
+                            .eq("analysis_type", "5")
+                            .eq("is_delete", "0")
+                            .eq("analysis_number", 1));
+                    FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                    if (one.getAnalysisResult()!=null){
+                        Map<String, String> map = new HashMap<>();
+                        map.put("measureId", one.getId());
+                        map.put("sampleName", byId.getSampleName());
+                        list.add(map);
+                    }
+                }
+            }
+        }else{
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if(taskSpeciman.getIsTested().equals("1")&&taskSpeciman.getDeleteType().equals("0")){
+                    List<FMeasureAnalysisData> measureDataList = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>()
+                            .eq("task_id", taskId)
+                            .eq("sample_key", taskSpeciman.getSpecimenKey())
+                            .orderByAsc("analysis_number"));
+                    FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                    for (FMeasureAnalysisData tMeasureData : measureDataList) {
+                        if (tMeasureData.getAnalysisResult()!=null){
+                            Map<String, String> map = new HashMap<>();
+                            map.put("measureId", tMeasureData.getId());
+                            map.put("sampleName", byId.getSampleName()+"-"+tMeasureData.getAnalysisNumber());
+                            list.add(map);
+                        }
+                    }
+                }
+            }
+        }
+
+        return Result.ok(list);
+    }
+
+    /**
+     * 四元组运算接口
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result fourOperationsPort(FFourOperationsParamDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
+        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+            return Result.fail("缺少参数");
+        }
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
+        // 对所有传过来的对象数据进行校验,判断是否为null或""
+        if (paramDto.getMeasureDataId1()==null||paramDto.getMeasureDataId1().equals("")){
+            return Result.fail("请选择测量数据1");
+        }
+        if (paramDto.getMeasureDataId2()==null||paramDto.getMeasureDataId2().equals("")){
+            return Result.fail("请选择测量数据2");
+        }
+        if (paramDto.getArithmeticOperators()==null||paramDto.getArithmeticOperators().equals("")){
+            return Result.fail("请选择运算符");
+        }
+        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")){
+            return Result.fail("请选择数据类型");
+        }
+        // 根据测量数据id查询测量数据
+        FMeasureAnalysisData measureData1 = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId1());
+        List<String> list = new ArrayList<>();
+        List<String> list2 = new ArrayList<>();
+        List<String> xList = new ArrayList<>();
+        List<String> yList1 = new ArrayList<>();
+        List<String> yList2 = new ArrayList<>();
+        list = JSON.parseArray(measureData1.getAnalysisResult(), String.class);
+        for (String s : list) {
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList1.add(split[1]);
+        }
+        if(paramDto.getDataType().equals("0")){
+            for (int i = 0; i < yList1.size(); i++) {
+                yList2.add(String.valueOf(paramDto.getMeasureDataId2()));
+            }
+        }else if (paramDto.getDataType().equals("1")){
+            FMeasureData measureData2 = fMeasureDataService.getById(paramDto.getMeasureDataId2());
+            // 将测量数据1和2的测量数据提取出来
+            list2 = JSON.parseArray(measureData2.getOriginalCalculationData(), String.class);
+            for (String s : list2) {
+                String[] split = s.split(",");
+                yList2.add(split[1]);
+            }
+        }
+        // 创建请求头
+        HttpHeaders headers = new HttpHeaders();
+        // 设置请求头类型为json
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        // 创建请求体
+        Map<String, Object> body = new HashMap<>();
+        // 将参数添加到请求体中
+        body.put("x_data", xList);
+        body.put("y1_data", yList1);
+        body.put("y2_data", yList2);
+        body.put("operation",paramDto.getArithmeticOperators());
+        // 创建请求对象
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        // 将请求结果转换成对象
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_FOUR_OPERATION, request, Map.class).getBody();
+        if (resultMap == null){
+            return Result.fail("python接口调用失败");
+        }
+        // 对结果进行寻峰计算
+        List<Double> x_data = (List<Double>) resultMap.get("x_data");
+        List<Double> y_data = (List<Double>) resultMap.get("y_data");
+        Map<String, Object> body1 = new HashMap<>();
+        body1.put("x_data", x_data);
+        body1.put("y_data", y_data);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        // 直接拿寻峰数据进行一次寻谷
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<FPeakValleyMarking> peakData = new ArrayList<>();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
+        List<FPeakValleyMarking> valleyData = new ArrayList<>();
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
+        // 将分析数据存储到分析数据表中
+        FMeasureAnalysisData tMeasureAnalysisData = new FMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(measureData1.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
+        for (int i = 0; i < x_data.size(); i++) {
+            String s = x_data.get(i) + "," + y_data.get(i);
+            listData.add(s);
+        }
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("0");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("保存失败");
+        }
+        List<Map<String,Object>> dataList = new ArrayList<>();
+        for (int i = 0; i < x_data.size(); i++) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("x",x_data.get(i));
+            map.put("y",y_data.get(i));
+            dataList.add(map);
+        }
+        return Result.ok(dataList);
+    }
+
+    /**
+     * 高级运算
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result advancedOperationsPort(FAdvancedOperationsDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
+        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+            return Result.fail("缺少参数");
+        }
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
+        // 将所有传过来的数据校验是否为空是否是""
+        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+            return Result.fail("请选择测量数据");
+        }
+        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")){
+            return Result.fail("请选择变换类型");
+        }
+        // 根据测量数据id查询测量数据
+        FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+        for (String s : list) {
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("y_data", yList);
+        body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
+        body.put("x_data", xList);
+        List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        Map<String, Object> body1 = new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", y_data);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        // 直接拿寻峰数据进行一次寻谷
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<FPeakValleyMarking> peakData = new ArrayList<>();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
+        List<FPeakValleyMarking> valleyData = new ArrayList<>();
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
+        // 将分析数据存储到分析数据表中
+        FMeasureAnalysisData tMeasureAnalysisData = new FMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(measureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            String s = xList.get(i) + "," + y_data.get(i);
+            listData.add(s);
+        }
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("1");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        List<Map<String,Object>> dataList = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("x",xList.get(i));
+            map.put("y",y_data.get(i));
+            dataList.add(map);
+        }
+        return Result.ok(dataList);
+    }
+
+    /**
+     * 平滑接口
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result smoothnessPort(FSmoothnessDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
+        // 将所有参数校验是否为空或""
+        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+            return Result.fail("请选择测量数据");
+        }
+        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")){
+            return Result.fail("缺少参数");
+        }
+        if (paramDto.getCoefficient()==null||paramDto.getCoefficient().equals("")){
+            return Result.fail("请输入系数");
+        }
+        if (paramDto.getPointNum()==null||paramDto.getPointNum().equals("")){
+            return Result.fail("请输入点数");
+        }
+        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+            return Result.fail("系数不能大于点数");
+        }
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
+        // 根据测量数据的id查询出测量数据
+        FMeasureAnalysisData tMeasureData = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
+        // 将测量数据中的原始计算数据转换成List
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("y_data", yList);
+        body.put("window_length", paramDto.getPointNum());
+        body.put("polyorder", paramDto.getCoefficient());
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SMOOTHED, request, Map.class).getBody();
+        Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
+        List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
+        Map<String, Object> body1 =  new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", smoothedY);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<FPeakValleyMarking> peakData = new ArrayList<>();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
+        List<FPeakValleyMarking> valleyData = new ArrayList<>();
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
+        FMeasureAnalysisData tMeasureAnalysisData = new FMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            String s = xList.get(i) + "," + smoothedY.get(i);
+            listData.add(s);
+        }
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("2");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        List<Map<String,Object>> dataList = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("x",xList.get(i));
+            map.put("y",smoothedY.get(i));
+            dataList.add(map);
+        }
+        return Result.ok(dataList);
+    }
+
+    /**
+     * 微分
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result differentialPort(FDifferentialDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
+        // 将所有参数校验是否为空或""
+        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+            return Result.fail("请选择测量数据");
+        }
+        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")){
+            return Result.fail("缺少参数");
+        }
+        if (paramDto.getCoefficient()==null||paramDto.getCoefficient().equals("")){
+            return Result.fail("请输入系数");
+        }
+        if (paramDto.getPointNum()==null||paramDto.getPointNum().equals("")){
+            return Result.fail("请输入点数");
+        }
+        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+            return Result.fail("系数不能大于点数");
+        }
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
+        // 根据测量数据的id查询出测量数据
+        FMeasureAnalysisData tMeasureData = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
+        // 将测量数据中的原始计算数据转换成List
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
+        for (String s : list){
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("y_data", yList);
+        body.put("window_length", paramDto.getPointNum());
+        body.put("polyorder", paramDto.getCoefficient());
+        body.put("deriv", paramDto.getDifferentialNum());
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.DIFFERENTIATED, request, Map.class).getBody();
+        Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
+        List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
+        Map<String, Object> body1 =  new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", differentiatedY);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<FPeakValleyMarking> peakData = new ArrayList<>();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
+        List<FPeakValleyMarking> valleyData = new ArrayList<>();
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
+        FMeasureAnalysisData tMeasureAnalysisData = new FMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(tMeasureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            String s = xList.get(i) + "," + differentiatedY.get(i);
+            listData.add(s);
+        }
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("3");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        List<Map<String,Object>> dataList = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("x",xList.get(i));
+            map.put("y",differentiatedY.get(i));
+            dataList.add(map);
+        }
+        return Result.ok(dataList);
+    }
+
+    /**
+     * 光度转换
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result luminanceModeConversionPort(FLuminosityConversionDto paramDto) {
+        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+            return Result.fail("请输入变换名称");
+        }
+        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+            return Result.fail("缺少参数");
+        }
+        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")) {
+            return Result.fail("请选择测量数据");
+        }
+        if (paramDto.getMethodId()==null||paramDto.getMethodId().equals("")) {
+            return Result.fail("缺少参数");
+        }
+        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")) {
+            return Result.fail("变换类型错误");
+        }
+        // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
+        List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
+        if (analysisData.size()>0){
+            return Result.fail("变换名称重复");
+        }
+        // 根据方法id查询方法表的数据
+        FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
+        // 获取方法表中的方法参数信息
+        String measurementParamInfo = method.getMeasurementParamInfo();
+        FSpectrumParameter spectrumParameter = JSON.parseObject(measurementParamInfo, FSpectrumParameter.class);
+        Integer type = null;
+        if(paramDto.getDataType().equals("1")){
+            if (spectrumParameter.getLuminosity().equals("1")){
+                type = 0;
+            }else if (spectrumParameter.getLuminosity().equals("2")){
+                type = 1;
+            }else {
+                return Result.fail("您当前的光度模式不支持进行转换");
+            }
+        }else if (paramDto.getDataType().equals("2")){
+            if (spectrumParameter.getLuminosity().equals("1")){
+                type = 2;
+            }else if (spectrumParameter.getLuminosity().equals("3")){
+                type = 3;
+            }else {
+                return Result.fail("您当前的光度模式不支持进行转换");
+            }
+        }else{
+            return Result.fail("您当前的光度模式不支持进行转换!");
+        }
+        // 根据测量数据id查询测量数据
+        FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId());
+        List<String> xList = new ArrayList<>();
+        List<String> yList = new ArrayList<>();
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+        for (String s : list) {
+            String[] split = s.split(",");
+            xList.add(split[0]);
+            yList.add(split[1]);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> body = new HashMap<>();
+        body.put("y_data", yList);
+        body.put("transform_type",type);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
+        List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        Map<String, Object> body1 = new HashMap<>();
+        body1.put("x_data", xList);
+        body1.put("y_data", y_data);
+        body1.put("height", "0.5");
+        body1.put("distance", "1");
+        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        List<FPeakValleyMarking> peakData = new ArrayList<>();
+        List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
+        List<String> peakY = (List<String>) resultMap1.get("peak_y");
+        List<FPeakValleyMarking> valleyData = new ArrayList<>();
+        List<Double> valleyX = (List<Double>) resultMap2.get("valley_x");
+        List<String> valleyY = (List<String>) resultMap2.get("valley_y");
+        for (int i = 0; i < peakX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(peakX.get(i).toString());
+            peakValleyMarking.setY(peakY.get(i));
+            peakValleyMarking.setType("波峰");
+            peakData.add(peakValleyMarking);
+        }
+        for (int i = 0; i < valleyX.size(); i++) {
+            FPeakValleyMarking peakValleyMarking = new FPeakValleyMarking();
+            peakValleyMarking.setX(valleyX.get(i).toString());
+            peakValleyMarking.setY(valleyY.get(i));
+            peakValleyMarking.setType("波谷");
+            valleyData.add(peakValleyMarking);
+        }
+        FMeasureAnalysisData tMeasureAnalysisData = new FMeasureAnalysisData();
+        tMeasureAnalysisData.setAnalysisName(paramDto.getAnalysisDataName());
+        tMeasureAnalysisData.setTaskId(measureData.getTaskId());
+        tMeasureAnalysisData.setAnalysisParam(JSON.toJSONString(body));
+        List<String> listData = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            String s = xList.get(i) + "," + y_data.get(i);
+            listData.add(s);
+        }
+        tMeasureAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+        tMeasureAnalysisData.setAnalysisType("4");
+        tMeasureAnalysisData.setPeak(JSON.toJSONString(peakData));
+        tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
+        tMeasureAnalysisData.setColor("#000000");
+        tMeasureAnalysisData.setIsDelete("0");
+        boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
+        if (!save){
+            return Result.fail("数据保存失败");
+        }
+        List<Map<String,Object>> dataList = new ArrayList<>();
+        for (int i = 0; i < xList.size(); i++) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("x",xList.get(i));
+            map.put("y",y_data.get(i));
+            dataList.add(map);
+        }
+        return Result.ok(dataList);
+    }
+
+
+    /**
+     * 比较参数
+     * @param method
+     * @param newParam
+     * @return
+     */
+    private boolean compareParam(FSpectrumParameter method, FSpectrumParameter newParam) {
+        String dbJson = JSON.toJSONString(method, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(newParam, SerializerFeature.SortField);
+
+        return dbJson.equals(frontJson);
+    }
+
+
+    /**
+     * 获取样品的详细数据
+     *
+     * @param measureData
+     * @return
+     */
+    public List<Map<String, Object>> getSampleData(FMeasureAnalysisData measureData, Integer digit) {
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+        List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
+        List<FPeakValleyMarking> peaks = JSON.parseArray(measureData.getPeak(), FPeakValleyMarking.class);
+        List<FPeakValleyMarking> grades = JSON.parseArray(measureData.getGrain(), FPeakValleyMarking.class);
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (String s : list) {
+            String[] split = s.split(",");
+            Map<String, Object> map = new HashMap<>();
+            if (digit != null) {
+                BigDecimal value = new BigDecimal(split[1]);
+                value = value.setScale(digit, RoundingMode.HALF_UP);
+                map.put("x", split[0]);
+                map.put("y", value.stripTrailingZeros().toPlainString());
+            } else {
+                map.put("x", split[0]);
+                map.put("y", split[1]);
+            }
+            if (gauges != null && peaks.size() != 0) {
+                for (FPeakValleyMarking gauge : gauges) {
+                    if (split[0].equals(gauge.getX())) {
+                        map.put("marked", "1");
+                        break;
+                    } else {
+                        map.put("marked", "0");
+                    }
+                }
+            } else {
+                map.put("marked", "0");
+            }
+            if (peaks != null && peaks.size() != 0) {
+                for (FPeakValleyMarking peak : peaks) {
+                    if (split[0].equals(peak.getX())) {
+                        map.put("feng", "1");
+                        break;
+                    } else {
+                        map.put("feng", "0");
+                    }
+                }
+            } else {
+                map.put("feng", "0");
+            }
+            if (grades != null && peaks.size() != 0) {
+                for (FPeakValleyMarking grade : grades) {
+                    if (split[0].equals(grade.getX())) {
+                        map.put("gu", "1");
+                        break;
+                    } else {
+                        map.put("gu", "0");
+                    }
+                }
+            } else {
+                map.put("gu", "0");
+            }
+            resultList.add(map);
+        }
+        return resultList;
+    }
+
+
+    /**
+     * 数字字符串归一化（防止 360 / 360.0 / 3.6E2 比较失败）
+     */
+    private String normalizeNumberString(String numStr) {
+        return new BigDecimal(numStr)
+                .stripTrailingZeros()
+                .toPlainString();
+    }
+
+    /**
+     * 创建新的任务
+     */
+    private Result createNewMethod(FUseMethodDto paramDto){
+        FMeasureMethod fMeasureMethod = new FMeasureMethod();
+        BeanUtils.copyProperties(paramDto, fMeasureMethod);
+        fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        fMeasureMethod.setMethodUseTime(LocalDateTime.now());
+        fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());
+        boolean save = fMeasureMethodService.save(fMeasureMethod);
+        if (save) {
+            return Result.ok(fMeasureMethod);
+        } else {
+            return Result.fail("创建失败");
+        }
     }
 }

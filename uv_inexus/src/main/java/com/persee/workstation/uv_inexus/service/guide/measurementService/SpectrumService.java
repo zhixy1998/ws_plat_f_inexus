@@ -182,4 +182,8 @@ public interface SpectrumService {
 
     // 查询样本头信息
     Result<List<HeadVO>> querySampleHeads(String taskId);
+
+    // 测试对比接口
+    Result testCompare(String taskId, SpectrumParameter spectrumParameter);
+
 }

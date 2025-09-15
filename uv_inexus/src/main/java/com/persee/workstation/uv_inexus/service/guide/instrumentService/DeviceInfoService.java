@@ -10,4 +10,7 @@ public interface DeviceInfoService {
 
     String getIp(String deviceSerialNumber);
 
+    //查找附件类型
+    String getAttachmentType(String deviceSerialNumber);
+
 }

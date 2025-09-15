@@ -12,7 +12,7 @@ public class TaskSpecimen {
     private String specimenKey;
     // 删除状态(0.未删除,1.删除)
     private String deleteType;
-    // 是否已测(0.未测,1.已测,2.正在测)
+    // 是否已测(0.未测,1.已测)
     private String isTested;
     //样品种类
     private String sampleType;

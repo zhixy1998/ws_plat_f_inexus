@@ -297,5 +297,12 @@ public class SpectrumController {
     }
 
 
+    @PostMapping("testCompare")
+    @ApiOperation("测试对比接口")
+    public Result testCompare(@RequestParam String taskId,@RequestBody SpectrumParameter spectrumParameter) {
+        return spectrumService.testCompare(taskId,spectrumParameter);
+    }
+
+
 
 }

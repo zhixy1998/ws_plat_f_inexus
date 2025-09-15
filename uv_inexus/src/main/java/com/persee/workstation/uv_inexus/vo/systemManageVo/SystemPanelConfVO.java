@@ -11,4 +11,7 @@ public class SystemPanelConfVO {
 
     @ApiModelProperty("项目统计面板开关")
     private Boolean projectStatisticsSwitch;
+
+    @ApiModelProperty("任务列表面板开关")
+    private Boolean taskListSwitch;
 }
