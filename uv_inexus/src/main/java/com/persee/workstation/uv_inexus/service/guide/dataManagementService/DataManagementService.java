@@ -28,4 +28,10 @@ public interface DataManagementService {
 
 
     Result<String> formulaCheck(FormulaCheckParam formulaCheckParam);
+
+    Result<String> deleteTask(String deleteTaskId);
+
+    Result<String> deleteMethod(String deleteMethodId);
+
+    Result<String> deleteProject(String deleteProjectId);
 }

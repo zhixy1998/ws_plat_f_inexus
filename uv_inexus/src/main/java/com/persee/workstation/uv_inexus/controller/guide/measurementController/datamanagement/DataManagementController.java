@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController.datamanagement;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.TaskManagementMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.FormulaCheckParam;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 public class DataManagementController {
     @Autowired
     private DataManagementService dataManagementService;
+    @Autowired
+    private TaskManagementMapper taskManagementMapper;
 
     @PostMapping("Tasks")
     @ApiOperation("查询已完成和未完成任务")
@@ -57,4 +60,22 @@ public class DataManagementController {
 //    public Result<String> formulaCheck(@RequestBody FormulaCheckParam formulaCheckParam) {
 //        return dataManagementService.formulaCheck(formulaCheckParam);
 //    }
+    @PostMapping("/deleteTask")
+    @ApiOperation("任务删除")
+    public Result<String> deleteTask(@RequestParam String deleteTaskId) {
+        return dataManagementService.deleteTask(deleteTaskId);
+    }
+
+
+    @PostMapping("/deleteMethod")
+    @ApiOperation("方法删除")
+    public Result<String> deleteMethod(@RequestParam String deleteMethodId) {
+        return dataManagementService.deleteMethod(deleteMethodId);
+    }
+
+    @PostMapping("/deleteProject")
+    @ApiOperation("项目删除")
+    public Result<String> deleteProject(@RequestParam String deleteProjectId) {
+        return dataManagementService.deleteProject(deleteProjectId);
+    }
 }

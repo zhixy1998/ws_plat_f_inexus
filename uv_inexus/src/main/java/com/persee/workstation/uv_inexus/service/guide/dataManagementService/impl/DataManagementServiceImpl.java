@@ -2,9 +2,11 @@ package com.persee.workstation.uv_inexus.service.guide.dataManagementService.imp
 
 
 import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +26,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
+import com.persee.workstation.uv_inexus.vo.measurementVo.Sample;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -345,6 +348,59 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result<String> formulaCheck(FormulaCheckParam formulaCheckParam) {
         String res = converter.verifyFormulasAgainstParamList(formulaCheckParam.getTotalParamList(), formulaCheckParam.getLatexFormulaList());
         return Result.ok(res);
+    }
+
+    @Override
+    public Result<String> deleteTask(String deleteTaskId) {
+
+        TMeasureTask tMeasureTask = taskManagementMapper.selectOne(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getId, deleteTaskId));
+        String sampleKey = tMeasureTask.getSampleKey();
+        List<TMeasureSample> tMeasureSamples = JSON.parseArray(sampleKey, TMeasureSample.class);
+        for (TMeasureSample TMeasureSample : tMeasureSamples) {
+            String specimenKey = TMeasureSample.getId();
+            int i = sampleManagementMapper.deleteById(specimenKey);
+            if (i == 0) {
+                return Result.fail("样品删除失败");
+            }
+        }
+        int i = taskManagementMapper.deleteById(deleteTaskId);
+        if (i == 0) {
+            return Result.fail("任务删除失败");
+        }
+        return Result.ok("删除成功");
+    }
+
+    @Override
+    public Result<String> deleteMethod(String deleteMethodId) {
+        List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(Wrappers.lambdaQuery(TMeasureTask.class)
+                .eq(TMeasureTask::getMethodKey, deleteMethodId));
+
+        int size = tMeasureTasks.size();
+        if (size > 0) {
+            return Result.fail("该方法包含未完成的任务");
+        }
+        int i = methodManagementMapper.deleteById(deleteMethodId);
+        if (i == 0) {
+            return Result.fail("删除成功");
+        }
+
+        return Result.ok("删除成功");
+    }
+
+    @Override
+    public Result<String> deleteProject(String deleteProjectId) {
+        LambdaQueryWrapper<TMeasureMethod> tMeasureMethodLambdaQueryWrapper = Wrappers.lambdaQuery(TMeasureMethod.class)
+                .eq(TMeasureMethod::getProjectItemKey, deleteProjectId);
+        List<TMeasureMethod> tMeasureMethods = methodManagementMapper.selectList(tMeasureMethodLambdaQueryWrapper);
+        int size = tMeasureMethods.size();
+        if (size > 0) {
+            return Result.fail("该项目包含未删除的方法");
+        }
+        int i = projectManagementMapper.deleteById(deleteProjectId);
+        if (i == 0) {
+            return Result.fail("删除失败");
+        }
+        return Result.ok();
     }
 
 //    public Result<String> formulaCheck(List<String> paramList, String latexFormula) {
