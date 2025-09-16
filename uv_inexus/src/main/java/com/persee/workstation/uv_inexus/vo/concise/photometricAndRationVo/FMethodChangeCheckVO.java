@@ -9,7 +9,7 @@ public class FMethodChangeCheckVO {
     @ApiModelProperty("当前方法id")
     private String currentMethodId;
 
-    @ApiModelProperty("参数是否有改变")
+    @ApiModelProperty("参数是否有改变，true-改变，false-未改变")
     private Boolean paramChange;
 
     @ApiModelProperty("提示信息")

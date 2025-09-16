@@ -6,8 +6,8 @@ import lombok.Getter;
 public enum ChangeMethodTypeEnum {
 
     newMethod("newMethod", "将为您生成新方法...."),
-    measure("measure", "修改了测量参数，将生成新方法并清理测量和分析数据，是否要保存测量和分析数据？"),
-    analyze("analyze", "修改了分析参数，将生成新方法并清理分析数据，是否保存分析数据？"),
+    measure("measure", "您已修改测量参数，将生成新方法并清理测量和分析数据，是否要保存测量和分析数据？"),
+    analyze("analyze", "您已修改分析参数，将生成新方法并清理分析数据，是否保存分析数据？"),
     noChange("noChange", "方法参数没有变化，无需重新应用！");
 
     private final String identity;

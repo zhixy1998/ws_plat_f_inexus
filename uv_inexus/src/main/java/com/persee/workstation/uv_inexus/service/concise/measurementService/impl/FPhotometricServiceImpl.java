@@ -12,7 +12,6 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.concise.photometricDto.FPhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
@@ -34,7 +33,6 @@ import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOrigi
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.*;
-import com.persee.workstation.uv_inexus.vo.concise.photometricVo.FMeasureCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -60,7 +58,7 @@ import static com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTabl
 
 @Slf4j
 @Service("fPhotometricService")
-public class FPhotometricServiceImpl implements FPhotometricService {
+public class FPhotometricServiceImpl implements PhotometricConciseService {
     @Autowired
     FMeasureProjectService fMeasureProjectService;
     @Autowired
@@ -131,29 +129,6 @@ public class FPhotometricServiceImpl implements FPhotometricService {
     }
 
     @Override
-    public Result updateMethodParameter(FPhotometricMethodParameterDto methodDto) {
-        // 根据方法id查询当前方法
-        if (!StringUtils.hasText(methodDto.getMethodId())) {
-            return Result.fail("缺少方法");
-        }
-        // 根据方法id查询方法
-        FMeasureMethod measureMethod = fMeasureMethodService.getById(methodDto.getMethodId());
-        if (measureMethod==null){
-            return Result.fail("方法不存在");
-        }
-        // 将前端传过来的值复制到SpectrumParameter类中
-        FPhotometricParameter parameter = new FPhotometricParameter();
-        BeanUtils.copyProperties(methodDto, parameter);
-        measureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
-        measureMethod.setMethodName(methodDto.getMethodName());
-        boolean update = fMeasureMethodService.updateById(measureMethod);
-        if (!update){
-            return Result.fail("更新失败");
-        }
-        return Result.ok(measureMethod.getId());
-    }
-
-    @Override
     public Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy) {
 
         SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
@@ -172,7 +147,7 @@ public class FPhotometricServiceImpl implements FPhotometricService {
         FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
         vo.setMethodId(task.getMethodKey());
 
-        vo.setProjectId(task.getProjectItemKey());
+//        vo.setProjectId(task.getProjectItemKey());
         if (save) {
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
@@ -190,6 +165,10 @@ public class FPhotometricServiceImpl implements FPhotometricService {
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
+        vo.setCurrentMethodId(checkDTO.getCurrentMethodId());
+        vo.setParamChange(false);
+        vo.setClearDataRange(ChangeMethodTypeEnum.noChange.getIdentity());
+        vo.setMessage(ChangeMethodTypeEnum.noChange.getMessage());
 
         if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
             log.info("生成新方法");
@@ -255,6 +234,14 @@ public class FPhotometricServiceImpl implements FPhotometricService {
     private boolean checkAnalyzeParam(FPhotometricParameter oldParam, FPhotometricParameter newParam) {
         List<FPreCountResultParam> oldResult = oldParam.getResultParams();
         List<FPreCountResultParam> newResult = newParam.getResultParams();
+
+        if (oldResult == null ) {
+            oldResult = new ArrayList<>();
+        }
+        if (newResult == null ) {
+            newResult = new ArrayList<>();
+        }
+
         if (!oldResult.equals(newResult)) {
             if (newResult.size() != oldResult.size()) {
                 return false;
@@ -279,16 +266,6 @@ public class FPhotometricServiceImpl implements FPhotometricService {
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewPhotometricMethodParamCheckDTO methodDTO) {
 
-        /*首先，判断是新增方法，修改参数，还是应用历史方法
-        如果新增，直接保存，并且创建任务
-        如果是修改，需要有任务id，创建任务
-        如果是应用历史方法，也需要任务id？？
-
-        应用，要做的，1，新方法，新任务，
-        2，数据是否保存，3，返回新方法，新任务。
-
-         */
-
         if (methodDTO.getNewMethodParam() == null && !StringUtils.hasText(methodDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法或参数");
         }
@@ -297,15 +274,17 @@ public class FPhotometricServiceImpl implements FPhotometricService {
         }
         String methodId = methodDTO.getNewMethodId();
 
-        FMeasureCurrentInfoVO ans = new FMeasureCurrentInfoVO();
+
+        FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
 
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, methodDTO.getUpdateBy()));
         String userId = po.getId();
+        ans.setMethodName(methodDTO.getMethodName());
 
         if (!StringUtils.hasText(methodId)) {
             FMeasureMethod method = new FMeasureMethod();
             method.setMeasurementParamInfo(JSON.toJSONString(methodDTO.getNewMethodParam()));
-            method.setMethodName(methodDTO.getMethodName());
+            method.setMethodName(methodDTO.getMethodName() + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             method.setMeasurementType(methodDTO.getMeasureType());
             method.setProjectItemKey(defaultProjectId);
             method.setMethodCreator(methodDTO.getUpdateBy());
@@ -317,8 +296,10 @@ public class FPhotometricServiceImpl implements FPhotometricService {
                 return Result.fail("应用失败");
             }
             methodId = method.getId();
+            ans.setMethodName(method.getMethodName());
         }
         ans.setMethodId(methodId);
+
 
         FMeasureTask task = new FMeasureTask();
         if (!StringUtils.hasText(methodDTO.getCurrentTaskId())) {
@@ -344,13 +325,11 @@ public class FPhotometricServiceImpl implements FPhotometricService {
                         if (!b) {
                             return Result.fail("出现异常，清除数据失败");
                         }
-                        specimen.setDeleteType(createType);
+                        specimen.setIsTested(createType);
                     }
                     task.setSampleKey(JSON.toJSONString(taskSpecimen));
                 }
                 task.setMethodKey(methodId);
-                task.setStartTime(null);
-                task.setEndTime(null);
                 task.setDeviceSerialNumber(null);
                 task.setIsDelete(createType);
                 fMeasureTaskService.updateById(task);
@@ -358,6 +337,7 @@ public class FPhotometricServiceImpl implements FPhotometricService {
             } else {
                 //保存数据
                 FMeasureTask newTask = new FMeasureTask();
+                newTask.setProjectItemKey(defaultProjectId);
                 newTask.setUserId(userId);
                 newTask.setTaskName("草稿数据" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
@@ -371,32 +351,26 @@ public class FPhotometricServiceImpl implements FPhotometricService {
                         newSample.setId(null);
 
                         fMeasureSampleService.save(newSample);
+                        specimen.setSpecimenKey(newSample.getId());
 
-
-
-                        //TODO 拷贝样品，生成新样品记录
-                        specimen.setDeleteType(createType);
+                        specimen.setIsTested(createType);
                     }
                     newTask.setSampleKey(JSON.toJSONString(taskSpecimen));
                 }
                 newTask.setId(null);
                 newTask.setMethodKey(methodId);
-                newTask.setStartTime(null);
-                newTask.setEndTime(null);
                 newTask.setDeviceSerialNumber(null);
                 newTask.setIsDelete(createType);
                 fMeasureTaskService.save(newTask);
                 task = newTask;
 
-
             }
+            ans.setTaskId(task.getId());
+            ans.setTaskName(task.getTaskName());
 
         }
 
-
-
-
-        return null;
+        return Result.ok(ans);
     }
 
     private Boolean clearData(String taskId, String sampleId, String clearDataRange) {
@@ -453,8 +427,8 @@ public class FPhotometricServiceImpl implements FPhotometricService {
             vo.setTaskName(task.getTaskName());
             vo.setMethodId(method.getId());
             vo.setMethodName(method.getMethodName());
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
+//            vo.setProjectId(project.getId());
+//            vo.setProjectName(project.getProjectName());
             return Result.ok(vo);
         }
         FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
@@ -472,8 +446,8 @@ public class FPhotometricServiceImpl implements FPhotometricService {
             if (projectList == null || projectList.isEmpty()) {
                 return Result.ok(vo);
             }
-            vo.setProjectName(projectList.get(0).getProjectName());
-            vo.setProjectId(projectList.get(0).getId());
+//            vo.setProjectName(projectList.get(0).getProjectName());
+//            vo.setProjectId(projectList.get(0).getId());
 
         } else {
             FMeasureMethod fMeasureMethod = list.get(0);
@@ -481,8 +455,8 @@ public class FPhotometricServiceImpl implements FPhotometricService {
 
             vo.setMethodId(fMeasureMethod.getId());
             vo.setMethodName(fMeasureMethod.getMethodName());
-            vo.setProjectId(fMeasureProject.getId());
-            vo.setProjectName(fMeasureProject.getProjectName());
+//            vo.setProjectId(fMeasureProject.getId());
+//            vo.setProjectName(fMeasureProject.getProjectName());
         }
         return Result.ok(vo);
 
@@ -833,7 +807,6 @@ public class FPhotometricServiceImpl implements FPhotometricService {
             return Result.fail("方法不存在");
         }
         FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
-        List<String> waveLengths = parameter.getWaveLength();
         LinkedHashSet<FHeadVO> ans = new LinkedHashSet<>();
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
@@ -964,7 +937,7 @@ public class FPhotometricServiceImpl implements FPhotometricService {
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
             FHeadVO samplingTimeHead = new FHeadVO(SampleTableEnum.samplingTime.getName(), SampleTableEnum.samplingTime.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.samplingTime.getName());
-            FHeadVO remark = new FHeadVO(SampleTableEnum.remark.getName(), SampleTableEnum.remark.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.remark.getName());
+            FHeadVO remark = new FHeadVO(SampleTableEnum.remark.getName(), SampleTableEnum.remark.getIdentity(), TableHeadILocateEnums.data.getIdentity(), SampleTableEnum.remark.getName());
             other.add(samplingTimeHead);
             other.add(remark);
         }
@@ -1013,8 +986,6 @@ public class FPhotometricServiceImpl implements FPhotometricService {
         StringBuilder identity = new StringBuilder();
 
         for (FInputParam inputParam : parameter.getSampleInputParams()) {
-            boolean b = snapshot.getMapRelation().stream().anyMatch(
-                    mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity()));
 
             Optional<FInputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
                     mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
@@ -1231,7 +1202,6 @@ public class FPhotometricServiceImpl implements FPhotometricService {
             }
         }
 
-
         LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
                 .eq(FMeasureAnalysisData::getSampleKey, sampleId)
@@ -1431,35 +1401,42 @@ public class FPhotometricServiceImpl implements FPhotometricService {
     @Override
     public Result saveDataInfo(FSaveDataVO vo) {
         if (!StringUtils.hasText(vo.getTaskId())) {
-            return Result.fail("缺少任务id");
+            return Result.fail("请创建任务");
         }
 
         if (!StringUtils.hasText(vo.getSampleId())) {
             return Result.fail("缺少样品id");
         }
 
-        if (!StringUtils.hasText(vo.getRemark())) {
-            return Result.fail("缺少备注");
+        if (vo.getData() == null || vo.getData().isEmpty()) {
+            return Result.ok();
         }
-
         String taskId = vo.getTaskId();
         String sampleId = vo.getSampleId();
-        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(FMeasureData::getTaskId, taskId)
-                .eq(FMeasureData::getSampleKey, sampleId)
-                .orderByDesc(FMeasureData::getSerialNumber);
-        List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
-        FMeasureData data = new FMeasureData();
-        if (list != null && !list.isEmpty()) {
-            data = list.get(0);
-            data.setRemark(vo.getRemark());
+        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                .eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
+
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
+        if (analysisData != null) {
+            Map<String, String> jsonObject;
+            if (StringUtils.hasText(analysisData.getAnalysisParam())) {
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+            } else {
+                jsonObject = vo.getData();
+            }
+            analysisData.setAnalysisParam(JSON.toJSONString(jsonObject));
+            fMeasureAnalysisDataService.updateById(analysisData);
         } else {
-            data.setTaskId(taskId);
-            data.setSampleKey(sampleId);
-            data.setSerialNumber(1);
-            data.setRemark(vo.getRemark());
+            analysisData = new FMeasureAnalysisData();
+            analysisData.setTaskId(taskId);
+            analysisData.setSampleKey(sampleId);
+            analysisData.setAnalysisParam(JSON.toJSONString(vo.getData()));
+            analysisData.setDataVersion(0);
+            analysisData.setIsDelete(createType);
+            fMeasureAnalysisDataService.save(analysisData);
         }
-        fMeasureDataService.saveOrUpdate(data);
 
         return Result.ok(true);
     }
@@ -1572,9 +1549,9 @@ public class FPhotometricServiceImpl implements FPhotometricService {
         measurementCurrentInfoVO.setMethodId(task.getMethodKey());
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         measurementCurrentInfoVO.setMethodName(method.getMethodName());
-        measurementCurrentInfoVO.setProjectId(task.getProjectItemKey());
+//        measurementCurrentInfoVO.setProjectId(task.getProjectItemKey());
         FMeasureProject project = fMeasureProjectService.getById(task.getProjectItemKey());
-        measurementCurrentInfoVO.setProjectName(project.getProjectName());
+//        measurementCurrentInfoVO.setProjectName(project.getProjectName());
 
         return Result.ok(measurementCurrentInfoVO);
     }

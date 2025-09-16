@@ -3,6 +3,8 @@ package com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.util.Map;
+
 @Data
 public class FSaveDataVO {
     @ApiModelProperty("任务id")
@@ -11,6 +13,6 @@ public class FSaveDataVO {
     @ApiModelProperty("样本id")
     private String sampleId;
 
-    @ApiModelProperty("备注")
-    private String remark;
+    @ApiModelProperty("要保存的数据")
+    private Map<String, String> data;
 }

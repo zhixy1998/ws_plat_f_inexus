@@ -17,10 +17,10 @@ public class FMeasurementCurrentInfoVO {
 
     @ApiModelProperty("方法名称")
     private String methodName;
-
-    @ApiModelProperty("项目ID")
-    private String projectId;
-
-    @ApiModelProperty("项目名称")
-    private String projectName;
+//
+//    @ApiModelProperty("项目ID")
+//    private String projectId;
+//
+//    @ApiModelProperty("项目名称")
+//    private String projectName;
 }
