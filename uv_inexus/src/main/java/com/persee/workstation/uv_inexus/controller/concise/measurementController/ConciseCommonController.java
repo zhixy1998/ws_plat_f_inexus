@@ -1,10 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureMethodDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureMethodParam;
-import com.persee.workstation.uv_inexus.dto.concise.common.QueryMethodDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.SelectTaskDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
@@ -35,6 +32,17 @@ public class ConciseCommonController {
     @ApiOperation("历史方法")
     public Result<Page<FMeasureMethodDto>> queryHistoryMethod(@RequestBody QueryMethodDto queryMethodDto) {
        return conciseCommonService.queryHistoryMethod(queryMethodDto);
+    }
+    @PostMapping("updateMethod")
+    @ApiOperation("修改方法名称")
+    public Result<String> updateMethod(@RequestBody UpdateMethodDto updateMethodDto) {
+        return conciseCommonService.updateMethod(updateMethodDto);
+    }
+    @PostMapping("authMethodName")
+    @ApiOperation("校验方法名称")
+    public Result<String> authMethodName(String methodName) {
+      return   conciseCommonService.authMethodName(methodName);
+
     }
 
     @GetMapping("detailInformation")

@@ -6,10 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserDAO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureMethodDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureMethodParam;
-import com.persee.workstation.uv_inexus.dto.concise.common.QueryMethodDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.SelectTaskDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -129,5 +126,31 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         return Result.ok(fMeasureTaskPage);
     }
 
+    @Override
+    public Result<String> updateMethod(UpdateMethodDto updateMethodDto) {
+        if (updateMethodDto == null){
+            return Result.fail("参数不能为空");
+        }
+        String methodId = updateMethodDto.getMethodId();
+        LambdaQueryWrapper<FMeasureMethod> fMeasureMethodLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<FMeasureMethod> eq = fMeasureMethodLambdaQueryWrapper.eq(FMeasureMethod::getId, methodId);
+        FMeasureMethod method = fMeasureMethodService.getOne(eq);
+        BeanUtils.copyProperties(updateMethodDto, method);
+        fMeasureMethodService.updateById(method);
+        return Result.ok("修改成功");
+    }
 
-}
+    @Override
+    public Result<String> authMethodName(String methodName) {
+        List<FMeasureMethod> methods = fMeasureMethodService.list();
+        for (FMeasureMethod fMeasureMethod : methods) {
+            String everyMethodName= fMeasureMethod.getMethodName();
+            if (everyMethodName.equals(methodName)) {
+                return Result.fail("方法名已存在");
+            }
+        }
+        return Result.ok();
+    }
+
+
+    }

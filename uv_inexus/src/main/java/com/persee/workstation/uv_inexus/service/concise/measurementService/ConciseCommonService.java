@@ -1,10 +1,7 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureMethodDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureMethodParam;
-import com.persee.workstation.uv_inexus.dto.concise.common.QueryMethodDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.SelectTaskDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -24,4 +21,8 @@ public interface ConciseCommonService {
     Result<FMeasureMethodParam> detailInformation(String methodName, String methodType);
 
     Result<Page<FMeasureTask>> queryHistoryTask(SelectTaskDto selectTaskDto);
+
+    Result<String> updateMethod(UpdateMethodDto updateMethodDto);
+
+    Result<String> authMethodName(String methodName);
 }

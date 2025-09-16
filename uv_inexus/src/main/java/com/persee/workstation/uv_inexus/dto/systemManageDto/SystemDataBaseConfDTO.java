@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.systemManageDto;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -8,6 +9,19 @@ public class SystemDataBaseConfDTO {
 
     @ApiModelProperty("全局端口")
     private String globalPort;
+
+    @ApiModelProperty("自动进入测量开关")
+    @TableField(value = "auto_measure")
+    private Boolean autoMeasure;
+
+    @ApiModelProperty("经典模式开关")
+    @TableField(value = "classic_mode")
+    private Boolean classicMode;
+
+    @ApiModelProperty("向导模式开关")
+    @TableField(value = "wizard_mode")
+    private Boolean wizardMode;
+
 
     @ApiModelProperty("快捷登录开关")
     private Boolean fastLoginSwitch;

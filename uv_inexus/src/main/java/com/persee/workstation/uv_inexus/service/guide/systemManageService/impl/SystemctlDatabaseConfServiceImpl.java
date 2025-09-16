@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemDatabaseConfDAO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemDatabaseConfPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemctlDatabaseConfService;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemDataBaseVO;
@@ -102,5 +103,16 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
             po.setFastLoginSwitch(switchStatus);
             return dao.updateById(po) > 0;
         }
+    }
+
+    public Result<SystemDatabaseConfPO> updateSystemDatabaseConf(SystemDataBaseConfDTO systemDataBaseConfDTO) {
+
+        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
+        if (systemDatabaseConfPO != null) {
+            BeanUtils.copyProperties(systemDataBaseConfDTO, systemDatabaseConfPO);
+            return Result.ok(systemDatabaseConfPO);
+        }
+        return Result.fail();
+
     }
 }
