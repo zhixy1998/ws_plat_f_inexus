@@ -1,23 +1,21 @@
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.time.LocalDateTime;
-
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
+import com.persee.workstation.uv_inexus.util.tokenUtil.JWTUtils;
+import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
+import com.persee.workstation.uv_inexus.utils.PasswordUtils.PasswordUtils;
+import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserDAO;
-import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserLoginDTO;
-import com.persee.workstation.uv_inexus.model.R; // 原有统一返回类
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
-import com.persee.workstation.uv_inexus.util.tokenUtil.JWTUtils; // 原有JWT工具类
-import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
-import com.persee.workstation.uv_inexus.utils.PasswordUtils.PasswordUtils;
-import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
 /**
  * 用户登录服务实现
  */
@@ -26,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor // 构造器注入，替代@Autowired
 public class SysUserLoginServiceImpl implements SysUserLoginService {
 
-    private final SysUserDAO sysUserDAO; // 注入用户DAO（操作t_sys_user表）
+    private final SysUserMapper sysUserDAO; // 注入用户DAO（操作t_sys_user表）
 
     @Override
     public R<LoginUserInfoVO> login(UserLoginDTO loginDTO) {

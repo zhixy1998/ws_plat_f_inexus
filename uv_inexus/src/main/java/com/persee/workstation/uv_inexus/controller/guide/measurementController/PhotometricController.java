@@ -185,6 +185,4 @@ public class PhotometricController {
             return Result.fail(r.getMessage());
         }
     }
-
-
 }

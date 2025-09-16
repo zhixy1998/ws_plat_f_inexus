@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper">
+
+
+    <select id="getAllTask" resultType="com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FTaskBaseVO">
+        select id as taskId,
+        task_name as taskName
+        from t800_uv_inexus_concise.f_t_measure_task
+        where project_item_key = #{projectId} and measure_type = #{measureType}
+    </select>
+    <select id="getPreHead" resultType="com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO">
+        select name as name,
+        identity as identity,
+        print_title as printTitle,
+        locate as locate
+        from t800_uv_inexus_concise.f_t_measure_preset_head
+        where measure_type = #{measure_type}
+        <if test="sample_kind != null">
+            and sample_kind = #{sample_kind}
+        </if>
+    </select>
+</mapper>
