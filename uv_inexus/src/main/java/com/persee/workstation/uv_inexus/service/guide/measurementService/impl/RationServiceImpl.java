@@ -105,6 +105,70 @@ public class RationServiceImpl implements RationService {
         if (!StringUtils.hasText(methodDto.getMethodId())){
             return Result.fail("方法id不能为空");
         }
+        // 通用参数：方法名称
+        if (methodDto.getMethodName() != null && methodDto.getMethodName().length() > 256) {
+            return Result.fail("方法名格式错误");
+        }
+        // 通用参数：参考标准方法长度（≤256）
+        if (methodDto.getReferenceStandardName() != null && methodDto.getReferenceStandardName().length() > 256) {
+            return Result.fail("参考标准方法长度超限");
+        }
+        // 通用参数：前处理参数 每个成员≤500字符，最多10个
+        if (methodDto.getPreProcessParameters() != null) {
+            if (methodDto.getPreProcessParameters().size() > 10) {
+                return Result.fail("前处理参数个数超限");
+            }
+            for (String p : methodDto.getPreProcessParameters()) {
+                if (p != null && p.length() > 500) {
+                    return Result.fail("前处理参数长度超限");
+                }
+            }
+        }
+        // 测量类参数（定量测定）
+        // 波长值：1-3个成员，数值190-900，保留1位小数
+        if (methodDto.getWaveLength() != null) {
+            if (methodDto.getWaveLength().size() < 1 || methodDto.getWaveLength().size() > 3) {
+                return Result.fail("波长个数需在1-3之间");
+            }
+            for (String wl : methodDto.getWaveLength()) {
+                try { double v = Double.parseDouble(wl); if (v < 190.0 || v > 900.0) return Result.fail("波长超出范围(190-900)"); String s = String.format(java.util.Locale.ROOT, "%.1f", v); if (!s.equals(String.valueOf(v)) && !String.valueOf(v).matches("^\\d+\\.\\d$")) return Result.fail("波长需保留1位小数"); } catch (Exception e) { return Result.fail("波长格式错误"); }
+            }
+        }
+        // 波长系数：1-3个成员
+        if (methodDto.getCoefficientParams() != null) {
+            if (methodDto.getCoefficientParams().size() < 1 || methodDto.getCoefficientParams().size() > 3) {
+                return Result.fail("波长系数个数需在1-3之间");
+            }
+        }
+        // 曲线次数：1-4
+        if (org.springframework.util.StringUtils.hasText(methodDto.getCurveType())) {
+            try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail("曲线次数范围应为1-4"); } catch (Exception ignored) {}
+        }
+        // 方程类型：枚举
+        if (StringUtils.hasText(methodDto.getEquationType())) {
+          Set<String> allow = new HashSet<>(Arrays.asList("qtCFA","qtAFC"));
+            if (!allow.contains(methodDto.getEquationType()))
+                return Result.fail("方程类型不合法");
+        }
+        // 零点方式：字节，默认0 - 此处放宽，若提供需为0-255的整数
+        // 曲线系数方式：枚举
+        if (org.springframework.util.StringUtils.hasText(methodDto.getCoefficientMode())) {
+            Set<String> allow = new HashSet<>(Arrays.asList("ctInput","ctCurve","0","1"));
+            if (!allow.contains(methodDto.getCoefficientMode())) return Result.fail("曲线系数方式不合法");
+        }
+        // 曲线系数数据：1-10 个成员
+        if (methodDto.getCoefficientParams() != null && (methodDto.getCoefficientParams().size() < 1 || methodDto.getCoefficientParams().size() > 10)) {
+            return Result.fail("曲线系数数据个数需在1-10之间");
+        }
+        // 拟合结果单位：1-10字符
+        // 该字段在定量分析结果中，若存在则校验
+        if (methodDto.getResultParams() != null) {
+            for (PreCountResultParam r : methodDto.getResultParams()) {
+                if (r.getUnit() != null && (r.getUnit().length() < 1 || r.getUnit().length() > 10)) {
+                    return Result.fail("结果单位长度应为1-10");
+                }
+            }
+        }
 
         // 根据方法id查询当前方法
         TMeasureMethod method = tMeasureMethodService.getById(methodDto.getMethodId());
@@ -140,6 +204,7 @@ public class RationServiceImpl implements RationService {
         boolean update = tMeasureMethodService.updateById(method);
         return Result.ok(update);
     }
+
 
     @Override
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, RationParameter rationParameter) {
@@ -565,6 +630,9 @@ public class RationServiceImpl implements RationService {
     public Result<RationMethodParam> queryMethodParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
             return Result.fail("方法ID不能为空");
+        }
+        if(methodId.length() != 32){
+            return Result.fail("方法ID格式应为32位");
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);

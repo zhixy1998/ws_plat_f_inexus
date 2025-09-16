@@ -7,12 +7,16 @@ import java.time.LocalDateTime;
 @Data
 public class ProjectManagementDto {
     //项目名称
-    String projectName;
+    private String projectName;
     //创建时间
-    LocalDateTime createTime;
+    private LocalDateTime createTime;
     //创建人
-    String creatorKey;
-    //备注
-    String remark;
+    private String creatorKey;
+    //方法个数
+    private Long methodNum;
+    //任务个数
+    private Long taskNum;
+    //更新时间
+    private LocalDateTime lastUpdatedTime;
 
 }

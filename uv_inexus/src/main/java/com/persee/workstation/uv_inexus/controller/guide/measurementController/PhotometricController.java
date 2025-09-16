@@ -41,6 +41,12 @@ public class PhotometricController {
     public Result updateMethodParameter(@RequestBody PhotometricMethodParameterDto methodDto) {
         return photometricService.updateMethodParameter(methodDto);
     }
+    @PostMapping
+    @ApiOperation("新增样品输入参数")
+    public Result<InputParam> insertMethodParameter(@RequestBody InputParam methodParameterDto) {
+        return photometricService.insertMethodParameter(methodParameterDto);
+
+    }
 
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")

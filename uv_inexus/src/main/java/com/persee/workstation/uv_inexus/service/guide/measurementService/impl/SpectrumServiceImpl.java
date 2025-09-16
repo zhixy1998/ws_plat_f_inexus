@@ -304,6 +304,9 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public Result queryProjectAllMethods(String projectId,String measureForm) {
         List<TMeasureMethod> methods = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type",  measureForm));
+        if (projectId.length()!=32){
+            return Result.fail("项目id格式应为32位");
+        }
         if (methods==null){
             return Result.fail("没有此类型的数据");
         }
@@ -319,6 +322,9 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result queryMethodParameter(String methodId) {
+        if (methodId.length()!=32){
+            return Result.fail("方法id格式应为32位");
+        }
         // 根据方法id查询方法
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         // 将标准表中的json转换成对象存入返回值中

@@ -1,127 +1,288 @@
 package com.persee.workstation.uv_inexus.service.guide.dataManagementService.impl;
 
+
+import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.MethodManagementMapper;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.ProjectManagementMapper;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.TaskManagementMapper;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureMethodMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureProjectMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureSampleMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodManagementDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SelectMethodsByTypeResult;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureProject;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
+
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
+import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
+import com.persee.workstation.uv_inexus.vo.measurementVo.Sample;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+
+import java.time.LocalDateTime;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 
 @Service
 @Slf4j
 public class DataManagementServiceImpl implements DataManagementService {
 
     @Autowired
-    private MethodManagementMapper methodManagementMapper;
+    private TMeasureMethodMapper methodManagementMapper;
     @Autowired
-    private ProjectManagementMapper projectManagementMapper;
+    private TMeasureProjectMapper projectManagementMapper;
     @Autowired
-    private TaskManagementMapper taskManagementMapper;
+    private TMeasureTaskMapper taskManagementMapper;
     @Autowired
     private SystemUserManageDAO systemUserManageDAO;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private TMeasureSampleMapper sampleManagementMapper;
 
 
     //方法
 
-
     /*
-    用户参与方法个数回显
+    方法任务全部数据返回
      */
     @Override
-    public R<List<Integer>> getMethodsAndSuccessful(String userKey) {
-        QueryWrapper<SystemUserManagePO> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_name", userKey);
+    public Result<MethodAndTasks> getMethodsAndTasksNum(String userKey) {
+        LambdaQueryWrapper<SystemUserManagePO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SystemUserManagePO::getUserName, userKey);
         SystemUserManagePO user = systemUserManageDAO.selectOne(queryWrapper);
-        return null;
-    }
+        String userName = user.getUserName();
+        Integer methodsNum = methodManagementMapper.getMethodsNum(userName);
+        MethodAndTasks methodAndTasks = new MethodAndTasks();
+        //总创建方法
+        methodAndTasks.setAllMethodNum(methodsNum);
+        //已完成方法
+        String id = user.getId();
+        Set<String> method = taskManagementMapper.selectMethodIds(id);
+        Integer size = method.size();
+        methodAndTasks.setUsedMethodNum(size);
+        String userId = user.getId();
+        //查询用户参与的所有任务个数
+        Integer tasksNum = taskManagementMapper.getTasksNum(userId);
+        methodAndTasks.setAllTaskNum(tasksNum);
 
-
-    /**
-     * 查询所有方法
-     */
-    public R<List<MethodManagementDto>> getMethodManagement() {
-        List<FMeasureMethod> FMeasureMethodList = methodManagementMapper.selectList(null);
-        if (FMeasureMethodList.isEmpty()) {
-            return R.ok(new ArrayList<>());
-        }
-        ArrayList<MethodManagementDto> methodManagementDtos = new ArrayList<>();
-        for (FMeasureMethod fMeasureMethod : FMeasureMethodList) {
-            MethodManagementDto methodManagementDto = new MethodManagementDto();
-            BeanUtils.copyProperties(fMeasureMethod, methodManagementDto);
-            methodManagementDtos.add(methodManagementDto);
-        }
-        return R.ok(methodManagementDtos);
-    }
-
-    /**
-     * 模糊查询方法接口
-     *
-     * @return
-     */
-    @Override
-    public R<Page<MethodManagementDto>> selectMethods(String selectParm, Integer pageNum, Integer pageSize) {
-        Page<FMeasureMethod> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<FMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
-        if (selectParm != null && !selectParm.trim().isEmpty()) {
-            queryWrapper.like(FMeasureMethod::getMethodName, selectParm);
-        }
-        Page<FMeasureMethod> resultPage = methodManagementMapper.selectPage(page, queryWrapper);
-        Page<MethodManagementDto> dtoPage = new Page<>(pageNum, pageSize, resultPage.getTotal());
-        List<MethodManagementDto> dtoList = new ArrayList<>();
-        for (FMeasureMethod record : resultPage.getRecords()) {
-            MethodManagementDto dto = new MethodManagementDto();
-            BeanUtils.copyProperties(record, dto);
-            dtoList.add(dto);
-        }
-        dtoPage.setRecords(dtoList);
-        return R.ok(dtoPage);
-    }
-
-    /**
-     * 根据类型查询方法
-     *
-     * @return
-     */
-    public R<List<SelectMethodsByTypeResult>> selectMethodsByType() {
+        //查询已完成的任务
+        Integer finishTaskNum = taskManagementMapper.getFinishTaskNum(userId);
+        methodAndTasks.setFinishTaskNum(finishTaskNum);
+        //方法统计封装
         try {
             List<SelectMethodsByTypeResult> results = methodManagementMapper.selectMethodsGroupByType();
-            return R.ok(results);
+            methodAndTasks.setMethodCounts(results);
         } catch (Exception e) {
             log.error("根据类型分类查询方法失败", e);
-            return R.fail("查询失败");
+            return Result.fail("查询失败");
         }
+        //任务统计封装
+        TaskCount taskCount = new TaskCount();
+        LocalDateTime now = LocalDateTime.now();
+
+        // 统计各个时间段的数据
+        taskCount.setLastWeek(getTaskCountByTimeRange(now.minusWeeks(1), now));
+        taskCount.setLastMonth(getTaskCountByTimeRange(now.minusMonths(1), now));
+        taskCount.setHalfYear(getTaskCountByTimeRange(now.minusMonths(6), now));
+        taskCount.setLastYear(getTaskCountByTimeRange(now.minusYears(1), now));
+        taskCount.setThreeYears(getTaskCountByTimeRange(now.minusYears(3), now));
+        taskCount.setAll(getTaskCountByTimeRange(null, null)); // 所有数据
+
+        // 将任务统计结果设置到 methodAndTasks 中
+        methodAndTasks.setTaskCounts(taskCount);
+
+        return Result.ok(methodAndTasks);
+
+
     }
 
-    //任务
-
-    /*
-    用户参与任务个数和成功任务数
-     */
     @Override
-    public R<List<Integer>> getTasksAndSuccessful(String userKey) {
-        QueryWrapper<SystemUserManagePO> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_name", userKey);
-        SystemUserManagePO user = systemUserManageDAO.selectOne(queryWrapper);
-        return null;
+    public Result<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam) {
+        // 参数校验
+        if (projectQueryParam == null) {
+            return Result.fail("查询参数不能为空");
+        }
 
+        // 分页参数默认值设置
+        int pageNum = projectQueryParam.getPage() != null ? projectQueryParam.getPage() : 1;
+        int pageSize = projectQueryParam.getSize() != null ? projectQueryParam.getSize() : 10;
+
+        Page<TMeasureProject> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<TMeasureProject> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 模糊查询条件（添加空值判断）
+        if (projectQueryParam.getKeyword() != null) {
+            queryWrapper.like(TMeasureProject::getProjectName, projectQueryParam.getKeyword());
+        }
+
+        Page<TMeasureProject> result = projectManagementMapper.selectPage(page, queryWrapper);
+        Page<ProjectManagementDto> dtoPage = new Page<>();
+        dtoPage.setCurrent(result.getCurrent());
+        dtoPage.setSize(result.getSize());
+        dtoPage.setTotal(result.getTotal());
+        dtoPage.setPages(result.getPages());
+
+        List<ProjectManagementDto> dtoList = result.getRecords().stream()
+                .map(this::projectConvertToDto)
+                .collect(Collectors.toList());
+        dtoPage.setRecords(dtoList);
+
+        return Result.ok(dtoPage);
+    }
+
+    @Override
+    public Result<UnFinishTasksAndNum> getTasks(UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
+        if (unFinishTasksAndNumParam == null) {
+            return Result.fail("参数不能为空");
+        }
+        if (unFinishTasksAndNumParam.getNeedSelectNum() == null || unFinishTasksAndNumParam.getNeedSelectNum() == 0) {
+            return Result.fail("数量不能为0");
+        }
+        if (unFinishTasksAndNumParam.getNeedSelectNum() > 50) {
+            return Result.fail("数量不能大于50");
+        }
+        if (unFinishTasksAndNumParam.getTaskType().isEmpty()) {
+            return Result.fail("类型不能为空");
+        }
+        String status = unFinishTasksAndNumParam.getStatus();
+
+        String taskType = unFinishTasksAndNumParam.getTaskType();
+        int needSelectNum = unFinishTasksAndNumParam.getNeedSelectNum();
+        String selectKey = unFinishTasksAndNumParam.getSelectKey();
+        LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureTask::getMeasureType, taskType);
+        queryWrapper.eq(TMeasureTask::getIsDelete, status);
+        queryWrapper.like(TMeasureTask::getTaskName, selectKey);
+        List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(queryWrapper);
+
+        UnFinishTasksAndNum unFinishTasksAndNum = new UnFinishTasksAndNum();
+        int size = Math.min(tMeasureTasks.size(), needSelectNum);
+
+        List<TMeasureTaskDto> newDtolist = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+
+            String taskString = TaskEnum.getTaskStr(tMeasureTasks.get(i).getIsDelete());
+            TMeasureTaskDto tMeasureTaskDto = new TMeasureTaskDto();
+
+            BeanUtils.copyProperties(tMeasureTasks.get(i), tMeasureTaskDto);
+            tMeasureTaskDto.setStatus(taskString);
+
+            String methodKey = tMeasureTasks.get(i).getMethodKey();
+            LambdaQueryWrapper<TMeasureMethod> queryWrapper1 = new LambdaQueryWrapper<>();
+            queryWrapper1.eq(TMeasureMethod::getId, methodKey);
+            TMeasureMethod tMeasureMethod = methodManagementMapper.selectOne(queryWrapper1);
+            String methodName = tMeasureMethod.getMethodName();
+            tMeasureTaskDto.setMethodId(methodKey);
+            tMeasureTaskDto.setMethodName(methodName);
+
+            String projectItemKey = tMeasureTasks.get(i).getProjectItemKey();
+            LambdaQueryWrapper<TMeasureProject> queryWrapper2 = new LambdaQueryWrapper<>();
+            queryWrapper2.eq(TMeasureProject::getId, projectItemKey);
+            TMeasureProject tMeasureProject = projectManagementMapper.selectOne(queryWrapper2);
+            String projectName = tMeasureProject.getProjectName();
+            tMeasureTaskDto.setProjectName(projectName);
+            tMeasureTaskDto.setProjectId(projectItemKey);
+
+            String sampleKey = tMeasureTasks.get(i).getSampleKey();
+            List<TaskSpecimen> taskSpecimens = JSON.parseArray(sampleKey, TaskSpecimen.class);
+            int count = 0;
+            for (int j = 0; j < taskSpecimens.size(); j++) {
+                String deleteType = taskSpecimens.get(j).getDeleteType();
+                if (deleteType.equals("0")) {
+                    count++;
+                }
+            }
+            tMeasureTaskDto.setSampleNumber(count);
+
+
+            tMeasureTaskDto.setCreateTime(tMeasureTasks.get(i).getCreateTime());
+            tMeasureTaskDto.setStartTime(tMeasureTasks.get(i).getStartTime());
+            tMeasureTaskDto.setEndTime(tMeasureTasks.get(i).getEndTime());
+            newDtolist.add(tMeasureTaskDto);
+        }
+
+        unFinishTasksAndNum.setTasks(newDtolist);
+
+        return Result.ok(unFinishTasksAndNum);
+
+
+    }
+
+    private ProjectManagementDto projectConvertToDto(TMeasureProject tMeasureProject) {
+        String id = tMeasureProject.getId();
+        ProjectManagementDto dto = new ProjectManagementDto();
+        BeanUtils.copyProperties(tMeasureProject, dto);
+        LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureTask::getProjectItemKey, id);
+        List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(queryWrapper);
+        int size = tMeasureTasks.size();
+        Long size1 = (long) size;
+        dto.setTaskNum(size1);
+
+        LambdaQueryWrapper<TMeasureMethod> meQueryWrapper = new LambdaQueryWrapper<>();
+        meQueryWrapper.eq(TMeasureMethod::getProjectItemKey, id);
+        List<TMeasureMethod> tMeasureMethods = methodManagementMapper.selectList(meQueryWrapper);
+
+        int size3 = tMeasureMethods.size();
+        Long size4 = (long) size3;
+        dto.setMethodNum(size4);
+        return dto;
+    }
+
+    private TaskCountByTime getTaskCountByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+        QueryWrapper<TMeasureTask> queryWrapper = new QueryWrapper<>();
+
+        // 添加时间范围条件
+        if (startTime != null) {
+            queryWrapper.ge("start_time", startTime);
+        }
+        if (endTime != null) {
+            queryWrapper.le("end_time", endTime);
+        }
+
+        // 统计总数
+        Long totalCount = taskManagementMapper.selectCount(queryWrapper);
+
+        // 统计完成数量
+        QueryWrapper<TMeasureTask> finishedWrapper = new QueryWrapper<>();
+        if (startTime != null) {
+            finishedWrapper.ge("start_time", startTime);
+        }
+        if (endTime != null) {
+            finishedWrapper.le("end_time", endTime);
+        }
+        finishedWrapper.eq("is_delete", 1);
+        Long finishedCount = taskManagementMapper.selectCount(finishedWrapper);
+
+        // 计算未完成数量
+        Long unFinishedCount = totalCount - finishedCount;
+
+        // 封装结果
+        TaskCountByTime countByTime = new TaskCountByTime();
+        countByTime.setFinishedCount(finishedCount);
+        countByTime.setUnFinishedCount(unFinishedCount);
+
+        return countByTime;
     }
 
 
@@ -129,92 +290,123 @@ public class DataManagementServiceImpl implements DataManagementService {
     查询全部任务
      */
     @Override
-    public R<List<TaskManagementDto>> getTasksManagementList() {
-        List<FMeasureTask> tasks = taskManagementMapper.selectList(null);
-        if (tasks.isEmpty()) {
-            return R.ok(new ArrayList<>());
+    public Result<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam) {
+        // 参数校验
+        if (taskQueryParam == null) {
+            return Result.fail("查询参数不能为空");
         }
-        ArrayList<TaskManagementDto> taskManagementDtos = new ArrayList<>();
-        for (FMeasureTask fMeasureTask : tasks) {
-            TaskManagementDto taskManagementDto = new TaskManagementDto();
-            BeanUtils.copyProperties(fMeasureTask, taskManagementDto);
-            taskManagementDtos.add(taskManagementDto);
-        }
-        return R.ok(taskManagementDtos);
-    }
 
-    //项目
+        // 分页参数默认值设置
+        int pageNum = taskQueryParam.getPage() != null ? taskQueryParam.getPage() : 1;
+        int pageSize = taskQueryParam.getSize() != null ? taskQueryParam.getSize() : 10;
 
-    /*
-    /*
-    用户参与方法个数回显
-     */
-    @Override
-    public R<List<Integer>>  getMethodsAndTasks(String userKey) {
-        QueryWrapper<SystemUserManagePO> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_name", userKey);
-        SystemUserManagePO user = systemUserManageDAO.selectOne(queryWrapper);
-        if (user == null) {
-            return R.fail("没有这个人");
-        }
-        String userName = user.getUserName();
-        ArrayList<Integer> MethodsAndTasks = new ArrayList<>();
-        Integer methodsNum = methodManagementMapper.getMethodsNum(userName);
-        if (methodsNum == null) {
-            return R.fail("用户名错误");
-        }
-        MethodsAndTasks.add(methodsNum);
+        Page<TMeasureTask> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
 
-        String userId = user.getId();
-        Integer tasksNum = taskManagementMapper.getTasksNum(userId);
-        if (tasksNum == null) {
-            return R.fail("id错误");
+        // 精确查询条件（添加空值判断）
+        if (taskQueryParam.getSelectType() != null) {
+            queryWrapper.eq(TMeasureTask::getMeasureType, taskQueryParam.getSelectType());
         }
-        MethodsAndTasks.add(tasksNum);
-        return R.ok(MethodsAndTasks);
-    }
 
+        // 模糊查询条件（添加空值判断）
+        if (StringUtils.isNotBlank(taskQueryParam.getKeyword())) {
+            queryWrapper.like(TMeasureTask::getTaskName, taskQueryParam.getKeyword());
+        }
 
-    @Override
-    public R<List<ProjectManagementDto>> getProjectsManagementList() {
-        List<FMeasureProject> projectList = projectManagementMapper.selectList(null);
-        if (projectList.isEmpty()) {
-            return R.ok(new ArrayList<>());
-        }
-        ArrayList<ProjectManagementDto> projectManagementDtos = new ArrayList<>();
-        for (FMeasureProject fMeasureProject : projectList) {
-            ProjectManagementDto projectManagementDto = new ProjectManagementDto();
-            BeanUtils.copyProperties(fMeasureProject, projectManagementDto);
-            projectManagementDtos.add(projectManagementDto);
-        }
-        return R.ok(projectManagementDtos);
-    }
+        Page<TMeasureTask> result = taskManagementMapper.selectPage(page, queryWrapper);
+        Page<TaskManagementDto> dtoPage = new Page<>();
+        dtoPage.setCurrent(result.getCurrent());
+        dtoPage.setSize(result.getSize());
+        dtoPage.setTotal(result.getTotal());
+        dtoPage.setPages(result.getPages());
 
-    /****
-     * 分类模糊查询
-     * @param selectParm
-     * @param pageNum
-     * @param pageSize
-     * @return
-     */
-    @Override
-    public R<Page<ProjectManagementDto>> selectProjects(String selectParm, Integer pageNum, Integer pageSize) {
-        Page<FMeasureProject> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<FMeasureProject> queryWrapper = new LambdaQueryWrapper<>();
-        if (selectParm != null && !selectParm.trim().isEmpty()) {
-            queryWrapper.like(FMeasureProject::getProjectName, selectParm);
-        }
-        Page<FMeasureProject> resultPage = projectManagementMapper.selectPage(page, queryWrapper);
-        Page<ProjectManagementDto> dtoPage = new Page<>(pageNum, pageSize, resultPage.getTotal());
-        List<ProjectManagementDto> dtoList = new ArrayList<>();
-        for (FMeasureProject record : resultPage.getRecords()) {
-            ProjectManagementDto dto = new ProjectManagementDto();
-            BeanUtils.copyProperties(record, dto);
-            dtoList.add(dto);
-        }
+        List<TaskManagementDto> dtoList = result.getRecords().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
         dtoPage.setRecords(dtoList);
-        return R.ok(dtoPage);
+
+        return Result.ok(dtoPage);
     }
+
+    private TaskManagementDto convertToDto(TMeasureTask entity) {
+        TaskManagementDto dto = new TaskManagementDto();
+        BeanUtils.copyProperties(entity, dto);
+        LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureMethod::getId, entity.getMethodKey());
+        TMeasureMethod tMeasureMethod = methodManagementMapper.selectOne(queryWrapper);
+        dto.setMethodName(tMeasureMethod.getMethodName());
+        LambdaQueryWrapper<TMeasureProject> proQueryWrapper = new LambdaQueryWrapper<>();
+        proQueryWrapper.eq(TMeasureProject::getId, entity.getProjectItemKey());
+        TMeasureProject tMeasureProject = projectManagementMapper.selectOne(proQueryWrapper);
+        dto.setProjectName(tMeasureProject.getProjectName());
+        return dto;
+    }
+
+    LaTeXConverter converter = new LaTeXConverter();
+
+    //公式校验
+    public Result<String> formulaCheck(FormulaCheckParam formulaCheckParam) {
+        String res = converter.verifyFormulasAgainstParamList(formulaCheckParam.getTotalParamList(), formulaCheckParam.getLatexFormulaList());
+        return Result.ok(res);
+    }
+
+    @Override
+    public Result<String> deleteTask(String deleteTaskId) {
+
+        TMeasureTask tMeasureTask = taskManagementMapper.selectOne(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getId, deleteTaskId));
+        String sampleKey = tMeasureTask.getSampleKey();
+        List<TMeasureSample> tMeasureSamples = JSON.parseArray(sampleKey, TMeasureSample.class);
+        for (TMeasureSample TMeasureSample : tMeasureSamples) {
+            String specimenKey = TMeasureSample.getId();
+            int i = sampleManagementMapper.deleteById(specimenKey);
+            if (i == 0) {
+                return Result.fail("样品删除失败");
+            }
+        }
+        int i = taskManagementMapper.deleteById(deleteTaskId);
+        if (i == 0) {
+            return Result.fail("任务删除失败");
+        }
+        return Result.ok("删除成功");
+    }
+
+    @Override
+    public Result<String> deleteMethod(String deleteMethodId) {
+        List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(Wrappers.lambdaQuery(TMeasureTask.class)
+                .eq(TMeasureTask::getMethodKey, deleteMethodId));
+
+        int size = tMeasureTasks.size();
+        if (size > 0) {
+            return Result.fail("该方法包含未完成的任务");
+        }
+        int i = methodManagementMapper.deleteById(deleteMethodId);
+        if (i == 0) {
+            return Result.fail("删除成功");
+        }
+
+        return Result.ok("删除成功");
+    }
+
+    @Override
+    public Result<String> deleteProject(String deleteProjectId) {
+        LambdaQueryWrapper<TMeasureMethod> tMeasureMethodLambdaQueryWrapper = Wrappers.lambdaQuery(TMeasureMethod.class)
+                .eq(TMeasureMethod::getProjectItemKey, deleteProjectId);
+        List<TMeasureMethod> tMeasureMethods = methodManagementMapper.selectList(tMeasureMethodLambdaQueryWrapper);
+        int size = tMeasureMethods.size();
+        if (size > 0) {
+            return Result.fail("该项目包含未删除的方法");
+        }
+        int i = projectManagementMapper.deleteById(deleteProjectId);
+        if (i == 0) {
+            return Result.fail("删除失败");
+        }
+        return Result.ok();
+    }
+
+//    public Result<String> formulaCheck(List<String> paramList, String latexFormula) {
+//        String res = converter.verifyAndConvert(paramList, latexFormula);
+//        return Result.ok(res);
+//}
 
 
 }
