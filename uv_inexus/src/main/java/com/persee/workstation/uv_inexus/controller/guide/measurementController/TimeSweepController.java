@@ -77,11 +77,7 @@ public class TimeSweepController {
         return timeSweepService.updateMethodParameter(params);
     }
 
-    @GetMapping("querySampleHeads")
-    @ApiOperation("获取样本输入表头接口")
-    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
-        return timeSweepService.querySampleHeads(taskId);
-    }
+
 
     @GetMapping("sampleListPort")
     @ApiOperation("获取样本列表接口")
@@ -135,6 +131,12 @@ public class TimeSweepController {
     @ApiOperation("获取样本按钮列表接口")
     public Result querySampleList(@RequestParam String taskId) {
         return timeSweepService.querySampleList(taskId);
+    }
+
+    @GetMapping("querySampleHeads")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+        return timeSweepService.querySampleHeads(taskId);
     }
 
     @PostMapping("addOrDeleteSamplePort")

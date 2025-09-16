@@ -28,7 +28,7 @@ public class NewPhotometricMethodParamCheckDTO {
     @ApiModelProperty("清除数据范围")
     private String clearDataRange;
 
-    @ApiModelProperty("是否保存原有数据")
+    @ApiModelProperty("是否保存原有数据, true-保存，false-不保存")
     private Boolean isSaveDraft;
 
     @ApiModelProperty("用户")

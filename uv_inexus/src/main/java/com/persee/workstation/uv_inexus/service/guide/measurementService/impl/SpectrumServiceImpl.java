@@ -67,6 +67,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
@@ -87,6 +88,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UpdateDataColorDto;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -99,6 +101,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -168,6 +171,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Autowired
     private DeviceInfoService deviceInfoService;
+
+    @Autowired
+    private TMeasureTaskMapper tMeasureTaskMapper;
 
     // 计算公式的服务
     @Autowired
@@ -368,9 +374,7 @@ public class SpectrumServiceImpl implements SpectrumService {
     @Override
     public Result queryProjectAllMethods(String projectId,String measureForm) {
         List<TMeasureMethod> methods = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type",  measureForm));
-        if (projectId.length()!=32){
-            return Result.fail("项目id格式应为32位");
-        }
+
         if (methods==null){
             return Result.fail("没有此类型的数据");
         }
@@ -386,9 +390,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result queryMethodParameter(String methodId) {
-        if (methodId.length()!=32){
-            return Result.fail("方法id格式应为32位");
-        }
+
         // 根据方法id查询方法
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         // 将标准表中的json转换成对象存入返回值中
@@ -991,17 +993,23 @@ public class SpectrumServiceImpl implements SpectrumService {
                     queryWrapper.last("limit 1");
                     TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
                     if (measureData == null){
-                        return Result.fail("无测量数据");
-                    }
-                    vo.setTitle(sample.getSampleName());
-                    vo.setAnalysisId(measureData.getId());
-                    vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
-                    vo.setColor(measureData.getColor());
-                    if (measureData.getAnalysisResult() == null){
+                        vo.setTitle(sample.getSampleName());
+                        vo.setAnalysisId(null);
+                        vo.setSampleId(taskSpeciman.getSpecimenKey());
+                        vo.setAnalysisNumber(null);
+                        vo.setColor(null);
                         vo.setData(null);
                     }else{
-                        vo.setData(getSampleData(measureData,digit));
+                        vo.setTitle(sample.getSampleName());
+                        vo.setAnalysisId(measureData.getId());
+                        vo.setSampleId(taskSpeciman.getSpecimenKey());
+                        vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                        vo.setColor(measureData.getColor());
+                        if (measureData.getAnalysisResult() == null){
+                            vo.setData(null);
+                        }else{
+                            vo.setData(getSampleData(measureData,digit));
+                        }
                     }
                 }
                 vo.setType("0");
@@ -1779,33 +1787,6 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result querySampleList(String taskId) {
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(taskId);
-//        if (task == null) {
-//            return Result.ok(new ArrayList<>());
-//        }
-//        if (task.getSampleKey() == null) {
-//            return Result.ok(null);
-//        }
-//        // 分割任务中的样品数据
-//        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//        List<Sample> sampleList = new ArrayList<>();
-//        if (taskSpecimen == null || taskSpecimen.size() == 0) {
-//            return Result.ok(new ArrayList<>());
-//        }
-//        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-//            if (taskSpeciman.getDeleteType().equals("0")){
-//                TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-//                Sample sample = new Sample();
-//                sample.setSampleId(byId.getId());
-//                sample.setSampleName(byId.getSampleName());
-//                sample.setSampleNumber(byId.getSampleNumber());
-//                sample.setSampleLocation(byId.getSampleLocation());
-//                sampleList.add(sample);
-//            }
-//        }
-//        return Result.ok(sampleList);
-
         List<JSONObject> sampleVOList = new ArrayList<>();
         if (!StringUtils.hasText(taskId)) {
             return Result.ok(sampleVOList);
@@ -1842,276 +1823,127 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * 新增样本接口
-     * @param paramDto
+     * @param dto
      * @return
      */
     @Override
-    public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto) {
-//        if (paramDto.getNewSamples().isEmpty() && paramDto.getDelSampleIds().isEmpty()) {
-//            return Result.ok("没有要新增或删除的样品！");
-//        }
-//        if (paramDto.getDelSampleIds()==null){
-//            paramDto.setDelSampleIds(new ArrayList<>());
-//        }
-//        if (paramDto.getNewSamples()==null){
-//            paramDto.setNewSamples(new ArrayList<>());
-//        }
-//
-//        if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
-//            return Result.fail("表格新增列数不能超过10列");
-//        }
-//        // 根据方法id查询方法数据
-//        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-//        // 根据用户名查询用户数据
-//        SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", paramDto.getUpdateBy()));
-//        TMeasureTask task;
-//        if (paramDto.getTaskId()!=null){
-//            task = tMeasureTaskService.getById(paramDto.getTaskId());
-//        }else{
-//            task = new TMeasureTask();
-//            task.setUserId(user.getId());
-//            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-//            String collect = new Random().ints(8, 0, chars.length())
-//                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
-//                    .collect(Collectors.joining());
-//            task.setTaskName(method.getMeasurementType() + "task_" + collect);
-//            task.setCreateTime(LocalDateTime.now());
-//            task.setMethodKey(method.getId());
-//            task.setMeasureType(method.getMeasurementType());
-//            task.setProjectItemKey(method.getProjectItemKey());
-//            task.setIsDelete("0");
-//            tMeasureTaskService.save(task);
-//            TMeasureTaskAttachment tMeasureTaskAttachment = new TMeasureTaskAttachment();
-//            tMeasureTaskAttachment.setTaskId(task.getId());
-//            boolean save = tMeasureTaskAttachmentService.save(tMeasureTaskAttachment);
-//            if (!save) {
-//                return Result.fail("保存任务附属失败");
-//            }
-//        }
-//        List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//        if (taskSpecimenList != null&&(paramDto.getDelSampleIds()!=null||paramDto.getDelSampleIds().isEmpty())) {
-//            for (TaskSpecimen taskSpecimen : taskSpecimenList) {
-//                for (String delSampleId : paramDto.getDelSampleIds()) {
-//                    if (taskSpecimen.getSpecimenKey().equals(delSampleId)) {
-//                        taskSpecimen.setDeleteType("1");
-//                    }
-//                }
-//            }
-//        }
-//
-//
-//        // 遍历新增的样品列表,如果id为null则进行新增,如果id不为null则进行方法修改
-//        for (Map<String, String> map : paramDto.getNewSamples()) {
-//            String jsonString = JSON.toJSONString(map);
-//            SampleVO newSample = JSON.parseObject(jsonString, SampleVO.class);
-//
-//            JSONObject newColData = new JSONObject();
-//            if (paramDto.getHeads() != null) {
-//
-//                for (HeadVO head : paramDto.getHeads()) {
-//                    String s = map.get(head.getIdentity());
-//                    newColData.put(head.getIdentity(), s);
-//                }
-//            }
-//
-//            if (newSample.getSampleId()!=null){
-//                TMeasureSample byId = tMeasureSampleService.getById(newSample.getSampleId());
-//                if (byId == null){
-//                    return Result.ok("样品不存在");
-//                }
-//                byId.setSampleName(newSample.getSampleName());
-//                byId.setSampleNumber(newSample.getSampleNumber());
-//                byId.setSampleLocation(newSample.getSampleLocation());
-//
-//                byId.setHeads(JSON.toJSONString(paramDto.getHeads()));
-//                byId.setNewColData(newColData.toJSONString());
-//                boolean update = tMeasureSampleService.updateById(byId);
-//                if (!update){
-//                    return Result.ok("修改失败");
-//                }
-//            }else{
-//                TMeasureSample sample = new TMeasureSample();
-//                sample.setSampleName(newSample.getSampleName());
-//                sample.setSampleNumber(newSample.getSampleNumber());
-//                sample.setSampleLocation(newSample.getSampleLocation());
-//                sample.setColor("#000000");
-//                sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
-//
-//                sample.setHeads(JSON.toJSONString(paramDto.getHeads()));
-//                sample.setNewColData(newColData.toJSONString());
-//                boolean save = tMeasureSampleService.save(sample);
-//                if (!save){
-//                    return Result.ok("新增失败");
-//                }
-//                TaskSpecimen newTaskSpecimen = new TaskSpecimen();
-//                newTaskSpecimen.setSpecimenKey(sample.getId());
-//                newTaskSpecimen.setDeleteType("0");
-//                newTaskSpecimen.setIsTested("0");
-//                taskSpecimenList.add(newTaskSpecimen);
-//            }
-//        }
-//
-//        task.setSampleKey(JSON.toJSONString(taskSpecimenList));
-//        boolean update = tMeasureTaskService.updateById(task);
-//        return Result.ok(update);
+    public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO dto) {
 
-        // 检查方法ID是否存在，如果不存在则返回错误信息
-        if (!StringUtils.hasText(paramDto.getMethodId())) {
+        if (!StringUtils.hasText(dto.getMethodId())) {
             return Result.fail("请先创建方法");
         }
-        // 检查新增样品列表是否为空，如果为空则初始化为空列表
-        if(paramDto.getNewSamples() == null) {
-            paramDto.setNewSamples(new ArrayList<>());
-        }
-        // 检查删除样品ID列表是否为空，如果为空则初始化为空列表
-        if (paramDto.getDelSampleIds() == null) {
-            paramDto.setDelSampleIds(new ArrayList<>());
-        }
-        // 检查是否有新增或删除的样品，如果没有则返回提示信息
-        if (paramDto.getNewSamples().isEmpty() && paramDto.getDelSampleIds().isEmpty()) {
-            return Result.ok("没有要新增或删除的样品！");
+        if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
+            return Result.fail("至少需要一个表头");
         }
 
-        // 检查表格新增列数是否超过10列，如果超过则返回错误信息
-        if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
+        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
-        // 检查任务ID是否存在，如果不存在则创建新任务
-        if (!StringUtils.hasText(paramDto.getTaskId())) {
+        if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
 
-            // 根据方法ID获取测量方法
-            TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-            // 根据用户名查询系统用户管理信息
-            SystemUserManagePO po = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, paramDto.getUpdateBy()));
-            // 获取用户ID
+            TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
+            SystemUserManagePO po = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
             String id = po.getId();
-            // 设置新任务的用户ID
             newTask.setUserId(id);
-            // 设置新任务的项目项目键
             newTask.setProjectItemKey(method.getProjectItemKey());
-            // 设置新任务的方法键
             newTask.setMethodKey(method.getId());
-            // 设置新任务的测量类型
             newTask.setMeasureType(method.getMeasurementType());
-            // 生成随机字符串作为任务名称的一部分
             String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             String collect = new Random().ints(8, 0, chars.length())
                     .mapToObj(i -> String.valueOf(chars.charAt(i)))
                     .collect(Collectors.joining());
 
-            // 设置新任务的任务名称，包含测量类型和随机字符串
             newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
-            // 设置新任务的创建时间为当前时间
             newTask.setCreateTime(LocalDateTime.now());
-            // 初始化保存标志为false
             boolean save = false;
-            // 尝试保存新任务，最多尝试3次
             for (int i = 0; i < 3; i++) {
                 if (tMeasureTaskService.save(newTask)) {
                     save = true;
                     break;
                 }
             }
-            // 如果保存失败，返回系统错误信息
             if (!save) {
                 return Result.fail("系统出错");
             }
-            // 设置参数DTO的任务ID
-            paramDto.setTaskId(newTask.getId());
+            dto.setTaskId(newTask.getId());
         }
 
 
-        // 根据任务ID获取测量任务
-        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-        // 如果任务不存在，返回任务不存在信息
+        TMeasureTask task = tMeasureTaskService.getById(dto.getTaskId());
         if (task == null) {
             return Result.fail("任务不存在");
         }
 
-        // 解析任务中的样品键，获取任务样品列表
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        // 遍历任务样品列表
         for (TaskSpecimen specimen : taskSpecimen) {
-            // 检查当前样品是否在要删除的样品ID列表中
-            if (paramDto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
-                // 设置样品的删除类型
+            if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);
-                // 创建查询条件，查询指定样品键和任务ID的测量数据，按序列号降序排列
-                LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
-                        .eq(TMeasureAnalysisData::getTaskId, task.getId())
-                        .orderByDesc(TMeasureAnalysisData::getAnalysisNumber);
-                // 执行查询，获取测量数据列表
-                List<TMeasureAnalysisData> list = tMeasureAnalysisDataService.list(queryWrapper);
-                // 如果列表不为空，获取最新的一条记录
+                LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                        .eq(TMeasureData::getTaskId, task.getId())
+                        .orderByDesc(TMeasureData::getSerialNumber);
+                List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
                 if (list != null && !list.isEmpty()) {
-                    TMeasureAnalysisData one = list.get(0);
-                    // 设置测量数据的删除类型
+                    TMeasureData one = list.get(0);
                     one.setIsDelete(deleteType);
-                    // 更新测量数据
-                    tMeasureAnalysisDataService.updateById(one);
+                    tMeasureDataService.updateById(one);
                 }
             }
         }
 
-        // 遍历参数DTO中的新样品列表
-        for (Map<String, String> map : paramDto.getNewSamples()) {
-            // 将Map转换为JSON字符串，再解析为SampleVO对象
+        TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
+
+        if (StringUtils.hasText(task.getTableInfo())) {
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+        }
+
+        if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
+            taskHeadSnapshot.setSampleHeads(dto.getHeads());
+        }
+        taskHeadSnapshot.setTaskId(task.getId());
+        task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
+
+
+        for (Map<String, String> map : dto.getNewSamples()) {
             String jsonString = JSON.toJSONString(map);
             SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
-            // 创建新的测量样品对象
             TMeasureSample newSample = new TMeasureSample();
-            // 复制SampleVO的属性到新样品对象
             BeanUtils.copyProperties(sample, newSample);
-            // 设置新样品的ID
             newSample.setId(sample.getSampleId());
 
-            // 如果参数DTO中的表头信息不为空
-            if (paramDto.getHeads() != null) {
-
-                // 将表头信息转换为JSON字符串并设置到新样品中
-                newSample.setHeads(JSON.toJSONString(paramDto.getHeads()));
-
-                // 创建新的列数据JSON对象
+            if (dto.getHeads() != null) {
                 JSONObject newColData = new JSONObject();
 
-                // 遍历表头信息，从Map中获取对应的值并添加到列数据JSON对象中
-                for (HeadVO head : paramDto.getHeads()) {
+                for (HeadVO head : dto.getHeads()) {
+                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                        continue;
+                    }
                     String s = map.get(head.getIdentity());
                     newColData.put(head.getIdentity(), s);
                 }
-
-                // 设置新样品的新列数据为JSON字符串
+                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
                 newSample.setNewColData(JSON.toJSONString(newColData));
             }
 
-            // 如果新样品的ID不为空，更新样品；否则，创建新样品
             if (StringUtils.hasText(newSample.getId())) {
                 tMeasureSampleService.updateById(newSample);
             } else {
-                // 创建新的任务样品对象
                 TaskSpecimen specimen = new TaskSpecimen();
-                // 设置任务样品的删除类型和测试状态
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
-                // 记录新增样品的日志
+                specimen.setSampleType(newSample.getSampleType());
                 log.info("新增的样品：{}", newSample);
-                // 保存新样品
                 tMeasureSampleService.save(newSample);
-                // 设置任务样品的样品键为新样品的ID
                 specimen.setSpecimenKey(newSample.getId());
-                // 将新任务样品添加到任务样品列表中
                 taskSpecimen.add(specimen);
             }
         }
 
-        // 将任务样品列表转换为JSON字符串并设置到任务中
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
 
-        // 更新任务并返回操作结果
         return Result.ok(tMeasureTaskService.updateById(task));
     }
 
@@ -2643,10 +2475,10 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result<List<HeadVO>> querySampleHeads(String taskId) {
-        List<HeadVO> ans = new ArrayList<>();
 
         if (!StringUtils.hasText(taskId)) {
-            return Result.ok(ans);
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+            return Result.ok(preHead);
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -2654,21 +2486,18 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail("任务不存在");
         }
 
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(deleteType)) {
-                    continue;
-                }
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-
-                if (heads != null && !heads.equals(ans)) {
-                    ans.addAll(heads);
-                }
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        } else {
+            TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+                return Result.ok(preHead);
             }
         }
-        return Result.ok(ans);
     }
 
     @Override

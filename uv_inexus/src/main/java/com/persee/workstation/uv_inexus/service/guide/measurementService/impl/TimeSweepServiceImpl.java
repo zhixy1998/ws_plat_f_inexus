@@ -236,9 +236,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result queryProjectAllMethods(String projectId,String measureForm) {
-        if (projectId.length()!=32){
-            return Result.fail("项目id应为32位");
-        }
+
         List<TMeasureMethod> methods = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type",  measureForm));
         if (methods==null){
             return Result.fail("没有此类型的数据");
@@ -333,9 +331,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (!StringUtils.hasText(taskId)) {
             return Result.ok(ans);
         }
-        if (taskId.length()!=32){
-            return Result.fail("任务id应为32位");
-        }
+
 
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
@@ -371,9 +367,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (taskId == null || taskId.equals("")) {
             return Result.fail("任务id不能为空");
         }
-        if (taskId.length()!=32){
-            return Result.fail("任务id应为32位");
-        }
+
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             return Result.fail("任务不存在");
@@ -434,9 +428,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     @Override
     public Result deleteSampleListPort(String sampleId, String taskId) {
         // 获取任务数据
-        if (taskId.length()!=32){
-            return Result.fail("任务id应为32位");
-        }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
@@ -480,9 +471,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result changeTheListPort(String taskId,String type, Integer digit) {
-        if (taskId.length()!=32){
-            return Result.fail("任务id应为32位");
-        }
 
         // 根据任务id去查询分析数据
         QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
@@ -640,9 +628,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result setMethodParameters(String methodId, String deviceSerialNumber) {
-        if (methodId.length()!=32){
-            return Result.fail("方法id应为32位");
-        }
 
         // 根据序列号查询设备ip
         String ip = deviceInfoService.getIp(deviceSerialNumber);

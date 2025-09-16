@@ -216,7 +216,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             task.setMethodKey(methodId);
             task.setMeasureType(method.getMeasurementType());
             task.setProjectItemKey(method.getProjectItemKey());
-            task.setStartTime(LocalDateTime.now());
+
             task.setDeviceSerialNumber(deviceSerialNumber);
             boolean save1 = tMeasureTaskService.save(task);
             if (!save1) {

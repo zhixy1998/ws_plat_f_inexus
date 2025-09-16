@@ -331,6 +331,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         tMeasureData.setOriginalCalculationData(JSON.toJSONString(listData));
         tMeasureData.setMeasurementStartTime(Constants.startTime);
         tMeasureData.setMeasurementEndTime(Constants.endTime);
+        tMeasureData.setIsSave("1");
         tMeasureData.setIsDelete("0");
 
 // 保存或更新测量数据
@@ -372,6 +373,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         analysisData.setPeak(com.alibaba.fastjson2.JSON.toJSONString(peakValleys));
         analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(markings));
         analysisData.setColor("#000000");
+        analysisData.setIsSave("1");
         analysisData.setIsDelete("0");
 
 // 保存或更新分析数据

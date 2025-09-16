@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.concise.photometricDto.FPhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.model.R;
@@ -28,17 +27,11 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 
-public interface FPhotometricService {
+public interface PhotometricConciseService {
     /**
      * 创建光度测量方法
      */
     Result createMethodPort(FMethodParamRequestDto methodDto, String updateBy, FPhotometricParameter photometricParameter);
-
-    /**
-     * 方法参数修改接口
-     */
-    Result updateMethodParameter(FPhotometricMethodParameterDto methodDto);
-
 
     /**
      * 新建草稿

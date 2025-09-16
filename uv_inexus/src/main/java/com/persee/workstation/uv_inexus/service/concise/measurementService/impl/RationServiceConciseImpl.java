@@ -5,15 +5,17 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
@@ -21,7 +23,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -34,6 +36,7 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 import lombok.extern.slf4j.Slf4j;
@@ -47,15 +50,16 @@ import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service("fRationService")
-public class FRationServiceImpl implements FRationService {
+public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
-    SystemUserManageDAO userManageDAO;
+    SysUserMapper userManageDAO;
     @Autowired
     FMeasureTaskMapper fMeasureTaskMapper;
     @Autowired
@@ -103,6 +107,9 @@ public class FRationServiceImpl implements FRationService {
 
     @Value("1")
     String tested;
+
+    @Value("11")
+    String defaultProjectId;
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
@@ -160,7 +167,7 @@ public class FRationServiceImpl implements FRationService {
         fMeasureMethod.setMethodCreator(updateBy);
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         boolean save = fMeasureMethodService.save(fMeasureMethod);
-        if ( save){
+        if (save){
             return Result.ok("创建成功");
         }else {
             return Result.fail("创建失败");
@@ -168,9 +175,349 @@ public class FRationServiceImpl implements FRationService {
     }
 
     @Override
+    public Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy) {
+
+        SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+        String userId = sysUserPO.getId();
+
+        FMeasureTask task = new FMeasureTask();
+        task.setTaskName("新建光度测量草稿" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        task.setIsDelete(createType);
+        task.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
+        task.setMethodKey(methodId);
+        task.setUserId(userId);
+        task.setProjectItemKey(defaultProjectId);
+        task.setCreateTime(LocalDateTime.now());
+
+        List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+        FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
+        snapshot.setTaskHeads(preHead);
+        task.setTableInfo(JSON.toJSONString(snapshot));
+
+        boolean save = fMeasureTaskService.save(task);
+        FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
+        vo.setMethodId(task.getMethodKey());
+
+//        vo.setProjectId(task.getProjectItemKey());
+        if (save) {
+            vo.setTaskId(task.getId());
+            vo.setTaskName(task.getTaskName());
+            return Result.ok(vo);
+        } else {
+            return Result.fail("新建失败");
+        }
+    }
+
+    @Override
+    public Result<FMethodChangeCheckVO> checkMethodParam(NewRationMethodParamCheckDTO checkDTO) {
+
+        if (checkDTO.getNewMethodParam() == null) {
+            return Result.fail("没有可应用的方法参数");
+        }
+
+        FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
+
+        if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
+            log.info("生成新方法");
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
+            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
+            return Result.ok(vo);
+        }
+
+        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+            log.info("更换方法");
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.changeMethod.getMessage());
+            vo.setClearDataRange(RationChangeMethodTypeEnums.changeMethod.getIdentity());
+        }
+
+        FMeasureMethod method = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+        FRationParameter oldParam = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
+
+        FRationParameter methodParam = checkDTO.getNewMethodParam();
+
+        String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(methodParam, SerializerFeature.SortField);
+
+        if (dbJson.equals(frontJson)) {
+            vo.setParamChange(false);
+            vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+            vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
+            return Result.ok(vo);
+        }
+        //检查测量数据
+        boolean b = checkMeasureParam(oldParam, methodParam);
+        if (!b) {
+            log.info("测量参数有改变，要清理所有数据");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.measure.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.measure.getMessage());
+            return Result.ok(vo);
+        }
+
+        boolean curveParam = checkCurveParam(oldParam, methodParam);
+        if (!curveParam) {
+            log.info("曲线参数有改变，要清理曲线数据");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.curve.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.curve.getMessage());
+        }
+
+        //检查分析参数
+        boolean analyze = checkAnalyzeParam(oldParam, methodParam);
+        if (!analyze) {
+            log.info("分析参数有改变，要清理分析数据");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
+        }
+        return Result.ok(vo);
+    }
+
+    //检查参数是否改变，true--未改变，false--改变了
+    private boolean checkMeasureParam(FRationParameter oldParam, FRationParameter newParam) {
+
+        List<String> oldWave = oldParam.getWaveLength();
+        List<String> newWave = newParam.getWaveLength();
+        if (!Objects.equals(oldWave, newWave)) {
+            return false;
+        }
+
+        return oldParam.getSpectralBandwidth().equals(newParam.getSpectralBandwidth()) &&
+                oldParam.getResponseTime().equals(newParam.getResponseTime()) &&
+                oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
+                oldParam.getTimeInterval().equals(newParam.getTimeInterval()) && 
+                oldParam.getRepeatMode().equals(newParam.getRepeatMode()) &&
+                oldParam.getRepeatCount().equals(newParam.getRepeatCount());
+    }
+
+    //检查参数是否改变，true--未改变，false--改变了
+    private boolean checkAnalyzeParam(FRationParameter oldParam, FRationParameter newParam) {
+        List<FPreCountResultParam> oldResult = oldParam.getResultParams();
+        List<FPreCountResultParam> newResult = newParam.getResultParams();
+        if (!oldResult.equals(newResult)) {
+            if (newResult.size() != oldResult.size()) {
+                return false;
+            }
+
+            for (int i = 0; i < oldResult.size(); i++) {
+                FPreCountResultParam oldResultParam = oldResult.get(i);
+                FPreCountResultParam newResultParam = newResult.get(i);
+                if (oldResultParam.equals(newResultParam)) {
+                    continue;
+                }
+                if (!oldResultParam.getFormulaText().equals(newResultParam.getFormulaText())) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /*
+    * 检查曲线参数是否改变，true--未改变，false--改变了
+     */
+    private boolean checkCurveParam(FRationParameter oldParam, FRationParameter newParam) {
+        List<String> oldLengthParam = oldParam.getWaveLengthParams();
+        List<String> newLengthParam = newParam.getWaveLengthParams();
+        if (!Objects.equals(oldLengthParam, newLengthParam)) {
+            return false;
+        }
+
+        List<String> oldZero = oldParam.getZeroMethod();
+        List<String> newZero = newParam.getZeroMethod();
+        if (!Objects.equals(oldZero, newZero)) {
+            return false;
+        }
+        return oldParam.getCurveType().equals(newParam.getCurveType()) &&
+                oldParam.getEquationType().equals(newParam.getEquationType());
+
+    }
+
+
+
+    @Override
+    public Result<FMeasurementCurrentInfoVO> applyMethod(NewRationMethodParamCheckDTO methodDTO) {
+
+        if (methodDTO.getNewMethodParam() == null && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+            return Result.fail("没有可应用的方法或参数");
+        }
+        if (!StringUtils.hasText(methodDTO.getMeasureType())) {
+            methodDTO.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
+        }
+        String methodId = methodDTO.getNewMethodId();
+
+        FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
+
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, methodDTO.getUpdateBy()));
+        String userId = po.getId();
+        ans.setMethodName(methodDTO.getMethodName());
+
+        if (!StringUtils.hasText(methodId)) {
+            FMeasureMethod method = new FMeasureMethod();
+            method.setMeasurementParamInfo(JSON.toJSONString(methodDTO.getNewMethodParam()));
+            method.setMethodName(methodDTO.getMethodName() + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            method.setMeasurementType(methodDTO.getMeasureType());
+            method.setProjectItemKey(defaultProjectId);
+            method.setMethodCreator(methodDTO.getUpdateBy());
+            method.setMethodCreateTime(LocalDateTime.now());
+            method.setMethodUseTime(LocalDateTime.now());
+            boolean save = fMeasureMethodService.save(method);
+
+            if (!save) {
+                return Result.fail("应用失败");
+            }
+            methodId = method.getId();
+            ans.setMethodName(method.getMethodName());
+        }
+        ans.setMethodId(methodId);
+
+        FMeasureTask task = new FMeasureTask();
+        if (!StringUtils.hasText(methodDTO.getCurrentTaskId())) {
+            //任务不存在，创建任务和方法
+            task.setTaskName("草稿数据" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            task.setMethodKey(methodId);
+            task.setCreateTime(LocalDateTime.now());
+            task.setUserId(userId);
+            task.setProjectItemKey(defaultProjectId);
+            task.setIsDelete(createType);
+            task.setMeasureType(methodDTO.getMeasureType());
+
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+            FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
+            snapshot.setTaskHeads(preHead);
+
+            task.setTableInfo(JSON.toJSONString(snapshot));
+            fMeasureTaskService.save(task);
+
+        } else {
+            task = fMeasureTaskService.getById(methodDTO.getCurrentTaskId());
+
+            if (methodDTO.getIsSaveDraft() == null || !methodDTO.getIsSaveDraft()) {
+                //不保存数据
+                if (StringUtils.hasText(task.getSampleKey())) {
+                    List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+
+//                    Boolean b = clearData(task.getId(), taskSpecimen, methodDTO.getClearDataRange());
+
+                    task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                }
+                task.setMethodKey(methodId);
+                task.setDeviceSerialNumber(null);
+                task.setIsDelete(createType);
+                fMeasureTaskService.updateById(task);
+
+            } else {
+                //保存数据
+                FMeasureTask newTask = new FMeasureTask();
+                newTask.setProjectItemKey(defaultProjectId);
+                newTask.setUserId(userId);
+                newTask.setTaskName("草稿数据" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+                newTask.setTableInfo(task.getTableInfo());
+
+                if (StringUtils.hasText(task.getSampleKey())) {
+                    List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+                    for (FTaskSpecimen specimen : taskSpecimen) {
+
+                        FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                        FMeasureSample newSample = new FMeasureSample();
+                        BeanUtils.copyProperties(sample, newSample);
+                        newSample.setId(null);
+
+                        fMeasureSampleService.save(newSample);
+                        specimen.setSpecimenKey(newSample.getId());
+
+                        specimen.setIsTested(createType);
+                    }
+                    newTask.setSampleKey(JSON.toJSONString(taskSpecimen));
+                }
+                newTask.setId(null);
+                newTask.setMethodKey(methodId);
+                newTask.setDeviceSerialNumber(null);
+                newTask.setIsDelete(createType);
+                fMeasureTaskService.save(newTask);
+                task = newTask;
+
+            }
+            ans.setTaskId(task.getId());
+            ans.setTaskName(task.getTaskName());
+
+        }
+
+        return Result.ok(ans);
+    }
+
+    private List<FTaskSpecimen> clearData(String taskId, List<FTaskSpecimen> taskSpecimen, String clearDataRange) {
+        if (!StringUtils.hasText(clearDataRange) || clearDataRange.equals(RationChangeMethodTypeEnums.newMethod.getIdentity()) || clearDataRange.equals(RationChangeMethodTypeEnums.noChange.getIdentity())) {
+            log.info("没有需要清除的数据");
+            return taskSpecimen;
+        }
+
+        if (clearDataRange.equals(RationChangeMethodTypeEnums.measure.getIdentity())) {
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                String sampleId = specimen.getSpecimenKey();
+                LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(FMeasureData::getTaskId, taskId)
+                        .eq(FMeasureData::getSampleKey, sampleId);
+                boolean removeMeasure = fMeasureDataService.remove(wrapper);
+
+                LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                        .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+                boolean removeAnalysis = fMeasureAnalysisDataService.remove(queryWrapper);
+
+                if (!removeMeasure || !removeAnalysis) {
+                    log.info("清除数据失败");
+                    return taskSpecimen;
+                }
+                specimen.setIsTested(noTested);
+            }
+            return taskSpecimen;
+        } else if (clearDataRange.equals(RationChangeMethodTypeEnums.curve.getIdentity())) {
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                String sampleId = specimen.getSpecimenKey();
+                if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                    LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                            .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+                    boolean remove = fMeasureAnalysisDataService.remove(queryWrapper);
+                } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+
+                }
+            }
+        }
+
+
+//        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+//        queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+//                .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+//        boolean remove = fMeasureAnalysisDataService.remove(queryWrapper);
+//        if (!remove) {
+//            log.info("清除分析数据失败");
+//            return taskSpecimen;
+//        }
+//
+//
+//
+//        if (clearDataRange.equals(RationChangeMethodTypeEnums.measure.getIdentity())) {
+//            LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
+//            wrapper.eq(FMeasureData::getTaskId, taskId)
+//                    .eq(FMeasureData::getSampleKey, sampleId);
+//            boolean remove1 = fMeasureDataService.remove(wrapper);
+//            if (!remove1) {
+//                log.info("清除测量数据失败");
+//                return taskSpecimen;
+//            }
+//        }
+        return taskSpecimen;
+
+    }
+
+    @Override
     public Result<FMeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType) {
 
-        SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
 
         LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<>();
@@ -190,8 +537,8 @@ public class FRationServiceImpl implements FRationService {
             vo.setTaskName(task.getTaskName());
             vo.setMethodId(method.getId());
             vo.setMethodName(method.getMethodName());
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
+//            vo.setProjectId(project.getId());
+//            vo.setProjectName(project.getProjectName());
             return Result.ok(vo);
         }
 
@@ -210,8 +557,8 @@ public class FRationServiceImpl implements FRationService {
             if (projectList == null || projectList.isEmpty()){
                 return Result.ok(vo);
             }
-            vo.setProjectName(projectList.get(0).getProjectName());
-            vo.setProjectId(projectList.get(0).getId());
+//            vo.setProjectName(projectList.get(0).getProjectName());
+//            vo.setProjectId(projectList.get(0).getId());
 
         } else {
             FMeasureMethod fMeasureMethod = list.get(0);
@@ -219,8 +566,8 @@ public class FRationServiceImpl implements FRationService {
 
             vo.setMethodId(fMeasureMethod.getId());
             vo.setMethodName(fMeasureMethod.getMethodName());
-            vo.setProjectId(fMeasureProject.getId());
-            vo.setProjectName(fMeasureProject.getProjectName());
+//            vo.setProjectId(fMeasureProject.getId());
+//            vo.setProjectName(fMeasureProject.getProjectName());
         }
         return Result.ok(vo);
     }
@@ -341,7 +688,7 @@ public class FRationServiceImpl implements FRationService {
             FMeasureTask newTask = new FMeasureTask();
 
             FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());
@@ -2390,7 +2737,7 @@ public class FRationServiceImpl implements FRationService {
             //创建任务
             FMeasureTask newTask = new FMeasureTask();
 
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
             newTask.setUserId(po.getId());
             newTask.setProjectItemKey(method.getProjectItemKey());
             newTask.setMethodKey(method.getId());
@@ -2462,7 +2809,7 @@ public class FRationServiceImpl implements FRationService {
             //创建任务
             FMeasureTask newTask = new FMeasureTask();
 
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
             newTask.setUserId(po.getId());
             newTask.setProjectItemKey(method.getProjectItemKey());
             newTask.setMethodKey(method.getId());

@@ -477,6 +477,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 measureData.setOriginalCalculationData(JSON.toJSONString(listData));
                 measureData.setMeasurementStartTime(Constants.startTime);
                 measureData.setMeasurementEndTime(Constants.endTime);
+                measureData.setIsSave("1");
                 measureData.setIsDelete("0");
                 traceDataService.save(measureData);
 
@@ -492,6 +493,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 analysisData.setPeak(JSON.toJSONString(peakValleys));
                 analysisData.setGrain(JSON.toJSONString(markings));
                 analysisData.setColor("#000000");
+                analysisData.setIsSave("1");
                 analysisData.setIsDelete("0");
                 tMeasureAnalysisDataService.save(analysisData);
                 FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
@@ -510,6 +512,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         measureData.setOriginalCalculationData(null);
                         measureData.setMeasurementStartTime(null);
                         measureData.setMeasurementEndTime(null);
+                        measureData.setIsSave("1");
                         measureData.setIsDelete("0");
                         boolean save = traceDataService.save(measureData);
                         FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
@@ -524,6 +527,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         analysisData.setPeak(null);
                         analysisData.setGrain(null);
                         analysisData.setColor("#000000");
+                        analysisData.setIsSave("1");
                         analysisData.setIsDelete("0");
                         boolean save1 = tMeasureAnalysisDataService.save(analysisData);
                         FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
@@ -542,6 +546,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         measureData.setOriginalCalculationData(JSON.toJSONString(listData));
                         measureData.setMeasurementStartTime(Constants.startTime);
                         measureData.setMeasurementEndTime(Constants.endTime);
+                        measureData.setIsSave("1");
                         measureData.setIsDelete("0");
                         boolean save = traceDataService.save(measureData);
 
@@ -557,6 +562,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         analysisData.setPeak(JSON.toJSONString(peakValleys));
                         analysisData.setGrain(JSON.toJSONString(markings));
                         analysisData.setColor("#000000");
+                        analysisData.setIsSave("1");
                         analysisData.setIsDelete("0");
                         boolean save1 = tMeasureAnalysisDataService.save(analysisData);
                         FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
@@ -585,12 +591,14 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 measureData.setOriginalCalculationData(JSON.toJSONString(listData));
                 measureData.setMeasurementStartTime(Constants.startTime);
                 measureData.setMeasurementEndTime(Constants.endTime);
+                measureData.setIsSave("1");
                 boolean update = traceDataService.updateById(measureData);
                 // 将分析参数跟分析数据进行保存
                 analysisDataList.get(0).setAnalysisParam(JSON.toJSONString(Constants.instrumentData));
                 analysisDataList.get(0).setAnalysisResult(JSON.toJSONString(listData));
                 analysisDataList.get(0).setPeak(JSON.toJSONString(peakValleys));
                 analysisDataList.get(0).setGrain(JSON.toJSONString(markings));
+                analysisDataList.get(0).setIsSave("1");
                 boolean update1 = tMeasureAnalysisDataService.updateById(analysisDataList.get(0));
                 if(!(update&&update1)){
                     sendAndClose( session, "数据保存失败");
@@ -605,11 +613,13 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         measureData.setOriginalCalculationData(JSON.toJSONString(listData));
                         measureData.setMeasurementStartTime(Constants.startTime);
                         measureData.setMeasurementEndTime(Constants.endTime);
+                        measureData.setIsSave("1");
                         boolean update = traceDataService.updateById(measureData);
                         analysisData.setAnalysisParam(JSON.toJSONString(Constants.instrumentData));
                         analysisData.setAnalysisResult(JSON.toJSONString(listData));
                         analysisData.setPeak(JSON.toJSONString(peakValleys));
                         analysisData.setGrain(JSON.toJSONString(markings));
+                        analysisDataList.get(0).setIsSave("1");
                         boolean update1 = tMeasureAnalysisDataService.updateById(analysisData);
                         if(!(update&&update1)){
                             sendAndClose( session, "数据保存失败");

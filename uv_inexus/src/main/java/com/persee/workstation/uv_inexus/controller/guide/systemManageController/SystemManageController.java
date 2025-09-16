@@ -37,6 +37,20 @@ public class SystemManageController {
 
     @Autowired
     SystemManageService systemManageService;
+    @Autowired
+    private SystemctlDatabaseConfService systemctlDatabaseConfServiceImpl;
+
+    @PostMapping("update")
+    @ApiOperation("更改系统配置")
+    public Result<InitSystemConf> updateSystemDatabaseConf(@RequestBody InitSystemConf initSystemConf) {
+        return systemctlDatabaseConfServiceImpl.updateSystemDatabaseConf(initSystemConf);
+    }
+
+    @PostMapping("initConf")
+    @ApiOperation("获取系统初始化配置")
+    public Result<InitSystemConf> initSystemConf() {
+        return systemctlDatabaseConfServiceImpl.initSystemConf();
+    }
 
     @ApiOperation("修改系统管理配置")
     @PostMapping("/changeSystemConfig")

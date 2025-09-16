@@ -1,7 +1,11 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+
+import java.util.List;
 
 /**
  * 简洁模式: 时间扫描服务接口
@@ -13,6 +17,30 @@ public interface TimeSweepConciseService {
 
     // 查找方法按钮
     Result searchMethodButton(Integer pageNum, Integer pageSize, String updateBy, String measureType, String methodName);
+
+    // 使用方法接口
+    Result use(TimeUseMethodDto paramDto);
+
+    // 是否保存数据接口
+    Result whetherSaveData(String taskId, Boolean isSave);
+
+    // 创建草稿接口
+    Result createDraftButton(String methodId, String updateBy);
+
+    // 查询样品列表按钮
+    Result querySampleListButton(String taskId);
+
+    // 查询样本输入表头接口
+    Result<List<FHeadVO>> querySampleHeads(String taskId);
+
+    // 添加或删除样本接口
+    Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO paramDto);
+
+    // 检测任务状态接口
+    Result detectionTaskStatus(String taskId);
+
+    // 保存草稿按钮接口
+    Result saveDraftButton(String taskId, String taskName);
 
     // 查询样品数据列表
     Result querySampleDataList(String taskId, String type, Integer digit);

@@ -2,16 +2,17 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.concise.photometricDto.FPhotometricMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FMethodParam;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FPhotometricService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.PhotometricConciseService;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -29,23 +30,36 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/photometricMeasurement/concise")
+@RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/photometricMeasurement/concise/")
 @Api("简洁模式-光度测量")
 public class PhotometricConciseController {
 
     @Autowired
-    FPhotometricService fPhotometricService;
-
-    @PostMapping("updateMethodParameter")
-    @ApiOperation("方法参数修改接口")
-    public Result updateMethodParameter(@RequestBody FPhotometricMethodParameterDto methodDto) {
-        return fPhotometricService.updateMethodParameter(methodDto);
-    }
+    PhotometricConciseService fPhotometricService;
 
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")
     public Result<FMethodParam> queryMethodParam(@RequestParam String methodId) {
         return fPhotometricService.queryMethodParam(methodId);
+    }
+
+
+    @GetMapping("newDraft")
+    @ApiOperation("新建草稿")
+    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestParam String methodId, @RequestParam String updateBy) {
+        return fPhotometricService.newDraft(methodId, updateBy);
+    }
+
+    @PostMapping("checkParam")
+    @ApiOperation("检查参数接口")
+    public Result<FMethodChangeCheckVO> checkParam(@RequestBody NewPhotometricMethodParamCheckDTO methodParam) {
+        return fPhotometricService.checkMethodParam(methodParam);
+    }
+
+    @PostMapping("applyMethod")
+    @ApiOperation("应用方法接口")
+    public Result<FMeasurementCurrentInfoVO> applyMethod(@RequestBody NewPhotometricMethodParamCheckDTO methodParam) {
+        return fPhotometricService.applyMethod(methodParam);
     }
 
     @GetMapping("getSampleList")
@@ -100,7 +114,7 @@ public class PhotometricConciseController {
     }
 
     @PostMapping("saveDataInfo")
-    @ApiOperation("保存数据接口,备注等")
+    @ApiOperation("保存数据接口，用户自定义数据")
     public Result saveData(@RequestBody FSaveDataVO vo) {
         return fPhotometricService.saveDataInfo(vo);
     }

@@ -6,6 +6,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDt
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -17,6 +18,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationP
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 
 import java.util.List;
@@ -25,10 +27,26 @@ import java.util.Map;
 /**
  * 定量测定
  */
-public interface FRationService {
+public interface RationConciseService {
     Result updateMethodParameter(MethodParamsDto methodDto);
 
     Result createMethodPort(FMethodParamRequestDto methodDto, String updateBy, FRationParameter rationParameter);
+
+    /**
+     * 新建草稿
+     */
+    Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy);
+
+    /**
+     * 检查方法参数
+     */
+    Result<FMethodChangeCheckVO> checkMethodParam(NewRationMethodParamCheckDTO checkDTO);
+
+    /**
+     * 保存方法
+     */
+    Result<FMeasurementCurrentInfoVO> applyMethod(NewRationMethodParamCheckDTO methodDTO);
+
     /**
      * 获取当前信息
      */
