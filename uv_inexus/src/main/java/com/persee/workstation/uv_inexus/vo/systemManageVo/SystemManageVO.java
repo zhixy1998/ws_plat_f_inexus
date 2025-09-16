@@ -20,9 +20,9 @@ public class SystemManageVO {
     @ApiModelProperty("远程数据访问用户上限")
     private Integer remoteDataAccessNum;
 
-    @ApiModelProperty("仪器使用模式")
-    private String deviceUseMode;
-
-    @ApiModelProperty("仪器资源自动释放时间")
-    private Integer deviceResourceAutoReleaseTime;
+//    @ApiModelProperty("仪器使用模式")
+//    private String deviceUseMode;
+//
+//    @ApiModelProperty("仪器资源自动释放时间")
+//    private Integer deviceResourceAutoReleaseTime;
 }

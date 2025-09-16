@@ -41,4 +41,7 @@ public class SystemManagePO extends BasePO {
     @ApiModelProperty("仪器资源自动释放时间")
     @TableField(value = "device_resource_auto_release_time")
     private Integer deviceResourceAutoReleaseTime;
+    @ApiModelProperty("物联代理配置信息")
+    @TableField(value = "configuration")
+    private String configuration;
 }

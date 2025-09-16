@@ -1,9 +1,11 @@
 package com.persee.workstation.uv_inexus.controller.guide.systemManageController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemLogSwitchPO;
+import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagerConf;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.*;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.*;
 import io.swagger.annotations.Api;
@@ -35,6 +37,31 @@ public class SystemManageController {
 
     @Autowired
     SystemManageService systemManageService;
+
+    @ApiOperation("修改系统管理配置")
+    @PostMapping("/changeSystemConfig")
+    public Result<SystemManagerConf> changeSystemManagerConf(@RequestBody SystemManagerConf systemManagerConf) throws JsonProcessingException {
+        return systemManageService.changeSystemManagerConf(systemManagerConf);
+    }
+
+    @ApiOperation("获取系统管理配置")
+    @PostMapping("/getSystemConfig")
+    public Result<SystemManagerConf> getSystemManagerConf() throws JsonProcessingException {
+        return systemManageService.getSystemManagerConf();
+    }
+//
+//    @ApiOperation("认证物联代理配置信息")
+//    @PostMapping("/setConfiguration")
+//    public Result<Boolean> setConfiguration(@RequestBody ConfigVO configVO) throws JsonProcessingException {
+//        return systemManageService.setConfiguration(configVO);
+//    }
+//
+//    @ApiOperation("远程访问配置")
+//    @PostMapping("/longDistanceConfig")
+//    public Result<Boolean> longDistanceConfig(@RequestBody LongDistanceConfigVO longDistanceConfigVO) {
+//        return systemManageService.longDistanceConfig(longDistanceConfigVO);
+//    }
+
 
     @ApiOperation(value = "保存系统管理")
     @PostMapping("/saveSystemManage")

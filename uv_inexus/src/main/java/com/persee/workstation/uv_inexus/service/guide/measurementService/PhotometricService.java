@@ -26,7 +26,7 @@ public interface PhotometricService {
     /**
      * 方法参数修改接口
      */
-    Result updateMethodParameter(PhotometricMethodParameterDto methodDto);
+    Result<String> updateMethodParameter(PhotometricMethodParameterDto methodDto);
 
     /**
      * 获取当前信息
@@ -123,4 +123,5 @@ public interface PhotometricService {
      */
     R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO taskHeadSnapshot);
 
+    Result<InputParam> insertMethodParameter(InputParam methodParameterDto);
 }
