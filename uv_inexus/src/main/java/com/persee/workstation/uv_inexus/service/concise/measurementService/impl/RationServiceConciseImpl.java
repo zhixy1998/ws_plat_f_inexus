@@ -3134,7 +3134,7 @@ public class RationServiceConciseImpl implements RationConciseService {
      * @return 生成的文件对象
      */
     public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType) {
-        // log.info("开始导出11111111，taskId: {}, fileType: {}", taskId, fileType);
+        log.info("开始导出11111111，taskId: {}, fileType: {}", taskId, fileType);
         // 1. 基础参数校验（复用原逻辑）
         if (!StringUtils.hasText(taskId)) {
             return R.fail("缺少任务id");
@@ -3214,11 +3214,12 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
             return R.ok(file);
         } catch (Exception e) {
-            log.error("文件生成失败", e);
-            // 异常时删除无效文件
+            // 关键：打印完整异常堆栈（包含具体错误代码行）
+            log.error("文件生成失败！taskId={}, fileType={}, allDisplay={}", taskId, fileType, allDisplay, e);
             if (file.exists()) {
                 file.delete();
             }
+            // 返回具体错误信息（而非模糊的“文件生成失败”）
             return R.fail("文件生成失败：" + e.getMessage());
         }
     }

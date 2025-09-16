@@ -190,7 +190,7 @@ public class RationConciseController {
         
         // 调用 Service 层的多格式导出方法
         R<File> result = rationService.downloadFile(taskId, allDisplay, fileType);
-        System.out.println("111111111111111111");
+        System.out.println("2222222222222");
         if (result.getSuccess()) {
             File file = result.getData();
             FileInputStream fis = new FileInputStream(file);
@@ -218,6 +218,6 @@ public class RationConciseController {
         }
         
         // 导出失败时，返回错误信息
-        return ResponseEntity.badRequest().body("导出失败：" );
+        return ResponseEntity.badRequest().body("导出失败："  + result.getMessage());
     }
 }
