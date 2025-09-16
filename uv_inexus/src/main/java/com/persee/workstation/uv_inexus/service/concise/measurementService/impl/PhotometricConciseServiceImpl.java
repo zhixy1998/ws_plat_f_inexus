@@ -1,5 +1,44 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
+import static com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum.*;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -15,13 +54,40 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDt
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.PhotoMetricChangeMethodTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureProject;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FMethodParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.PhotometricConciseService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -33,29 +99,14 @@ import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCount
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
+
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xwpf.usermodel.*;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.math.BigInteger;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum.sampleId;
 
 @Slf4j
 @Service("fPhotometricService")
@@ -1781,5 +1832,438 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         return fMeasureTaskService.updateById(task) ? R.ok(true) : R.fail("保存失败");
     }
 
+    /**
+     * 多格式文件导出（支持word/txt/xlsx）
+     * @param taskId 任务ID
+     * @param allDisplay 是否显示全部数据
+     * @param fileType 导出格式（word/txt/xlsx）
+     * @return 生成的文件对象
+     */
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType) {
+        log.info("开始导出，taskId: {}, fileType: {}", taskId, fileType);
+        // 1. 基础参数校验（复用原逻辑）
+        if (!StringUtils.hasText(taskId)) {
+            return R.fail("缺少任务id");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            log.error("导出失败：任务不存在，taskId: {}", taskId);
+            return R.fail("任务不存在");
+        }
+        // 处理fileType默认值和合法性
+        if (!StringUtils.hasText(fileType)) {
+            fileType = "word"; // 默认导出word
+        } else {
+            fileType = fileType.toLowerCase();
+        }
+        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
+            return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
+        }
+        // 处理allDisplay默认值
+        if (allDisplay == null) {
+            allDisplay = true;
+        }
+
+        // 2. 准备表头和数据（完全复用原downloadWord逻辑）
+        String methodId = task.getMethodKey();
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return R.fail("测量方法不存在");
+        }
+
+        // 构建表头（与原逻辑一致）
+        List<FHeadVO> heads = new ArrayList<>();
+        // 添加动态表头
+        List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
+        heads.addAll(vos);
+        // 最前面加序号列（所有格式统一需要）
+        heads.add(0, new FHeadVO("序号", "serialNumber"));
+
+        // 查询数据（复用原逻辑）
+        FQueryDataDTO queryDataDTO = new FQueryDataDTO();
+        queryDataDTO.setOption(new ArrayList<>());
+        queryDataDTO.setTaskId(taskId);
+        queryDataDTO.setAllDisplay(allDisplay);
+        List<Map<String, Object>> data = queryData(queryDataDTO).getData();
+        if (data == null || data.isEmpty()) {
+            return R.fail("没有可导出的数据");
+        }
+        // 给数据加序号（与序号列对应）
+        for (int i = 0; i < data.size(); i++) {
+            data.get(i).put("serialNumber", i + 1);
+        }
+
+        // 3. 按格式生成文件（核心分支）
+        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
+        File file = new File(fileName);
+        try {
+            switch (fileType) {
+                case "word":
+                    generateWordFile(file, task, method, heads, data, vos.size());
+                    break;
+                case "txt":
+                    generateTxtFile(file, heads, data);
+                    break;
+                case "xlsx":
+                    generateExcelFile(file, heads, data);
+                    break;
+            }
+            return R.ok(file);
+        } catch (Exception e) {
+            log.error("文件生成失败", e);
+            // 异常时删除无效文件
+            if (file.exists()) {
+                file.delete();
+            }
+            return R.fail("文件生成失败：" + e.getMessage());
+        }
+    }
+
+    // ---------------------- 新增：三格式文件生成具体实现 ----------------------
+    /**
+     * 生成Word文件（修复原逻辑的表格列错位问题）
+     */
+    private void generateWordFile(File file, FMeasureTask task, FMeasureMethod method,
+                             List<FHeadVO> heads, List<Map<String, Object>> data, int vosSize) throws Exception {
+        XWPFDocument doc = new XWPFDocument();
+        CTDocument1 document = doc.getDocument();
+        CTBody body = document.getBody();
+        if (body == null) { // 防止body为null，主动创建
+            body = document.addNewBody();
+        }
+
+        // 页面设置
+        if (!body.isSetSectPr()) {
+            body.addNewSectPr();
+        }
+        CTSectPr section = body.getSectPr();
+        if (section == null) {
+            section = body.addNewSectPr();
+        }
+        if (!section.isSetPgSz()) {
+            section.addNewPgSz();
+        }
+        CTPageSz pageSize = section.getPgSz();
+        if (vosSize > 5) {
+            pageSize.setW(BigInteger.valueOf(15840));
+            pageSize.setH(BigInteger.valueOf(12240));
+        } else {
+            pageSize.setW(BigInteger.valueOf(11906)); // 默认A4宽度
+            pageSize.setH(BigInteger.valueOf(16838)); // 默认A4高度
+        }
+
+        // 添加标题（处理task/method为null的情况，避免空指针）
+        XWPFParagraph paragraph = doc.createParagraph();
+        XWPFRun run = paragraph.createRun();
+        String taskName = (task != null && task.getTaskName() != null) ? task.getTaskName() : "未知任务";
+        String methodName = (method != null && method.getMethodName() != null) ? method.getMethodName() : "未知方法";
+        run.setText("任务：" + taskName + "\r");
+        run.setText("方法：" + methodName + "\r");
+        run.setText("测试数据：");
+
+        // 表格创建（校验表头非空，避免列数异常）
+        if (heads == null || heads.isEmpty()) {
+            throw new IllegalArgumentException("表头列表为空，无法创建Word表格");
+        }
+        int columnCount = heads.size();
+        XWPFTable table = doc.createTable(1, columnCount);
+        table.setWidth("100%");
+
+        // 填充表头（处理表头为null的情况）
+        XWPFTableRow headerRow = table.getRow(0);
+        for (int i = 0; i < columnCount; i++) {
+            XWPFTableCell cell = headerRow.getCell(i);
+            if (cell == null) {
+                cell = headerRow.createCell();
+            }
+            FHeadVO head = heads.get(i);
+            String headName = (head != null && head.getName() != null) ? head.getName() : "未命名列";
+            cell.setText(headName);
+        }
+
+        // 填充数据行（核心修复：sampleType空值判断、sampleLocation前缀移除）
+        if (data == null || data.isEmpty()) {
+            throw new IllegalArgumentException("数据列表为空，无法生成Word内容");
+        }
+        int rowIndex = 0;
+        for (Map<String, Object> map : data) {
+            if (map == null) { // 跳过空数据行
+                log.warn("跳过空数据行，rowIndex: {}", rowIndex + 1);
+                continue;
+            }
+            XWPFTableRow row = table.createRow();
+            rowIndex++;
+            // 第0列：序号（确保非空）
+            XWPFTableCell indexCell = row.getCell(0);
+            if (indexCell != null) {
+                indexCell.setText(String.valueOf(rowIndex));
+            }
+
+            // 填充其他列（与Excel逻辑对齐）
+            for (int i = 1; i < columnCount; i++) {
+                XWPFTableCell cell = row.getCell(i);
+                if (cell == null) {
+                    cell = row.createCell();
+                }
+                FHeadVO head = heads.get(i);
+                if (head == null) { // 跳过空表头列
+                    cell.setText("");
+                    continue;
+                }
+
+                // 1. 获取原始值（与Excel一致，不提前默认空字符串）
+                String identity = head.getIdentity();
+                Object originalValue = map.get(identity); // 不使用getOrDefault，保留null以便后续判断
+                String cellData;
+
+                // 2. 原始值处理（与Excel完全一致：null→空字符串，数字转字符串）
+                if (originalValue == null) {
+                    cellData = "";
+                } else if (originalValue instanceof Number) {
+                    cellData = originalValue.toString();
+                } else if (originalValue instanceof Boolean) {
+                    cellData = originalValue.toString();
+                } else {
+                    cellData = originalValue.toString();
+                }
+
+                // 3. 特殊字段处理（修复核心问题）
+                if ("sampleType".equals(identity)) {
+                    // 先处理枚举，再判断空值（避免枚举值被空值判断覆盖）
+                    String enumName = SampleTypeEnum.getName(cellData);
+                    cellData = (enumName != null) ? enumName : cellData; // 枚举无效时保留原始值
+                } else if ("sampleLocation".equals(identity)) {
+                    // 移除"样品"前缀，直接返回原始值（与Excel一致）
+                    cellData = cellData; // 无需拼接，直接使用原始值
+                }
+
+                // 4. 空值处理（最后执行，避免覆盖有效数据）
+                // 仅当值为null/空字符串/"null"时才设为"-"（与Excel逻辑对齐）
+                if (cellData == null || cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                    cellData = "-";
+                }
+
+                // 5. 清除特殊字符（避免表格错乱）
+                if (cellData != null) {
+                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
+                }
+
+                // 写入单元格
+                cell.setText(cellData != null ? cellData : "-");
+            }
+        }
+
+        // 表格样式（处理段落为null的情况）
+        for (XWPFTableRow row : table.getRows()) {
+            for (XWPFTableCell cell : row.getTableCells()) {
+                XWPFParagraph paragraph1 = cell.getParagraphArray(0);
+                if (paragraph1 == null) { // 若段落为null，通过单元格的段落列表获取（POI正确用法）
+                    List<XWPFParagraph> paras = cell.getParagraphs();
+                    if (paras == null || paras.isEmpty()) {
+                        paragraph1 = cell.addParagraph(); // 无段落时新增
+                    } else {
+                        paragraph1 = paras.get(0);
+                    }
+                }
+                paragraph1.setAlignment(ParagraphAlignment.CENTER);
+                cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+            }
+        }
+
+        // 写入文件
+        if (file == null) {
+            throw new IllegalArgumentException("文件对象为null，无法写入Word");
+        }
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            doc.write(out);
+        } finally {
+            doc.close();
+        }
+    }
+
+    /**
+     * 生成TXT文件（UTF-8编码，制表符分隔）
+     */
+    private void generateTxtFile(File file, List<FHeadVO> heads, List<Map<String, Object>> data) throws Exception {
+        // 前置校验
+        if (file == null) {
+            throw new IllegalArgumentException("文件对象为null，无法写入TXT");
+        }
+        if (heads == null || heads.isEmpty()) {
+            throw new IllegalArgumentException("表头列表为空，无法生成TXT");
+        }
+        if (data == null || data.isEmpty()) {
+            throw new IllegalArgumentException("数据列表为空，无法生成TXT");
+        }
+
+        // 使用BufferedWriter，UTF-8避免中文乱码
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+
+            // 1. 写入表头（处理表头为null的情况，清除制表符避免列分裂）
+            String headerLine = heads.stream()
+                    .map(head -> {
+                        if (head == null || head.getName() == null) {
+                            return "未命名列";
+                        }
+                        return head.getName().replace("\t", " "); // 清除表头中的制表符
+                    })
+                    .collect(Collectors.joining("\t"));
+            writer.write(headerLine);
+            writer.newLine();
+
+            // 2. 写入数据（与Excel/Word逻辑完全对齐）
+            for (Map<String, Object> map : data) {
+                if (map == null) {
+                    log.warn("跳过空数据行");
+                    continue;
+                }
+                List<String> rowData = new ArrayList<>();
+                for (FHeadVO head : heads) {
+                    if (head == null) {
+                        rowData.add("");
+                        continue;
+                    }
+
+                    // 1. 获取原始值（不提前默认空字符串，保留null）
+                    String identity = head.getIdentity();
+                    Object originalValue = map.get(identity);
+                    String cellData;
+
+                    // 2. 原始值处理（与Excel一致）
+                    if (originalValue == null) {
+                        cellData = "";
+                    } else if (originalValue instanceof Number) {
+                        cellData = originalValue.toString();
+                    } else if (originalValue instanceof Boolean) {
+                        cellData = originalValue.toString();
+                    } else {
+                        cellData = originalValue.toString();
+                    }
+
+                    // 3. 特殊字段处理（修复核心问题）
+                    if ("sampleType".equals(identity)) {
+                        // 先处理枚举，再判断空值
+                        String enumName = SampleTypeEnum.getName(cellData);
+                        cellData = (enumName != null) ? enumName : cellData;
+                    } else if ("sampleLocation".equals(identity)) {
+                        // 移除"样品"前缀，直接返回原始值
+                        cellData = cellData;
+                    }
+
+                    // 4. 空值处理（最后执行）
+                    if (cellData == null || cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                        cellData = "-";
+                    }
+
+                    // 5. 清除特殊字符（避免TXT列分裂）
+                    if (cellData != null) {
+                        cellData = cellData.replace("\t", " ") // 关键：清除制表符，避免列数异常
+                                        .replace("\r", "")
+                                        .replace("\n", "");
+                    }
+
+                    rowData.add(cellData != null ? cellData : "-");
+                }
+                // 写入一行数据（制表符分隔）
+                writer.write(String.join("\t", rowData));
+                writer.newLine();
+            }
+        }
+    }
+
+    /**
+     * 简化版：生成 XLSX 文件（仅导出数据，无复杂样式）
+     */
+    private void generateExcelFile(File file, List<FHeadVO> heads, List<Map<String, Object>> data) throws Exception {
+        // 前置校验
+        if (heads == null || heads.isEmpty()) {
+            throw new IllegalArgumentException("表头列表不能为空");
+        }
+        if (data == null || data.isEmpty()) {
+            throw new IllegalArgumentException("数据列表不能为空");
+        }
+        if (file == null) {
+            throw new IllegalArgumentException("文件对象不能为空");
+        }
+
+        // 1. 转换表头（保留原始表头名称）
+        List<List<String>> excelHeads = new ArrayList<>();
+        for (FHeadVO head : heads) {
+            List<String> singleHead = new ArrayList<>();
+            // 表头为null时显示"未命名列"，否则显示原始名称
+            singleHead.add(head != null ? (head.getName() != null ? head.getName() : "未命名列") : "未命名列");
+            excelHeads.add(singleHead);
+        }
+
+        // 2. 转换数据（核心：保留原始值，数字转字符串，不做额外格式化）
+        List<List<Object>> excelData = new ArrayList<>();
+        for (Map<String, Object> map : data) {
+            if (map == null) {
+                log.warn("跳过空数据行");
+                continue;
+            }
+
+            List<Object> rowData = new ArrayList<>();
+            for (FHeadVO head : heads) {
+                // 获取字段标识（identity）
+                String identity = head != null ? head.getIdentity() : null;
+                // 获取原始值（不做默认值处理，保留null）
+                Object value = identity != null ? map.get(identity) : null;
+
+                String cellData;
+                if (value == null) {
+                    // null值直接保留空字符串（不替换为"-"）
+                    cellData = "";
+                } else {
+                    // 数字类型直接转为字符串（保留原始数字格式）
+                    if (value instanceof Number) {
+                        cellData = value.toString();
+                    } 
+                    // 布尔值特殊处理（保留true/false原始值）
+                    else if (value instanceof Boolean) {
+                        cellData = value.toString();
+                    } 
+                    // 其他类型直接转为字符串
+                    else {
+                        cellData = value.toString();
+                    }
+
+                    // 仅清除可能导致Excel解析错误的特殊字符（不修改原始内容）
+                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
+                }
+
+                // 添加到行数据（确保非null，空值用空字符串）
+                rowData.add(cellData);
+            }
+            excelData.add(rowData);
+        }
+
+        // 3. 写入Excel文件
+        try (OutputStream out = new FileOutputStream(file)) {
+            EasyExcel.write(out)
+                    .head(excelHeads)
+                    .sheet("测量数据")
+                    .doWrite(excelData);
+        }
+    }
+
+
+
+    // ---------------------- 工具方法 ----------------------
+    /**
+     * 获取文件后缀（Java 8兼容）
+     */
+    private String getFileSuffix(String fileType) {
+        if ("word".equals(fileType)) {
+            return "docx";
+        } else if ("txt".equals(fileType)) {
+            return "txt";
+        } else if ("xlsx".equals(fileType)) {
+            return "xlsx";
+        } else {
+            return "docx";
+        }
+    }
 
 }

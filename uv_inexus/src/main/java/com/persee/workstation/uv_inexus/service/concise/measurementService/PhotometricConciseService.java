@@ -1,5 +1,9 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
@@ -22,10 +26,6 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
-
-import java.io.File;
-import java.util.List;
-import java.util.Map;
 
 public interface PhotometricConciseService {
     /**
@@ -143,4 +143,8 @@ public interface PhotometricConciseService {
      */
     R<Boolean> saveInputParamMapTableHead(FTaskHeadSnapshotDTO taskHeadSnapshot);
 
+    /**
+     * 导出到word
+     */
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType);
 }
