@@ -49,6 +49,9 @@ public class SpectrumConciseController {
         return spectrumConciseService.createDraftButton(methodId,updateBy);
     }
 
+
+    @PostMapping("queryDefaultParameters")
+
     @GetMapping("querySampleList")
     @ApiOperation("获取样本按钮列表接口")
     public Result querySampleList(@RequestParam String taskId) {
@@ -65,6 +68,13 @@ public class SpectrumConciseController {
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
         return spectrumConciseService.addOrDeleteSamplePort(paramDto);
+    }
+
+
+    @PostMapping("saveDraftButton")
+    @ApiOperation("保存草稿按钮接口")
+    public Result saveDraftButton(@RequestParam String taskId) {
+        return spectrumConciseService.saveDraftButton(taskId);
     }
 
 

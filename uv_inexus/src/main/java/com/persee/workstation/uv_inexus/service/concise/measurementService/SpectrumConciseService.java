@@ -30,6 +30,9 @@ public interface SpectrumConciseService {
     // 查询样本输入表头接口
     Result<List<FHeadVO>> querySampleHeads(String taskId);
 
+    // 保存草稿按钮接口
+    Result saveDraftButton(String taskId);
+
     // 添加或删除样品接口
     Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO paramDto);
 
@@ -95,6 +98,4 @@ public interface SpectrumConciseService {
 
     // 光度模式转换
     Result luminanceModeConversionPort(FLuminosityConversionDto paramDto);
-
-
 }

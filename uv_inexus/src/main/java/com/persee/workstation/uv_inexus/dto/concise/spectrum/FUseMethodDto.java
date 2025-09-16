@@ -13,7 +13,7 @@ public class FUseMethodDto {
     private String measureType;
     // 测量方式 (0. 向导数据库,1. 简洁数据库)
     private String type;
-    // 状态
+    // 状态(0.保存,1覆盖)
     private String state;
     // 方法参数
     private FSpectrumParameterVo parameter;

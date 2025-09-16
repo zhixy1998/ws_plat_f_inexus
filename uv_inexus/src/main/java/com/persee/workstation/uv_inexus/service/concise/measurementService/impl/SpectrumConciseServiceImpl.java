@@ -447,6 +447,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
     }
 
+    @Override
+    public Result saveDraftButton(String taskId) {
+        return null;
+    }
+
     /**
      * 添加或删除样品接口
      * @param dto
