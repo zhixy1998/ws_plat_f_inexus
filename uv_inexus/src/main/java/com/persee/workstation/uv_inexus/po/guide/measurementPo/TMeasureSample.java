@@ -67,9 +67,11 @@ public class TMeasureSample{
     @TableField("color")
     private String color;
 
+    // 表头
     @TableField("heads")
     private String heads;
 
+    // 新列数据
     @TableField("new_col_data")
     private String newColData;
 }

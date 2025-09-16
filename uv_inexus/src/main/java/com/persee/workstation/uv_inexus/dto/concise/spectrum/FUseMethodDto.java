@@ -1,10 +1,10 @@
 package com.persee.workstation.uv_inexus.dto.concise.spectrum;
 
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
 import lombok.Data;
 
 @Data
-public class FUseMethodDto extends FSpectrumParameter {
+public class FUseMethodDto {
     // 方法id
     private String methodId;
     // 用户名
@@ -15,4 +15,6 @@ public class FUseMethodDto extends FSpectrumParameter {
     private String type;
     // 状态
     private String state;
+    // 方法参数
+    private FSpectrumParameterVo parameter;
 }

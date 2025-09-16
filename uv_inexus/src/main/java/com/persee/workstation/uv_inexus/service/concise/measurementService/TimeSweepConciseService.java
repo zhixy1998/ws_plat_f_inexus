@@ -1,7 +1,11 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+
+import java.util.List;
 
 /**
  * 简洁模式: 时间扫描服务接口
@@ -11,8 +15,17 @@ public interface TimeSweepConciseService {
     // 查询最近方法数据
     Result queryNearestMethodData(String updateBy, String measureType);
 
-    // 查找方法按钮
-    Result searchMethodButton(Integer pageNum, Integer pageSize, String updateBy, String measureType, String methodName);
+    // 使用方法接口
+    Result use(TimeUseMethodDto paramDto);
+
+    // 查询样品列表按钮
+    Result querySampleListButton(String taskId);
+
+    // 查询样本输入表头接口
+    Result<List<FHeadVO>> querySampleHeads(String taskId);
+
+    // 添加或删除样本接口
+    Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO paramDto);
 
     // 查询样品数据列表
     Result querySampleDataList(String taskId, String type, Integer digit);
@@ -76,4 +89,5 @@ public interface TimeSweepConciseService {
 
     // 光度模式转换接口
     Result luminanceModeConversionPort(FLuminosityConversionDto paramDto);
+
 }

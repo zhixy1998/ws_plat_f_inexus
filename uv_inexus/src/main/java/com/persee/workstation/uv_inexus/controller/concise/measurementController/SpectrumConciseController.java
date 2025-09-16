@@ -1,12 +1,16 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController("spectrumConciseController")
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/spectrumScanning/concise/")
@@ -29,6 +33,38 @@ public class SpectrumConciseController {
                                      @RequestParam Integer pageSize, @RequestParam String updateBy,
                                      @RequestParam String measureType, @RequestParam(required = false) String methodName) {
         return spectrumConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
+    }
+
+
+    @PostMapping("applyMethod")
+    @ApiOperation("应用接口")
+    public Result applyMethod(@RequestBody FUseMethodDto paramDto) {
+        return spectrumConciseService.use(paramDto);
+    }
+
+
+    @GetMapping("createDraftButton")
+    @ApiOperation("创建草稿按钮接口")
+    public Result createDraftButton(@RequestParam String methodId,@RequestParam String updateBy) {
+        return spectrumConciseService.createDraftButton(methodId,updateBy);
+    }
+
+    @GetMapping("querySampleList")
+    @ApiOperation("获取样本按钮列表接口")
+    public Result querySampleList(@RequestParam String taskId) {
+        return spectrumConciseService.querySampleListButton(taskId);
+    }
+
+    @GetMapping("querySampleHeads")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<FHeadVO>> querySampleHeads(@RequestParam String taskId) {
+        return spectrumConciseService.querySampleHeads(taskId);
+    }
+
+    @PostMapping("addOrDeleteSamplePort")
+    @ApiOperation("添加或删除样本接口")
+    public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
+        return spectrumConciseService.addOrDeleteSamplePort(paramDto);
     }
 
 

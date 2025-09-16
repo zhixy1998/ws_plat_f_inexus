@@ -1,18 +1,29 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
@@ -20,15 +31,22 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +54,7 @@ import java.util.stream.Collectors;
  * 简洁模式: 时间扫描服务实现类
  */
 @Service("timeSweepConciseService")
+@Slf4j
 public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     @Autowired
@@ -53,6 +72,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     @Autowired
     private FMeasureDataService fMeasureDataService;
 
+    @Autowired
+    private FMeasureTaskMapper fMeasureTaskMapper;
+
+    @Autowired
+    private SystemUserManageDAO systemUserManageDAO;
+
 
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
@@ -66,6 +91,17 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+
+    @Value("1")
+    String deleteType;
+
+    @Value("0")
+    String createType;
+
+    @Value("0")
+    String noTested;
+
 
     /**
      * 查询最近方法数据
@@ -90,11 +126,24 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         wrapper.orderByDesc("method_use_time");
         wrapper.last("LIMIT 1");
 
-        FMeasureMethod method = fMeasureMethodService.getById(wrapper);
+        FMeasureMethod method = fMeasureMethodService.getOne(wrapper);
 
         if (method == null) {
             // todo 查询对应类型的默认方法
-
+            QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("measurement_type", measureType);
+            queryWrapper.eq("method_name", "默认方法");
+            queryWrapper.last("LIMIT 1");
+            method = fMeasureMethodService.getOne(queryWrapper);
+            if (method == null) {
+                return Result.fail("没有默认方法");
+            }
+            method.setMethodUseTime(LocalDateTime.now());
+            boolean update = fMeasureMethodService.updateById(method);
+            if (!update) {
+                return Result.fail("更新方法失败");
+            }
+            return Result.ok(method);
         }
 
         // 根据方法id查询出最近创建的任务
@@ -112,41 +161,235 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         return Result.ok(map);
     }
 
+    @Override
+    public Result use(TimeUseMethodDto paramDto) {
+        // 1. 判断来源
+        if ("0".equals(paramDto.getType())) {
+            return createNewMethod(paramDto);
+        }
+
+        // 2. 查询历史方法
+        FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
+        if (method == null) {
+            return createNewMethod(paramDto); // 没有历史记录 → 新建
+        }
+
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
+        FSpectrumParameter newParam = new FSpectrumParameter();
+        // 将方法参数拷贝出来
+        BeanUtils.copyProperties(newParam, paramDto);
+
+        // 3. 参数比较
+        boolean sameParam = compareParam(parameter, newParam);
+
+        if (sameParam) {
+            if (method.getId().equals(paramDto.getMethodId())){
+                return Result.fail("请勿重复使用");
+            }else{
+                return Result.ok(method);
+            }
+        }else{
+            if (paramDto.getState().equals("0")){
+                // 保存
+                return createNewMethod(paramDto);
+            }else{
+                // 覆盖
+                method.setMeasurementParamInfo(JSON.toJSONString(newParam));
+                return fMeasureMethodService.updateById(method) ? Result.ok() : Result.fail();
+            }
+        }
+    }
+
     /**
-     * 查询方法按钮
-     * @param pageNum
-     * @param pageSize
-     * @param updateBy
-     * @param measureType
-     * @param methodName
+     * 查询样本列表按钮
+     * @param taskId
      * @return
      */
     @Override
-    public Result searchMethodButton(Integer pageNum, Integer pageSize, String updateBy, String measureType, String methodName) {
-        // 对传入的参数进行校验
-        if (updateBy == null) {
-            return Result.fail("用户不能为空");
+    public Result querySampleListButton(String taskId) {
+        List<JSONObject> sampleVOList = new ArrayList<>();
+        if (!StringUtils.hasText(taskId)) {
+            return Result.ok(sampleVOList);
         }
-        if (measureType == null) {
-            return Result.fail("方法类型不能为空");
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
         }
-        if (pageNum == null) {
-            pageNum = 1;
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                FSampleVO vo = new FSampleVO();
+                BeanUtils.copyProperties(measureSample, vo);
+                vo.setSampleId(measureSample.getId());
+                String jsonString = JSONObject.toJSONString(vo);
+
+                JSONObject jsonObject = JSONObject.parseObject(jsonString);
+                if (StringUtils.hasText(measureSample.getNewColData())) {
+                    JSONObject object = JSONObject.parseObject(measureSample.getNewColData());
+                    jsonObject.putAll(object);
+                }
+                sampleVOList.add(jsonObject);
+
+            }
         }
-        if (pageSize == null) {
-            pageSize = 10;
-        }
-        // 设置查询条件
-        QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
-        wrapper.eq("method_creator", updateBy);
-        wrapper.eq("measurement_type", measureType);
-        if (methodName != null) {
-            wrapper.like("method_name", methodName);
-        }
-        // 分页查询
-        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), wrapper);
-        return Result.ok(page);
+        return Result.ok(sampleVOList);
     }
+
+    @Override
+    public Result<List<FHeadVO>> querySampleHeads(String taskId) {
+
+        if (!StringUtils.hasText(taskId)) {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        } else {
+            FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
+                return Result.ok(preHead);
+            }
+        }
+    }
+
+    @Override
+    public Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO dto) {
+
+        if (!StringUtils.hasText(dto.getMethodId())) {
+            return Result.fail("请先创建方法");
+        }
+        if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
+            return Result.fail("至少需要一个表头");
+        }
+
+        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+            return Result.fail("表格新增列数不能超过10列");
+        }
+        if (!StringUtils.hasText(dto.getTaskId())) {
+            //创建任务
+            FMeasureTask newTask = new FMeasureTask();
+
+            FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
+            SystemUserManagePO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
+            String id = po.getId();
+            newTask.setUserId(id);
+            newTask.setProjectItemKey(method.getProjectItemKey());
+            newTask.setMethodKey(method.getId());
+            newTask.setMeasureType(method.getMeasurementType());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
+            newTask.setCreateTime(LocalDateTime.now());
+            boolean save = false;
+            for (int i = 0; i < 3; i++) {
+                if (fMeasureTaskService.save(newTask)) {
+                    save = true;
+                    break;
+                }
+            }
+            if (!save) {
+                return Result.fail("系统出错");
+            }
+            dto.setTaskId(newTask.getId());
+        }
+
+
+        FMeasureTask task = fMeasureTaskService.getById(dto.getTaskId());
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+                specimen.setDeleteType(deleteType);
+                LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
+                        .eq(FMeasureData::getTaskId, task.getId())
+                        .orderByDesc(FMeasureData::getSerialNumber);
+                List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+                if (list != null && !list.isEmpty()) {
+                    FMeasureData one = list.get(0);
+                    one.setIsDelete(deleteType);
+                    fMeasureDataService.updateById(one);
+                }
+            }
+        }
+
+        FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
+
+        if (StringUtils.hasText(task.getTableInfo())) {
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+        }
+
+        if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
+            taskHeadSnapshot.setSampleHeads(dto.getHeads());
+        }
+        taskHeadSnapshot.setTaskId(task.getId());
+        task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
+
+
+        for (Map<String, String> map : dto.getNewSamples()) {
+            String jsonString = JSON.toJSONString(map);
+            FSampleVO sample = JSON.parseObject(jsonString, FSampleVO.class);
+            FMeasureSample newSample = new FMeasureSample();
+            BeanUtils.copyProperties(sample, newSample);
+            newSample.setId(sample.getSampleId());
+
+            if (dto.getHeads() != null) {
+                JSONObject newColData = new JSONObject();
+
+                for (FHeadVO head : dto.getHeads()) {
+                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                        continue;
+                    }
+                    String s = map.get(head.getIdentity());
+                    newColData.put(head.getIdentity(), s);
+                }
+                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
+                newSample.setNewColData(JSON.toJSONString(newColData));
+            }
+
+            if (StringUtils.hasText(newSample.getId())) {
+                fMeasureSampleService.updateById(newSample);
+            } else {
+                FTaskSpecimen specimen = new FTaskSpecimen();
+                specimen.setDeleteType(createType);
+                specimen.setIsTested(noTested);
+                specimen.setSampleType(newSample.getSampleType());
+                log.info("新增的样品：{}", newSample);
+                fMeasureSampleService.save(newSample);
+                specimen.setSpecimenKey(newSample.getId());
+                taskSpecimen.add(specimen);
+            }
+        }
+
+        String jsonString = JSONArray.toJSONString(taskSpecimen);
+        task.setSampleKey(jsonString);
+
+        return Result.ok(fMeasureTaskService.updateById(task));
+    }
+
 
     /**
      * 查询样品数据列表
@@ -1517,5 +1760,44 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         cmd.setCmdId(cmdEnum.getComId());
         cmd.setParams(new Object[]{value});
         return cmd;
+    }
+
+    /**
+     * 比较参数
+     * @param method
+     * @param newParam
+     * @return
+     */
+    private boolean compareParam(FSpectrumParameter method, FSpectrumParameter newParam) {
+        String dbJson = JSON.toJSONString(method, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(newParam, SerializerFeature.SortField);
+
+        return dbJson.equals(frontJson);
+    }
+
+    /**
+     * 创建新的任务
+     */
+    private Result createNewMethod(TimeUseMethodDto paramDto){
+        FMeasureMethod fMeasureMethod = new FMeasureMethod();
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        String collect = new Random().ints(8, 0, chars.length())
+                .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                .collect(Collectors.joining());
+
+        fMeasureMethod.setMethodName(paramDto.getMeasureType()  + collect);
+
+        FSpectrumParameter parameter = new FSpectrumParameter();
+        BeanUtils.copyProperties(paramDto, parameter);
+        fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
+        fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        fMeasureMethod.setMethodUseTime(LocalDateTime.now());
+        fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());
+        boolean save = fMeasureMethodService.save(fMeasureMethod);
+        if (save) {
+            return Result.ok(fMeasureMethod);
+        } else {
+            return Result.fail("创建失败");
+        }
     }
 }

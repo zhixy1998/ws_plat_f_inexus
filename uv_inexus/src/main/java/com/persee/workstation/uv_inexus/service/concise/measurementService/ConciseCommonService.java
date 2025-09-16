@@ -1,6 +1,5 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
 
 /**
@@ -8,6 +7,12 @@ import com.persee.workstation.uv_inexus.model.Result;
  */
 public interface ConciseCommonService {
 
-    // 应用接口
-    Result applyMethod(FUseMethodDto paramDto);
+    // 获取默认参数
+    Result queryDefaultParameters(String measureType);
+
+    // 查找方法按钮
+    Result searchMethodButton(Integer pageNum, Integer pageSize, String updateBy, String measureType, String methodName);
+
+
+
 }

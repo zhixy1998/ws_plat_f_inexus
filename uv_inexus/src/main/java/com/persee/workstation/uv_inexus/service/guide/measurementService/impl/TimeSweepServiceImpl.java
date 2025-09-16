@@ -7,13 +7,16 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -76,6 +79,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private TMeasureProjectService tMeasureProjectService;
     @Autowired
     private TMeasureTaskAttachmentService tMeasureTaskAttachmentService;
+    @Autowired
+    private TMeasureTaskMapper tMeasureTaskMapper;
     @Autowired
     private RestTemplate restTemplate;
 
@@ -263,44 +268,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 查询样品列表头
-     * @param taskId
-     * @return
-     */
-    @Override
-    public Result<List<HeadVO>> querySampleHeads(String taskId) {
-        List<HeadVO> ans = new ArrayList<>();
-
-        if (!StringUtils.hasText(taskId)) {
-            return Result.ok(ans);
-        }
-        if (taskId.length()!=32){
-            return Result.fail("任务id应为32位");
-        }
-
-
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task == null) {
-            return Result.fail("任务不存在");
-        }
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(deleteType)) {
-                    continue;
-                }
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-
-                if (heads != null && !heads.equals(ans)) {
-                    ans.addAll(heads);
-                }
-            }
-        }
-        return Result.ok(ans);
-    }
-
-    /**
      * 样品列表
      * @param taskId
      * @param type
@@ -312,14 +279,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (taskId == null || taskId.equals("")) {
             return Result.fail("任务id不能为空");
         }
-        if (taskId.length()!=32){
-            return Result.fail("任务id应为32位");
-        }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             return Result.fail("任务不存在");
         }
-
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
 
@@ -349,16 +312,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 queryWrapper.last("limit 1");
                 TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
                 if (measureData == null){
-//                    return Result.fail("无测量数据");
-                    continue;
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(null);
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisNumber(null);
+                    vo.setColor(null);
+                    vo.setData(null);
+                    vo.setDeleteType(null);
+                }else{
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(measureData.getId());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                    vo.setColor(measureData.getColor());
+                    if (measureData.getAnalysisResult() == null){
+                        vo.setData(null);
+                    }else{
+                        vo.setData(getSampleData(measureData,digit));
+                    }
+                    vo.setDeleteType(measureData.getIsDelete());
                 }
-                vo.setTitle(sample.getSampleName());
-                vo.setAnalysisId(measureData.getId());
-                vo.setSampleId(taskSpeciman.getSpecimenKey());
-                vo.setAnalysisNumber(measureData.getAnalysisNumber());
-                vo.setColor(measureData.getColor());
-                vo.setData(getSampleData(measureData,digit));
-                vo.setDeleteType(measureData.getIsDelete());
             }
             vo.setType("0");
             listVos.add(vo);
@@ -681,32 +654,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result querySampleList(String taskId) {
-//        // 根据任务id查询任务数据
-//        TMeasureTask task = tMeasureTaskService.getById(taskId);
-//        if (task == null) {
-//            return Result.ok(new ArrayList<>());
-//        }
-//        if (task.getSampleKey() == null) {
-//            return Result.ok(null);
-//        }
-//        // 分割任务中的样品数据
-//        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//        List<Sample> sampleList = new ArrayList<>();
-//        if (taskSpecimen == null || taskSpecimen.size() == 0) {
-//            return Result.ok(new ArrayList<>());
-//        }
-//        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-//            if (taskSpeciman.getDeleteType().equals("0")){
-//                TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-//                Sample sample = new Sample();
-//                sample.setSampleId(byId.getId());
-//                sample.setSampleName(byId.getSampleName());
-//                sample.setSampleNumber(byId.getSampleNumber());
-//                sample.setSampleLocation(byId.getSampleLocation());
-//                sampleList.add(sample);
-//            }
-//        }
-//        return Result.ok(sampleList);
         List<JSONObject> sampleVOList = new ArrayList<>();
         if (!StringUtils.hasText(taskId)) {
             return Result.ok(sampleVOList);
@@ -742,138 +689,61 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 添加或删除样品
-     * @param paramDto
+     * 查询样品列表头
+     * @param taskId
      * @return
      */
     @Override
-    public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto) {
-//        if (paramDto.getNewSamples().isEmpty() && paramDto.getDelSampleIds().isEmpty()) {
-//            return Result.ok("没有要新增或删除的样品！");
-//        }
-//        if (paramDto.getDelSampleIds()==null){
-//            paramDto.setDelSampleIds(new ArrayList<>());
-//        }
-//        if (paramDto.getNewSamples()==null){
-//            paramDto.setNewSamples(new ArrayList<>());
-//        }
-//
-//        if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
-//            return Result.fail("表格新增列数不能超过10列");
-//        }
-//        // 根据方法id查询方法数据
-//        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-//        // 根据用户名查询用户数据
-//        SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", paramDto.getUpdateBy()));
-//        TMeasureTask task;
-//        if (paramDto.getTaskId()!=null){
-//            task = tMeasureTaskService.getById(paramDto.getTaskId());
-//        }else{
-//            task = new TMeasureTask();
-//            task.setUserId(user.getId());
-//            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-//            String collect = new Random().ints(8, 0, chars.length())
-//                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
-//                    .collect(Collectors.joining());
-//            task.setTaskName(method.getMeasurementType() + "task_" + collect);
-//            task.setCreateTime(LocalDateTime.now());
-//            task.setMethodKey(method.getId());
-//            task.setMeasureType(method.getMeasurementType());
-//            task.setProjectItemKey(method.getProjectItemKey());
-//            task.setIsDelete("0");
-//            tMeasureTaskService.save(task);
-//            TMeasureTaskAttachment taskAttachment = new TMeasureTaskAttachment();
-//            taskAttachment.setTaskId(task.getId());
-//            boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
-//        }
-//        List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//        if (taskSpecimenList != null&&(paramDto.getDelSampleIds()!=null||paramDto.getDelSampleIds().isEmpty())) {
-//            for (TaskSpecimen taskSpecimen : taskSpecimenList) {
-//                for (String delSampleId : paramDto.getDelSampleIds()) {
-//                    if (taskSpecimen.getSpecimenKey().equals(delSampleId)) {
-//                        taskSpecimen.setDeleteType("1");
-//                    }
-//                }
-//            }
-//        }
-//
-//        // 遍历新增的样品列表,如果id为null则进行新增,如果id不为null则进行方法修改
-//        for (Map<String, String> map : paramDto.getNewSamples()) {
-//            String jsonString = JSON.toJSONString(map);
-//            SampleVO newSample = JSON.parseObject(jsonString, SampleVO.class);
-//
-//            JSONObject newColData = new JSONObject();
-//            if (paramDto.getHeads() != null) {
-//
-//                for (HeadVO head : paramDto.getHeads()) {
-//                    String s = map.get(head.getIdentity());
-//                    newColData.put(head.getIdentity(), s);
-//                }
-//            }
-//
-//            if (newSample.getSampleId()!=null){
-//                TMeasureSample byId = tMeasureSampleService.getById(newSample.getSampleId());
-//                if (byId == null){
-//                    return Result.ok("样品不存在");
-//                }
-//                byId.setSampleName(newSample.getSampleName());
-//                byId.setSampleNumber(newSample.getSampleNumber());
-//                byId.setSampleLocation(newSample.getSampleLocation());
-//
-//                byId.setHeads(JSON.toJSONString(paramDto.getHeads()));
-//                byId.setNewColData(newColData.toJSONString());
-//                boolean update = tMeasureSampleService.updateById(byId);
-//                if (!update){
-//                    return Result.ok("修改失败");
-//                }
-//            }else{
-//                TMeasureSample sample = new TMeasureSample();
-//                sample.setSampleName(newSample.getSampleName());
-//                sample.setSampleNumber(newSample.getSampleNumber());
-//                sample.setSampleLocation(newSample.getSampleLocation());
-//                sample.setColor("#000000");
-//                sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
-//
-//                sample.setHeads(JSON.toJSONString(paramDto.getHeads()));
-//                sample.setNewColData(newColData.toJSONString());
-//                boolean save = tMeasureSampleService.save(sample);
-//                if (!save){
-//                    return Result.ok("新增失败");
-//                }
-//                TaskSpecimen newTaskSpecimen = new TaskSpecimen();
-//                newTaskSpecimen.setSpecimenKey(sample.getId());
-//                newTaskSpecimen.setDeleteType("0");
-//                newTaskSpecimen.setIsTested("0");
-//                taskSpecimenList.add(newTaskSpecimen);
-//            }
-//        }
-//
-//        task.setSampleKey(JSON.toJSONString(taskSpecimenList));
-//        boolean update = tMeasureTaskService.updateById(task);
-//        return Result.ok(update);
+    public Result<List<HeadVO>> querySampleHeads(String taskId) {
 
-        if (!StringUtils.hasText(paramDto.getMethodId())) {
+        if (!StringUtils.hasText(taskId)) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        } else {
+            TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
+                return Result.ok(preHead);
+            }
+        }
+    }
+
+    /**
+     * 添加或删除样品
+     * @param dto
+     * @return
+     */
+    @Override
+    public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO dto) {
+
+        if (!StringUtils.hasText(dto.getMethodId())) {
             return Result.fail("请先创建方法");
         }
-        if(paramDto.getNewSamples() == null) {
-            paramDto.setNewSamples(new ArrayList<>());
-        }
-        if (paramDto.getDelSampleIds() == null) {
-            paramDto.setDelSampleIds(new ArrayList<>());
-        }
-        if (paramDto.getNewSamples().isEmpty() && paramDto.getDelSampleIds().isEmpty()) {
-            return Result.ok("没有要新增或删除的样品！");
+        if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
+            return Result.fail("至少需要一个表头");
         }
 
-        if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
+        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
-        if (!StringUtils.hasText(paramDto.getTaskId())) {
+        if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
 
-            TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-            SystemUserManagePO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, paramDto.getUpdateBy()));
+            TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
+            SystemUserManagePO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());
@@ -896,18 +766,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             if (!save) {
                 return Result.fail("系统出错");
             }
-            paramDto.setTaskId(newTask.getId());
+            dto.setTaskId(newTask.getId());
         }
 
 
-        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
+        TMeasureTask task = tMeasureTaskService.getById(dto.getTaskId());
         if (task == null) {
             return Result.fail("任务不存在");
         }
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen specimen : taskSpecimen) {
-            if (paramDto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+            if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);
                 LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
@@ -922,24 +792,37 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
         }
 
-        for (Map<String, String> map : paramDto.getNewSamples()) {
+        TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
+
+        if (StringUtils.hasText(task.getTableInfo())) {
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+        }
+
+        if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
+            taskHeadSnapshot.setSampleHeads(dto.getHeads());
+        }
+        taskHeadSnapshot.setTaskId(task.getId());
+        task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
+
+
+        for (Map<String, String> map : dto.getNewSamples()) {
             String jsonString = JSON.toJSONString(map);
             SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
             TMeasureSample newSample = new TMeasureSample();
             BeanUtils.copyProperties(sample, newSample);
             newSample.setId(sample.getSampleId());
 
-            if (paramDto.getHeads() != null) {
-
-                newSample.setHeads(JSON.toJSONString(paramDto.getHeads()));
-
+            if (dto.getHeads() != null) {
                 JSONObject newColData = new JSONObject();
 
-                for (HeadVO head : paramDto.getHeads()) {
+                for (HeadVO head : dto.getHeads()) {
+                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                        continue;
+                    }
                     String s = map.get(head.getIdentity());
                     newColData.put(head.getIdentity(), s);
                 }
-
+                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
                 newSample.setNewColData(JSON.toJSONString(newColData));
             }
 
@@ -949,6 +832,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
+                specimen.setSampleType(newSample.getSampleType());
                 log.info("新增的样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
