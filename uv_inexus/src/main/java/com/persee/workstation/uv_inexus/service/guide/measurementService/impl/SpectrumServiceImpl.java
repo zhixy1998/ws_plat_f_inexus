@@ -1,46 +1,46 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
-import com.persee.workstation.uv_inexus.service.guide.parseReport.CalculationFormulaService;
-import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretreatmentService;
-import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.CmdConstant;
-import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
-import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodParameterVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
-import lombok.extern.slf4j.Slf4j;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.util.Units;
-import org.apache.poi.xwpf.usermodel.*;
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.TextAlignment;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.springframework.beans.BeanUtils;
@@ -55,16 +55,80 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AdvancedOperationsDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AnalysisDataGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.DifferentialDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.FourOperationsParamDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.LuminosityConversionDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MeasureDataGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PeakValleyMarkingDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SeekingPeaksValleysDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SmoothnessDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectralMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.UpdateDataColorDto;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureAnalysisImage;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureData;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureAnalysisDataService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureAnalysisImageService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureDataService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureSampleService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.guide.parseReport.CalculationFormulaService;
+import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretreatmentService;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.CmdConstant;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
+import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodParameterVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 光谱扫描服务实现类
@@ -2906,5 +2970,578 @@ public class SpectrumServiceImpl implements SpectrumService {
                 .toPlainString();
     }
 
+    /**
+     * 多格式文件导出（支持word/txt/xlsx）
+     * @param taskId 任务ID
+     * @param allDisplay 是否显示全部数据
+     * @param fileType 导出格式（word/txt/xlsx）
+     * @return 生成的文件对象
+     */
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds) {
+        // log.info("===== 导出流程开始 =====");
+        // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}", 
+        //         taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
+
+        // 1. 基础参数校验阶段（保持不变）
+        // log.info("【步骤1/5】开始基础参数校验");
+        if (!StringUtils.hasText(taskId)) {
+            // log.error("【步骤1/5】校验失败：缺少任务id");
+            return R.fail("缺少任务id");
+        }
+        
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            // log.error("【步骤1/5】校验失败：任务不存在，taskId: {}", taskId);
+            return R.fail("任务不存在");
+        }
+        // log.info("【步骤1/5】任务查询成功，任务名称：{}", task.getTaskName());
+
+        // 处理fileType（保持不变）
+        if (!StringUtils.hasText(fileType)) {
+            fileType = "word";
+            // log.info("【步骤1/5】未指定文件类型，默认使用：{}", fileType);
+        } else {
+            fileType = fileType.toLowerCase();
+            // log.info("【步骤1/5】指定文件类型：{}", fileType);
+        }
+        
+        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
+            // log.error("【步骤1/5】校验失败：不支持的文件类型：{}", fileType);
+            return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
+        }
+        
+        if (allDisplay == null) {
+            allDisplay = true;
+            // log.info("【步骤1/5】allDisplay未指定，默认使用：{}", allDisplay);
+        }
+        // log.info("【步骤1/5】基础参数校验通过");
+
+        // 2. 获取样品数据阶段（增加changeTheListPort数据处理和筛选）
+        // log.info("【步骤2/5】开始查询样品数据，taskId: {}", taskId);
+        
+        // 2.1 获取两个来源的数据
+        List<SampleListVo> allSamples = new ArrayList<>();
+        
+        // 处理sampleListPort数据
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null);
+        if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
+            // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
+            allSamples.addAll(sampleListResult.getData());
+        } else {
+            // log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
+        }
+        
+        // 处理changeTheListPort数据（与sampleListPort逻辑相同）
+        Result<List<SampleListVo>> changeListResult = changeTheListPort(taskId, null, null);
+        if (changeListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && changeListResult.getData() != null) {
+            // log.info("【步骤2/5】changeTheListPort查询成功，返回样品数量：{}", changeListResult.getData().size());
+            allSamples.addAll(changeListResult.getData());
+        } else {
+            // log.warn("【步骤2/5】changeTheListPort查询异常：{}", changeListResult.getMessage());
+        }
+        
+        // 2.2 根据analysisIds筛选数据
+        List<SampleListVo> filteredSamples = new ArrayList<>();
+        if (CollectionUtils.isEmpty(analysisIds)) {
+            // 无筛选条件，使用全部数据
+            filteredSamples = allSamples;
+            // log.info("【步骤2/5】未指定筛选条件，使用全部样品数据，总数量：{}", filteredSamples.size());
+        } else {
+            // 有筛选条件，匹配analysisId
+            for (SampleListVo sample : allSamples) {
+                // 假设SampleListVo有getAnalysisId()方法获取analysisId
+                String sampleAnalysisId = sample.getAnalysisId();
+                if (analysisIds.contains(sampleAnalysisId)) {
+                    filteredSamples.add(sample);
+                    // log.debug("【步骤2/5】样品{}的analysisId={}匹配筛选条件，已保留", 
+                    //         sample.getTitle(), sampleAnalysisId);
+                }
+            }
+            // log.info("【步骤2/5】筛选完成，原始样品数量：{}，匹配数量：{}", 
+            //         allSamples.size(), filteredSamples.size());
+        }
+        
+        // 2.3 打印样品数据信息
+        // log.info("【步骤2/5】最终使用的样品数量：{}", filteredSamples.size());
+        if (!filteredSamples.isEmpty()) {
+            int logCount = Math.min(3, filteredSamples.size());
+            for (int i = 0; i < logCount; i++) {
+                SampleListVo vo = filteredSamples.get(i);
+                // log.info("【步骤2/5】样品{}: title={}, analysisId={}, data是否为空={}", 
+                //         i+1, vo.getTitle(), vo.getAnalysisId(), 
+                //         vo.getData() == null || vo.getData().isEmpty());
+                
+                // 打印第一个样品的前3条数据，确认x和y的值
+                if (i == 0 && vo.getData() != null && !vo.getData().isEmpty()) {
+                    int dataLogCount = Math.min(3, vo.getData().size());
+                    for (int j = 0; j < dataLogCount; j++) {
+                        Map<String, Object> data = vo.getData().get(j);
+                        // log.info("【步骤2/5】样品{}数据{}: x={}, y={}", 
+                        //         i+1, j+1, data.get("x"), data.get("y"));
+                    }
+                }
+            }
+        } else {
+            // log.info("【步骤2/5】无符合条件的样品数据，后续将生成空文件");
+        }
+
+        // 3. 提取波长和样品数据阶段（逻辑不变，使用筛选后的样品）
+        // log.info("【步骤3/5】开始提取波长和样品数据");
+        List<String> wavelengths = new ArrayList<>(); // 存储x字段的值作为波长
+        Map<String, List<String>> sampleYMap = new LinkedHashMap<>(); // 存储各样品的y值
+
+        if (!filteredSamples.isEmpty()) {
+            for (SampleListVo vo : filteredSamples) {
+                String title = vo.getTitle();
+                List<Map<String, Object>> dataList = vo.getData();
+                
+                if (CollectionUtils.isEmpty(dataList)) {
+                    // log.info("【步骤3/5】样品{}: 无数据，跳过", title);
+                    continue;
+                }
+                
+                // 初始化当前样品的y值列表
+                sampleYMap.putIfAbsent(title, new ArrayList<>());
+                List<String> yList = sampleYMap.get(title);
+
+                // 遍历数据，提取x（波长）和y（数值）
+                for (Map<String, Object> data : dataList) {
+                    // 明确从data中获取"x"字段作为波长
+                    Object xObj = data.get("x");
+                    String x = (xObj != null) ? xObj.toString() : "-";
+                    
+                    // 明确从data中获取"y"字段作为数值
+                    Object yObj = data.get("y");
+                    String y = (yObj != null) ? yObj.toString() : "-";
+                    
+                    // 记录日志，确认x和y的取值
+                    // log.debug("【步骤3/5】样品{}: x={}, y={}", title, x, y);
+                    
+                    // 添加新波长（去重）
+                    if (!wavelengths.contains(x)) {
+                        wavelengths.add(x);
+                        // log.debug("【步骤3/5】新增波长: {}", x);
+                    }
+                    
+                    // 按波长顺序填充y值
+                    int index = wavelengths.indexOf(x);
+                    // 补全前面的空值
+                    while (yList.size() <= index) {
+                        yList.add("-");
+                    }
+                    // 设置当前波长对应的y值
+                    yList.set(index, y);
+                }
+            }
+        }
+
+        // log.info("【步骤3/5】数据提取完成，波长数量: {}, 有效样品数量: {}", 
+        //         wavelengths.size(), sampleYMap.size());
+
+        // 4. 构建表头和数据阶段（保持不变）
+        // log.info("【步骤4/5】开始构建导出表头和数据");
+        List<HeadVO> heads = new ArrayList<>();
+        heads.add(new HeadVO("波长nm", "wavelength")); // 波长列标题
+        sampleYMap.keySet().forEach(title -> heads.add(new HeadVO(title, title))); // 样品列标题
+        
+        // log.info("【步骤4/5】表头构建完成，表头数量: {}", heads.size());
+        
+        List<Map<String, Object>> exportData = new ArrayList<>();
+        if (!wavelengths.isEmpty()) {
+            for (int i = 0; i < wavelengths.size(); i++) {
+                final int index = i;
+                Map<String, Object> row = new LinkedHashMap<>();
+                // 波长列使用wavelengths中的值（即x字段的值）
+                row.put("wavelength", wavelengths.get(index));
+                
+                // 样品列使用对应的y值
+                sampleYMap.forEach((title, yList) -> {
+                    row.put(title, index < yList.size() ? yList.get(index) : "-");
+                });
+                
+                exportData.add(row);
+                
+                // 打印前5行数据，确认波长列是否正确
+                // if (i < 5) {
+                //     log.info("【步骤4/5】数据行{}: 波长={}, 样品值={}", 
+                //             i+1, row.get("wavelength"), 
+                //             row.entrySet().stream()
+                //             .filter(e -> !"wavelength".equals(e.getKey()))
+                //             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                // }
+            }
+        } else {
+            // log.info("【步骤4/5】无波长数据，构建空数据列表");
+            Map<String, Object> emptyRow = new LinkedHashMap<>();
+            emptyRow.put("wavelength", "-");
+            sampleYMap.keySet().forEach(title -> emptyRow.put(title, "-"));
+            exportData.add(emptyRow);
+        }
+        
+        // log.info("【步骤4/5】导出数据构建完成，数据行数: {}", exportData.size());
+
+        // 5. 生成文件阶段（保持不变）
+        // log.info("【步骤5/5】开始生成文件，类型: {}", fileType);
+        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
+        String filePath = System.getProperty("user.dir") + File.separator + fileName;
+        filePath = filePath.replaceAll("[\\\\/:*?\"<>|]", "_");
+        File file = new File(filePath);
+        // log.info("【步骤5/5】文件保存路径: {}", file.getAbsolutePath());
+
+        try {
+            switch (fileType) {
+                case "word":
+                    // log.info("【步骤5/5】开始生成Word文件");
+                    // 获取测量方法，避免空指针
+                    String methodKey = task.getMethodKey();
+                    TMeasureMethod method = null;
+                    if (StringUtils.hasText(methodKey)) {
+                        method = tMeasureMethodService.getById(methodKey);
+                        // log.info("【步骤5/5】查询到测量方法：{}", method != null ? method.getMethodName() : "未找到");
+                    }
+                    if (method == null) {
+                        // log.warn("【步骤5/5】测量方法不存在，使用默认值");
+                        method = new TMeasureMethod();
+                        method.setMethodName("未知测量方法");
+                    }
+                    generateWordFile(file, task, method, heads, exportData, 0);
+                    break;
+                case "txt":
+                    // log.info("【步骤5/5】开始生成TXT文件");
+                    generateTxtFile(file, heads, exportData);
+                    break;
+                case "xlsx":
+                    // log.info("【步骤5/5】开始生成Excel文件");
+                    generateExcelFile(file, heads, exportData);
+                    break;
+            }
+
+            if (file.exists()) {
+                if (file.length() > 0) {
+                    // log.info("【步骤5/5】文件生成成功，大小: {} bytes", file.length());
+                    return R.ok(file);
+                } else {
+                    // log.warn("【步骤5/5】文件生成成功，但文件为空");
+                    return R.ok(file);
+                }
+            } else {
+                // log.error("【步骤5/5】文件生成失败：文件不存在");
+                return R.fail("文件生成失败：文件不存在");
+            }
+        } catch (Exception e) {
+            // log.error("【步骤5/5】文件生成异常", e);
+            if (file.exists()) {
+                boolean deleted = file.delete();
+                // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
+            }
+            return R.fail("文件生成失败：" + e.getMessage());
+        } finally {
+            // log.info("===== 导出流程结束 =====");
+        }
+    }
+
+    // 保留原有的downloadWord方法，并适配新参数
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds);
+    }
+
+    /**
+     * 生成Word文件（修复原逻辑的表格列错位问题）
+     */
+    private void generateWordFile(File file, TMeasureTask task, TMeasureMethod method,
+                                 List<HeadVO> heads, List<Map<String, Object>> data, int vosSize) throws Exception {
+        XWPFDocument doc = new XWPFDocument();
+        CTDocument1 document = doc.getDocument();
+        CTBody body = document.getBody();
+
+        // 页面设置（保持不变）
+        if (!body.isSetSectPr()) {
+            body.addNewSectPr();
+        }
+        CTSectPr section = body.getSectPr();
+        if (!section.isSetPgSz()) {
+            section.addNewPgSz();
+        }
+        CTPageSz pageSize = section.getPgSz();
+        if (vosSize > 5) {
+            pageSize.setW(BigInteger.valueOf(15840));
+            pageSize.setH(BigInteger.valueOf(12240));
+        }
+
+        // 添加标题（保持不变）
+        XWPFParagraph paragraph = doc.createParagraph();
+        XWPFRun run = paragraph.createRun();
+        run.setText("任务：" + task.getTaskName() + "\r");
+        run.setText("方法：" + method.getMethodName() + "\r");
+        run.setText("测试数据：");
+
+        // 创建表格（保持不变）
+        int columnCount = heads.size();
+        XWPFTable table = doc.createTable(1, columnCount);
+        table.setWidth("100%");
+
+        // 填充表头（修复：用 getName() 替代 getLabel()）
+        XWPFTableRow headerRow = table.getRow(0);
+        for (int i = 0; i < columnCount; i++) {
+            XWPFTableCell cell = headerRow.getCell(i);
+            if (cell == null) {
+                cell = headerRow.createCell();
+            }
+            HeadVO head = heads.get(i);
+            // 使用 getName() 获取表头显示文本（如"波长nm"）
+            String headName = head.getName(); 
+            cell.setText(headName);
+        }
+
+        // 填充数据行（修复：用 getIdentity() 替代 getKey()）
+        for (Map<String, Object> rowData : data) {
+            XWPFTableRow row = table.createRow();
+
+            // 第一列：波长值（从rowData中获取"wavelength"字段）
+            String wavelength = rowData.get("wavelength").toString();
+            row.getCell(0).setText(wavelength);
+            log.debug("【generateWordFile】写入波长: {}", wavelength);
+
+            // 其他列：样品值（从第二列开始）
+            for (int i = 1; i < columnCount; i++) {
+                HeadVO head = heads.get(i);
+                // 使用 getIdentity() 获取数据中的键（如"样品1"）
+                String headKey = head.getIdentity(); 
+                String value = rowData.getOrDefault(headKey, "-").toString();
+                row.getCell(i).setText(value);
+            }
+        }
+
+        // 表格样式（保持不变）
+        for (XWPFTableRow row : table.getRows()) {
+            for (XWPFTableCell cell : row.getTableCells()) {
+                XWPFParagraph paragraph1 = cell.getParagraphArray(0);
+                paragraph1.setAlignment(ParagraphAlignment.CENTER);
+                cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+            }
+        }
+
+        // 写入文件（保持不变）
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            doc.write(out);
+        } finally {
+            doc.close();
+        }
+    }
+
+
+    /**
+     * 生成TXT文件（UTF-8编码，制表符分隔）
+     */
+    private void generateTxtFile(File file, List<HeadVO> heads, List<Map<String, Object>> data) throws Exception {
+        // 前置校验：避免核心参数为null导致后续流处理报错
+        if (heads == null) {
+            throw new IllegalArgumentException("表头列表heads不能为null");
+        }
+        if (data == null) {
+            throw new IllegalArgumentException("数据列表data不能为null");
+        }
+        if (file == null) {
+            throw new IllegalArgumentException("输出文件File不能为null");
+        }
+
+        // 使用BufferedWriter保证效率，UTF-8避免中文乱码（try-with-resources自动关流）
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+
+            // 1. 写入表头（制表符分隔）—— 重点防护heads中的null元素
+            String headerLine = heads.stream()
+                    // 过滤并处理heads中的null元素
+                    .map(head -> {
+                        if (head == null) {
+                            log.warn("表头列表中存在null元素，使用默认表头名称");
+                            return "未命名列";
+                        }
+                        // 处理表头名称为null/空的情况
+                        String headName = head.getName();
+                        return (headName == null || headName.trim().isEmpty()) ? "未命名列" : headName;
+                    })
+                    .collect(Collectors.joining("\t"));
+            writer.write(headerLine);
+            writer.newLine(); // 换行
+
+            // 2. 写入数据（与表头顺序一致）—— 防护null的Map、null的字段值、枚举处理null
+            for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
+                Map<String, Object> map = data.get(rowIdx);
+                // 防护：当前数据行的Map为null
+                if (map == null) {
+                    log.warn("数据列表第{}行的Map为null，跳过该行数据", rowIdx + 1);
+                    continue;
+                }
+
+                List<String> rowData = new ArrayList<>();
+                for (HeadVO head : heads) {
+                    // 防护：表头为null（避免后续head.getIdentity()报错）
+                    String identity = head != null ? head.getIdentity() : "unknown";
+                    // 从Map取值：用getOrDefault避免key不存在，同时防护value为null
+                    Object value = map.getOrDefault(identity, "");
+                    String cellData = value == null ? "" : String.valueOf(value);
+
+                    // 特殊字段格式化（与Word/Excel保持一致，增加null防护）
+                    if (head != null && "sampleType".equals(identity)) {
+                        // 防护：cellData为null/空/字符串"null"
+                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                            cellData = "-";
+                        } else {
+                            // 防护：枚举方法返回null时用"-"替代
+                            String typeName = SampleTypeEnum.getName(cellData);
+                            cellData = typeName == null ? "-" : typeName;
+                        }
+                    }
+                    if (head != null && "sampleLocation".equals(identity)) {
+                        // 防护：避免拼接"样品null"或"样品"（空值）
+                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                            cellData = "-";
+                        } else {
+                            cellData = "样品" + cellData;
+                        }
+                    }
+
+                    // 最终统一空值处理：将空字符串/"null"转为"-"
+                    if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                        cellData = "-";
+                    }
+
+                    rowData.add(cellData);
+                }
+
+                // 写入当前行数据（制表符分隔）
+                writer.write(String.join("\t", rowData));
+                writer.newLine();
+                log.debug("TXT文件第{}行数据写入完成", rowIdx + 1);
+            }
+
+            log.info("TXT文件生成成功，路径：{}", file.getAbsolutePath());
+        } catch (FileNotFoundException e) {
+            log.error("TXT文件路径不存在或无法写入：{}", file.getAbsolutePath(), e);
+            throw e;
+        } catch (IOException e) {
+            log.error("TXT文件写入IO异常", e);
+            throw e;
+        } catch (Exception e) {
+            log.error("TXT文件生成未知异常", e);
+            throw e;
+        }
+    }
+
+    /**
+     * 生成 XLSX 文件（修复空指针异常）
+     */
+    private void generateExcelFile(File file, List<HeadVO> heads, List<Map<String, Object>> data) throws Exception {
+        // 1. 校验核心参数是否为null（避免后续调用方法时报错）
+        if (heads == null) {
+            throw new IllegalArgumentException("表头列表heads不能为null");
+        }
+        if (data == null) {
+            throw new IllegalArgumentException("数据列表data不能为null");
+        }
+
+        // 2. 转换表头（处理空表头和null元素）
+        List<List<String>> excelHeads = new ArrayList<>();
+        for (int i = 0; i < heads.size(); i++) {
+            HeadVO head = heads.get(i);
+            // 防护：当前表头为null
+            if (head == null) {
+                log.warn("表头列表第{}个元素为null，使用默认表头", i);
+                excelHeads.add(Collections.singletonList("未命名列_" + i));
+            continue;
+        }
+        // 防护：表头名称为null/空
+        String headName = head.getName();
+        if (headName == null || headName.trim().isEmpty()) {
+            headName = "未命名列（" + head.getIdentity() + "）";
+            log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
+        }
+        excelHeads.add(Collections.singletonList(headName));
+    }
+
+    // 3. 转换数据（处理空Map和null值）
+    List<List<Object>> excelData = new ArrayList<>();
+    for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
+        Map<String, Object> map = data.get(rowIdx);
+        // 防护：当前数据行为null
+        if (map == null) {
+            log.warn("数据列表第{}行的Map为null，跳过该行", rowIdx);
+            continue;
+        }
+
+        List<Object> rowData = new ArrayList<>();
+        for (int colIdx = 0; colIdx < heads.size(); colIdx++) {
+            HeadVO head = heads.get(colIdx);
+            // 防护：表头为null时，直接填充默认值
+            if (head == null) {
+                rowData.add("-");
+                continue;
+            }
+
+            // 提取字段值，防护null
+            Object value = map.get(head.getIdentity());
+            String cellData = "-"; // 默认空值
+
+            if (value != null) {
+                cellData = String.valueOf(value);
+                // 特殊字段格式化（增加null防护）
+                if ("sampleType".equals(head.getIdentity())) {
+                    // 防护：cellData为null/空
+                    if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                        cellData = "-";
+                    } else {
+                        // 防护：枚举方法返回null
+                        String typeName = SampleTypeEnum.getName(cellData);
+                        cellData = typeName == null ? "-" : typeName;
+                    }
+                }
+                if ("sampleLocation".equals(head.getIdentity())) {
+                    // 防护：避免拼接"样品null"
+                    cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
+                }
+                // 清除特殊字符，防护空字符串
+                cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
+                if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                    cellData = "-";
+                }
+            }
+
+            rowData.add(cellData);
+        }
+        excelData.add(rowData);
+    }
+
+    // 4. 写入Excel（确保流正确关闭，防护空列表）
+    if (excelHeads.isEmpty()) {
+        log.warn("表头为空，生成空Excel文件");
+    }
+    try (OutputStream out = new FileOutputStream(file)) {
+        EasyExcel.write(out)
+                .head(excelHeads)
+                .sheet("测量数据")
+                .doWrite(excelData);
+    } catch (Exception e) {
+        log.error("EasyExcel写入文件失败", e);
+        throw e; // 向上抛出，由外层处理
+    }
+}
+
+
+    // ---------------------- 工具方法 ----------------------
+    /**
+     * 获取文件后缀（Java 8兼容）
+     */
+    private String getFileSuffix(String fileType) {
+        if ("word".equals(fileType)) {
+            return "docx";
+        } else if ("txt".equals(fileType)) {
+            return "txt";
+        } else if ("xlsx".equals(fileType)) {
+            return "xlsx";
+        } else {
+            return "docx";
+        }
+    }
 
 }

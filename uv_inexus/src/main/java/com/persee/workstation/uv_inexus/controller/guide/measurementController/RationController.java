@@ -1,5 +1,23 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
@@ -9,14 +27,15 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationMethodParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSampleDataVO;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
+import io.swagger.annotations.ApiParam;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/quantitativeMeasurement/")
@@ -166,5 +185,45 @@ public class RationController {
         } else {
             return Result.fail(r.getMessage());
         }
+    }
+
+    @GetMapping("downloadDoc")
+    @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
+    public ResponseEntity<?> downloadDoc(
+            @ApiParam("任务ID") @RequestParam String taskId,
+            @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
+            @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType) throws Exception {
+        
+        // 调用 Service 层的多格式导出方法
+        R<File> result = rationService.downloadFile(taskId, allDisplay, fileType);
+        
+        if (result.getSuccess()) {
+            File file = result.getData();
+            FileInputStream fis = new FileInputStream(file);
+            InputStreamResource resource = new InputStreamResource(fis);
+
+            // 编码文件名（避免中文乱码）
+            String fileName = URLEncoder.encode(file.getName(), "UTF-8");
+            
+            // 异步删除临时文件（10秒后）
+            new Thread(() -> {
+                try {
+                    Thread.sleep(10000);
+                    boolean deleteSuccess = file.delete();
+                    System.out.println("临时文件删除结果：" + deleteSuccess);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            // 构造响应头，指定下载和文件类型
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+        }
+        
+        // 导出失败时，返回错误信息
+        return ResponseEntity.badRequest().body("导出失败：" );
     }
 }

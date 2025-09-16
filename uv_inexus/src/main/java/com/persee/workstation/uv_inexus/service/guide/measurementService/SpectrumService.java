@@ -1,11 +1,30 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import java.io.File;
+import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
-import java.util.List;
+
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AdvancedOperationsDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AnalysisDataGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.DifferentialDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.FourOperationsParamDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.LuminosityConversionDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MeasureDataGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PeakValleyMarkingDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SeekingPeaksValleysDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SmoothnessDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectralMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.UpdateDataColorDto;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 
 /**
  * 光谱扫描服务接口
@@ -185,5 +204,10 @@ public interface SpectrumService {
 
     // 测试对比接口
     Result testCompare(String taskId, SpectrumParameter spectrumParameter);
+
+    /**
+     * 导出到word
+     */
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
 
 }

@@ -1,7 +1,16 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+
 import com.alibaba.fastjson.JSONObject;
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
@@ -9,10 +18,15 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
-
-import java.util.List;
-import java.util.Map;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationMethodParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSampleDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSaveCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationWavelengthDataInfo;
 
 /**
  * 定量测定
@@ -120,6 +134,11 @@ public interface RationService {
      * 保存映射关系及表头信息
      */
     R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO taskHeadSnapshot);
+
+    /**
+     * 导出到word
+     */
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType);
 
 
 }
