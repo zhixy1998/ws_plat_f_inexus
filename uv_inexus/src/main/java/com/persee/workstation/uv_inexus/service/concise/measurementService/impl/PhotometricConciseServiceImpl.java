@@ -1,7 +1,5 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
-import static com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum.*;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -148,6 +146,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     String createType;
 
     @Value("0")
+    String noSave;
+
+    @Value("1")
+    String saved;
+
+    @Value("0")
     String noTested;
 
     @Value("1")
@@ -155,6 +159,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Value("11")
     String defaultProjectId;
+
+    @Value("文件数据")
+    String newTaskName;
 
 
     @Override
@@ -237,11 +244,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return Result.ok(vo);
         }
 
-        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
-            log.info("应用已有方法");
+        if (!StringUtils.hasText(checkDTO.getCurrentTaskId())) {
+            log.info("没有任务存在，将使用该方法生成数据");
             vo.setParamChange(true);
-//            vo.setMessage(PhotoMetricChangeMethodTypeEnum.changeMethod.getMessage());
-//            vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.changeMethod.getIdentity());
+            vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.noData.getIdentity());
+            return Result.ok(vo);
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
@@ -354,7 +361,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
 
         FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
-
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, methodDTO.getUpdateBy()));
         String userId = po.getId();
         ans.setMethodName(methodDTO.getMethodName());
@@ -366,7 +372,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 String[] split = methodDTO.getMethodName().split("-");
                 method.setMethodName(split[0] + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             } else {
-                method.setMethodName("草稿方法" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+                method.setMethodName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             }
             method.setMeasurementType(methodDTO.getMeasureType());
             method.setProjectItemKey(defaultProjectId);
@@ -383,11 +389,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         ans.setMethodId(methodId);
 
-
         FMeasureTask task = new FMeasureTask();
         if (!StringUtils.hasText(methodDTO.getCurrentTaskId())) {
             //任务不存在，创建任务
-            task.setTaskName("草稿数据" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             task.setMethodKey(methodId);
             task.setCreateTime(LocalDateTime.now());
             task.setUserId(userId);
@@ -404,55 +409,117 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             task.setTableInfo(JSON.toJSONString(snapshot));
             fMeasureTaskService.save(task);
 
+            ans.setTaskId(task.getId());
+            ans.setTaskName(task.getTaskName());
+            return Result.ok(ans);
+
         } else {
             task = fMeasureTaskService.getById(methodDTO.getCurrentTaskId());
-
-            if (methodDTO.getIsSaveDraft() == null || !methodDTO.getIsSaveDraft()) {
-                //不保存数据
-                if (StringUtils.hasText(task.getSampleKey())) {
-                    List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-                    for (FTaskSpecimen specimen : taskSpecimen) {
-                        Boolean b = clearData(task.getId(), specimen.getSpecimenKey(), methodDTO.getClearDataRange());
-                        if (!b) {
-                            return Result.fail("出现异常，清除数据失败");
-                        }
-                        specimen.setIsTested(createType);
-                    }
-                    task.setSampleKey(JSON.toJSONString(taskSpecimen));
-                }
+            if (task == null) {
+                task = new FMeasureTask();
+                task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
                 task.setMethodKey(methodId);
-                task.setDeviceSerialNumber(null);
+                task.setCreateTime(LocalDateTime.now());
+                task.setUserId(userId);
+                task.setProjectItemKey(defaultProjectId);
                 task.setIsDelete(createType);
+                task.setMeasureType(methodDTO.getMeasureType());
+
+                List<FTaskSpecimen> samples = new ArrayList<>();
+                task.setSampleKey(JSON.toJSONString(samples));
+
+                List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+                FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
+                snapshot.setTaskHeads(preHead);
+                task.setTableInfo(JSON.toJSONString(snapshot));
+                fMeasureTaskService.save(task);
+
+                ans.setTaskId(task.getId());
+                ans.setTaskName(task.getTaskName());
+                return Result.ok(ans);
+            }
+
+            if (!StringUtils.hasText(task.getSampleKey())) {
+                task.setMethodKey(methodId);
                 fMeasureTaskService.updateById(task);
 
+                ans.setTaskId(task.getId());
+                ans.setTaskName(task.getTaskName());
+                return Result.ok(ans);
+            }
+
+            if (methodDTO.getIsSaveDraft() == null || !methodDTO.getIsSaveDraft()) {
+                if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.measure.getIdentity())) {
+                    LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
+                    wrapper.eq(FMeasureData::getTaskId, task.getId())
+                            .eq(FMeasureData::getIsSave, noSave);
+                    fMeasureDataService.remove(wrapper);
+
+                    LambdaQueryWrapper<FMeasureAnalysisData> analysisWrapper = new LambdaQueryWrapper<>();
+                    analysisWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                            .eq(FMeasureAnalysisData::getIsSave, noSave);
+                    fMeasureAnalysisDataService.remove(analysisWrapper);
+
+                    FMeasureTask newTask = new FMeasureTask();
+                    newTask.setProjectItemKey(defaultProjectId);
+                    newTask.setUserId(userId);
+                    newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+
+                    newTask.setTableInfo(task.getTableInfo());
+
+                    newTask.setId(null);
+                    newTask.setMethodKey(methodId);
+                    newTask.setDeviceSerialNumber(null);
+                    newTask.setIsDelete(createType);
+                    newTask.setCreateTime(LocalDateTime.now());
+                    newTask.setMeasureType(methodDTO.getMeasureType());
+                    fMeasureTaskService.save(newTask);
+                    ans.setTaskId(newTask.getId());
+                    ans.setTaskName(newTask.getTaskName());
+                    return Result.ok(ans);
+
+                } else if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.analyze.getIdentity())) {
+
+                    task.setMethodKey(methodId);
+                    fMeasureTaskService.updateById(task);
+
+
+                    List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+                    if (taskSpecimen != null && !taskSpecimen.isEmpty()) {
+                        for (FTaskSpecimen specimen : taskSpecimen) {
+
+                            FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
+                            FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
+                            Boolean b = dealData(task, specimen.getSpecimenKey(), parameter);
+                            if (!b) {
+                                return Result.fail("重新分析出错");
+                            }
+                        }
+                    }
+                    ans.setTaskId(task.getId());
+                    ans.setTaskName(task.getTaskName());
+                    return Result.ok(ans);
+
+                } else {
+                    task.setMethodKey(methodId);
+                    fMeasureTaskService.updateById(task);
+                    ans.setTaskId(task.getId());
+                    ans.setTaskName(task.getTaskName());
+                    return Result.ok(ans);
+
+                }
             } else {
                 //保存数据
+
+                saveData(task.getId());
+
                 FMeasureTask newTask = new FMeasureTask();
                 newTask.setProjectItemKey(defaultProjectId);
                 newTask.setUserId(userId);
-                newTask.setTaskName("草稿数据" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+                newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
                 newTask.setTableInfo(task.getTableInfo());
 
-                if (StringUtils.hasText(task.getSampleKey())) {
-                    List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-                    for (FTaskSpecimen specimen : taskSpecimen) {
-
-                        FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
-                        FMeasureSample newSample = new FMeasureSample();
-                        BeanUtils.copyProperties(sample, newSample);
-                        newSample.setId(null);
-
-                        fMeasureSampleService.save(newSample);
-                        specimen.setSpecimenKey(newSample.getId());
-
-                        specimen.setIsTested(createType);
-                    }
-                    newTask.setSampleKey(JSON.toJSONString(taskSpecimen));
-                } else {
-                    List<FTaskSpecimen> samples = new ArrayList<>();
-                    task.setSampleKey(JSON.toJSONString(samples));
-                }
                 newTask.setId(null);
                 newTask.setMethodKey(methodId);
                 newTask.setDeviceSerialNumber(null);
@@ -460,44 +527,82 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 newTask.setCreateTime(LocalDateTime.now());
                 newTask.setMeasureType(methodDTO.getMeasureType());
                 fMeasureTaskService.save(newTask);
-                task = newTask;
 
+                ans.setTaskId(newTask.getId());
+                ans.setTaskName(newTask.getTaskName());
+                return Result.ok(ans);
             }
-            ans.setTaskId(task.getId());
-            ans.setTaskName(task.getTaskName());
-
         }
-
-        return Result.ok(ans);
     }
 
-    private Boolean clearData(String taskId, String sampleId, String clearDataRange) {
-        if (!StringUtils.hasText(clearDataRange) || clearDataRange.equals(PhotoMetricChangeMethodTypeEnum.newMethod.getIdentity()) || clearDataRange.equals(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity())) {
-            log.info("没有需要清除的数据");
-            return true;
+    private void saveData(String taskId) {
+        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureData::getTaskId, taskId)
+                .eq(FMeasureData::getIsSave, noSave);
+        List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+        // 批量更新优化
+        if (!list.isEmpty()) {
+            list.forEach(fMeasureData -> fMeasureData.setIsSave(saved));
+            fMeasureDataService.updateBatchById(list);
         }
 
-        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
-                .eq(FMeasureAnalysisData::getSampleKey, sampleId);
-        boolean remove = fMeasureAnalysisDataService.remove(queryWrapper);
-        if (!remove) {
-            log.info("清除分析数据失败");
+        LambdaQueryWrapper<FMeasureAnalysisData> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                .eq(FMeasureAnalysisData::getIsSave, noSave);
+        List<FMeasureAnalysisData> anaList = fMeasureAnalysisDataService.list(wrapper);
+        if (!anaList.isEmpty()) {
+            anaList.forEach(fMeasureAnalysisData -> fMeasureAnalysisData.setIsSave(saved));
+            fMeasureAnalysisDataService.updateBatchById(anaList);
+        }
+    }
+
+
+    private Boolean dealData(FMeasureTask task, String sampleId, FPhotometricParameter parameter) {
+
+        /*
+        分析数据，不保存数据
+        查找测量数据，公式计算
+         */
+        FMeasureSample sample = fMeasureSampleService.getById(sampleId);
+        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureData::getTaskId, task.getId())
+                .eq(FMeasureData::getSampleKey, sampleId)
+                .orderByDesc(FMeasureData::getSerialNumber)
+                .last("limit 1");
+        FMeasureData one = fMeasureDataService.getOne(queryWrapper);
+        if (one == null || !StringUtils.hasText(one.getOriginalCalculationData())) {
+            log.info("没有测量数据");
             return false;
         }
 
-        if (clearDataRange.equals(PhotoMetricChangeMethodTypeEnum.measure.getIdentity())) {
-            LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(FMeasureData::getTaskId, taskId)
-                    .eq(FMeasureData::getSampleKey, sampleId);
-            boolean remove1 = fMeasureDataService.remove(wrapper);
-            if (!remove1) {
-                log.info("清除测量数据失败");
-                return false;
+        int digit = Constants.DEFAULT_DECIMAL_NUM;
+        List<FPhotometricOriginDataInfo> listData = JSON.parseArray(one.getOriginalCalculationData(), FPhotometricOriginDataInfo.class);
+        R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
+        if (attachmentR.getSuccess()) {
+            FMeasureTaskAttachment attachment = attachmentR.getData();
+            if (StringUtils.hasText(attachment.getDataParam())) {
+                FQueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+                if (queryDataDTO.getDigit() != null) {
+                    digit = queryDataDTO.getDigit();
+                }
             }
         }
-        return true;
 
+        R<List<FPhotometricCountDataInfo>> formula = formula(listData, sample, task, parameter, digit);
+        if (!formula.getSuccess()) {
+            return false;
+        }
+
+        List<FPhotometricCountDataInfo> data = formula.getData();
+
+        LambdaQueryWrapper<FMeasureAnalysisData> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper);
+        analysisData.setAnalysisResult(JSON.toJSONString(data));
+        analysisData.setIsSave(createType);
+        return fMeasureAnalysisDataService.updateById(analysisData);
     }
 
 
@@ -569,7 +674,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return Result.fail("至少需要一个表头");
         }
 
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+        if (dto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
         if (!StringUtils.hasText(dto.getTaskId())) {
@@ -1033,8 +1138,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<FHeadVO> other = headsMap.get(TableHeadILocateEnums.other.getIdentity());
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
-            FHeadVO samplingTimeHead = new FHeadVO(SampleTableEnum.samplingTime.getName(), SampleTableEnum.samplingTime.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.samplingTime.getName());
-            FHeadVO remark = new FHeadVO(SampleTableEnum.remark.getName(), SampleTableEnum.remark.getIdentity(), TableHeadILocateEnums.data.getIdentity(), SampleTableEnum.remark.getName());
+            FHeadVO samplingTimeHead = new FHeadVO(SampleTableEnum.SAMPLING_TIME.getName(), SampleTableEnum.SAMPLING_TIME.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.SAMPLING_TIME.getName());
+            FHeadVO remark = new FHeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.data.getIdentity(), SampleTableEnum.REMARK.getName());
             other.add(samplingTimeHead);
             other.add(remark);
         }
@@ -1180,11 +1285,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
 
             //样品信息
-            map.put(sampleId.getIdentity(), sample.getId());
-            map.put(SampleTableEnum.sampleName.getIdentity(), sample.getSampleName());
-            map.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber());
-            map.put(SampleTableEnum.sampleType.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
-            map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+ sample.getSampleLocation());
+            map.put(SampleTableEnum.SAMPLE_ID.getIdentity(), sample.getId());
+            map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
+            map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
+            map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
 
 
             if (StringUtils.hasText(sample.getNewColData())){
@@ -1264,8 +1369,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                                 Map<String, String> children = new HashMap<>(formattedData);
                                 String[] split = wlData.getIdentity().split("-");
-                                children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
-                                children.put(SampleTableEnum.samplingTime.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                                children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                                children.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
                                 childrenList.putIfAbsent(wlData.getIdentity(), children);
                             }
@@ -1301,7 +1406,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                .eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
                 .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
 
         FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
@@ -1376,21 +1481,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
@@ -1402,18 +1507,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
                         children.put(mapName, originData.get(mapName));
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getSd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getRsd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);

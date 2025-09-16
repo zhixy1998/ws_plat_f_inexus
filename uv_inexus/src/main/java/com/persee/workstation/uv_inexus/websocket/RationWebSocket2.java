@@ -195,7 +195,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                 if (empty) {
                     for (RationDataVO dataVO : data) {
                         RationCountDataInfo yAbs = new RationCountDataInfo();
-                        yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                        yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
 
                         double value = dataVO.getCountData().get(0).getColValue();
                         yAbs.setColValue(value - minuend);
@@ -285,7 +285,7 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                 if (empty) {
                     for (RationDataVO dataVO : data) {
                         RationCountDataInfo yAbs = new RationCountDataInfo();
-                        yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                        yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
 
                         double value = dataVO.getCountData().get(0).getColValue();
                         yAbs.setColValue(value - minuend);
@@ -293,8 +293,8 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         String ans = rationService.valueCalculate(fittingInfo, yAbs.getColValue(), parameter.getEquationType());
 
                         RationCountDataInfo valueData = new RationCountDataInfo();
-                        valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
-                        valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                         valueData.setColValue(Double.valueOf(ans));
                         dataVO.getCountData().add(valueData);
                         rationService.saveRationSampleMeasureData(dataVO);
@@ -313,8 +313,8 @@ public class RationWebSocket2 extends TextWebSocketHandler {
                         String ans = rationService.valueCalculate(fittingInfo, value, parameter.getEquationType());
 
                         RationCountDataInfo valueData = new RationCountDataInfo();
-                        valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
-                        valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                         valueData.setColValue(Double.valueOf(ans));
                         dataVO.getCountData().add(valueData);
 

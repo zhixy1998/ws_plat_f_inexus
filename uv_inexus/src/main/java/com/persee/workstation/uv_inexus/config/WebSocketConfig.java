@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.config;
 
 import com.persee.workstation.uv_inexus.websocket.*;
+import com.persee.workstation.uv_inexus.websocket.concise.ConcisePhotometricWebSocket;
+import com.persee.workstation.uv_inexus.websocket.concise.ConciseRationMeasureWebSocket;
 import com.persee.workstation.uv_inexus.websocket.concise.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +21,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private SpectrumOneMeasureWebSocket spectrumOneMeasureWebSocket;
 
     @Autowired
-    private PhotometricWebSocket photometricWebSocket;
+    private ConcisePhotometricWebSocket photometricWebSocket;
 
     @Autowired
     private TimeWebSocket TimeWebSocket;
@@ -31,7 +33,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeOneMeasureWebSocket timeOneMeasureWebSocket;
 
     @Autowired
-    private RationMeasureWebSocket RationWebSocket;
+    private ConciseRationMeasureWebSocket RationWebSocket;
 
     @Autowired
     private MyWebSocketHandler myWebSocketHandler;
