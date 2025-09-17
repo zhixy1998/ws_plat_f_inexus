@@ -24,9 +24,6 @@ public interface TimeSweepService {
     // 修改方法参数接口
     Result updateMethodParameter(TimeSweepMethodParameterDto params);
 
-    // 查询样品头接口
-    Result<List<HeadVO>> querySampleHeads(String taskId);
-
     // 查询样品列表接口
     Result sampleListPort(String taskId, String type,Integer  digit);
 
@@ -50,6 +47,9 @@ public interface TimeSweepService {
 
     // 获取样本按钮列表接口
     Result querySampleList(String taskId);
+
+    // 查询样品头接口
+    Result<List<HeadVO>> querySampleHeads(String taskId);
 
     // 添加或删除样本接口
     Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto);

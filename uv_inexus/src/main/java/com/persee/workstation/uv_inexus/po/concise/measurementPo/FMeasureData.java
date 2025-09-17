@@ -73,6 +73,10 @@ public class FMeasureData {
     @TableField("remark")
     private String remark;
 
+    // 是否保存(0.保存 1.不保存)
+    @TableField("is_save")
+    private String isSave;
+
     // 是否删除
     @TableField("is_delete")
     private String isDelete;

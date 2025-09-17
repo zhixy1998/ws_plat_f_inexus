@@ -1,12 +1,16 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController("timeSweepConciseController")
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/timeSweep/concise/")
@@ -30,6 +34,55 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
     }
 
+
+    @RequestMapping("applyMethod")
+    @ApiOperation("应用接口")
+    public Result applyMethod(@RequestBody TimeUseMethodDto paramDto) {
+        return timeSweepConciseService.use(paramDto);
+    }
+
+    @GetMapping("whetherSaveData")
+    @ApiOperation("是否保存数据接口")
+    public Result whetherSaveData(@RequestParam String taskId,@RequestParam Boolean isSave) {
+        return timeSweepConciseService.whetherSaveData(taskId,isSave);
+    }
+
+    @GetMapping("createDraftButton")
+    @ApiOperation("创建草稿按钮接口")
+    public Result createDraftButton(@RequestParam String methodId,@RequestParam String updateBy) {
+        return timeSweepConciseService.createDraftButton(methodId,updateBy);
+    }
+
+    @GetMapping("querySampleList")
+    @ApiOperation("获取样本按钮列表接口")
+    public Result querySampleList(@RequestParam String taskId) {
+        return timeSweepConciseService.querySampleListButton(taskId);
+    }
+
+    @GetMapping("querySampleHeads")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<FHeadVO>> querySampleHeads(@RequestParam String taskId) {
+        return timeSweepConciseService.querySampleHeads(taskId);
+    }
+
+    @PostMapping("addOrDeleteSamplePort")
+    @ApiOperation("添加或删除样本接口")
+    public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
+        return timeSweepConciseService.addOrDeleteSamplePort(paramDto);
+    }
+
+    @PostMapping("detectionTaskStatus")
+    @ApiOperation("检测任务状态接口")
+    public Result detectionTaskStatus(@RequestParam String taskId) {
+        return timeSweepConciseService.detectionTaskStatus(taskId);
+    }
+
+    @PostMapping("saveDraftButton")
+    @ApiOperation("保存草稿按钮接口")
+    public Result saveDraftButton(@RequestParam String taskId,
+                                  @RequestParam(required = false) String taskName) {
+        return timeSweepConciseService.saveDraftButton(taskId,taskName);
+    }
 
     @GetMapping("querySampleDataList")
     @ApiOperation("查询样品数据列表")

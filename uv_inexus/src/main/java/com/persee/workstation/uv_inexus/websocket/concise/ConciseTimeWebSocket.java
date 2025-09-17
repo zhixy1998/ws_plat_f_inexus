@@ -369,6 +369,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         tMeasureData.setMeasurementStartTime(Constants.startTime);
         tMeasureData.setMeasurementEndTime(Constants.endTime);
         tMeasureData.setIsDelete("0");
+        tMeasureData.setIsSave("1");
         boolean save = tMeasureDataService.save(tMeasureData);
         if (!save) {
             sendAndClose(session, "保存测量数据失败");
@@ -397,6 +398,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(markings));
         analysisData.setColor("#000000");
         analysisData.setIsDelete("0");
+        analysisData.setIsSave("1");
         boolean save1 = tMeasureAnalysisDataService.save(analysisData);
         if (!save1) {
             sendAndClose(session, "保存分析数据失败");

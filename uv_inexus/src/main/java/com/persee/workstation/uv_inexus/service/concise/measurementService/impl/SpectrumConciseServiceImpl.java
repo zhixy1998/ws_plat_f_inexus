@@ -1,19 +1,32 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
@@ -21,18 +34,27 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,6 +63,7 @@ import java.util.stream.Collectors;
  */
 
 @Service("SpectrumConciseService")
+@Slf4j
 public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
@@ -58,6 +81,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Autowired
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
 
+    @Autowired
+    private SystemUserManageDAO systemUserManageDAO;
+
+    @Autowired
+    private FMeasureTaskMapper fMeasureTaskMapper;
+
+    @Autowired
+    private SysUserMapper userManageDAO;
+
 
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
@@ -71,6 +103,17 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @Value("1")
+    String deleteType;
+
+    @Value("0")
+    String createType;
+
+    @Value("0")
+    String noTested;
 
     /**
      * 查询最近方法数据
@@ -89,6 +132,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail("方法类型不能为空");
         }
 
+        SpectrumNearestMethodVo vo = new SpectrumNearestMethodVo();
+
         QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
         wrapper.eq("method_creator", updateBy);
         wrapper.eq("is_draft", "0");
@@ -96,11 +141,48 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         wrapper.orderByDesc("method_use_time");
         wrapper.last("LIMIT 1");
 
-        FMeasureMethod method = fMeasureMethodService.getById(wrapper);
+        FMeasureMethod method = fMeasureMethodService.getOne(wrapper);
 
         if (method == null) {
-            // todo 查询对应类型的默认方法
-
+            // 查询对应类型的默认方法
+            QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("measurement_type", measureType);
+            queryWrapper.eq("method_name", "默认方法");
+            queryWrapper.last("LIMIT 1");
+            method = fMeasureMethodService.getOne(queryWrapper);
+            if (method == null) {
+                return Result.fail("没有默认方法");
+            }
+            method.setMethodUseTime(LocalDateTime.now());
+            boolean update = fMeasureMethodService.updateById(method);
+            if (!update) {
+                return Result.fail("更新方法失败");
+            }
+            BeanUtils.copyProperties(method, vo);
+            FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+            FSpectrumParameterVo parameterVo = new FSpectrumParameterVo();
+            String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
+            BeanUtils.copyProperties(parameter, parameterVo);
+            parameterVo.setLuminosityName(s);
+            if (parameter.getLadderCorrection()!=null){
+                parameterVo.setLadderCorrectionName(parameter.getLadderCorrection() ? "启用" : "不启用");
+            }
+            if (parameter.getScanSpeed()!=null){
+                String s1 = "0".equals(parameter.getScanSpeed()) ? "慢速" : "1".equals(parameter.getScanSpeed()) ? "中速" : "2".equals(parameter.getScanSpeed()) ? "快速" : "极快";
+                parameterVo.setScanSpeedName(s1);
+            }
+            if (parameter.getEnergyLamp()!=null){
+                // 0.钨灯,1.氘灯,2.汞灯
+                String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
+                parameterVo.setEnergyLampName(lamp);
+            }
+            vo.setParameter(parameterVo);
+            // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
+            String format = method.getMethodCreateTime().format(formatter);
+            vo.setMethodCreateTime(format);
+            String format1 = method.getMethodUseTime().format(formatter);
+            vo.setMethodUseTime(format1);
+            return Result.ok(vo);
         }
 
         // 根据方法id查询出最近创建的任务
@@ -110,17 +192,40 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         taskWrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("method", method);
-        if (task != null) {
-            map.put("taskId", task.getId());
+        BeanUtils.copyProperties(method, vo);
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        FSpectrumParameterVo parameterVo = new FSpectrumParameterVo();
+        String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
+        BeanUtils.copyProperties(parameter, parameterVo);
+        parameterVo.setLuminosityName(s);
+        if (parameter.getLadderCorrection()!=null){
+            parameterVo.setLadderCorrectionName(parameter.getLadderCorrection() ? "启用" : "不启用");
         }
-        return Result.ok(map);
+        if (parameter.getScanSpeed()!=null){
+            String s1 = "0".equals(parameter.getScanSpeed()) ? "慢速" : "1".equals(parameter.getScanSpeed()) ? "中速" : "2".equals(parameter.getScanSpeed()) ? "快速" : "极快";
+            parameterVo.setScanSpeedName(s1);
+        }
+        if (parameter.getEnergyLamp()!=null){
+            // 0.钨灯,1.氘灯,2.汞灯
+            String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
+            parameterVo.setEnergyLampName(lamp);
+        }
+        vo.setParameter(parameterVo);
+        // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
+        String format = method.getMethodCreateTime().format(formatter);
+        vo.setMethodCreateTime(format);
+        String format1 = method.getMethodUseTime().format(formatter);
+        vo.setMethodUseTime(format1);
+        if (task!=null){
+            vo.setTaskId(task.getId());
+        }
+        return Result.ok(vo);
     }
 
     /**
      * 查找方法按钮
-     *
+     * @param pageNum
+     * @param pageSize
      * @param updateBy
      * @param measureType
      * @param methodName
@@ -150,7 +255,40 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         // 分页查询
         Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), wrapper);
-        return Result.ok(page);
+        SpectrumSearchMethodVo vo = new SpectrumSearchMethodVo();
+        vo.setTotal(page.getTotal());
+        vo.setCurrent(page.getCurrent());
+        vo.setSize(page.getSize());
+        List<SpectrumNearestMethodVo> methodVos = new ArrayList<>();
+        for (TMeasureMethod record : page.getRecords()) {
+            SpectrumNearestMethodVo methodVo = new SpectrumNearestMethodVo();
+            BeanUtils.copyProperties(record, methodVo);
+            // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
+            String format = record.getMethodCreateTime().format(formatter);
+            methodVo.setMethodCreateTime(format);
+
+            SpectrumParameter parameter = JSON.parseObject(record.getMeasurementParamInfo(), SpectrumParameter.class);
+            FSpectrumParameterVo parameterVo = new FSpectrumParameterVo();
+            BeanUtils.copyProperties(parameter, parameterVo);
+            String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
+            parameterVo.setLuminosityName(s);
+            if (parameter.getLadderCorrection()!=null){
+                parameterVo.setLadderCorrectionName(parameter.getLadderCorrection() ? "启用" : "不启用");
+            }
+            if (parameter.getScanSpeed()!=null){
+                String s1 = "0".equals(parameter.getScanSpeed()) ? "慢速" : "1".equals(parameter.getScanSpeed()) ? "中速" : "2".equals(parameter.getScanSpeed()) ? "快速" : "极快";
+                parameterVo.setScanSpeedName(s1);
+            }
+            if (parameter.getEnergyLamp()!=null){
+                // 0.钨灯,1.氘灯,2.汞灯
+                String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
+                parameterVo.setEnergyLampName(lamp);
+            }
+            methodVo.setParameter(parameterVo);
+            methodVos.add(methodVo);
+        }
+        vo.setRecords(methodVos);
+        return Result.ok(vo);
     }
 
     /**
@@ -175,7 +313,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
         FSpectrumParameter newParam = new FSpectrumParameter();
         // 将方法参数拷贝出来
-        BeanUtils.copyProperties(newParam, paramDto);
+        BeanUtils.copyProperties(newParam, paramDto.getParameter());
 
         // 3. 参数比较
         boolean sameParam = compareParam(parameter, newParam);
@@ -196,6 +334,389 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return fMeasureMethodService.updateById(method) ? Result.ok() : Result.fail();
             }
         }
+    }
+
+    /**
+     * 保存数据接口
+     * @param taskId
+     * @param isSave
+     * @return
+     */
+    @Override
+    public Result whetherSaveData(String taskId, Boolean isSave) {
+        if (taskId == null){
+            return Result.fail("请先创建草稿");
+        }
+        if (isSave){
+            // 根据任务id查询测量数据表的测量数据
+            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id", taskId);
+            wrapper.eq("is_save", "1");
+            List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+            if (measureDataList.isEmpty()){
+                return Result.ok();
+            }
+            for (FMeasureData measureData : measureDataList) {
+                measureData.setIsSave("0");
+                // 根据测量数据id和任务id查询分析数据
+                QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
+                wrapper1.eq("task_id", taskId);
+                wrapper1.eq("measure_data_id", measureData.getId());
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
+                analysisData.setIsSave("0");
+                boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+                if (!update){
+                    return Result.fail("数据保存失败");
+                }
+            }
+            boolean update = fMeasureDataService.updateBatchById(measureDataList);
+            if ( update){
+                return Result.ok();
+            }else{
+                return Result.fail("数据保存失败");
+            }
+        }else{
+            // 根据任务id查询测量数据表
+            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id",taskId);
+            wrapper.eq("is_save","1");
+            List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+            if(measureDataList.isEmpty()){
+                return Result.ok();
+            }
+            // 根据任务id查询任务数据
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FMeasureData measureData : measureDataList) {
+                // 根据测量id任务id以及is_save字段为1的条件去分析数据表中查询数据
+                QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
+                wrapper1.eq("task_id", taskId);
+                wrapper1.eq("measure_id", measureData.getId());
+                wrapper1.eq("is_save","1");
+                FMeasureAnalysisData measureAnalysis = fMeasureAnalysisDataService.getOne(wrapper1);
+                for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
+                    if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
+                        fTaskSpeciman.setDeleteType("0");
+                    }
+                }
+                // 删除当前分析数据
+                boolean remove = fMeasureAnalysisDataService.removeById(measureAnalysis.getId());
+                // 删除当前测量数据
+                boolean remove1 = fMeasureDataService.removeById(measureData.getId());
+                if (!remove&&!remove1) {
+                    return Result.fail("删除失败");
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(fTaskSpecimen));
+            boolean update = fMeasureTaskService.updateById(task);
+            if ( update) {
+                return Result.ok("删除成功");
+            } else {
+                return Result.fail("删除失败");
+            }
+        }
+    }
+
+    /**
+     * 创建草稿接口
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result createDraftButton(String methodId,String updateBy) {
+        if (methodId == null) {
+            return Result.fail("请先创建方法或者选择方法");
+        }
+        // 根据方法id查询是否有任务使用该方法,查询条件分别是方法id,最近创建时间,只取一条,如果不存在则查询方法,使用方法名称+草稿凑成任务名称
+        QueryWrapper<FMeasureTask> wrapper = new QueryWrapper<>();
+        wrapper.eq("method_key", methodId);
+        wrapper.orderByDesc("create_time");
+        wrapper.last("LIMIT 1");
+        FMeasureTask task = fMeasureTaskService.getOne(wrapper);
+        FMeasureTask fMeasureTask = new FMeasureTask();
+        SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+        if (sysUserPO == null){
+            return Result.fail("用户不存在");
+        }
+        String userId = sysUserPO.getId();
+        if (task == null) {
+            // 根据方法id查询方法名称,将名称+草稿赋值到任务名称
+            FMeasureMethod method = fMeasureMethodService.getById(methodId);
+            if (method==null){
+                return Result.fail("请先创建方法");
+            }
+            fMeasureTask.setTaskName(method.getMethodName() + "草稿");
+        } else {
+            fMeasureTask.setTaskName(task.getTaskName() + "草稿");
+        }
+        fMeasureTask.setUserId(userId);
+        fMeasureTask.setMethodKey(methodId);
+        fMeasureTask.setMeasureType(MeasureTypeEnum.SPECTRAL_SCAN.getDescription());
+        fMeasureTask.setCreateTime(LocalDateTime.now());
+        fMeasureTask.setIsSave("0");
+        fMeasureTask.setIsDelete(createType);
+        boolean save = fMeasureTaskService.save(fMeasureTask);
+        return save ? Result.ok(fMeasureTask.getId()) : Result.fail();
+    }
+
+    /**
+     * 查询样品列表按钮
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result querySampleListButton(String taskId) {
+        List<JSONObject> sampleVOList = new ArrayList<>();
+        if (!StringUtils.hasText(taskId)) {
+            return Result.ok(sampleVOList);
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                FSampleVO vo = new FSampleVO();
+                BeanUtils.copyProperties(measureSample, vo);
+                vo.setSampleId(measureSample.getId());
+                String jsonString = JSONObject.toJSONString(vo);
+
+                JSONObject jsonObject = JSONObject.parseObject(jsonString);
+                if (StringUtils.hasText(measureSample.getNewColData())) {
+                    JSONObject object = JSONObject.parseObject(measureSample.getNewColData());
+                    jsonObject.putAll(object);
+                }
+                sampleVOList.add(jsonObject);
+
+            }
+        }
+        return Result.ok(sampleVOList);
+    }
+
+    /**
+     * 查询样品表头
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result<List<FHeadVO>> querySampleHeads(String taskId) {
+
+        if (!StringUtils.hasText(taskId)) {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        } else {
+            FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+                return Result.ok(preHead);
+            }
+        }
+    }
+
+    /**
+     * 检测任务状态
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result detectionTaskStatus(String taskId) {
+        if (taskId == null) {
+            return Result.fail("任务id不能为空");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        return Result.ok(!task.getIsSave().equals("0"));
+    }
+
+    /**
+     * 保存草稿按钮
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result saveDraftButton(String taskId, String taskName) {
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请先创建任务");
+        }
+        // 根据任务id查询任务
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (taskName != null){
+            task.setTaskName(taskName);
+        }
+        // 根据任务id和is_save字段为1的条件查询
+        QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+        wrapper.eq("task_id", taskId).eq("is_save", "1");
+        List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+        if (measureDataList == null) {
+            return Result.ok();
+        }
+        for (FMeasureData measureData : measureDataList) {
+            // 根据测量id,任务id还有is_save为1的条件查询分析数据
+            QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("measure_data_id", measureData.getId()).eq("task_id", taskId).eq("is_save", "1");
+            FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
+            analysisData.setIsSave("0");
+            boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+            measureData.setIsSave("0");
+            boolean update1 = fMeasureDataService.updateById(measureData);
+            if(!(update&&update1)){
+                return Result.fail("保存草稿失败");
+            }
+        }
+        task.setEndSaveTime(LocalDateTime.now());
+        boolean update = fMeasureTaskService.updateById(task);
+        if ( update){
+            return Result.ok();
+        }else {
+            return Result.fail("保存草稿失败");
+        }
+    }
+
+    /**
+     * 添加或删除样品接口
+     * @param dto
+     * @return
+     */
+    @Override
+    public Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO dto) {
+
+        if (!StringUtils.hasText(dto.getMethodId())) {
+            return Result.fail("请先创建方法");
+        }
+        if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
+            return Result.fail("至少需要一个表头");
+        }
+
+        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+            return Result.fail("表格新增列数不能超过10列");
+        }
+        if (!StringUtils.hasText(dto.getTaskId())) {
+            //创建任务
+            FMeasureTask newTask = new FMeasureTask();
+
+            FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
+            SystemUserManagePO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
+            String id = po.getId();
+            newTask.setUserId(id);
+            newTask.setProjectItemKey(method.getProjectItemKey());
+            newTask.setMethodKey(method.getId());
+            newTask.setMeasureType(method.getMeasurementType());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
+            newTask.setCreateTime(LocalDateTime.now());
+            boolean save = false;
+            for (int i = 0; i < 3; i++) {
+                if (fMeasureTaskService.save(newTask)) {
+                    save = true;
+                    break;
+                }
+            }
+            if (!save) {
+                return Result.fail("系统出错");
+            }
+            dto.setTaskId(newTask.getId());
+        }
+
+
+        FMeasureTask task = fMeasureTaskService.getById(dto.getTaskId());
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+                specimen.setDeleteType(deleteType);
+                LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
+                        .eq(FMeasureData::getTaskId, task.getId())
+                        .orderByDesc(FMeasureData::getSerialNumber);
+                List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+                if (list != null && !list.isEmpty()) {
+                    FMeasureData one = list.get(0);
+                    one.setIsDelete(deleteType);
+                    fMeasureDataService.updateById(one);
+                }
+            }
+        }
+
+        FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
+
+        if (StringUtils.hasText(task.getTableInfo())) {
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+        }
+
+        if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
+            taskHeadSnapshot.setSampleHeads(dto.getHeads());
+        }
+        taskHeadSnapshot.setTaskId(task.getId());
+        task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
+
+
+        for (Map<String, String> map : dto.getNewSamples()) {
+            String jsonString = JSON.toJSONString(map);
+            FSampleVO sample = JSON.parseObject(jsonString, FSampleVO.class);
+            FMeasureSample newSample = new FMeasureSample();
+            BeanUtils.copyProperties(sample, newSample);
+            newSample.setId(sample.getSampleId());
+
+            if (dto.getHeads() != null) {
+                JSONObject newColData = new JSONObject();
+
+                for (FHeadVO head : dto.getHeads()) {
+                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                        continue;
+                    }
+                    String s = map.get(head.getIdentity());
+                    newColData.put(head.getIdentity(), s);
+                }
+                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
+                newSample.setNewColData(JSON.toJSONString(newColData));
+            }
+
+            if (StringUtils.hasText(newSample.getId())) {
+                fMeasureSampleService.updateById(newSample);
+            } else {
+                FTaskSpecimen specimen = new FTaskSpecimen();
+                specimen.setDeleteType(createType);
+                specimen.setIsTested(noTested);
+                specimen.setSampleType(newSample.getSampleType());
+                log.info("新增的样品：{}", newSample);
+                fMeasureSampleService.save(newSample);
+                specimen.setSpecimenKey(newSample.getId());
+                taskSpecimen.add(specimen);
+            }
+        }
+
+        String jsonString = JSONArray.toJSONString(taskSpecimen);
+        task.setSampleKey(jsonString);
+
+        return Result.ok(fMeasureTaskService.updateById(task));
     }
 
 
@@ -1776,7 +2297,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     private Result createNewMethod(FUseMethodDto paramDto){
         FMeasureMethod fMeasureMethod = new FMeasureMethod();
-        BeanUtils.copyProperties(paramDto, fMeasureMethod);
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        String collect = new Random().ints(8, 0, chars.length())
+                .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                .collect(Collectors.joining());
+
+        fMeasureMethod.setMethodName(paramDto.getMeasureType()  + collect);
+
+        FSpectrumParameter parameter = new FSpectrumParameter();
+        BeanUtils.copyProperties(paramDto.getParameter(), parameter);
+        fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());
         fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());

@@ -1,0 +1,30 @@
+package com.persee.workstation.uv_inexus.vo.concise.ration;
+
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@Data
+public class FRationWavelengthDataInfo {
+
+    @ApiModelProperty("波段")
+    private String wavelength;
+
+    @ApiModelProperty("数据标识")
+    private String identity;
+
+    @ApiModelProperty("abs的数据值")
+    private String absValue;
+
+    @ApiModelProperty("T%的值")
+    private String tPercentValue;
+
+    @ApiModelProperty("数据值")
+    private Map<String, FRepeatMeasureData> otherData;
+
+    @ApiModelProperty("测量时间")
+    private LocalDateTime measureTime;
+
+}

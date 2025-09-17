@@ -58,13 +58,9 @@ public class FMeasureTask{
     @TableField("fitting_param")
     private String fittingParam;
 
-    //  开始时间
-    @TableField("start_time")
-    private LocalDateTime startTime;
-
-    //  结束时间
-    @TableField("end_time")
-    private LocalDateTime endTime;
+    //  最后保存时间
+    @TableField("end_save_time")
+    private LocalDateTime endSaveTime;
 
     // 序列号
     @TableField("device_serial_number")
@@ -73,6 +69,10 @@ public class FMeasureTask{
     // 图片数据
     @TableField(typeHandler = JacksonTypeHandler.class, value = "image_data")
     private String imageData;
+
+    // 是否保存(0.未保存,1.已保存)
+    @TableField("is_save")
+    private String isSave;
 
     // 是否删除
     @TableField("is_delete")
