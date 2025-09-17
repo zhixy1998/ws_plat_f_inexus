@@ -11,8 +11,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
@@ -23,7 +25,9 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakVal
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
@@ -33,6 +37,9 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParameterVo;
+import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepNearestMethodVo;
+import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepSearchMethodVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +54,7 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -86,11 +94,16 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     private DeviceInfoService deviceInfoService;
 
     @Autowired
+    private SysUserMapper userManageDAO;
+
+    @Autowired
     private DevMessageUtil devMessageUtil;
 
 
     @Autowired
     private RestTemplate restTemplate;
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 
     @Value("1")
@@ -119,6 +132,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return Result.fail("方法类型不能为空");
         }
 
+        TimeSweepNearestMethodVo vo = new TimeSweepNearestMethodVo();
+
         QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
         wrapper.eq("method_creator", updateBy);
         wrapper.eq("is_draft", "0");
@@ -129,7 +144,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         FMeasureMethod method = fMeasureMethodService.getOne(wrapper);
 
         if (method == null) {
-            // todo 查询对应类型的默认方法
+            // 查询对应类型的默认方法
             QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("measurement_type", measureType);
             queryWrapper.eq("method_name", "默认方法");
@@ -143,7 +158,31 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             if (!update) {
                 return Result.fail("更新方法失败");
             }
-            return Result.ok(method);
+            BeanUtils.copyProperties(method, vo);
+            FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+            FTimeSweepParameterVo parameterVo = new FTimeSweepParameterVo();
+            BeanUtils.copyProperties(parameter, parameterVo);
+            String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
+            parameterVo.setLuminosityName(s);
+            if (parameter.getScanUnit()!=null){
+                parameterVo.setScanUnit(parameter.getScanUnit().equals("0") ? "分" : "秒");
+            }
+            if (parameter.getMultiPoolMode()!=null){
+                String s1 = "0".equals(parameter.getMultiPoolMode()) ? "顺序单池连续采样" : "循环多池交替采样";
+                parameterVo.setMultiPoolModeName(s1);
+            }
+            if (parameter.getEnergyLamp()!=null){
+                // 0.钨灯,1.氘灯,2.汞灯
+                String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
+                parameterVo.setEnergyLampName(lamp);
+            }
+            vo.setParameter(parameterVo);
+            // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
+            String format = method.getMethodCreateTime().format(formatter);
+            vo.setMethodCreateTime(format);
+            String format1 = method.getMethodUseTime().format(formatter);
+            vo.setMethodUseTime(format1);
+            return Result.ok(vo);
         }
 
         // 根据方法id查询出最近创建的任务
@@ -153,14 +192,110 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         taskWrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("method", method);
-        if (task != null) {
-            map.put("taskId", task.getId());
+        BeanUtils.copyProperties(method, vo);
+        FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+        FTimeSweepParameterVo parameterVo = new FTimeSweepParameterVo();
+        BeanUtils.copyProperties(parameter, parameterVo);
+        String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
+        parameterVo.setLuminosityName(s);
+        if (parameter.getScanUnit()!=null){
+            parameterVo.setScanUnit(parameter.getScanUnit().equals("0") ? "分" : "秒");
         }
-        return Result.ok(map);
+        if (parameter.getMultiPoolMode()!=null){
+            String s1 = "0".equals(parameter.getMultiPoolMode()) ? "顺序单池连续采样" : "循环多池交替采样";
+            parameterVo.setMultiPoolModeName(s1);
+        }
+        if (parameter.getEnergyLamp()!=null){
+            // 0.钨灯,1.氘灯,2.汞灯
+            String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
+            parameterVo.setEnergyLampName(lamp);
+        }
+        vo.setParameter(parameterVo);
+        // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
+        String format = method.getMethodCreateTime().format(formatter);
+        vo.setMethodCreateTime(format);
+        String format1 = method.getMethodUseTime().format(formatter);
+        vo.setMethodUseTime(format1);
+        if (task!=null){
+            vo.setTaskId(task.getId());
+        }
+        return Result.ok(vo);
     }
 
+    /**
+     * 查询最近使用的方法
+     * @param pageNum
+     * @param pageSize
+     * @param updateBy
+     * @param measureType
+     * @param methodName
+     * @return
+     */
+    @Override
+    public Result searchMethodButton(Integer pageNum, Integer pageSize, String updateBy, String measureType, String methodName) {
+        // 对传入的参数进行校验
+        if (updateBy == null) {
+            return Result.fail("用户不能为空");
+        }
+        if (measureType == null) {
+            return Result.fail("方法类型不能为空");
+        }
+        if (pageNum == null) {
+            pageNum = 1;
+        }
+        if (pageSize == null) {
+            pageSize = 10;
+        }
+        // 设置查询条件
+        QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
+        wrapper.eq("method_creator", updateBy);
+        wrapper.eq("measurement_type", measureType);
+        if (methodName != null) {
+            wrapper.like("method_name", methodName);
+        }
+        // 分页查询
+        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), wrapper);
+        TimeSweepSearchMethodVo vo = new TimeSweepSearchMethodVo();
+        vo.setTotal(page.getTotal());
+        vo.setCurrent(page.getCurrent());
+        vo.setSize(page.getSize());
+        List<TimeSweepNearestMethodVo> methodVos = new ArrayList<>();
+        for (TMeasureMethod record : page.getRecords()) {
+            TimeSweepNearestMethodVo methodVo = new TimeSweepNearestMethodVo();
+            BeanUtils.copyProperties(record, methodVo);
+            // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
+            String format = record.getMethodCreateTime().format(formatter);
+            methodVo.setMethodCreateTime(format);
+
+            TimeSweepParamter parameter = JSON.parseObject(record.getMeasurementParamInfo(), TimeSweepParamter.class);
+            FTimeSweepParameterVo parameterVo = new FTimeSweepParameterVo();
+            BeanUtils.copyProperties(parameter, parameterVo);
+            String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
+            parameterVo.setLuminosityName(s);
+            if (parameter.getScanUnit()!=null){
+                parameterVo.setScanUnit(parameter.getScanUnit().equals("0") ? "分" : "秒");
+            }
+            if (parameter.getMultiPoolMode()!=null){
+                String s1 = "0".equals(parameter.getMultiPoolMode()) ? "顺序单池连续采样" : "循环多池交替采样";
+                parameterVo.setMultiPoolModeName(s1);
+            }
+            if (parameter.getEnergyLamp()!=null){
+                // 0.钨灯,1.氘灯,2.汞灯
+                String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
+                parameterVo.setEnergyLampName(lamp);
+            }
+            methodVo.setParameter(parameterVo);
+            methodVos.add(methodVo);
+        }
+        vo.setRecords(methodVos);
+        return Result.ok(vo);
+    }
+
+    /**
+     * 使用方法
+     * @param paramDto
+     * @return
+     */
     @Override
     public Result use(TimeUseMethodDto paramDto) {
         // 1. 判断来源
@@ -199,6 +334,131 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return fMeasureMethodService.updateById(method) ? Result.ok() : Result.fail();
             }
         }
+    }
+
+    /**
+     * 是否保存数据
+     * @param taskId
+     * @param isSave
+     * @return
+     */
+    @Override
+    public Result whetherSaveData(String taskId, Boolean isSave) {
+        if (taskId == null){
+            return Result.fail("请先创建草稿");
+        }
+        if (isSave){
+            // 根据任务id查询测量数据表的测量数据
+            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id", taskId);
+            wrapper.eq("is_save", "1");
+            List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+            if (measureDataList.isEmpty()){
+                return Result.ok();
+            }
+            for (FMeasureData measureData : measureDataList) {
+                measureData.setIsSave("0");
+                // 根据测量数据id和任务id查询分析数据
+                QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
+                wrapper1.eq("task_id", taskId);
+                wrapper1.eq("measure_data_id", measureData.getId());
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
+                analysisData.setIsSave("0");
+                boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+                if (!update){
+                    return Result.fail("数据保存失败");
+                }
+            }
+            boolean update = fMeasureDataService.updateBatchById(measureDataList);
+            if ( update){
+                return Result.ok();
+            }else{
+                return Result.fail("数据保存失败");
+            }
+        }else{
+            // 根据任务id查询测量数据表
+            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id",taskId);
+            wrapper.eq("is_save","1");
+            List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+            if(measureDataList.isEmpty()){
+                return Result.ok();
+            }
+            // 根据任务id查询任务数据
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FMeasureData measureData : measureDataList) {
+                // 根据测量id任务id以及is_save字段为1的条件去分析数据表中查询数据
+                QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
+                wrapper1.eq("task_id", taskId);
+                wrapper1.eq("measure_id", measureData.getId());
+                wrapper1.eq("is_save","1");
+                FMeasureAnalysisData measureAnalysis = fMeasureAnalysisDataService.getOne(wrapper1);
+                for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
+                    if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
+                        fTaskSpeciman.setDeleteType("0");
+                    }
+                }
+                // 删除当前分析数据
+                boolean remove = fMeasureAnalysisDataService.removeById(measureAnalysis.getId());
+                // 删除当前测量数据
+                boolean remove1 = fMeasureDataService.removeById(measureData.getId());
+                if (!remove&&!remove1) {
+                    return Result.fail("删除失败");
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(fTaskSpecimen));
+            boolean update = fMeasureTaskService.updateById(task);
+            if (update) {
+                return Result.ok("删除成功");
+            } else {
+                return Result.fail("删除失败");
+            }
+        }
+    }
+
+    /**
+     * 创建草稿按钮
+     * @param methodId
+     * @param updateBy
+     * @return
+     */
+
+    @Override
+    public Result createDraftButton(String methodId, String updateBy) {
+        if (methodId == null) {
+            return Result.fail("请先创建方法或者选择方法");
+        }
+        // 根据方法id查询是否有任务使用该方法,查询条件分别是方法id,最近创建时间,只取一条,如果不存在则查询方法,使用方法名称+草稿凑成任务名称
+        QueryWrapper<FMeasureTask> wrapper = new QueryWrapper<>();
+        wrapper.eq("method_key", methodId);
+        wrapper.orderByDesc("create_time");
+        wrapper.last("LIMIT 1");
+        FMeasureTask task = fMeasureTaskService.getOne(wrapper);
+        FMeasureTask fMeasureTask = new FMeasureTask();
+        SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+        if (sysUserPO == null){
+            return Result.fail("用户不存在");
+        }
+        String userId = sysUserPO.getId();
+        if (task == null) {
+            // 根据方法id查询方法名称,将名称+草稿赋值到任务名称
+            FMeasureMethod method = fMeasureMethodService.getById(methodId);
+            if (method==null){
+                return Result.fail("请先创建方法");
+            }
+            fMeasureTask.setTaskName(method.getMethodName() + "草稿");
+        } else {
+            fMeasureTask.setTaskName(task.getTaskName() + "草稿");
+        }
+        fMeasureTask.setUserId(userId);
+        fMeasureTask.setMethodKey(methodId);
+        fMeasureTask.setMeasureType(MeasureTypeEnum.TIME_SCAN.getDescription());
+        fMeasureTask.setCreateTime(LocalDateTime.now());
+        fMeasureTask.setIsSave("0");
+        fMeasureTask.setIsDelete(createType);
+        boolean save = fMeasureTaskService.save(fMeasureTask);
+        return save ? Result.ok(fMeasureTask.getId()) : Result.fail();
     }
 
     /**
@@ -242,6 +502,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         return Result.ok(sampleVOList);
     }
 
+    /**
+     * 查询样本表头
+     * @param taskId
+     * @return
+     */
     @Override
     public Result<List<FHeadVO>> querySampleHeads(String taskId) {
 
@@ -269,6 +534,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
     }
 
+    /**
+     * 添加或删除样本
+     * @param dto
+     * @return
+     */
     @Override
     public Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO dto) {
 
@@ -388,6 +658,68 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         task.setSampleKey(jsonString);
 
         return Result.ok(fMeasureTaskService.updateById(task));
+    }
+
+    /**
+     * 检测任务状态接口
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result detectionTaskStatus(String taskId) {
+        if (taskId == null) {
+            return Result.fail("任务id不能为空");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        return Result.ok(!task.getIsSave().equals("0"));
+    }
+
+    /**
+     * 保存草稿按钮接口
+     * @param taskId
+     * @param taskName
+     * @return
+     */
+    @Override
+    public Result saveDraftButton(String taskId, String taskName) {
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请先创建任务");
+        }
+        // 根据任务id查询任务
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (taskName != null){
+            task.setTaskName(taskName);
+        }
+        // 根据任务id和is_save字段为1的条件查询
+        QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+        wrapper.eq("task_id", taskId).eq("is_save", "1");
+        List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+        if (measureDataList == null) {
+            return Result.ok();
+        }
+        for (FMeasureData measureData : measureDataList) {
+            // 根据测量id,任务id还有is_save为1的条件查询分析数据
+            QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("measure_data_id", measureData.getId()).eq("task_id", taskId).eq("is_save", "1");
+            FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
+            analysisData.setIsSave("0");
+            boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+            measureData.setIsSave("0");
+            boolean update1 = fMeasureDataService.updateById(measureData);
+            if(!(update&&update1)){
+                return Result.fail("保存草稿失败");
+            }
+        }
+        task.setEndSaveTime(LocalDateTime.now());
+        boolean update = fMeasureTaskService.updateById(task);
+        if ( update){
+            return Result.ok();
+        }else {
+            return Result.fail("保存草稿失败");
+        }
     }
 
 

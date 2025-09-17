@@ -43,14 +43,18 @@ public class SpectrumConciseController {
     }
 
 
+    @GetMapping("whetherSaveData")
+    @ApiOperation("是否保存数据接口")
+    public Result whetherSaveData(@RequestParam String taskId,@RequestParam Boolean isSave) {
+        return spectrumConciseService.whetherSaveData(taskId,isSave);
+    }
+
     @GetMapping("createDraftButton")
     @ApiOperation("创建草稿按钮接口")
     public Result createDraftButton(@RequestParam String methodId,@RequestParam String updateBy) {
         return spectrumConciseService.createDraftButton(methodId,updateBy);
     }
 
-
-    @PostMapping("queryDefaultParameters")
 
     @GetMapping("querySampleList")
     @ApiOperation("获取样本按钮列表接口")
@@ -70,11 +74,18 @@ public class SpectrumConciseController {
         return spectrumConciseService.addOrDeleteSamplePort(paramDto);
     }
 
+    @PostMapping("detectionTaskStatus")
+    @ApiOperation("检测任务状态接口")
+    public Result detectionTaskStatus(@RequestParam String taskId) {
+        return spectrumConciseService.detectionTaskStatus(taskId);
+    }
+
 
     @PostMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")
-    public Result saveDraftButton(@RequestParam String taskId) {
-        return spectrumConciseService.saveDraftButton(taskId);
+    public Result saveDraftButton(@RequestParam String taskId,
+                                  @RequestParam(required = false) String taskName) {
+        return spectrumConciseService.saveDraftButton(taskId,taskName);
     }
 
 

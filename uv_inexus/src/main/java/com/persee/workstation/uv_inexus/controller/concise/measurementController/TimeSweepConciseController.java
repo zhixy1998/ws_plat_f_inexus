@@ -26,10 +26,31 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.queryNearestMethodData(updateBy,measureType);
     }
 
+    @GetMapping("searchMethodButton")
+    @ApiOperation("查找方法按钮")
+    public Result searchMethodButton(@RequestParam Integer pageNum,
+                                     @RequestParam Integer pageSize, @RequestParam String updateBy,
+                                     @RequestParam String measureType, @RequestParam(required = false) String methodName) {
+        return timeSweepConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
+    }
+
+
     @RequestMapping("applyMethod")
     @ApiOperation("应用接口")
     public Result applyMethod(@RequestBody TimeUseMethodDto paramDto) {
         return timeSweepConciseService.use(paramDto);
+    }
+
+    @GetMapping("whetherSaveData")
+    @ApiOperation("是否保存数据接口")
+    public Result whetherSaveData(@RequestParam String taskId,@RequestParam Boolean isSave) {
+        return timeSweepConciseService.whetherSaveData(taskId,isSave);
+    }
+
+    @GetMapping("createDraftButton")
+    @ApiOperation("创建草稿按钮接口")
+    public Result createDraftButton(@RequestParam String methodId,@RequestParam String updateBy) {
+        return timeSweepConciseService.createDraftButton(methodId,updateBy);
     }
 
     @GetMapping("querySampleList")
@@ -48,6 +69,19 @@ public class TimeSweepConciseController {
     @ApiOperation("添加或删除样本接口")
     public Result addOrDeleteSamplePort(@RequestBody FAddOrDeleteSampleDTO paramDto) {
         return timeSweepConciseService.addOrDeleteSamplePort(paramDto);
+    }
+
+    @PostMapping("detectionTaskStatus")
+    @ApiOperation("检测任务状态接口")
+    public Result detectionTaskStatus(@RequestParam String taskId) {
+        return timeSweepConciseService.detectionTaskStatus(taskId);
+    }
+
+    @PostMapping("saveDraftButton")
+    @ApiOperation("保存草稿按钮接口")
+    public Result saveDraftButton(@RequestParam String taskId,
+                                  @RequestParam(required = false) String taskName) {
+        return timeSweepConciseService.saveDraftButton(taskId,taskName);
     }
 
     @GetMapping("querySampleDataList")

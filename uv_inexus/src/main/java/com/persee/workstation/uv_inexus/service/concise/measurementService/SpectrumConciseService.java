@@ -21,6 +21,9 @@ public interface SpectrumConciseService {
     // 应用接口
     Result use(FUseMethodDto paramDto);
 
+    // 是否保存数据
+    Result whetherSaveData(String taskId, Boolean isSave);
+
     // 创建草稿按钮接口
     Result createDraftButton(String methodId,String updateBy);
 
@@ -30,11 +33,14 @@ public interface SpectrumConciseService {
     // 查询样本输入表头接口
     Result<List<FHeadVO>> querySampleHeads(String taskId);
 
-    // 保存草稿按钮接口
-    Result saveDraftButton(String taskId);
-
     // 添加或删除样品接口
     Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO paramDto);
+
+    // 检测任务状态接口
+    Result detectionTaskStatus(String taskId);
+
+    // 保存草稿按钮接口
+    Result saveDraftButton(String taskId,String taskName);
 
     // 查询样品数据列表
     Result querySampleDataList(String taskId,String type,Integer digit);
@@ -98,4 +104,5 @@ public interface SpectrumConciseService {
 
     // 光度模式转换
     Result luminanceModeConversionPort(FLuminosityConversionDto paramDto);
+
 }

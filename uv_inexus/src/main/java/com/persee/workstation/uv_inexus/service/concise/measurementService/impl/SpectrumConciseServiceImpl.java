@@ -337,6 +337,87 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     }
 
     /**
+     * 保存数据接口
+     * @param taskId
+     * @param isSave
+     * @return
+     */
+    @Override
+    public Result whetherSaveData(String taskId, Boolean isSave) {
+        if (taskId == null){
+            return Result.fail("请先创建草稿");
+        }
+        if (isSave){
+            // 根据任务id查询测量数据表的测量数据
+            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id", taskId);
+            wrapper.eq("is_save", "1");
+            List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+            if (measureDataList.isEmpty()){
+                return Result.ok();
+            }
+            for (FMeasureData measureData : measureDataList) {
+                measureData.setIsSave("0");
+                // 根据测量数据id和任务id查询分析数据
+                QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
+                wrapper1.eq("task_id", taskId);
+                wrapper1.eq("measure_data_id", measureData.getId());
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
+                analysisData.setIsSave("0");
+                boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+                if (!update){
+                    return Result.fail("数据保存失败");
+                }
+            }
+            boolean update = fMeasureDataService.updateBatchById(measureDataList);
+            if ( update){
+                return Result.ok();
+            }else{
+                return Result.fail("数据保存失败");
+            }
+        }else{
+            // 根据任务id查询测量数据表
+            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+            wrapper.eq("task_id",taskId);
+            wrapper.eq("is_save","1");
+            List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+            if(measureDataList.isEmpty()){
+                return Result.ok();
+            }
+            // 根据任务id查询任务数据
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FMeasureData measureData : measureDataList) {
+                // 根据测量id任务id以及is_save字段为1的条件去分析数据表中查询数据
+                QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
+                wrapper1.eq("task_id", taskId);
+                wrapper1.eq("measure_id", measureData.getId());
+                wrapper1.eq("is_save","1");
+                FMeasureAnalysisData measureAnalysis = fMeasureAnalysisDataService.getOne(wrapper1);
+                for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
+                    if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
+                        fTaskSpeciman.setDeleteType("0");
+                    }
+                }
+                // 删除当前分析数据
+                boolean remove = fMeasureAnalysisDataService.removeById(measureAnalysis.getId());
+                // 删除当前测量数据
+                boolean remove1 = fMeasureDataService.removeById(measureData.getId());
+                if (!remove&&!remove1) {
+                    return Result.fail("删除失败");
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(fTaskSpecimen));
+            boolean update = fMeasureTaskService.updateById(task);
+            if ( update) {
+                return Result.ok("删除成功");
+            } else {
+                return Result.fail("删除失败");
+            }
+        }
+    }
+
+    /**
      * 创建草稿接口
      * @param methodId
      * @return
@@ -361,6 +442,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (task == null) {
             // 根据方法id查询方法名称,将名称+草稿赋值到任务名称
             FMeasureMethod method = fMeasureMethodService.getById(methodId);
+            if (method==null){
+                return Result.fail("请先创建方法");
+            }
             fMeasureTask.setTaskName(method.getMethodName() + "草稿");
         } else {
             fMeasureTask.setTaskName(task.getTaskName() + "草稿");
@@ -369,6 +453,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         fMeasureTask.setMethodKey(methodId);
         fMeasureTask.setMeasureType(MeasureTypeEnum.SPECTRAL_SCAN.getDescription());
         fMeasureTask.setCreateTime(LocalDateTime.now());
+        fMeasureTask.setIsSave("0");
         fMeasureTask.setIsDelete(createType);
         boolean save = fMeasureTaskService.save(fMeasureTask);
         return save ? Result.ok(fMeasureTask.getId()) : Result.fail();
@@ -447,9 +532,65 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
     }
 
+    /**
+     * 检测任务状态
+     * @param taskId
+     * @return
+     */
     @Override
-    public Result saveDraftButton(String taskId) {
-        return null;
+    public Result detectionTaskStatus(String taskId) {
+        if (taskId == null) {
+            return Result.fail("任务id不能为空");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        return Result.ok(!task.getIsSave().equals("0"));
+    }
+
+    /**
+     * 保存草稿按钮
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result saveDraftButton(String taskId, String taskName) {
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请先创建任务");
+        }
+        // 根据任务id查询任务
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (taskName != null){
+            task.setTaskName(taskName);
+        }
+        // 根据任务id和is_save字段为1的条件查询
+        QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+        wrapper.eq("task_id", taskId).eq("is_save", "1");
+        List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+        if (measureDataList == null) {
+            return Result.ok();
+        }
+        for (FMeasureData measureData : measureDataList) {
+            // 根据测量id,任务id还有is_save为1的条件查询分析数据
+            QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("measure_data_id", measureData.getId()).eq("task_id", taskId).eq("is_save", "1");
+            FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
+            analysisData.setIsSave("0");
+            boolean update = fMeasureAnalysisDataService.updateById(analysisData);
+            measureData.setIsSave("0");
+            boolean update1 = fMeasureDataService.updateById(measureData);
+            if(!(update&&update1)){
+                return Result.fail("保存草稿失败");
+            }
+        }
+        task.setEndSaveTime(LocalDateTime.now());
+        boolean update = fMeasureTaskService.updateById(task);
+        if ( update){
+            return Result.ok();
+        }else {
+            return Result.fail("保存草稿失败");
+        }
     }
 
     /**

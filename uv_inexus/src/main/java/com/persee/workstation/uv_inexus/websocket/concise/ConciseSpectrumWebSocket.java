@@ -595,6 +595,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             measureData.setMeasurementStartTime(Constants.startTime);
             measureData.setMeasurementEndTime(Constants.endTime);
             measureData.setIsDelete("0");
+            measureData.setIsSave("1");
             traceDataService.save(measureData);
 
             FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
@@ -610,6 +611,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             analysisData.setGrain(JSON.toJSONString(markings));
             analysisData.setColor("#000000");
             analysisData.setIsDelete("0");
+            analysisData.setIsSave("1");
             tMeasureAnalysisDataService.save(analysisData);
 
             FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
@@ -637,6 +639,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 measureData.setOriginalCalculationData(JSON.toJSONString(listData));
                 measureData.setMeasurementStartTime(Constants.startTime);
                 measureData.setMeasurementEndTime(Constants.endTime);
+                measureData.setIsSave("1");
                 traceDataService.updateById(measureData);
 
                 analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
@@ -644,6 +647,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 analysisData.setPeak(JSON.toJSONString(peakValleys));
                 analysisData.setGrain(JSON.toJSONString(markings));
                 analysisData.setColor("#000000");
+                analysisData.setIsSave("1");
                 tMeasureAnalysisDataService.updateById(analysisData);
 
             } else {
@@ -657,6 +661,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 measureData.setMeasurementStartTime(Constants.startTime);
                 measureData.setMeasurementEndTime(Constants.endTime);
                 measureData.setIsDelete("0");
+                measureData.setIsSave("1");
                 traceDataService.save(measureData);
 
                 FMeasureAnalysisData analysis = new FMeasureAnalysisData();
@@ -672,6 +677,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 analysis.setGrain(JSON.toJSONString(markings));
                 analysis.setColor("#000000");
                 analysis.setIsDelete("0");
+                analysis.setIsSave("1");
                 tMeasureAnalysisDataService.save(analysis);
 
                 FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();

@@ -70,6 +70,10 @@ public class FMeasureTask{
     @TableField(typeHandler = JacksonTypeHandler.class, value = "image_data")
     private String imageData;
 
+    // 是否保存(0.未保存,1.已保存)
+    @TableField("is_save")
+    private String isSave;
+
     // 是否删除
     @TableField("is_delete")
     private String isDelete;
