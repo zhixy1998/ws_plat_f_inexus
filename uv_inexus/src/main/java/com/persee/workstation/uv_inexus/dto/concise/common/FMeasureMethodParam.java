@@ -30,38 +30,29 @@ public class FMeasureMethodParam {
     private String methodName;
     @ApiModelProperty("测量类型")
 
-    // 测量类型
     private String measurementType;
+
     @ApiModelProperty("测量参数信息")
-
-    // 测量参数信息
     private JSONObject measurementParamInfo;
+
     @ApiModelProperty("是否共享方法(0.否 1.是)")
-
-    // 是否共享方法(0.否 1.是)
-    @JsonFormat(pattern = "yyyy-mm-dd hh:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private String isSharingMethod;
+
     @ApiModelProperty("方法创建时间")
-
-    //  方法创建时间
-    @JsonFormat(pattern = "yyyy-mm-dd hh:mm:ss")
-
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime methodCreateTime;
+
     @ApiModelProperty("方法创建人")
-
-    // 方法创建人
     private String methodCreator;
+
     @ApiModelProperty("方法使用时间")
-
-    // 方法使用时间
-    @JsonFormat(pattern = "yyyy-mm-dd hh:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime methodUseTime;
+
     @ApiModelProperty("是否草稿(0.不是草稿 1.是草稿)")
-
-    // 是否草稿(0.不是草稿 1.是草稿)
     private String isDraft;
-    @ApiModelProperty("使用状态")
 
-    // 使用状态
+    @ApiModelProperty("使用状态")
     private String useState;
 }
