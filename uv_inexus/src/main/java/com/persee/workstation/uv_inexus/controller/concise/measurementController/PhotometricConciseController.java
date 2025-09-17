@@ -46,8 +46,8 @@ public class PhotometricConciseController {
 
     @GetMapping("newDraft")
     @ApiOperation("新建草稿")
-    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestParam String taskId, @RequestParam String updateBy) {
-        return fPhotometricService.newDraft(taskId, updateBy);
+    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestParam String methodId, @RequestParam String updateBy) {
+        return fPhotometricService.newDraft(methodId, updateBy);
     }
 
     @PostMapping("checkParam")

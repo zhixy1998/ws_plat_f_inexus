@@ -2,27 +2,34 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
-import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
-import io.swagger.annotations.ApiModel;
+import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/")
 @RestController
-@ApiModel("简洁模式: 通用接口")
+@Api("简洁模式: 通用接口")
 public class ConciseCommonController {
 
     @Autowired
     private ConciseCommonService conciseCommonService;
 
-    @RequestMapping("applyMethod")
-    @ApiOperation("应用接口")
-    public Result applyMethod(@RequestBody FUseMethodDto paramDto) {
-        return conciseCommonService.applyMethod(paramDto);
+
+    @GetMapping("queryDefaultParameters")
+    @ApiOperation("查询默认参数")
+    public Result queryDefaultParameters(@RequestParam String measureType) {
+        return conciseCommonService.queryDefaultParameters(measureType);
+    }
+
+    @PostMapping("searchMethods")
+    @ApiOperation("查找方法按钮")
+    public Result<FMethodListWithPageVO> searchMethodButton(@RequestBody FQueryMethodWithPageDto dto) {
+        return conciseCommonService.searchMethodButton(dto);
     }
 
     @PostMapping("queryHistoryMethod")
@@ -40,6 +47,5 @@ public class ConciseCommonController {
     public Result<Page<FMeasureTask>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
         return conciseCommonService.queryHistoryTask(selectTaskDto);
     }
-
 
 }

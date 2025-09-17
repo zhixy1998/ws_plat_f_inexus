@@ -1,28 +1,38 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
-import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.vo.concise.common.FMethodInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Service
-        ("ConciseCommonService")
+@Service("ConciseCommonService")
 public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
@@ -33,22 +43,113 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private SysUserMapper userMapper;
     @Autowired
     private FMeasureTaskService fMeasureTaskService;
+    @Autowired
+    private TMeasureMethodService tMeasureMethodService;
+
+    @Autowired
+    private PhotometricService photometricService;
+
+    @Autowired
+    private RationService rationService;
+
+
+    /**
+     * 查询默认参数
+     * @param measureType
+     * @return
+     */
+    @Override
+    public Result queryDefaultParameters(String measureType) {
+        // 根据测量类型以及统一的"默认方法"的方法名称进行查询默认方法参数
+        QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
+        wrapper.eq("method_name", "默认方法");
+        wrapper.eq("measurement_type", measureType);
+        FMeasureMethod one = fMeasureMethodService.getOne(wrapper);
+        if (one == null) {
+            return Result.fail(measureType+"没有默认方法");
+        }
+        return Result.ok(one);
+
+    }
 
     @Override
-    public Result applyMethod(FUseMethodDto paramDto) {
-        // 根据测量类型进行区分
-        switch (paramDto.getMeasureType()) {
-            case "光度测量":
-                return Result.ok();
-            case "定量测量":
-                return Result.ok();
-            case "光谱扫描":
-                return spectrumConciseService.use(paramDto);
-            case "时间扫描":
-                return Result.ok();
-            default:
-                return Result.fail("请选择正确的光度模式");
+    public Result<FMethodListWithPageVO> searchMethodButton(FQueryMethodWithPageDto dto) {
+        // 对传入的参数进行校验
+        if (!StringUtils.hasText(dto.getUpdateBy())) {
+            return Result.fail("用户不能为空");
         }
+        if (!StringUtils.hasText(dto.getMeasureType())) {
+            return Result.fail("方法类型不能为空");
+        }
+
+        if (dto.getPageNum() == null || dto.getPageNum() < 1) {
+            dto.setPageNum(1);
+        }
+
+        if (dto.getPageSize() == null || dto.getPageSize() < 1) {
+            dto.setPageSize(10);
+        }
+        // 设置查询条件
+        QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
+        wrapper.eq("method_creator", dto.getUpdateBy());
+        wrapper.eq("measurement_type", dto.getMeasureType());
+        if (StringUtils.hasText(dto.getMethodName())) {
+            wrapper.like("method_name", dto.getMethodName());
+        }
+        // 分页查询
+        int pageNum = dto.getPageNum();
+        int pageSize = dto.getPageSize();
+        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), wrapper);
+        List<TMeasureMethod> records = page.getRecords();
+        FMethodListWithPageVO ans = new FMethodListWithPageVO();
+        ans.setTotal(page.getTotal());
+        ans.setSize(page.getSize());
+        ans.setCurrent(page.getCurrent());
+        if (dto.getMeasureType().equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())) {
+            List<FMethodInfoVO> infoVOList = new ArrayList<>();
+            for (TMeasureMethod record : records) {
+                FMethodInfoVO info = new FMethodInfoVO();
+                BeanUtils.copyProperties(record, info);
+
+                PhotometricParameter parameter = JSON.parseObject(record.getMeasurementParamInfo(), PhotometricParameter.class);
+                parameter.setLuminosityName(WaveLengthEnum.getName(parameter.getLuminosity()));
+                parameter.setSamplePoolWayName(RepeatConfigEnum.getName(parameter.getSamplePoolWay()));
+
+                info.setMethodParam(JSONObject.parseObject(JSONObject.toJSONString(parameter)));
+                infoVOList.add(info);
+
+            }
+            ans.setRecords(infoVOList);
+
+        } else if (dto.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
+            List<FMethodInfoVO> infoVOList = new ArrayList<>();
+            for (TMeasureMethod record : records) {
+                FMethodInfoVO info = new FMethodInfoVO();
+                BeanUtils.copyProperties(record, info);
+                RationParameter parameter = JSON.parseObject(record.getMeasurementParamInfo(), RationParameter.class);
+
+                parameter.setEnergyLampName(EnergyLampEnums.getName(parameter.getEnergyLamp()));
+                parameter.setCurveTypeName(RationCurveParamEnums.getName(parameter.getCurveType()));
+                parameter.setCoefficientModeName(RationCurveParamEnums.getName(parameter.getCoefficientMode()));
+                parameter.setEquationTypeName(RationCurveParamEnums.getName(parameter.getEquationType()));
+                parameter.setDifferentialModeName(RationCurveParamEnums.getName(parameter.getDifferentialMode()));
+                if (parameter.getZeroMethod() != null && !parameter.getZeroMethod().isEmpty()) {
+                    StringBuilder zeroName = new StringBuilder();
+                    for (String s : parameter.getZeroMethod()) {
+                        zeroName.append(RationCurveParamEnums.getName(s)).append(",");
+                    }
+                    zeroName.deleteCharAt(zeroName.length() - 1);
+                    parameter.setZeroMethodName(zeroName.toString());
+                }
+                info.setMethodParam(JSONObject.parseObject(JSONObject.toJSONString(parameter)));
+
+                infoVOList.add(info);
+            }
+            ans.setRecords(infoVOList);
+        } else {
+            return Result.fail("该类型暂未开发");
+        }
+        return Result.ok(ans);
     }
 
     @Override

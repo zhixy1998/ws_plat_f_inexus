@@ -3,7 +3,7 @@ package com.persee.workstation.uv_inexus.enums.measurementEnums;
 import lombok.Getter;
 
 @Getter
-public enum ChangeMethodTypeEnum {
+public enum PhotoMetricChangeMethodTypeEnum {
 
     newMethod("newMethod", "将为您生成新方法...."),
     measure("measure", "您已修改测量参数，将生成新方法并清理测量和分析数据，是否要保存测量和分析数据？"),
@@ -15,13 +15,13 @@ public enum ChangeMethodTypeEnum {
     private final String message;
 
 
-    ChangeMethodTypeEnum(String identity, String message){
+    PhotoMetricChangeMethodTypeEnum(String identity, String message){
         this.identity = identity;
         this.message = message;
     }
 
     public static String getMessage(String identity) {
-        for (ChangeMethodTypeEnum c : ChangeMethodTypeEnum.values()) {
+        for (PhotoMetricChangeMethodTypeEnum c : PhotoMetricChangeMethodTypeEnum.values()) {
             if (c.getIdentity().equals(identity)) {
                 return c.message;
             }
