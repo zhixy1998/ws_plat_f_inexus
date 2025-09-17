@@ -32,6 +32,10 @@ public class SystemDatabaseConfPO extends BasePO {
     @TableField(value = "wizard_mode")
     private Boolean wizardMode;
 
+    @ApiModelProperty("自动开机开关")
+    @TableField("auto_start")
+    private Boolean autoStart;
+
 
     @ApiModelProperty("主数据库ip")
     @TableField(value = "main_database_ip")

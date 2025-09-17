@@ -99,6 +99,7 @@ public class BaseLineWebSocket extends TextWebSocketHandler {
                 sendAndClose(session, "执行异常: " + e.getMessage());
             }
         });
+
     }
 
     /**

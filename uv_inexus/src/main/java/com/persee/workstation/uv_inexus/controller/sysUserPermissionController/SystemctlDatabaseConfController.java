@@ -1,9 +1,11 @@
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import com.persee.workstation.uv_inexus.dto.systemManageDto.InitSystemConf;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemDatabaseConfPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.impl.SystemctlDatabaseConfServiceImpl;
+import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +20,14 @@ public class SystemctlDatabaseConfController {
     private SystemctlDatabaseConfServiceImpl systemctlDatabaseConfServiceImpl;
 
     @PostMapping("update")
-    public Result<SystemDatabaseConfPO> updateSystemDatabaseConf(@RequestBody SystemDataBaseConfDTO systemDataBaseConfDTO) {
-       return systemctlDatabaseConfServiceImpl.updateSystemDatabaseConf(systemDataBaseConfDTO);
+    @ApiOperation("更改系统配置")
+    public Result<InitSystemConf> updateSystemDatabaseConf(@RequestBody InitSystemConf initSystemConf) {
+       return systemctlDatabaseConfServiceImpl.updateSystemDatabaseConf(initSystemConf);
+    }
+
+    @PostMapping("initConf")
+    @ApiOperation("获取系统初始化配置")
+    public Result<InitSystemConf> initSystemConf() {
+        return systemctlDatabaseConfServiceImpl.initSystemConf();
     }
 }

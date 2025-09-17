@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
+import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import io.swagger.annotations.ApiModel;
@@ -20,6 +21,4 @@ public class ConciseCommonController {
     public Result applyMethod(@RequestBody FUseMethodDto paramDto) {
         return conciseCommonService.applyMethod(paramDto);
     }
-
-
 }

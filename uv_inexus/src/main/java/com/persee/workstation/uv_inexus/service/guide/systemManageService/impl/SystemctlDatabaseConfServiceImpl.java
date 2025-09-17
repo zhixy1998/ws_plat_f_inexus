@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemDatabaseConfDAO;
+import com.persee.workstation.uv_inexus.dto.systemManageDto.InitSystemConf;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemDatabaseConfPO;
@@ -105,12 +106,24 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
         }
     }
 
-    public Result<SystemDatabaseConfPO> updateSystemDatabaseConf(SystemDataBaseConfDTO systemDataBaseConfDTO) {
+    public Result<InitSystemConf> updateSystemDatabaseConf(InitSystemConf initSystemConf) {
 
         SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
         if (systemDatabaseConfPO != null) {
-            BeanUtils.copyProperties(systemDataBaseConfDTO, systemDatabaseConfPO);
-            return Result.ok(systemDatabaseConfPO);
+            BeanUtils.copyProperties(initSystemConf, systemDatabaseConfPO);
+            dao.updateById(systemDatabaseConfPO);
+            return Result.ok(initSystemConf);
+        }
+        return Result.fail();
+
+    }
+
+    public Result<InitSystemConf> initSystemConf() {
+        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
+        if (systemDatabaseConfPO != null) {
+            InitSystemConf initSystemConf = new InitSystemConf();
+            BeanUtils.copyProperties(systemDatabaseConfPO,initSystemConf);
+            return Result.ok(initSystemConf);
         }
         return Result.fail();
 
