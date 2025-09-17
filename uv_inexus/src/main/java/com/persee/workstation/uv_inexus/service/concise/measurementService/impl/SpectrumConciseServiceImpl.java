@@ -185,7 +185,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
         QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
         wrapper.eq("method_creator", updateBy);
-        wrapper.eq("is_draft", "0");
         wrapper.eq("measurement_type", measureType);
         wrapper.orderByDesc("method_use_time");
         wrapper.last("LIMIT 1");
@@ -201,11 +200,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             method = fMeasureMethodService.getOne(queryWrapper);
             if (method == null) {
                 return Result.fail("没有默认方法");
-            }
-            method.setMethodUseTime(LocalDateTime.now());
-            boolean update = fMeasureMethodService.updateById(method);
-            if (!update) {
-                return Result.fail("更新方法失败");
             }
             BeanUtils.copyProperties(method, vo);
             FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
@@ -231,12 +225,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             vo.setMethodCreateTime(format);
             String format1 = method.getMethodUseTime().format(formatter);
             vo.setMethodUseTime(format1);
+            vo.setMethodId(method.getId());
             return Result.ok(vo);
         }
 
         // 根据方法id查询出最近创建的任务
         QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
-        taskWrapper.eq("method_id", method.getId());
+        taskWrapper.eq("method_key", method.getId());
         taskWrapper.orderByDesc("create_time");
         taskWrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
@@ -268,6 +263,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (task!=null){
             vo.setTaskId(task.getId());
         }
+        vo.setMethodId(method.getId());
         return Result.ok(vo);
     }
 
@@ -347,25 +343,56 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result use(FUseMethodDto paramDto) {
-        // 1. 判断来源
-        if ("0".equals(paramDto.getType())) {
-            return createNewMethod(paramDto);
+
+        if (paramDto.getMethodId2() != null){
+            FMeasureMethod method2 = fMeasureMethodService.getById(paramDto.getMethodId2());
+            if (method2 == null){
+                return Result.fail("方法不存在");
+            }
+            // 将方法的参数取出来
+            FSpectrumParameter parameter2 = JSON.parseObject(method2.getMeasurementParamInfo(), FSpectrumParameter.class);
+            FSpectrumParameter parameter = new FSpectrumParameter();
+            BeanUtils.copyProperties(paramDto.getParameter(), parameter);
+            boolean memberKeys =  compareParam(parameter2, parameter);
+            if( memberKeys){
+                if (method2.getId().equals(paramDto.getMethodId())){
+                    return Result.fail("请勿重复使用");
+                }else{
+                    method2.setMethodUseTime(LocalDateTime.now());
+                }
+            }else{
+                method2.setMethodUseTime(LocalDateTime.now());
+            }
+            boolean update = fMeasureMethodService.updateById(method2);
+            if (!update){
+                return Result.fail("应用失败");
+            }
+            return Result.ok(method2);
         }
 
-        // 2. 查询历史方法
         FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
-        if (method == null) {
-            return createNewMethod(paramDto); // 没有历史记录 → 新建
-        }
 
         FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
 
         FSpectrumParameter newParam = new FSpectrumParameter();
         // 将方法参数拷贝出来
-        BeanUtils.copyProperties(newParam, paramDto.getParameter());
+        BeanUtils.copyProperties(paramDto.getParameter(),newParam);
 
         // 3. 参数比较
         boolean sameParam = compareParam(parameter, newParam);
+
+        // 1. 判断来源
+        if ("0".equals(paramDto.getType())) {
+            if (sameParam) {
+                return Result.fail("方法参数一致");
+            }
+            return createNewMethod(paramDto);
+        }
+
+        // 2. 查询历史方法
+        if (method == null) {
+            return createNewMethod(paramDto); // 没有历史记录 → 新建
+        }
 
         if (sameParam) {
             if (method.getId().equals(paramDto.getMethodId())){
@@ -374,14 +401,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.ok(method);
             }
         }else{
-            if (paramDto.getState().equals("0")){
-            // 保存
-                return createNewMethod(paramDto);
-            }else{
-            // 覆盖
-                method.setMeasurementParamInfo(JSON.toJSONString(newParam));
-                return fMeasureMethodService.updateById(method) ? Result.ok() : Result.fail();
-            }
+            return createNewMethod(paramDto);
         }
     }
 
@@ -394,7 +414,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Override
     public Result whetherSaveData(String taskId, Boolean isSave) {
         if (taskId == null){
-            return Result.fail("请先创建草稿");
+            return Result.fail("没有草稿");
         }
         if (isSave){
             // 根据任务id查询测量数据表的测量数据
@@ -617,20 +637,26 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
         wrapper.eq("task_id", taskId).eq("is_save", "1");
         List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
-        if (measureDataList == null) {
-            return Result.ok();
+        if (measureDataList != null) {
+            for (FMeasureData measureData : measureDataList) {
+                measureData.setIsSave("0");
+                boolean update1 = fMeasureDataService.updateById(measureData);
+                if(!(update1)){
+                    return Result.fail("保存草稿失败");
+                }
+            }
         }
-        for (FMeasureData measureData : measureDataList) {
-            // 根据测量id,任务id还有is_save为1的条件查询分析数据
-            QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("measure_data_id", measureData.getId()).eq("task_id", taskId).eq("is_save", "1");
-            FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
-            analysisData.setIsSave("0");
-            boolean update = fMeasureAnalysisDataService.updateById(analysisData);
-            measureData.setIsSave("0");
-            boolean update1 = fMeasureDataService.updateById(measureData);
-            if(!(update&&update1)){
-                return Result.fail("保存草稿失败");
+        // 根据测量id,任务id还有is_save为1的条件查询分析数据
+        QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("task_id", taskId).eq("is_save", "1");
+        List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(queryWrapper);
+        if (analysisDataList != null) {
+            for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
+                fMeasureAnalysisData.setIsSave("0");
+                boolean update = fMeasureAnalysisDataService.updateById(fMeasureAnalysisData);
+                if(!(update)){
+                    return Result.fail("保存草稿失败");
+                }
             }
         }
         task.setEndSaveTime(LocalDateTime.now());
@@ -698,18 +724,23 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-        for (FTaskSpecimen specimen : taskSpecimen) {
-            if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
-                specimen.setDeleteType(deleteType);
-                LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
-                        .eq(FMeasureData::getTaskId, task.getId())
-                        .orderByDesc(FMeasureData::getSerialNumber);
-                List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
-                if (list != null && !list.isEmpty()) {
-                    FMeasureData one = list.get(0);
-                    one.setIsDelete(deleteType);
-                    fMeasureDataService.updateById(one);
+        if(taskSpecimen == null){
+            taskSpecimen = new ArrayList<>();
+        }
+        if (taskSpecimen != null){
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+                    specimen.setDeleteType(deleteType);
+                    LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
+                            .eq(FMeasureData::getTaskId, task.getId())
+                            .orderByDesc(FMeasureData::getSerialNumber);
+                    List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+                    if (list != null && !list.isEmpty()) {
+                        FMeasureData one = list.get(0);
+                        one.setIsDelete(deleteType);
+                        fMeasureDataService.updateById(one);
+                    }
                 }
             }
         }
@@ -755,7 +786,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 specimen.setDeleteType(createType);
                 specimen.setIsTested(noTested);
                 specimen.setSampleType(newSample.getSampleType());
-                log.info("新增的样品：{}", newSample);
                 fMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
                 taskSpecimen.add(specimen);
@@ -795,6 +825,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         List<FSampleListVo> listVos = new ArrayList<>();
+        if (taskSpecimen == null || taskSpecimen.isEmpty()) {
+            return Result.ok(listVos);
+        }
         // 判断是否是重复模式
         if ("不重复".equals(parameter.getRepetitionPattern())) {
             // 不重复模式
@@ -2342,7 +2375,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     }
 
     /**
-     * 创建新的任务
+     * 创建新的方法
      */
     private Result createNewMethod(FUseMethodDto paramDto){
         FMeasureMethod fMeasureMethod = new FMeasureMethod();
@@ -2354,11 +2387,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         fMeasureMethod.setMethodName(paramDto.getMeasureType()  + collect);
 
         FSpectrumParameter parameter = new FSpectrumParameter();
+        // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto.getParameter(), parameter);
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());
         fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());
+        fMeasureMethod.setMeasurementType(paramDto.getMeasureType());
         boolean save = fMeasureMethodService.save(fMeasureMethod);
         if (save) {
             return Result.ok(fMeasureMethod);

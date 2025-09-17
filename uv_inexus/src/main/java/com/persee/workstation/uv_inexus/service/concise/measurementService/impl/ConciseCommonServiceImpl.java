@@ -11,24 +11,25 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.SaveStateVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,6 +45,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private SysUserMapper userMapper;
     @Autowired
     private FMeasureTaskService fMeasureTaskService;
+    @Autowired
+    private FMeasureDataService fMeasureDataService;
+    @Autowired
+    private FMeasureAnalysisDataService fMeasureAnalysisDataService;
     @Autowired
     private TMeasureMethodService tMeasureMethodService;
 
@@ -152,6 +157,88 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("该类型暂未开发");
         }
         return Result.ok(ans);
+    }
+
+
+    /**
+     * 查询保存状态
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result querySaveState(String taskId) {
+        if (taskId == null){
+            return Result.fail("任务id不能为空");
+        }
+        SaveStateVo vo = new SaveStateVo();
+        // 根据任务id查询任务
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null){
+            return Result.fail("草稿不存在");
+        }
+        // 根据任务中的方法key查询方法
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null){
+            return Result.fail("方法不存在");
+        }
+        vo.setTaskName(task.getTaskName());
+        vo.setMethodName(method.getMethodName());
+        // 根据任务id查询测量数据和分析数据
+        List<FMeasureData> measureDataList = fMeasureDataService.list(new QueryWrapper<FMeasureData>().eq("task_id", taskId).eq("is_save", "1"));
+        List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("is_save", "1"));
+        if (!measureDataList.isEmpty() && !analysisDataList.isEmpty()){
+            vo.setSaveState(false);
+            return Result.ok(vo);
+        }
+        vo.setSaveState(true);
+        return Result.ok(vo);
+    }
+
+    /**
+     * 保存草稿按钮
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result saveDraftButton(String taskId) {
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("请先创建任务");
+        }
+        // 根据任务id查询任务
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        // 根据任务id和is_save字段为1的条件查询
+        QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+        wrapper.eq("task_id", taskId).eq("is_save", "1");
+        List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
+        if (measureDataList != null) {
+            for (FMeasureData measureData : measureDataList) {
+                measureData.setIsSave("0");
+                boolean update1 = fMeasureDataService.updateById(measureData);
+                if(!(update1)){
+                    return Result.fail("保存草稿失败");
+                }
+            }
+        }
+        // 根据测量id,任务id还有is_save为1的条件查询分析数据
+        QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("task_id", taskId).eq("is_save", "1");
+        List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(queryWrapper);
+        if (analysisDataList != null) {
+            for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
+                fMeasureAnalysisData.setIsSave("0");
+                boolean update = fMeasureAnalysisDataService.updateById(fMeasureAnalysisData);
+                if(!(update)){
+                    return Result.fail("保存草稿失败");
+                }
+            }
+        }
+        task.setEndSaveTime(LocalDateTime.now());
+        boolean update = fMeasureTaskService.updateById(task);
+        if ( update){
+            return Result.ok();
+        }else {
+            return Result.fail("保存草稿失败");
+        }
     }
 
     @Override
@@ -294,6 +381,26 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         BeanUtils.copyProperties(updateMethodDto, method);
         fMeasureMethodService.updateById(method);
         return Result.ok("修改成功");
+    }
+
+    @Override
+    public Result updateTask(UpdateTaskDto updateTaskDto) {
+        if (updateTaskDto == null) {
+            return Result.fail("参数不能为空");
+        }
+        String taskId = updateTaskDto.getTaskId();
+        FMeasureTask byId = fMeasureTaskService.getById(taskId);
+        if (byId == null) {
+            return Result.fail("任务不存在");
+        }
+        byId.setTaskName(updateTaskDto.getTaskName());
+        boolean update = fMeasureTaskService.updateById(byId);
+        if (update) {
+            return Result.ok("修改成功");
+        } else {
+            return Result.fail("修改失败");
+        }
+
     }
 
 

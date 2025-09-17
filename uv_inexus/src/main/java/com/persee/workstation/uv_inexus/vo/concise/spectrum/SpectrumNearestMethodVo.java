@@ -8,6 +8,9 @@ import lombok.Data;
 @Data
 public class SpectrumNearestMethodVo {
 
+    // 方法id
+    private String methodId;
+
     // 前处理Key
     private String preprocessKey;
 

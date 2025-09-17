@@ -33,6 +33,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectrumReportDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportDataVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -712,10 +713,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
 
             List<PeakValleyMarking> list = timeSweepService.queryReportFormData(taskId,sampleId);
-            List<Map<String, String>> dataList = new ArrayList<>();
+            List<Map<String, Object>> dataList = new ArrayList<>();
             int i = 1;
             for (PeakValleyMarking marking : list) {
-                Map<String, String> map = new HashMap<>();
+                Map<String, Object> map = new HashMap<>();
                 map.put("serialNumber", String.valueOf(i));
                 map.put("type", marking.getType());
                 map.put("waveLength", marking.getX());
@@ -796,10 +797,25 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 return Result.ok(vo);
             }
             case "光谱扫描":
-                return Result.fail("该类型任务暂未开发");
-
+            {
+                SpectrumReportDataVO vo = new SpectrumReportDataVO();
+                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), true);
+                if (result.getCode() == 200) {
+                    List<HeadVO> vos = result.getData();
+                    vo.setHeadList(vos);
+                }
+                return Result.ok(vo);
+            }
             case "时间扫描":
-                return Result.fail("时间扫描任务暂未开发");
+            {
+                TimeSweepReportDataVo vo = new TimeSweepReportDataVo();
+                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), true);
+                if (result.getCode() == 200) {
+                    List<HeadVO> vos = result.getData();
+                    vo.setHeadList(vos);
+                }
+                return Result.ok(vo);
+            }
             default:
                 return Result.fail("类型错误,请重新选择");
         }

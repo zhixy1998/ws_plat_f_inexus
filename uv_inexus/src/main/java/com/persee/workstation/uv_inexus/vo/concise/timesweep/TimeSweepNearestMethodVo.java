@@ -8,6 +8,9 @@ import lombok.Data;
 @Data
 public class TimeSweepNearestMethodVo {
 
+    // 方法id
+    private String methodId;
+
     // 前处理Key
     private String preprocessKey;
 
@@ -21,7 +24,7 @@ public class TimeSweepNearestMethodVo {
     private String measurementType;
 
     // 测量参数信息
-    private FTimeSweepParameterVo parameter;
+    private FTimeSweepParamterVo parameter;
 
     // 是否共享方法(0.否 1.是)
     private String isSharingMethod;

@@ -616,7 +616,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
             ans.addAll(preHead);
             return Result.ok(new ArrayList<>(ans));
         }

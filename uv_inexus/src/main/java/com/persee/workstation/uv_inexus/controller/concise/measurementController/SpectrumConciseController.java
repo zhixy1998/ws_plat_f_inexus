@@ -33,7 +33,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 
-import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController("spectrumConciseController")
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/spectrumScanning/concise/")
-@ApiModel("简洁模式: 光谱扫描")
+@Api("简洁模式: 光谱扫描")
 public class SpectrumConciseController {
 
     @Autowired
@@ -116,7 +116,7 @@ public class SpectrumConciseController {
     }
 
 
-    @GetMapping("querySampleDataList")
+    @GetMapping("sampleListPort")
     @ApiOperation("查询样品数据列表")
     public Result queryNearestSampleData(@RequestParam String taskId,
                                          @RequestParam(required = false) String type,
@@ -130,7 +130,7 @@ public class SpectrumConciseController {
         return spectrumConciseService.deleteSampleListPort(taskId,sampleId,analysisId);
     }
 
-    @GetMapping("queryAnalysisDataList")
+    @GetMapping("changeTheListPort")
     @ApiOperation("查询分析数据列表")
     public Result queryNearestMeasureData(@RequestParam String taskId,
                                           @RequestParam(required = false) String type,
