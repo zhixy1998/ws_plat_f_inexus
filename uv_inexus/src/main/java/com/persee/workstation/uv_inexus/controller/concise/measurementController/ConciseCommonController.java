@@ -3,13 +3,15 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/")
 @RestController
@@ -44,7 +46,7 @@ public class ConciseCommonController {
     }
     @PostMapping("queryHistoryTask")
     @ApiOperation("历史草稿")
-    public Result<Page<FMeasureTask>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
+    public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
         return conciseCommonService.queryHistoryTask(selectTaskDto);
     }
 

@@ -31,6 +31,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service("ConciseCommonService")
 public class ConciseCommonServiceImpl implements ConciseCommonService {
@@ -71,6 +72,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         return Result.ok(one);
 
     }
+
 
     @Override
     public Result<FMethodListWithPageVO> searchMethodButton(FQueryMethodWithPageDto dto) {
@@ -181,6 +183,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         fMeasureMethodPage.getRecords().forEach(fMeasureMethod -> {
             FMeasureMethodParam fMeasureMethodParam = new FMeasureMethodParam();
             BeanUtils.copyProperties(fMeasureMethod, fMeasureMethodParam);
+            String measurementParamInfo = fMeasureMethod.getMeasurementParamInfo();
+
+            JSONObject jsonObject = JSONObject.parseObject(measurementParamInfo);
+
+            fMeasureMethodParam.setMeasurementParamInfo(jsonObject);
             dtoList.add(fMeasureMethodParam);
         });
 
@@ -191,51 +198,90 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     }
 
-    @Override
-    public Result<FMeasureMethodParam> detailInformation(String methodName, String methodType) {
-        LambdaQueryWrapper<FMeasureMethod> fMeasureMethodLambdaQueryWrapper = new LambdaQueryWrapper<>();
-      fMeasureMethodLambdaQueryWrapper.eq(FMeasureMethod::getMethodName, methodName).eq(FMeasureMethod::getMeasurementType,methodType);
-        FMeasureMethod fMeasureMethod = fMeasureMethodService.getOne(fMeasureMethodLambdaQueryWrapper);
-        String measurementParamInfo = fMeasureMethod.getMeasurementParamInfo();
-        JSONObject jsonObject = JSONObject.parseObject(measurementParamInfo);
-        FMeasureMethodParam fMeasureMethodParam = new FMeasureMethodParam();
-        BeanUtils.copyProperties(fMeasureMethod, fMeasureMethodParam);
-        fMeasureMethodParam.setMeasurementParamInfo(jsonObject);
-        return Result.ok(fMeasureMethodParam);
 
-
-    }
 
     @Override
-    public Result<Page<FMeasureTask>> queryHistoryTask(SelectTaskDto selectTaskDto) {
+    public Result<Page<FMeasureTaskDTO>> queryHistoryTask(SelectTaskDto selectTaskDto) {
         String selectKey = selectTaskDto.getSelectKey();
         String methodType = selectTaskDto.getMethodType();
         String userName = selectTaskDto.getUpdateBy();
         Integer pageNum = selectTaskDto.getPageNum();
         Integer pageSize = selectTaskDto.getPageSize();
+
         SysUserPO sysUserPO = userMapper.selectByUsername(userName);
+        if (sysUserPO == null) {
+            return Result.fail("用户不存在");
+        }
+
         String userId = sysUserPO.getId();
         LambdaQueryWrapper<FMeasureTask> fMeasureTaskLambdaQueryWrapper = new LambdaQueryWrapper<>();
         fMeasureTaskLambdaQueryWrapper.eq(FMeasureTask::getMeasureType, methodType)
-                .eq(FMeasureTask::getUserId,userId);
+                .eq(FMeasureTask::getUserId, userId);
+
         if (selectKey != null) {
             fMeasureTaskLambdaQueryWrapper.like(FMeasureTask::getTaskName, selectKey);
         }
-        Page<FMeasureTask> page = new Page<>(pageNum,pageSize);
 
+        Page<FMeasureTask> page = new Page<>(pageNum, pageSize);
         Page<FMeasureTask> fMeasureTaskPage = fMeasureTaskService.page(page, fMeasureTaskLambdaQueryWrapper);
-        return Result.ok(fMeasureTaskPage);
+
+        // 手动转换分页数据
+        Page<FMeasureTaskDTO> fMeasureTaskDTOPage = convertToDtoPage(fMeasureTaskPage);
+
+        return Result.ok(fMeasureTaskDTOPage);
     }
 
+    /**
+     * 将 FMeasureTask 的分页对象转换为 FMeasureTaskDTO 的分页对象
+     */
+    private Page<FMeasureTaskDTO> convertToDtoPage(Page<FMeasureTask> fMeasureTaskPage) {
+        Page<FMeasureTaskDTO> dtoPage = new Page<>();
+        // 复制分页信息
+        BeanUtils.copyProperties(fMeasureTaskPage, dtoPage, "records");
+
+        // 手动转换records列表
+        List<FMeasureTaskDTO> dtoList = fMeasureTaskPage.getRecords().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+
+        dtoPage.setRecords(dtoList);
+        return dtoPage;
+    }
+
+    /**
+     * 将单个 FMeasureTask 转换为 FMeasureTaskDTO
+     */
+    private FMeasureTaskDTO convertToDto(FMeasureTask entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        FMeasureTaskDTO dto = new FMeasureTaskDTO();
+        // 复制基本属性
+        BeanUtils.copyProperties(entity, dto);
+
+        // 设置方法名称
+        String methodKey = entity.getMethodKey();
+        if (methodKey != null) {
+            LambdaQueryWrapper<FMeasureMethod> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+            lambdaQueryWrapper.eq(FMeasureMethod::getId, methodKey);
+            FMeasureMethod method = fMeasureMethodService.getOne(lambdaQueryWrapper);
+            if (method != null) {
+                dto.setMethodName(method.getMethodName());
+            }
+        }
+
+        return dto;
+    }
     @Override
     public Result<String> updateMethod(UpdateMethodDto updateMethodDto) {
-        if (updateMethodDto == null){
+        if (updateMethodDto == null) {
             return Result.fail("参数不能为空");
         }
         String methodName = updateMethodDto.getMethodName();
         List<FMeasureMethod> methods = fMeasureMethodService.list();
         for (FMeasureMethod fMeasureMethod : methods) {
-            String everyMethodName= fMeasureMethod.getMethodName();
+            String everyMethodName = fMeasureMethod.getMethodName();
             if (everyMethodName.equals(methodName)) {
                 return Result.fail("方法名已存在");
             }
@@ -250,6 +296,4 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
 
-
-
-    }
+}

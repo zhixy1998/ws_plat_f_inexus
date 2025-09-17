@@ -44,6 +44,8 @@ public class FMeasureMethodParam {
     @ApiModelProperty("方法创建时间")
 
     //  方法创建时间
+    @JsonFormat(pattern = "yyyy-mm-dd hh:mm:ss")
+
     private LocalDateTime methodCreateTime;
     @ApiModelProperty("方法创建人")
 
