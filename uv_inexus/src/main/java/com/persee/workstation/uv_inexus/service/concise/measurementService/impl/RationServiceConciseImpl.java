@@ -3318,26 +3318,36 @@ public class RationServiceConciseImpl implements RationConciseService {
             XWPFTableRow row = table.createRow();
             rowIndex++;
             // 第0列：序号
-            row.getCell(0).setText(String.valueOf(rowIndex));
+            XWPFTableCell indexCell = row.getCell(0);
+            if (indexCell != null) {
+                indexCell.setText(String.valueOf(rowIndex));
+            }
 
-            // 填充其他列（与表头顺序对应）
+            // 填充其他列（从1开始，与表头对应）
             for (int i = 1; i < columnCount; i++) {
-                FHeadVO head = heads.get(i);
-                String cellData = String.valueOf(map.getOrDefault(head.getIdentity(), ""));
+                // 1. 获取当前列对应的表头信息
+                FHeadVO head = i < heads.size() ? heads.get(i) : null;
+                if (head == null) {
+                    continue; // 表头不存在则跳过
+                }
+                
+                // 2. 获取原始数据（不做默认值处理，保留null）
+                String identity = head.getIdentity();
+                Object originalValue = map != null ? map.get(identity) : null;
+                
+                // 3. 原始值直接转换为字符串（不做任何额外处理）
+                String cellData;
+                if (originalValue == null) {
+                    cellData = ""; // null值保留空字符串
+                } else {
+                    cellData = originalValue.toString(); // 原值直接转换
+                }
 
-                // 特殊字段格式化（复用原逻辑）
-                if ("sampleType".equals(head.getIdentity())) {
-                    cellData = SampleTypeEnum.getName(cellData);
+                // 4. 仅处理单元格为空的情况（避免空指针）
+                XWPFTableCell cell = row.getCell(i);
+                if (cell != null) {
+                    cell.setText(cellData);
                 }
-                if ("sampleLocation".equals(head.getIdentity())) {
-                    cellData = "样品" + cellData;
-                }
-                // 空值处理
-                if (cellData == null || "null".equals(cellData) || cellData.isEmpty()) {
-                    cellData = "-";
-                }
-
-                row.getCell(i).setText(cellData);
             }
         }
 

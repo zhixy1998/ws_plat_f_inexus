@@ -1,38 +1,32 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
-import com.alibaba.excel.EasyExcel;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.TypeReference;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
-import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
-import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
-import com.persee.workstation.uv_inexus.util.DataCountUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
-import com.persee.workstation.uv_inexus.vo.measurementVo.*;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xwpf.usermodel.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
@@ -43,15 +37,73 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.io.*;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureData;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureAnalysisDataService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureDataService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureSampleService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
+import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RepeatMeasureData;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service("photometricService")
@@ -1461,20 +1513,24 @@ public class PhotometricServiceImpl implements PhotometricService {
             // 填充其他列（与表头顺序对应）
             for (int i = 1; i < columnCount; i++) {
                 HeadVO head = heads.get(i);
-                String cellData = String.valueOf(map.getOrDefault(head.getIdentity(), ""));
-
-                // 特殊字段格式化（复用原逻辑）
-                if ("sampleType".equals(head.getIdentity())) {
-                    cellData = SampleTypeEnum.getName(cellData);
-                }
-                if ("sampleLocation".equals(head.getIdentity())) {
-                    cellData = "样品" + cellData;
-                }
-                // 空值处理
-                if ("null".equals(cellData) || cellData.isEmpty()) {
+                String identity = head.getIdentity();
+                
+                // 1. 获取原始值（不做默认值替换）
+                Object originalValue = map.get(identity);
+                
+                // 2. 处理空值：null或空字符串用'-'代替，其他值保持原始
+                String cellData;
+                if (originalValue == null) {
+                    // 原始值为null时用'-'
                     cellData = "-";
+                } else {
+                    // 转换为字符串
+                    String originalStr = originalValue.toString();
+                    // 空字符串或"null"用'-'，其他值保持原始
+                    cellData = originalStr.trim().isEmpty() || "null".equals(originalStr) ? "-" : originalStr;
                 }
 
+                // 3. 写入单元格
                 row.getCell(i).setText(cellData);
             }
         }
@@ -1483,16 +1539,27 @@ public class PhotometricServiceImpl implements PhotometricService {
         for (XWPFTableRow row : table.getRows()) {
             for (XWPFTableCell cell : row.getTableCells()) {
                 XWPFParagraph paragraph1 = cell.getParagraphArray(0);
+                if (paragraph1 == null) { // 若段落为null，通过单元格的段落列表获取（POI正确用法）
+                    List<XWPFParagraph> paras = cell.getParagraphs();
+                    if (paras == null || paras.isEmpty()) {
+                        paragraph1 = cell.addParagraph(); // 无段落时新增
+                    } else {
+                        paragraph1 = paras.get(0);
+                    }
+                }
                 paragraph1.setAlignment(ParagraphAlignment.CENTER);
                 cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
             }
         }
 
         // 写入文件（修复原逻辑的流关闭问题）
+        if (file == null) {
+            throw new IllegalArgumentException("文件对象为null，无法写入Word");
+        }
         try (FileOutputStream out = new FileOutputStream(file)) {
             doc.write(out);
         } finally {
-            doc.close(); // 关闭文档对象，释放资源
+            doc.close();
         }
     }
 
@@ -1504,30 +1571,36 @@ public class PhotometricServiceImpl implements PhotometricService {
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
 
-            // 1. 写入表头（制表符分隔）
+            // 1. 写入表头（制表符分隔，处理空表头）
             String headerLine = heads.stream()
-                    .map(HeadVO::getName)
+                    .map(head -> StringUtils.hasText(head.getName()) ? head.getName() : "未命名列") // 表头空值保护
                     .collect(Collectors.joining("\t"));
             writer.write(headerLine);
             writer.newLine(); // 换行
 
-            // 2. 写入数据（与表头顺序一致）
+            // 2. 写入数据（与表头顺序一致，仅空值用"-"，其他保留原始值）
             for (Map<String, Object> map : data) {
                 List<String> rowData = new ArrayList<>();
                 for (HeadVO head : heads) {
-                    String cellData = String.valueOf(map.getOrDefault(head.getIdentity(), ""));
+                    String identity = head.getIdentity();
+                    // 1. 获取原始值（不默认替换为空字符串，保留null）
+                    Object originalValue = map.get(identity);
+                    String cellData;
 
-                    // 特殊字段格式化（与Word保持一致）
-                    if ("sampleType".equals(head.getIdentity())) {
-                        cellData = SampleTypeEnum.getName(cellData);
-                    }
-                    if ("sampleLocation".equals(head.getIdentity())) {
-                        cellData = "样品" + cellData;
-                    }
-                    if ("null".equals(cellData) || cellData.isEmpty()) {
+                    // 2. 空值处理：null/空字符串/"null" 统一替换为"-"
+                    if (originalValue == null) {
                         cellData = "-";
+                    } else {
+                        // 原始值转字符串（不做任何额外格式化）
+                        String originalStr = originalValue.toString();
+                        // 处理空字符串或"null"（不区分大小写）
+                        cellData = originalStr.trim().isEmpty() || "null".equalsIgnoreCase(originalStr) 
+                                ? "-" 
+                                : originalStr;
                     }
 
+                    // 3. 清除TXT列分裂风险的特殊字符（制表符/换行符，不修改原始内容）
+                    cellData = cellData.replace("\t", " ").replace("\r", "").replace("\n", "");
                     rowData.add(cellData);
                 }
                 // 制表符分隔列，写入一行
@@ -1538,38 +1611,38 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     /**
-     * 简化版：生成 XLSX 文件（仅导出数据，无复杂样式）
+     * 简化版：生成 XLSX 文件（仅导出数据，无复杂样式，空值用"-"）
      */
     private void generateExcelFile(File file, List<HeadVO> heads, List<Map<String, Object>> data) throws Exception {
-        // 1. 转换表头（处理空表头）
+        // 1. 转换表头（处理空表头，避免显示异常）
         List<List<String>> excelHeads = new ArrayList<>();
         for (HeadVO head : heads) {
             List<String> singleHead = new ArrayList<>();
+            // 表头空值时显示“未命名列”，避免Excel表头为空
             singleHead.add(StringUtils.hasText(head.getName()) ? head.getName() : "未命名列");
             excelHeads.add(singleHead);
         }
 
-        // 2. 转换数据（处理空值和特殊字符）
+        // 2. 转换数据（核心：保留原始值，仅空值用"-"）
         List<List<Object>> excelData = new ArrayList<>();
         for (Map<String, Object> map : data) {
             List<Object> rowData = new ArrayList<>();
             for (HeadVO head : heads) {
-                Object value = map.get(head.getIdentity());
-                String cellData = "-"; // 默认空值显示
+                String identity = head.getIdentity();
+                // 1. 获取原始值（不预设默认值，完全保留数据源状态）
+                Object originalValue = map.get(identity);
+                String cellData;
 
-                if (value != null) {
-                    cellData = String.valueOf(value);
-                    // 特殊字段格式化
-                    if ("sampleType".equals(head.getIdentity())) {
-                        cellData = SampleTypeEnum.getName(cellData);
-                    }
-                    if ("sampleLocation".equals(head.getIdentity())) {
-                        cellData = "样品" + cellData;
-                    }
-                    // 清除特殊字符（避免Excel解析异常）
+                // 2. 空值处理：null/空字符串/"null" 统一替换为"-"
+                if (originalValue == null) {
+                    cellData = "-";
+                } else {
+                    // 原始值转字符串（不做枚举转换、前缀拼接等额外处理）
+                    cellData = originalValue.toString();
+                    // 清除Excel解析异常的特殊字符（换行/制表符，不修改原始内容）
                     cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                    // 空字符串处理
-                    if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                    // 处理空字符串或"null"（不区分大小写）
+                    if (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
                         cellData = "-";
                     }
                 }
@@ -1579,15 +1652,14 @@ public class PhotometricServiceImpl implements PhotometricService {
             excelData.add(rowData);
         }
 
-        // 3. 写入Excel（使用OutputStream确保流正确关闭）
+        // 3. 写入Excel（try-with-resources自动关闭流，避免资源泄漏）
         try (OutputStream out = new FileOutputStream(file)) {
             EasyExcel.write(out)
                     .head(excelHeads)
-                    .sheet("测量数据")
+                    .sheet("测量数据") // Excel工作表名称
                     .doWrite(excelData);
         }
     }
-
 
     // ---------------------- 工具方法 ----------------------
     /**

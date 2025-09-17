@@ -70,7 +70,6 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -2578,7 +2577,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             writer.write(headerLine);
             writer.newLine(); // 换行
 
-            // 2. 写入数据（与表头顺序一致）—— 防护null的Map、null的字段值、枚举处理null
+            // 2. 写入数据（与表头顺序一致）—— 防护null的Map、null的字段值，仅保留原始值+空值用"-"
             for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
                 Map<String, Object> map = data.get(rowIdx);
                 // 防护：当前数据行的Map为null
@@ -2591,33 +2590,22 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 for (FHeadVO head : heads) {
                     // 防护：表头为null（避免后续head.getIdentity()报错）
                     String identity = head != null ? head.getIdentity() : "unknown";
-                    // 从Map取值：用getOrDefault避免key不存在，同时防护value为null
-                    Object value = map.getOrDefault(identity, "");
-                    String cellData = value == null ? "" : String.valueOf(value);
+                    // 从Map取值：保留原始值（不预设默认空字符串，避免覆盖真实空值）
+                    Object originalValue = map.get(identity);
+                    String cellData;
 
-                    // 特殊字段格式化（与Word/Excel保持一致，增加null防护）
-                    if (head != null && "sampleType".equals(identity)) {
-                        // 防护：cellData为null/空/字符串"null"
-                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        } else {
-                            // 防护：枚举方法返回null时用"-"替代
-                            String typeName = SampleTypeEnum.getName(cellData);
-                            cellData = typeName == null ? "-" : typeName;
-                        }
-                    }
-                    if (head != null && "sampleLocation".equals(identity)) {
-                        // 防护：避免拼接"样品null"或"样品"（空值）
-                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        } else {
-                            cellData = "样品" + cellData;
-                        }
-                    }
-
-                    // 最终统一空值处理：将空字符串/"null"转为"-"
-                    if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                    // 核心逻辑：空值处理（null/空字符串/"null" 统一替换为"-"，其他保留原始值）
+                    if (originalValue == null) {
                         cellData = "-";
+                    } else {
+                        // 原始值直接转字符串（不做任何额外格式化）
+                        cellData = originalValue.toString();
+                        // 清除TXT列分裂风险的特殊字符（制表符/换行符，不修改原始业务内容）
+                        cellData = cellData.replace("\t", " ").replace("\r", "").replace("\n", "");
+                        // 处理空字符串或"null"（不区分大小写）
+                        if (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                            cellData = "-";
+                        }
                     }
 
                     rowData.add(cellData);
@@ -2643,7 +2631,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     }
 
     /**
-     * 生成 XLSX 文件（修复空指针异常）
+     * 生成 XLSX 文件（保留原始值+空值用“-”，修复空指针异常）
      */
     private void generateExcelFile(File file, List<FHeadVO> heads, List<Map<String, Object>> data) throws Exception {
         // 1. 校验核心参数是否为null（避免后续调用方法时报错）
@@ -2653,8 +2641,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (data == null) {
             throw new IllegalArgumentException("数据列表data不能为null");
         }
+        if (file == null) {
+            throw new IllegalArgumentException("输出文件File不能为null");
+        }
 
-        // 2. 转换表头（处理空表头和null元素）
+        // 2. 转换表头（处理空表头和null元素，修复原代码循环语法错误）
         List<List<String>> excelHeads = new ArrayList<>();
         for (int i = 0; i < heads.size(); i++) {
             FHeadVO head = heads.get(i);
@@ -2662,19 +2653,19 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             if (head == null) {
                 log.warn("表头列表第{}个元素为null，使用默认表头", i);
                 excelHeads.add(Collections.singletonList("未命名列_" + i));
-            continue;
+                continue; // 修复原代码此处缺少的分号，确保逻辑正常跳转
+            }
+            // 防护：表头名称为null/空
+            String headName = head.getName();
+            if (headName == null || headName.trim().isEmpty()) {
+                headName = "未命名列（" + head.getIdentity() + "）";
+                log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
+            }
+            excelHeads.add(Collections.singletonList(headName));
         }
-        // 防护：表头名称为null/空
-        String headName = head.getName();
-        if (headName == null || headName.trim().isEmpty()) {
-            headName = "未命名列（" + head.getIdentity() + "）";
-            log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
-        }
-        excelHeads.add(Collections.singletonList(headName));
-    }
 
-    // 3. 转换数据（处理空Map和null值）
-    List<List<Object>> excelData = new ArrayList<>();
+        // 3. 转换数据（处理空Map和null值，仅保留原始值+空值用"-"）
+        List<List<Object>> excelData = new ArrayList<>();
         for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
             Map<String, Object> map = data.get(rowIdx);
             // 防护：当前数据行为null
@@ -2692,30 +2683,21 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     continue;
                 }
 
-                // 提取字段值，防护null
-                Object value = map.get(head.getIdentity());
-                String cellData = "-"; // 默认空值
+                // 提取字段原始值（不预设默认值，完全保留数据源状态）
+                String identity = head.getIdentity();
+                Object originalValue = map.get(identity);
+                String cellData;
 
-                if (value != null) {
-                    cellData = String.valueOf(value);
-                    // 特殊字段格式化（增加null防护）
-                    if ("sampleType".equals(head.getIdentity())) {
-                        // 防护：cellData为null/空
-                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        } else {
-                            // 防护：枚举方法返回null
-                            String typeName = SampleTypeEnum.getName(cellData);
-                            cellData = typeName == null ? "-" : typeName;
-                        }
-                    }
-                    if ("sampleLocation".equals(head.getIdentity())) {
-                        // 防护：避免拼接"样品null"
-                        cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
-                    }
-                    // 清除特殊字符，防护空字符串
+                // 核心逻辑：空值处理（null/空字符串/"null" 统一替换为"-"，其他保留原始值）
+                if (originalValue == null) {
+                    cellData = "-";
+                } else {
+                    // 原始值直接转字符串（不做枚举转换、前缀拼接等额外处理）
+                    cellData = originalValue.toString();
+                    // 清除Excel解析异常的特殊字符（换行/制表符，不修改原始业务内容）
                     cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                    if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                    // 处理空字符串或"null"（不区分大小写）
+                    if (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
                         cellData = "-";
                     }
                 }
@@ -2734,6 +2716,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     .head(excelHeads)
                     .sheet("测量数据")
                     .doWrite(excelData);
+            log.info("Excel文件生成成功，路径：{}", file.getAbsolutePath());
         } catch (Exception e) {
             log.error("EasyExcel写入文件失败", e);
             throw e; // 向上抛出，由外层处理

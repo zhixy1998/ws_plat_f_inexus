@@ -179,7 +179,7 @@ public class PhotometricConciseController {
         }
         
         // 导出失败时，返回错误信息
-        return ResponseEntity.badRequest().body("导出失败：" );
+        return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }
 
     @GetMapping("queryNewMethodTaskInfo")

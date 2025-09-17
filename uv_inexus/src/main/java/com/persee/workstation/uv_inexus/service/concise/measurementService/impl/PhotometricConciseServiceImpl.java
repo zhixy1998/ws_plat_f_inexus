@@ -1946,7 +1946,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
      */
     public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType) {
         log.info("开始导出，taskId: {}, fileType: {}", taskId, fileType);
-        // 1. 基础参数校验（复用原逻辑）
+        // 1. 基础参数校验（复用原逻辑，无修改）
         if (!StringUtils.hasText(taskId)) {
             return R.fail("缺少任务id");
         }
@@ -1955,50 +1955,61 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             log.error("导出失败：任务不存在，taskId: {}", taskId);
             return R.fail("任务不存在");
         }
-        // 处理fileType默认值和合法性
+        // 处理fileType默认值和合法性（复用原逻辑）
         if (!StringUtils.hasText(fileType)) {
-            fileType = "word"; // 默认导出word
+            fileType = "word"; 
         } else {
             fileType = fileType.toLowerCase();
         }
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
             return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
         }
-        // 处理allDisplay默认值
         if (allDisplay == null) {
             allDisplay = true;
         }
 
-        // 2. 准备表头和数据（完全复用原downloadWord逻辑）
+        // 2. 准备表头和数据（重点修改：空数据处理）
         String methodId = task.getMethodKey();
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             return R.fail("测量方法不存在");
         }
 
-        // 构建表头（与原逻辑一致）
+        // 构建表头（与原逻辑一致，先加动态表头，再在第0位加序号列）
         List<FHeadVO> heads = new ArrayList<>();
-        // 添加动态表头
         List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
         heads.addAll(vos);
-        // 最前面加序号列（所有格式统一需要）
-        heads.add(0, new FHeadVO("序号", "serialNumber"));
+        heads.add(0, new FHeadVO("序号", "serialNumber")); // 序号列固定在第0位
 
-        // 查询数据（复用原逻辑）
+        // 3. 查询数据（关键修改：空数据时构造“空行”）
         FQueryDataDTO queryDataDTO = new FQueryDataDTO();
         queryDataDTO.setOption(new ArrayList<>());
         queryDataDTO.setTaskId(taskId);
         queryDataDTO.setAllDisplay(allDisplay);
         List<Map<String, Object>> data = queryData(queryDataDTO).getData();
+
+        // === 核心调整：无数据时手动构造“空行”（与表头列数匹配） ===
         if (data == null || data.isEmpty()) {
-            return R.fail("没有可导出的数据");
-        }
-        // 给数据加序号（与序号列对应）
-        for (int i = 0; i < data.size(); i++) {
-            data.get(i).put("serialNumber", i + 1);
+            log.warn("无实际数据，构造空行导出，taskId: {}", taskId);
+            data = new ArrayList<>(); // 初始化空列表，避免后续NPE
+            Map<String, Object> emptyRow = new HashMap<>();
+            // 1. 序号列设为1（空数据时仅1行空数据，序号为1）
+            emptyRow.put("serialNumber", 1);
+            // 2. 为所有动态表头（除序号列）设置空值（确保列数与表头一致）
+            for (FHeadVO head : vos) { // vos是动态表头（不含序号列）
+                if (head != null && StringUtils.hasText(head.getIdentity())) {
+                    emptyRow.put(head.getIdentity(), ""); // 空字符串占位，避免单元格空指针
+                }
+            }
+            data.add(emptyRow); // 将空行加入数据列表
+        } else {
+            // 有数据时正常加序号（原逻辑保留）
+            for (int i = 0; i < data.size(); i++) {
+                data.get(i).put("serialNumber", i + 1);
+            }
         }
 
-        // 3. 按格式生成文件（核心分支）
+        // 4. 按格式生成文件（原逻辑保留，无需修改）
         String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
         File file = new File(fileName);
         try {
@@ -2013,10 +2024,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     generateExcelFile(file, heads, data);
                     break;
             }
-            return R.ok(file);
+            return R.ok(file); // 无论有无数据，只要文件生成成功就返回200
         } catch (Exception e) {
             log.error("文件生成失败", e);
-            // 异常时删除无效文件
             if (file.exists()) {
                 file.delete();
             }
@@ -2092,69 +2102,33 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         int rowIndex = 0;
         for (Map<String, Object> map : data) {
-            if (map == null) { // 跳过空数据行
-                log.warn("跳过空数据行，rowIndex: {}", rowIndex + 1);
-                continue;
-            }
             XWPFTableRow row = table.createRow();
             rowIndex++;
-            // 第0列：序号（确保非空）
-            XWPFTableCell indexCell = row.getCell(0);
-            if (indexCell != null) {
-                indexCell.setText(String.valueOf(rowIndex));
-            }
+            // 第0列：序号
+            row.getCell(0).setText(String.valueOf(rowIndex));
 
-            // 填充其他列（与Excel逻辑对齐）
+            // 填充其他列（与表头顺序对应）
             for (int i = 1; i < columnCount; i++) {
-                XWPFTableCell cell = row.getCell(i);
-                if (cell == null) {
-                    cell = row.createCell();
-                }
                 FHeadVO head = heads.get(i);
-                if (head == null) { // 跳过空表头列
-                    cell.setText("");
-                    continue;
-                }
-
-                // 1. 获取原始值（与Excel一致，不提前默认空字符串）
                 String identity = head.getIdentity();
-                Object originalValue = map.get(identity); // 不使用getOrDefault，保留null以便后续判断
+                
+                // 1. 获取原始值（不做默认值替换）
+                Object originalValue = map.get(identity);
+                
+                // 2. 处理空值：null或空字符串用'-'代替，其他值保持原始
                 String cellData;
-
-                // 2. 原始值处理（与Excel完全一致：null→空字符串，数字转字符串）
                 if (originalValue == null) {
-                    cellData = "";
-                } else if (originalValue instanceof Number) {
-                    cellData = originalValue.toString();
-                } else if (originalValue instanceof Boolean) {
-                    cellData = originalValue.toString();
-                } else {
-                    cellData = originalValue.toString();
-                }
-
-                // 3. 特殊字段处理（修复核心问题）
-                if ("sampleType".equals(identity)) {
-                    // 先处理枚举，再判断空值（避免枚举值被空值判断覆盖）
-                    String enumName = SampleTypeEnum.getName(cellData);
-                    cellData = (enumName != null) ? enumName : cellData; // 枚举无效时保留原始值
-                } else if ("sampleLocation".equals(identity)) {
-                    // 移除"样品"前缀，直接返回原始值（与Excel一致）
-                    cellData = cellData; // 无需拼接，直接使用原始值
-                }
-
-                // 4. 空值处理（最后执行，避免覆盖有效数据）
-                // 仅当值为null/空字符串/"null"时才设为"-"（与Excel逻辑对齐）
-                if (cellData == null || cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                    // 原始值为null时用'-'
                     cellData = "-";
+                } else {
+                    // 转换为字符串
+                    String originalStr = originalValue.toString();
+                    // 空字符串或"null"用'-'，其他值保持原始
+                    cellData = originalStr.trim().isEmpty() || "null".equals(originalStr) ? "-" : originalStr;
                 }
 
-                // 5. 清除特殊字符（避免表格错乱）
-                if (cellData != null) {
-                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                }
-
-                // 写入单元格
-                cell.setText(cellData != null ? cellData : "-");
+                // 3. 写入单元格
+                row.getCell(i).setText(cellData);
             }
         }
 
@@ -2190,87 +2164,43 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
      * 生成TXT文件（UTF-8编码，制表符分隔）
      */
     private void generateTxtFile(File file, List<FHeadVO> heads, List<Map<String, Object>> data) throws Exception {
-        // 前置校验
-        if (file == null) {
-            throw new IllegalArgumentException("文件对象为null，无法写入TXT");
-        }
-        if (heads == null || heads.isEmpty()) {
-            throw new IllegalArgumentException("表头列表为空，无法生成TXT");
-        }
-        if (data == null || data.isEmpty()) {
-            throw new IllegalArgumentException("数据列表为空，无法生成TXT");
-        }
-
-        // 使用BufferedWriter，UTF-8避免中文乱码
+        // 使用BufferedWriter保证效率，UTF-8避免中文乱码
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
 
-            // 1. 写入表头（处理表头为null的情况，清除制表符避免列分裂）
+            // 1. 写入表头（制表符分隔，处理空表头）
             String headerLine = heads.stream()
-                    .map(head -> {
-                        if (head == null || head.getName() == null) {
-                            return "未命名列";
-                        }
-                        return head.getName().replace("\t", " "); // 清除表头中的制表符
-                    })
+                    .map(head -> StringUtils.hasText(head.getName()) ? head.getName() : "未命名列") // 表头空值保护
                     .collect(Collectors.joining("\t"));
             writer.write(headerLine);
-            writer.newLine();
+            writer.newLine(); // 换行
 
-            // 2. 写入数据（与Excel/Word逻辑完全对齐）
+            // 2. 写入数据（与表头顺序一致，仅空值用"-"，其他保留原始值）
             for (Map<String, Object> map : data) {
-                if (map == null) {
-                    log.warn("跳过空数据行");
-                    continue;
-                }
                 List<String> rowData = new ArrayList<>();
                 for (FHeadVO head : heads) {
-                    if (head == null) {
-                        rowData.add("");
-                        continue;
-                    }
-
-                    // 1. 获取原始值（不提前默认空字符串，保留null）
                     String identity = head.getIdentity();
+                    // 1. 获取原始值（不默认替换为空字符串，保留null）
                     Object originalValue = map.get(identity);
                     String cellData;
 
-                    // 2. 原始值处理（与Excel一致）
+                    // 2. 空值处理：null/空字符串/"null" 统一替换为"-"
                     if (originalValue == null) {
-                        cellData = "";
-                    } else if (originalValue instanceof Number) {
-                        cellData = originalValue.toString();
-                    } else if (originalValue instanceof Boolean) {
-                        cellData = originalValue.toString();
-                    } else {
-                        cellData = originalValue.toString();
-                    }
-
-                    // 3. 特殊字段处理（修复核心问题）
-                    if ("sampleType".equals(identity)) {
-                        // 先处理枚举，再判断空值
-                        String enumName = SampleTypeEnum.getName(cellData);
-                        cellData = (enumName != null) ? enumName : cellData;
-                    } else if ("sampleLocation".equals(identity)) {
-                        // 移除"样品"前缀，直接返回原始值
-                        cellData = cellData;
-                    }
-
-                    // 4. 空值处理（最后执行）
-                    if (cellData == null || cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
                         cellData = "-";
+                    } else {
+                        // 原始值转字符串（不做任何额外格式化）
+                        String originalStr = originalValue.toString();
+                        // 处理空字符串或"null"（不区分大小写）
+                        cellData = originalStr.trim().isEmpty() || "null".equalsIgnoreCase(originalStr) 
+                                ? "-" 
+                                : originalStr;
                     }
 
-                    // 5. 清除特殊字符（避免TXT列分裂）
-                    if (cellData != null) {
-                        cellData = cellData.replace("\t", " ") // 关键：清除制表符，避免列数异常
-                                        .replace("\r", "")
-                                        .replace("\n", "");
-                    }
-
-                    rowData.add(cellData != null ? cellData : "-");
+                    // 3. 清除TXT列分裂风险的特殊字符（制表符/换行符，不修改原始内容）
+                    cellData = cellData.replace("\t", " ").replace("\r", "").replace("\n", "");
+                    rowData.add(cellData);
                 }
-                // 写入一行数据（制表符分隔）
+                // 制表符分隔列，写入一行
                 writer.write(String.join("\t", rowData));
                 writer.newLine();
             }
@@ -2278,81 +2208,55 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     }
 
     /**
-     * 简化版：生成 XLSX 文件（仅导出数据，无复杂样式）
+     * 简化版：生成 XLSX 文件（仅导出数据，无复杂样式，空值用"-"）
      */
     private void generateExcelFile(File file, List<FHeadVO> heads, List<Map<String, Object>> data) throws Exception {
-        // 前置校验
-        if (heads == null || heads.isEmpty()) {
-            throw new IllegalArgumentException("表头列表不能为空");
-        }
-        if (data == null || data.isEmpty()) {
-            throw new IllegalArgumentException("数据列表不能为空");
-        }
-        if (file == null) {
-            throw new IllegalArgumentException("文件对象不能为空");
-        }
-
-        // 1. 转换表头（保留原始表头名称）
+        // 1. 转换表头（处理空表头，避免显示异常）
         List<List<String>> excelHeads = new ArrayList<>();
         for (FHeadVO head : heads) {
             List<String> singleHead = new ArrayList<>();
-            // 表头为null时显示"未命名列"，否则显示原始名称
-            singleHead.add(head != null ? (head.getName() != null ? head.getName() : "未命名列") : "未命名列");
+            // 表头空值时显示“未命名列”，避免Excel表头为空
+            singleHead.add(StringUtils.hasText(head.getName()) ? head.getName() : "未命名列");
             excelHeads.add(singleHead);
         }
 
-        // 2. 转换数据（核心：保留原始值，数字转字符串，不做额外格式化）
+        // 2. 转换数据（核心：保留原始值，仅空值用"-"）
         List<List<Object>> excelData = new ArrayList<>();
         for (Map<String, Object> map : data) {
-            if (map == null) {
-                log.warn("跳过空数据行");
-                continue;
-            }
-
             List<Object> rowData = new ArrayList<>();
             for (FHeadVO head : heads) {
-                // 获取字段标识（identity）
-                String identity = head != null ? head.getIdentity() : null;
-                // 获取原始值（不做默认值处理，保留null）
-                Object value = identity != null ? map.get(identity) : null;
-
+                String identity = head.getIdentity();
+                // 1. 获取原始值（不预设默认值，完全保留数据源状态）
+                Object originalValue = map.get(identity);
                 String cellData;
-                if (value == null) {
-                    // null值直接保留空字符串（不替换为"-"）
-                    cellData = "";
-                } else {
-                    // 数字类型直接转为字符串（保留原始数字格式）
-                    if (value instanceof Number) {
-                        cellData = value.toString();
-                    } 
-                    // 布尔值特殊处理（保留true/false原始值）
-                    else if (value instanceof Boolean) {
-                        cellData = value.toString();
-                    } 
-                    // 其他类型直接转为字符串
-                    else {
-                        cellData = value.toString();
-                    }
 
-                    // 仅清除可能导致Excel解析错误的特殊字符（不修改原始内容）
+                // 2. 空值处理：null/空字符串/"null" 统一替换为"-"
+                if (originalValue == null) {
+                    cellData = "-";
+                } else {
+                    // 原始值转字符串（不做枚举转换、前缀拼接等额外处理）
+                    cellData = originalValue.toString();
+                    // 清除Excel解析异常的特殊字符（换行/制表符，不修改原始内容）
                     cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
+                    // 处理空字符串或"null"（不区分大小写）
+                    if (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                        cellData = "-";
+                    }
                 }
 
-                // 添加到行数据（确保非null，空值用空字符串）
                 rowData.add(cellData);
             }
             excelData.add(rowData);
         }
 
-        // 3. 写入Excel文件
+        // 3. 写入Excel（try-with-resources自动关闭流，避免资源泄漏）
         try (OutputStream out = new FileOutputStream(file)) {
             EasyExcel.write(out)
                     .head(excelHeads)
-                    .sheet("测量数据")
+                    .sheet("测量数据") // Excel工作表名称
                     .doWrite(excelData);
         }
     }
-
 
 
     // ---------------------- 工具方法 ----------------------
