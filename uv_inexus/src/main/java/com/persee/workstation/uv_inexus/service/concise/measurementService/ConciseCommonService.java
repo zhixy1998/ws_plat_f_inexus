@@ -3,7 +3,6 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 
 /**
@@ -13,9 +12,7 @@ public interface ConciseCommonService {
 
     Result<Page<FMeasureMethodParam>> queryHistoryMethod(QueryMethodDto queryMethodDto);
 
-    Result<FMeasureMethodParam> detailInformation(String methodName, String methodType);
-
-    Result<Page<FMeasureTask>> queryHistoryTask(SelectTaskDto selectTaskDto);
+    Result<Page<FMeasureTaskDTO>> queryHistoryTask(SelectTaskDto selectTaskDto);
 
     Result<String> updateMethod(UpdateMethodDto updateMethodDto);
 
