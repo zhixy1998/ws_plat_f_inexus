@@ -52,12 +52,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
     @Override
-    public Result<Page<FMeasureMethodDto>> queryHistoryMethod(QueryMethodDto queryMethodDto) {
+    public Result<Page<FMeasureMethodParam>> queryHistoryMethod(QueryMethodDto queryMethodDto) {
         String methodType = queryMethodDto.getMethodType();
         Integer pageSize = queryMethodDto.getPageSize();
         Integer pageNum = queryMethodDto.getPageNum();
         String userName = queryMethodDto.getUpdateBy();
         String selectKey = queryMethodDto.getSelectKey();
+
         Page<FMeasureMethod> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<FMeasureMethod> methodLambdaQueryWrapper = new LambdaQueryWrapper<>();
         methodLambdaQueryWrapper.eq(FMeasureMethod::getMeasurementType, methodType)
@@ -65,19 +66,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (selectKey != null) {
             methodLambdaQueryWrapper.like(FMeasureMethod::getMethodName, selectKey);
         }
+
         Page<FMeasureMethod> fMeasureMethodPage = fMeasureMethodService.page(page, methodLambdaQueryWrapper);
-        Page<FMeasureMethodDto> dtoPage = new Page<>();
+        Page<FMeasureMethodParam> dtoPage = new Page<>();
+
         dtoPage.setCurrent(fMeasureMethodPage.getCurrent());
         dtoPage.setSize(fMeasureMethodPage.getSize());
         dtoPage.setTotal(fMeasureMethodPage.getTotal());
         dtoPage.setPages(fMeasureMethodPage.getPages());
 
 
-        List<FMeasureMethodDto> dtoList = new ArrayList<>();
+        List<FMeasureMethodParam> dtoList = new ArrayList<>();
         fMeasureMethodPage.getRecords().forEach(fMeasureMethod -> {
-            FMeasureMethodDto fMeasureMethodDto = new FMeasureMethodDto();
-            BeanUtils.copyProperties(fMeasureMethod, fMeasureMethodDto);
-            dtoList.add(fMeasureMethodDto);
+            FMeasureMethodParam fMeasureMethodParam = new FMeasureMethodParam();
+            BeanUtils.copyProperties(fMeasureMethod, fMeasureMethodParam);
+            dtoList.add(fMeasureMethodParam);
         });
 
         dtoPage.setRecords(dtoList);
@@ -128,6 +131,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (updateMethodDto == null){
             return Result.fail("参数不能为空");
         }
+        String methodName = updateMethodDto.getMethodName();
+        List<FMeasureMethod> methods = fMeasureMethodService.list();
+        for (FMeasureMethod fMeasureMethod : methods) {
+            String everyMethodName= fMeasureMethod.getMethodName();
+            if (everyMethodName.equals(methodName)) {
+                return Result.fail("方法名已存在");
+            }
+        }
         String methodId = updateMethodDto.getMethodId();
         LambdaQueryWrapper<FMeasureMethod> fMeasureMethodLambdaQueryWrapper = new LambdaQueryWrapper<>();
         LambdaQueryWrapper<FMeasureMethod> eq = fMeasureMethodLambdaQueryWrapper.eq(FMeasureMethod::getId, methodId);
@@ -137,17 +148,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         return Result.ok("修改成功");
     }
 
-    @Override
-    public Result<String> authMethodName(String methodName) {
-        List<FMeasureMethod> methods = fMeasureMethodService.list();
-        for (FMeasureMethod fMeasureMethod : methods) {
-            String everyMethodName= fMeasureMethod.getMethodName();
-            if (everyMethodName.equals(methodName)) {
-                return Result.fail("方法名已存在");
-            }
-        }
-        return Result.ok();
-    }
+
 
 
     }

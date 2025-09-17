@@ -1,7 +1,7 @@
 package com.persee.workstation.uv_inexus.dto.concise.common;
 
 import com.alibaba.fastjson.JSONObject;
-import com.baomidou.mybatisplus.annotation.TableField;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -39,6 +39,7 @@ public class FMeasureMethodParam {
     @ApiModelProperty("是否共享方法(0.否 1.是)")
 
     // 是否共享方法(0.否 1.是)
+    @JsonFormat(pattern = "yyyy-mm-dd hh:mm:ss")
     private String isSharingMethod;
     @ApiModelProperty("方法创建时间")
 
@@ -51,6 +52,7 @@ public class FMeasureMethodParam {
     @ApiModelProperty("方法使用时间")
 
     // 方法使用时间
+    @JsonFormat(pattern = "yyyy-mm-dd hh:mm:ss")
     private LocalDateTime methodUseTime;
     @ApiModelProperty("是否草稿(0.不是草稿 1.是草稿)")
 

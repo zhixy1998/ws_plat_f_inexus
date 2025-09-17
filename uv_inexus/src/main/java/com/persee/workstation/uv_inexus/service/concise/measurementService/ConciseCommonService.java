@@ -14,7 +14,7 @@ public interface ConciseCommonService {
     // 应用接口
     Result applyMethod(FUseMethodDto paramDto);
 
-    Result<Page<FMeasureMethodDto>> queryHistoryMethod(QueryMethodDto queryMethodDto);
+    Result<Page<FMeasureMethodParam>> queryHistoryMethod(QueryMethodDto queryMethodDto);
 
     Result<FMeasureMethodParam> detailInformation(String methodName, String methodType);
 
@@ -22,5 +22,5 @@ public interface ConciseCommonService {
 
     Result<String> updateMethod(UpdateMethodDto updateMethodDto);
 
-    Result<String> authMethodName(String methodName);
+
 }

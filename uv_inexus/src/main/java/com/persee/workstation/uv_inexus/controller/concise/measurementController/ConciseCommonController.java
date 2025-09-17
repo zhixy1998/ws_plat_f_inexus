@@ -27,26 +27,13 @@ public class ConciseCommonController {
 
     @PostMapping("queryHistoryMethod")
     @ApiOperation("历史方法")
-    public Result<Page<FMeasureMethodDto>> queryHistoryMethod(@RequestBody QueryMethodDto queryMethodDto) {
+    public Result<Page<FMeasureMethodParam>> queryHistoryMethod(@RequestBody QueryMethodDto queryMethodDto) {
        return conciseCommonService.queryHistoryMethod(queryMethodDto);
     }
     @PostMapping("updateMethod")
     @ApiOperation("修改方法名称")
     public Result<String> updateMethod(@RequestBody UpdateMethodDto updateMethodDto) {
         return conciseCommonService.updateMethod(updateMethodDto);
-    }
-    @PostMapping("authMethodName")
-    @ApiOperation("校验方法名称")
-    public Result<String> authMethodName(String methodName) {
-      return   conciseCommonService.authMethodName(methodName);
-
-    }
-
-    @GetMapping("detailInformation")
-    @ApiOperation("点击展示详细测量参数")
-    public Result<FMeasureMethodParam> detailInformation(@RequestParam("method") String methodName,
-                                                         @RequestParam("methodType") String methodType) {
-        return conciseCommonService.detailInformation(methodName, methodType);
     }
     @PostMapping("queryHistoryTask")
     @ApiOperation("历史草稿")
