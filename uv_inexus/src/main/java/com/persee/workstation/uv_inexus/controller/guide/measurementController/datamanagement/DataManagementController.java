@@ -1,12 +1,9 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController.datamanagement;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.TaskManagementMapper;
-import com.persee.workstation.uv_inexus.dto.measurementDto.FormulaCheckParam;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
@@ -24,8 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class DataManagementController {
     @Autowired
     private DataManagementService dataManagementService;
-    @Autowired
-    private TaskManagementMapper taskManagementMapper;
+
 
     @PostMapping("Tasks")
     @ApiOperation("查询已完成和未完成任务")
