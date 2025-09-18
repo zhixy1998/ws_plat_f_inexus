@@ -165,7 +165,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         Page<FMeasureMethod> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<FMeasureMethod> methodLambdaQueryWrapper = new LambdaQueryWrapper<>();
         methodLambdaQueryWrapper.eq(FMeasureMethod::getMeasurementType, methodType)
-                .eq(FMeasureMethod::getMethodCreator, userName);
+                .eq(FMeasureMethod::getMethodCreator, userName)
+                .orderByDesc(FMeasureMethod::getMethodUseTime);
         if (selectKey != null) {
             methodLambdaQueryWrapper.like(FMeasureMethod::getMethodName, selectKey);
         }
@@ -216,7 +217,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         String userId = sysUserPO.getId();
         LambdaQueryWrapper<FMeasureTask> fMeasureTaskLambdaQueryWrapper = new LambdaQueryWrapper<>();
         fMeasureTaskLambdaQueryWrapper.eq(FMeasureTask::getMeasureType, methodType)
-                .eq(FMeasureTask::getUserId, userId);
+                .eq(FMeasureTask::getUserId, userId).orderByDesc(FMeasureTask::getEndSaveTime);
 
         if (selectKey != null) {
             fMeasureTaskLambdaQueryWrapper.like(FMeasureTask::getTaskName, selectKey);
