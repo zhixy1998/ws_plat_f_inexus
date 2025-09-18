@@ -3,9 +3,11 @@ package com.persee.workstation.uv_inexus.vo.concise.ration;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class FFRationMethodParam extends FRationParameter {
+public class FRationMethodParam extends FRationParameter {
     @ApiModelProperty("方法ID")
     private String methodId;
 

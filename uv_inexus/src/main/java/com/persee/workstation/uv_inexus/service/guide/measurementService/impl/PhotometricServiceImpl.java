@@ -1,44 +1,5 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
-import static com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum.*;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -49,41 +10,17 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureDataService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -92,20 +29,29 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
-import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RepeatMeasureData;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
-
+import com.persee.workstation.uv_inexus.vo.measurementVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.io.*;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service("photometricService")
@@ -743,8 +689,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<HeadVO> other = headsMap.get(TableHeadILocateEnums.other.getIdentity());
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
-            HeadVO samplingTimeHead = new HeadVO(SampleTableEnum.samplingTime.getName(), SampleTableEnum.samplingTime.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.samplingTime.getName());
-            HeadVO remark = new HeadVO(SampleTableEnum.remark.getName(), SampleTableEnum.remark.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.remark.getName());
+            HeadVO samplingTimeHead = new HeadVO(SampleTableEnum.SAMPLING_TIME.getName(), SampleTableEnum.SAMPLING_TIME.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.SAMPLING_TIME.getName());
+            HeadVO remark = new HeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.REMARK.getName());
             other.add(samplingTimeHead);
             other.add(remark);
         }
@@ -892,11 +838,11 @@ public class PhotometricServiceImpl implements PhotometricService {
             TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
             //样品信息
-            map.put(sampleId.getIdentity(), sample.getId());
-            map.put(SampleTableEnum.sampleName.getIdentity(), sample.getSampleName());
-            map.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber());
-            map.put(SampleTableEnum.sampleType.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
-            map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+ sample.getSampleLocation());
+            map.put(SampleTableEnum.SAMPLE_ID.getIdentity(), sample.getId());
+            map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
+            map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
+            map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
 
 
             if (StringUtils.hasText(sample.getNewColData())){
@@ -976,8 +922,8 @@ public class PhotometricServiceImpl implements PhotometricService {
 
                                 Map<String, String> children = new HashMap<>(formattedData);
                                 String[] split = wlData.getIdentity().split("-");
-                                children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
-                                children.put(SampleTableEnum.samplingTime.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                                children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                                children.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
                                 childrenList.putIfAbsent(wlData.getIdentity(), children);
                             }
@@ -1014,7 +960,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
         analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, task.getId())
-                .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                .eq(TMeasureAnalysisData::getSampleKey, sample.getId())
                 .orderByDesc(TMeasureAnalysisData::getAnalysisName).last("limit 1");
 
         TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
@@ -1089,21 +1035,21 @@ public class PhotometricServiceImpl implements PhotometricService {
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
@@ -1115,18 +1061,18 @@ public class PhotometricServiceImpl implements PhotometricService {
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
                         children.put(mapName, originData.get(mapName));
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
                         RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getSd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
                         RepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getRsd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);

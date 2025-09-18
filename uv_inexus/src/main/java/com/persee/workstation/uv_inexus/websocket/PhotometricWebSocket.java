@@ -365,7 +365,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
             if (session.isOpen()) {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("sampleId", sampleKey);
-                jsonObject.put("key", SampleTableEnum.sampleNumber.getIdentity());
+                jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
                 jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
                 jsonObject.put("value", sample.getSampleNumber() + "-" + (i + 1));
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
@@ -521,7 +521,7 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         jsonObject.put("sampleId", sample.getId());
         repetitionTime = repetitionTime + 1;
 
-        jsonObject.put("key", SampleTableEnum.sampleNumber.getIdentity());
+        jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
         jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + repetitionTime);
         jsonObject.put("value", sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
@@ -531,25 +531,25 @@ public class PhotometricWebSocket extends TextWebSocketHandler {
         jsonObject.put("value", String.valueOf(v));
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
-        jsonObject.put("key", SampleTableEnum.sampleNumber.getIdentity());
+        jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
         jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + (repetitionTime + 1));
         jsonObject.put("value", sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
         jsonObject.put("key", key);
         jsonObject.put("identity", DataIdentityEnums.sd.getIdentity() + "-" + (repetitionTime + 1));
-        jsonObject.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber()+ "-" + DataIdentityEnums.sd.getName());
+        jsonObject.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber()+ "-" + DataIdentityEnums.sd.getName());
         jsonObject.put("value", sd == null ? "未检出" :String.valueOf(sd));
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
-        jsonObject.put("key", SampleTableEnum.sampleNumber.getIdentity());
+        jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
         jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + (repetitionTime + 2));
         jsonObject.put("value", sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
         jsonObject.put("key", key);
         jsonObject.put("identity", DataIdentityEnums.rsd.getIdentity() + "-" + (repetitionTime + 2));
-        jsonObject.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber()+ "-" + DataIdentityEnums.rsd.getName());
+        jsonObject.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber()+ "-" + DataIdentityEnums.rsd.getName());
         jsonObject.put("value", rsd == null ? "未检出" :String.valueOf(rsd));
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 

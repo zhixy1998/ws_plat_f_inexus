@@ -262,8 +262,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                             if (empty) {
                                 FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
-                                sumAbsData.setHeadName(SampleTableEnum.sumAbs.getName());
-                                sumAbsData.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                                sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                                sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                                 sumAbsData.setColValue(ansData.getColValue() - minuend);
                                 fitCurveData.add(sumAbsData);
                             } else {
@@ -321,7 +321,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     for (FRationSaveCountDataInfo info : emptyDataList) {
                         String sampleId = info.getSampleId();
                         for (FRationCountDataInfo countDatum : info.getCountData()) {
-                            if (countDatum.getIdentity().equals(SampleTableEnum.sumAbs.getIdentity())) {
+                            if (countDatum.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
                                 sampleSend(session, sampleId, countDatum.getIdentity(), null, String.valueOf(countDatum.getColValue()));
                             }
                         }
@@ -336,8 +336,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                     if (empty) {
                         FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
-                        sumAbsData.setHeadName(SampleTableEnum.sumAbs.getName());
-                        sumAbsData.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                        sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                        sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                         double v = absData.getColValue() - minuend;
                         sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
                         fitCurveData.add(sumAbsData);
@@ -505,7 +505,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     for (FRationSaveCountDataInfo info : emptyDataList) {
                         String sampleId = info.getSampleId();
                         for (FRationCountDataInfo countDatum : info.getCountData()) {
-                            if (countDatum.getIdentity().equals(SampleTableEnum.sumAbs.getIdentity())) {
+                            if (countDatum.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
                                 sampleSend(session, sampleId, countDatum.getIdentity(), null, String.valueOf(countDatum.getColValue()));
                             }
                         }
@@ -526,8 +526,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                     if (empty) {
                         FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
-                        sumAbsData.setHeadName(SampleTableEnum.sumAbs.getName());
-                        sumAbsData.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                        sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                        sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                         double v = absData.getColValue() - minuend;
                         sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
                         countValue = sumAbsData.getColValue();
@@ -543,8 +543,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     if (fittingInfo != null) {
                         String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
                         FRationCountDataInfo valueData = new FRationCountDataInfo();
-                        valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
-                        valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                         valueData.setColValue(ans==null? null : Double.valueOf(ans));
                         measureAbsDataList.add(valueData);
                     }
@@ -588,7 +588,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     List<FRationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), FRationCountDataInfo.class);
                     if (empty) {
                         for (FRationCountDataInfo dataInfo : countDataInfoList) {
-                            if (dataInfo.getIdentity().equals(SampleTableEnum.sumAbs.getIdentity())) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
                                 BeanUtils.copyProperties(dataInfo, toCountData);
                                 newData.add(dataInfo);
                             }
@@ -616,8 +616,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             //拟合浓度计算
             String valued = rationService.valueCalculate(curveData, toCountData.getColValue(), parameter.getEquationType(), digit);
             FRationCountDataInfo valueData = new FRationCountDataInfo();
-            valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
-            valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+            valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+            valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
             valueData.setColValue(valued==null? null : Double.valueOf(valued));
             newData.add(valueData);
 
@@ -669,8 +669,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         empty = true;
 
         FRationCountDataInfo yAbs = new FRationCountDataInfo();
-        yAbs.setHeadName(SampleTableEnum.sumAbs.getName());
-        yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+        yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
+        yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
         yAbs.setColValue(0.0);
 
         List<FRationCountDataInfo> currentList = new ArrayList<>();
@@ -1040,7 +1040,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         repetitionTime = repetitionTime + 1;
 
         if (isAvg) {
-            jsonObject.put("key", SampleTableEnum.sampleNumber.getIdentity());
+            jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
             jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + repetitionTime);
             jsonObject.put("value", sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
@@ -1052,7 +1052,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         }
 
         if (isSd) {
-            jsonObject.put("key", SampleTableEnum.sampleNumber.getIdentity());
+            jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
             jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + (repetitionTime + 1));
             jsonObject.put("value", sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
@@ -1064,7 +1064,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         }
 
         if (isRsd) {
-            jsonObject.put("key", SampleTableEnum.sampleNumber.getIdentity());
+            jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
             jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + (repetitionTime + 2));
             jsonObject.put("value", sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));

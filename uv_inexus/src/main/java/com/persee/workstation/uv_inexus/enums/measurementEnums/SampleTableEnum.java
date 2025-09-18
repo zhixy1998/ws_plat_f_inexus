@@ -5,20 +5,20 @@ import lombok.Getter;
 @Getter
 public enum SampleTableEnum {
 
-    sampleId("sampleId", "样品ID"),
-    sampleNumber("sampleNumber", "样品编号"),
-    sampleType("sampleType", "样品类型"),
-    sampleKind("sampleKind", "样品类别"),
-    sampleName("sampleName", "样品名称"),
-    dilutionRatio("dilutionRatio", "稀释倍数"),
-    amount("amount", "取样量"),
-    normalConcentration("normalConcentration", "标准浓度"),
-    fitConcentration("fitConcentration", "拟合浓度"),
-    sampleLocation("sampleLocation", "样品位置"),
+    SAMPLE_ID("sampleId", "样品ID"),
+    SAMPLE_NUMBER("sampleNumber", "样品编号"),
+    SAMPLE_TYPE("sampleType", "样品类型"),
+    SAMPLE_KIND("sampleKind", "样品类别"),
+    SAMPLE_NAME("sampleName", "样品名称"),
+    DILUTION_RATIO("dilutionRatio", "稀释倍数"),
+    AMOUNT("amount", "取样量"),
+    NORMAL_CONCENTRATION("normalConcentration", "标准浓度"),
+    FIT_CONCENTRATION("fitConcentration", "拟合浓度"),
+    SAMPLE_LOCATION("sampleLocation", "样品位置"),
     Abs("Abs", "Abs"),
-    sumAbs("sumAbs", "▲Abs"),
-    remark("remark", "备注"),
-    samplingTime("samplingTime", "采样时间");
+    SUM_Abs("sumAbs", "▲Abs"),
+    REMARK("remark", "备注"),
+    SAMPLING_TIME("samplingTime", "采样时间");
 
     private final String identity;
 

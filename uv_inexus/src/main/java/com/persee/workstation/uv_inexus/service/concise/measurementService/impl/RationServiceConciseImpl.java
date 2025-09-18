@@ -97,6 +97,12 @@ public class RationServiceConciseImpl implements RationConciseService {
     private String createType;
 
     @Value("0")
+    String noSave;
+
+    @Value("1")
+    String saved;
+
+    @Value("0")
     private String stand;
 
     @Value("1")
@@ -110,6 +116,12 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Value("11")
     String defaultProjectId;
+
+    @Value("default")
+    String defaultMethodProjectName;
+
+    @Value("文件数据")
+    String newTaskName;
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
@@ -181,24 +193,33 @@ public class RationServiceConciseImpl implements RationConciseService {
         String userId = sysUserPO.getId();
 
         FMeasureTask task = new FMeasureTask();
-        task.setTaskName("新建光度测量草稿" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        task.setTaskName(newTaskName + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         task.setIsDelete(createType);
-        task.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
+        task.setMeasureType(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription());
         task.setMethodKey(methodId);
         task.setUserId(userId);
         task.setProjectItemKey(defaultProjectId);
         task.setCreateTime(LocalDateTime.now());
 
-        List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
-        FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
-        snapshot.setTaskHeads(preHead);
-        task.setTableInfo(JSON.toJSONString(snapshot));
+        List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+        List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
+
+        FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
+
+        FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
+        standSnapshot.setTaskHeads(standHead);
+        rationTaskHeadSnapShot.setStandHead(standSnapshot);
+
+        FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
+        unKnowSnapshot.setTaskHeads(unknownHead);
+        rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
+
+        task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
 
         boolean save = fMeasureTaskService.save(task);
         FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
         vo.setMethodId(task.getMethodKey());
 
-//        vo.setProjectId(task.getProjectItemKey());
         if (save) {
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
@@ -225,11 +246,20 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.ok(vo);
         }
 
-        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
-            log.info("更换方法");
+        FMeasureMethod currentMethod = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultMethodProjectName)) {
+            log.info("生成新方法");
             vo.setParamChange(true);
-            vo.setMessage(RationChangeMethodTypeEnums.changeMethod.getMessage());
-            vo.setClearDataRange(RationChangeMethodTypeEnums.changeMethod.getIdentity());
+            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
+            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
+            return Result.ok(vo);
+        }
+
+        if (!StringUtils.hasText(checkDTO.getCurrentTaskId())) {
+            log.info("没有任务存在，将使用该方法生成数据");
+            vo.setParamChange(true);
+            vo.setClearDataRange(RationChangeMethodTypeEnums.noData.getIdentity());
+            return Result.ok(vo);
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
@@ -249,7 +279,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         //检查测量数据
         boolean b = checkMeasureParam(oldParam, methodParam);
         if (!b) {
-            log.info("测量参数有改变，要清理所有数据");
+            log.info("测量参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.measure.getIdentity());
             vo.setParamChange(true);
             vo.setMessage(RationChangeMethodTypeEnums.measure.getMessage());
@@ -258,7 +288,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         boolean curveParam = checkCurveParam(oldParam, methodParam);
         if (!curveParam) {
-            log.info("曲线参数有改变，要清理曲线数据");
+            log.info("曲线参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.curve.getIdentity());
             vo.setParamChange(true);
             vo.setMessage(RationChangeMethodTypeEnums.curve.getMessage());
@@ -267,7 +297,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         //检查分析参数
         boolean analyze = checkAnalyzeParam(oldParam, methodParam);
         if (!analyze) {
-            log.info("分析参数有改变，要清理分析数据");
+            log.info("分析参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
             vo.setParamChange(true);
             vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
@@ -336,7 +366,6 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
 
-
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewRationMethodParamCheckDTO methodDTO) {
 
@@ -344,7 +373,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail("没有可应用的方法或参数");
         }
         if (!StringUtils.hasText(methodDTO.getMeasureType())) {
-            methodDTO.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
+            methodDTO.setMeasureType(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription());
         }
         String methodId = methodDTO.getNewMethodId();
 
@@ -357,7 +386,12 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!StringUtils.hasText(methodId)) {
             FMeasureMethod method = new FMeasureMethod();
             method.setMeasurementParamInfo(JSON.toJSONString(methodDTO.getNewMethodParam()));
-            method.setMethodName(methodDTO.getMethodName() + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            if (StringUtils.hasText(methodDTO.getMethodName())) {
+                String[] split = methodDTO.getMethodName().split("-");
+                method.setMethodName(split[0] + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            } else {
+                method.setMethodName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            }
             method.setMeasurementType(methodDTO.getMeasureType());
             method.setProjectItemKey(defaultProjectId);
             method.setMethodCreator(methodDTO.getUpdateBy());
@@ -376,7 +410,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureTask task = new FMeasureTask();
         if (!StringUtils.hasText(methodDTO.getCurrentTaskId())) {
             //任务不存在，创建任务和方法
-            task.setTaskName("草稿数据" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+            task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             task.setMethodKey(methodId);
             task.setCreateTime(LocalDateTime.now());
             task.setUserId(userId);
@@ -384,134 +418,188 @@ public class RationServiceConciseImpl implements RationConciseService {
             task.setIsDelete(createType);
             task.setMeasureType(methodDTO.getMeasureType());
 
-            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
-            FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
-            snapshot.setTaskHeads(preHead);
+            List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+            List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
 
-            task.setTableInfo(JSON.toJSONString(snapshot));
+            FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
+
+            FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
+            standSnapshot.setTaskHeads(standHead);
+            rationTaskHeadSnapShot.setStandHead(standSnapshot);
+
+            FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
+            unKnowSnapshot.setTaskHeads(unknownHead);
+            rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
+
+            task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
+
             fMeasureTaskService.save(task);
+
+            ans.setTaskId(task.getId());
+            ans.setTaskName(task.getTaskName());
+            return Result.ok(ans);
 
         } else {
             task = fMeasureTaskService.getById(methodDTO.getCurrentTaskId());
 
-            if (methodDTO.getIsSaveDraft() == null || !methodDTO.getIsSaveDraft()) {
-                //不保存数据
-                if (StringUtils.hasText(task.getSampleKey())) {
-                    List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-
-//                    Boolean b = clearData(task.getId(), taskSpecimen, methodDTO.getClearDataRange());
-
-                    task.setSampleKey(JSON.toJSONString(taskSpecimen));
-                }
+            if (task == null) {
+                task = new FMeasureTask();
+                task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
                 task.setMethodKey(methodId);
-                task.setDeviceSerialNumber(null);
+                task.setCreateTime(LocalDateTime.now());
+                task.setUserId(userId);
+                task.setProjectItemKey(defaultProjectId);
                 task.setIsDelete(createType);
+                task.setMeasureType(methodDTO.getMeasureType());
+
+                List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+                List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
+
+                FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
+
+                FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
+                standSnapshot.setTaskHeads(standHead);
+                rationTaskHeadSnapShot.setStandHead(standSnapshot);
+
+                FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
+                unKnowSnapshot.setTaskHeads(unknownHead);
+                rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
+
+                task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
+
+                fMeasureTaskService.save(task);
+
+                ans.setTaskId(task.getId());
+                ans.setTaskName(task.getTaskName());
+                return Result.ok(ans);
+            }
+
+            if (!StringUtils.hasText(task.getSampleKey())) {
+                task.setMethodKey(methodId);
                 fMeasureTaskService.updateById(task);
 
+                ans.setTaskId(task.getId());
+                ans.setTaskName(task.getTaskName());
+                return Result.ok(ans);
+
+            }
+
+
+            if (methodDTO.getIsSaveDraft() == null || !methodDTO.getIsSaveDraft()) {
+
+                if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.measure.getIdentity())) {
+                    LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
+                    wrapper.eq(FMeasureData::getTaskId, task.getId())
+                            .eq(FMeasureData::getIsSave, noSave);
+                    fMeasureDataService.remove(wrapper);
+
+                    LambdaQueryWrapper<FMeasureAnalysisData> analysisWrapper = new LambdaQueryWrapper<>();
+                    analysisWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                            .eq(FMeasureAnalysisData::getIsSave, noSave);
+                    fMeasureAnalysisDataService.remove(analysisWrapper);
+
+                    FMeasureTask newTask = new FMeasureTask();
+                    newTask.setProjectItemKey(defaultProjectId);
+                    newTask.setUserId(userId);
+                    newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+
+                    newTask.setTableInfo(task.getTableInfo());
+
+                    newTask.setId(null);
+                    newTask.setMethodKey(methodId);
+                    newTask.setDeviceSerialNumber(null);
+                    newTask.setIsDelete(createType);
+                    newTask.setCreateTime(LocalDateTime.now());
+                    newTask.setMeasureType(methodDTO.getMeasureType());
+                    fMeasureTaskService.save(newTask);
+                    ans.setTaskId(newTask.getId());
+                    ans.setTaskName(newTask.getTaskName());
+                    return Result.ok(ans);
+
+                } else if (methodDTO.getClearDataRange().equals(RationChangeMethodTypeEnums.curve.getIdentity())) {
+                    task.setMethodKey(methodId);
+                    fMeasureTaskService.updateById(task);
+
+                    int digit = Constants.DEFAULT_DECIMAL_NUM;
+                   R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
+                    if (attachmentR.getSuccess()) {
+                        FMeasureTaskAttachment attachment = attachmentR.getData();
+                        if (StringUtils.hasText(attachment.getDataParam())) {
+                            FQueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+                            if (queryDataDTO.getDigit() != null) {
+                                digit = queryDataDTO.getDigit();
+                            }
+                        }
+                    }
+
+                    changeStandSampleDataDigit(task.getId(), digit);
+                    changeUnknowSampleDigit(task.getId(), digit);
+
+                    ans.setTaskId(task.getId());
+                    ans.setTaskName(task.getTaskName());
+                    return Result.ok(ans);
+
+                } else if (methodDTO.getClearDataRange().equals(RationChangeMethodTypeEnums.analyze.getIdentity())) {
+                    task.setMethodKey(methodId);
+                    fMeasureTaskService.updateById(task);
+
+                    //TODO 公式重算
+
+
+                    ans.setTaskId(task.getId());
+                    ans.setTaskName(task.getTaskName());
+                    return Result.ok(ans);
+                } else {
+                    task.setMethodKey(methodId);
+                    fMeasureTaskService.updateById(task);
+                    ans.setTaskId(task.getId());
+                    ans.setTaskName(task.getTaskName());
+                    return Result.ok(ans);
+                }
             } else {
                 //保存数据
+
+                saveData(task.getId());
+
                 FMeasureTask newTask = new FMeasureTask();
                 newTask.setProjectItemKey(defaultProjectId);
                 newTask.setUserId(userId);
-                newTask.setTaskName("草稿数据" + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+                newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
                 newTask.setTableInfo(task.getTableInfo());
 
-                if (StringUtils.hasText(task.getSampleKey())) {
-                    List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-                    for (FTaskSpecimen specimen : taskSpecimen) {
-
-                        FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
-                        FMeasureSample newSample = new FMeasureSample();
-                        BeanUtils.copyProperties(sample, newSample);
-                        newSample.setId(null);
-
-                        fMeasureSampleService.save(newSample);
-                        specimen.setSpecimenKey(newSample.getId());
-
-                        specimen.setIsTested(createType);
-                    }
-                    newTask.setSampleKey(JSON.toJSONString(taskSpecimen));
-                }
                 newTask.setId(null);
                 newTask.setMethodKey(methodId);
                 newTask.setDeviceSerialNumber(null);
                 newTask.setIsDelete(createType);
                 fMeasureTaskService.save(newTask);
-                task = newTask;
+
+                ans.setTaskId(newTask.getId());
+                ans.setTaskName(newTask.getTaskName());
+                return Result.ok(ans);
 
             }
-            ans.setTaskId(task.getId());
-            ans.setTaskName(task.getTaskName());
-
         }
-
-        return Result.ok(ans);
     }
 
-    private List<FTaskSpecimen> clearData(String taskId, List<FTaskSpecimen> taskSpecimen, String clearDataRange) {
-        if (!StringUtils.hasText(clearDataRange) || clearDataRange.equals(RationChangeMethodTypeEnums.newMethod.getIdentity()) || clearDataRange.equals(RationChangeMethodTypeEnums.noChange.getIdentity())) {
-            log.info("没有需要清除的数据");
-            return taskSpecimen;
+    private void saveData(String taskId) {
+        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureData::getTaskId, taskId)
+                .eq(FMeasureData::getIsSave, noSave);
+        List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+        // 批量更新优化
+        if (!list.isEmpty()) {
+            list.forEach(fMeasureData -> fMeasureData.setIsSave(saved));
+            fMeasureDataService.updateBatchById(list);
         }
 
-        if (clearDataRange.equals(RationChangeMethodTypeEnums.measure.getIdentity())) {
-            for (FTaskSpecimen specimen : taskSpecimen) {
-                String sampleId = specimen.getSpecimenKey();
-                LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(FMeasureData::getTaskId, taskId)
-                        .eq(FMeasureData::getSampleKey, sampleId);
-                boolean removeMeasure = fMeasureDataService.remove(wrapper);
-
-                LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
-                        .eq(FMeasureAnalysisData::getSampleKey, sampleId);
-                boolean removeAnalysis = fMeasureAnalysisDataService.remove(queryWrapper);
-
-                if (!removeMeasure || !removeAnalysis) {
-                    log.info("清除数据失败");
-                    return taskSpecimen;
-                }
-                specimen.setIsTested(noTested);
-            }
-            return taskSpecimen;
-        } else if (clearDataRange.equals(RationChangeMethodTypeEnums.curve.getIdentity())) {
-            for (FTaskSpecimen specimen : taskSpecimen) {
-                String sampleId = specimen.getSpecimenKey();
-                if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
-                    LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
-                    queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
-                            .eq(FMeasureAnalysisData::getSampleKey, sampleId);
-                    boolean remove = fMeasureAnalysisDataService.remove(queryWrapper);
-                } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-
-                }
-            }
+        LambdaQueryWrapper<FMeasureAnalysisData> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                .eq(FMeasureAnalysisData::getIsSave, noSave);
+        List<FMeasureAnalysisData> anaList = fMeasureAnalysisDataService.list(wrapper);
+        if (!anaList.isEmpty()) {
+            anaList.forEach(fMeasureAnalysisData -> fMeasureAnalysisData.setIsSave(saved));
+            fMeasureAnalysisDataService.updateBatchById(anaList);
         }
-
-
-//        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
-//        queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
-//                .eq(FMeasureAnalysisData::getSampleKey, sampleId);
-//        boolean remove = fMeasureAnalysisDataService.remove(queryWrapper);
-//        if (!remove) {
-//            log.info("清除分析数据失败");
-//            return taskSpecimen;
-//        }
-//
-//
-//
-//        if (clearDataRange.equals(RationChangeMethodTypeEnums.measure.getIdentity())) {
-//            LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
-//            wrapper.eq(FMeasureData::getTaskId, taskId)
-//                    .eq(FMeasureData::getSampleKey, sampleId);
-//            boolean remove1 = fMeasureDataService.remove(wrapper);
-//            if (!remove1) {
-//                log.info("清除测量数据失败");
-//                return taskSpecimen;
-//            }
-//        }
-        return taskSpecimen;
-
     }
 
     @Override
@@ -527,18 +615,14 @@ public class RationServiceConciseImpl implements RationConciseService {
         List<FMeasureTask> taskList = fMeasureTaskService.list(wrapper);
         if (taskList != null && !taskList.isEmpty()){
             FMeasureTask task = taskList.get(0);
-            String projectItemKey = task.getProjectItemKey();
             String methodKey = task.getMethodKey();
-
-            FMeasureProject project = fMeasureProjectService.getById(projectItemKey);
             FMeasureMethod method = fMeasureMethodService.getById(methodKey);
             FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
             vo.setMethodId(method.getId());
             vo.setMethodName(method.getMethodName());
-//            vo.setProjectId(project.getId());
-//            vo.setProjectName(project.getProjectName());
+
             return Result.ok(vo);
         }
 
@@ -557,17 +641,12 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (projectList == null || projectList.isEmpty()){
                 return Result.ok(vo);
             }
-//            vo.setProjectName(projectList.get(0).getProjectName());
-//            vo.setProjectId(projectList.get(0).getId());
 
         } else {
             FMeasureMethod fMeasureMethod = list.get(0);
-            FMeasureProject fMeasureProject = fMeasureProjectService.getById(fMeasureMethod.getProjectItemKey());
 
             vo.setMethodId(fMeasureMethod.getId());
             vo.setMethodName(fMeasureMethod.getMethodName());
-//            vo.setProjectId(fMeasureProject.getId());
-//            vo.setProjectName(fMeasureProject.getProjectName());
         }
         return Result.ok(vo);
     }
@@ -913,7 +992,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public Result<FFRationMethodParam> queryMethodParam(String methodId) {
+    public Result<FRationMethodParam> queryMethodParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
             return Result.fail("方法ID不能为空");
         }
@@ -928,7 +1007,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         FRationParameter rationParameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
 
-        FFRationMethodParam param = new FFRationMethodParam();
+        FRationMethodParam param = new FRationMethodParam();
         BeanUtils.copyProperties(rationParameter, param);
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
@@ -1032,7 +1111,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
         }
-        String sumAbsIdentity = SampleTableEnum.sumAbs.getIdentity();
+        String sumAbsIdentity = SampleTableEnum.SUM_Abs.getIdentity();
         String absIdentity = SampleTableEnum.Abs.getIdentity();
         if (!map.containsKey(absIdentity)) {
             FHeadVO newHead = new FHeadVO(SampleTableEnum.Abs.getName(), absIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.Abs.getName());
@@ -1040,7 +1119,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         if (empty) {
             if (!map.containsKey(sumAbsIdentity)) {
-                FHeadVO newHead = new FHeadVO(SampleTableEnum.sumAbs.getName(), sumAbsIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.sumAbs.getName());
+                FHeadVO newHead = new FHeadVO(SampleTableEnum.SUM_Abs.getName(), sumAbsIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.SUM_Abs.getName());
                 heads.add(newHead);
             }
         } else {
@@ -1419,15 +1498,15 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             Map<String, Object> map = new HashMap<>();
             //样品信息
-            map.put(SampleTableEnum.sampleId.getIdentity(), sample.getId());
-            map.put(SampleTableEnum.sampleName.getIdentity(), sample.getSampleName());
-            map.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber());
-            map.put(SampleTableEnum.sampleType.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
-            map.put(SampleTableEnum.sampleKind.getIdentity(), sample.getSampleKind());
-            map.put(SampleTableEnum.normalConcentration.getIdentity(), sample.getNormalConcentration());
-            map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+ sample.getSampleLocation());
-            map.put(SampleTableEnum.dilutionRatio.getIdentity(), sample.getDilutionRatio());
-            map.put(SampleTableEnum.amount.getIdentity(), sample.getSampleVolume());
+            map.put(SampleTableEnum.SAMPLE_ID.getIdentity(), sample.getId());
+            map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
+            map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
+            map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+            map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
+            map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
+            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
+            map.put(SampleTableEnum.DILUTION_RATIO.getIdentity(), sample.getDilutionRatio());
+            map.put(SampleTableEnum.AMOUNT.getIdentity(), sample.getSampleVolume());
 
             if (StringUtils.hasText(sample.getNewColData())){
                 Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
@@ -1443,8 +1522,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         .orderByDesc(FMeasureData::getSerialNumber).last("limit 1");
                 FMeasureData data = fMeasureDataService.getOne(queryWrapper);
                 if (data != null) {
-                    map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
-                    map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+                    map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
+                    map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
                     if (StringUtils.hasText(data.getOriginalCalculationData())){
                         List<FRationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), FRationWavelengthDataInfo.class);
                         for (FRationWavelengthDataInfo dataInfo : list) {
@@ -1476,8 +1555,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         .orderByDesc(FMeasureData::getSerialNumber).last("limit 1");
                 FMeasureData data = fMeasureDataService.getOne(queryWrapper);
                 if (data != null) {
-                    map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
-                    map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+                    map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
+                    map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
                     if (StringUtils.hasText(data.getOriginalCalculationData())){
                         Map<String, Map<String, String>> childrenList = new HashMap<>();
                         List<Map<String, String>> middle = new ArrayList<>();
@@ -1641,21 +1720,21 @@ public class RationServiceConciseImpl implements RationConciseService {
             for (String s : option) {
                 Map<String, String> children = new HashMap<>();
                 if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(),wlData.getTPercentValue());
                     ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getIdentity(), children);
                 }
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
                     ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getIdentity(), children);
                 }
                 if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
                     ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
@@ -1672,15 +1751,15 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         Map<String, Object> map = new HashMap<>();
         //样品信息
-        map.put(SampleTableEnum.sampleId.getIdentity(), sample.getId());
-        map.put(SampleTableEnum.sampleName.getIdentity(), sample.getSampleName());
-        map.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber());
-        map.put(SampleTableEnum.sampleType.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
-        map.put(SampleTableEnum.sampleKind.getIdentity(), sample.getSampleKind());
-        map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+sample.getSampleLocation());
+        map.put(SampleTableEnum.SAMPLE_ID.getIdentity(), sample.getId());
+        map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
+        map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
+        map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+        map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
+        map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
 
         if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-            map.put(SampleTableEnum.normalConcentration.getIdentity(), sample.getNormalConcentration());
+            map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
         }
 
         if (StringUtils.hasText(sample.getNewColData())) {
@@ -1707,8 +1786,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     }
                 }
 
-                map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
-                map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+                map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
+                map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
 
                 LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
                 analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
@@ -1728,8 +1807,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             //重复模式，获取数据方式待定----暂时先以不重复做回显
             if (data != null) {
-                map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
-                map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+                map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
+                map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
                 if (StringUtils.hasText(data.getOriginalCalculationData())) {
                     Map<String, Map<String, String>> childrenList = new HashMap<>();
                     List<Map<String, String>> middle = new ArrayList<>();
@@ -1764,7 +1843,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                             children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
                             children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getTPercentValue()));
                             String[] split = dataInfo.getIdentity().split("-");
-                            children.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                            children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
                             childrenList.computeIfAbsent(dataInfo.getIdentity(), k -> new HashMap<>()).putAll(children);
                         }
                     }
@@ -1827,15 +1906,15 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             Map<String, Object> map = new HashMap<>();
             //样品信息
-            map.put(SampleTableEnum.sampleId.getIdentity(), sample.getId());
-            map.put(SampleTableEnum.sampleName.getIdentity(), sample.getSampleName());
-            map.put(SampleTableEnum.sampleNumber.getIdentity(), sample.getSampleNumber());
-            map.put(SampleTableEnum.dilutionRatio.getIdentity(), sample.getDilutionRatio());
-            map.put(SampleTableEnum.amount.getIdentity(), sample.getSampleVolume());
-            map.put(SampleTableEnum.sampleType.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
-            map.put(SampleTableEnum.sampleKind.getIdentity(), sample.getSampleKind());
-            map.put(SampleTableEnum.normalConcentration.getIdentity(), sample.getNormalConcentration());
-            map.put(SampleTableEnum.sampleLocation.getIdentity(), "样品池"+sample.getSampleLocation());
+            map.put(SampleTableEnum.SAMPLE_ID.getIdentity(), sample.getId());
+            map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
+            map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
+            map.put(SampleTableEnum.DILUTION_RATIO.getIdentity(), sample.getDilutionRatio());
+            map.put(SampleTableEnum.AMOUNT.getIdentity(), sample.getSampleVolume());
+            map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+            map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
+            map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
+            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
 
             if (StringUtils.hasText(sample.getNewColData())){
                 Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
@@ -1860,8 +1939,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         }
                     }
 
-                    map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
-                    map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+                    map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
+                    map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
 
                     LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
                     analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
@@ -1885,8 +1964,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         .orderByDesc(FMeasureData::getSerialNumber).last("limit 1");
                 FMeasureData data = fMeasureDataService.getOne(queryWrapper);
                 if (data != null) {
-                    map.put(SampleTableEnum.samplingTime.getIdentity(), data.getSamplingTime());
-                    map.put(SampleTableEnum.remark.getIdentity(), data.getRemark());
+                    map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
+                    map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
                     if (StringUtils.hasText(data.getOriginalCalculationData())){
                         Map<String, Map<String, String>> childrenList = new HashMap<>();
                         List<Map<String, String>> middle = new ArrayList<>();
@@ -1934,7 +2013,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         FittingParam param = new FittingParam();
         if (empty) {
             for (FRationCountDataInfo dataInfo : countData) {
-                if (dataInfo.getIdentity().equals(SampleTableEnum.sumAbs.getIdentity())) {
+                if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
                     data.add(dataInfo.getColValue());
 
                 }
@@ -2361,8 +2440,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 empty = true;
                 FRationCountDataInfo yAbs = new FRationCountDataInfo();
-                yAbs.setHeadName(SampleTableEnum.sumAbs.getName());
-                yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                 yAbs.setColValue(0.0);
 
                 List<FRationCountDataInfo> currentList = new ArrayList<>();
@@ -2420,8 +2499,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 if (empty) {
                     FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
-                    sumAbsData.setHeadName(SampleTableEnum.sumAbs.getName());
-                    sumAbsData.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                    sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                    sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                     sumAbsData.setColValue(ansData.getColValue() - minuend);
                     currentList.add(sumAbsData);
                     currentList.add(ansData);
@@ -2541,8 +2620,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 empty = true;
                 FRationCountDataInfo yAbs = new FRationCountDataInfo();
-                yAbs.setHeadName(SampleTableEnum.sumAbs.getName());
-                yAbs.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                 yAbs.setColValue(0.0);
 
                 List<FRationCountDataInfo> currentList = new ArrayList<>();
@@ -2603,8 +2682,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 if (empty) {
                     FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
-                    sumAbsData.setHeadName(SampleTableEnum.sumAbs.getName());
-                    sumAbsData.setIdentity(SampleTableEnum.sumAbs.getIdentity());
+                    sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                    sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                     sumAbsData.setColValue(ansData.getColValue() - minuend);
                     toCountData = sumAbsData.getColValue();
                     currentList.add(sumAbsData);
@@ -2619,8 +2698,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
                 FRationCountDataInfo valueData = new FRationCountDataInfo();
-                valueData.setHeadName(SampleTableEnum.fitConcentration.getName());
-                valueData.setIdentity(SampleTableEnum.fitConcentration.getIdentity());
+                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                 valueData.setColValue(ans==null? null : Double.valueOf(ans));
                 currentList.add(valueData);
 
@@ -2645,7 +2724,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     if (analysisData.getAnalysisResult() != null) {
                         List<FRationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), FRationCountDataInfo.class);
                         for (FRationCountDataInfo dataInfo : countDataInfoList) {
-                            if (dataInfo.getIdentity().equals(SampleTableEnum.sumAbs.getIdentity())) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
                                 return dataInfo;
                             }
                         }

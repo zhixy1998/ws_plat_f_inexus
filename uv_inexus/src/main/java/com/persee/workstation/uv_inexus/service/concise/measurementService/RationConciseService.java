@@ -74,7 +74,7 @@ public interface RationConciseService {
     /**
      * 查询方法参数
      */
-    Result<FFRationMethodParam> queryMethodParam(String methodId);
+    Result<FRationMethodParam> queryMethodParam(String methodId);
     /**
      *  查询表格头
      */

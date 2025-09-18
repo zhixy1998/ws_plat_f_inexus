@@ -6,8 +6,9 @@ import lombok.Getter;
 public enum PhotoMetricChangeMethodTypeEnum {
 
     newMethod("newMethod", "将为您生成新方法...."),
-    measure("measure", "您已修改测量参数，将生成新方法并清理测量和分析数据，是否要保存测量和分析数据？"),
-    analyze("analyze", "您已修改分析参数，将生成新方法并清理分析数据，是否保存分析数据？"),
+    noData("noData", "当前没有文件数据，将应用该方法为您生成新文件数据。"),
+    measure("measure", "检测到您修改了测量参数，将为您生成新方法新文件数据，是否保存当前未保存的数据："),
+    analyze("analyze", "检测到您修改了分析参数，将为您生成新方法，请选择数据处理方式："),
     noChange("noChange", "方法参数没有变化，无需重新应用！");
 
     private final String identity;

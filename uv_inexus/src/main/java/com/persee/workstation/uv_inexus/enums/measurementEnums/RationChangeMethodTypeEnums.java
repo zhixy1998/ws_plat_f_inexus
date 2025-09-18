@@ -6,7 +6,7 @@ import lombok.Getter;
 public enum RationChangeMethodTypeEnums {
 
     newMethod("newMethod", "将为您生成新方法...."),
-    changeMethod("changeMethod", "将为您切换方法，是否要保存现有数据？"),
+    noData("noData", "当前没有文件数据，将应用该方法为您生成新文件数据。"),
     measure("measure", "您已修改测量参数，将生成新方法并清理测量和分析数据，是否要保存现有数据？"),
     curve("curve", "您已修改曲线相关参数，将生成新方法并清理分析数据，是否要保存现有数据？"),
     analyze("analyze", "您已修改分析参数，将生成新方法并清理分析数据，是否保存现有数据？"),
