@@ -31,20 +31,42 @@ public class ConciseCommonController {
         return conciseCommonService.searchMethodButton(dto);
     }
 
+
+    @GetMapping("querySaveState")
+    @ApiOperation("查询保存状态")
+    public Result querySaveState(@RequestParam String taskId) {
+        return conciseCommonService.querySaveState(taskId);
+    }
+
+
+    @GetMapping("saveDraftButton")
+    @ApiOperation("保存草稿按钮接口")
+    public Result saveDraftButton(@RequestParam String taskId) {
+        return conciseCommonService.saveDraftButton(taskId);
+    }
+
     @PostMapping("queryHistoryMethod")
     @ApiOperation("历史方法")
     public Result<Page<FMeasureMethodParam>> queryHistoryMethod(@RequestBody QueryMethodDto queryMethodDto) {
        return conciseCommonService.queryHistoryMethod(queryMethodDto);
     }
+
     @PostMapping("updateMethod")
     @ApiOperation("修改方法名称")
     public Result<String> updateMethod(@RequestBody UpdateMethodDto updateMethodDto) {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
+
     @PostMapping("queryHistoryTask")
     @ApiOperation("历史草稿")
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
         return conciseCommonService.queryHistoryTask(selectTaskDto);
+    }
+
+    @PostMapping("updateTask")
+    @ApiOperation("修改任务名称")
+    public Result updateTask(@RequestBody UpdateTaskDto updateTaskDto) {
+        return conciseCommonService.updateTask(updateTaskDto);
     }
 
 }

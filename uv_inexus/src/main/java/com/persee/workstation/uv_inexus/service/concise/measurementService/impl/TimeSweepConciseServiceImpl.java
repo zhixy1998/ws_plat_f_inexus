@@ -136,7 +136,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
         QueryWrapper<FMeasureMethod> wrapper = new QueryWrapper<>();
         wrapper.eq("method_creator", updateBy);
-        wrapper.eq("is_draft", "0");
         wrapper.eq("measurement_type", measureType);
         wrapper.orderByDesc("method_use_time");
         wrapper.last("LIMIT 1");
@@ -187,7 +186,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
         // 根据方法id查询出最近创建的任务
         QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
-        taskWrapper.eq("method_id", method.getId());
+        taskWrapper.eq("method_key", method.getId());
         taskWrapper.orderByDesc("create_time");
         taskWrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
@@ -298,25 +297,29 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     @Override
     public Result use(TimeUseMethodDto paramDto) {
+        FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
+
+        FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+
+        FTimeSweepParamter newParam = new FTimeSweepParamter();
+        // 将方法参数拷贝出来
+        BeanUtils.copyProperties(paramDto.getParameter(),newParam);
+
+        // 3. 参数比较
+        boolean sameParam = compareParam(parameter, newParam);
+
         // 1. 判断来源
         if ("0".equals(paramDto.getType())) {
+            if (sameParam) {
+                return Result.fail("方法参数一致");
+            }
             return createNewMethod(paramDto);
         }
 
         // 2. 查询历史方法
-        FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
         if (method == null) {
             return createNewMethod(paramDto); // 没有历史记录 → 新建
         }
-
-        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-
-        FSpectrumParameter newParam = new FSpectrumParameter();
-        // 将方法参数拷贝出来
-        BeanUtils.copyProperties(newParam, paramDto);
-
-        // 3. 参数比较
-        boolean sameParam = compareParam(parameter, newParam);
 
         if (sameParam) {
             if (method.getId().equals(paramDto.getMethodId())){
@@ -325,14 +328,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.ok(method);
             }
         }else{
-            if (paramDto.getState().equals("0")){
-                // 保存
-                return createNewMethod(paramDto);
-            }else{
-                // 覆盖
-                method.setMeasurementParamInfo(JSON.toJSONString(newParam));
-                return fMeasureMethodService.updateById(method) ? Result.ok() : Result.fail();
-            }
+            return createNewMethod(paramDto);
         }
     }
 
@@ -2100,7 +2096,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param newParam
      * @return
      */
-    private boolean compareParam(FSpectrumParameter method, FSpectrumParameter newParam) {
+    private boolean compareParam(FTimeSweepParamter method, FTimeSweepParamter newParam) {
         String dbJson = JSON.toJSONString(method, SerializerFeature.SortField);
         String frontJson = JSON.toJSONString(newParam, SerializerFeature.SortField);
 
@@ -2120,11 +2116,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         fMeasureMethod.setMethodName(paramDto.getMeasureType()  + collect);
 
         FSpectrumParameter parameter = new FSpectrumParameter();
-        BeanUtils.copyProperties(paramDto, parameter);
+        // 将前端参数复制给数据库参数
+        BeanUtils.copyProperties(paramDto.getParameter(), parameter);
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());
         fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());
+        fMeasureMethod.setMeasurementType(paramDto.getMeasureType());
         boolean save = fMeasureMethodService.save(fMeasureMethod);
         if (save) {
             return Result.ok(fMeasureMethod);

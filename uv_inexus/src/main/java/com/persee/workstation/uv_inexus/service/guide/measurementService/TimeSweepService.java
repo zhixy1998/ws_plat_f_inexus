@@ -129,4 +129,6 @@ public interface TimeSweepService {
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
 
+    // 表格头接口
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay);
 }
