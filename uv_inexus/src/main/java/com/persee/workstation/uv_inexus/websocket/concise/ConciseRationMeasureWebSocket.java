@@ -541,7 +541,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         fittingInfo= JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                     }
                     if (fittingInfo != null) {
-                        String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
+                        String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType(), digit);
                         FRationCountDataInfo valueData = new FRationCountDataInfo();
                         valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
                         valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());

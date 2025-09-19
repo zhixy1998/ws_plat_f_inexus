@@ -1,8 +1,6 @@
 package com.persee.workstation.uv_inexus.config;
 
 import com.persee.workstation.uv_inexus.websocket.*;
-import com.persee.workstation.uv_inexus.websocket.concise.ConcisePhotometricWebSocket;
-import com.persee.workstation.uv_inexus.websocket.concise.ConciseRationMeasureWebSocket;
 import com.persee.workstation.uv_inexus.websocket.concise.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +19,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private SpectrumOneMeasureWebSocket spectrumOneMeasureWebSocket;
 
     @Autowired
-    private ConcisePhotometricWebSocket photometricWebSocket;
+    private PhotometricWebSocket photometricWebSocket;
+
 
     @Autowired
     private TimeWebSocket TimeWebSocket;
@@ -33,7 +32,13 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeOneMeasureWebSocket timeOneMeasureWebSocket;
 
     @Autowired
-    private ConciseRationMeasureWebSocket RationWebSocket;
+    private RationMeasureWebSocket RationWebSocket;
+
+    @Autowired
+    ConciseRationMeasureWebSocket ConciseRationWebSocket;
+
+    @Autowired
+    private PhotometricWebSocket ConcisePhotometricWebSocket;
 
     @Autowired
     private MyWebSocketHandler myWebSocketHandler;
@@ -102,6 +107,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(conciseTimeOneMeasureWebSocket, "/ws/concise/timeOneMeasure")
                 .setAllowedOrigins("*");
         registry.addHandler(conciseZeroCalibrationWebSocket, "/ws/concise/zeroCalibration")
+                .setAllowedOrigins("*");
+        registry.addHandler(ConciseRationWebSocket, "/ws/concise/ration")
+                .setAllowedOrigins("*");
+        registry.addHandler(ConcisePhotometricWebSocket, "/ws/concise/photoMetric")
                 .setAllowedOrigins("*");
 
 

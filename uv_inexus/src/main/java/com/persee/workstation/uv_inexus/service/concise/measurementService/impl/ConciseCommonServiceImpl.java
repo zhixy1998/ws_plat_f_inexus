@@ -18,8 +18,6 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
@@ -53,10 +51,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private TMeasureMethodService tMeasureMethodService;
 
     @Autowired
-    private PhotometricService photometricService;
+    private PhotometricConciseService photometricService;
 
     @Autowired
-    private RationService rationService;
+    private RationConciseService rationService;
+
+    @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
+
+
 
 
     /**
@@ -234,7 +237,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         task.setEndSaveTime(LocalDateTime.now());
         boolean update = fMeasureTaskService.updateById(task);
-        if ( update){
+        if (update){
             return Result.ok();
         }else {
             return Result.fail("保存草稿失败");

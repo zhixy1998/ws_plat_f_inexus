@@ -71,13 +71,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         List<DeviceInitInfo> infoList = new ArrayList<>();
 
-        List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber);
+        DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
+        if (deviceInfoPO == null || deviceInfoPO.getId() == null) {
+            log.info("未找到连接仪器信息！");
+            return R.fail("未查找到仪器信息");
+        }
+
+        List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceSerialNumber, deviceInfoPO.getId());
         if (initList.isEmpty()) {
             log.info("查询初始化状态异常");
             return R.fail(false, "查询初始化状态异常");
         }
-
-        DeviceInfoPO deviceInfoPO = infoService.getInfo(deviceSerialNumber);
 
         vo.setIsInited(deviceInfoPO.getIsInited());
         vo.setConnectStatus(deviceInfoPO.getConnectStatus());

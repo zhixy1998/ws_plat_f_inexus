@@ -6,6 +6,9 @@ import lombok.Data;
 @Data
 public class DeviceAttachmentTypeVO {
 
+    @ApiModelProperty("附件类型")
+    private Integer attachmentNum;
+
     @ApiModelProperty("附件类型名称")
     private String attachmentName;
 

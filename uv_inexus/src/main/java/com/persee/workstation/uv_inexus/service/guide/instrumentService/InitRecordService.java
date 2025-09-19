@@ -10,7 +10,7 @@ public interface InitRecordService {
 
     void initAllTask(String deviceSerialNumber, String ip);
 
-    List<InitRecordPO> searchInitStatus(String deviceSerialNumber);
+    List<InitRecordPO> searchInitStatus(String deviceSerialNumber, String deviceIp);
 
 
 }

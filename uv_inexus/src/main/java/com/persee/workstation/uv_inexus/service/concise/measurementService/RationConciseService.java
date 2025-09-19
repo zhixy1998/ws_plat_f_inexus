@@ -99,12 +99,13 @@ public interface RationConciseService {
     void saveEmptySampleData(List<FRationSaveCountDataInfo> emptySampleList);
 
     R<FRationCountDataInfo> countAbsValue(List<FRationWavelengthDataInfo> originData, FRationParameter parameter, Integer digit);
+    //暂时不用
     R<FRationCountDataInfo> countAbsValue(List<FRationWavelengthDataInfo> originData, FRationParameter parameter);
 
-    Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay);
     Result<FRationSampleDataVO> querySampleData(FQueryDataDTO queryDataDTO);
 
-
+    //暂时不用
+    Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay);
     Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
 
     /**
@@ -128,6 +129,8 @@ public interface RationConciseService {
      * 值计算
      */
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType, Integer digit);
+
+    //暂不用
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
 
     R<List<FRationCountDataInfo>> formula(List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
