@@ -9,6 +9,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.UnFinishTasksAndNum;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
+import com.persee.workstation.uv_inexus.service.guide.copyService.CopyService;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -21,6 +22,9 @@ import org.springframework.web.bind.annotation.*;
 public class DataManagementController {
     @Autowired
     private DataManagementService dataManagementService;
+
+    @Autowired
+    private CopyService copyService;
 
 
     @PostMapping("Tasks")
@@ -73,5 +77,12 @@ public class DataManagementController {
     @ApiOperation("项目删除")
     public Result<String> deleteProject(@RequestParam String deleteProjectId) {
         return dataManagementService.deleteProject(deleteProjectId);
+    }
+
+    @PostMapping("/copy")
+    @ApiOperation("另存为")
+    public Result<String> copyProject() {
+        return  copyService.copy();
+
     }
 }
