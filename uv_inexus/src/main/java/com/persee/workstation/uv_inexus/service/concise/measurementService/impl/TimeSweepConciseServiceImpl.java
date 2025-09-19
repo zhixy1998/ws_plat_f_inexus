@@ -632,18 +632,23 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-        for (FTaskSpecimen specimen : taskSpecimen) {
-            if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
-                specimen.setDeleteType(deleteType);
-                LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
-                        .eq(FMeasureData::getTaskId, task.getId())
-                        .orderByDesc(FMeasureData::getSerialNumber);
-                List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
-                if (list != null && !list.isEmpty()) {
-                    FMeasureData one = list.get(0);
-                    one.setIsDelete(deleteType);
-                    fMeasureDataService.updateById(one);
+        if(taskSpecimen == null){
+            taskSpecimen = new ArrayList<>();
+        }
+        if (taskSpecimen != null){
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+                    specimen.setDeleteType(deleteType);
+                    LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
+                            .eq(FMeasureData::getTaskId, task.getId())
+                            .orderByDesc(FMeasureData::getSerialNumber);
+                    List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+                    if (list != null && !list.isEmpty()) {
+                        FMeasureData one = list.get(0);
+                        one.setIsDelete(deleteType);
+                        fMeasureDataService.updateById(one);
+                    }
                 }
             }
         }
@@ -785,44 +790,46 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         List<FSampleListVo> listVos = new ArrayList<>();
 
-        for (FTaskSpecimen taskSpeciman : taskSpecimen) {
-            FSampleListVo vo = new FSampleListVo();
-            FMeasureSample sample =  fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-            if (sample==null){
-                return Result.fail("样品不存在");
-            }
-            if (taskSpeciman.getIsTested().equals("0")){
-                vo.setTitle(sample.getSampleName());
-                vo.setSampleId(taskSpeciman.getSpecimenKey());
-                vo.setAnalysisId(null);
-                vo.setAnalysisNumber(1);
-                vo.setColor(null);
-                vo.setData(null);
-                vo.setDeleteType("0");
-            }else{
-                QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                queryWrapper.eq("task_id", taskId);
-                queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
-                queryWrapper.eq("analysis_type", "5");
-                if (type==null){
-                    queryWrapper.eq("is_delete", "0");
+        if (taskSpecimen != null){
+            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                FSampleListVo vo = new FSampleListVo();
+                FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null) {
+                    return Result.fail("样品不存在");
                 }
-                queryWrapper.orderByDesc("analysis_number");
-                queryWrapper.last("limit 1");
-                FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
-                if (measureData == null){
-                    continue;
+                if (taskSpeciman.getIsTested().equals("0")) {
+                    vo.setTitle(sample.getSampleName());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisId(null);
+                    vo.setAnalysisNumber(1);
+                    vo.setColor(null);
+                    vo.setData(null);
+                    vo.setDeleteType("0");
+                } else {
+                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("task_id", taskId);
+                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                    queryWrapper.eq("analysis_type", "5");
+                    if (type == null) {
+                        queryWrapper.eq("is_delete", "0");
+                    }
+                    queryWrapper.orderByDesc("analysis_number");
+                    queryWrapper.last("limit 1");
+                    FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+                    if (measureData == null) {
+                        continue;
+                    }
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(measureData.getId());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                    vo.setColor(measureData.getColor());
+                    vo.setData(getSampleData(measureData, digit));
+                    vo.setDeleteType(measureData.getIsDelete());
                 }
-                vo.setTitle(sample.getSampleName());
-                vo.setAnalysisId(measureData.getId());
-                vo.setSampleId(taskSpeciman.getSpecimenKey());
-                vo.setAnalysisNumber(measureData.getAnalysisNumber());
-                vo.setColor(measureData.getColor());
-                vo.setData(getSampleData(measureData,digit));
-                vo.setDeleteType(measureData.getIsDelete());
+                vo.setType("0");
+                listVos.add(vo);
             }
-            vo.setType("0");
-            listVos.add(vo);
         }
         return Result.ok(listVos);
     }
