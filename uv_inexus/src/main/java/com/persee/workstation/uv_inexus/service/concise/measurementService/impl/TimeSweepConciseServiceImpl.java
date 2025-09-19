@@ -37,7 +37,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParameterVo;
+import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterVo;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepSearchMethodVo;
 import lombok.extern.slf4j.Slf4j;
@@ -152,14 +152,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             if (method == null) {
                 return Result.fail("没有默认方法");
             }
-            method.setMethodUseTime(LocalDateTime.now());
-            boolean update = fMeasureMethodService.updateById(method);
-            if (!update) {
-                return Result.fail("更新方法失败");
-            }
             BeanUtils.copyProperties(method, vo);
             FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
-            FTimeSweepParameterVo parameterVo = new FTimeSweepParameterVo();
+            FTimeSweepParamterVo parameterVo = new FTimeSweepParamterVo();
             BeanUtils.copyProperties(parameter, parameterVo);
             String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
             parameterVo.setLuminosityName(s);
@@ -181,6 +176,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             vo.setMethodCreateTime(format);
             String format1 = method.getMethodUseTime().format(formatter);
             vo.setMethodUseTime(format1);
+            vo.setMethodId(method.getId());
             return Result.ok(vo);
         }
 
@@ -193,7 +189,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
         BeanUtils.copyProperties(method, vo);
         FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
-        FTimeSweepParameterVo parameterVo = new FTimeSweepParameterVo();
+        FTimeSweepParamterVo parameterVo = new FTimeSweepParamterVo();
         BeanUtils.copyProperties(parameter, parameterVo);
         String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
         parameterVo.setLuminosityName(s);
@@ -218,6 +214,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (task!=null){
             vo.setTaskId(task.getId());
         }
+        vo.setMethodId(method.getId());
         return Result.ok(vo);
     }
 
@@ -267,7 +264,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             methodVo.setMethodCreateTime(format);
 
             TimeSweepParamter parameter = JSON.parseObject(record.getMeasurementParamInfo(), TimeSweepParamter.class);
-            FTimeSweepParameterVo parameterVo = new FTimeSweepParameterVo();
+            FTimeSweepParamterVo parameterVo = new FTimeSweepParamterVo();
             BeanUtils.copyProperties(parameter, parameterVo);
             String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
             parameterVo.setLuminosityName(s);

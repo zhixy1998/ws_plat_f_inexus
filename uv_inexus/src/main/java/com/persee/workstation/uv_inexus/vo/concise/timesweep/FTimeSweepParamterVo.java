@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class FTimeSweepParameterVo {
+public class FTimeSweepParamterVo {
     // 光度模式(1.abs 2.T% 3.Es 4.Er)
     private String luminosity;
     // 光度模式名称
