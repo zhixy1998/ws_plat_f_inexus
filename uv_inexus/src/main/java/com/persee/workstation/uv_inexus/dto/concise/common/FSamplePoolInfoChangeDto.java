@@ -18,7 +18,7 @@ public class FSamplePoolInfoChangeDto {
     private Boolean poolStatus;
 
     @ApiModelProperty("样品池用途")
-    private String poolPurpose;
+    private Integer poolPurpose;
 
     @ApiModelProperty("更新人")
     private String updateBy;

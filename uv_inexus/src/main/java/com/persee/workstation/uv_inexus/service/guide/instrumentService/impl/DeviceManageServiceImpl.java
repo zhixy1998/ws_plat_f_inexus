@@ -1,10 +1,13 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.CalibrationTempDAO;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.InsConfigDAO;
+import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
@@ -16,6 +19,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.CalibrationTempPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
@@ -47,6 +51,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     CalibrationTempDAO tempDao;
 
     @Autowired
+    DeviceInfoDAO deviceInfoDAO;
+
+    @Autowired
     InitRecordService initRecordService;
 
     @Autowired
@@ -57,6 +64,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DevMessageUtil devMessageUtil;
+
+    @Autowired
+    FSamplePoolConfigService samplePoolConfigService;
 
     @Value("${device.default.sendPort}")
     Integer sendPort;
@@ -261,6 +271,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    @DS("guide")
     public List<FindDeviceVO> newFindDevice() {
         List<Command> list = new ArrayList<>();
         list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
@@ -269,6 +280,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         list.add(new Command(FindDevEnum.GetSn.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetAccessoryType.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetInitStatus.getComId(), new Object[]{}));
+        list.add(new Command(FindDevEnum.GetCellPos.getComId(), new Object[]{}));
 
 
         R<FindDeviceVO> connected = devMessageUtil.connectDevice(list);
@@ -289,6 +301,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             List<FindDeviceVO> devices = new ArrayList<>();
             devices.add(deviceVO);
+
+            FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
+            dto.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
+            dto.setAttachmentType(deviceVO.getAttachmentType());
+
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceVO.getDeviceSerialNumber());
+
+
+            dto.setAttachmentTypeName(attachmentInfo.getAttachmentName());
+            dto.setCurrentPoolNum(deviceVO.getCurrentPoolNum());
+
+            samplePoolConfigService.saveSamplePoolInfo(dto);
+
             return devices;
         }
         return null;

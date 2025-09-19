@@ -810,9 +810,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         List<FTaskSpecimen> taskSpecimen = new ArrayList<>();
         if (StringUtils.hasText(task.getSampleKey())) {
             taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-            if (taskSpecimen == null) {
-                taskSpecimen = new ArrayList<>();
-            }
+        }
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
         }
 
         for (FTaskSpecimen specimen : taskSpecimen) {
@@ -2312,7 +2312,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!StringUtils.hasText(task.getTableInfo())) {
             return R.fail("缺少分析参数，无法计算分析");
         }
-        FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+
+        FRationTaskHeadSnapShot rationTaskHeadSnapShot = JSON.parseObject(task.getTableInfo(), FRationTaskHeadSnapShot.class);
+        if (rationTaskHeadSnapShot == null || rationTaskHeadSnapShot.getUnknownHead() == null) {
+            return R.fail("缺少分析参数，无法计算分析");
+        }
+        FTaskHeadSnapshot snapshot = rationTaskHeadSnapShot.getUnknownHead();
+
         if (snapshot.getMapRelation() == null || snapshot.getMapRelation().isEmpty()) {
             return R.fail("缺少映射关系，无法计算分析");
         }

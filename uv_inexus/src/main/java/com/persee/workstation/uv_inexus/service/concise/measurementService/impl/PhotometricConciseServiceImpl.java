@@ -129,6 +129,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(photometricParameter));
         fMeasureMethod.setMethodCreator(updateBy);
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        fMeasureMethod.setMethodUseTime(LocalDateTime.now());
         boolean save = fMeasureMethodService.save(fMeasureMethod);
         if (save) {
             return Result.ok("创建成功");
@@ -139,6 +140,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Override
     public Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy) {
+
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
 
         SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String userId = sysUserPO.getId();
@@ -167,6 +173,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (save) {
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
+            method.setMethodUseTime(LocalDateTime.now());
+            fMeasureMethodService.updateById(method);
             return Result.ok(vo);
         } else {
             return Result.fail("新建失败");
@@ -308,7 +316,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             methodDTO.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
         }
         String methodId = methodDTO.getNewMethodId();
-
+        if (StringUtils.hasText(methodId)) {
+            FMeasureMethod method = fMeasureMethodService.getById(methodId);
+            if (method == null) {
+                return Result.fail("没有该方法");
+            }
+        }
 
         FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, methodDTO.getUpdateBy()));
@@ -361,6 +374,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             ans.setTaskId(task.getId());
             ans.setTaskName(task.getTaskName());
+            FMeasureMethod method = fMeasureMethodService.getById(methodId);
+            method.setMethodUseTime(LocalDateTime.now());
+            fMeasureMethodService.updateById(method);
             return Result.ok(ans);
 
         } else {
@@ -386,6 +402,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 ans.setTaskId(task.getId());
                 ans.setTaskName(task.getTaskName());
+                FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                method.setMethodUseTime(LocalDateTime.now());
+                fMeasureMethodService.updateById(method);
                 return Result.ok(ans);
             }
 
@@ -395,6 +414,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 ans.setTaskId(task.getId());
                 ans.setTaskName(task.getTaskName());
+                FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                method.setMethodUseTime(LocalDateTime.now());
+                fMeasureMethodService.updateById(method);
                 return Result.ok(ans);
             }
 
@@ -426,6 +448,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     fMeasureTaskService.save(newTask);
                     ans.setTaskId(newTask.getId());
                     ans.setTaskName(newTask.getTaskName());
+                    FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                    method.setMethodUseTime(LocalDateTime.now());
+                    fMeasureMethodService.updateById(method);
                     return Result.ok(ans);
 
                 } else if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.analyze.getIdentity())) {
@@ -455,6 +480,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     fMeasureTaskService.updateById(task);
                     ans.setTaskId(task.getId());
                     ans.setTaskName(task.getTaskName());
+                    FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                    method.setMethodUseTime(LocalDateTime.now());
+                    fMeasureMethodService.updateById(method);
                     return Result.ok(ans);
 
                 }
@@ -480,6 +508,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 ans.setTaskId(newTask.getId());
                 ans.setTaskName(newTask.getTaskName());
+                FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                method.setMethodUseTime(LocalDateTime.now());
+                fMeasureMethodService.updateById(method);
                 return Result.ok(ans);
             }
         }
@@ -665,6 +696,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (StringUtils.hasText(task.getSampleKey())) {
+            taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+
+        }
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
         for (FTaskSpecimen specimen : taskSpecimen) {
             if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);

@@ -24,7 +24,7 @@ public class FSamplePoolConfigPO extends BasePO {
     @TableField(value = "attachment_type_name")
     private String attachmentTypeName;
 
-    @ApiModelProperty("是否自动切换样品池,0:否 1:是")
+    @ApiModelProperty("是否自动切换样品池")
     @TableField(value = "is_auto_change_pool")
     private Boolean isAutoChangePool;
 

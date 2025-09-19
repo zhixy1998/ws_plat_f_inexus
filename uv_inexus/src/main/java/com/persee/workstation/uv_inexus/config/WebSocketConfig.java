@@ -38,7 +38,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     ConciseRationMeasureWebSocket ConciseRationWebSocket;
 
     @Autowired
-    private PhotometricWebSocket ConcisePhotometricWebSocket;
+    ConcisePhotometricWebSocket ConcisePhotometricWebSocket;
 
     @Autowired
     private MyWebSocketHandler myWebSocketHandler;

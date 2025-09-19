@@ -2,9 +2,12 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,9 @@ public class ConciseCommonController {
 
     @Autowired
     private ConciseCommonService conciseCommonService;
+
+    @Autowired
+    FSamplePoolConfigService fSamplePoolConfigService;
 
 
     @GetMapping("queryDefaultParameters")
@@ -67,6 +73,28 @@ public class ConciseCommonController {
     @ApiOperation("修改任务名称")
     public Result updateTask(@RequestBody UpdateTaskDto updateTaskDto) {
         return conciseCommonService.updateTask(updateTaskDto);
+    }
+
+    @PostMapping("changeSampleAttachmentInfo")
+    @ApiOperation("修改样品池信息")
+    public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {
+        R<Boolean> r = fSamplePoolConfigService.updateSamplePoolInfo(dto);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("querySampleAttachmentInfo")
+    @ApiOperation("查询附件信息")
+    public Result<FSamplePoolInfoVO> querySampleAttachmentInfo(@RequestParam String deviceSerialNumber) {
+        R<FSamplePoolInfoVO> r = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
 }

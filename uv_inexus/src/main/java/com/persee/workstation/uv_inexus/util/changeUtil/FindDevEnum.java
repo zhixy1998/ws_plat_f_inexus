@@ -10,7 +10,8 @@ public enum FindDevEnum {
     Connect(3, "Connect"),//, "连接设备"
     GetSn(4, "GetSn"),//, "获取设备SN"
     GetAccessoryType(5,"GetAccessoryType"), //, "获取设备配件类型"
-    GetInitStatus(6, "GetInitStatus");//, "获取设备初始化状态"
+    GetInitStatus(6, "GetInitStatus"),//, "获取设备初始化状态"
+    GetCellPos(7, "GetCellPos"); /// "获取当前样品池位置"
 
     // 获取comId
     private final String comId;

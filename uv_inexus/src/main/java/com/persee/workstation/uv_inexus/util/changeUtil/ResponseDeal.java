@@ -70,6 +70,8 @@ public class ResponseDeal {
             case "BaseLine":
             case "BaseLineFast":
                 return parseBaseLine(responses);
+            case "GetCellPos":
+                return parseCellPos(responses, sendBytes);
 
 
 //            case "NewIP":
@@ -221,6 +223,37 @@ public class ResponseDeal {
             }
         }
         return result;
+    }
+
+    private static Object parseCellPos(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        if (sendBytes == null || sendBytes.length < 5) {
+            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            result = "false";
+            return false;
+        }
+
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+//        boolean isEqual = (lastResponse[4] & 0xFF)== 0;
+        boolean isEqual1 = sendBytes[4] == lastResponse[4];
+
+        result = isEqual1 ? "true" : "false";
+
+        int pos = (lastResponse[4] & 0xFF) + 1;
+        String rawpos = String.valueOf(pos);
+//        MeasureController.addPosData(rawpos);
+        return pos;
     }
 
     // 处理 NewIP 指令

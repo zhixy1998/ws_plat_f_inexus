@@ -1,19 +1,21 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 
+import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
-import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
-
-import java.util.List;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 
 public interface FSamplePoolConfigService {
 
     Boolean updateCurrentPoolNum(String deviceSerialNumber, Integer currentPoolNum, String updateBy);
 
-    Boolean saveSamplePoolInfo(String deviceSerialNumber, List<FSamplePoolStatus> poolInfo);
+    Boolean saveSamplePoolInfo(FSampleAttachTypeSaveDTO dto);
 
 
-    Boolean updateSamplePoolInfo(FSamplePoolInfoChangeDto samplePoolInfoChangeDto);
+    R<Boolean> updateSamplePoolInfo(FSamplePoolInfoChangeDto samplePoolInfoChangeDto);
+
+    R<FSamplePoolInfoVO> querySamplePoolInfo(String deviceSerialNumber);
 
 
 
