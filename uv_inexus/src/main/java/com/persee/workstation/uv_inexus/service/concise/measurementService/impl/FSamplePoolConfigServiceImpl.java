@@ -84,7 +84,12 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             return false;
         }
 
-        FSamplePoolConfigPO po = new FSamplePoolConfigPO();
+        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, dto.getDeviceSerialNumber());
+        FSamplePoolConfigPO po = dao.selectOne(query);
+        if (po == null) {
+            po = new FSamplePoolConfigPO();
+        }
         BeanUtils.copyProperties(dto, po);
 
         String deviceSerialNumber = dto.getDeviceSerialNumber();
@@ -96,8 +101,11 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
 
         po.setCreateBy(dto.getUpdateBy());
         po.setUpdateBy(dto.getUpdateBy());
-
-        return dao.insert(po) > 0;
+        if (StringUtils.hasText(po.getId())) {
+            return dao.updateById(po) > 0;
+        } else {
+            return dao.insert(po) > 0;
+        }
     }
 
     @Override
