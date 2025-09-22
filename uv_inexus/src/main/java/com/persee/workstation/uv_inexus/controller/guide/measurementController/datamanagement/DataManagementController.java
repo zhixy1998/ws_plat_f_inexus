@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @Api("数据管理接口")
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
 public class DataManagementController {
+
     @Autowired
     private DataManagementService dataManagementService;
 
@@ -81,8 +82,7 @@ public class DataManagementController {
 
     @PostMapping("/copy")
     @ApiOperation("另存为")
-    public Result<String> copyProject() {
-        return  copyService.copy();
-
+    public Result<String> copyProject(@RequestParam("taskId") String taskId) {
+        return  copyService.copy(taskId);
     }
 }

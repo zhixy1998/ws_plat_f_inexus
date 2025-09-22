@@ -4,6 +4,6 @@ import com.persee.workstation.uv_inexus.model.Result;
 
 public interface CopyService {
 
-    Result<String> copy();
+    Result<String> copy(String taskId);
 
 }
