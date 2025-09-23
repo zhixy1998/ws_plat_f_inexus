@@ -768,7 +768,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 return Result.ok(vo);
             }
             case "定量测定":  {
-                    RationReportDataVO vo = new RationReportDataVO();
+                RationReportDataVO vo = new RationReportDataVO();
                 Result<List<HeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true);
                 if (standHeads.getCode() == 200) {
                     vo.setStandHeadList(standHeads.getData());

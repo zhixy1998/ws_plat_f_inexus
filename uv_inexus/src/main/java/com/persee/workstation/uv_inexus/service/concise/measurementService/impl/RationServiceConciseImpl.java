@@ -97,6 +97,12 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Autowired
     RestUtil restUtil;
 
+    @Autowired
+    FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    ConcisePublicUtilService concisePublicUtilService;
+
 
     @Value("1")
     private String deleteType;
@@ -215,11 +221,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
 
         FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
-        standSnapshot.setTaskHeads(standHead);
+        standSnapshot.setSampleHeads(standHead);
         rationTaskHeadSnapShot.setStandHead(standSnapshot);
 
         FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
-        unKnowSnapshot.setTaskHeads(unknownHead);
+        unKnowSnapshot.setSampleHeads(unknownHead);
         rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
 
         task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
@@ -432,11 +438,11 @@ public class RationServiceConciseImpl implements RationConciseService {
             FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
 
             FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
-            standSnapshot.setTaskHeads(standHead);
+            standSnapshot.setSampleHeads(standHead);
             rationTaskHeadSnapShot.setStandHead(standSnapshot);
 
             FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
-            unKnowSnapshot.setTaskHeads(unknownHead);
+            unKnowSnapshot.setSampleHeads(unknownHead);
             rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
 
             task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
@@ -466,11 +472,11 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
 
                 FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
-                standSnapshot.setTaskHeads(standHead);
+                standSnapshot.setSampleHeads(standHead);
                 rationTaskHeadSnapShot.setStandHead(standSnapshot);
 
                 FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
-                unKnowSnapshot.setTaskHeads(unknownHead);
+                unKnowSnapshot.setSampleHeads(unknownHead);
                 rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
 
                 task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
@@ -1039,7 +1045,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     //标准样品表头
     @Override
-    public Result<List<FHeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay) {
+    public Result<List<FHeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber) {
 
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
             return Result.fail("请选择方法或任务");
@@ -1048,6 +1054,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             return Result.fail("方法不存在");
+        }
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            concisePublicUtilService.changeSampleLocation(taskId, usefulLocation);
         }
         LinkedHashSet<FHeadVO> ans = new LinkedHashSet<>();
 
@@ -1099,12 +1109,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
         }
-        List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty);
+        List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty, deviceSerialNumber);
         return Result.ok(result);
 
     }
 
-    private List<FHeadVO> dealHeads(List<FHeadVO> heads, FRationParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty) {
+    private List<FHeadVO> dealHeads(List<FHeadVO> heads, FRationParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty, String deviceSerialNumber) {
         List<String> waveLength = parameter.getWaveLength();
         Map<String, FHeadVO> map = heads.stream().collect(Collectors.toMap(FHeadVO::getIdentity, head -> head));
 
@@ -1144,7 +1154,6 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
                 allMeasureHeads.add(tPercentHead);
             }
-
         }
 
         String sumAbsIdentity = SampleTableEnum.SUM_Abs.getIdentity();
@@ -1156,14 +1165,30 @@ public class RationServiceConciseImpl implements RationConciseService {
             newHead = map.get(absIdentity);
         }
         allMeasureHeads.add(newHead);
-        if (empty && map.containsKey(sumAbsIdentity)) {
-            sumAbsHead = map.get(sumAbsIdentity);
-        }
-        allMeasureHeads.add(sumAbsHead);
 
+        if (empty) {
+            if (map.containsKey(sumAbsIdentity)) {
+                sumAbsHead = map.get(sumAbsIdentity);
+            }
+            allMeasureHeads.add(sumAbsHead);
+        }
         List<FHeadVO> ans = new ArrayList<>();
         List<FHeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
         if (systemHeads != null) ans.addAll(systemHeads);
+        for (FHeadVO an : ans) {
+            if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                ans.remove(an);
+                break;
+            }
+        }
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
+            String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
+
+            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.system.getIdentity(), sampleLocationName);
+            ans.add(sampleLocation);
+        }
 
         List<FHeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
         if (sampleHeads != null) ans.addAll(sampleHeads);
@@ -1185,6 +1210,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             List<FPreCountResultParam> resultParams = parameter.getResultParams();
             List<FHeadVO> headAnalyze = new ArrayList<>();
+            if (resultParams == null) {
+                resultParams = new ArrayList<>();
+            }
             for (FPreCountResultParam results : resultParams) {
                 //TODO 方法参数标识待定，后续再改动
                 if (!StringUtils.hasText(results.getParam())) {
@@ -1218,7 +1246,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     //未知样品表头
     @Override
-    public Result<List<FHeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay) {
+    public Result<List<FHeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber) {
 
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
             return Result.fail("请选择任务或方法");
@@ -1227,6 +1255,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             return Result.fail("方法不存在");
+        }
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            concisePublicUtilService.changeSampleLocation(taskId, usefulLocation);
         }
         LinkedHashSet<FHeadVO> ans = new LinkedHashSet<>();
         //根据任务中记录的样品id判断是否存在空白样品
@@ -1277,7 +1310,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
         }
-        List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty);
+        List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty, deviceSerialNumber);
         return Result.ok(result);
     }
 
@@ -3174,7 +3207,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         // 构建表头（与原逻辑一致）
         List<FHeadVO> heads = new ArrayList<>();
         // 添加动态表头
-        List<FHeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay).getData();
+        List<FHeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay, null).getData();
         heads.addAll(vos);
         // // 最前面加序号列（所有格式统一需要）
         heads.add(0, new FHeadVO("序号", "serialNumber"));

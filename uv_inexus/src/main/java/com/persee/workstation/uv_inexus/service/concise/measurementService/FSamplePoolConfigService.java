@@ -6,6 +6,8 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChange
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 
+import java.util.List;
+
 public interface FSamplePoolConfigService {
 
     Boolean updateCurrentPoolNum(String deviceSerialNumber, Integer currentPoolNum, String updateBy);
@@ -17,6 +19,5 @@ public interface FSamplePoolConfigService {
 
     R<FSamplePoolInfoVO> querySamplePoolInfo(String deviceSerialNumber);
 
-
-
+    List<Integer> getUsefulLocation(String deviceSerialNumber);
 }

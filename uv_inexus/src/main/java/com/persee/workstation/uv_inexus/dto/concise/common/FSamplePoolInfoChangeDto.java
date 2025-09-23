@@ -20,6 +20,9 @@ public class FSamplePoolInfoChangeDto {
     @ApiModelProperty("样品池用途")
     private Integer poolPurpose;
 
+    @ApiModelProperty("任务id")
+    private String taskId;
+
     @ApiModelProperty("更新人")
     private String updateBy;
 }

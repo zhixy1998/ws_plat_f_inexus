@@ -12,6 +12,7 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceSamplePoolPu
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
@@ -34,6 +35,9 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
 
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
+
+    @Autowired
+    ConcisePublicUtilService concisePublicUtilService;
 
     @Override
     public Boolean updateCurrentPoolNum(String deviceSerialNumber, Integer currentPoolNum, String updateBy) {
@@ -152,7 +156,15 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
                 return R.fail("请选择要操作的样品池");
             }
         }
-        return R.ok(dao.updateById(po) > 0);
+        boolean b = dao.updateById(po) > 0;
+        if (!b) {
+            return R.fail("更新失败");
+        }
+        if (StringUtils.hasText(changeDto.getTaskId())) {
+            List<Integer> usefulLocation = getUsefulLocation(changeDto.getDeviceSerialNumber());
+            concisePublicUtilService.changeSampleLocation(changeDto.getTaskId(), usefulLocation);
+        }
+        return R.ok();
     }
 
     @Override
@@ -171,6 +183,28 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         list.forEach(status-> status.setPoolName(status.getPoolNum() + "号"));
         vo.setPoolStatusList(list);
         return R.ok(vo);
+    }
+
+    @Override
+    public List<Integer> getUsefulLocation(String deviceSerialNumber) {
+        List<Integer> list = new ArrayList<>();
+
+        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        FSamplePoolConfigPO po = dao.selectOne(query);
+        if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
+            return list;
+        }
+
+        List<FSamplePoolStatus> poolStatuses = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
+        for (FSamplePoolStatus status : poolStatuses) {
+            if (status.getPoolStatus()) {
+                list.add(status.getPoolNum());
+            }
+        }
+
+        list.sort(Integer::compareTo);
+        return list;
     }
 
 

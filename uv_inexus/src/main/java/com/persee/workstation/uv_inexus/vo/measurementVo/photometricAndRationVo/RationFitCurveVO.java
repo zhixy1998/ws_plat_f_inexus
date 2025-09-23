@@ -33,4 +33,7 @@ public class RationFitCurveVO {
     @ApiModelProperty("R2值 （标准差, 代表拟合准确率）")
     private String R2;
 
+    @ApiModelProperty("曲线上要展示的点")
+    private List<JSONObject> pointList;
+
 }

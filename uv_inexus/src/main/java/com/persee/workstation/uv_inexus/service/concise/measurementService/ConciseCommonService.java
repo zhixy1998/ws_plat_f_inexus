@@ -41,6 +41,4 @@ public interface ConciseCommonService {
     光度和定量方法里公式校验
      */
     Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto);
-
-
 }

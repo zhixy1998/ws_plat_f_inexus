@@ -79,11 +79,11 @@ public interface RationConciseService {
     /**
      *  查询表格头
      */
-    Result<List<FHeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<FHeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
     /**
      * 查询未知样品的表头
      */
-    Result<List<FHeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<FHeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
 
     R<String> saveRationSampleMeasureData(FRationDataVO dataInfo);
     R<FRationSaveCountDataInfo> saveSampleMeasureData(FRationDataVO dataInfo);
