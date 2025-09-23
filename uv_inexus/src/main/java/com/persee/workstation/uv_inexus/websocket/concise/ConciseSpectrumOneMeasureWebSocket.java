@@ -260,13 +260,13 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
                 while (!Constants.measurd_data.isEmpty()) {
                     calcOnePoint(spectrumParameter, baselineCopy, x, y);
-                    pushCount = pushDataIfNeeded(session, x, y, pushCount);
+                    pushCount = pushDataIfNeeded(session, x, y, pushCount,sampleId);
                 }
                 break;
             }
             while (!Constants.measurd_data.isEmpty()) {
                 calcOnePoint(spectrumParameter, baselineCopy, x, y);
-                pushCount = pushDataIfNeeded(session, x, y, pushCount);
+                pushCount = pushDataIfNeeded(session, x, y, pushCount,sampleId);
             }
             try { sleep(10); } catch (InterruptedException e) {
                 handleTransportError(session, e);
@@ -276,7 +276,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
 
         // 3. 推送最后不足10条的数据
-        pushRemainingData(session, x, y, pushCount);
+        pushRemainingData(session, x, y, pushCount,sampleId);
 
         // 4. 保存一次完整测量
         saveOneMeasurement(task, taskId, sampleId, deviceSerialNumber, x, y,session,number);
@@ -290,7 +290,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
 
     // 推送逻辑：每 10 个点推送一次
-    private int pushDataIfNeeded(WebSocketSession session, List<Double> x, List<Double> y, int pushCount) throws IOException {
+    private int pushDataIfNeeded(WebSocketSession session, List<Double> x, List<Double> y, int pushCount, String sampleId) throws IOException {
         if (x.size() >= (pushCount + 1) * 10) {
             JSONArray dataArray = new JSONArray();
             for (int i = pushCount * 10; i < x.size(); i++) {
@@ -301,6 +301,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             }
             JSONObject payload = new JSONObject();
             payload.put("data", dataArray);
+            payload.put("sampleId", sampleId);
+            payload.put("count", 1);
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(payload.toJSONString()));
             }
@@ -310,7 +312,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     }
 
     // 推送剩余数据（最后不足10条的情况）
-    private void pushRemainingData(WebSocketSession session, List<Double> x, List<Double> y, int pushCount) throws IOException {
+    private void pushRemainingData(WebSocketSession session, List<Double> x, List<Double> y, int pushCount,String sampleId) throws IOException {
         int startIndex = pushCount * 10;
         if (startIndex < x.size()) {
             JSONArray dataArray = new JSONArray();
@@ -322,6 +324,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             }
             JSONObject payload = new JSONObject();
             payload.put("data", dataArray);
+            payload.put("sampleId", sampleId);
+            payload.put("count", 1);
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(payload.toJSONString()));
             }

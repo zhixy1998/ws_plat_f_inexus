@@ -8,6 +8,8 @@ import lombok.Data;
 public class TimeUseMethodDto extends FTimeSweepParamter {
     // 方法id
     private String methodId;
+    // 方法id2
+    private String methodId2;
     // 用户名
     private String updateBy;
     // 测量类型

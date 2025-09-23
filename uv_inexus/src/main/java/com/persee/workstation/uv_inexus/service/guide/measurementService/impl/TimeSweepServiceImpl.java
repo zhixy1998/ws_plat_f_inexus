@@ -12,6 +12,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -2030,22 +2031,22 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         // 1. 编号
         ans.add(new HeadVO("编号", "id", "system", "编号"));
 
-        ans.add(new HeadVO("波长(nm)", "originalCalculationData", "measure", "波长(nm)"));
+        ans.add(new HeadVO("时间", "TIME", "measure", "波长(nm)"));
 
         // 2. 波长 + 光度模式
         String mode = parameter.getLuminosity(); // abs / t% / es / er
         switch (mode) {
             case "1":
-                ans.add(new HeadVO("Abs", "originalCalculationData", "measure", "Abs"));
+                ans.add(new HeadVO("Abs", "luminosity", "measure", "Abs"));
                 break;
             case "2":
-                ans.add(new HeadVO("T%", "originalCalculationData", "measure", "T%"));
+                ans.add(new HeadVO("T%", "luminosity", "measure", "T%"));
                 break;
             case "3":
-                ans.add(new HeadVO("Es", "originalCalculationData", "measure", "Es"));
+                ans.add(new HeadVO("Es", "luminosity", "measure", "Es"));
                 break;
             case "4":
-                ans.add(new HeadVO("Er", "originalCalculationData", "measure", "Er"));
+                ans.add(new HeadVO("Er", "luminosity", "measure", "Er"));
                 break;
         }
 
@@ -2055,6 +2056,45 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
 
         return Result.ok(ans);
+    }
+
+    /**
+     * 表格数据
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
+    @Override
+    public List<Map<String, Object>> queryTableData(String taskId, String sampleId) {
+        // 校验参数
+        if (StringUtils.isEmpty(taskId) || StringUtils.isEmpty(sampleId)) {
+            return null;
+        }
+        // 根据任务id和样品id查询分析数据
+        QueryWrapper<TMeasureAnalysisData> eq = new QueryWrapper<>();
+        eq.eq("task_id", taskId);
+        eq.eq("sample_key", sampleId);
+        eq.orderByDesc("serial_number");
+        eq.last("LIMIT 1");
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(eq);
+        if (analysisData == null) {
+            return null;
+        }
+        // 解析分析数据
+        List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        List<Map<String, Object>> arrayList = new ArrayList<>();
+        // 根据长度遍历
+        for (int i = 0; i < result.size(); i++) {
+            // 根据,进行分割数据
+            String[] split = result.get(i).split(",");
+            Map<String, Object> map = new HashMap<>();
+            map.put(SampleTableEnum.ID.getIdentity(), i + 1);
+            map.put(SampleTableEnum.TIME.getIdentity(), split[0]);
+            map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
+            map.put(SampleTableEnum.REMARK.getIdentity(), null);
+            arrayList.add(map);
+        }
+        return arrayList;
     }
 
     @Override

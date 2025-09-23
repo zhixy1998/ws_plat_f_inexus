@@ -19,6 +19,8 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
@@ -37,11 +39,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum.QUANTITATIVE_MEASUREMENT;
+
 @Service("ConciseCommonService")
 public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     private SpectrumConciseService spectrumConciseService;
+    @Autowired
+    private TimeSweepConciseService timeSweepConciseService;
     @Autowired
     private FMeasureMethodService fMeasureMethodService;
     @Autowired
@@ -136,7 +142,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             ans.setRecords(infoVOList);
 
-        } else if (dto.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
+        } else if (dto.getMeasureType().equals(QUANTITATIVE_MEASUREMENT.getDescription())) {
             List<FMethodInfoVO> infoVOList = new ArrayList<>();
             for (TMeasureMethod record : records) {
                 FMethodInfoVO info = new FMethodInfoVO();
@@ -294,6 +300,41 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     }
 
+    @Override
+    public Result queryMethodParameter(String methodId) {
+        // 根据方法id查询方法参数
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        if (method.getMeasurementType().isEmpty()){
+            return Result.fail("方法类型不存在");
+        }
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(method.getMeasurementType());
+        if (measureTypeEnum == null) {
+
+        }
+        switch (measureTypeEnum){
+            case PHOTOMETRIC_MEASUREMENT:
+                return Result.ok();
+            case QUANTITATIVE_MEASUREMENT:
+                return Result.ok();
+            case SPECTRAL_SCAN:
+            {
+                FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+                return Result.ok(parameter);
+            }
+            case TIME_SCAN:
+            {
+                FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+                return Result.ok(parameter);
+            }
+            default:
+                return Result.fail("暂不支持");
+        }
+
+    }
 
 
     @Override

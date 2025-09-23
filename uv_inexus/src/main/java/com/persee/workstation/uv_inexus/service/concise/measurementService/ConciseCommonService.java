@@ -23,6 +23,9 @@ public interface ConciseCommonService {
 
     Result<Page<FMeasureMethodParam>> queryHistoryMethod(QueryMethodDto queryMethodDto);
 
+    // 查询方法参数
+    Result queryMethodParameter(String methodId);
+
     Result<Page<FMeasureTaskDTO>> queryHistoryTask(SelectTaskDto selectTaskDto);
 
     Result<String> updateMethod(UpdateMethodDto updateMethodDto);
@@ -38,4 +41,6 @@ public interface ConciseCommonService {
     光度和定量方法里公式校验
      */
     Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto);
+
+
 }

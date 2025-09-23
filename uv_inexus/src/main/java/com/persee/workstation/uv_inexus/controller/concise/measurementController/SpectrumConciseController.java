@@ -1,42 +1,27 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
 
 @Slf4j
 @RestController("spectrumConciseController")
@@ -60,6 +45,13 @@ public class SpectrumConciseController {
                                      @RequestParam Integer pageSize, @RequestParam String updateBy,
                                      @RequestParam String measureType, @RequestParam(required = false) String methodName) {
         return spectrumConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
+    }
+
+
+    @PostMapping("parameterValidation")
+    @ApiOperation("参数校验接口")
+    public Result parameterValidation(@RequestBody FParameterValidationDto paramDto) {
+        return spectrumConciseService.parameterValidation(paramDto);
     }
 
 

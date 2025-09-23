@@ -11,6 +11,10 @@ public class SpectralReportVo {
     private String instrumentModel;
     // 仪器波长
     private String InstrumentWavelength;
+    // 起始波长
+    private String StartWavelength;
+    // 结束波长
+    private String EndWavelength;
     // 仪器编号
     private String InstrumentSerialNumber;
     // 光度模式

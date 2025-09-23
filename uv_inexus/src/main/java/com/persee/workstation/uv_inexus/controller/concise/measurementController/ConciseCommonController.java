@@ -57,6 +57,12 @@ public class ConciseCommonController {
        return conciseCommonService.queryHistoryMethod(queryMethodDto);
     }
 
+    @GetMapping("queryMethodParameter")
+    @ApiOperation("查询方法参数")
+    public Result queryMethodParameter(@RequestParam String methodId) {
+        return conciseCommonService.queryMethodParameter(methodId);
+    }
+
     @PostMapping("updateMethod")
     @ApiOperation("修改方法名称")
     public Result<String> updateMethod(@RequestBody UpdateMethodDto updateMethodDto) {

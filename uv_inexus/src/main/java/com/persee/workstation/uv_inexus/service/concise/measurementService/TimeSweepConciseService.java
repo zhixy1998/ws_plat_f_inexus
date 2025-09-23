@@ -1,22 +1,13 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
-import java.io.File;
-import java.util.List;
-
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+
+import java.io.File;
+import java.util.List;
 
 /**
  * 简洁模式: 时间扫描服务接口
@@ -120,5 +111,4 @@ public interface TimeSweepConciseService {
      * 导出到word
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
-
 }

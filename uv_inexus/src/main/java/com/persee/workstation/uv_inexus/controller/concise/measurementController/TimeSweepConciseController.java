@@ -1,42 +1,26 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
 
 @Slf4j
 @RestController("timeSweepConciseController")
@@ -151,14 +135,14 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.updateDataColor(paramDto);
     }
 
-    @GetMapping("queryGaugePoint")
+    @GetMapping("queryGaugePointDataList")
     @ApiOperation("获取标记点接口")
     public Result queryAnalysisGaugePoint(@RequestParam String dataId,
                                           @RequestParam(required = false) Integer digit) {
         return timeSweepConciseService.queryGaugePoint(dataId, digit);
     }
 
-    @PostMapping("addGaugePointPort")
+    @PostMapping("addGaugePoint")
     @ApiOperation("添加标记点接口")
     public Result addAnalysisDataGaugePointPort(@RequestBody FAddGaugePointDto paramDto){
         return timeSweepConciseService.addGaugePointPort(paramDto);
@@ -170,7 +154,7 @@ public class TimeSweepConciseController {
         return timeSweepConciseService.addGaugePointRemarks(paramDto);
     }
 
-    @GetMapping("queryPeakAndValleysPort")
+    @GetMapping("queryPeakValleyDataList")
     @ApiOperation("获取峰谷接口")
     public Result queryPeakAndValleysPort(@RequestParam String dataId,
                                           @RequestParam(required = false) Integer digit) {

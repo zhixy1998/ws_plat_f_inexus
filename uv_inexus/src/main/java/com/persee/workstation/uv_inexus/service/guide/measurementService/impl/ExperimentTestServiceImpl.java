@@ -804,6 +804,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
+                // 获取数据
+                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, sampleId);
+                if (dataList != null){
+                    vo.setDataList(dataList);
+                }
+
+                if (StringUtils.hasText(task.getTableInfo())) {
+                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+                    if (snapshot != null && snapshot.getMapRelation() != null) {
+                        vo.setMapRelation(snapshot.getMapRelation());
+                    }
+                }
                 return Result.ok(vo);
             }
             case "时间扫描":
@@ -813,6 +825,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
+                }
+                // 获取数据
+                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, sampleId);
+                if (dataList != null){
+                    vo.setDataList(dataList);
+                }
+
+                if (StringUtils.hasText(task.getTableInfo())) {
+                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+                    if (snapshot != null && snapshot.getMapRelation() != null) {
+                        vo.setMapRelation(snapshot.getMapRelation());
+                    }
                 }
                 return Result.ok(vo);
             }
@@ -1361,27 +1385,22 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setSampleName(byId.getSampleName());
             vo.setSampleNumber(byId.getSampleNumber());
             vo.setDataType("测量数据");
-            vo.setScanSpeed(methodparam.getScanSpeed()=="0"?"慢速":methodparam.getScanSpeed()=="1"?"中速":methodparam.getScanSpeed()=="2"?"快速":"极快");
-            vo.setInstrumentWavelength(methodparam.getWaveLengthInterval());
+            vo.setScanSpeed(methodparam.getScanSpeed().equals("0")?"慢速":methodparam.getScanSpeed().equals("1")?"中速":methodparam.getScanSpeed().equals("2")?"快速":"极快");
+            vo.setStartWavelength(methodparam.getStartWaveLength());
+            vo.setEndWavelength(methodparam.getEndWaveLength());
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-            vo.setLuminosityMode(methodparam.getLuminosity()=="1"?"Abs":methodparam.getLuminosity()=="2"?"T%":methodparam.getLuminosity()=="3"?"Es":"Er");
+            vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
-            vo.setReferenceMethod(method.getMethodName());
-            vo.setRemark(data.getRemark());
             vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
             vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());
-            vo.setEnergyLight(methodparam.getEnergyLamp()=="0"?"钨灯":methodparam.getEnergyLamp()=="1"?"氘灯":"汞灯");
+            vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
+            vo.setGain(methodparam.getGain().toString());
             vo.setStairCorrection(methodparam.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setSpectrumScanImage(data.getDataImage());
-            vo.setOriginalData(data.getOriginalCalculationData());
-            vo.setGain(methodparam.getGain().toString());
-            vo.setScanRange(methodparam.getStartWaveLength() + "-" + methodparam.getEndWaveLength());
             vo.setScanInterval(methodparam.getWaveLengthInterval());
             vo.setMethodName(method.getMethodName());
-            vo.setRemark(data.getRemark());
-            vo.setSpectrumScanImage(data.getDataImage());
             return Result.ok(vo);
         }else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -1408,14 +1427,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
             vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
-            vo.setReferenceMethod(method.getMethodName());
-            vo.setRemark(data.getRemark());
             vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
             vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());
             vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
-            vo.setOriginalData(data.getOriginalCalculationData());
             vo.setGain(methodparam.getGain().toString());
             vo.setScanInterval(methodparam.getIntervalTime());
             vo.setMethodName(method.getMethodName());
