@@ -51,6 +51,14 @@ public class SpectralReportVo {
     private byte[] TimeScanImage;
     // 原始数据
     private String OriginalData;
+    // 时间单位
+    private String TimeUnit;
+    // 时间单位名称
+    private String TimeUnitName;
+    // 扫描时间
+    private String ScanTime;
+    // 扫描总个数
+    private String totalNumber;
     // 增益
     private String Gain;
     // 扫描范围
@@ -63,6 +71,8 @@ public class SpectralReportVo {
     private String DataType;
     // 方法名称
     private String MethodName;
+    // 任务名称
+    private String TaskName;
     //操作步骤
     private String steps;
     //环境温度

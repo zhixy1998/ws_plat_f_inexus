@@ -1401,6 +1401,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setSpectrumScanImage(data.getDataImage());
             vo.setScanInterval(methodparam.getWaveLengthInterval());
             vo.setMethodName(method.getMethodName());
+            vo.setTaskName(task.getTaskName());
             return Result.ok(vo);
         }else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -1431,11 +1432,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
             vo.setProject(project.getProjectName());
             vo.setDetector(user.getUserName());
+            if (methodparam.getScanUnit()!=null) {
+                vo.setTimeUnit(methodparam.getScanUnit());
+                vo.setTimeUnitName(methodparam.getScanUnit().equals("0")?"秒":"分钟");
+            }
+            vo.setTotalNumber(methodparam.getTotalNumber());
             vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
             vo.setGain(methodparam.getGain().toString());
+            vo.setScanTime(methodparam.getScanTime());
             vo.setScanInterval(methodparam.getIntervalTime());
             vo.setMethodName(method.getMethodName());
             vo.setTimeScanImage(data.getDataImage());
+            vo.setTaskName(task.getTaskName());
             return Result.ok(vo);
         }else{
             return Result.ok();
