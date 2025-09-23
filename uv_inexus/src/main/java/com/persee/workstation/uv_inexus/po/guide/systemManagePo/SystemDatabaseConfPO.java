@@ -24,13 +24,11 @@ public class SystemDatabaseConfPO extends BasePO {
     @TableField(value = "auto_measure")
     private Boolean autoMeasure;
 
-    @ApiModelProperty("经典模式开关")
-    @TableField(value = "classic_mode")
-    private Boolean classicMode;
 
-    @ApiModelProperty("向导模式开关")
-    @TableField(value = "wizard_mode")
-    private Boolean wizardMode;
+    @ApiModelProperty("经典模式或者向导模式开关  1：经典模式 2：向导模式")
+    @TableField(value = "mode_type")
+    private Integer modeType;
+
 
     @ApiModelProperty("自动开机开关")
     @TableField("auto_start")
@@ -68,5 +66,9 @@ public class SystemDatabaseConfPO extends BasePO {
     @ApiModelProperty("备数据库密码")
     @TableField(value = "spare_database_password")
     private String spareDatabasePassword;
+
+    @ApiModelProperty("自动保存时间")
+    @TableField("auto_save_time")
+    private String autoSaveTime;
 
 }

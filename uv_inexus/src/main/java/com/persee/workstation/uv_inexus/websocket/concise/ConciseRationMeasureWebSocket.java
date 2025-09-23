@@ -522,7 +522,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     最后保存。。。。应该先保存一次测量结果，在保存计算结果，
                      */
                     double countValue = 0.0;
-
                     if (empty) {
                         FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
                         sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());

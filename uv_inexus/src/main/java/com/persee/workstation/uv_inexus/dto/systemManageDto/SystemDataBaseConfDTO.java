@@ -14,15 +14,6 @@ public class SystemDataBaseConfDTO {
     @TableField(value = "auto_measure")
     private Boolean autoMeasure;
 
-    @ApiModelProperty("经典模式开关")
-    @TableField(value = "classic_mode")
-    private Boolean classicMode;
-
-    @ApiModelProperty("向导模式开关")
-    @TableField(value = "wizard_mode")
-    private Boolean wizardMode;
-
-
     @ApiModelProperty("快捷登录开关")
     private Boolean fastLoginSwitch;
 

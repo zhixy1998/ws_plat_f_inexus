@@ -8,10 +8,7 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureMethodMapper;
-import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureProjectMapper;
-import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureSampleMapper;
-import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.*;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
@@ -54,6 +51,11 @@ public class DataManagementServiceImpl implements DataManagementService {
     private ObjectMapper objectMapper;
     @Autowired
     private TMeasureSampleMapper sampleManagementMapper;
+    @Autowired
+    private TMeasureDataMapper dataManagementMapper;
+    @Autowired
+    private TMeasureAnalysisDataMapper analysisDataMapper;
+
 
 
     //方法
@@ -358,6 +360,15 @@ public class DataManagementServiceImpl implements DataManagementService {
             if (i == 0) {
                 return Result.fail("样品删除失败");
             }
+            int res = dataManagementMapper.deleteById(deleteTaskId);
+            if (res == 0) {
+                return Result.fail("样品删除失败");
+            }
+            int result = analysisDataMapper.deleteById(deleteTaskId);
+            if (result == 0) {
+                return Result.fail("样品删除失败");
+            }
+
         }
         int i = taskManagementMapper.deleteById(deleteTaskId);
         if (i == 0) {

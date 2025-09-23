@@ -1,6 +1,5 @@
 package com.persee.workstation.uv_inexus.dto.systemManageDto;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -8,15 +7,16 @@ import lombok.Data;
 public class InitSystemConf {
 
     @ApiModelProperty("自动进入实验测试开关")
-    @TableField(value = "auto_measure")
     private Boolean autoMeasure;
 
     @ApiModelProperty("快捷登录开关")
     private Boolean fastLoginSwitch;
 
     @ApiModelProperty("自动开机开关")
-    @TableField("auto_start")
     private Boolean autoStart;
+
+    @ApiModelProperty("经典模式或者向导模式开关  1：经典模式 2：向导模式")
+    private Integer modeType;
 
 
 }
