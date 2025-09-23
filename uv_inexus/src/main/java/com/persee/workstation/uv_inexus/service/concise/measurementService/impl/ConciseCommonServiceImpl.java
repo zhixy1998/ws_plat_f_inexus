@@ -5,20 +5,25 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.SaveStateVo;
@@ -59,8 +64,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
 
-
-
+    @Autowired
+    LaTeXConverter latexConverter;
 
     /**
      * 查询默认参数
@@ -404,6 +409,67 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("修改失败");
         }
 
+    }
+
+    @Override
+    public Result<Boolean> checkSampleInputParam(FCheckSampleInputParamDto dto) {
+
+        FInputParam newInputParam = dto.getNewInputParam();
+        if (newInputParam == null || !StringUtils.hasText(newInputParam.getResultIdentity())) {
+            return Result.fail("请输入参数！");
+        }
+
+        if(newInputParam.getParamName().length() >= 256){
+            return Result.fail("名称格式错误");
+        }
+
+        String methodMark = newInputParam.getResultIdentity();
+        if (!Constants.PARAM_PATTERN.matcher(methodMark).matches()) {
+            return Result.fail("标识格式错误：必须以大写字母开头，后跟1-10位数字");
+        }
+
+        if (dto.getInputParamList() != null && !dto.getInputParamList().isEmpty()) {
+
+            for (FInputParam param : dto.getInputParamList()) {
+                if (param.getResultIdentity().equals(newInputParam.getResultIdentity())) {
+                    return Result.fail("标识已存在");
+                }
+            }
+        }
+
+        return Result.ok(true);
+    }
+
+
+
+    @Override
+    public Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto) {
+
+        FPreCountResultParam newFormula = checkFormulaDto.getNewFormula();
+
+        if (newFormula == null || !StringUtils.hasText(newFormula.getFormulaText())) {
+            return Result.fail("请输入公式！");
+        }
+
+        List<FInputParam> inputParamList = checkFormulaDto.getInputParamList();
+        if (inputParamList == null || inputParamList.isEmpty()) {
+            return Result.fail("请先设置输入参数！");
+        }
+
+        List<String> paramList = new ArrayList<>();
+        for (FInputParam param : inputParamList) {
+            paramList.add(param.getResultIdentity());
+        }
+
+        List<String> formulaList = new ArrayList<>();
+        formulaList.add(newFormula.getFormulaText());
+
+        R<String> verified = latexConverter.verifyFormulasAgainstParamList(paramList, formulaList);
+        if (!verified.getSuccess()) {
+            return Result.fail(verified.getMessage());
+        }
+
+        return Result.ok(true);
     }
 
 

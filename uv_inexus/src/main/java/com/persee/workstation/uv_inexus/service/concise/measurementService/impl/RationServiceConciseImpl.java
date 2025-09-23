@@ -2308,7 +2308,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public R<List<FRationCountDataInfo>> formula(List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit) {
+    public R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit) {
         if (!StringUtils.hasText(task.getTableInfo())) {
             return R.fail("缺少分析参数，无法计算分析");
         }
@@ -2328,15 +2328,16 @@ public class RationServiceConciseImpl implements RationConciseService {
             JSONObject object = JSONObject.parseObject(sample.getNewColData());
             allData.putAll(object);
         }
-        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
-                .orderByDesc(FMeasureAnalysisData::getDataVersion)
-                .last("limit 1");
-        FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(queryWrapper);
+
+        FMeasureAnalysisData one = fMeasureAnalysisDataService.getById(analysisDataId);
         if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
             String analysisParam = one.getAnalysisParam();
             JSONObject object = JSON.parseObject(analysisParam);
+            allData.putAll(object);
+        }
+
+        if (one != null && StringUtils.hasText(one.getAnalysisResult())) {
+            JSONObject object = JSON.parseObject(one.getAnalysisResult());
             allData.putAll(object);
         }
 

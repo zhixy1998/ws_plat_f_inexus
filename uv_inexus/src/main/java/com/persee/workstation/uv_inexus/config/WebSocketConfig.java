@@ -110,7 +110,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*");
         registry.addHandler(ConciseRationWebSocket, "/ws/concise/ration")
                 .setAllowedOrigins("*");
-        registry.addHandler(ConcisePhotometricWebSocket, "/ws/concise/photoMetric")
+        registry.addHandler(ConcisePhotometricWebSocket, "/ws/concise/photometric")
                 .setAllowedOrigins("*");
 
 

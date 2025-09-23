@@ -1,10 +1,6 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 
-import java.io.File;
-import java.util.List;
-import java.util.Map;
-
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
@@ -23,13 +19,11 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationMethodParam;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSaveCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationWavelengthDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.*;
+
+import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 定量测定
@@ -133,7 +127,7 @@ public interface RationConciseService {
     //暂不用
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
 
-    R<List<FRationCountDataInfo>> formula(List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
+    R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
 
     R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);
     R<Boolean> changeUnknowSampleDigit(String taskId, Integer digit);

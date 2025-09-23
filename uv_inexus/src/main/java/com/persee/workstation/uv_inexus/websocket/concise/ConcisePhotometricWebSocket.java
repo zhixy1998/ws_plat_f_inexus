@@ -221,11 +221,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
         tMeasureTaskService.updateById(task);
-        if (session.isOpen()) {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("result", "finish");
-            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-        }
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("result", "finish");
+        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
         sessions.remove(session.getId());
         session.close();
         status = 0;

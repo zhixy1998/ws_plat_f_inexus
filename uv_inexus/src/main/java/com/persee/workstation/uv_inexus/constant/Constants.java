@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Pattern;
 
 public class Constants {
     public Constants() {
@@ -112,4 +113,10 @@ public class Constants {
 
 
     public static volatile boolean Running = true;
+
+    /*
+    * 样品输入参数正则
+     */
+    public static final Pattern PARAM_PATTERN = Pattern.compile("^[A-Z]{1,2}\\d{1,10}$");
+
 }

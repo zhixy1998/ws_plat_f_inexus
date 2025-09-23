@@ -1,49 +1,5 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import javax.transaction.Transactional;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -54,43 +10,18 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureDataService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -101,20 +32,28 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationMethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSampleDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSaveCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationTaskHeadSnapShot;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationWavelengthDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RepeatMeasureData;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
-
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import javax.transaction.Transactional;
+import java.io.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service("rationService")
@@ -197,7 +136,7 @@ public class RationServiceImpl implements RationService {
         // 测量类参数（定量测定）
         // 波长值：1-3个成员，数值190-900，保留1位小数
         if (methodDto.getWaveLength() != null) {
-            if (methodDto.getWaveLength().size() < 1 || methodDto.getWaveLength().size() > 3) {
+            if (methodDto.getWaveLength().isEmpty() || methodDto.getWaveLength().size() > 3) {
                 return Result.fail("波长个数需在1-3之间");
             }
             for (String wl : methodDto.getWaveLength()) {
@@ -206,7 +145,7 @@ public class RationServiceImpl implements RationService {
         }
         // 波长系数：1-3个成员
         if (methodDto.getCoefficientParams() != null) {
-            if (methodDto.getCoefficientParams().size() < 1 || methodDto.getCoefficientParams().size() > 3) {
+            if (methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 3) {
                 return Result.fail("波长系数个数需在1-3之间");
             }
         }
@@ -215,26 +154,27 @@ public class RationServiceImpl implements RationService {
             try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail("曲线次数范围应为1-4"); } catch (Exception ignored) {}
         }
         // 方程类型：枚举
-        if (StringUtils.hasText(methodDto.getEquationType())) {
-          Set<String> allow = new HashSet<>(Arrays.asList("qtCFA","qtAFC"));
-            if (!allow.contains(methodDto.getEquationType()))
-                return Result.fail("方程类型不合法");
-        }
-        // 零点方式：字节，默认0 - 此处放宽，若提供需为0-255的整数
-        // 曲线系数方式：枚举
-        if (org.springframework.util.StringUtils.hasText(methodDto.getCoefficientMode())) {
-            Set<String> allow = new HashSet<>(Arrays.asList("ctInput","ctCurve","0","1"));
-            if (!allow.contains(methodDto.getCoefficientMode())) return Result.fail("曲线系数方式不合法");
-        }
+//        if (StringUtils.hasText(methodDto.getEquationType())) {
+//          Set<String> allow = new HashSet<>(Arrays.asList("qtCFA","qtAFC"));
+//            if (!allow.contains(methodDto.getEquationType()))
+//                return Result.fail("方程类型不合法");
+//        }
+//        // 零点方式：字节，默认0 - 此处放宽，若提供需为0-255的整数
+//        // 曲线系数方式：枚举
+//        if (org.springframework.util.StringUtils.hasText(methodDto.getCoefficientMode())) {
+//            Set<String> allow = new HashSet<>(Arrays.asList("ctInput","ctCurve","0","1"));
+//            if (!allow.contains(methodDto.getCoefficientMode())) return Result.fail("曲线系数方式不合法");
+//        }
         // 曲线系数数据：1-10 个成员
-        if (methodDto.getCoefficientParams() != null && (methodDto.getCoefficientParams().size() < 1 || methodDto.getCoefficientParams().size() > 10)) {
+        if (methodDto.getCoefficientParams() == null || methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 10) {
             return Result.fail("曲线系数数据个数需在1-10之间");
         }
         // 拟合结果单位：1-10字符
         // 该字段在定量分析结果中，若存在则校验
         if (methodDto.getResultParams() != null) {
             for (PreCountResultParam r : methodDto.getResultParams()) {
-                if (r.getUnit() != null && (r.getUnit().length() < 1 || r.getUnit().length() > 10)) {
+                System.out.println(r.getUnit().length());
+                if (r.getUnit() == null || r.getUnit().isEmpty() || r.getUnit().length() > 10) {
                     return Result.fail("结果单位长度应为1-10");
                 }
             }

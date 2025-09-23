@@ -29,4 +29,13 @@ public interface ConciseCommonService {
 
     // 修改任务名称
     Result updateTask(UpdateTaskDto updateTaskDto);
+
+    /**
+     * 光度和定量方法里输入参数校验
+     */
+    Result<Boolean> checkSampleInputParam(FCheckSampleInputParamDto checkSampleInputParamDto);
+    /*
+    光度和定量方法里公式校验
+     */
+    Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto);
 }

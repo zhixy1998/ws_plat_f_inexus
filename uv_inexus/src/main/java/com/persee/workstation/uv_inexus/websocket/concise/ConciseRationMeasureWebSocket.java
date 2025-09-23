@@ -251,9 +251,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         }
 
                         if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                            lastIsEmpty = true;
 
                             emptySampleDeal(digit, ansData, dealData);
+                            lastIsEmpty = true;
                         } else {
                             lastIsEmpty = false;
                             //测量过的数据，非空白样，添加标准浓度为了拟合曲线
@@ -301,7 +301,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     }
                 }
                 if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                    lastIsEmpty = true;
+
                     R<FRationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
                     if (!saved.getSuccess()) {
                         log.info("数据保存异常");
@@ -316,7 +316,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     dealData.setTaskId(taskId);
                     dealData.setSampleId(sample.getId());
                     dealData.setMeasureDataId(measureDataId);
-
                     emptySampleDeal(digit, absData, dealData);
                     for (FRationSaveCountDataInfo info : emptyDataList) {
                         String sampleId = info.getSampleId();
@@ -327,6 +326,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         }
 
                     }
+                    lastIsEmpty = true;
                     continue;
                 } else {
                     lastIsEmpty = false;
@@ -492,7 +492,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     }
                 }
                 if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                    lastIsEmpty = true;
 
                     String measureDataId = saveDataInfo.getMeasureDataId();
 
@@ -549,10 +548,19 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         measureAbsDataList.add(valueData);
                     }
 
+                    saveDataInfo.setCountData(measureAbsDataList);
+                    rationService.saveAnalyzeData(saveDataInfo);
                     //定量的公式计算----待定
 //                    rationService.formula()
+                    R<List<FRationCountDataInfo>> formula = rationService.formula(saveDataInfo.getAnalyzeDataId(), data.getWavelengthData(), sample, task, parameter, digit);
 
-                    saveDataInfo.setCountData(measureAbsDataList);
+                    if (!formula.getSuccess()) {
+                        log.info("公式计算异常");
+                        sendAndClose(session, formula.getMessage());
+                        return;
+                    }
+                    List<FRationCountDataInfo> formulaData = formula.getData();
+                    saveDataInfo.getCountData().addAll(formulaData);
                     rationService.saveAnalyzeData(saveDataInfo);
                 }
                 specimen.setIsTested(right);

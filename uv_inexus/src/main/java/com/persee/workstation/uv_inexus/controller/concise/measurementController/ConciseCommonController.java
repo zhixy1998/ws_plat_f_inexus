@@ -97,4 +97,16 @@ public class ConciseCommonController {
         }
     }
 
+    @PostMapping("checkSampleInputParam")
+    @ApiOperation("检查样品输入参数")
+    public Result<Boolean> checkSampleInputParam(@RequestBody FCheckSampleInputParamDto checkSampleInputParamDto) {
+        return conciseCommonService.checkSampleInputParam(checkSampleInputParamDto);
+    }
+
+    @PostMapping("checkFormula")
+    @ApiOperation("检查公式")
+    public Result<Boolean> checkFormula(@RequestBody FCheckFormulaDto checkFormulaDto) {
+        return conciseCommonService.checkFormula(checkFormulaDto);
+    }
+
 }
