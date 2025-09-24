@@ -112,6 +112,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         String sampleId = getQueryParam(query, "sampleId");
         String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         String di = getQueryParam(query, "digit");
+        String updateBy = getQueryParam(query, "updateBy");
         if (deviceSerialNumber == null) {
             sendAndClose(session, "未连接仪器");
             return;
@@ -231,16 +232,16 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 return;
             }
 
-            int maxPoolNum = usefulLocation.size();
-            int currentPoolNum = 0;
+            int usefulPoolNum = usefulLocation.size();
+            int measureCount = 0;
 
             for (TaskSpecimen specimen : taskSpecimen) {
-                if (!isAutoChangePool && currentPoolNum == 1) {
+                if (!isAutoChangePool && measureCount == 1) {
                     log.info("不自动切换样品池，只测一个就结束");
                     break;
                 }
 
-                if (currentPoolNum >= maxPoolNum) {
+                if (measureCount >= usefulPoolNum) {
                     break;
                 }
                 if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
@@ -253,6 +254,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 } else{
                     measure = singleSampleMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
                 }
+                FMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
 
                 if (!measure.getSuccess()) {
                     sendAndClose(session, measure.getMessage());
@@ -269,9 +273,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
                 tMeasureTaskService.updateById(task);
                 //公式计算
-                FMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-
-                currentPoolNum ++;
+                measureCount ++;
 
                 R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
                 if (!formulaCount.getSuccess()) {
@@ -292,7 +294,6 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         sessions.remove(session.getId());
         session.close();
         status = 0;
-
     }
 
     private void removeOldData(String taskId, String sampleId) {
@@ -420,6 +421,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
         list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+
 
         JSONObject object = new JSONObject();
         object.put("currentPoolNum", sample.getSampleLocation());

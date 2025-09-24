@@ -316,7 +316,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                  * 区分重复与不重复测，测量 + 计算出abs值一起
                  */
                 R<FRationDataVO> r;
-                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
+
                 if (repeat) {
                     //重复测量，单独处理！
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
@@ -324,7 +324,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 } else {
                     r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
                 }
-
+                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
                 if (!r.getSuccess()) {
                     sendAndClose(session, r.getMessage());
                     return;

@@ -1188,7 +1188,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
             String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
 
-            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.system.getIdentity(), sampleLocationName);
+            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
             ans.add(sampleLocation);
         }
 

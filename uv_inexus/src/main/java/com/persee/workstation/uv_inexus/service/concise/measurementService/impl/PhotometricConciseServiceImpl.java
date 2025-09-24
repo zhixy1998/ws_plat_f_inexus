@@ -1124,7 +1124,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (StringUtils.hasText(deviceSerialNumber)) {
             String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
             String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
-            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.system.getIdentity(), sampleLocationName);
+            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
             ans.add(sampleLocation);
         }
 
@@ -2085,6 +2085,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.fail("文件生成失败：" + e.getMessage());
         }
     }
+
 
     // ---------------------- 新增：三格式文件生成具体实现 ----------------------
     /**

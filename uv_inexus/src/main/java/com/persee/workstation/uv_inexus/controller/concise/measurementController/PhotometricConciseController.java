@@ -213,6 +213,4 @@ public class PhotometricConciseController {
             return Result.fail(r.getMessage());
         }
     }
-
-
 }

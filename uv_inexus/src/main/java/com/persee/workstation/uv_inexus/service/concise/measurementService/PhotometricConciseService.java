@@ -147,4 +147,5 @@ public interface PhotometricConciseService {
      * 导出到word
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType);
+
 }
