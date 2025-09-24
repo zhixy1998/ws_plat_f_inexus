@@ -57,7 +57,6 @@ public class DataManagementServiceImpl implements DataManagementService {
     private TMeasureAnalysisDataMapper analysisDataMapper;
 
 
-
     //方法
 
     /*
@@ -349,63 +348,72 @@ public class DataManagementServiceImpl implements DataManagementService {
     }
 
     @Override
-    public Result<String> deleteTask(String deleteTaskId) {
+    public Result<String> deleteTask(List<String> deleteTaskIdList) {
+        for (String deleteTaskId : deleteTaskIdList) {
+            TMeasureTask tMeasureTask = taskManagementMapper.selectOne(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getId, deleteTaskId));
+            String sampleKey = tMeasureTask.getSampleKey();
+            List<TMeasureSample> tMeasureSamples = JSON.parseArray(sampleKey, TMeasureSample.class);
+            for (TMeasureSample TMeasureSample : tMeasureSamples) {
+                String specimenKey = TMeasureSample.getId();
+                int i = sampleManagementMapper.deleteById(specimenKey);
+                if (i == 0) {
+                    return Result.fail("样品删除失败");
+                }
+                int res = dataManagementMapper.deleteById(deleteTaskId);
+                if (res == 0) {
+                    return Result.fail("样品删除失败");
+                }
+                int result = analysisDataMapper.deleteById(deleteTaskId);
+                if (result == 0) {
+                    return Result.fail("样品删除失败");
+                }
 
-        TMeasureTask tMeasureTask = taskManagementMapper.selectOne(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getId, deleteTaskId));
-        String sampleKey = tMeasureTask.getSampleKey();
-        List<TMeasureSample> tMeasureSamples = JSON.parseArray(sampleKey, TMeasureSample.class);
-        for (TMeasureSample TMeasureSample : tMeasureSamples) {
-            String specimenKey = TMeasureSample.getId();
-            int i = sampleManagementMapper.deleteById(specimenKey);
+            }
+            int i = taskManagementMapper.deleteById(deleteTaskId);
             if (i == 0) {
-                return Result.fail("样品删除失败");
-            }
-            int res = dataManagementMapper.deleteById(deleteTaskId);
-            if (res == 0) {
-                return Result.fail("样品删除失败");
-            }
-            int result = analysisDataMapper.deleteById(deleteTaskId);
-            if (result == 0) {
-                return Result.fail("样品删除失败");
+                return Result.fail("任务删除失败");
             }
 
         }
-        int i = taskManagementMapper.deleteById(deleteTaskId);
-        if (i == 0) {
-            return Result.fail("任务删除失败");
+        return Result.ok("删除成功");
+
+    }
+
+    @Override
+    public Result<String> deleteMethod(List<String> deleteMethodIdList) {
+        for (String deleteMethodId : deleteMethodIdList) {
+
+            List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(Wrappers.lambdaQuery(TMeasureTask.class)
+                    .eq(TMeasureTask::getMethodKey, deleteMethodId));
+
+            int size = tMeasureTasks.size();
+            if (size > 0) {
+                return Result.fail("该方法包含未完成的任务");
+            }
+            int i = methodManagementMapper.deleteById(deleteMethodId);
+            if (i == 0) {
+                return Result.fail("删除成功");
+            }
+
         }
         return Result.ok("删除成功");
     }
 
     @Override
-    public Result<String> deleteMethod(String deleteMethodId) {
-        List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(Wrappers.lambdaQuery(TMeasureTask.class)
-                .eq(TMeasureTask::getMethodKey, deleteMethodId));
+    public Result<String> deleteProject(List<String> deleteProjectIdList) {
+        for (String deleteProjectId : deleteProjectIdList) {
 
-        int size = tMeasureTasks.size();
-        if (size > 0) {
-            return Result.fail("该方法包含未完成的任务");
-        }
-        int i = methodManagementMapper.deleteById(deleteMethodId);
-        if (i == 0) {
-            return Result.fail("删除成功");
-        }
-
-        return Result.ok("删除成功");
-    }
-
-    @Override
-    public Result<String> deleteProject(String deleteProjectId) {
-        LambdaQueryWrapper<TMeasureMethod> tMeasureMethodLambdaQueryWrapper = Wrappers.lambdaQuery(TMeasureMethod.class)
-                .eq(TMeasureMethod::getProjectItemKey, deleteProjectId);
-        List<TMeasureMethod> tMeasureMethods = methodManagementMapper.selectList(tMeasureMethodLambdaQueryWrapper);
-        int size = tMeasureMethods.size();
-        if (size > 0) {
-            return Result.fail("该项目包含未删除的方法");
-        }
-        int i = projectManagementMapper.deleteById(deleteProjectId);
-        if (i == 0) {
-            return Result.fail("删除失败");
+            LambdaQueryWrapper<TMeasureMethod> tMeasureMethodLambdaQueryWrapper = Wrappers.lambdaQuery(TMeasureMethod.class)
+                    .eq(TMeasureMethod::getProjectItemKey, deleteProjectId);
+            List<TMeasureMethod> tMeasureMethods = methodManagementMapper.selectList(tMeasureMethodLambdaQueryWrapper);
+            int size = tMeasureMethods.size();
+            if (size > 0) {
+                return Result.fail("该项目包含未删除的方法");
+            }
+            int i = projectManagementMapper.deleteById(deleteProjectId);
+            if (i == 0) {
+                return Result.fail("删除失败");
+            }
         }
         return Result.ok();
     }

@@ -16,6 +16,8 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @Api("数据管理接口")
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
@@ -63,21 +65,21 @@ public class DataManagementController {
 //    }
     @PostMapping("/deleteTask")
     @ApiOperation("任务删除")
-    public Result<String> deleteTask(@RequestParam String deleteTaskId) {
-        return dataManagementService.deleteTask(deleteTaskId);
+    public Result<String> deleteTask(@RequestParam  List<String>deleteTaskIdList) {
+        return dataManagementService.deleteTask(deleteTaskIdList);
     }
 
 
     @PostMapping("/deleteMethod")
     @ApiOperation("方法删除")
-    public Result<String> deleteMethod(@RequestParam String deleteMethodId) {
-        return dataManagementService.deleteMethod(deleteMethodId);
+    public Result<String> deleteMethod(@RequestParam List<String> deleteMethodIdList) {
+        return dataManagementService.deleteMethod(deleteMethodIdList);
     }
 
     @PostMapping("/deleteProject")
     @ApiOperation("项目删除")
-    public Result<String> deleteProject(@RequestParam String deleteProjectId) {
-        return dataManagementService.deleteProject(deleteProjectId);
+    public Result<String> deleteProject(@RequestParam List<String> deleteProjectIdList) {
+        return dataManagementService.deleteProject(deleteProjectIdList);
     }
 
     @PostMapping("/copy")
