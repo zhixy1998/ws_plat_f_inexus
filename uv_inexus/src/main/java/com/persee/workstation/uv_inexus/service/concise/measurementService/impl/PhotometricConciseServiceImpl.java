@@ -1007,10 +1007,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
             return Result.fail("请选择方法或任务");
         }
-        if (!StringUtils.hasText(deviceSerialNumber)) {
-            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-            concisePublicUtilService.changeSampleLocation(taskId, usefulLocation);
-        }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
@@ -1125,11 +1121,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 break;
             }
         }
-
         if (StringUtils.hasText(deviceSerialNumber)) {
             String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
             String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
-            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.sample.getIdentity(), sampleLocationName);
+            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.system.getIdentity(), sampleLocationName);
             ans.add(sampleLocation);
         }
 
@@ -1297,6 +1292,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 }
             }
         }
+        List<Integer> usefulLocation = new ArrayList<>();
+
+        if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+            usefulLocation = fSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
+        }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
 
@@ -1313,8 +1313,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
             map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
-            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
 
+            if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+                if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
+                    map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
+                }
+            }
 
             if (StringUtils.hasText(sample.getNewColData())){
                 Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});

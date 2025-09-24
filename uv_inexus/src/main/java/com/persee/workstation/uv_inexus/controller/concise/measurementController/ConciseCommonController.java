@@ -103,6 +103,18 @@ public class ConciseCommonController {
         }
     }
 
+
+    @ApiOperation("设置为当前样品池")
+    @GetMapping("setCurrentPool")
+    public Result<Boolean> setCurrentPool(@RequestParam String deviceSerialNumber, @RequestParam Integer poolNum, @RequestParam String updateBy) {
+        R<Boolean> r = fSamplePoolConfigService.setCurrentPool(deviceSerialNumber, poolNum, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     @PostMapping("checkSampleInputParam")
     @ApiOperation("检查样品输入参数")
     public Result<Boolean> checkSampleInputParam(@RequestBody FCheckSampleInputParamDto checkSampleInputParamDto) {

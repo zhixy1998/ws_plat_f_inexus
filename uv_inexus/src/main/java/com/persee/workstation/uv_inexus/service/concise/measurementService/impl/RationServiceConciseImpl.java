@@ -921,6 +921,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                 JSONObject newColData = new JSONObject();
 
                 for (FHeadVO head : dto.getUnknowHeads()) {
+                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                        continue;
+                    }
                     String s = map.get(head.getIdentity());
                     newColData.put(head.getIdentity(), s);
                 }
@@ -1057,7 +1060,6 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         if (!StringUtils.hasText(deviceSerialNumber)) {
             List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-            concisePublicUtilService.changeSampleLocation(taskId, usefulLocation);
         }
         LinkedHashSet<FHeadVO> ans = new LinkedHashSet<>();
 
@@ -1257,10 +1259,6 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail("方法不存在");
         }
 
-        if (!StringUtils.hasText(deviceSerialNumber)) {
-            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-            concisePublicUtilService.changeSampleLocation(taskId, usefulLocation);
-        }
         LinkedHashSet<FHeadVO> ans = new LinkedHashSet<>();
         //根据任务中记录的样品id判断是否存在空白样品
 
@@ -1759,6 +1757,11 @@ public class RationServiceConciseImpl implements RationConciseService {
             changeStandSampleDataDigit(taskId, digit);
             changeUnknowSampleDigit(taskId, digit);
         }
+
+        List<Integer> usefulLocation = new ArrayList<>();
+        if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+            usefulLocation = fSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
+        }
         /*
         查询数据
         */
@@ -1792,12 +1795,22 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 Map<String, Object> singleSampleData = getSingleSampleData(task, sample, repeat, option, digit);
 
+                if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+                    if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
+                        singleSampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                    }
+                }
                 standSampleData.add(singleSampleData);
             } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
 
                 FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
 
                 Map<String, Object> sampleData = getSingleSampleData(task, sample, repeat, option, digit);
+                if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+                    if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
+                        sampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                    }
+                }
 
                 unknowSampleData.add(sampleData);
 
@@ -1858,7 +1871,6 @@ public class RationServiceConciseImpl implements RationConciseService {
         map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
         map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
         map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
-        map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
 
         if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
             map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());

@@ -14,4 +14,7 @@ public class FQueryDataDTO {
     private Integer digit;
     @ApiModelProperty("要显示的数据类型：平均值/sd/rsd等")
     private List<String> option;
+
+    @ApiModelProperty("仪器序列号")
+    private String deviceSerialNumber;
  }

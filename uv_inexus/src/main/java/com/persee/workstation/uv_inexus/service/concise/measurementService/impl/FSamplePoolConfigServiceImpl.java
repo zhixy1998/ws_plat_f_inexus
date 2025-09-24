@@ -14,6 +14,7 @@ import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,9 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
 
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
+
+    @Autowired
+    DevMessageUtil devMessageUtil;
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
@@ -198,13 +202,53 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
 
         List<FSamplePoolStatus> poolStatuses = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
         for (FSamplePoolStatus status : poolStatuses) {
-            if (status.getPoolStatus()) {
+            if (status.getPoolStatus() && status.getPoolPurpose().equals(DeviceSamplePoolPurpose.MEASURE.getCode())) {
                 list.add(status.getPoolNum());
             }
         }
 
         list.sort(Integer::compareTo);
         return list;
+    }
+
+    @Override
+    public R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info("未连接仪器");
+            return R.fail("未连接仪器");
+        }
+        if (!StringUtils.hasText(updateBy)) {
+            log.info("缺少更新人信息");
+            return R.fail("未登录");
+        }
+        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        FSamplePoolConfigPO po = dao.selectOne(query);
+        if (po == null) {
+            po = new FSamplePoolConfigPO();
+            po.setCreateBy(updateBy);
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceSerialNumber);
+            po.setAttachmentType(attachmentInfo.getAttachmentNum());
+            po.setDeviceSerialNumber(deviceSerialNumber);
+            List<FSamplePoolStatus> poolInfo = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
+            po.setPoolInfo(JSON.toJSONString(poolInfo));
+        }
+
+        String ip = deviceInfoDAO.getIp(deviceSerialNumber);
+        R<String> stringR = devMessageUtil.setCurrentCellPos(poolNum, ip);
+        if (!stringR.getSuccess()) {
+            log.info("设置出错");
+            return R.fail("设置出错");
+        }
+
+        po.setCurrentPoolNum(poolNum);
+        po.setUpdateBy(updateBy);
+        boolean b = dao.updateById(po) > 0;
+        if (b) {
+            return R.ok(true);
+        } else {
+            return R.fail("更新失败");
+        }
     }
 
 

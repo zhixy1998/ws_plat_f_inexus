@@ -11,7 +11,7 @@ import java.util.Map;
 @Getter
 public enum DeviceInitInfoEnum {
 
-    WAVELENGTH_LIST(1,"附件初始化(T600五联100mm长样池)"),
+    WAVELENGTH_LIST(1,"附件初始化"),
     COLOR_FILTER(2, "滤色片电机初始化"),
     INIT_SLIT_MOTOR(3,"狭缝电机初始化"),
     SCANNING_MOTOR(4,"扫描电机初始化"),

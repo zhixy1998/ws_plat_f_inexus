@@ -34,7 +34,6 @@ public class ResponseDeal {
             case "SetGain":
             case "SetResponseTime":
             case "SetPhotoMode":
-
             case "SetPadModeTrue":
             case "SetPadModeFalse":
             case "SetPCModeTrue":
@@ -49,7 +48,6 @@ public class ResponseDeal {
             case "InitSlit1Motor":
             case "InitWlMotor":
             case "SetSlit1":
-            case "SetCellPos":
             case "InitLampMotor":
             case "CheckWLamp":
             case "CheckDLamp":
@@ -59,6 +57,8 @@ public class ResponseDeal {
             case "DisConnect":
             case "DisConnectIAP":
                 return parseBooleanFrom5thByte(responses);
+            case "SetCellPos":
+                return parseSetCellPos(responses, sendBytes);
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
@@ -92,6 +92,18 @@ public class ResponseDeal {
 
         byte[] last = responses.get(responses.size() - 1);
         boolean success = last.length >= 5 && (last[4] & 0xFF) == 0;
+        result = success ? "true" : "false"; // 根据结果更新 result
+        return success;
+    }
+
+    private static Boolean parseSetCellPos(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            result = "false"; // 设置全局变量
+            return false;
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        boolean success = last.length >= 5 && (last[4] & 0xFF) == (sendBytes[4] & 0xFF);
         result = success ? "true" : "false"; // 根据结果更新 result
         return success;
     }

@@ -8,6 +8,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
@@ -17,6 +18,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampleAndDataVO;
@@ -75,6 +77,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
+    FSamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     DeviceInfoService infoService;
@@ -150,6 +155,34 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             removeOldData(taskId, sampleId);
 
             R<FPhotometricSampleAndDataVO> measure;
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (!poolInfo.getSuccess()) {
+                sendAndClose(session, "无样品池信息");
+                return;
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Integer currentPoolNum = poolInfoVO.getCurrentPoolNum();
+            List<FSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
+            boolean poolCanUse = false;
+            for (FSamplePoolStatus poolStatus : list) {
+                if (poolStatus.getPoolNum().equals(currentPoolNum)) {
+                    poolCanUse = true;
+                    break;
+                }
+            }
+            if (!poolCanUse) {
+                sendAndClose(session, "当前定位样品池不可用，请移动样品池");
+                return;
+            }
+
+            FMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
+            if (measureSample == null) {
+                sendAndClose(session, "样品不存在");
+                return;
+            }
+            measureSample.setSampleLocation(currentPoolNum.toString());
+            tMeasureSampleService.updateById(measureSample);
+
             if (parameter.getRepetitionPattern().equals("单池重复")) {
                 measure = singleSampleRepeatMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
             } else{
@@ -182,7 +215,34 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             photometricService.saveCountData(data, dataId);
 
         } else {
+
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (!poolInfo.getSuccess()) {
+                sendAndClose(session, "无样品池信息");
+                return;
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+
+            if (usefulLocation == null || usefulLocation.isEmpty()) {
+                log.info("无可用位置");
+                sendAndClose(session, "无可用样品池位置");
+                return;
+            }
+
+            int maxPoolNum = usefulLocation.size();
+            int currentPoolNum = 0;
+
             for (TaskSpecimen specimen : taskSpecimen) {
+                if (!isAutoChangePool && currentPoolNum == 1) {
+                    log.info("不自动切换样品池，只测一个就结束");
+                    break;
+                }
+
+                if (currentPoolNum >= maxPoolNum) {
+                    break;
+                }
                 if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
                     System.out.println("删除或测量过的样品,不需要测量");
                     continue;
@@ -210,6 +270,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 tMeasureTaskService.updateById(task);
                 //公式计算
                 FMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                currentPoolNum ++;
+
                 R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
                 if (!formulaCount.getSuccess()) {
                     sendAndClose(session, "公式计算失败");
@@ -285,10 +348,15 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+
+        JSONObject object = new JSONObject();
+        object.put("currentPoolNum", sample.getSampleLocation());
+        session.sendMessage(new TextMessage(object.toJSONString()));
+
         LocalDateTime startTime = LocalDateTime.now();
         for (String waveLength : waveLengths) {
             list.add(new Command("SetWl", new Object[]{waveLength}));
-            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             list.add(new Command("Measure", new Object[]{}));
 
             String ip = infoService.getIp(deviceSerialNumber);
@@ -349,30 +417,32 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         List<String> waveLengths = parameter.getWaveLength();
 
-
         list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+
+        JSONObject object = new JSONObject();
+        object.put("currentPoolNum", sample.getSampleLocation());
+        session.sendMessage(new TextMessage(object.toJSONString()));
+
         int repetitionTime = Integer.parseInt(parameter.getRepetitionTime());
         int timeInterval = Integer.parseInt(parameter.getTimeInterval());
         LocalDateTime samplingTime = LocalDateTime.now();
         LocalDateTime startTime = LocalDateTime.now();
         for (int i = 0; i < repetitionTime; i++) {
-
             while(repeatMiddleTime !=null && ChronoUnit.SECONDS.between(repeatMiddleTime, LocalDateTime.now()) < timeInterval) {
                 log.info("时间间隔未到");
             }
             LocalDateTime time = LocalDateTime.now();
-            if (session.isOpen()) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("sampleId", sampleKey);
-                jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
-                jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
-                jsonObject.put("value", sample.getSampleNumber() + "-" + (i + 1));
-                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            }
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sampleId", sampleKey);
+            jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
+            jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+            jsonObject.put("value", sample.getSampleNumber() + "-" + (i + 1));
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
             for (String waveLength : waveLengths) {
                 list.add(new Command("SetWl", new Object[]{waveLength}));
-                list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
                 list.add(new Command("Measure", new Object[]{}));
 
                 String ip = infoService.getIp(deviceSerialNumber);

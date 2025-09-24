@@ -20,4 +20,6 @@ public interface FSamplePoolConfigService {
     R<FSamplePoolInfoVO> querySamplePoolInfo(String deviceSerialNumber);
 
     List<Integer> getUsefulLocation(String deviceSerialNumber);
+
+    R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy);
 }

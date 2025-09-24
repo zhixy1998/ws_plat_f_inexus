@@ -58,8 +58,8 @@ public class DevMessageUtil {
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
-             Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
-                //              Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
+                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+//                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
                 String address = socket.getLocalAddress().getHostAddress();
                 Object[] split = address.split("\\.");
                 int length = param.length;
@@ -140,6 +140,32 @@ public class DevMessageUtil {
         }
 
         return R.ok();
+    }
+
+    public R<String> setCurrentCellPos(Integer poolNum, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            return R.fail("xml文件加载失败");
+        }
+        String cmdId = "SetCellPos";
+
+        //发送报文组
+        byte[] bytes = protocolItemUtil.calcSendBytes(new Object[]{poolNum}, xml.get(cmdId));
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        String result = parse.toString();
+        if ("false".equals(result)) {
+            return R.fail();
+        }
+
+        return R.ok();
+
     }
 
     /**
