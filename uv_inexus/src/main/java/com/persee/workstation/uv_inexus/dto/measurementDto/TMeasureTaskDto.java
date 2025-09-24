@@ -1,16 +1,18 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
-import org.apache.commons.codec.language.bm.Rule;
 
 import java.time.LocalDateTime;
-import java.util.regex.Pattern;
 
 @Data
 public class TMeasureTaskDto {
+    @ApiModelProperty("任务id")
+    private String id;
+
+    @ApiModelProperty("测量类型")
+    private String measureType;
     @ApiModelProperty("任务名称")
     private String taskName;
     @ApiModelProperty("任务状态")

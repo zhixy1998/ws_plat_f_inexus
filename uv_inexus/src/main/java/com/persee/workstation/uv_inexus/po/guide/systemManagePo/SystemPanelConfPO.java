@@ -29,4 +29,10 @@ public class SystemPanelConfPO extends BasePO {
     @ApiModelProperty("面板顺序")
     @TableField(value = "panel_order")
     private String panelOrder;
+
+
+    @ApiModelProperty("默认进入经典模式")
+    @TableField("classic_Switch")
+    private Boolean classicSwitch;
+
 }
