@@ -155,7 +155,7 @@ public class SpectrumConciseController {
         return spectrumConciseService.queryGaugePoint(dataId, digit);
     }
 
-    @PostMapping("addGaugePointPort")
+    @PostMapping("addGaugePoint")
     @ApiOperation("添加标记点接口")
     public Result addAnalysisDataGaugePointPort(@RequestBody FAddGaugePointDto paramDto){
         return spectrumConciseService.addGaugePointPort(paramDto);

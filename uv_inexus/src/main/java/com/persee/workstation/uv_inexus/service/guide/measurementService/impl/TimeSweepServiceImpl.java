@@ -2052,6 +2052,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         // 1. 编号
         ans.add(new HeadVO("编号", "id", "system", "编号"));
 
+        ans.add(new HeadVO("峰/谷", "peakValley", "system", "编号"));
+
         ans.add(new HeadVO("时间", "TIME", "measure", "波长(nm)"));
 
         // 2. 波长 + 光度模式
@@ -2103,6 +2105,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         // 解析分析数据
         List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        // 解析峰谷数据
+        List<PeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), PeakValleyMarking.class);
+        List<PeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), PeakValleyMarking.class);
         List<Map<String, Object>> arrayList = new ArrayList<>();
         // 根据长度遍历
         for (int i = 0; i < result.size(); i++) {
@@ -2110,6 +2115,16 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             String[] split = result.get(i).split(",");
             Map<String, Object> map = new HashMap<>();
             map.put(SampleTableEnum.ID.getIdentity(), i + 1);
+            for (PeakValleyMarking peak : peaks) {
+                if (peak.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "峰");
+                }
+            }
+            for (PeakValleyMarking grade : valleys) {
+                if (grade.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "谷");
+                }
+            }
             map.put(SampleTableEnum.TIME.getIdentity(), split[0]);
             map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
             map.put(SampleTableEnum.REMARK.getIdentity(), null);

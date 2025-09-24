@@ -1976,10 +1976,9 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.ok(encoded);
         }else if (type.equals("1")){
             TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(id);
-            if (byId.getAnalysisDataImage() == null) {
-                return Result.fail("图片不存在");
-            }
-            String encoded = Base64.encodeBase64String(byId.getAnalysisDataImage());
+            // 根据分析数据的id查询分析数据图片
+            TMeasureAnalysisImage analysisId = tMeasureAnalysisImageService.getOne(new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", id));
+            String encoded = Base64.encodeBase64String(analysisId.getImageBase64());
             return Result.ok(encoded);
         }else {
             return Result.fail("type类型错误");
@@ -3026,6 +3025,8 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 1. 编号
         ans.add(new HeadVO("编号", "id", "system", "编号"));
 
+        ans.add(new HeadVO("峰/谷", "peakValley", "system", "编号"));
+
         ans.add(new HeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
 
         // 2. 波长 + 光度模式
@@ -3077,6 +3078,9 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         // 解析分析数据
         List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        // 解析峰谷数据
+        List<PeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), PeakValleyMarking.class);
+        List<PeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), PeakValleyMarking.class);
         List<Map<String, Object>> arrayList = new ArrayList<>();
         // 根据长度遍历
         for (int i = 0; i < result.size(); i++) {
@@ -3084,6 +3088,16 @@ public class SpectrumServiceImpl implements SpectrumService {
             String[] split = result.get(i).split(",");
             Map<String, Object> map = new HashMap<>();
             map.put(SampleTableEnum.ID.getIdentity(), i + 1);
+            for (PeakValleyMarking peak : peaks) {
+                if (peak.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "峰");
+                }
+            }
+            for (PeakValleyMarking grade : valleys) {
+                if (grade.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "谷");
+                }
+            }
             map.put(SampleTableEnum.WAVELENGTH.getIdentity(), split[0]);
             map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
             map.put(SampleTableEnum.REMARK.getIdentity(), null);

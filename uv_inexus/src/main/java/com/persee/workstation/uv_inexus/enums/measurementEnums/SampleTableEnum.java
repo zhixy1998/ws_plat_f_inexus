@@ -22,7 +22,9 @@ public enum SampleTableEnum {
     ID("id","编号"),
     WAVELENGTH("waveLength", "波长"),
     LUMINOSITY("luminosity", "光度"),
-    TIME("time", "时间");
+    TIME("time", "时间"),
+    PEAKVALLEY("peakValley", "时间");
+
 
 
     private final String identity;

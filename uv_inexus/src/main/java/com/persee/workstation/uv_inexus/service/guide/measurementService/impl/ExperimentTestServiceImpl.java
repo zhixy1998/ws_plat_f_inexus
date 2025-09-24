@@ -1464,8 +1464,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-            vo.setStartWavelength(param.getStartWaveLength());
-            vo.setEndWavelength(param.getEndWaveLength());
+            vo.setStartWaveLength(param.getStartWaveLength());
+            vo.setEndWaveLength(param.getEndWaveLength());
             vo.setScanSpeed(param.getScanSpeed());
             vo.setTimeInterval(param.getTimeInterval());
             vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
@@ -1493,6 +1493,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setSpectrumScanImage(attachment.getImageBase64());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
+
+            // 仪器型号
+            vo.setInstrumentModel("T600");
             return Result.ok(vo);
         }else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
 //            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -1616,6 +1619,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setTimeScanImage(attachment.getImageBase64());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
+
+            // 仪器型号
+            vo.setInstrumentModel("T600");
             return Result.ok(vo);
         }else{
             return Result.ok();

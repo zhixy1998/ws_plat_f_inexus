@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
@@ -900,6 +901,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if ("不重复".equals(parameter.getRepetitionPattern())) {
             // 不重复模式
             for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if (taskSpeciman.getDeleteType().equals("1")&&type==null){
+                    continue;
+                }
                 FSampleListVo vo = new FSampleListVo();
                 // 根据样品id查询样品数据
                 FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
@@ -1267,6 +1271,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @return
      */
     @Override
+    @DS("concise")
     @Transactional(rollbackFor = Exception.class)
     public Result updateDataColor(FUpdateDataColorDto paramDto) {
         // 参数校验
@@ -1347,6 +1352,18 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         gaugePointJson = analysisData.getGaugePoint();
         rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
 
+        /// 校验
+        // 校验：所有传入的标记点是否都存在于原始数据
+        Set<String> rawXSet = rawData.stream()
+                .map(s -> normalizeNumberString(s.split(",")[0]))
+                .collect(Collectors.toSet());
+
+        for (String xStr : paramDto.getGaugePoints()) {
+            String normX = normalizeNumberString(xStr);
+            if (!rawXSet.contains(normX)) {
+                return Result.fail("波长 " + xStr + " 不存在，请重新选择");
+            }
+        }
 
         // 原标记点集合
         List<FPeakValleyMarking> oldList = gaugePointJson == null
@@ -1475,6 +1492,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
+        if (paramDto.getDataId() == null) {
+            return Result.fail("数据ID不能为空");
+        }
+        if (paramDto.getHeight() == null){
+            paramDto.setHeight(50.0);
+        }
+        if (paramDto.getDistance() == null){
+            paramDto.setDistance("1");
+        }
         paramDto.setHeight(paramDto.getHeight() / 100);
         FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (fMeasureAnalysisData == null) {
