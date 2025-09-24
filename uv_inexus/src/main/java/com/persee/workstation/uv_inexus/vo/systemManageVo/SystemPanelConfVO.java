@@ -14,4 +14,7 @@ public class SystemPanelConfVO {
 
     @ApiModelProperty("任务列表面板开关")
     private Boolean taskListSwitch;
+
+    @ApiModelProperty("默认进入经典模式")
+    private Boolean classicSwitch;
 }
