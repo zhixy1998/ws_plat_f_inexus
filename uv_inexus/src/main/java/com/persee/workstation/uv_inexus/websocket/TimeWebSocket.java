@@ -65,7 +65,13 @@ public class TimeWebSocket extends TextWebSocketHandler {
     private TMeasureDataService tMeasureDataService;
 
     @Autowired
+    private TMeasureAnalysisImageService tMeasureAnalysisImageService;
+
+    @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
+    private TMeasureTaskAttachmentService tMeasureTaskAttachmentService;
 
     @Autowired
     private TMeasureSampleService tMeasureSampleService;
@@ -405,6 +411,13 @@ public class TimeWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "保存分析数据失败");
             return;
         }
+        TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
+        tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
+        tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
+        // 创建任务附属表
+        TMeasureTaskAttachment tMeasureTaskAttachment = new TMeasureTaskAttachment();
+        tMeasureTaskAttachment.setTaskId(task.getId());
+        tMeasureTaskAttachmentService.save(tMeasureTaskAttachment);
         List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen taskSpecimen : specimen) {
             if (taskSpecimen.getSpecimenKey().equals(sampleId)) {

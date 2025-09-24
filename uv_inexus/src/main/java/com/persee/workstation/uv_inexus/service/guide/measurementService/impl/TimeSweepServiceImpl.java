@@ -76,6 +76,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired
+    private TMeasureAnalysisImageService tMeasureAnalysisImageService;
+    @Autowired
     private DeviceInfoService deviceInfoService;
     @Autowired
     private DevMessageUtil devMessageUtil;
@@ -963,12 +965,31 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result uploadImage(SpectrumImageUpload upload) {
-        String s = upload.getImage().split(",")[1];
+        String[] split = upload.getImage().split(",");
+        String s = split[1];
+        String fileType = null;
+        if (split[0].startsWith("data:image/png")) {
+            fileType = "png";
+        } else if (split[0].startsWith("data:image/jpeg")) {
+            fileType = "jpg";
+        } else if (split[0].startsWith("data:image/gif")) {
+            fileType = "gif";
+        } else {
+            fileType = "unknown"; // 兜底
+        }
         byte[] bytes = Base64.decodeBase64(s);
         if (upload.getImageType().equals("0")){
-            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(upload.getId());
-            byId.setAnalysisDataImage(bytes);
-            boolean update = tMeasureAnalysisDataService.updateById(byId);
+            QueryWrapper<TMeasureAnalysisImage> analysisId = new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+            analysisId.last("limit 1");
+            TMeasureAnalysisImage byId = tMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null){
+                return Result.fail("图片不存在");
+            }
+            byId.setImageType(fileType);
+            byId.setImageBase64(bytes);
+            // 将当前日期时间存储
+            byId.setCreateTime(LocalDateTime.now());
+            boolean update = tMeasureAnalysisImageService.updateById(byId);
             return Result.ok(update);
         }else{
             // 根据任务id查询任务附属表的内容
@@ -2074,7 +2095,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         QueryWrapper<TMeasureAnalysisData> eq = new QueryWrapper<>();
         eq.eq("task_id", taskId);
         eq.eq("sample_key", sampleId);
-        eq.orderByDesc("serial_number");
+        eq.orderByDesc("analysis_number");
         eq.last("LIMIT 1");
         TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(eq);
         if (analysisData == null) {

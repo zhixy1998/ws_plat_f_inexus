@@ -1929,7 +1929,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         byte[] bytes = Base64.decodeBase64(s);
         if (upload.getImageType().equals("0")){
-            TMeasureAnalysisImage byId = tMeasureAnalysisImageService.getById(upload.getId());
+            QueryWrapper<TMeasureAnalysisImage> analysisId = new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+            analysisId.last("limit 1");
+            TMeasureAnalysisImage byId = tMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null){
+                return Result.fail("图片不存在");
+            }
             byId.setImageType(fileType);
             byId.setImageBase64(bytes);
             // 将当前日期时间存储
@@ -1937,8 +1942,11 @@ public class SpectrumServiceImpl implements SpectrumService {
             boolean update = tMeasureAnalysisImageService.updateById(byId);
             return Result.ok(update);
         }else{
+            QueryWrapper<TMeasureTaskAttachment> eq = new QueryWrapper<TMeasureTaskAttachment>()
+                    .eq("task_id", upload.getId());
+            eq.last("limit 1");
             // 根据任务id查询任务附属表的内容
-            TMeasureTaskAttachment byId = tMeasureTaskAttachmentService.getById(upload.getId());
+            TMeasureTaskAttachment byId = tMeasureTaskAttachmentService.getOne(eq);
             if (byId == null){
                 return Result.fail("任务附属不存在");
             }
@@ -3061,7 +3069,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         QueryWrapper<TMeasureAnalysisData> eq = new QueryWrapper<>();
         eq.eq("task_id", taskId);
         eq.eq("sample_key", sampleId);
-        eq.orderByDesc("serial_number");
+        eq.orderByDesc("analysis_number");
         eq.last("LIMIT 1");
         TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(eq);
         if (analysisData == null) {

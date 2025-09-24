@@ -100,4 +100,20 @@ public class SpectralReportVo {
     //曲线类型：一次曲线，二次曲线
     private String curveType;
 
+    // 时间间隔
+    private String timeInterval;
+    // 重复模式
+    private String repetitionPattern;
+    // 重复次数
+    private String repetitionTime;
+    // 波长间隔
+    private String waveLengthInterval;
+    // 响应时间
+    private String responseTime;
+    // 换灯波长
+    private String changeLampWaveLength;
+    // 多联池模式
+    private String multiPoolMode;
+
+
 }
