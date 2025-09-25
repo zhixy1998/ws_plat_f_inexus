@@ -144,23 +144,248 @@ public class DataCountUtil {
         }
     }
 
+    public static void main(String[] args) {
+        Double v = formatValue(0, 10.5002);
+        System.out.println(v);
+    }
+//    public static Double formatValue(Integer digit, Double value) {
+//        try {
+//            BigDecimal bd = new BigDecimal(value);
+//            bd = bd.setScale(digit, RoundingMode.HALF_UP);
+//            return Double.valueOf(String.valueOf(bd));
+//        } catch (NumberFormatException e) {
+//            return value; // 如果转换失败，返回原始值
+//        }
+//    }
     public static Double formatValue(Integer digit, Double value) {
-        try {
-            BigDecimal bd = new BigDecimal(value);
-            bd = bd.setScale(digit, RoundingMode.HALF_UP);
-            return Double.valueOf(String.valueOf(bd));
-        } catch (NumberFormatException e) {
-            return value; // 如果转换失败，返回原始值
+        if (value == null || digit == null) {
+            return value;
         }
+
+        if (value.isInfinite() || value.isNaN()) {
+            return value;
+        }
+
+        // 处理0值
+        if (value == 0.0) {
+            return 0.0;
+        }
+
+        // 处理负值：先对绝对值修约，再加负号（规则3.2.5）
+        boolean isNegative = value < 0;
+        double absValue = Math.abs(value);
+
+        double resultValue;
+
+        if (digit < 0) {
+            // 修约到整数位（如digit=-2表示修约到百位数）
+            resultValue = roundToIntegerPlace(absValue, -digit);
+        } else {
+            // 修约到小数位
+            resultValue = roundToDecimalPlace(absValue, digit);
+        }
+
+        // 恢复负号
+        return isNegative ? -resultValue : resultValue;
+    }
+
+    /**
+     * 修约到指定小数位数
+     */
+    private static double roundToDecimalPlace(double value, int decimalPlaces) {
+        if (decimalPlaces < 0) {
+            return value;
+        }
+
+        // 使用BigDecimal确保精度
+        BigDecimal bd = BigDecimal.valueOf(value);
+
+        // 如果小数位数为0，直接修约到整数
+        if (decimalPlaces == 0) {
+            return roundToZeroDecimal(bd);
+        }
+
+        // 将数值转换为字符串进行精确处理
+        String strValue = bd.toPlainString();
+        int decimalIndex = strValue.indexOf('.');
+
+        String integerPart;
+        String decimalPart;
+
+        if (decimalIndex == -1) {
+            // 没有小数部分，直接补零返回
+            integerPart = strValue;
+            decimalPart = "";
+        } else {
+            integerPart = strValue.substring(0, decimalIndex);
+            decimalPart = strValue.substring(decimalIndex + 1);
+        }
+
+        // 如果小数位数足够，直接截取
+        if (decimalPart.length() <= decimalPlaces) {
+            // 小数位数不足，补零
+            StringBuilder result = new StringBuilder(integerPart).append(".");
+            result.append(decimalPart);
+            for (int i = decimalPart.length(); i < decimalPlaces; i++) {
+                result.append("0");
+            }
+            return Double.parseDouble(result.toString());
+        }
+
+        // 提取需要保留的部分和需要判断的部分
+        String keepPart = decimalPart.substring(0, decimalPlaces);
+        String judgePart = decimalPart.substring(decimalPlaces);
+
+        // 获取拟舍弃数字的最左一位
+        int firstJudgeDigit = Character.getNumericValue(judgePart.charAt(0));
+
+        // 获取保留的末位数字
+        int lastKeptDigit;
+        if (!keepPart.isEmpty()) {
+            lastKeptDigit = Character.getNumericValue(keepPart.charAt(keepPart.length() - 1));
+        } else {
+            // 如果没有小数部分，看整数部分的最后一位
+            lastKeptDigit = Character.getNumericValue(integerPart.charAt(integerPart.length() - 1));
+        }
+
+        // 检查5之后是否有非0数字
+        boolean hasNonZeroAfterFive = false;
+        if (firstJudgeDigit == 5) {
+            for (int i = 1; i < judgePart.length(); i++) {
+                if (judgePart.charAt(i) != '0') {
+                    hasNonZeroAfterFive = true;
+                    break;
+                }
+            }
+        }
+
+        // 构建基础值（不含修约部分）
+        BigDecimal baseValue = new BigDecimal(integerPart + "." + keepPart);
+        BigDecimal increment = BigDecimal.ONE.movePointLeft(decimalPlaces);
+
+        // 应用修约规则
+        BigDecimal result;
+        if (firstJudgeDigit < 5) {
+            // 规则3.2.1：小于5则舍去
+            result = baseValue;
+        } else if (firstJudgeDigit > 5) {
+            // 规则3.2.2：大于5则进一
+            result = baseValue.add(increment);
+        } else {
+            // 规则3.2.3和3.2.4：等于5的情况
+            if (hasNonZeroAfterFive) {
+                // 规则3.2.3：5之后有非0数字则进一
+                result = baseValue.add(increment);
+            } else {
+                // 规则3.2.4：5之后无数字或皆为0时，看保留的末位数字的奇偶性
+                if (lastKeptDigit % 2 == 1) {
+                    // 奇进偶舍：末位是奇数则进一
+                    result = baseValue.add(increment);
+                } else {
+                    // 末位是偶数则舍去
+                    result = baseValue;
+                }
+            }
+        }
+
+        return result.doubleValue();
+    }
+
+    /**
+     * 修约到整数（0位小数）
+     */
+    private static double roundToZeroDecimal(BigDecimal value) {
+        String strValue = value.toPlainString();
+        int decimalIndex = strValue.indexOf('.');
+
+        if (decimalIndex == -1) {
+            // 已经是整数
+            return value.doubleValue();
+        }
+
+        String integerPart = strValue.substring(0, decimalIndex);
+        String decimalPart = strValue.substring(decimalIndex + 1);
+
+        // 获取拟舍弃数字的最左一位（小数点后第一位）
+        int firstJudgeDigit = 0;
+        if (!decimalPart.isEmpty()) {
+            firstJudgeDigit = Character.getNumericValue(decimalPart.charAt(0));
+        }
+
+        // 获取整数部分的最后一位
+        int lastKeptDigit = Character.getNumericValue(integerPart.charAt(integerPart.length() - 1));
+
+        // 检查5之后是否有非0数字
+        boolean hasNonZeroAfterFive = false;
+        if (firstJudgeDigit == 5 && decimalPart.length() > 1) {
+            for (int i = 1; i < decimalPart.length(); i++) {
+                if (decimalPart.charAt(i) != '0') {
+                    hasNonZeroAfterFive = true;
+                    break;
+                }
+            }
+        }
+
+        BigDecimal integerValue = new BigDecimal(integerPart);
+        BigDecimal increment = BigDecimal.ONE;
+
+        // 应用修约规则
+        BigDecimal result;
+        if (firstJudgeDigit < 5) {
+            // 规则3.2.1：小于5则舍去
+            result = integerValue;
+        } else if (firstJudgeDigit > 5) {
+            // 规则3.2.2：大于5则进一
+            result = integerValue.add(increment);
+        } else {
+            // 规则3.2.3和3.2.4：等于5的情况
+            if (hasNonZeroAfterFive) {
+                // 规则3.2.3：5之后有非0数字则进一
+                result = integerValue.add(increment);
+            } else {
+                // 规则3.2.4：5之后无数字或皆为0时，看保留的末位数字的奇偶性
+                if (lastKeptDigit % 2 == 1) {
+                    // 奇进偶舍：末位是奇数则进一
+                    result = integerValue.add(increment);
+                } else {
+                    // 末位是偶数则舍去
+                    result = integerValue;
+                }
+            }
+        }
+
+        return result.doubleValue();
+    }
+
+    /**
+     * 修约到指定整数位（如digit=2表示修约到百位数）
+     */
+    private static double roundToIntegerPlace(double value, int integerPlace) {
+        if (integerPlace <= 0) {
+            return value;
+        }
+
+        // 计算修约间隔（如10^2=100）
+        BigDecimal interval = BigDecimal.TEN.pow(integerPlace);
+        BigDecimal bdValue = BigDecimal.valueOf(value);
+
+        // 将数值转换为以修约间隔为单位的数值
+        BigDecimal scaledValue = bdValue.divide(interval, 20, RoundingMode.HALF_UP);
+
+        // 对缩放后的数值进行小数修约（修约到0位小数）
+        double roundedScaledValue = roundToZeroDecimal(scaledValue);
+
+        // 恢复原始量级
+        return roundedScaledValue * interval.doubleValue();
     }
 
 
-
-    private static double formatValue(Integer digit, double value) {
-        BigDecimal bd = new BigDecimal(value);
-        bd = bd.setScale(digit, RoundingMode.HALF_UP);
-        return bd.doubleValue();
-    }
+//
+//    private static double formatValue(Integer digit, double value) {
+//        BigDecimal bd = new BigDecimal(value);
+//        bd = bd.setScale(digit, RoundingMode.HALF_UP);
+//        return bd.doubleValue();
+//    }
 
     /**
      * 计算数组的平均值
