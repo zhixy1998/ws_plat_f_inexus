@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
@@ -226,5 +227,64 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         // 3. 再删除用户
         baseMapper.deleteById(id);
         return Result.ok("用户删除成功");
+    }
+
+    @Override
+    @Transactional
+    public Result<String> updatePassword(PasswordUpdateDTO updateDTO) {
+        // 1. 校验用户是否存在
+        SysUserPO userPO = baseMapper.selectById(updateDTO.getUserId());
+        if (userPO == null) {
+            return Result.fail("用户不存在");
+        }
+        
+        // 2. 验证旧密码是否正确
+        if (!PasswordUtils.matches(updateDTO.getOldPassword(), userPO.getPassword())) {
+            return Result.fail("旧密码不正确");
+        }
+        
+        // 3. 检查新密码是否与旧密码相同
+        if (PasswordUtils.matches(updateDTO.getNewPassword(), userPO.getPassword())) {
+            return Result.fail("新密码不能与旧密码相同");
+        }
+
+        // 4. 校验确认密码与新密码是否一致
+        if (!updateDTO.getNewPassword().equals(updateDTO.getConfirmNewPassword())) {
+            return Result.fail("新密码与确认密码不一致，请重新输入");
+        }
+        
+        // 5. 更新密码
+        userPO.setPassword(PasswordUtils.encode(updateDTO.getNewPassword()));
+        userPO.setUpdateBy("admin"); // 实际应用中应该是当前登录用户
+        userPO.setUpdated(LocalDateTime.now());
+        baseMapper.updateById(userPO);
+        
+        return Result.ok("密码修改成功");
+    }
+
+    @Override
+    @Transactional
+    public Result<String> resetPassword(String userId) {
+        // 1. 校验用户是否存在
+        SysUserPO userPO = baseMapper.selectById(userId);
+        if (userPO == null) {
+            return Result.fail("用户不存在");
+        }
+        
+        // 2. 定义默认密码
+        String defaultPassword = "123456";
+        
+        // 3. 检查默认密码是否与当前密码相同
+        if (PasswordUtils.matches(defaultPassword, userPO.getPassword())) {
+            return Result.fail("当前密码已是默认密码，无需重置");
+        }
+        
+        // 4. 更新密码（加密存储）
+        userPO.setPassword(PasswordUtils.encode(defaultPassword));
+        userPO.setUpdateBy("admin"); // 实际应用中应该是当前登录用户
+        userPO.setUpdated(LocalDateTime.now());
+        baseMapper.updateById(userPO);
+        
+        return Result.ok("密码已重置为默认值123456，请提醒用户及时修改");
     }
 }

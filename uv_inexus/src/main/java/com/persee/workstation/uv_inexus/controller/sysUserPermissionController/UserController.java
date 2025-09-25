@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
@@ -81,5 +82,19 @@ public class UserController {
     @ApiOperation("批量删除用户")
     public Result<String> deleteBatch(@RequestBody List<String> ids) {
         return sysUserService.deleteBatch(ids);
+    }
+
+    @PostMapping("/updatePassword")
+    @ApiOperation("修改密码")
+    @OperateLog(module = "用户管理", description = "修改密码", recordParams = true)
+    public Result<String> updatePassword(@RequestBody @Valid PasswordUpdateDTO updateDTO) {
+        return sysUserService.updatePassword(updateDTO);
+    }
+
+    @PostMapping("/resetPassword")
+    @ApiOperation("重置密码为默认值123456")
+    @OperateLog(module = "用户管理", description = "重置用户密码", recordParams = true)
+    public Result<String> resetPassword(@RequestParam String userId) {
+        return sysUserService.resetPassword(userId);
     }
 }

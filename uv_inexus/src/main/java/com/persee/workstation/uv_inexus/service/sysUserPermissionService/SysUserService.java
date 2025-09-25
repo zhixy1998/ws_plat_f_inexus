@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
@@ -42,4 +43,16 @@ public interface SysUserService extends IService<SysUserPO> {
      * 根据ID删除单个用户
      */
     Result<String> deleteById(String id);
+
+    /**
+     * 修改密码
+     */
+    Result<String> updatePassword(PasswordUpdateDTO updateDTO);
+
+    /**
+     * 重置用户密码为默认值123456
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    Result<String> resetPassword(String userId);
 }
