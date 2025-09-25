@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 
 @Data
 public class ProjectManagementDto {
+
+    private String id;
     //项目名称
     private String projectName;
     //创建时间

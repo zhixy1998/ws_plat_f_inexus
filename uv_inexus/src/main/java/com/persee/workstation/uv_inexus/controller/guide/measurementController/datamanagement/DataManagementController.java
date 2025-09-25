@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController.datamanagement;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
@@ -15,8 +16,6 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @Api("数据管理接口")
@@ -65,20 +64,20 @@ public class DataManagementController {
 //    }
     @PostMapping("/deleteTask")
     @ApiOperation("任务删除")
-    public Result<String> deleteTask(@RequestParam  List<String>deleteTaskIdList) {
+    public Result<String> deleteTask(@RequestBody Box deleteTaskIdList) {
         return dataManagementService.deleteTask(deleteTaskIdList);
     }
 
 
     @PostMapping("/deleteMethod")
     @ApiOperation("方法删除")
-    public Result<String> deleteMethod(@RequestParam List<String> deleteMethodIdList) {
+    public Result<String> deleteMethod(@RequestBody Box deleteMethodIdList) {
         return dataManagementService.deleteMethod(deleteMethodIdList);
     }
 
     @PostMapping("/deleteProject")
     @ApiOperation("项目删除")
-    public Result<String> deleteProject(@RequestParam List<String> deleteProjectIdList) {
+    public Result<String> deleteProject(@RequestBody Box deleteProjectIdList) {
         return dataManagementService.deleteProject(deleteProjectIdList);
     }
 
