@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -79,6 +80,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
     @Autowired
     FMeasureTaskAttachmentService attachmentService;
 
+    @Autowired
+    FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    ConcisePublicUtilService concisePublicUtilService;
+
     @Value("1")
     String right;
 
@@ -113,6 +120,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         String taskId = getQueryParam(query, "taskId");
         String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
         String sampleKind= getQueryParam(query, "sampleKind");
+        String updateBy= getQueryParam(query, "updateBy");
         int di = Integer.parseInt(getQueryParam(query, "digit"));
         isAvg = StringUtils.hasText(getQueryParam(query, "avg"));
         isSd = StringUtils.hasText(getQueryParam(query, "sd"));
@@ -172,6 +180,24 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
                 );
 
+        List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (!poolInfo.getSuccess()) {
+            sendAndClose(session, "无样品池信息");
+            return;
+        }
+        FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+        Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+
+        if (usefulLocation == null || usefulLocation.isEmpty()) {
+            log.info("无可用位置");
+            sendAndClose(session, "无可用样品池位置");
+            return;
+        }
+
+        int maxPoolNum = usefulLocation.size();
+        int currentPoolNum = 0;
+
         //后续添加仪器状态检测
         String ip = infoService.getIp(deviceSerialNumber);
         if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
@@ -190,7 +216,18 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             //测过的未知样，曲线拟合之后要重新计算
             List<TaskSpecimen> testUnknowSample = new ArrayList<>();
 
+
             for (TaskSpecimen specimen : taskSpecimen) {
+
+                if (!isAutoChangePool && currentPoolNum == 1) {
+                    log.info("不自动切换样品池，只测一个就结束");
+                    break;
+                }
+
+                if (currentPoolNum >= maxPoolNum) {
+                    break;
+                }
+
                 if (specimen.getDeleteType().equals(right)) {
                     System.out.println("删除的样品,不需要测量");
                     continue;
@@ -251,9 +288,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         }
 
                         if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                            lastIsEmpty = true;
 
                             emptySampleDeal(digit, ansData, dealData);
+                            lastIsEmpty = true;
                         } else {
                             lastIsEmpty = false;
                             //测量过的数据，非空白样，添加标准浓度为了拟合曲线
@@ -271,6 +308,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                             }
                         }
                     }
+                    continue;
                 }
 
                 /*
@@ -278,6 +316,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                  * 区分重复与不重复测，测量 + 计算出abs值一起
                  */
                 R<FRationDataVO> r;
+
                 if (repeat) {
                     //重复测量，单独处理！
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
@@ -285,13 +324,18 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 } else {
                     r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
                 }
-
+                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
                 if (!r.getSuccess()) {
                     sendAndClose(session, r.getMessage());
                     return;
                 }
+                currentPoolNum ++;
                 FRationDataVO data = r.getData();
                 List<FRationCountDataInfo> measureAbsDataList = data.getCountData();
+
+                specimen.setIsTested(right);
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                tMeasureTaskService.updateById(task);
 
                 FRationCountDataInfo absData = new FRationCountDataInfo();
                 for (FRationCountDataInfo dataInfo : measureAbsDataList) {
@@ -301,7 +345,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     }
                 }
                 if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                    lastIsEmpty = true;
+
                     R<FRationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
                     if (!saved.getSuccess()) {
                         log.info("数据保存异常");
@@ -316,7 +360,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     dealData.setTaskId(taskId);
                     dealData.setSampleId(sample.getId());
                     dealData.setMeasureDataId(measureDataId);
-
                     emptySampleDeal(digit, absData, dealData);
                     for (FRationSaveCountDataInfo info : emptyDataList) {
                         String sampleId = info.getSampleId();
@@ -327,6 +370,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         }
 
                     }
+                    lastIsEmpty = true;
+                    specimen.setIsTested(right);
                     continue;
                 } else {
                     lastIsEmpty = false;
@@ -389,6 +434,10 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 reCountUnknowSampleData(session, testUnknowSample, taskId, fittingReceiveInfo, parameter);
             }
 
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("result", "finish");
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
 
         } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
             boolean repeat = parameter.getRepeatMode().equals("单池重复");
@@ -398,6 +447,16 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
              * 测过的，要处理
              */
             for (TaskSpecimen specimen : taskSpecimen) {
+
+                if (!isAutoChangePool && currentPoolNum == 1) {
+                    log.info("不自动切换样品池，只测一个就结束");
+                    break;
+                }
+
+                if (currentPoolNum >= maxPoolNum) {
+                    break;
+                }
+
                 if (specimen.getDeleteType().equals(right)) {
                     System.out.println("删除的样品,不需要测量");
                     continue;
@@ -448,10 +507,10 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                                 }
                                 ansData = absValue.getData();
                             }
-
                             emptySampleDeal(digit, ansData, dealData);
                         }
                     }
+                    continue;
                 }
 
                 /*
@@ -459,10 +518,10 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                  * 区分重复与不重复测，测量 + 计算出abs值一起
                  */
                 R<FRationDataVO> r;
+                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
                 if (repeat) {
                     //重复测量，单独处理！
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
-
                 } else {
                     r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
                 }
@@ -471,6 +530,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     sendAndClose(session, r.getMessage());
                     return;
                 }
+                task.setDeviceSerialNumber(deviceSerialNumber);
+
+                currentPoolNum ++;
                 FRationDataVO data = r.getData();
 
                 //保存数据
@@ -481,6 +543,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     return;
                 }
                 FRationSaveCountDataInfo saveDataInfo = saved.getData();
+                specimen.setIsTested(right);
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                tMeasureTaskService.updateById(task);
 
                 List<FRationCountDataInfo> measureAbsDataList = saveDataInfo.getCountData();
 
@@ -492,7 +557,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     }
                 }
                 if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                    lastIsEmpty = true;
 
                     String measureDataId = saveDataInfo.getMeasureDataId();
 
@@ -509,7 +573,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                                 sampleSend(session, sampleId, countDatum.getIdentity(), null, String.valueOf(countDatum.getColValue()));
                             }
                         }
-
                     }
                     continue;
                 } else {
@@ -523,7 +586,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     最后保存。。。。应该先保存一次测量结果，在保存计算结果，
                      */
                     double countValue = 0.0;
-
                     if (empty) {
                         FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
                         sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
@@ -532,6 +594,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
                         countValue = sumAbsData.getColValue();
                         measureAbsDataList.add(sumAbsData);
+                        saveDataInfo.setCountData(measureAbsDataList);
+                        rationService.saveAnalyzeData(saveDataInfo);
                         sampleSend(session, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
                     } else {
                         countValue = absData.getColValue();
@@ -541,27 +605,44 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         fittingInfo= JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                     }
                     if (fittingInfo != null) {
-                        String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
+                        String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType(), digit);
                         FRationCountDataInfo valueData = new FRationCountDataInfo();
                         valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
                         valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                         valueData.setColValue(ans==null? null : Double.valueOf(ans));
                         measureAbsDataList.add(valueData);
                     }
-
+                    saveDataInfo.setCountData(measureAbsDataList);
+                    rationService.saveAnalyzeData(saveDataInfo);
                     //定量的公式计算----待定
 //                    rationService.formula()
+                    R<List<FRationCountDataInfo>> formula = rationService.formula(saveDataInfo.getAnalyzeDataId(), data.getWavelengthData(), sample, task, parameter, digit);
 
-                    saveDataInfo.setCountData(measureAbsDataList);
+                    if (!formula.getSuccess()) {
+                        log.info("公式计算异常");
+                        sendAndClose(session, formula.getMessage());
+                        return;
+                    }
+                    List<FRationCountDataInfo> formulaData = formula.getData();
+                    saveDataInfo.getCountData().addAll(formulaData);
                     rationService.saveAnalyzeData(saveDataInfo);
                 }
                 specimen.setIsTested(right);
             }
             task.setSampleKey(JSON.toJSONString(taskSpecimen));
             tMeasureTaskService.updateById(task);
+
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("result", "finish");
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         } else {
             log.info("未知的样品种类");
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("result", "finish");
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
+
+
     }
 
     public void reCountUnknowSampleData(WebSocketSession session, List<TaskSpecimen> dealSampleList, String taskId, FittingReceiveInfo curveData, FRationParameter parameter) throws IOException {
@@ -779,10 +860,15 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+
+        JSONObject object = new JSONObject();
+        object.put("currentPoolNum", sample.getSampleLocation());
+        session.sendMessage(new TextMessage(object.toJSONString()));
+
         LocalDateTime startTime = LocalDateTime.now();
         for (String waveLength : waveLengths) {
             list.add(new Command("SetWl", new Object[]{waveLength}));
-            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             list.add(new Command("Measure", new Object[]{}));
 
             R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
@@ -882,12 +968,16 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         LocalDateTime startTime = LocalDateTime.now();
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+
+        JSONObject object = new JSONObject();
+        object.put("currentPoolNum", sample.getSampleLocation());
+        session.sendMessage(new TextMessage(object.toJSONString()));
 
         for (int i = 0; i < repeatCount; i++) {
             for (String waveLength : waveLengths) {
                 list.add(new Command("SetWl", new Object[]{waveLength}));
-                list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
-                list.add(new Command("Measure", new Object[]{}));
+               list.add(new Command("Measure", new Object[]{}));
 
                 R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
                 if (!res.getSuccess()) {

@@ -141,8 +141,18 @@ public class ExperimentTestController {
 
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告通用数据接口")
-    public Result obtainReportParameters(@RequestParam String taskId) {
-        return experimentTestService.obtainReportParameters(taskId);
+    public Result obtainReportParameters(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId,
+                                         @RequestParam(required = false) String serialNumber) {
+        return experimentTestService.obtainReportParameters(taskId, sampleId, serialNumber);
+    }
+
+    @GetMapping("queryReportAllParameters")
+    @ApiOperation("获取报告所有参数接口")
+    public Result queryReportAllParameters(@RequestParam String taskId,
+                                           @RequestParam String sampleId,
+                                           @RequestParam(required = false) String serialNumber) {
+        return experimentTestService.queryReportAllParameters(taskId, sampleId, serialNumber);
     }
 
     @GetMapping("getProjectInfo")

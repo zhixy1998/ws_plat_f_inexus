@@ -16,4 +16,7 @@ public class SystemPanelConfDTO {
 
     @ApiModelProperty(value = "用户")
     private String updateBy;
+
+    @ApiModelProperty("默认进入经典模式")
+    private Boolean classicSwitch;
 }

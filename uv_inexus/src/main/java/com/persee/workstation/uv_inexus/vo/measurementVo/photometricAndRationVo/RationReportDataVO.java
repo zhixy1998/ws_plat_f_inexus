@@ -29,4 +29,6 @@ public class RationReportDataVO {
      * 映射关系
      */
     private List<InputParamMapTableHead> mapRelation;
+
+
 }

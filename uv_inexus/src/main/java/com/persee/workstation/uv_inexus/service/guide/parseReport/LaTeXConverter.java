@@ -1,16 +1,15 @@
 package com.persee.workstation.uv_inexus.service.guide.parseReport;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import com.persee.workstation.uv_inexus.model.R;
+import org.mariuszgromada.math.mxparser.Expression;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.mariuszgromada.math.mxparser.Expression;
-
+@Service("LaTeXConverter")
 public class LaTeXConverter {
 
     /**
@@ -22,11 +21,11 @@ public class LaTeXConverter {
      * @param latexFormulaList 待校验的LaTeX公式列表
      * @return "true" 如果所有公式都有效；否则返回错误信息，指明具体哪个公式的哪个参数出错
      */
-    public String verifyFormulasAgainstParamList(List<String> totalParamList, List<String> latexFormulaList) {
+    public R<String> verifyFormulasAgainstParamList(List<String> totalParamList, List<String> latexFormulaList) {
         // 0. 首先校验总参数列表本身的格式是否合法
         String paramFormatError = validateParameterFormat(totalParamList);
         if (paramFormatError != null) {
-            return "总参数列表格式错误: " + paramFormatError;
+            return R.fail( "总参数列表格式错误: " + paramFormatError);
         }
 
         // 为了提高查找效率，将总参数列表转换为Set
@@ -43,18 +42,18 @@ public class LaTeXConverter {
                 // 1.1. 将LaTeX转换为普通表达式
                 String expression = convertLaTeXToExpression(latexFormula);
                 if (expression == null) {
-                    return currentFormulaIdentifier + " 转换失败: 不支持的LaTeX语法";
+                    return R.fail( currentFormulaIdentifier + " 转换失败: 不支持的LaTeX语法");
                 }
 
                 // 1.2. 验证表达式语法是否有效
                 if (!isValidExpression(expression)) {
-                    return currentFormulaIdentifier + " 语法无效: " + expression;
+                    return R.fail(currentFormulaIdentifier + " 语法无效: " + expression);
                 }
 
                 // 1.3. 提取等号右边的表达式
                 String rightHandSide = extractRightHandSide(expression);
                 if (rightHandSide == null) {
-                    return currentFormulaIdentifier + " 格式错误: 缺少等号";
+                    return R.fail(currentFormulaIdentifier + " 格式错误: 缺少等号");
                 }
 
                 // 1.4. 提取当前公式中使用的所有参数
@@ -67,17 +66,17 @@ public class LaTeXConverter {
 
                 // 1.6. 如果发现无效参数，立即构建并返回错误信息
                 if (!invalidParams.isEmpty()) {
-                    return currentFormulaIdentifier + " 包含未定义的参数: " + String.join(", ", invalidParams);
+                    return R.fail(currentFormulaIdentifier + " 包含未定义的参数: " + String.join(", ", invalidParams));
                 }
 
             } catch (Exception e) {
                 // 捕获处理单个公式时可能发生的任何意外错误
-                return "处理 " + currentFormulaIdentifier + " 时出错: " + e.getMessage();
+                return R.fail("处理 " + currentFormulaIdentifier + " 时出错: " + e.getMessage());
             }
         }
 
         // 2. 如果循环正常结束，说明所有公式都通过了校验
-        return "true";
+        return R.ok();
     }
 
     /**
@@ -92,8 +91,8 @@ public class LaTeXConverter {
         // 如果保留，请确保其内部逻辑不与新方法冲突。
         // 我们在这里简单调用新方法来模拟旧的“精确匹配”行为
         List<String> formulaList = Arrays.asList(latexFormula);
-        String result = verifyFormulasAgainstParamList(paramList, formulaList);
-        if ("true".equals(result)) {
+        R<String> result = verifyFormulasAgainstParamList(paramList, formulaList);
+        if (result.getSuccess()) {
             // 新方法只检查“不多”，我们还需要检查“不少”
             Set<String> formulaParams = extractParameters(extractRightHandSide(convertLaTeXToExpression(latexFormula)));
             Set<String> paramSet = paramList.stream().map(String::trim).collect(Collectors.toSet());
@@ -102,12 +101,12 @@ public class LaTeXConverter {
                 return "参数不匹配: 公式缺少参数: " + String.join(", ", missingParams);
             }
         }
-        return result;
+        return result.getMessage();
     }
 
 
     /**
-     * 校验参数列表格式，必须是纯字母或字母+数字
+     * 校验参数列表格式，+数字
      */
     private String validateParameterFormat(List<String> paramList) {
         if (paramList == null) {
@@ -209,72 +208,72 @@ public class LaTeXConverter {
     }
 
  // ===== 新的测试用例 main 方法 =====
-   public static void main(String[] args) {
-       LaTeXConverter converter = new LaTeXConverter();
-
-       // 定义一个总参数列表
-       List<String> totalParams = Arrays.asList("a", "b", "c", "V", "m", "x", "y", "z");
-
-       // --- 测试场景1: 所有公式都正确 ---
-       System.out.println("--- 场景1: 所有公式都正确 ---");
-       List<String> formulas1 = Arrays.asList(
-               "x = a + b",
-               "y = V / m",
-               "z = (a * b) / c"
-       );
-       System.out.println("总参数: " + totalParams);
-       System.out.println("待校验公式: " + formulas1);
-       String result1 = converter.verifyFormulasAgainstParamList(totalParams, formulas1);
-       System.out.println("校验结果: " + result1); // 期望: true
-       System.out.println("----------------------------------------\n");
-
-
-       // --- 测试场景2: 中间某个公式有未定义的参数 ---
-       System.out.println("--- 场景2: 中间某个公式有未定义的参数 ---");
-       List<String> formulas2 = Arrays.asList(
-               "x = a + b",        // 正确
-               "y = V / k",        // 错误: k 未定义
-               "z = (a * b) / c"   // 这个不会被校验到
-       );
-       System.out.println("总参数: " + totalParams);
-       System.out.println("待校验公式: " + formulas2);
-       String result2 = converter.verifyFormulasAgainstParamList(totalParams, formulas2);
-       System.out.println("校验结果: " + result2); // 期望: 指出公式2中的k是未定义参数
-       System.out.println("----------------------------------------\n");
-
-
-       // --- 测试场景3: 最后一个公式有未定义的参数 ---
-       System.out.println("--- 场景3: 最后一个公式有未定义的参数 ---");
-       List<String> formulas3 = Arrays.asList(
-               "x = a + b",            // 正确
-               "y = V / m",            // 正确
-               "result = x * y + p"    // 错误: p 未定义
-       );
-       System.out.println("总参数: " + totalParams);
-       System.out.println("待校验公式: " + formulas3);
-       String result3 = converter.verifyFormulasAgainstParamList(totalParams, formulas3);
-       System.out.println("校验结果: " + result3); // 期望: 指出公式3中的p是未定义参数
-       System.out.println("----------------------------------------\n");
-
-       // --- 测试场景4: 公式使用了保留字 ---
-       System.out.println("--- 场景4: 公式使用了保留字 (应该被忽略, 不算作参数) ---");
-       List<String> formulas4 = Arrays.asList(
-               "x = a + sin(b)" // sin是保留字, 只有a和b是参数
-       );
-       System.out.println("总参数: " + totalParams);
-       System.out.println("待校验公式: " + formulas4);
-       String result4 = converter.verifyFormulasAgainstParamList(totalParams, formulas4);
-       System.out.println("校验结果: " + result4); // 期望: true, 因为sin不算参数, a和b都在列表中
-       System.out.println("----------------------------------------\n");
-
-       // --- 测试场景5: 总参数列表格式错误 ---
-       System.out.println("--- 场景5: 总参数列表格式错误 ---");
-       List<String> invalidTotalParams = Arrays.asList("a", "b", "1c"); // 1c格式错误
-       List<String> formulas5 = Arrays.asList("x = a + b");
-       System.out.println("总参数: " + invalidTotalParams);
-       System.out.println("待校验公式: " + formulas5);
-       String result5 = converter.verifyFormulasAgainstParamList(invalidTotalParams, formulas5);
-       System.out.println("校验结果: " + result5); // 期望: 指出总参数列表格式错误
-       System.out.println("----------------------------------------\n");
-   }
+//   public static void main(String[] args) {
+//       LaTeXConverter converter = new LaTeXConverter();
+//
+//       // 定义一个总参数列表
+//       List<String> totalParams = Arrays.asList("a", "b", "c", "V", "m", "x", "y", "z");
+//
+//       // --- 测试场景1: 所有公式都正确 ---
+//       System.out.println("--- 场景1: 所有公式都正确 ---");
+//       List<String> formulas1 = Arrays.asList(
+//               "x = a + b",
+//               "y = V / m",
+//               "z = (a * b) / c"
+//       );
+//       System.out.println("总参数: " + totalParams);
+//       System.out.println("待校验公式: " + formulas1);
+//       String result1 = converter.verifyFormulasAgainstParamList(totalParams, formulas1);
+//       System.out.println("校验结果: " + result1); // 期望: true
+//       System.out.println("----------------------------------------\n");
+//
+//
+//       // --- 测试场景2: 中间某个公式有未定义的参数 ---
+//       System.out.println("--- 场景2: 中间某个公式有未定义的参数 ---");
+//       List<String> formulas2 = Arrays.asList(
+//               "x = a + b",        // 正确
+//               "y = V / k",        // 错误: k 未定义
+//               "z = (a * b) / c"   // 这个不会被校验到
+//       );
+//       System.out.println("总参数: " + totalParams);
+//       System.out.println("待校验公式: " + formulas2);
+//       String result2 = converter.verifyFormulasAgainstParamList(totalParams, formulas2);
+//       System.out.println("校验结果: " + result2); // 期望: 指出公式2中的k是未定义参数
+//       System.out.println("----------------------------------------\n");
+//
+//
+//       // --- 测试场景3: 最后一个公式有未定义的参数 ---
+//       System.out.println("--- 场景3: 最后一个公式有未定义的参数 ---");
+//       List<String> formulas3 = Arrays.asList(
+//               "x = a + b",            // 正确
+//               "y = V / m",            // 正确
+//               "result = x * y + p"    // 错误: p 未定义
+//       );
+//       System.out.println("总参数: " + totalParams);
+//       System.out.println("待校验公式: " + formulas3);
+//       String result3 = converter.verifyFormulasAgainstParamList(totalParams, formulas3);
+//       System.out.println("校验结果: " + result3); // 期望: 指出公式3中的p是未定义参数
+//       System.out.println("----------------------------------------\n");
+//
+//       // --- 测试场景4: 公式使用了保留字 ---
+//       System.out.println("--- 场景4: 公式使用了保留字 (应该被忽略, 不算作参数) ---");
+//       List<String> formulas4 = Arrays.asList(
+//               "x = a + sin(b)" // sin是保留字, 只有a和b是参数
+//       );
+//       System.out.println("总参数: " + totalParams);
+//       System.out.println("待校验公式: " + formulas4);
+//       String result4 = converter.verifyFormulasAgainstParamList(totalParams, formulas4);
+//       System.out.println("校验结果: " + result4); // 期望: true, 因为sin不算参数, a和b都在列表中
+//       System.out.println("----------------------------------------\n");
+//
+//       // --- 测试场景5: 总参数列表格式错误 ---
+//       System.out.println("--- 场景5: 总参数列表格式错误 ---");
+//       List<String> invalidTotalParams = Arrays.asList("a", "b", "1c"); // 1c格式错误
+//       List<String> formulas5 = Arrays.asList("x = a + b");
+//       System.out.println("总参数: " + invalidTotalParams);
+//       System.out.println("待校验公式: " + formulas5);
+//       String result5 = converter.verifyFormulasAgainstParamList(invalidTotalParams, formulas5);
+//       System.out.println("校验结果: " + result5); // 期望: 指出总参数列表格式错误
+//       System.out.println("----------------------------------------\n");
+//   }
 }

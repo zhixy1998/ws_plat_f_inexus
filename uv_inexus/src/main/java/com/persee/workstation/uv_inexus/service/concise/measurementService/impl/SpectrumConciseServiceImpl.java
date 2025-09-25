@@ -1,34 +1,51 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.stream.Collectors;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
+import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
@@ -44,68 +61,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import com.alibaba.excel.EasyExcel;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
-import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
-import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
-import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
-
-import lombok.extern.slf4j.Slf4j;
+import java.io.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 简洁模式: 光谱扫描服务业务层实现
@@ -129,6 +93,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
+
+    @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    private ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
     private SystemUserManageDAO systemUserManageDAO;
@@ -337,13 +307,67 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     }
 
     /**
+     * 查询方法详情
+     * @param paramDto
+     * @return
+     */
+    @Override
+    public Result parameterValidation(FParameterValidationDto paramDto) {
+        // 校验参数
+        if (paramDto.getMethodId().isEmpty()){
+            return Result.fail("方法ID不能为空");
+        }
+        if (paramDto.getMeasureType().isEmpty()){
+            return Result.fail("类型不能为空");
+        }
+        if (paramDto.getParameter().isEmpty()){
+            return Result.fail("参数不能为空");
+        }
+
+        // 1. 查数据库参数
+        FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        switch (paramDto.getMeasureType()) {
+            case "光度测量":
+//                dbParam = JSON.parseObject(dbParamJson, AbsorbanceParam.class);
+//                newParam = paramDto.getParameter().toJavaObject(AbsorbanceParam.class);
+//                break;
+            case "定量测量":
+//                dbParam = JSON.parseObject(dbParamJson, TransmittanceParam.class);
+//                newParam = paramDto.getParameter().toJavaObject(TransmittanceParam.class);
+//                break;
+            case "光谱扫描":
+            {
+                FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+                FSpectrumParameter newParameter =  JSON.parseObject(String.valueOf(paramDto.getParameter()), FSpectrumParameter.class);
+                // 1. 比较参数
+                boolean sameParam = compareParam(parameter, newParameter);
+                return Result.ok(sameParam);
+            }
+            case "时间扫描":
+//            {
+//                FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+//                FTimeSweepParamter newParameter =  JSON.parseObject(String.valueOf(paramDto.getParameter()), FTimeSweepParamter.class);
+//                // 1. 比较参数
+//                boolean sameParam = compareParam(parameter, newParameter);
+//                return Result.ok(sameParam);
+//            }
+            default:
+                return Result.fail("未知的测量类型");
+        }
+
+    }
+
+    /**
      * 应用接口
      * @param paramDto
      * @return
      */
     @Override
     public Result use(FUseMethodDto paramDto) {
-
+    Map<String, Object> map = new HashMap<>();
         if (paramDto.getMethodId2() != null){
             FMeasureMethod method2 = fMeasureMethodService.getById(paramDto.getMethodId2());
             if (method2 == null){
@@ -367,7 +391,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (!update){
                 return Result.fail("应用失败");
             }
-            return Result.ok(method2);
+            Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy());
+            if (draftButton.getCode()==200){
+                map.put("taskId", draftButton.getData());
+            }
+            map.put("method", method2);
+            return Result.ok(map);
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
@@ -386,22 +415,57 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (sameParam) {
                 return Result.fail("方法参数一致");
             }
-            return createNewMethod(paramDto);
+            FMeasureMethod newMethod = createNewMethod(paramDto);
+            if (newMethod == null) {
+                return Result.fail("新建方法失败");
+            }
+            map.put("method", newMethod);
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            if (draftButton.getCode()==200){
+                map.put("taskId", draftButton.getData());
+            }
+
+            return Result.ok(map);
         }
 
         // 2. 查询历史方法
         if (method == null) {
-            return createNewMethod(paramDto); // 没有历史记录 → 新建
+            FMeasureMethod newMethod = createNewMethod(paramDto);
+            if (newMethod == null) {
+                return Result.fail("新建方法失败");
+            }
+            map.put("method", newMethod);
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            if (draftButton.getCode()==200){
+                map.put("taskId", draftButton.getData());
+            }
+
+            return Result.ok(map);
         }
 
         if (sameParam) {
             if (method.getId().equals(paramDto.getMethodId())){
                 return Result.fail("请勿重复使用");
             }else{
-                return Result.ok(method);
+                map.put("method", method);
+                Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy());
+                if (draftButton.getCode()==200){
+                    map.put("taskId", draftButton.getData());
+                }
+                return Result.ok(map);
             }
         }else{
-            return createNewMethod(paramDto);
+            FMeasureMethod newMethod = createNewMethod(paramDto);
+            if (newMethod == null) {
+                return Result.fail("新建方法失败");
+            }
+            map.put("method", newMethod);
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            if (draftButton.getCode()==200){
+                map.put("taskId", draftButton.getData());
+            }
+
+            return Result.ok(map);
         }
     }
 
@@ -724,6 +788,22 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+
+        /// 校验是否有重复的样品编号
+        // 取出所有样品编号
+        List<String> sampleNos = dto.getNewSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+                .filter(Objects::nonNull)    // 过滤掉空值
+                .collect(Collectors.toList());
+        // 查重：找到重复的样品编号
+        Set<String> duplicates = sampleNos.stream()
+                .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!duplicates.isEmpty()) {
+            return Result.fail("样品编号重复");
+        }
+
         if(taskSpecimen == null){
             taskSpecimen = new ArrayList<>();
         }
@@ -795,7 +875,17 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
 
-        return Result.ok(fMeasureTaskService.updateById(task));
+        boolean b = fMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail("任务保存样品信息出错");
+        }
+
+        if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+        }
+
+        return Result.ok();
     }
 
 
@@ -832,6 +922,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if ("不重复".equals(parameter.getRepetitionPattern())) {
             // 不重复模式
             for (FTaskSpecimen taskSpeciman : taskSpecimen) {
+                if (taskSpeciman.getDeleteType().equals("1")&&type==null){
+                    continue;
+                }
                 FSampleListVo vo = new FSampleListVo();
                 // 根据样品id查询样品数据
                 FMeasureSample sample = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
@@ -1199,6 +1292,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @return
      */
     @Override
+    @DS("concise")
     @Transactional(rollbackFor = Exception.class)
     public Result updateDataColor(FUpdateDataColorDto paramDto) {
         // 参数校验
@@ -1279,6 +1373,18 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         gaugePointJson = analysisData.getGaugePoint();
         rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
 
+        /// 校验
+        // 校验：所有传入的标记点是否都存在于原始数据
+        Set<String> rawXSet = rawData.stream()
+                .map(s -> normalizeNumberString(s.split(",")[0]))
+                .collect(Collectors.toSet());
+
+        for (String xStr : paramDto.getGaugePoints()) {
+            String normX = normalizeNumberString(xStr);
+            if (!rawXSet.contains(normX)) {
+                return Result.fail("波长 " + xStr + " 不存在，请重新选择");
+            }
+        }
 
         // 原标记点集合
         List<FPeakValleyMarking> oldList = gaugePointJson == null
@@ -1407,6 +1513,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
+        if (paramDto.getDataId() == null) {
+            return Result.fail("数据ID不能为空");
+        }
+        if (paramDto.getHeight() == null){
+            paramDto.setHeight(50.0);
+        }
+        if (paramDto.getDistance() == null){
+            paramDto.setDistance("1");
+        }
         paramDto.setHeight(paramDto.getHeight() / 100);
         FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (fMeasureAnalysisData == null) {
@@ -2377,7 +2492,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     /**
      * 创建新的方法
      */
-    private Result createNewMethod(FUseMethodDto paramDto){
+    private FMeasureMethod createNewMethod(FUseMethodDto paramDto){
         FMeasureMethod fMeasureMethod = new FMeasureMethod();
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         String collect = new Random().ints(8, 0, chars.length())
@@ -2396,9 +2511,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         fMeasureMethod.setMeasurementType(paramDto.getMeasureType());
         boolean save = fMeasureMethodService.save(fMeasureMethod);
         if (save) {
-            return Result.ok(fMeasureMethod);
+            return fMeasureMethod;
         } else {
-            return Result.fail("创建失败");
+            return null;
         }
     }
 
@@ -2671,6 +2786,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             // log.info("===== 导出流程结束 =====");
         }
     }
+
 
     // 保留原有的downloadWord方法，并适配新参数
     public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds) {

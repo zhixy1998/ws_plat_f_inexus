@@ -12,6 +12,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -74,6 +75,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private TMeasureDataService tMeasureDataService;
     @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
+    @Autowired
+    private TMeasureAnalysisImageService tMeasureAnalysisImageService;
     @Autowired
     private DeviceInfoService deviceInfoService;
     @Autowired
@@ -962,12 +965,31 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result uploadImage(SpectrumImageUpload upload) {
-        String s = upload.getImage().split(",")[1];
+        String[] split = upload.getImage().split(",");
+        String s = split[1];
+        String fileType = null;
+        if (split[0].startsWith("data:image/png")) {
+            fileType = "png";
+        } else if (split[0].startsWith("data:image/jpeg")) {
+            fileType = "jpg";
+        } else if (split[0].startsWith("data:image/gif")) {
+            fileType = "gif";
+        } else {
+            fileType = "unknown"; // 兜底
+        }
         byte[] bytes = Base64.decodeBase64(s);
         if (upload.getImageType().equals("0")){
-            TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(upload.getId());
-            byId.setAnalysisDataImage(bytes);
-            boolean update = tMeasureAnalysisDataService.updateById(byId);
+            QueryWrapper<TMeasureAnalysisImage> analysisId = new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+            analysisId.last("limit 1");
+            TMeasureAnalysisImage byId = tMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null){
+                return Result.fail("图片不存在");
+            }
+            byId.setImageType(fileType);
+            byId.setImageBase64(bytes);
+            // 将当前日期时间存储
+            byId.setCreateTime(LocalDateTime.now());
+            boolean update = tMeasureAnalysisImageService.updateById(byId);
             return Result.ok(update);
         }else{
             // 根据任务id查询任务附属表的内容
@@ -2030,22 +2052,24 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         // 1. 编号
         ans.add(new HeadVO("编号", "id", "system", "编号"));
 
-        ans.add(new HeadVO("波长(nm)", "originalCalculationData", "measure", "波长(nm)"));
+        ans.add(new HeadVO("峰/谷", "peakValley", "system", "编号"));
+
+        ans.add(new HeadVO("时间", "TIME", "measure", "波长(nm)"));
 
         // 2. 波长 + 光度模式
         String mode = parameter.getLuminosity(); // abs / t% / es / er
         switch (mode) {
             case "1":
-                ans.add(new HeadVO("Abs", "originalCalculationData", "measure", "Abs"));
+                ans.add(new HeadVO("Abs", "luminosity", "measure", "Abs"));
                 break;
             case "2":
-                ans.add(new HeadVO("T%", "originalCalculationData", "measure", "T%"));
+                ans.add(new HeadVO("T%", "luminosity", "measure", "T%"));
                 break;
             case "3":
-                ans.add(new HeadVO("Es", "originalCalculationData", "measure", "Es"));
+                ans.add(new HeadVO("Es", "luminosity", "measure", "Es"));
                 break;
             case "4":
-                ans.add(new HeadVO("Er", "originalCalculationData", "measure", "Er"));
+                ans.add(new HeadVO("Er", "luminosity", "measure", "Er"));
                 break;
         }
 
@@ -2055,6 +2079,58 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
 
         return Result.ok(ans);
+    }
+
+    /**
+     * 表格数据
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
+    @Override
+    public List<Map<String, Object>> queryTableData(String taskId, String sampleId) {
+        // 校验参数
+        if (StringUtils.isEmpty(taskId) || StringUtils.isEmpty(sampleId)) {
+            return null;
+        }
+        // 根据任务id和样品id查询分析数据
+        QueryWrapper<TMeasureAnalysisData> eq = new QueryWrapper<>();
+        eq.eq("task_id", taskId);
+        eq.eq("sample_key", sampleId);
+        eq.orderByDesc("analysis_number");
+        eq.last("LIMIT 1");
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(eq);
+        if (analysisData == null) {
+            return null;
+        }
+        // 解析分析数据
+        List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        // 解析峰谷数据
+        List<PeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), PeakValleyMarking.class);
+        List<PeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), PeakValleyMarking.class);
+        List<Map<String, Object>> arrayList = new ArrayList<>();
+        // 根据长度遍历
+        for (int i = 0; i < result.size(); i++) {
+            // 根据,进行分割数据
+            String[] split = result.get(i).split(",");
+            Map<String, Object> map = new HashMap<>();
+            map.put(SampleTableEnum.ID.getIdentity(), i + 1);
+            for (PeakValleyMarking peak : peaks) {
+                if (peak.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "峰");
+                }
+            }
+            for (PeakValleyMarking grade : valleys) {
+                if (grade.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "谷");
+                }
+            }
+            map.put(SampleTableEnum.TIME.getIdentity(), split[0]);
+            map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
+            map.put(SampleTableEnum.REMARK.getIdentity(), null);
+            arrayList.add(map);
+        }
+        return arrayList;
     }
 
     @Override

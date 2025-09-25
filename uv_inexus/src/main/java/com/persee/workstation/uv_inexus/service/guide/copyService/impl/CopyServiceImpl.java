@@ -1,6 +1,13 @@
 package com.persee.workstation.uv_inexus.service.guide.copyService.impl;
 
+import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
@@ -8,6 +15,9 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeas
 import com.persee.workstation.uv_inexus.service.guide.copyService.CopyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+
 
 @Service
 public class CopyServiceImpl implements CopyService {
@@ -22,36 +32,47 @@ public class CopyServiceImpl implements CopyService {
 
 
     @Override
-    public Result<String> copy() {
+    public Result<String> copy(String taskId) {
         try {
             /*
              * 复制任务
              */
-            fMeasureTaskService.list().forEach(fMeasureTask -> {
-                fMeasureTask.setId(null);
-                fMeasureTaskService.save(fMeasureTask);
-            });
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+                task.setId(taskId);
+                fMeasureTaskService.save(task);
+
 
             /*
              * 复制样品
              */
-            fMeasureSampleService.list().forEach(sample -> {
-                        sample.setId(null);
-                        fMeasureSampleService.save(sample);
+            String sampleKey = task.getSampleKey();
+            List<TaskSpecimen> taskSpecimen =JSON.parseArray(sampleKey, TaskSpecimen.class);
+            taskSpecimen.forEach(sample ->{
+                String specimenKey = sample.getSpecimenKey();
+                FMeasureSample newSample = fMeasureSampleService.getById(specimenKey);
+                newSample.setId(null);
+                fMeasureSampleService.save(newSample);
                     }
             );
             /*
              * 复制数据
              */
-            fMeasureDataService.list().forEach(fMeasureData -> {
+            LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(FMeasureData::getTaskId, taskId);
+            List<FMeasureData> fMeasureDataList = fMeasureDataService.list(queryWrapper);
+            for (FMeasureData fMeasureData : fMeasureDataList) {
                 fMeasureData.setId(null);
                 fMeasureDataService.save(fMeasureData);
-            });
-            fMeasureAnalysisDataService.list().forEach(fMeasureAnalysisData -> {
+            }
+            LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
+            queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
+            List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
+            for (FMeasureAnalysisData fMeasureAnalysisData : fMeasureAnalysisDataList) {
                 fMeasureAnalysisData.setId(null);
                 fMeasureAnalysisDataService.save(fMeasureAnalysisData);
-            });
+            }
             return Result.ok("拷贝成功");
+
         } catch (Exception e) {
             return Result.fail("拷贝失败" + e.getMessage());
         }

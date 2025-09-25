@@ -1,41 +1,5 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Random;
-import java.util.stream.Collectors;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -52,40 +16,13 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDt
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.PhotoMetricChangeMethodTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureProject;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FMethodParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.PhotometricConciseService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -97,14 +34,27 @@ import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCount
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
-
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.io.*;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service("fPhotometricService")
@@ -135,6 +85,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Autowired
     DevMessageUtil devMessageUtil;
+
+    @Autowired
+    FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
     RestUtil restUtil;
@@ -179,6 +135,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(photometricParameter));
         fMeasureMethod.setMethodCreator(updateBy);
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        fMeasureMethod.setMethodUseTime(LocalDateTime.now());
         boolean save = fMeasureMethodService.save(fMeasureMethod);
         if (save) {
             return Result.ok("创建成功");
@@ -189,6 +146,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Override
     public Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy) {
+
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
 
         SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String userId = sysUserPO.getId();
@@ -206,7 +168,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
         FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
-        snapshot.setTaskHeads(preHead);
+        snapshot.setSampleHeads(preHead);
         task.setTableInfo(JSON.toJSONString(snapshot));
 
         boolean save = fMeasureTaskService.save(task);
@@ -217,6 +179,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (save) {
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
+            method.setMethodUseTime(LocalDateTime.now());
+            fMeasureMethodService.updateById(method);
             return Result.ok(vo);
         } else {
             return Result.fail("新建失败");
@@ -358,7 +322,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             methodDTO.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
         }
         String methodId = methodDTO.getNewMethodId();
-
+        if (StringUtils.hasText(methodId)) {
+            FMeasureMethod method = fMeasureMethodService.getById(methodId);
+            if (method == null) {
+                return Result.fail("没有该方法");
+            }
+        }
 
         FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, methodDTO.getUpdateBy()));
@@ -405,12 +374,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
             FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
-            snapshot.setTaskHeads(preHead);
+            snapshot.setSampleHeads(preHead);
             task.setTableInfo(JSON.toJSONString(snapshot));
             fMeasureTaskService.save(task);
 
             ans.setTaskId(task.getId());
             ans.setTaskName(task.getTaskName());
+            FMeasureMethod method = fMeasureMethodService.getById(methodId);
+            method.setMethodUseTime(LocalDateTime.now());
+            fMeasureMethodService.updateById(method);
             return Result.ok(ans);
 
         } else {
@@ -430,12 +402,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
                 FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
-                snapshot.setTaskHeads(preHead);
+                snapshot.setSampleHeads(preHead);
                 task.setTableInfo(JSON.toJSONString(snapshot));
                 fMeasureTaskService.save(task);
 
                 ans.setTaskId(task.getId());
                 ans.setTaskName(task.getTaskName());
+                FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                method.setMethodUseTime(LocalDateTime.now());
+                fMeasureMethodService.updateById(method);
                 return Result.ok(ans);
             }
 
@@ -445,6 +420,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 ans.setTaskId(task.getId());
                 ans.setTaskName(task.getTaskName());
+                FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                method.setMethodUseTime(LocalDateTime.now());
+                fMeasureMethodService.updateById(method);
                 return Result.ok(ans);
             }
 
@@ -476,6 +454,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     fMeasureTaskService.save(newTask);
                     ans.setTaskId(newTask.getId());
                     ans.setTaskName(newTask.getTaskName());
+                    FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                    method.setMethodUseTime(LocalDateTime.now());
+                    fMeasureMethodService.updateById(method);
                     return Result.ok(ans);
 
                 } else if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.analyze.getIdentity())) {
@@ -505,6 +486,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     fMeasureTaskService.updateById(task);
                     ans.setTaskId(task.getId());
                     ans.setTaskName(task.getTaskName());
+                    FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                    method.setMethodUseTime(LocalDateTime.now());
+                    fMeasureMethodService.updateById(method);
                     return Result.ok(ans);
 
                 }
@@ -530,6 +514,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 ans.setTaskId(newTask.getId());
                 ans.setTaskName(newTask.getTaskName());
+                FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                method.setMethodUseTime(LocalDateTime.now());
+                fMeasureMethodService.updateById(method);
                 return Result.ok(ans);
             }
         }
@@ -715,6 +702,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (StringUtils.hasText(task.getSampleKey())) {
+            taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+
+        }
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+
         for (FTaskSpecimen specimen : taskSpecimen) {
             if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);
@@ -781,8 +776,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
+        boolean b = fMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail("任务保存样品信息出错");
+        }
 
-        return Result.ok(fMeasureTaskService.updateById(task));
+        if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+        }
+
+        return Result.ok();
     }
 
     @Override
@@ -999,7 +1003,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     }
 
     @Override
-    public Result<List<FHeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay) {
+    public Result<List<FHeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber) {
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
             return Result.fail("请选择方法或任务");
         }
@@ -1049,12 +1053,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         }
 
-        List<FHeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay);
+        List<FHeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay, deviceSerialNumber);
         return Result.ok(new ArrayList<>(vos));
     }
 
 
-    private List<FHeadVO> dealHeads(List<FHeadVO> heads, FPhotometricParameter parameter, Boolean allDisplay) {
+    private List<FHeadVO> dealHeads(List<FHeadVO> heads, FPhotometricParameter parameter, Boolean allDisplay, String deviceSerialNumber) {
         List<String> waveLength = parameter.getWaveLength();
         Map<String, FHeadVO> map = heads.stream().collect(Collectors.toMap(FHeadVO::getIdentity, head -> head));
 
@@ -1111,6 +1115,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<FHeadVO> ans = new ArrayList<>();
         List<FHeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
         if (systemHeads != null) ans.addAll(systemHeads);
+        for (FHeadVO an : ans) {
+            if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                ans.remove(an);
+                break;
+            }
+        }
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
+            String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
+            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
+            ans.add(sampleLocation);
+        }
 
         List<FHeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
         if (sampleHeads != null) ans.addAll(sampleHeads);
@@ -1120,6 +1136,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         List<FPreCountResultParam> resultParams = parameter.getResultParams();
         List<FHeadVO> headAnalyze = new ArrayList<>();
+        if (resultParams == null) {
+            resultParams = new ArrayList<>();
+        }
         for (FPreCountResultParam results : resultParams) {
             //TODO 方法参数标识待定，后续再改动
             if (!StringUtils.hasText(results.getParam())) {
@@ -1273,6 +1292,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 }
             }
         }
+        List<Integer> usefulLocation = new ArrayList<>();
+
+        if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+            usefulLocation = fSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
+        }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
 
@@ -1289,8 +1313,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
             map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
-            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
 
+            if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+                if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
+                    map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
+                }
+            }
 
             if (StringUtils.hasText(sample.getNewColData())){
                 Map<String, String> object = JSONObject.parseObject(sample.getNewColData(), new TypeReference<Map<String, String>>() {});
@@ -1320,8 +1348,23 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                             map.putAll(formattedData);
                             map.put("samplingTime", data.getSamplingTime());
                         }
+
                         Map<String, String> countData = getCountData(task, sample, parameter, digit, wlDataList);
                         map.putAll(countData);
+                    }
+                }
+
+                LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                        .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
+                        .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
+
+                FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                if (one != null) {
+                    if (StringUtils.hasText(one.getAnalysisParam())) {
+                        Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {
+                        });
+                        map.putAll(jsonObject);
                     }
                 }
             } else {
@@ -1384,6 +1427,20 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     }
                     map.put("remark", data.getRemark());
                 }
+
+                LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                        .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
+                        .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
+
+                FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                if (one != null) {
+                    if (StringUtils.hasText(one.getAnalysisParam())) {
+                        Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {
+                        });
+                        map.putAll(jsonObject);
+                    }
+                }
             }
             ans.add(map);
         }
@@ -1420,11 +1477,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
 
                 }
-            }
-
-            if (StringUtils.hasText(one.getAnalysisParam())) {
-                Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
-                map.putAll(jsonObject);
             }
         }
         return map;
@@ -1781,7 +1833,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         heads.add(new FHeadVO("样品体积", "sampleVolume"));
         heads.add(new FHeadVO("样品位置", "sampleLocation"));
 
-        List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
+        List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay, null).getData();
         heads.addAll(vos);
         heads.add(new FHeadVO("备注", "remark"));
         heads.add(new FHeadVO("采样时间", "samplingTime"));
@@ -1977,7 +2029,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         // 构建表头（与原逻辑一致，先加动态表头，再在第0位加序号列）
         List<FHeadVO> heads = new ArrayList<>();
-        List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
+        List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay, null).getData();
         heads.addAll(vos);
         heads.add(0, new FHeadVO("序号", "serialNumber")); // 序号列固定在第0位
 
@@ -2033,6 +2085,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.fail("文件生成失败：" + e.getMessage());
         }
     }
+
 
     // ---------------------- 新增：三格式文件生成具体实现 ----------------------
     /**

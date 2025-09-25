@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController.datamanagement;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @Api("数据管理接口")
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
 public class DataManagementController {
+
     @Autowired
     private DataManagementService dataManagementService;
 
@@ -62,27 +64,26 @@ public class DataManagementController {
 //    }
     @PostMapping("/deleteTask")
     @ApiOperation("任务删除")
-    public Result<String> deleteTask(@RequestParam String deleteTaskId) {
-        return dataManagementService.deleteTask(deleteTaskId);
+    public Result<String> deleteTask(@RequestBody Box deleteTaskIdList) {
+        return dataManagementService.deleteTask(deleteTaskIdList);
     }
 
 
     @PostMapping("/deleteMethod")
     @ApiOperation("方法删除")
-    public Result<String> deleteMethod(@RequestParam String deleteMethodId) {
-        return dataManagementService.deleteMethod(deleteMethodId);
+    public Result<String> deleteMethod(@RequestBody Box deleteMethodIdList) {
+        return dataManagementService.deleteMethod(deleteMethodIdList);
     }
 
     @PostMapping("/deleteProject")
     @ApiOperation("项目删除")
-    public Result<String> deleteProject(@RequestParam String deleteProjectId) {
-        return dataManagementService.deleteProject(deleteProjectId);
+    public Result<String> deleteProject(@RequestBody Box deleteProjectIdList) {
+        return dataManagementService.deleteProject(deleteProjectIdList);
     }
 
     @PostMapping("/copy")
     @ApiOperation("另存为")
-    public Result<String> copyProject() {
-        return  copyService.copy();
-
+    public Result<String> copyProject(@RequestParam("taskId") String taskId) {
+        return  copyService.copy(taskId);
     }
 }

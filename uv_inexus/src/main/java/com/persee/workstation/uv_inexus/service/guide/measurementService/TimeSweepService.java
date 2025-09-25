@@ -1,28 +1,15 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
-import java.io.File;
-import java.util.List;
-
-import javax.servlet.http.HttpServletResponse;
-
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.DifferentialDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.FourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.LuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
-import com.persee.workstation.uv_inexus.dto.measurementDto.UpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 public interface TimeSweepService {
     // 查询项目任务方法接口
@@ -131,4 +118,8 @@ public interface TimeSweepService {
 
     // 表格头接口
     Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay);
+
+    // 查询表格数据接口
+    List<Map<String, Object>> queryTableData(String taskId, String sampleId);
+
 }

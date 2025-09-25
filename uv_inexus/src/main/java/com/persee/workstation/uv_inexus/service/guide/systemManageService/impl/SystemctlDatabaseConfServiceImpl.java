@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemDatabaseConfDAO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.InitSystemConf;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
+import com.persee.workstation.uv_inexus.enums.systemManageEnums.AutoTimeEnum;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemDatabaseConfPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemctlDatabaseConfService;
@@ -128,4 +129,31 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
         return Result.fail();
 
     }
+
+    @Override
+    public Result<Boolean> updateAutoTime(Integer autoTime) {
+        String byTimeEnum = AutoTimeEnum.getByTimeEnum(autoTime);
+        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
+        if (systemDatabaseConfPO != null) {
+            SystemDatabaseConfPO systemDatabaseConf = new SystemDatabaseConfPO();
+            BeanUtils.copyProperties(systemDatabaseConfPO, systemDatabaseConf);
+            systemDatabaseConf.setAutoSaveTime(byTimeEnum);
+            int i = dao.updateById(systemDatabaseConf);
+            if (i == 0) {
+                return Result.fail(false);
+            }
+        }
+        return Result.ok(true);
+    }
+
+    @Override
+    public Result<String> getAutoTime() {
+        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
+        if (systemDatabaseConfPO == null) {
+            return Result.fail();
+        }
+        return Result.ok(systemDatabaseConfPO.getAutoSaveTime());
+    }
+
+
 }

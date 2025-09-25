@@ -104,6 +104,10 @@ public class DevMessageUtil {
                 Integer s = (Integer) parse;
                 findDeviceVO.setAttachmentType(s);
             }
+            if (cmdId.equals(FindDevEnum.GetCellPos.getComId())) {
+                Integer s = (Integer) parse;
+                findDeviceVO.setCurrentPoolNum(s);
+            }
         }
         return R.ok(findDeviceVO);
     }
@@ -136,6 +140,32 @@ public class DevMessageUtil {
         }
 
         return R.ok();
+    }
+
+    public R<String> setCurrentCellPos(Integer poolNum, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            return R.fail("xml文件加载失败");
+        }
+        String cmdId = "SetCellPos";
+
+        //发送报文组
+        byte[] bytes = protocolItemUtil.calcSendBytes(new Object[]{poolNum}, xml.get(cmdId));
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+        String result = parse.toString();
+        if ("false".equals(result)) {
+            return R.fail();
+        }
+
+        return R.ok();
+
     }
 
     /**

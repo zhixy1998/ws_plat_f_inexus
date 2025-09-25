@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.util.pythonUtil;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 
 @Service("RestUtil")
+@Slf4j
 public class RestUtil {
     @Value("${python-code.baseUrl}")
     String baseUrl;
@@ -67,8 +69,17 @@ public class RestUtil {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<String> entity = new HttpEntity<>(jsonObject.toJSONString(), headers);
-
-        ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-        return response.getBody();
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return response.getBody();
+            } else {
+                log.info("HTTP request failed with status code: {}", response.getStatusCode());
+                return null;
+            }
+        } catch (Exception e) {
+            log.info("计算拟合浓度异常：{}", e.getMessage());
+            return null;
+        }
     }
 }

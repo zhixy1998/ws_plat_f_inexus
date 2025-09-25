@@ -60,7 +60,11 @@ public interface ExperimentTestService {
     Result recentlyCreatedTasks(String updateBy, String measureType);
 
     // 获取报告参数
-    Result obtainReportParameters(String taskId);
+    Result obtainReportParameters(String taskId,String sampleId,String serialNumber);
+
+
+    // 获取报告所有参数
+    Result queryReportAllParameters(String taskId, String sampleId, String serialNumber);
 
     // 导出方法
     List<TMeasureMethod> exportMethod(List<String> ids);
@@ -76,4 +80,5 @@ public interface ExperimentTestService {
 
     // 清除方法
     Result clearMethod(String methodId);
+
 }

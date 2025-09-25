@@ -1,26 +1,9 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
@@ -28,13 +11,24 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputPa
 import com.persee.workstation.uv_inexus.service.concise.measurementService.RationConciseService;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationMethodParam;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/quantitativeMeasurement/concise")
@@ -48,6 +42,24 @@ public class RationConciseController {
     public Result<FMeasurementCurrentInfoVO> getCurrentInfo(@RequestParam String updateBy,
                                                             @RequestParam String measureType) {
         return rationService.getCurrentInfo(updateBy, measureType);
+    }
+
+    @GetMapping("newDraft")
+    @ApiOperation("新建草稿")
+    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestParam String methodId, @RequestParam String updateBy) {
+        return rationService.newDraft(methodId, updateBy);
+    }
+
+    @PostMapping("checkParam")
+    @ApiOperation("检查参数接口")
+    public Result<FMethodChangeCheckVO> checkParam(@RequestBody NewRationMethodParamCheckDTO methodParam) {
+        return rationService.checkMethodParam(methodParam);
+    }
+
+    @PostMapping("applyMethod")
+    @ApiOperation("应用方法接口")
+    public Result<FMeasurementCurrentInfoVO> applyMethod(@RequestBody NewRationMethodParamCheckDTO methodParam) {
+        return rationService.applyMethod(methodParam);
     }
 
 
@@ -93,36 +105,24 @@ public class RationConciseController {
     @ApiOperation("获取标准样品表头信息接口")
     public Result<List<FHeadVO>> getTableHead(@RequestParam String taskId,
                                              @RequestParam String methodId,
-                                             @RequestParam Boolean allDisplay) {
-        return rationService.getStandSampleTableHead(taskId, methodId, allDisplay);
+                                             @RequestParam Boolean allDisplay,
+                                              @RequestParam String deviceSerialNumber) {
+        return rationService.getStandSampleTableHead(taskId, methodId, allDisplay, deviceSerialNumber);
     }
 
     @GetMapping("getUnknowTableHead")
     @ApiOperation("获取未知样品表头信息接口")
     public Result<List<FHeadVO>> getUnknownSampleTableHead(@RequestParam String taskId,
                                                           @RequestParam String methodId,
-                                                          @RequestParam Boolean allDisplay) {
-        return rationService.getUnknownSampleTableHead(taskId, methodId, allDisplay);
-    }
-
-    @GetMapping("getStandSampleData")
-    @ApiOperation("获取标准样品数据接口")
-    public Result<List<Map<String, Object>>> getStandSampleData(@RequestParam String taskId,
-                                                                @RequestParam Boolean allDisplay) {
-        return rationService.queryStandSampleData(taskId, allDisplay);
+                                                          @RequestParam Boolean allDisplay,
+                                                           @RequestParam String deviceSerialNumber) {
+        return rationService.getUnknownSampleTableHead(taskId, methodId, allDisplay, deviceSerialNumber);
     }
 
     @PostMapping("querySampleData")
     @ApiOperation("查询样品数据接口")
     public Result<FRationSampleDataVO> querySampleData(@RequestBody FQueryDataDTO queryDataDTO) {
         return rationService.querySampleData(queryDataDTO);
-    }
-
-    @GetMapping("getUnknowSampleData")
-    @ApiOperation("获取未知样品数据接口")
-    public Result<List<Map<String, Object>>> getUnknowSampleData(@RequestParam String taskId,
-                                                                 @RequestParam Boolean allDisplay) {
-        return rationService.queryUnknowSampleData(taskId, allDisplay);
     }
 
     @GetMapping("getCurveInfo")

@@ -20,4 +20,7 @@ public class FindDeviceVO {
 
     @ApiModelProperty("附件类型")
     private Integer attachmentType;
+
+    @ApiModelProperty("当前样品池位置")
+    private Integer currentPoolNum;
 }

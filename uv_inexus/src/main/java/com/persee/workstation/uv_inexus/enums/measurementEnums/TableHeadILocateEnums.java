@@ -6,6 +6,7 @@ import lombok.Getter;
 public enum TableHeadILocateEnums {
     system("system", "系统预置表头"),
     sample("sample", "样品表头"),
+    location("location", "位置"),
     data("data","测量页用户新增表头"),
     measure("measure", "后端添加测量表头"),
     other("other", "其他表头,如采样时间，备注等"),

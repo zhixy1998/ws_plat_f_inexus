@@ -1,10 +1,6 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 
-import java.io.File;
-import java.util.List;
-import java.util.Map;
-
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
@@ -23,13 +19,11 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationMethodParam;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSaveCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationWavelengthDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.*;
+
+import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 定量测定
@@ -85,11 +79,11 @@ public interface RationConciseService {
     /**
      *  查询表格头
      */
-    Result<List<FHeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<FHeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
     /**
      * 查询未知样品的表头
      */
-    Result<List<FHeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<FHeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
 
     R<String> saveRationSampleMeasureData(FRationDataVO dataInfo);
     R<FRationSaveCountDataInfo> saveSampleMeasureData(FRationDataVO dataInfo);
@@ -99,12 +93,13 @@ public interface RationConciseService {
     void saveEmptySampleData(List<FRationSaveCountDataInfo> emptySampleList);
 
     R<FRationCountDataInfo> countAbsValue(List<FRationWavelengthDataInfo> originData, FRationParameter parameter, Integer digit);
+    //暂时不用
     R<FRationCountDataInfo> countAbsValue(List<FRationWavelengthDataInfo> originData, FRationParameter parameter);
 
-    Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay);
     Result<FRationSampleDataVO> querySampleData(FQueryDataDTO queryDataDTO);
 
-
+    //暂时不用
+    Result<List<Map<String, Object>>> queryStandSampleData(String taskId, Boolean allDisplay);
     Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
 
     /**
@@ -128,9 +123,11 @@ public interface RationConciseService {
      * 值计算
      */
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType, Integer digit);
+
+    //暂不用
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
 
-    R<List<FRationCountDataInfo>> formula(List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
+    R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
 
     R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);
     R<Boolean> changeUnknowSampleDigit(String taskId, Integer digit);

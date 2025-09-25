@@ -144,23 +144,157 @@ public class DataCountUtil {
         }
     }
 
-    public static Double formatValue(Integer digit, Double value) {
-        try {
-            BigDecimal bd = new BigDecimal(value);
-            bd = bd.setScale(digit, RoundingMode.HALF_UP);
-            return Double.valueOf(String.valueOf(bd));
-        } catch (NumberFormatException e) {
-            return value; // 如果转换失败，返回原始值
+
+//    public static Double formatValue(Integer digit, Double value) {
+//        try {
+//            BigDecimal bd = new BigDecimal(value);
+//            bd = bd.setScale(digit, RoundingMode.HALF_UP);
+//            return Double.valueOf(String.valueOf(bd));
+//        } catch (NumberFormatException e) {
+//            return value; // 如果转换失败，返回原始值
+//        }
+//    }
+public static Double formatValue(Integer digit, Double value) {
+    if (value == null || digit == null) {
+        return value;
+    }
+
+    if (value.isInfinite() || value.isNaN()) {
+        return value;
+    }
+
+    if (value == 0.0) {
+        return 0.0;
+    }
+
+    // 处理负值（规则3.2.5）
+    boolean isNegative = value < 0;
+    double absValue = Math.abs(value);
+
+    double resultValue;
+
+    if (digit >= 0) {
+        // 修约到小数位
+        resultValue = roundToDecimalPlaces(absValue, digit);
+    } else {
+        // 修约到整数位
+        resultValue = roundToIntegerPlace(absValue, -digit);
+    }
+
+    return isNegative ? -resultValue : resultValue;
+}
+
+    /**
+     * 修约到指定小数位数（重新实现，确保精度）
+     */
+    private static double roundToDecimalPlaces(double value, int decimalPlaces) {
+        if (decimalPlaces < 0) return value;
+
+        // 使用BigDecimal确保精度
+        BigDecimal bd = new BigDecimal(String.valueOf(value));
+
+        // 设置足够的小数位数
+        bd = bd.setScale(decimalPlaces + 10, BigDecimal.ROUND_DOWN);
+
+        // 将数值放大10^(decimalPlaces+1)倍，使得我们需要判断的数字出现在整数位置
+        int scale = decimalPlaces + 1;
+        BigDecimal multiplier = BigDecimal.ONE.movePointRight(scale);
+        BigDecimal scaledValue = bd.multiply(multiplier);
+
+        // scaledValue现在包含：整数部分 + 1位需要判断的小数
+
+        // 获取整数部分（即保留部分 + 第一位判断数字）
+        BigDecimal integerPart = scaledValue.setScale(0, BigDecimal.ROUND_DOWN);
+
+        // 获取小数部分（即第二位及以后的判断数字）
+        BigDecimal fractionalPart = scaledValue.subtract(integerPart);
+
+        // 第一位判断数字（个位数）
+        int firstJudgeDigit = integerPart.remainder(BigDecimal.TEN).intValue();
+
+        // 保留的末位数字（十位数）
+        int lastKeptDigit = integerPart.divide(BigDecimal.TEN).remainder(BigDecimal.TEN).intValue();
+
+        // 检查5之后是否有非0数字（看小数部分是否大于0）
+        boolean hasNonZeroAfterFive = false;
+        if (firstJudgeDigit == 5) {
+            if (fractionalPart.compareTo(BigDecimal.ZERO) > 0) {
+                hasNonZeroAfterFive = true;
+            }
         }
+
+        // 构建基础值（去掉第一位判断数字）
+        BigDecimal baseValue = integerPart.divide(BigDecimal.TEN).setScale(0, BigDecimal.ROUND_DOWN);
+
+        // 应用修约规则
+        BigDecimal resultScaled;
+        if (firstJudgeDigit < 5) {
+            // 规则3.2.1：小于5则舍去
+            resultScaled = baseValue;
+        } else if (firstJudgeDigit > 5) {
+            // 规则3.2.2：大于5则进一
+            resultScaled = baseValue.add(BigDecimal.ONE);
+        } else {
+            // 规则3.2.3和3.2.4：等于5的情况
+            if (hasNonZeroAfterFive) {
+                // 规则3.2.3：5之后有非0数字则进一
+                resultScaled = baseValue.add(BigDecimal.ONE);
+            } else {
+                // 规则3.2.4：5之后无数字或皆为0时，看保留的末位数字的奇偶性
+                if (lastKeptDigit % 2 == 1) {
+                    // 奇进偶舍：末位是奇数则进一
+                    resultScaled = baseValue.add(BigDecimal.ONE);
+                } else {
+                    // 末位是偶数则舍去
+                    resultScaled = baseValue;
+                }
+            }
+        }
+
+        // 恢复原始量级
+        BigDecimal result = resultScaled.movePointLeft(decimalPlaces);
+        return result.doubleValue();
     }
 
+    /**
+     * 修约到指定整数位
+     */
+    private static double roundToIntegerPlace(double value, int place) {
+        if (place <= 0) return value;
 
+        BigDecimal interval = BigDecimal.ONE;
+        for (int i = 0; i < place; i++) {
+            interval = interval.multiply(BigDecimal.TEN);
+        }
 
-    private static double formatValue(Integer digit, double value) {
-        BigDecimal bd = new BigDecimal(value);
-        bd = bd.setScale(digit, RoundingMode.HALF_UP);
-        return bd.doubleValue();
+        BigDecimal bdValue = new BigDecimal(String.valueOf(value));
+        BigDecimal scaledValue = bdValue.divide(interval, 20, BigDecimal.ROUND_HALF_UP);
+
+        double roundedScaledValue = roundToDecimalPlaces(scaledValue.doubleValue(), 0);
+        BigDecimal result = new BigDecimal(String.valueOf(roundedScaledValue)).multiply(interval);
+        return result.doubleValue();
     }
+
+    // 测试方法
+    public static void main(String[] args) {
+        System.out.println("=== 重点测试12.0000055 ===");
+        System.out.println("12.0085000 修约到3位小数: " + formatValue(3, -12.0085000)); // 应得12.000006
+        System.out.println("12.0055000 修约到5位小数: " + formatValue(3, -12.0055000)); // 应得12.00001
+        System.out.println("12.0000055 修约到4位小数: " + formatValue(4, 12.0000055)); // 应得12.0000
+
+        System.out.println("\n=== 测试规则3.2.3（5之后有非0数字）===");
+        System.out.println("10.5002 修约到个位: " + formatValue(0, 10.5002)); // 应得11
+        System.out.println("12.0000055 修约到6位小数: " + formatValue(6, 12.0000055)); // 应得12.000006
+
+        System.out.println("\n=== 测试规则3.2.4（奇进偶舍）===");
+        System.out.println("1.5 修约到个位: " + formatValue(0, 1.5)); // 应得2（奇进）
+        System.out.println("2.5 修约到个位: " + formatValue(0, 2.5)); // 应得2（偶舍）
+    }
+//    private static double formatValue(Integer digit, double value) {
+//        BigDecimal bd = new BigDecimal(value);
+//        bd = bd.setScale(digit, RoundingMode.HALF_UP);
+//        return bd.doubleValue();
+//    }
 
     /**
      * 计算数组的平均值

@@ -52,6 +52,7 @@ public class FMeasureTaskDTO {
 
     //  最后保存时间
     @ApiModelProperty("最后保存时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endSaveTime;
 
     // 序列号

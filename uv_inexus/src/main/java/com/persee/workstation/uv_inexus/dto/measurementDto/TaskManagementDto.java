@@ -7,6 +7,10 @@ import java.time.LocalDateTime;
 
 @Data
 public class TaskManagementDto {
+    @ApiModelProperty("任务id")
+    private String id;
+    @ApiModelProperty("任务名称")
+    private String taskName;
     @ApiModelProperty("所在项目")
     private String projectName;
     @ApiModelProperty("起始时间")

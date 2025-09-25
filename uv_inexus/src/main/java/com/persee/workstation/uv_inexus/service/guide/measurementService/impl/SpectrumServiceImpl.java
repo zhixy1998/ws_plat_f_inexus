@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMap
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -1928,7 +1929,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
         byte[] bytes = Base64.decodeBase64(s);
         if (upload.getImageType().equals("0")){
-            TMeasureAnalysisImage byId = tMeasureAnalysisImageService.getById(upload.getId());
+            QueryWrapper<TMeasureAnalysisImage> analysisId = new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+            analysisId.last("limit 1");
+            TMeasureAnalysisImage byId = tMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null){
+                return Result.fail("图片不存在");
+            }
             byId.setImageType(fileType);
             byId.setImageBase64(bytes);
             // 将当前日期时间存储
@@ -1936,8 +1942,11 @@ public class SpectrumServiceImpl implements SpectrumService {
             boolean update = tMeasureAnalysisImageService.updateById(byId);
             return Result.ok(update);
         }else{
+            QueryWrapper<TMeasureTaskAttachment> eq = new QueryWrapper<TMeasureTaskAttachment>()
+                    .eq("task_id", upload.getId());
+            eq.last("limit 1");
             // 根据任务id查询任务附属表的内容
-            TMeasureTaskAttachment byId = tMeasureTaskAttachmentService.getById(upload.getId());
+            TMeasureTaskAttachment byId = tMeasureTaskAttachmentService.getOne(eq);
             if (byId == null){
                 return Result.fail("任务附属不存在");
             }
@@ -1967,10 +1976,9 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.ok(encoded);
         }else if (type.equals("1")){
             TMeasureAnalysisData byId = tMeasureAnalysisDataService.getById(id);
-            if (byId.getAnalysisDataImage() == null) {
-                return Result.fail("图片不存在");
-            }
-            String encoded = Base64.encodeBase64String(byId.getAnalysisDataImage());
+            // 根据分析数据的id查询分析数据图片
+            TMeasureAnalysisImage analysisId = tMeasureAnalysisImageService.getOne(new QueryWrapper<TMeasureAnalysisImage>().eq("analysis_id", id));
+            String encoded = Base64.encodeBase64String(analysisId.getImageBase64());
             return Result.ok(encoded);
         }else {
             return Result.fail("type类型错误");
@@ -3017,22 +3025,24 @@ public class SpectrumServiceImpl implements SpectrumService {
         // 1. 编号
         ans.add(new HeadVO("编号", "id", "system", "编号"));
 
-        ans.add(new HeadVO("波长(nm)", "originalCalculationData", "measure", "波长(nm)"));
+        ans.add(new HeadVO("峰/谷", "peakValley", "system", "编号"));
+
+        ans.add(new HeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
 
         // 2. 波长 + 光度模式
         String mode = parameter.getLuminosity(); // abs / t% / es / er
         switch (mode) {
             case "1":
-                ans.add(new HeadVO("Abs", "originalCalculationData", "measure", "Abs"));
+                ans.add(new HeadVO("Abs", "luminosity", "measure", "Abs"));
                 break;
             case "2":
-                ans.add(new HeadVO("T%", "originalCalculationData", "measure", "T%"));
+                ans.add(new HeadVO("T%", "luminosity", "measure", "T%"));
                 break;
             case "3":
-                ans.add(new HeadVO("Es", "originalCalculationData", "measure", "Es"));
+                ans.add(new HeadVO("Es", "luminosity", "measure", "Es"));
                 break;
             case "4":
-                ans.add(new HeadVO("Er", "originalCalculationData", "measure", "Er"));
+                ans.add(new HeadVO("Er", "luminosity", "measure", "Er"));
                 break;
         }
 
@@ -3042,6 +3052,58 @@ public class SpectrumServiceImpl implements SpectrumService {
 
 
         return Result.ok(ans);
+    }
+
+    /**
+     * 查询表格数据
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
+    @Override
+    public List<Map<String, Object>> queryTableData(String taskId, String sampleId) {
+        // 校验参数
+        if (StringUtils.isEmpty(taskId) || StringUtils.isEmpty(sampleId)) {
+            return null;
+        }
+        // 根据任务id和样品id查询分析数据
+        QueryWrapper<TMeasureAnalysisData> eq = new QueryWrapper<>();
+        eq.eq("task_id", taskId);
+        eq.eq("sample_key", sampleId);
+        eq.orderByDesc("analysis_number");
+        eq.last("LIMIT 1");
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(eq);
+        if (analysisData == null) {
+            return null;
+        }
+        // 解析分析数据
+        List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        // 解析峰谷数据
+        List<PeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), PeakValleyMarking.class);
+        List<PeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), PeakValleyMarking.class);
+        List<Map<String, Object>> arrayList = new ArrayList<>();
+        // 根据长度遍历
+        for (int i = 0; i < result.size(); i++) {
+            // 根据,进行分割数据
+            String[] split = result.get(i).split(",");
+            Map<String, Object> map = new HashMap<>();
+            map.put(SampleTableEnum.ID.getIdentity(), i + 1);
+            for (PeakValleyMarking peak : peaks) {
+                if (peak.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "峰");
+                }
+            }
+            for (PeakValleyMarking grade : valleys) {
+                if (grade.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "谷");
+                }
+            }
+            map.put(SampleTableEnum.WAVELENGTH.getIdentity(), split[0]);
+            map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
+            map.put(SampleTableEnum.REMARK.getIdentity(), null);
+            arrayList.add(map);
+        }
+        return arrayList;
     }
 
     // 保留原有的downloadWord方法，并适配新参数

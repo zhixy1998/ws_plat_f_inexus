@@ -18,7 +18,14 @@ public enum SampleTableEnum {
     Abs("Abs", "Abs"),
     SUM_Abs("sumAbs", "▲Abs"),
     REMARK("remark", "备注"),
-    SAMPLING_TIME("samplingTime", "采样时间");
+    SAMPLING_TIME("samplingTime", "采样时间"),
+    ID("id","编号"),
+    WAVELENGTH("waveLength", "波长"),
+    LUMINOSITY("luminosity", "光度"),
+    TIME("time", "时间"),
+    PEAKVALLEY("peakValley", "时间");
+
+
 
     private final String identity;
 

@@ -302,4 +302,16 @@ public class SystemManageController {
         }
     }
 
+    @ApiOperation("自动保存时间")
+    @PostMapping("/updateAutoTime")
+    public Result<Boolean> updateAutoTime(Integer autoTime) {
+        return systemctlDatabaseConfServiceImpl.updateAutoTime(autoTime);
+    }
+
+    @ApiOperation("获取自动保存时间")
+    @GetMapping("/getAutoTime")
+    public Result<String> getAutoTime() {
+        return systemctlDatabaseConfServiceImpl.getAutoTime();
+    }
+
 }

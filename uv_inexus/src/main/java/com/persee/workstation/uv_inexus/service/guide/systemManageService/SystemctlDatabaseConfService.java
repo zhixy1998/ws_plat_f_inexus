@@ -19,4 +19,8 @@ public interface SystemctlDatabaseConfService {
 
     Result<InitSystemConf> initSystemConf();
 
+    Result<Boolean> updateAutoTime(Integer autoTime);
+
+    Result<String> getAutoTime();
+
 }

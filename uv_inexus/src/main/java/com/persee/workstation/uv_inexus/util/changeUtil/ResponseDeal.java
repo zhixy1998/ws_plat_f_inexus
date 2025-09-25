@@ -34,7 +34,6 @@ public class ResponseDeal {
             case "SetGain":
             case "SetResponseTime":
             case "SetPhotoMode":
-
             case "SetPadModeTrue":
             case "SetPadModeFalse":
             case "SetPCModeTrue":
@@ -49,7 +48,6 @@ public class ResponseDeal {
             case "InitSlit1Motor":
             case "InitWlMotor":
             case "SetSlit1":
-            case "SetCellPos":
             case "InitLampMotor":
             case "CheckWLamp":
             case "CheckDLamp":
@@ -59,6 +57,8 @@ public class ResponseDeal {
             case "DisConnect":
             case "DisConnectIAP":
                 return parseBooleanFrom5thByte(responses);
+            case "SetCellPos":
+                return parseSetCellPos(responses, sendBytes);
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
@@ -70,6 +70,8 @@ public class ResponseDeal {
             case "BaseLine":
             case "BaseLineFast":
                 return parseBaseLine(responses);
+            case "GetCellPos":
+                return parseCellPos(responses, sendBytes);
 
 
 //            case "NewIP":
@@ -90,6 +92,18 @@ public class ResponseDeal {
 
         byte[] last = responses.get(responses.size() - 1);
         boolean success = last.length >= 5 && (last[4] & 0xFF) == 0;
+        result = success ? "true" : "false"; // 根据结果更新 result
+        return success;
+    }
+
+    private static Boolean parseSetCellPos(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            result = "false"; // 设置全局变量
+            return false;
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        boolean success = last.length >= 5 && (last[4] & 0xFF) == (sendBytes[4] & 0xFF);
         result = success ? "true" : "false"; // 根据结果更新 result
         return success;
     }
@@ -221,6 +235,37 @@ public class ResponseDeal {
             }
         }
         return result;
+    }
+
+    private static Object parseCellPos(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        if (sendBytes == null || sendBytes.length < 5) {
+            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            result = "false";
+            return false;
+        }
+
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+//        boolean isEqual = (lastResponse[4] & 0xFF)== 0;
+        boolean isEqual1 = sendBytes[4] == lastResponse[4];
+
+        result = isEqual1 ? "true" : "false";
+
+        int pos = (lastResponse[4] & 0xFF) + 1;
+        String rawpos = String.valueOf(pos);
+//        MeasureController.addPosData(rawpos);
+        return pos;
     }
 
     // 处理 NewIP 指令
