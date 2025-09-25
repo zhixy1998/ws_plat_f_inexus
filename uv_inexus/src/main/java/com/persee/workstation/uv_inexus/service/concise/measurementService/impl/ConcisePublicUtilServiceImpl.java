@@ -55,6 +55,12 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
     @Value("1")
     String tested;
 
+    /**
+     * 修改样本位置
+     * @param taskId
+     * @param usefulLocation
+     * @return
+     */
     @Override
     public R<Boolean> changeSampleLocation(String taskId, List<Integer> usefulLocation) {
         if (!StringUtils.hasText(taskId)) {

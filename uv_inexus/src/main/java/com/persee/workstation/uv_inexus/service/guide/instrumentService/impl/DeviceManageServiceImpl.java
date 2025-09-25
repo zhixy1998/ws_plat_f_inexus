@@ -162,6 +162,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             Command command;
             if (DeviceInitCommandEnum.getComId(i).equals("SetSlit1")) {
                 command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{20});
+            } else if (DeviceInitCommandEnum.getComId(i).equals("SetCellPos")) {
+                command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{1});
             } else {
                 command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{});
             }
