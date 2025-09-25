@@ -95,6 +95,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
 
     @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    private ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
     private SystemUserManageDAO systemUserManageDAO;
 
     @Autowired
@@ -300,6 +306,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         return Result.ok(vo);
     }
 
+    /**
+     * 查询方法详情
+     * @param paramDto
+     * @return
+     */
     @Override
     public Result parameterValidation(FParameterValidationDto paramDto) {
         // 校验参数
@@ -864,7 +875,17 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
 
-        return Result.ok(fMeasureTaskService.updateById(task));
+        boolean b = fMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail("任务保存样品信息出错");
+        }
+
+        if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+        }
+
+        return Result.ok();
     }
 
 

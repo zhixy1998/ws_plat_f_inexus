@@ -91,6 +91,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
 
     @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    private ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
     private FMeasureDataService fMeasureDataService;
 
     @Autowired
@@ -749,7 +755,17 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
 
-        return Result.ok(fMeasureTaskService.updateById(task));
+        boolean b = fMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail("任务保存样品信息出错");
+        }
+
+        if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+        }
+
+        return Result.ok();
     }
 
     /**
