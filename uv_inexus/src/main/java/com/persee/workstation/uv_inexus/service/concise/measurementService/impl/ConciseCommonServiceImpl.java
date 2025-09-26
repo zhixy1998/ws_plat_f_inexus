@@ -353,7 +353,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         String userId = sysUserPO.getId();
         LambdaQueryWrapper<FMeasureTask> fMeasureTaskLambdaQueryWrapper = new LambdaQueryWrapper<>();
         fMeasureTaskLambdaQueryWrapper.eq(FMeasureTask::getMeasureType, methodType)
-                .eq(FMeasureTask::getUserId, userId).orderByDesc(FMeasureTask::getEndSaveTime);
+                .eq(FMeasureTask::getUserId, userId)
+                .orderByDesc(FMeasureTask::getEndSaveTime);
 
         if (selectKey != null) {
             fMeasureTaskLambdaQueryWrapper.like(FMeasureTask::getTaskName, selectKey);
