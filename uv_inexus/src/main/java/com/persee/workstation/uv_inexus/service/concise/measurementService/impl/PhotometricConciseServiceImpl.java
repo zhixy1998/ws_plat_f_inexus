@@ -30,6 +30,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
@@ -782,10 +783,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
-            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
-            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                return Result.ok();
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
         }
-
         return Result.ok();
     }
 
@@ -1121,11 +1129,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 break;
             }
         }
+
         if (StringUtils.hasText(deviceSerialNumber)) {
-            String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
-            String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
-            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
-            ans.add(sampleLocation);
+
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess()) {
+                FSamplePoolInfoVO data = poolInfo.getData();
+                if (data.getIsAutoChangePool() ){
+                    String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
+                    String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
+                    FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
+                    ans.add(sampleLocation);
+                }
+            }
         }
 
         List<FHeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
@@ -1315,8 +1331,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
 
             if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+
                 if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
-                    map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
+                    R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
+                    if (poolInfo.getSuccess()) {
+                        FSamplePoolInfoVO data = poolInfo.getData();
+                        if (data.getIsAutoChangePool()) {
+                            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池" + sample.getSampleLocation());
+                        }
+                    }
                 }
             }
 

@@ -29,6 +29,10 @@ public class RationReportDataVO {
      * 映射关系
      */
     private List<InputParamMapTableHead> mapRelation;
+    /**
+     * 曲线信息
+     */
+    private RationFitCurveVO curveInfo;
 
 
 }

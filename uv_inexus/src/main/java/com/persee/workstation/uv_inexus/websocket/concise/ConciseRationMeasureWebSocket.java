@@ -195,8 +195,10 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             return;
         }
 
-        int maxPoolNum = usefulLocation.size();
-        int currentPoolNum = 0;
+        int usefulPoolNum = usefulLocation.size();
+        int measureCount = 0;
+        int currentPoolNum = -1;
+        int maxPoolNum = Collections.max(usefulLocation);
 
         //后续添加仪器状态检测
         String ip = infoService.getIp(deviceSerialNumber);
@@ -219,12 +221,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             for (TaskSpecimen specimen : taskSpecimen) {
 
-                if (!isAutoChangePool && currentPoolNum == 1) {
+                if (!isAutoChangePool && measureCount == 1) {
                     log.info("不自动切换样品池，只测一个就结束");
                     break;
                 }
 
-                if (currentPoolNum >= maxPoolNum) {
+                if (measureCount >= usefulPoolNum || currentPoolNum == maxPoolNum) {
                     break;
                 }
 
@@ -301,7 +303,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                                 FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
                                 sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                                 sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                                sumAbsData.setColValue(ansData.getColValue() - minuend);
+                                double v = ansData.getColValue() - minuend;
+                                sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
                                 fitCurveData.add(sumAbsData);
                             } else {
                                 fitCurveData.add(ansData);
@@ -317,6 +320,10 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                  */
                 R<FRationDataVO> r;
 
+                if (!isAutoChangePool){
+                    sample.setSampleLocation(String.valueOf(poolInfoVO.getCurrentPoolNum()));
+                }
+
                 if (repeat) {
                     //重复测量，单独处理！
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
@@ -324,12 +331,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 } else {
                     r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
                 }
+                currentPoolNum = Integer.parseInt(sample.getSampleLocation());
                 fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
                 if (!r.getSuccess()) {
                     sendAndClose(session, r.getMessage());
                     return;
                 }
-                currentPoolNum ++;
+                measureCount ++;
                 FRationDataVO data = r.getData();
                 List<FRationCountDataInfo> measureAbsDataList = data.getCountData();
 
@@ -397,8 +405,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                     data.setCountData(measureAbsDataList);
                     rationService.saveSampleMeasureData(data);
+                    specimen.setIsTested(right);
                 }
-                specimen.setIsTested(right);
             }
             task.setSampleKey(JSON.toJSONString(taskSpecimen));
             tMeasureTaskService.updateById(task);
@@ -448,12 +456,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
              */
             for (TaskSpecimen specimen : taskSpecimen) {
 
-                if (!isAutoChangePool && currentPoolNum == 1) {
+                if (!isAutoChangePool && measureCount == 1) {
                     log.info("不自动切换样品池，只测一个就结束");
                     break;
                 }
 
-                if (currentPoolNum >= maxPoolNum) {
+                if (measureCount >= usefulPoolNum || currentPoolNum == maxPoolNum) {
                     break;
                 }
 
@@ -518,13 +526,14 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                  * 区分重复与不重复测，测量 + 计算出abs值一起
                  */
                 R<FRationDataVO> r;
-                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
                 if (repeat) {
                     //重复测量，单独处理！
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
                 } else {
                     r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
                 }
+                currentPoolNum = Integer.parseInt(sample.getSampleLocation());
+                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
 
                 if (!r.getSuccess()) {
                     sendAndClose(session, r.getMessage());
@@ -532,7 +541,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 }
                 task.setDeviceSerialNumber(deviceSerialNumber);
 
-                currentPoolNum ++;
+                measureCount ++;
                 FRationDataVO data = r.getData();
 
                 //保存数据
@@ -616,16 +625,16 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     rationService.saveAnalyzeData(saveDataInfo);
                     //定量的公式计算----待定
 //                    rationService.formula()
-                    R<List<FRationCountDataInfo>> formula = rationService.formula(saveDataInfo.getAnalyzeDataId(), data.getWavelengthData(), sample, task, parameter, digit);
+//                    R<List<FRationCountDataInfo>> formula = rationService.formula(saveDataInfo.getAnalyzeDataId(), data.getWavelengthData(), sample, task, parameter, digit);
 
-                    if (!formula.getSuccess()) {
-                        log.info("公式计算异常");
-                        sendAndClose(session, formula.getMessage());
-                        return;
-                    }
-                    List<FRationCountDataInfo> formulaData = formula.getData();
-                    saveDataInfo.getCountData().addAll(formulaData);
-                    rationService.saveAnalyzeData(saveDataInfo);
+//                    if (!formula.getSuccess()) {
+//                        log.info("公式计算异常");
+//                        sendAndClose(session, formula.getMessage());
+//                        return;
+//                    }
+//                    List<FRationCountDataInfo> formulaData = formula.getData();
+//                    saveDataInfo.getCountData().addAll(formulaData);
+//                    rationService.saveAnalyzeData(saveDataInfo);
                 }
                 specimen.setIsTested(right);
             }
@@ -768,7 +777,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
             //添加到空白列表
             currentList.add(ansData);
-            yAbs.setColValue(ansData.getColValue() - minuend);
+            double v = ansData.getColValue() - minuend;
+            yAbs.setColValue(DataCountUtil.formatValue(digit, v));
             currentList.add(yAbs);
             dealData.setCountData(currentList);
             emptyDataList.add(dealData);
@@ -780,7 +790,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 for (FRationCountDataInfo dataInfo : list) {
                     if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                         newList.add(dataInfo);
-                        yAbs.setColValue(dataInfo.getColValue() - minuend);
+                        double v1 = dataInfo.getColValue() - minuend;
+                        yAbs.setColValue(DataCountUtil.formatValue(digit, v1));
                         newList.add(yAbs);
                     }
                 }
@@ -794,7 +805,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             minuend = 0.0;
             emptyList.add(ansData);
             minuend = ansData.getColValue();
-            yAbs.setColValue(ansData.getColValue() - minuend);
+            double sumAbs = ansData.getColValue() - minuend;
+            yAbs.setColValue(DataCountUtil.formatValue(digit, sumAbs));
             currentList.add(yAbs);
             currentList.add(ansData);
             dealData.setCountData(currentList);

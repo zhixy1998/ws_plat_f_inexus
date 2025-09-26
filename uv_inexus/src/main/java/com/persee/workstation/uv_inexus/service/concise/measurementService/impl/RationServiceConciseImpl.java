@@ -35,11 +35,13 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -949,8 +951,26 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
+        boolean b = fMeasureTaskService.updateById(task);
 
-        return Result.ok(fMeasureTaskService.updateById(task));
+        if (!b) {
+            return Result.fail("任务保存样品信息出错");
+        }
+
+        if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                return Result.ok();
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
+        }
+
+        return Result.ok();
     }
 
     @Override
@@ -982,7 +1002,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
-        fMeasureTaskService.updateById(task);
+        boolean b = fMeasureTaskService.updateById(task);
         return Result.ok(true);
     }
 
@@ -1185,11 +1205,17 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         if (StringUtils.hasText(deviceSerialNumber)) {
-            String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
-            String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
 
-            FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
-            ans.add(sampleLocation);
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess()) {
+                FSamplePoolInfoVO data = poolInfo.getData();
+                if (data.getIsAutoChangePool() ) {
+                    String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
+                    String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
+                    FHeadVO sampleLocation = new FHeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
+                    ans.add(sampleLocation);
+                }
+            }
         }
 
         List<FHeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
@@ -1604,7 +1630,6 @@ public class RationServiceConciseImpl implements RationConciseService {
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
             map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
             map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
-            map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+ sample.getSampleLocation());
             map.put(SampleTableEnum.DILUTION_RATIO.getIdentity(), sample.getDilutionRatio());
             map.put(SampleTableEnum.AMOUNT.getIdentity(), sample.getSampleVolume());
 
@@ -1613,7 +1638,6 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 map.putAll(object);
             }
-
             //数据信息,repeat：false-不重复，true-重复
             if (!repeat) {
                 LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
@@ -1796,8 +1820,15 @@ public class RationServiceConciseImpl implements RationConciseService {
                 Map<String, Object> singleSampleData = getSingleSampleData(task, sample, repeat, option, digit);
 
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+
                     if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
-                        singleSampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
+                        if (poolInfo.getSuccess()) {
+                            FSamplePoolInfoVO data = poolInfo.getData();
+                            if (data.getIsAutoChangePool()) {
+                                singleSampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                            }
+                        }
                     }
                 }
                 standSampleData.add(singleSampleData);
@@ -1807,8 +1838,15 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 Map<String, Object> sampleData = getSingleSampleData(task, sample, repeat, option, digit);
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+
                     if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
-                        sampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
+                        if (poolInfo.getSuccess()) {
+                            FSamplePoolInfoVO data = poolInfo.getData();
+                            if (data.getIsAutoChangePool()) {
+                                sampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                            }
+                        }
                     }
                 }
 
@@ -2218,11 +2256,88 @@ public class RationServiceConciseImpl implements RationConciseService {
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
 
         FRationFitCurveVO resultVo = new FRationFitCurveVO();
-
         if (StringUtils.hasText(task.getFittingParam())) {
             FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
             resultVo = curveData(fittingParam);
         }
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            if (taskSpecimen != null) {
+                List<JSONObject> standPoints = new ArrayList<>();
+                List<JSONObject> unknownPoints = new ArrayList<>();
+                for (FTaskSpecimen specimen : taskSpecimen) {
+                    if (specimen.getDeleteType().equals(deleteType)) {
+                        continue;
+                    }
+
+                    if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                        continue;
+                    }
+                    JSONObject point = new JSONObject();
+
+                    FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                    String abs = null;
+                    String sumAbs = null;
+                    String countValue = null;
+                    String measureValue;
+
+                    LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                    analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                            .eq(FMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
+                            .orderByDesc(FMeasureAnalysisData::getDataVersion)
+                            .last("limit 1");
+                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                    if (analysisData == null) {
+                        analysisData = new FMeasureAnalysisData();
+                    }
+                    if (StringUtils.hasText(analysisData.getAnalysisResult())) {
+                        List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
+                        for (RationCountDataInfo dataInfo : countDataInfoList) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                                abs = dataInfo.getColValue().toString();
+                            }
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
+                                sumAbs = dataInfo.getColValue().toString();
+                            }
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                                countValue = dataInfo.getColValue()==null?null:dataInfo.getColValue().toString();
+                            }
+                        }
+                    }
+
+                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        countValue = sample.getNormalConcentration();
+                    }
+
+                    if (StringUtils.hasText(sumAbs)) {
+                        measureValue = sumAbs;
+                    } else {
+                        measureValue = abs;
+                    }
+
+                    if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                        point.put("y", countValue);
+                        point.put("x", measureValue);
+
+                    } else {
+                        point.put("y", measureValue);
+                        point.put("x", countValue);
+                    }
+
+                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        standPoints.add(point);
+                    } else {
+                        unknownPoints.add(point);
+                    }
+                }
+                resultVo.setUnknowPoints(unknownPoints);
+                resultVo.setStandPoints(standPoints);
+            }
+        }
+
+
 
         resultVo.setTaskId(taskId);
         resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
@@ -2318,6 +2433,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         String s = "";
         String ans = null;
+
 
         if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
             s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
@@ -2578,7 +2694,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
                     //添加到空白列表
                     currentList.add(ansData);
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    double v = ansData.getColValue() - minuend;
+                    yAbs.setColValue(DataCountUtil.formatValue(digit, v));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
@@ -2590,7 +2707,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         for (FRationCountDataInfo dataInfo : emList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
-                                yAbs.setColValue(dataInfo.getColValue() - minuend);
+                                double v1 = dataInfo.getColValue() - minuend;
+                                yAbs.setColValue(DataCountUtil.formatValue(digit, v1));
                                 newList.add(yAbs);
                             }
                         }
@@ -2601,7 +2719,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     emptyDataList.clear();
                     emptyList.add(ansData);
                     minuend = ansData.getColValue();
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    double v = ansData.getColValue() - minuend;
+                    yAbs.setColValue(DataCountUtil.formatValue(digit, v));
                     currentList.add(yAbs);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -2622,7 +2741,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
                     sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                     sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                    sumAbsData.setColValue(ansData.getColValue() - minuend);
+                    double v = ansData.getColValue() - minuend;
+                    sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
                     currentList.add(sumAbsData);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -2758,7 +2878,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
                     //添加到空白列表
                     currentList.add(ansData);
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    yAbs.setColValue(DataCountUtil.formatValue(digit,ansData.getColValue() - minuend));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
@@ -2770,7 +2890,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                         for (FRationCountDataInfo dataInfo : emList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
-                                yAbs.setColValue(dataInfo.getColValue() - minuend);
+                                yAbs.setColValue(DataCountUtil.formatValue(digit,dataInfo.getColValue() - minuend));
                                 newList.add(yAbs);
                             }
                         }
@@ -2781,7 +2901,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     emptyDataList.clear();
                     emptyList.add(ansData);
                     minuend = ansData.getColValue();
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    double v = ansData.getColValue() - minuend;
+                    yAbs.setColValue(DataCountUtil.formatValue(digit, v));
                     currentList.add(yAbs);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -2805,7 +2926,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
                     sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                     sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                    sumAbsData.setColValue(ansData.getColValue() - minuend);
+                    double v = ansData.getColValue() - minuend;
+                    sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
                     toCountData = sumAbsData.getColValue();
                     currentList.add(sumAbsData);
                 } else {

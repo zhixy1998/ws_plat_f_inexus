@@ -21,6 +21,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.CalculationFormulaService;
@@ -29,6 +30,7 @@ import com.persee.workstation.uv_inexus.service.guide.standardService.TReportSta
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReport;
@@ -83,6 +85,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private DevMessageUtil devMessageUtil;
     @Autowired
     private DeviceInfoService deviceInfoService;
+    @Autowired
+    FSamplePoolConfigService fSamplePoolConfigService;
     @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired
@@ -798,7 +802,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     TaskHeadSnapshot unknownHead = shot.getUnknownHead();
                     vo.setMapRelation(unknownHead.getMapRelation());
                 }
-
+                Result<RationFitCurveVO> curveInfo = rationService.queryCurveInfo(taskId, task.getMethodKey());
+                if (curveInfo.getCode() == 200) {
+                    vo.setCurveInfo(curveInfo.getData());
+                }
                 return Result.ok(vo);
             }
             case "光谱扫描":
@@ -1267,6 +1274,31 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
 
+            vo.setRepetitionPattern(parameter.getRepeatMode());
+            vo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
+            vo.setForceZeroPoint("否");
+            vo.setInsertZeroPoint("否");
+            for (String s : parameter.getZeroMethod()) {
+                if (s.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+                    vo.setForceZeroPoint("是");
+                }
+                if (s.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+                    vo.setInsertZeroPoint("是");
+                }
+            }
+            vo.setAutoChangeSamplePool("否");
+
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(task.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+                if (poolInfoVO != null) {
+                    Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+                    if (isAutoChangePool) {
+                        vo.setAutoChangeSamplePool("是");
+                    }
+                }
+
+            }
             if (StringUtils.hasText(task.getSampleKey())) {
                 List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
@@ -1309,6 +1341,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 param.deleteCharAt(param.length() - 1);
                 vo.setCurveParams(param.toString());
                 vo.setR(fittingReceiveInfo.getR());
+                vo.setR2(fittingReceiveInfo.getR2());
                 vo.setCurveFormula(fittingReceiveInfo.getEquation());
                 vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree()));
             }

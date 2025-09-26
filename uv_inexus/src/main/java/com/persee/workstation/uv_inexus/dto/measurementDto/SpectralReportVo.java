@@ -97,9 +97,18 @@ public class SpectralReportVo {
     private String curveParams;
     //R
     private String R;
+    //R2
+    private String R2;
     //曲线类型：一次曲线，二次曲线
     private String curveType;
-
+    //方程类型
+    private String equationType;
+    //插入零点
+    private String insertZeroPoint;
+    //强制过零点
+    private String forceZeroPoint;
+    //自动切换样品池
+    private String autoChangeSamplePool;
     // 时间间隔
     private String timeInterval;
     // 重复模式

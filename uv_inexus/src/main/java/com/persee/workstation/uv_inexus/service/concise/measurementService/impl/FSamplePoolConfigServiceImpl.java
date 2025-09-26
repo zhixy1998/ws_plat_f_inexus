@@ -32,7 +32,7 @@ import java.util.List;
 public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigDAO, FSamplePoolConfigPO> implements FSamplePoolConfigService {
 
     @Autowired
-    private FSamplePoolConfigDAO dao;
+    FSamplePoolConfigDAO dao;
 
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
@@ -164,13 +164,14 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         if (!b) {
             return R.fail("更新失败");
         }
-        if (StringUtils.hasText(changeDto.getTaskId())) {
+        if (StringUtils.hasText(changeDto.getTaskId()) && po.getIsAutoChangePool()) {
             List<Integer> usefulLocation = getUsefulLocation(changeDto.getDeviceSerialNumber());
             concisePublicUtilService.changeSampleLocation(changeDto.getTaskId(), usefulLocation);
         }
         return R.ok();
     }
 
+    @DS("concise")
     @Override
     public R<FSamplePoolInfoVO> querySamplePoolInfo(String deviceSerialNumber) {
 

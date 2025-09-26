@@ -1816,12 +1816,87 @@ public class RationServiceImpl implements RationService {
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
-
         RationFitCurveVO resultVo = new RationFitCurveVO();
 
         if (StringUtils.hasText(task.getFittingParam())) {
             FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
             resultVo = curveData(fittingParam);
+        }
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            if (taskSpecimen != null) {
+                List<JSONObject> standPoints = new ArrayList<>();
+                List<JSONObject> unknownPoints = new ArrayList<>();
+                for (TaskSpecimen specimen : taskSpecimen) {
+                    if (specimen.getDeleteType().equals(deleteType)) {
+                        continue;
+                    }
+
+                    if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                        continue;
+                    }
+                    JSONObject point = new JSONObject();
+
+                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                    String abs = null;
+                    String sumAbs = null;
+                    String countValue = null;
+                    String measureValue;
+
+                    LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                    analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                            .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
+                            .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                            .last("limit 1");
+                    TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                    if (analysisData == null) {
+                        analysisData = new TMeasureAnalysisData();
+                    }
+                    if (StringUtils.hasText(analysisData.getAnalysisResult())) {
+                        List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
+                        for (RationCountDataInfo dataInfo : countDataInfoList) {
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                                abs = dataInfo.getColValue().toString();
+                            }
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
+                                sumAbs = dataInfo.getColValue().toString();
+                            }
+                            if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                                countValue = dataInfo.getColValue().toString();
+                            }
+                        }
+                    }
+
+                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        countValue = sample.getNormalConcentration();
+                    }
+
+                    if (StringUtils.hasText(sumAbs)) {
+                        measureValue = sumAbs;
+                    } else {
+                        measureValue = abs;
+                    }
+
+                    if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                        point.put("y", countValue);
+                        point.put("x", measureValue);
+
+                    } else {
+                        point.put("y", measureValue);
+                        point.put("x", countValue);
+                    }
+
+                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        standPoints.add(point);
+                    } else {
+                        unknownPoints.add(point);
+                    }
+                }
+                resultVo.setUnknowPoints(unknownPoints);
+                resultVo.setStandPoints(standPoints);
+            }
         }
 
         resultVo.setTaskId(taskId);

@@ -185,9 +185,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             tMeasureSampleService.updateById(measureSample);
 
             if (parameter.getRepetitionPattern().equals("单池重复")) {
-                measure = singleSampleRepeatMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
+                measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber, session.getId());
             } else{
-                measure = singleSampleMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
+                measure = singleSampleMeasure(measureSample, parameter, task, deviceSerialNumber, session.getId());
             }
 
             if (!measure.getSuccess()) {
@@ -235,28 +235,38 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             int usefulPoolNum = usefulLocation.size();
             int measureCount = 0;
 
+            int currentPoolNum = -1;
+            int maxPoolNum = Collections.max(usefulLocation);
+
             for (TaskSpecimen specimen : taskSpecimen) {
                 if (!isAutoChangePool && measureCount == 1) {
                     log.info("不自动切换样品池，只测一个就结束");
                     break;
                 }
 
-                if (measureCount >= usefulPoolNum) {
+                if (measureCount >= usefulPoolNum || currentPoolNum == maxPoolNum) {
                     break;
                 }
                 if (specimen.getDeleteType().equals(right) || specimen.getIsTested().equals(right)) {
                     System.out.println("删除或测量过的样品,不需要测量");
                     continue;
                 }
-                R<FPhotometricSampleAndDataVO> measure;
-                if (parameter.getRepetitionPattern().equals("单池重复")) {
-                    measure = singleSampleRepeatMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
-                } else{
-                    measure = singleSampleMeasure(specimen, parameter, task, deviceSerialNumber, session.getId());
-                }
                 FMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
-                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
+                if (!isAutoChangePool){
+                    sample.setSampleLocation(String.valueOf(poolInfoVO.getCurrentPoolNum()));
+                }
+
+                R<FPhotometricSampleAndDataVO> measure;
+                if (parameter.getRepetitionPattern().equals("单池重复")) {
+                    measure = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
+                } else{
+                    measure = singleSampleMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
+                }
+
+                currentPoolNum = Integer.parseInt(sample.getSampleLocation());
+
+                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
 
                 if (!measure.getSuccess()) {
                     sendAndClose(session, measure.getMessage());
@@ -334,12 +344,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         }
     }
 
-    public R<FPhotometricSampleAndDataVO> singleSampleMeasure(TaskSpecimen specimen, FPhotometricParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
+    public R<FPhotometricSampleAndDataVO> singleSampleMeasure(FMeasureSample sample, FPhotometricParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
 
-        String sampleKey = specimen.getSpecimenKey();
-        FMeasureSample sample = tMeasureSampleService.getById(sampleKey);
+        String sampleKey = sample.getId();
 
         List<FPhotometricOriginDataInfo> originDataList = new ArrayList<>();
         List<Command> list = new ArrayList<>();
@@ -405,12 +414,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         return R.ok(sampleAndDataVO);
     }
 
-    public R<FPhotometricSampleAndDataVO> singleSampleRepeatMeasure(TaskSpecimen specimen, FPhotometricParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
+    public R<FPhotometricSampleAndDataVO> singleSampleRepeatMeasure(FMeasureSample sample, FPhotometricParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
 
-        String sampleKey = specimen.getSpecimenKey();
-        FMeasureSample sample = tMeasureSampleService.getById(sampleKey);
+        String sampleKey = sample.getId();
 
         List<FPhotometricOriginDataInfo> originDataList = new ArrayList<>();
         List<Command> list = new ArrayList<>();

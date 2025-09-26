@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.dto.concise.rationDto;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,9 @@ public class FRationAddOrDeleteSampleDTO {
 
     @ApiModelProperty("更新人")
     private String updateBy;
+
+    @Autowired
+    private String deviceSerialNumber;
 
 //    @ApiModelProperty("新增的样本")
 //    private List<SampleVO> newSamples;
