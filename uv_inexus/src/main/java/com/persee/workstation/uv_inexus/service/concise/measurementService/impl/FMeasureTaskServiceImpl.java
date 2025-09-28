@@ -37,16 +37,6 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
         }
         FMeasureTaskAttachment taskAttachment = new FMeasureTaskAttachment();
         taskAttachment.setTaskId(entity.getId());
-//        private String taskId;
-//        @ApiModelProperty("是否显示被删除的数据")
-//        private Boolean allDisplay;
-//        @ApiModelProperty("小数位数")
-//        private Integer digit;
-//        @ApiModelProperty("要显示的数据类型：平均值/sd/rsd等")
-//        private List<String> option;
-//
-//        @ApiModelProperty("仪器序列号")
-//        private String deviceSerialNumber;
 
         FQueryDataDTO queryDataDTO = new FQueryDataDTO();
         queryDataDTO.setTaskId(entity.getId());
@@ -57,7 +47,7 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
 
         fMeasureTaskAttachmentService.save(taskAttachment);
 
-        return super.save(entity);
+        return true;
     }
 }
 

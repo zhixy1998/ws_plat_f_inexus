@@ -358,13 +358,15 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                String yy = String.valueOf((sData / (4095 * 32)) * 100);
+//                String yy = String.valueOf((sData / (4095 * 32)) * 100);
+                String yy = String.valueOf((sData / 8388607) * 100);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                String yy = String.valueOf((rData / (4095 * 32)) * 100);
+//                String yy = String.valueOf((rData / (4095 * 32)) * 100);
+                String yy = String.valueOf((rData / 8388607) * 100);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
