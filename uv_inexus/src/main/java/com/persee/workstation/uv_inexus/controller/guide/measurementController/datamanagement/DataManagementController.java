@@ -83,7 +83,9 @@ public class DataManagementController {
 
     @PostMapping("/copy")
     @ApiOperation("另存为")
-    public Result<String> copyProject(@RequestParam("taskId") String taskId) {
-        return  copyService.copy(taskId);
+    public Result<String> copyProject(
+            @RequestParam("taskId") String taskId,
+    @RequestParam("taskName") String taskName) {
+        return  copyService.copy(taskId,taskName);
     }
 }
