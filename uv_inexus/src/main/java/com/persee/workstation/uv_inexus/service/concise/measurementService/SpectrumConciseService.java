@@ -1,15 +1,24 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+
+import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-
-import java.io.File;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 简洁模式: 光谱扫描服务业务层
@@ -121,6 +130,6 @@ public interface SpectrumConciseService {
     /**
      * 导出到word
      */
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
 
 }

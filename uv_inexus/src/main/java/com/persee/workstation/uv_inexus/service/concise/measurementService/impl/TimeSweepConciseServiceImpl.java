@@ -1,52 +1,37 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
-import com.alibaba.excel.EasyExcel;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.baomidou.dynamic.datasource.annotation.DS;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
-import com.persee.workstation.uv_inexus.dto.concise.common.*;
-import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
-import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterVo;
-import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepNearestMethodVo;
-import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepSearchMethodVo;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xwpf.usermodel.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
@@ -62,15 +47,73 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.*;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterVo;
+import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepNearestMethodVo;
+import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepSearchMethodVo;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 简洁模式: 时间扫描服务实现类
@@ -2373,7 +2416,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param fileType 导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit) {
         // log.info("===== 导出流程开始 =====");
         // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}", 
                 // taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
@@ -2419,7 +2462,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FSampleListVo> allSamples = new ArrayList<>();
         
         // 处理sampleListPort数据
-        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, null);
+        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, digit);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -2428,7 +2471,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         
         // 处理changeTheListPort数据（与sampleListPort逻辑相同）
-        Result<List<FSampleListVo>> changeListResult = queryAnalysisDataList(taskId, null, null);
+        Result<List<FSampleListVo>> changeListResult = queryAnalysisDataList(taskId, null, digit);
         if (changeListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && changeListResult.getData() != null) {
             // log.info("【步骤2/5】changeTheListPort查询成功，返回样品数量：{}", changeListResult.getData().size());
             allSamples.addAll(changeListResult.getData());
@@ -2638,8 +2681,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
 
     // 保留原有的downloadWord方法，并适配新参数
-    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds) {
-        return downloadFile(taskId, allDisplay, "word", analysisIds);
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds, digit);
     }
 
 

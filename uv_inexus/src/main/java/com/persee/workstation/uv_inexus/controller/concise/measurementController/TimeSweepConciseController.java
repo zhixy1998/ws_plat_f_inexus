@@ -1,26 +1,42 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.concise.common.*;
-import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import lombok.extern.slf4j.Slf4j;
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController("timeSweepConciseController")
@@ -246,10 +262,13 @@ public class TimeSweepConciseController {
             @ApiParam(value = "筛选的analysisId列表（多个ID用逗号分隔，如123,456）", required = false) 
             @RequestParam(value = "analysisIds", required = false) List<String> analysisIds,
             @ApiParam(value = "导出格式（word/excel/txt，默认word）", required = false) 
-            @RequestParam(required = false) String fileType) throws Exception {
+            @RequestParam(required = false) String fileType,
+            // 新增 digit 参数（根据实际需求调整 required 和描述）
+            @ApiParam(value = "修约", required = false) 
+            @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = timeSweepConciseService.downloadFile(taskId, allDisplay, fileType, analysisIds);
+        R<File> result = timeSweepConciseService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit);
         
         if (result.getSuccess()) {
             File file = result.getData();

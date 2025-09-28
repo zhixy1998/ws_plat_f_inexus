@@ -1,5 +1,23 @@
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
@@ -14,21 +32,10 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/photometricMeasurement/concise/")
@@ -141,10 +148,14 @@ public class PhotometricConciseController {
     public ResponseEntity<?> downloadDoc(
             @ApiParam("任务ID") @RequestParam String taskId,
             @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
-            @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType) throws Exception {
+            @ApiParam("导出格式（word/excel/txt）") 
+            @RequestParam(required = false) String fileType,
+            // 新增 digit 参数（根据实际需求调整 required 和描述）
+            @ApiParam(value = "数字参数（说明digit的业务含义，如：XX编号）", required = false) 
+            @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = fPhotometricService.downloadFile(taskId, allDisplay, fileType);
+        R<File> result = fPhotometricService.downloadFile(taskId, allDisplay, fileType, digit);
         System.out.println("111111111111111111");
         if (result.getSuccess()) {
             File file = result.getData();

@@ -1,6 +1,50 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -18,14 +62,45 @@ import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDelete
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.PhotoMetricChangeMethodTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureProject;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FQualityConfVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.RationConciseService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -40,29 +115,18 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.*;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationDataVO;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationMethodParam;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSaveCountDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationTaskHeadSnapShot;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationWavelengthDataInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xwpf.usermodel.*;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
-import java.io.*;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service("fRationService")
@@ -3555,8 +3619,8 @@ public class RationServiceConciseImpl implements RationConciseService {
      * @param fileType 导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType) {
-        log.info("开始导出11111111，taskId: {}, fileType: {}", taskId, fileType);
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit) {
+        log.info("开始导出11111111，taskId: {}, fileType: {}", taskId, fileType, allDisplay, digit);
         // 1. 基础参数校验（复用原逻辑）
         if (!StringUtils.hasText(taskId)) {
             return R.fail("缺少任务id");
@@ -3600,6 +3664,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         queryDataDTO.setOption(new ArrayList<>());
         queryDataDTO.setTaskId(taskId);
         queryDataDTO.setAllDisplay(allDisplay);
+        queryDataDTO.setDigit(digit);
         Result<FRationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
         if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) { // 校验查询是否成功
             return R.fail("查询样品数据失败：" + sampleDataResult.getMessage());
@@ -3647,9 +3712,9 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     // ---------------------- 原有downloadWord方法（可保留或删除，建议用上面的downloadFile替代） ----------------------
-    public R<File> downloadWord(String taskId, Boolean allDisplay) {
+    public R<File> downloadWord(String taskId, Boolean allDisplay, Integer digit) {
         // 直接调用多格式方法，指定格式为word
-        return downloadFile(taskId, allDisplay, "word");
+        return downloadFile(taskId, allDisplay, "word", digit);
     }
 
     /**
