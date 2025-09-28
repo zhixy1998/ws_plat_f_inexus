@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.*;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
@@ -48,8 +47,6 @@ public class DataManagementServiceImpl implements DataManagementService {
     private TMeasureTaskMapper taskManagementMapper;
     @Autowired
     private SystemUserManageDAO systemUserManageDAO;
-    @Autowired
-    private ObjectMapper objectMapper;
     @Autowired
     private TMeasureSampleMapper sampleManagementMapper;
     @Autowired

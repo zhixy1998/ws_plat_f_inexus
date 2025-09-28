@@ -1846,8 +1846,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         // 根据测量数据id查询测量数据
         FMeasureAnalysisData measureData1 = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId1());
-        List<String> list = new ArrayList<>();
-        List<String> list2 = new ArrayList<>();
+        List<String> list ;
+        List<String> list2;
         List<String> xList = new ArrayList<>();
         List<String> yList1 = new ArrayList<>();
         List<String> yList2 = new ArrayList<>();

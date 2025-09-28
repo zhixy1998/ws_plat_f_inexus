@@ -1,10 +1,7 @@
 package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
 import com.alibaba.fastjson.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemManageDAO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemManageDTO;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -37,8 +34,7 @@ public class SystemManageServiceImpl implements SystemManageService {
 
     @Value("${sys-manage-default.userId}")
     String userId;
-    @Autowired
-    private ObjectMapper objectMapper;
+
 
     @Override
     public SystemManageVO getSystemManage() {
@@ -104,8 +100,9 @@ public class SystemManageServiceImpl implements SystemManageService {
 
     @Override
     public Result<Boolean> setConfiguration(ConfigVO configVO) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String configJson = objectMapper.writeValueAsString(configVO);
+
+
+        String configJson = JSON.toJSONString(configVO);
         Integer res = dao.setConfiguration(configJson);
         if (res == 1) {
             return Result.ok(true);
@@ -135,8 +132,9 @@ public class SystemManageServiceImpl implements SystemManageService {
         newConf.setLanguage(language);
 
         ConfigVO configVO = systemManagerConf.getConfig();
-        ObjectMapper objectMapper = new ObjectMapper();
-        String configJson = objectMapper.writeValueAsString(configVO);
+
+
+        String configJson = JSON.toJSONString(configVO);
         Integer res1 = dao.setConfiguration(configJson);
         if (res1 == 0) {
             return Result.fail("物联代理配置信息修改失败");
@@ -159,7 +157,8 @@ public class SystemManageServiceImpl implements SystemManageService {
         SystemManagePO systemManagePO = dao.selectById(userId);
         systemManagerConf.setLanguage(systemManagePO.getLanguage());
         String configuration = systemManagePO.getConfiguration();
-        ConfigVO config = objectMapper.readValue(configuration, ConfigVO.class);
+        ConfigVO config = JSON.parseObject(configuration, ConfigVO.class);
+
         systemManagerConf.setConfig(config);
         LongDistanceConfigVO longDistanceConfigVO = getLongDistanceConfigVO(systemManagePO);
         systemManagerConf.setLongDistanceConfigVO(longDistanceConfigVO);

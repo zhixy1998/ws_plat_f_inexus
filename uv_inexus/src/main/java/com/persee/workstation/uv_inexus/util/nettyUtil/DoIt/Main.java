@@ -1,13 +1,12 @@
 package com.persee.workstation.uv_inexus.util.nettyUtil.DoIt;
 
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequest;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SeRePa.DynamicCommandService;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,42 +21,36 @@ public class Main {
                 "  ]\n" +
                 "}";
 
+        // 使用 Jackson 解析 JSON 字符串
+        CommandRequestDTO dto = JSON.parseObject(jsonString, CommandRequestDTO.class);
+        // 创建 DynamicCommandService 实例
         try {
-            // 使用 Jackson 解析 JSON 字符串
-            ObjectMapper objectMapper = new ObjectMapper();
-            CommandRequestDTO dto = objectMapper.readValue(jsonString, CommandRequestDTO.class);
+            DynamicCommandService service = new DynamicCommandService(
+                    "169.254.136.28", 6000, 5000, "D:\\project\\java\\T600.1.xml");
 
-            // 创建 DynamicCommandService 实例
-            try {
-                DynamicCommandService service = new DynamicCommandService(
-                        "169.254.136.28", 6000, 5000, "D:\\project\\java\\T600.1.xml");
+            // 存储所有指令的执行结果
+            Map<String, Object> resultMap = new HashMap<>();
 
-                // 存储所有指令的执行结果
-                Map<String, Object> resultMap = new HashMap<>();
+            // 遍历接收到的指令
+            for (CommandDTO command : dto.getCommands()) {
+                // 创建 CommandRequest 对象
+                CommandRequest request = new CommandRequest(command.getCmdId(), command.getParams());
 
-                // 遍历接收到的指令
-                for (CommandDTO command : dto.getCommands()) {
-                    // 创建 CommandRequest 对象
-                    CommandRequest request = new CommandRequest(command.getCmdId(), command.getParams());
+                // 执行指令
+                Object result = service.executeCommand(request.getCmdId(), request.getParams());
 
-                    // 执行指令
-                    Object result = service.executeCommand(request.getCmdId(), request.getParams());
-
-                    // 将结果存入 resultMap
-                    resultMap.put(request.getCmdId(), result);
-                    System.out.println("指令 [" + request.getCmdId() + "] 返回结果：" + result);
-                }
-
-                // 打印所有指令的执行结果
-                System.out.println("所有执行结果：" + resultMap);
-
-            } catch (Exception e) {
-                e.printStackTrace();
+                // 将结果存入 resultMap
+                resultMap.put(request.getCmdId(), result);
+                System.out.println("指令 [" + request.getCmdId() + "] 返回结果：" + result);
             }
 
-        } catch (IOException e) {
+            // 打印所有指令的执行结果
+            System.out.println("所有执行结果：" + resultMap);
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 }
 

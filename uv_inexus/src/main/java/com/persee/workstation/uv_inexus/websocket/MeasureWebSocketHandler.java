@@ -1,6 +1,6 @@
 package com.persee.workstation.uv_inexus.websocket;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.MeasureData;
@@ -32,7 +32,6 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
     // 用来缓存待推送的数据（生产者-消费者模型）
     private static final BlockingQueue<String> queue = new LinkedBlockingQueue<>();
 
-    private final ObjectMapper mapper = new ObjectMapper();
 
     // 启动推送线程池
     private final ExecutorService pushExecutor = Executors.newSingleThreadExecutor();
@@ -138,7 +137,8 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
                     // 推送结束标志
                     Map<String, Object> finishMsg = new HashMap<>();
                     finishMsg.put("result", "finish");
-                    String json = mapper.writeValueAsString(finishMsg);
+
+                    String json = JSON.toJSONString(finishMsg);
                     broadcast(json);
                     System.out.println("推送结束标志: " + json);
                     continue;
@@ -152,8 +152,7 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
                 Map<String, Object> data = new HashMap<>();
                 data.put("x", x);
                 data.put("y", y);
-
-                String json = mapper.writeValueAsString(data);
+                String json = JSON.toJSONString(data);
                 broadcast(json);
                 System.out.println("推送数据: " + json);
 

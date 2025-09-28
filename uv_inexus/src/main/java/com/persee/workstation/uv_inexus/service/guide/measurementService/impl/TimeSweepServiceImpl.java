@@ -1124,9 +1124,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (paramDto == null) {
             return Result.fail("参数不能为空");
         }
-        if (paramDto.getRemark()==null){
-            return Result.fail("请先添加备注");
-        }
+//        if (paramDto.getRemark()==null){
+//            return Result.fail("请先添加备注");
+//        }
         // 根据测量id去分析数据表中进行查询
         TMeasureAnalysisData tMeasureData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (tMeasureData==null){

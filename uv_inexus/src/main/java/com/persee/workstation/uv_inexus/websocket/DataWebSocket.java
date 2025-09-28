@@ -1,15 +1,20 @@
 package com.persee.workstation.uv_inexus.websocket;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.userManageDao.UserConfigDAO;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureData;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.userManagePo.UserConfigPO;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureDataService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.SpectrumScan;
 import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
@@ -38,7 +43,7 @@ public class DataWebSocket {
     private UserConfigDAO userConfigDAO = BeanUtils.getBean(UserConfigDAO.class);
     private TMeasureTaskService taskService = BeanUtils.getBean(TMeasureTaskService.class);
     private TMeasureDataService dataService = BeanUtils.getBean(TMeasureDataService.class);
-    private DeviceMessageUtils messageUtils =  BeanUtils.getBean(DeviceMessageUtils.class);
+    private DeviceMessageUtils messageUtils = BeanUtils.getBean(DeviceMessageUtils.class);
     private TMeasureMethodService methodService = BeanUtils.getBean(TMeasureMethodService.class);
     // 日志记录器
     private static final Logger log = LoggerFactory.getLogger(DataWebSocket.class);
@@ -47,7 +52,7 @@ public class DataWebSocket {
     // 存储所有WebSocket连接的Session
     private static final ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     private static String taskResultId = null;
 
     @OnOpen
@@ -61,7 +66,7 @@ public class DataWebSocket {
         String methodId = null;
         String taskId = null;
         String projectId = null;
-        String deviceSerialNumber=null;
+        String deviceSerialNumber = null;
         for (String param : query.split("&")) {
             String[] split = param.split("=");
             if (split.length == 2) {
@@ -82,7 +87,7 @@ public class DataWebSocket {
             }
         }
         // 判断deviceSerialNumber是否为空
-        if(!StringUtils.hasText(deviceSerialNumber)){
+        if (!StringUtils.hasText(deviceSerialNumber)) {
             try {
                 session.getBasicRemote().sendText("device_serial_number为空");
                 session.close();
@@ -92,7 +97,7 @@ public class DataWebSocket {
             }
         }
         // 开始推送数据
-        startDataPush(sessionId, methodId, taskId, projectId,deviceSerialNumber);
+        startDataPush(sessionId, methodId, taskId, projectId, deviceSerialNumber);
     }
 
     @OnMessage
@@ -116,21 +121,22 @@ public class DataWebSocket {
     }
 
     // 逐点推送数据
-    private void startDataPush(String sessionId, String methodId, String taskId, String projectId,String deviceSerialNumber) {
+    private void startDataPush(String sessionId, String methodId, String taskId, String projectId, String deviceSerialNumber) {
         // 创建测量数据对象
         TMeasureData tMeasureData = new TMeasureData();
         Constants.field1Values.clear();
         TMeasureMethod method = methodService.getById(methodId);
         String measurementParamInfo = method.getMeasurementParamInfo();
-        ObjectMapper objectMapper = new ObjectMapper();
-        ScanParamInfo ScanParamInfo=new ScanParamInfo();
+
+        ScanParamInfo scanParamInfo;
         try {
-            ScanParamInfo = objectMapper.readValue(measurementParamInfo, ScanParamInfo.class);
-        } catch (JsonProcessingException e) {
+            scanParamInfo = JSON.parseObject(measurementParamInfo, ScanParamInfo.class);
+
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
         // 调用仪器 TODO 差前端传过来的小数位数参数
-        spectrumScan.scanStart(deviceSerialNumber,ScanParamInfo);
+        spectrumScan.scanStart(deviceSerialNumber, scanParamInfo);
 
         // 新建一个线程用于获取数据
         new Thread(() -> {
@@ -211,11 +217,11 @@ public class DataWebSocket {
                 tMeasureData.setMeasurementEndTime(Constants.endTime);
                 // 将measurementReturned.getOriginalData()中的数据转换为json
                 try {
-                    String s = objectMapper.writeValueAsString(Constants.field2Values);
+                    String s = JSON.toJSONString(Constants.field2Values);
                     tMeasureData.setInstrumentData(s);
-                    String s1 = objectMapper.writeValueAsString(Constants.field3Values);
+                    String s1 = JSON.toJSONString(Constants.field3Values);
                     tMeasureData.setOriginalCalculationData(s1);
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
                 tMeasureData.setTaskId(tMeasureTask.getId());
@@ -226,11 +232,13 @@ public class DataWebSocket {
                 tMeasureData.setMeasurementEndTime(Constants.endTime);
                 // 将measurementReturned.getOriginalData()中的数据转换为json
                 try {
-                    String s = objectMapper.writeValueAsString(Constants.field2Values);
+
+                    String s = JSON.toJSONString(Constants.field2Values);
                     tMeasureData.setInstrumentData(s);
-                    String s1 = objectMapper.writeValueAsString(Constants.field2Values);
+
+                    String s1 = JSON.toJSONString(Constants.field2Values);
                     tMeasureData.setOriginalCalculationData(s1);
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
                 tMeasureData.setTaskId(taskId);

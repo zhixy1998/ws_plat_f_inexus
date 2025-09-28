@@ -31,8 +31,8 @@ public class DevMessageUtil {
 
 //    String xmlPath = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
 
-    private volatile static String defaultIp = "255.255.255.255";
-//    private volatile static String defaultIp = "192.168.32.254";
+   private volatile static String defaultIp = "255.255.255.255";
+//   private volatile static String defaultIp = "192.168.32.254";
     private volatile  Map<String, Transition> xml;
 
     private static String ipEnd = "253";
