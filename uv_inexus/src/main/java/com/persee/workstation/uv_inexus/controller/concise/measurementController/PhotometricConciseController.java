@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.model.R;
@@ -52,10 +53,10 @@ public class PhotometricConciseController {
     }
 
 
-    @GetMapping("newDraft")
+    @PostMapping("newDraft")
     @ApiOperation("新建草稿")
-    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestParam String methodId, @RequestParam String updateBy) {
-        return fPhotometricService.newDraft(methodId, updateBy);
+    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestBody SaveDataDto dto) {
+        return fPhotometricService.newDraft(dto);
     }
 
     @PostMapping("checkParam")

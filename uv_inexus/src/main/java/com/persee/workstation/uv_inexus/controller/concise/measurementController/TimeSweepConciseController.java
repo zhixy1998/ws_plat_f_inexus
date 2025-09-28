@@ -28,6 +28,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysD
 import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
@@ -46,6 +47,13 @@ public class TimeSweepConciseController {
 
     @Autowired
     private TimeSweepConciseService timeSweepConciseService;
+
+    @PostMapping("uploadImage")
+    @ApiOperation("经典模式上传图片")
+    public Result uploadImage(@RequestBody SpectrumImageUpload upload) {
+        return timeSweepConciseService.uploadImage(upload);
+    }
+
 
     @GetMapping("queryNearestMethodData")
     @ApiOperation("查询最近方法数据")

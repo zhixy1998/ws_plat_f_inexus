@@ -32,13 +32,14 @@ public class CopyServiceImpl implements CopyService {
 
 
     @Override
-    public Result<String> copy(String taskId) {
+    public Result<String> copy(String taskId,String taskName) {
         try {
             /*
              * 复制任务
              */
             FMeasureTask task = fMeasureTaskService.getById(taskId);
-                task.setId(taskId);
+                task.setId(null);
+                task.setTaskName(taskName);
                 fMeasureTaskService.save(task);
 
 

@@ -58,6 +58,7 @@ import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskM
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
@@ -267,7 +268,19 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy) {
+    public Result<FMeasurementCurrentInfoVO> newDraft(SaveDataDto dto) {
+
+        String methodId = dto.getMethodId();
+        String taskId = dto.getTaskId();
+        String updateBy = dto.getUpdateBy();
+        Boolean isSave = dto.getIsSave();
+        if (!StringUtils.hasText(methodId)) {
+            return Result.fail("请选择方法");
+        }
+
+        if (StringUtils.hasText(taskId) && isSave) {
+            saveData(taskId);
+        }
 
         SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String userId = sysUserPO.getId();
@@ -292,7 +305,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
         unKnowSnapshot.setSampleHeads(unknownHead);
-        rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
+        rationTaskHeadSnapShot.setUnknownHead(unKnowSnapshot);
 
         task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
 
@@ -761,6 +774,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
 
             task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
+            task.setCreateTime(LocalDateTime.now());
 
             fMeasureTaskService.save(task);
 
@@ -813,7 +827,6 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             }
 
-
             if (methodDTO.getIsSaveDraft() == null || !methodDTO.getIsSaveDraft()) {
 
                 if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.measure.getIdentity())) {
@@ -850,7 +863,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     fMeasureTaskService.updateById(task);
 
                     int digit = Constants.DEFAULT_DECIMAL_NUM;
-                   R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
+                    R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
                     if (attachmentR.getSuccess()) {
                         FMeasureTaskAttachment attachment = attachmentR.getData();
                         if (StringUtils.hasText(attachment.getDataParam())) {
@@ -874,7 +887,6 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                     //TODO 公式重算
 
-
                     ans.setTaskId(task.getId());
                     ans.setTaskName(task.getTaskName());
                     return Result.ok(ans);
@@ -895,7 +907,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 newTask.setUserId(userId);
                 newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
                 newTask.setTableInfo(task.getTableInfo());
-
+                newTask.setCreateTime(LocalDateTime.now());
                 newTask.setId(null);
                 newTask.setMethodKey(methodId);
                 newTask.setDeviceSerialNumber(null);
@@ -1145,6 +1157,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FMeasureData one = fMeasureDataService.getOne(queryWrapper);
                 if (one != null) {
                     one.setIsDelete(deleteType);
+                    one.setIsSave(noSave);
                     fMeasureDataService.updateById(one);
                 }
             }
@@ -1310,6 +1323,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FMeasureData one = fMeasureDataService.getOne(queryWrapper);
                 if (one != null) {
                     one.setIsDelete(deleteType);
+                    one.setIsSave(noSave);
                     fMeasureDataService.updateById(one);
                 }
             }
@@ -1345,6 +1359,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FMeasureData one = fMeasureDataService.getOne(queryWrapper);
                 if (one != null) {
                     one.setIsDelete(createType);
+                    one.setIsSave(saved);
                     fMeasureDataService.updateById(one);
                 }
             }
@@ -1472,8 +1487,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         for (String s : waveLength) {
             String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
             String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
-            String absName = s + WaveLengthEnum.abs.getName();
-            String tPercentName = s + WaveLengthEnum.tPercent.getName();
+            String absName = WaveLengthEnum.abs.getName() +  "[" + s + "nm]";
+            String tPercentName = WaveLengthEnum.tPercent.getName() +  "[" + s + "nm]";
 
             FHeadVO absHead = new FHeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
             FHeadVO tPercentHead = new FHeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
@@ -1679,6 +1694,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             fMeasureData.setSerialNumber(0);
         }
         fMeasureData.setIsDelete(createType);
+        fMeasureData.setIsSave(noSave);
         fMeasureDataService.save(fMeasureData);
 
         LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
@@ -1702,6 +1718,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             analysisData.setDataVersion(0);
             analysisData.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
             analysisData.setIsDelete(createType);
+            analysisData.setIsSave(noSave);
             fMeasureAnalysisDataService.save(analysisData);
         }
 
@@ -1737,6 +1754,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             fMeasureData.setSerialNumber(0);
         }
         fMeasureData.setIsDelete(createType);
+        fMeasureData.setIsSave(noSave);
         fMeasureDataService.save(fMeasureData);
 
         LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
@@ -1750,6 +1768,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             analysisData.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
             analysisData.setMeasureDataId(fMeasureData.getId());
             analysisData.setIsDelete(createType);
+            analysisData.setIsSave(noSave);
             fMeasureAnalysisDataService.updateById(analysisData);
 
         } else {
@@ -1760,6 +1779,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             analysisData.setDataVersion(0);
             analysisData.setAnalysisResult(JSON.toJSONString(dataInfo.getCountData()));
             analysisData.setIsDelete(createType);
+            analysisData.setIsSave(noSave);
             fMeasureAnalysisDataService.save(analysisData);
         }
 
@@ -1799,12 +1819,14 @@ public class RationServiceConciseImpl implements RationConciseService {
             analysisData.setDataVersion(0);
             analysisData.setIsDelete(createType);
             analysisData.setAnalysisResult(JSON.toJSONString(countData.getCountData()));
+            analysisData.setIsSave(noSave);
             fMeasureAnalysisDataService.save(analysisData);
         } else {
             if (!analysisData.getMeasureDataId().equals(measureDataId)) {
                 analysisData.setMeasureDataId(measureDataId);
             }
             analysisData.setAnalysisResult(JSON.toJSONString(countData.getCountData()));
+            analysisData.setIsSave(noSave);
             fMeasureAnalysisDataService.updateById(analysisData);
         }
 
@@ -1824,6 +1846,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
             if (analysisData != null) {
                 analysisData.setAnalysisResult(JSON.toJSONString(emptyData.getCountData()));
+                analysisData.setIsSave(noSave);
                 fMeasureAnalysisDataService.updateById(analysisData);
             } else {
                 analysisData = new FMeasureAnalysisData();
@@ -1833,6 +1856,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 analysisData.setDataVersion(0);
                 analysisData.setAnalysisResult(JSON.toJSONString(emptyData.getCountData()));
                 analysisData.setIsDelete(createType);
+                analysisData.setIsSave(noSave);
                 fMeasureAnalysisDataService.save(analysisData);
             }
         }
@@ -2131,6 +2155,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 Map<String, Object> singleSampleData = getSingleSampleData(task, sample, repeat, option, digit);
+                singleSampleData.put("deleteType", specimen.getDeleteType());
 
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
 
@@ -2150,6 +2175,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
 
                 Map<String, Object> sampleData = getSingleSampleData(task, sample, repeat, option, digit);
+                sampleData.put("deleteType", specimen.getDeleteType());
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
 
                     if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {

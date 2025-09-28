@@ -216,7 +216,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 根据任务id查询测量数据和分析数据
         List<FMeasureData> measureDataList = fMeasureDataService.list(new QueryWrapper<FMeasureData>().eq("task_id", taskId).eq("is_save", "1"));
         List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("is_save", "1"));
-        if (!measureDataList.isEmpty() && !analysisDataList.isEmpty()){
+        if (!measureDataList.isEmpty() || !analysisDataList.isEmpty()){
             vo.setSaveState(false);
             return Result.ok(vo);
         }
@@ -552,6 +552,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SysUserPO user = userMapper.selectById(task.getUserId());
             FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
             FPhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
+            vo.setTaskName(task.getTaskName());
 
             if (StringUtils.hasText(task.getSampleKey())) {
                 List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -656,6 +657,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
             SpectralReportVo vo = new SpectralReportVo();
 //            FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
+            vo.setTaskName(task.getTaskName());
             SysUserPO user = userMapper.selectById(task.getUserId());
             FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
             FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
@@ -788,7 +790,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setColorPlateWavelength("1");
 
 //            vo.setProject(project.getProjectName());
-//            vo.setDetector(user.getUserName());
+            vo.setDetector(user.getUsername());
             vo.setEnergyLight(parameter.getEnergyLamp());
             vo.setMethodName(method.getMethodName());
             return Result.ok(vo);
@@ -864,7 +866,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             wrapper.last("limit 1");
             FMeasureData measureData =fMeasureDataService.getOne(wrapper);
             if (measureData == null) {
-                return Result.fail("未找到该测量数据");
+//                return Result.fail("未找到该测量数据");
+                measureData = new FMeasureData();
             }
             // 编写分析的查询条件
             QueryWrapper<FMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
@@ -876,7 +879,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             analysisWrapper.last("limit 1");
             FMeasureAnalysisData analysisData =fMeasureAnalysisDataService.getOne(analysisWrapper);
             if (analysisData == null) {
-                return Result.fail("没有找到该分析数据");
+                analysisData = new FMeasureAnalysisData();
+//                return Result.fail("没有找到该分析数据");
             }
             // 根据分析id查询分析图片数据
             QueryWrapper<FMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
@@ -884,7 +888,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             attachmentWrapper.last("limit 1");
             FMeasureAnalysisImage attachment =fMeasureAnalysisImageService.getOne(attachmentWrapper);
             if (attachment == null) {
-                return Result.fail("没有找到对应的图片数据");
+//                return Result.fail("没有找到对应的图片数据");
+                attachment = new FMeasureAnalysisImage();
             }
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
@@ -893,8 +898,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setEndWaveLength(param.getEndWaveLength());
             vo.setScanSpeed(param.getScanSpeed());
             vo.setTimeInterval(param.getTimeInterval());
-            vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
-            vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
+            if (measureData.getMeasurementStartTime() != null) {
+                vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
+            }
+            if (measureData.getMeasurementEndTime() != null) {
+                vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
+            }
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setRepetitionPattern(param.getRepetitionPattern().equals("0")?"不重复":"单池重复");
             if (param.getRepetitionPattern().equals("1")){
@@ -915,6 +924,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setDetector(method.getMethodCreator());
             vo.setSampleName(sample.getSampleName());
             vo.setSampleNumber(sample.getSampleNumber());
+
             vo.setSpectrumScanImage(attachment.getImageBase64());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());

@@ -22,12 +22,16 @@ public class TokenConfig implements WebMvcConfigurer {
         List<String> excludePath = new ArrayList<>();
         excludePath.add("/user_register"); //注册
         excludePath.add("/com/persee/workstation/uv-inexus/system/login"); //登录
-        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/obtainReportParameters"); //登录
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/obtainReportParameters");
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/reportDataQuery");
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/queryReportTableData");
         excludePath.add("/com/persee/workstation/uv-inexus/system/logout"); //登出
         excludePath.add("/static/**");  //静态资源
         excludePath.add("/assets/**");  //静态资源
-        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/reportDataQuery");
-        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/queryReportTableData");
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/obtainReportParameters");
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/reportDataQuery");
+        excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/queryReportTableData");
+
 
         registry.addInterceptor(tokenInterceptor)
                 // .excludePathPatterns("/login", "/logout") // 排除不需要验证的接口

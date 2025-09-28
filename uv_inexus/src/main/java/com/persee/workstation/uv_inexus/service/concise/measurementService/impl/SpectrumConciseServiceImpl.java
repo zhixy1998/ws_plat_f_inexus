@@ -25,6 +25,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -74,6 +75,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
@@ -83,10 +85,12 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisImage;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
@@ -95,9 +99,11 @@ import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserMa
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisImageService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
@@ -137,10 +143,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
-
+@Autowired
+private FMeasureAnalysisImageService fMeasureAnalysisImageService;
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
 
+    @Autowired
+    private FMeasureTaskAttachmentService fMeasureTaskAttachmentService;
     @Autowired
     private ConcisePublicUtilService concisePublicUtilService;
 
@@ -698,16 +707,22 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 // 根据测量id任务id以及is_save字段为1的条件去分析数据表中查询数据
                 QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
                 wrapper1.eq("task_id", taskId);
-                wrapper1.eq("measure_id", measureData.getId());
+                wrapper1.eq("measure_data_id", measureData.getId());
                 wrapper1.eq("is_save","1");
-                FMeasureAnalysisData measureAnalysis = fMeasureAnalysisDataService.getOne(wrapper1);
-                for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
-                    if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
-                        fTaskSpeciman.setDeleteType("0");
+                List<FMeasureAnalysisData> measureAnalysisList = fMeasureAnalysisDataService.list(wrapper1);
+                boolean remove = false;
+                if (measureAnalysisList!=null) {
+                    for (FMeasureAnalysisData measureAnalysis : measureAnalysisList) {
+                        for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
+                            if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
+                                fTaskSpeciman.setDeleteType("0");
+                            }
+                        }
+                        // 删除当前分析数据
+                        remove = fMeasureAnalysisDataService.removeById(measureAnalysis.getId());
                     }
                 }
-                // 删除当前分析数据
-                boolean remove = fMeasureAnalysisDataService.removeById(measureAnalysis.getId());
+
                 // 删除当前测量数据
                 boolean remove1 = fMeasureDataService.removeById(measureData.getId());
                 if (!remove&&!remove1) {
@@ -1855,7 +1870,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 增益
         Command com8 = new Command();
         com8.setCmdId(SetParamEnum.SetGain.getComId());
-        com8.setParams(new Object[]{scanParamInfo.getGain()});
+        com8.setParams(new Object[]{scanParamInfo.getGain() + 2});
         commands.add(com8);
         R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
         return Result.ok(stringR.getData());
@@ -1956,6 +1971,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                             .eq("is_delete", "0")
                             .eq("analysis_number", 1));
                     FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                    if (one == null) {
+                        one = new FMeasureAnalysisData();
+                    }
                     if (one.getAnalysisResult()!=null){
                         Map<String, String> map = new HashMap<>();
                         map.put("measureId", one.getId());
@@ -3050,6 +3068,58 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return R.fail("文件生成失败：" + e.getMessage());
         } finally {
             // log.info("===== 导出流程结束 =====");
+        }
+    }
+
+    @Override
+    public Result uploadImage(SpectrumImageUpload upload) {
+        if (upload == null) {
+            return Result.fail("参数不能为空");
+        }
+        String[] split = upload.getImage().split(",");
+        String s = split[1];
+        String fileType = null;
+        if (split[0].startsWith("data:image/png")) {
+            fileType = "png";
+        } else if (split[0].startsWith("data:image/jpeg")) {
+            fileType = "jpg";
+        } else if (split[0].startsWith("data:image/gif")) {
+            fileType = "gif";
+        } else {
+            fileType = "unknown"; // 兜底
+        }
+        byte[] bytes = Base64.decodeBase64(s);
+        if (upload.getImageType().equals("0")){
+            QueryWrapper<FMeasureAnalysisImage> analysisId = new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+            analysisId.last("limit 1");
+            FMeasureAnalysisImage byId = fMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null){
+                return Result.fail("图片不存在");
+            }
+            byId.setImageType(fileType);
+            byId.setImageBase64(bytes);
+            // 将当前日期时间存储
+
+            byId.setCreateTime(LocalDateTime.now());
+            boolean update = fMeasureAnalysisImageService.updateById(byId);
+            return Result.ok(update);
+        }else{
+            // 根据任务id查询任务附属表的内容
+            FMeasureTaskAttachment byId = fMeasureTaskAttachmentService.getOne(Wrappers.lambdaQuery(FMeasureTaskAttachment.class).eq(FMeasureTaskAttachment::getTaskId, upload.getId()).last("limit 1"));
+            if (byId == null){
+                return Result.fail("任务附属不存在");
+            }
+            if ("0".equals(upload.getType())){
+                byId.setOverlapImage(bytes);
+            }else if ("1".equals(upload.getType())){
+                byId.setTiledImage(bytes);
+            }else if ("2".equals(upload.getType())){
+                byId.setAddrImage(bytes);
+            }else{
+                return Result.fail("Type类型错误");
+            }
+            boolean update = fMeasureTaskAttachmentService.updateById(byId);
+            return Result.ok(update);
         }
     }
 

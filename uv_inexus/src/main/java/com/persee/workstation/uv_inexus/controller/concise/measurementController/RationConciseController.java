@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
@@ -51,10 +52,10 @@ public class RationConciseController {
         return rationService.getCurrentInfo(updateBy, measureType);
     }
 
-    @GetMapping("newDraft")
+    @PostMapping("newDraft")
     @ApiOperation("新建草稿")
-    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestParam String methodId, @RequestParam String updateBy) {
-        return rationService.newDraft(methodId, updateBy);
+    public Result<FMeasurementCurrentInfoVO> newDraft(@RequestBody SaveDataDto dto) {
+        return rationService.newDraft(dto);
     }
 
     @PostMapping("checkParam")

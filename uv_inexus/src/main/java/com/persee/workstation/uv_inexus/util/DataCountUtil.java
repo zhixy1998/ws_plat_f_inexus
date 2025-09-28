@@ -115,11 +115,11 @@ public class DataCountUtil {
         String value = null;
         if(identity.equals(WaveLengthEnum.es.getCode())){
             double s = Double.parseDouble(real.getS());
-            value = String.valueOf((s / (4095 * 32)) * 100);
+            value = String.valueOf((s / 8388607) * 100);
         }
         if(identity.equals(WaveLengthEnum.er.getCode())){
             double r = Double.parseDouble(real.getR());
-            value = String.valueOf((r / (4095 * 32)) * 100);
+            value = String.valueOf((r / 8388607) * 100);
         }
         if (StringUtils.hasText(value)) {
             BigDecimal bd = new BigDecimal(value);

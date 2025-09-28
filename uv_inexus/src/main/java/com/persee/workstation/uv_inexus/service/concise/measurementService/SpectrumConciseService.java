@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
@@ -132,4 +133,5 @@ public interface SpectrumConciseService {
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
 
+    Result uploadImage(SpectrumImageUpload upload);
 }

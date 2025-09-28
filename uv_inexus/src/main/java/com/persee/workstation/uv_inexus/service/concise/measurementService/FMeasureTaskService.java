@@ -9,5 +9,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
  */
 public interface FMeasureTaskService extends IService<FMeasureTask> {
 
+    boolean save(FMeasureTask entity);
+
 }
 

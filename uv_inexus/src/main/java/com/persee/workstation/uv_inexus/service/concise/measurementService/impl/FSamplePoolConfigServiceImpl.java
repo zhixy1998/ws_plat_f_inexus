@@ -138,6 +138,13 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
 
         po.setUpdateBy(changeDto.getUpdateBy());
         if (changeDto.getIsAutoChangePool() != null) {
+            if (StringUtils.hasText(po.getPoolInfo())) {
+                List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
+                if (list == null || list.size() <= 1) {
+                    return R.fail("没有切换的样品池");
+                }
+            }
+
             po.setIsAutoChangePool(changeDto.getIsAutoChangePool());
         }
 

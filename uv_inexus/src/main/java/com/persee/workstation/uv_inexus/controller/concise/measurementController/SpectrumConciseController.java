@@ -29,9 +29,11 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 
 import io.swagger.annotations.Api;
@@ -48,6 +50,14 @@ public class SpectrumConciseController {
     @Autowired
     private SpectrumConciseService spectrumConciseService;      // 简洁模式: 光谱扫描业务层
 
+    @Autowired
+    private ExperimentTestService experimentTestService;
+
+    @PostMapping("uploadImage")
+    @ApiOperation("经典模式上传图片")
+    public Result uploadImage(@RequestBody SpectrumImageUpload upload) {
+        return spectrumConciseService.uploadImage(upload);
+    }
 
     @GetMapping("queryNearestMethodData")
     @ApiOperation("查询最近方法数据")
@@ -61,6 +71,14 @@ public class SpectrumConciseController {
                                      @RequestParam Integer pageSize, @RequestParam String updateBy,
                                      @RequestParam String measureType, @RequestParam(required = false) String methodName) {
         return spectrumConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
+    }
+
+    @GetMapping("obtainReportParameters")
+    @ApiOperation("获取报告通用数据接口")
+    public Result obtainReportParameters(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId,
+                                         @RequestParam(required = false) String serialNumber) {
+        return experimentTestService.obtainReportParameters(taskId, sampleId, serialNumber);
     }
 
 

@@ -51,6 +51,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
@@ -317,7 +318,20 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     }
 
     @Override
-    public Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy) {
+    public Result<FMeasurementCurrentInfoVO> newDraft(SaveDataDto dto) {
+
+        String methodId = dto.getMethodId();
+        String taskId = dto.getTaskId();
+        String updateBy = dto.getUpdateBy();
+        Boolean isSave = dto.getIsSave();
+
+        if (!StringUtils.hasText(methodId)) {
+            return Result.fail("请选择方法");
+        }
+
+        if (StringUtils.hasText(taskId) && isSave) {
+            saveData(taskId);
+        }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
@@ -1261,7 +1275,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
             for (String s : waveLength) {
                 String identity = s + "-"+ mode;
-                String name = s + WaveLengthEnum.getName(mode);
+                String name =WaveLengthEnum.getName(mode) + "[" + s + "nm]";
                 FHeadVO newHead = new FHeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
                 if (map.containsKey(identity)) {
                     newHead = map.get(identity);
@@ -1272,8 +1286,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             for (String s : waveLength) {
                 String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
                 String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
-                String absName = s + WaveLengthEnum.abs.getName();
-                String tPercentName = s + WaveLengthEnum.tPercent.getName();
+                String absName = WaveLengthEnum.abs.getName()+ "[" + s + "nm]";
+                String tPercentName = WaveLengthEnum.tPercent.getName()+ "[" + s + "nm]";
 
                 FHeadVO absHead = new FHeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
                 FHeadVO tPercentHead = new FHeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
@@ -1500,6 +1514,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
             map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+            map.put("deleteType", specimen.getDeleteType());
 
             if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
 
@@ -1569,6 +1584,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         List<Map<String, String>> middle = new ArrayList<>();
                         List<FPhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), FPhotometricOriginDataInfo.class);
 
+                        Map<String, Map<String, String>> countDataList = new HashMap<>();
                         FPhotometricOriginDataInfo dataInfo = reCountData(wlDataList, digit);
                         for (FPhotometricOriginDataInfo wlData : wlDataList) {
 
@@ -1583,14 +1599,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                         String key = entry.getKey();
                                         Map<String, String> value = entry.getValue();
 
-                                        if (childrenList.containsKey(key)) {
+                                        if (countDataList.containsKey(key)) {
                                             // 如果键已存在，将新值中的键值对合并到现有Map中
-                                            Map<String, String> existingMap = childrenList.get(key);
+                                            Map<String, String> existingMap = countDataList.get(key);
                                             // 将value中的所有键值对放入existingMap中（相同键会覆盖，新键会添加）
                                             existingMap.putAll(value);
                                         } else {
                                             // 如果键不存在，直接添加（创建副本以避免引用问题）
-                                            childrenList.put(key, new HashMap<>(value));
+                                            countDataList.put(key, new HashMap<>(value));
                                         }
                                     }
                                 }
@@ -1612,6 +1628,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                 childrenList.putIfAbsent(wlData.getIdentity(), children);
                             }
                         }
+                        childrenList.putAll(countDataList);
                         map.put("samplingTime", data.getSamplingTime());
 
                         childrenList.forEach((key, value) -> middle.add(value));
@@ -1805,6 +1822,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         fMeasureData.setSamplingTime(sampleAndDataVO.getSampleTime());
 
         fMeasureData.setIsDelete(createType);
+
         fMeasureDataService.saveOrUpdate(fMeasureData);
 
         return R.ok(fMeasureData.getId());
@@ -1841,6 +1859,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             analysisData.setMeasureDataId(dataId);
         }
         analysisData.setIsDelete(createType);
+        analysisData.setIsSave(noSave);
         fMeasureAnalysisDataService.saveOrUpdate(analysisData);
         return R.ok(true);
 

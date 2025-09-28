@@ -13,7 +13,6 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectru
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -49,7 +48,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
 
     @Autowired
-    private SpectrumService spectrumService;
+    private SpectrumConciseService spectrumService;
     @Autowired
     private FMeasureTaskService tMeasureTaskService;
     @Autowired
@@ -237,6 +236,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                                   String  ip,
                                   Integer number) throws IOException {
 
+        spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+
         // 1. 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
 
@@ -358,13 +359,17 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                String yy = String.valueOf((sData / (4095 * 32)) * 100);
+                System.out.println("sData:"+sData);
+//                String yy = String.valueOf((sData / (4095 * 32)) * 100);
+                String yy = String.valueOf((sData / 8388607) * 100);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                String yy = String.valueOf((rData / (4095 * 32)) * 100);
+                System.out.println("rData:"+rData);
+//                String yy = String.valueOf((rData / (4095 * 32)) * 100);
+                String yy = String.valueOf((rData / 8388607) * 100);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
@@ -386,13 +391,13 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                String yy = String.valueOf((sData / (4095 * 32)) * 100);
+                String yy = String.valueOf((sData / 8388607) * 100);
                 Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                String yy = String.valueOf((rData / (4095 * 32)) * 100);
+                String yy = String.valueOf((rData / 8388607) * 100);
                 Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
                 y.add(Double.parseDouble(yy));

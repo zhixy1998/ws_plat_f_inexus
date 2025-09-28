@@ -1644,6 +1644,9 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Override
     public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+
+        System.out.println("methodId" + methodId);
+
         // 根据序列号查询设备ip
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         // 根据methodId去方法表中查询数据
