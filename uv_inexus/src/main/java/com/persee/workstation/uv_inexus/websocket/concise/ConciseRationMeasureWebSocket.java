@@ -187,18 +187,25 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             return;
         }
         FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
-        Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
 
-        if (usefulLocation == null || usefulLocation.isEmpty()) {
-            log.info("无可用位置");
-            sendAndClose(session, "无可用样品池位置");
-            return;
-        }
+        boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool() !=null && poolInfoVO.getIsAutoChangePool();
 
-        int usefulPoolNum = usefulLocation.size();
+
+        int usefulPoolNum = 1;
         int measureCount = 0;
+
         int currentPoolNum = -1;
-        int maxPoolNum = Collections.max(usefulLocation);
+        int maxPoolNum = 0;
+
+        if (isAutoChangePool) {
+            if (usefulLocation == null || usefulLocation.isEmpty()) {
+                log.info("无可用位置");
+                sendAndClose(session, "无可用样品池位置");
+                return;
+            }
+            usefulPoolNum = usefulLocation.size();
+            maxPoolNum = Collections.max(usefulLocation);
+        }
 
         //后续添加仪器状态检测
         String ip = infoService.getIp(deviceSerialNumber);
@@ -217,7 +224,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             List<String> fitCurveParams = new ArrayList<>();
             //测过的未知样，曲线拟合之后要重新计算
             List<TaskSpecimen> testUnknowSample = new ArrayList<>();
-
 
             for (TaskSpecimen specimen : taskSpecimen) {
 
@@ -321,7 +327,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 R<FRationDataVO> r;
 
                 if (!isAutoChangePool){
-                    sample.setSampleLocation(String.valueOf(poolInfoVO.getCurrentPoolNum()));
+                    sample.setSampleLocation(null);
                 }
 
                 if (repeat) {
@@ -331,8 +337,11 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 } else {
                     r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
                 }
-                currentPoolNum = Integer.parseInt(sample.getSampleLocation());
-                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
+
+                if (isAutoChangePool) {
+                    currentPoolNum = Integer.parseInt(sample.getSampleLocation());
+                    fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
+                }
                 if (!r.getSuccess()) {
                     sendAndClose(session, r.getMessage());
                     return;
@@ -526,14 +535,21 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                  * 区分重复与不重复测，测量 + 计算出abs值一起
                  */
                 R<FRationDataVO> r;
+
+                if (!isAutoChangePool){
+                    sample.setSampleLocation(null);
+                }
+
                 if (repeat) {
                     //重复测量，单独处理！
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
                 } else {
                     r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
                 }
-                currentPoolNum = Integer.parseInt(sample.getSampleLocation());
-                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                if (isAutoChangePool) {
+                    currentPoolNum = Integer.parseInt(sample.getSampleLocation());
+                    fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
+                }
 
                 if (!r.getSuccess()) {
                     sendAndClose(session, r.getMessage());
@@ -872,12 +888,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
-        list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
-
-        JSONObject object = new JSONObject();
-        object.put("currentPoolNum", sample.getSampleLocation());
-        session.sendMessage(new TextMessage(object.toJSONString()));
-
+        if (StringUtils.hasText(sample.getSampleLocation())) {
+            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+            JSONObject object = new JSONObject();
+            object.put("currentPoolNum", sample.getSampleLocation());
+            session.sendMessage(new TextMessage(object.toJSONString()));
+        }
         LocalDateTime startTime = LocalDateTime.now();
         for (String waveLength : waveLengths) {
             list.add(new Command("SetWl", new Object[]{waveLength}));
@@ -980,11 +996,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         LocalDateTime startTime = LocalDateTime.now();
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
-        list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
-
-        JSONObject object = new JSONObject();
-        object.put("currentPoolNum", sample.getSampleLocation());
-        session.sendMessage(new TextMessage(object.toJSONString()));
+        if (StringUtils.hasText(sample.getSampleLocation())) {
+            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+            JSONObject object = new JSONObject();
+            object.put("currentPoolNum", sample.getSampleLocation());
+            session.sendMessage(new TextMessage(object.toJSONString()));
+        }
 
         for (int i = 0; i < repeatCount; i++) {
             for (String waveLength : waveLengths) {

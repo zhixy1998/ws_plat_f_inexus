@@ -1208,7 +1208,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
             for (String s : waveLength) {
                 String identity = s + "-"+ mode;
-                String name = s + WaveLengthEnum.getName(mode);
+                String name = s + "nm" + WaveLengthEnum.getName(mode);
                 FHeadVO newHead = new FHeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
                 if (map.containsKey(identity)) {
                     newHead = map.get(identity);
@@ -1219,8 +1219,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             for (String s : waveLength) {
                 String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
                 String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
-                String absName = s + WaveLengthEnum.abs.getName();
-                String tPercentName = s + WaveLengthEnum.tPercent.getName();
+                String absName = s + "nm" +  WaveLengthEnum.abs.getName();
+                String tPercentName = s + "nm" +  WaveLengthEnum.tPercent.getName();
 
                 FHeadVO absHead = new FHeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
                 FHeadVO tPercentHead = new FHeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
@@ -1447,6 +1447,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             map.put(SampleTableEnum.SAMPLE_NAME.getIdentity(), sample.getSampleName());
             map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
             map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
+            map.put("deleteType", specimen.getDeleteType());
 
             if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
 

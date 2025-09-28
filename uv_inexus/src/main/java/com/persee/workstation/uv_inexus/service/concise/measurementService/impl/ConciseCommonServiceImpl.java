@@ -552,6 +552,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SysUserPO user = userMapper.selectById(task.getUserId());
             FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
             FPhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
+            vo.setTaskName(task.getTaskName());
 
             if (StringUtils.hasText(task.getSampleKey())) {
                 List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -656,6 +657,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
             SpectralReportVo vo = new SpectralReportVo();
 //            FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
+            vo.setTaskName(task.getTaskName());
             SysUserPO user = userMapper.selectById(task.getUserId());
             FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
             FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
@@ -788,7 +790,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setColorPlateWavelength("1");
 
 //            vo.setProject(project.getProjectName());
-//            vo.setDetector(user.getUserName());
+            vo.setDetector(user.getUsername());
             vo.setEnergyLight(parameter.getEnergyLamp());
             vo.setMethodName(method.getMethodName());
             return Result.ok(vo);
