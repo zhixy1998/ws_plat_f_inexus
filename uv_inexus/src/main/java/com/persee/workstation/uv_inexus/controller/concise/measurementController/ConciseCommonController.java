@@ -127,4 +127,28 @@ public class ConciseCommonController {
         return conciseCommonService.checkFormula(checkFormulaDto);
     }
 
+    @GetMapping("obtainReportParameters")
+    @ApiOperation("获取报告通用数据接口")
+    public Result obtainReportParameters(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId,
+                                         @RequestParam(required = false) String serialNumber) {
+        return conciseCommonService.obtainReportParameters(taskId, sampleId, serialNumber);
+    }
+
+    @GetMapping("queryReportAllParameters")
+    @ApiOperation("获取报告所有参数接口")
+    public Result queryReportAllParameters(@RequestParam String taskId,
+                                           @RequestParam String sampleId,
+                                           @RequestParam(required = false) String serialNumber) {
+        return conciseCommonService.queryReportAllParameters(taskId, sampleId, serialNumber);
+    }
+
+    @GetMapping("queryReportTableData")
+    @ApiOperation("查询报告表格数据")
+    public Result reportTableDataQuery(@RequestParam String taskId,
+                                       @RequestParam(required = false) String sampleId){
+        return conciseCommonService.newReportTableDataQuery(taskId, sampleId);
+    }
+
+
 }

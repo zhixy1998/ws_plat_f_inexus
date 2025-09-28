@@ -8,6 +8,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 简洁模式: 时间扫描服务接口
@@ -111,4 +112,11 @@ public interface TimeSweepConciseService {
      * 导出到word
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
+
+    // 表格头接口
+    Result<List<FHeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay);
+
+    // 查询表格数据接口
+    List<Map<String, Object>> queryTableData(String taskId, String sampleId);
+
 }

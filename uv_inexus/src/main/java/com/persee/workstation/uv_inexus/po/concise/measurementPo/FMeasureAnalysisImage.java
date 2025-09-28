@@ -18,8 +18,10 @@ public class FMeasureAnalysisImage {
     @TableField("analysis_id")
     private String analysisId;   // 关联的分析数据ID
 
+//    @TableField("image_base64")
+//    private String imageBase64;  // 图片的Base64编码
     @TableField("image_base64")
-    private String imageBase64;  // 图片的Base64编码
+    private byte[] imageBase64;  // 图片的Base64编码
 
     @TableField("image_name")
     private String imageName;    // 图片名称

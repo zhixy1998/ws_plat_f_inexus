@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -2828,4 +2829,103 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return "docx";
         }
     }
+
+    /**
+     * 表格头
+     * @param taskId
+     * @param methodId
+     * @param allDisplay
+     * @return
+     */
+    @Override
+    public Result<List<FHeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay) {
+        // 根据方法id查找方法
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        TimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+        List<FHeadVO> ans = new ArrayList<>();
+
+        // 1. 编号
+        ans.add(new FHeadVO("编号", "id", "system", "编号"));
+
+        ans.add(new FHeadVO("峰/谷", "peakValley", "system", "编号"));
+
+        ans.add(new FHeadVO("时间", "TIME", "measure", "波长(nm)"));
+
+        // 2. 波长 + 光度模式
+        String mode = parameter.getLuminosity(); // abs / t% / es / er
+        switch (mode) {
+            case "1":
+                ans.add(new FHeadVO("Abs", "luminosity", "measure", "Abs"));
+                break;
+            case "2":
+                ans.add(new FHeadVO("T%", "luminosity", "measure", "T%"));
+                break;
+            case "3":
+                ans.add(new FHeadVO("Es", "luminosity", "measure", "Es"));
+                break;
+            case "4":
+                ans.add(new FHeadVO("Er", "luminosity", "measure", "Er"));
+                break;
+        }
+
+
+        // 3. 备注
+        ans.add(new FHeadVO("备注", "remark", "other", "备注"));
+
+
+        return Result.ok(ans);
+    }
+
+    /**
+     * 表格数据
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
+    @Override
+    public List<Map<String, Object>> queryTableData(String taskId, String sampleId) {
+        // 校验参数
+        if (StringUtils.isEmpty(taskId) || StringUtils.isEmpty(sampleId)) {
+            return null;
+        }
+        // 根据任务id和样品id查询分析数据
+        QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
+        eq.eq("task_id", taskId);
+        eq.eq("sample_key", sampleId);
+        eq.orderByDesc("analysis_number");
+        eq.last("LIMIT 1");
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(eq);
+        if (analysisData == null) {
+            return null;
+        }
+        // 解析分析数据
+        List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+        // 解析峰谷数据
+        List<FPeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), FPeakValleyMarking.class);
+        List<FPeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), FPeakValleyMarking.class);
+        List<Map<String, Object>> arrayList = new ArrayList<>();
+        // 根据长度遍历
+        for (int i = 0; i < result.size(); i++) {
+            // 根据,进行分割数据
+            String[] split = result.get(i).split(",");
+            Map<String, Object> map = new HashMap<>();
+            map.put(SampleTableEnum.ID.getIdentity(), i + 1);
+            for (FPeakValleyMarking peak : peaks) {
+                if (peak.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "峰");
+                }
+            }
+            for (FPeakValleyMarking grade : valleys) {
+                if (grade.getX().equals(split[0])){
+                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "谷");
+                }
+            }
+            map.put(SampleTableEnum.TIME.getIdentity(), split[0]);
+            map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
+            map.put(SampleTableEnum.REMARK.getIdentity(), null);
+            arrayList.add(map);
+        }
+        return arrayList;
+    }
+
 }

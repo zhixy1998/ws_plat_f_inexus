@@ -9,6 +9,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 简洁模式: 光谱扫描服务业务层
@@ -110,6 +111,12 @@ public interface SpectrumConciseService {
 
     // 光度模式转换
     Result luminanceModeConversionPort(FLuminosityConversionDto paramDto);
+
+    // 查询表格头
+    Result<List<FHeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay);
+
+    // 查询表格数据
+    List<Map<String, Object>> queryTableData(String taskId, String sampleId);
 
     /**
      * 导出到word

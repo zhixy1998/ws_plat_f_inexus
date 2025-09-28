@@ -30,4 +30,9 @@ public class FRationReportDataVO {
      * 映射关系
      */
     private List<FInputParamMapTableHead> mapRelation;
+
+    /**
+     * 曲线信息
+     */
+    private FRationFitCurveVO curveInfo;
 }

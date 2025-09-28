@@ -17,4 +17,10 @@ public class SystemPanelConfVO {
 
     @ApiModelProperty("默认进入经典模式")
     private Boolean classicSwitch;
+
+    @ApiModelProperty("自动保存开关")
+    private Boolean autoSaveSwitch;
+
+    @ApiModelProperty("自动保存间隔")
+    private Integer autoSaveInterval;
 }

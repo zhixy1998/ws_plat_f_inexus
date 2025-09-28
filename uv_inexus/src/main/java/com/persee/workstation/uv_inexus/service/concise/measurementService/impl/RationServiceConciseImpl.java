@@ -253,6 +253,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
+        vo.setCurrentMethodId(checkDTO.getCurrentMethodId());
+        vo.setParamChange(false);
+        vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity());
+        vo.setMessage(PhotoMetricChangeMethodTypeEnum.noChange.getMessage());
+
 
         if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
             log.info("生成新方法");

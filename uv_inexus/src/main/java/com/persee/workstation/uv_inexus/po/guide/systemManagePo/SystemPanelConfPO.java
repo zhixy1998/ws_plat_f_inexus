@@ -35,4 +35,12 @@ public class SystemPanelConfPO extends BasePO {
     @TableField("classic_Switch")
     private Boolean classicSwitch;
 
+    @ApiModelProperty("自动保存开关")
+    @TableField("auto_save_switch")
+    private Boolean autoSaveSwitch;
+
+    @ApiModelProperty("自动保存间隔")
+    @TableField("auto_save_interval")
+    private Integer autoSaveInterval;
+
 }

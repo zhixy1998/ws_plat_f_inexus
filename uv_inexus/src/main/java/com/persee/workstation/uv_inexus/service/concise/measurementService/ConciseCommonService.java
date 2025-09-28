@@ -41,4 +41,14 @@ public interface ConciseCommonService {
     光度和定量方法里公式校验
      */
     Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto);
+
+    // 获取报告参数
+    Result obtainReportParameters(String taskId,String sampleId,String serialNumber);
+
+
+    // 获取报告所有参数
+    Result queryReportAllParameters(String taskId, String sampleId, String serialNumber);
+
+    // 新的报表数据查询
+    Result newReportTableDataQuery(String taskId, String sampleId);
 }
