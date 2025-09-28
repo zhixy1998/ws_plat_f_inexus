@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
@@ -46,6 +47,7 @@ import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
@@ -94,10 +96,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
-
+@Autowired
+private FMeasureAnalysisImageService fMeasureAnalysisImageService;
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
 
+    @Autowired
+    private FMeasureTaskAttachmentService fMeasureTaskAttachmentService;
     @Autowired
     private ConcisePublicUtilService concisePublicUtilService;
 
@@ -3009,6 +3014,59 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             // log.info("===== 导出流程结束 =====");
         }
     }
+
+    @Override
+    public Result uploadImage(SpectrumImageUpload upload) {
+        if (upload == null) {
+            return Result.fail("参数不能为空");
+        }
+        String[] split = upload.getImage().split(",");
+        String s = split[1];
+        String fileType = null;
+        if (split[0].startsWith("data:image/png")) {
+            fileType = "png";
+        } else if (split[0].startsWith("data:image/jpeg")) {
+            fileType = "jpg";
+        } else if (split[0].startsWith("data:image/gif")) {
+            fileType = "gif";
+        } else {
+            fileType = "unknown"; // 兜底
+        }
+        byte[] bytes = Base64.decodeBase64(s);
+        if (upload.getImageType().equals("0")){
+            QueryWrapper<FMeasureAnalysisImage> analysisId = new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+            analysisId.last("limit 1");
+            FMeasureAnalysisImage byId = fMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null){
+                return Result.fail("图片不存在");
+            }
+            byId.setImageType(fileType);
+            byId.setImageBase64(bytes);
+            // 将当前日期时间存储
+
+            byId.setCreateTime(LocalDateTime.now());
+            boolean update = fMeasureAnalysisImageService.updateById(byId);
+            return Result.ok(update);
+        }else{
+            // 根据任务id查询任务附属表的内容
+            FMeasureTaskAttachment byId = fMeasureTaskAttachmentService.getOne(Wrappers.lambdaQuery(FMeasureTaskAttachment.class).eq(FMeasureTaskAttachment::getTaskId, upload.getId()).last("limit 1"));
+            if (byId == null){
+                return Result.fail("任务附属不存在");
+            }
+            if ("0".equals(upload.getType())){
+                byId.setOverlapImage(bytes);
+            }else if ("1".equals(upload.getType())){
+                byId.setTiledImage(bytes);
+            }else if ("2".equals(upload.getType())){
+                byId.setAddrImage(bytes);
+            }else{
+                return Result.fail("Type类型错误");
+            }
+            boolean update = fMeasureTaskAttachmentService.updateById(byId);
+            return Result.ok(update);
+        }
+    }
+
 
 
     // 保留原有的downloadWord方法，并适配新参数

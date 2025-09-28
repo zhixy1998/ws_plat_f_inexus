@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
@@ -33,6 +34,11 @@ public class SpectrumConciseController {
     private SpectrumConciseService spectrumConciseService;      // 简洁模式: 光谱扫描业务层
 
 
+    @PostMapping("uploadImage")
+    @ApiOperation("经典模式上传图片")
+    public Result uploadImage(@RequestBody SpectrumImageUpload upload) {
+        return spectrumConciseService.uploadImage(upload);
+    }
     @GetMapping("queryNearestMethodData")
     @ApiOperation("查询最近方法数据")
     public Result queryNearestMethodData(@RequestParam String updateBy,@RequestParam String measureType) {

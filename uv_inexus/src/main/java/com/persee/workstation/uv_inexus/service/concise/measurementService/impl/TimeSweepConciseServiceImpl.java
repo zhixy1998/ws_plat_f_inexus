@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUser
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
@@ -46,6 +47,7 @@ import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterV
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepSearchMethodVo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
@@ -88,8 +90,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     @Autowired
     private FMeasureSampleService fMeasureSampleService;
 
+
+    @Autowired
+    private FMeasureTaskAttachmentService fMeasureTaskAttachmentService;
     @Autowired
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
+
+    @Autowired
+    private  FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
@@ -2384,7 +2392,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             // log.error("【步骤1/5】校验失败：缺少任务id");
             return R.fail("缺少任务id");
         }
-        
+
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             // log.error("【步骤1/5】校验失败：任务不存在，taskId: {}", taskId);
@@ -2400,12 +2408,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             fileType = fileType.toLowerCase();
             // log.info("【步骤1/5】指定文件类型：{}", fileType);
         }
-        
+
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
             // log.error("【步骤1/5】校验失败：不支持的文件类型：{}", fileType);
             return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
         }
-        
+
         if (allDisplay == null) {
             allDisplay = true;
             // log.info("【步骤1/5】allDisplay未指定，默认使用：{}", allDisplay);
@@ -2414,10 +2422,10 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
         // 2. 获取样品数据阶段（增加changeTheListPort数据处理和筛选）
         // log.info("【步骤2/5】开始查询样品数据，taskId: {}", taskId);
-        
+
         // 2.1 获取两个来源的数据
         List<FSampleListVo> allSamples = new ArrayList<>();
-        
+
         // 处理sampleListPort数据
         Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, null);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
@@ -2426,7 +2434,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } else {
             // log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
         }
-        
+
         // 处理changeTheListPort数据（与sampleListPort逻辑相同）
         Result<List<FSampleListVo>> changeListResult = queryAnalysisDataList(taskId, null, null);
         if (changeListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && changeListResult.getData() != null) {
@@ -2435,7 +2443,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } else {
             // log.warn("【步骤2/5】changeTheListPort查询异常：{}", changeListResult.getMessage());
         }
-        
+
         // 2.2 根据analysisIds筛选数据
         List<FSampleListVo> filteredSamples = new ArrayList<>();
         if (CollectionUtils.isEmpty(analysisIds)) {
@@ -2456,7 +2464,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             // log.info("【步骤2/5】筛选完成，原始样品数量：{}，匹配数量：{}", 
             //         allSamples.size(), filteredSamples.size());
         }
-        
+
         // 2.3 打印样品数据信息
         // log.info("【步骤2/5】最终使用的样品数量：{}", filteredSamples.size());
         if (!filteredSamples.isEmpty()) {
@@ -2466,7 +2474,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 // log.info("【步骤2/5】样品{}: title={}, analysisId={}, data是否为空={}", 
                 //         i+1, vo.getTitle(), vo.getAnalysisId(), 
                 //         vo.getData() == null || vo.getData().isEmpty());
-                
+
                 // 打印第一个样品的前3条数据，确认x和y的值
                 if (i == 0 && vo.getData() != null && !vo.getData().isEmpty()) {
                     int dataLogCount = Math.min(3, vo.getData().size());
@@ -2490,12 +2498,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             for (FSampleListVo vo : filteredSamples) {
                 String title = vo.getTitle();
                 List<Map<String, Object>> dataList = vo.getData();
-                
+
                 if (CollectionUtils.isEmpty(dataList)) {
                     // log.info("【步骤3/5】样品{}: 无数据，跳过", title);
                     continue;
                 }
-                
+
                 // 初始化当前样品的y值列表
                 sampleYMap.putIfAbsent(title, new ArrayList<>());
                 List<String> yList = sampleYMap.get(title);
@@ -2505,20 +2513,20 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     // 明确从data中获取"x"字段作为波长
                     Object xObj = data.get("x");
                     String x = (xObj != null) ? xObj.toString() : "-";
-                    
+
                     // 明确从data中获取"y"字段作为数值
                     Object yObj = data.get("y");
                     String y = (yObj != null) ? yObj.toString() : "-";
-                    
+
                     // 记录日志，确认x和y的取值
                     // log.debug("【步骤3/5】样品{}: x={}, y={}", title, x, y);
-                    
+
                     // 添加新波长（去重）
                     if (!wavelengths.contains(x)) {
                         wavelengths.add(x);
                         // log.debug("【步骤3/5】新增波长: {}", x);
                     }
-                    
+
                     // 按波长顺序填充y值
                     int index = wavelengths.indexOf(x);
                     // 补全前面的空值
@@ -2539,9 +2547,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FHeadVO> heads = new ArrayList<>();
         heads.add(new FHeadVO("波长nm", "wavelength")); // 波长列标题
         sampleYMap.keySet().forEach(title -> heads.add(new FHeadVO(title, title))); // 样品列标题
-        
+
         // log.info("【步骤4/5】表头构建完成，表头数量: {}", heads.size());
-        
+
         List<Map<String, Object>> exportData = new ArrayList<>();
         if (!wavelengths.isEmpty()) {
             for (int i = 0; i < wavelengths.size(); i++) {
@@ -2549,14 +2557,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 Map<String, Object> row = new LinkedHashMap<>();
                 // 波长列使用wavelengths中的值（即x字段的值）
                 row.put("wavelength", wavelengths.get(index));
-                
+
                 // 样品列使用对应的y值
                 sampleYMap.forEach((title, yList) -> {
                     row.put(title, index < yList.size() ? yList.get(index) : "-");
                 });
-                
+
                 exportData.add(row);
-                
+
                 // 打印前5行数据，确认波长列是否正确
                 // if (i < 5) {
                 //     log.info("【步骤4/5】数据行{}: 波长={}, 样品值={}", 
@@ -2573,7 +2581,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             sampleYMap.keySet().forEach(title -> emptyRow.put(title, "-"));
             exportData.add(emptyRow);
         }
-        
+
         // log.info("【步骤4/5】导出数据构建完成，数据行数: {}", exportData.size());
 
         // 5. 生成文件阶段（保持不变）
@@ -2687,7 +2695,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             }
             FHeadVO head = heads.get(i);
             // 使用 getName() 获取表头显示文本（如"波长nm"）
-            String headName = head.getName(); 
+            String headName = head.getName();
             cell.setText(headName);
         }
 
@@ -2704,7 +2712,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             for (int i = 1; i < columnCount; i++) {
                 FHeadVO head = heads.get(i);
                 // 使用 getIdentity() 获取数据中的键（如"样品1"）
-                String headKey = head.getIdentity(); 
+                String headKey = head.getIdentity();
                 String value = rowData.getOrDefault(headKey, "-").toString();
                 row.getCell(i).setText(value);
             }
@@ -3020,6 +3028,58 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             arrayList.add(map);
         }
         return arrayList;
+    }
+
+    @Override
+    public Result uploadImage(SpectrumImageUpload upload) {
+        if (upload == null) {
+            return Result.fail("参数不能为空");
+        }
+        String[] split = upload.getImage().split(",");
+        String s = split[1];
+        String fileType = null;
+        if (split[0].startsWith("data:image/png")) {
+            fileType = "png";
+        } else if (split[0].startsWith("data:image/jpeg")) {
+            fileType = "jpg";
+        } else if (split[0].startsWith("data:image/gif")) {
+            fileType = "gif";
+        } else {
+            fileType = "unknown"; // 兜底
+        }
+        byte[] bytes = Base64.decodeBase64(s);
+        if (upload.getImageType().equals("0")){
+            QueryWrapper<FMeasureAnalysisImage> analysisId = new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+            analysisId.last("limit 1");
+           FMeasureAnalysisImage byId = fMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null){
+                return Result.fail("图片不存在");
+            }
+            byId.setImageType(fileType);
+            byId.setImageBase64(bytes);
+            // 将当前日期时间存储
+
+            byId.setCreateTime(LocalDateTime.now());
+            boolean update = fMeasureAnalysisImageService.updateById(byId);
+            return Result.ok(update);
+        }else{
+            // 根据任务id查询任务附属表的内容
+            FMeasureTaskAttachment byId = fMeasureTaskAttachmentService.getOne(Wrappers.lambdaQuery(FMeasureTaskAttachment.class).eq(FMeasureTaskAttachment::getTaskId, upload.getId()).last("limit 1"));
+            if (byId == null){
+                return Result.fail("任务附属不存在");
+            }
+            if ("0".equals(upload.getType())){
+                byId.setOverlapImage(bytes);
+            }else if ("1".equals(upload.getType())){
+                byId.setTiledImage(bytes);
+            }else if ("2".equals(upload.getType())){
+                byId.setAddrImage(bytes);
+            }else{
+                return Result.fail("Type类型错误");
+            }
+            boolean update = fMeasureTaskAttachmentService.updateById(byId);
+            return Result.ok(update);
+        }
     }
 
 }

@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
@@ -119,4 +120,5 @@ public interface TimeSweepConciseService {
     // 查询表格数据接口
     List<Map<String, Object>> queryTableData(String taskId, String sampleId);
 
+    Result uploadImage(SpectrumImageUpload upload);
 }

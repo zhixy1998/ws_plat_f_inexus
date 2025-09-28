@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Data
 @TableName("f_t_measure_analysis_image")
@@ -30,7 +30,7 @@ public class FMeasureAnalysisImage {
     private String imageType;    // 图片类型(jpg/png等)
 
     @TableField("create_time")
-    private Date createTime;     // 创建时间
+    private LocalDateTime createTime;     // 创建时间
 
     @TableField("remarks")
     private String remarks;      // 备注信息
