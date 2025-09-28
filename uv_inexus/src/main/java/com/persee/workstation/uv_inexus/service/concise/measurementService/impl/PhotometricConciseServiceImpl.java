@@ -120,6 +120,124 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Value("文件数据")
     String newTaskName;
 
+    private R<Boolean> checkParam(FPhotometricParameter parameter) {
+        // 1. 校验光度模式
+        if (parameter.getLuminosity() == null || parameter.getLuminosity().trim().isEmpty()) {
+            return R.fail("光度模式不能为空");
+        }
+        if (!Arrays.asList("1", "2", "3", "4").contains(parameter.getLuminosity())) {
+            return R.fail("光度模式只能是1(Abs)、2(T%)、3(Es)、4(ER)");
+        }
+
+        // 2. 校验波长值
+        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
+            return R.fail("波长值不能为空");
+        }
+        if (parameter.getWaveLength().size() < 1 || parameter.getWaveLength().size() > 26) {
+            return R.fail("波长值数量必须在1-26个范围内");
+        }
+        for (String waveStr : parameter.getWaveLength()) {
+            if (waveStr == null || waveStr.trim().isEmpty()) {
+                return R.fail("波长值不能包含空值");
+            }
+            try {
+                double waveLength = Double.parseDouble(waveStr);
+                if (waveLength < 190 || waveLength > 900) {
+                    return R.fail("波长值" + waveStr + "必须在190-900范围内");
+                }
+                // 校验小数点后最多1位
+                String[] parts = waveStr.split("\\.");
+                if (parts.length > 1 && parts[1].length() > 1) {
+                    return R.fail("波长值" + waveStr + "小数点后最多保留1位");
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("波长值" + waveStr + "必须为有效的数字");
+            }
+        }
+
+        // 3. 校验重复模式
+        if (parameter.getRepetitionPattern() == null || parameter.getRepetitionPattern().trim().isEmpty()) {
+            return R.fail("重复模式不能为空");
+        }
+        if (!Arrays.asList("rmNone", "rmCR").contains(parameter.getRepetitionPattern())) {
+            return R.fail("重复模式只能是rmNone(不重复)、rmCR(单池重复)");
+        }
+
+        // 4. 校验重复次数（单池重复模式下必校验）
+        if ("rmCR".equals(parameter.getRepetitionPattern())) {
+            if (parameter.getRepetitionTime() == null || parameter.getRepetitionTime().trim().isEmpty()) {
+                return R.fail("单池重复模式下重复次数不能为空");
+            }
+            try {
+                int repetitionTime = Integer.parseInt(parameter.getRepetitionTime());
+                if (repetitionTime < 2 || repetitionTime > 10) {
+                    return R.fail("重复次数必须在2-10范围内");
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("重复次数必须为有效的整数");
+            }
+        }
+
+        // 5. 校验时间间隔（单池重复模式下必校验）
+        if ("rmCR".equals(parameter.getRepetitionPattern())) {
+            if (parameter.getTimeInterval() == null || parameter.getTimeInterval().trim().isEmpty()) {
+                return R.fail("单池重复模式下时间间隔不能为空");
+            }
+            try {
+                double timeInterval = Double.parseDouble(parameter.getTimeInterval());
+                if (timeInterval < 0 || timeInterval > 60) {
+                    return R.fail("时间间隔必须在0-60范围内（单位：秒）");
+                }
+                // 校验小数点后最多1位
+                String[] parts = parameter.getTimeInterval().split("\\.");
+                if (parts.length > 1 && parts[1].length() > 1) {
+                    return R.fail("时间间隔小数点后最多保留1位");
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("时间间隔必须为有效的数字");
+            }
+        }
+
+        // 6. 校验统计内容
+        if (parameter.getStatisticalContent() != null && !parameter.getStatisticalContent().isEmpty()) {
+            for (String content : parameter.getStatisticalContent()) {
+                if (!Arrays.asList("平均值", "SD", "RSD").contains(content)) {
+                    return R.fail("统计内容" + content + "不合法，只能是平均值、SD、RSD");
+                }
+            }
+        }
+
+        // 7. 校验样品池方式
+        if (parameter.getSamplePoolWay() == null || parameter.getSamplePoolWay().trim().isEmpty()) {
+            return R.fail("样品池方式不能为空");
+        }
+        if (!Arrays.asList("0", "1").contains(parameter.getSamplePoolWay())) {
+            return R.fail("样品池方式只能是0(单池重复后再移动)、1(依次移动并重复)");
+        }
+
+        // 8. 校验输入参数（数量限制）
+        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 10) {
+            return R.fail("输入参数数量不能超过10个");
+        }
+
+        // 9. 校验待计算结果（数量限制）
+        if (parameter.getResultParams() != null && parameter.getResultParams().size() > 5) {
+            return R.fail("待计算结果数量不能超过5个");
+        }
+
+        // 10. 校验修约设置（数量限制）
+        if (parameter.getApproxParams() != null && parameter.getApproxParams().size() > 10) {
+            return R.fail("修约设置数量不能超过10个");
+        }
+
+        // 11. 校验质控设置（数量限制）
+        if (parameter.getQcParams() != null && parameter.getQcParams().size() > 10) {
+            return R.fail("质控设置数量不能超过10个");
+        }
+
+        // 所有校验通过
+        return R.ok(true);
+    }
 
     @Override
     public Result createMethodPort(FMethodParamRequestDto methodDto, String updateBy, FPhotometricParameter photometricParameter) {

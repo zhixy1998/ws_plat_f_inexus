@@ -386,6 +386,250 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     }
 
+    private R<Boolean> checkParam(FRationParameter parameter) {
+        // 1. 根对象非空校验
+        if (parameter == null) {
+            return R.fail("定量测量参数对象不能为空");
+        }
+
+        // 2. 波长相关参数校验
+        // 2.1 波长值校验（1-3个，数值范围190-900）
+        List<String> waveLengths = parameter.getWaveLength();
+        if (waveLengths == null || waveLengths.isEmpty()) {
+            return R.fail("波长值不能为空");
+        }
+        if (waveLengths.size() > 3) {
+            return R.fail("波长值最多支持3个，当前数量：" + waveLengths.size());
+        }
+        for (int i = 0; i < waveLengths.size(); i++) {
+            String waveStr = waveLengths.get(i);
+            if (isBlank(waveStr)) {
+                return R.fail("第" + (i + 1) + "个波长值不能为空字符串");
+            }
+            try {
+                double waveVal = Double.parseDouble(waveStr);
+                if (waveVal < 190 || waveVal > 900) {
+                    return R.fail("第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal);
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("第" + (i + 1) + "个波长值格式错误（需为数字），当前值：" + waveStr);
+            }
+        }
+
+        // 2.2 波长参数校验（与波长值数量一致）
+        List<String> waveLengthParams = parameter.getWaveLengthParams();
+        if (waveLengthParams == null) {
+            return R.fail("波长参数不能为空");
+        }
+        if (waveLengthParams.size() != waveLengths.size()) {
+            return R.fail("波长参数数量需与波长值一致（当前参数数：" + waveLengthParams.size() + "，波长数：" + waveLengths.size() + "）");
+        }
+        for (int i = 0; i < waveLengthParams.size(); i++) {
+            if (isBlank(waveLengthParams.get(i))) {
+                return R.fail("第" + (i + 1) + "个波长参数不能为空字符串");
+            }
+        }
+
+        // 2.3 微分方式校验（枚举值）
+        String differentialMode = parameter.getDifferentialMode();
+        if (isBlank(differentialMode)) {
+            return R.fail("微分方式不能为空");
+        }
+        List<String> validDiffModes = Arrays.asList(
+                "single", "1st-der", "2nd-der", "3rd-der", "4th-der",
+                "peak", "valley", "max", "min"
+        );
+        if (!validDiffModes.contains(differentialMode)) {
+            return R.fail("微分方式不合法（可选值：" + String.join("、", validDiffModes) + "），当前值：" + differentialMode);
+        }
+
+        // 3. 曲线与系数相关校验
+        // 3.1 曲线类型校验
+        if (isBlank(parameter.getCurveType())) {
+            return R.fail("曲线类型不能为空");
+        }
+
+        // 3.2 方程类型校验（枚举值：qtCFA/qtAFC）
+        String equationType = parameter.getEquationType();
+        if (isBlank(equationType)) {
+            return R.fail("方程类型不能为空");
+        }
+        if (!Arrays.asList("qtCFA", "qtAFC").contains(equationType)) {
+            return R.fail("方程类型不合法（可选值：qtCFA、qtAFC），当前值：" + equationType);
+        }
+
+        // 3.3 系数方式校验（枚举值：0/1）
+        String coefficientMode = parameter.getCoefficientMode();
+        if (isBlank(coefficientMode)) {
+            return R.fail("系数方式不能为空");
+        }
+        if (!Arrays.asList("0", "1").contains(coefficientMode)) {
+            return R.fail("系数方式不合法（可选值：0-直接系数法、1-标准曲线法），当前值：" + coefficientMode);
+        }
+
+        // 3.4 系数参数校验（1-10个，数字且最多3位小数）
+        List<String> coefficientParams = parameter.getCoefficientParams();
+        if (coefficientParams == null || coefficientParams.isEmpty()) {
+            return R.fail("系数参数不能为空");
+        }
+        if (coefficientParams.size() > 10) {
+            return R.fail("系数参数最多支持10个，当前数量：" + coefficientParams.size());
+        }
+        for (int i = 0; i < coefficientParams.size(); i++) {
+            String coeffStr = coefficientParams.get(i);
+            if (isBlank(coeffStr)) {
+                return R.fail("第" + (i + 1) + "个系数参数不能为空字符串");
+            }
+            try {
+                Double.parseDouble(coeffStr);
+                if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 3) {
+                    return R.fail("第" + (i + 1) + "个系数参数小数位数不能超过3位，当前值：" + coeffStr);
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("第" + (i + 1) + "个系数参数格式错误（需为数字），当前值：" + coeffStr);
+            }
+        }
+
+        // 3.5 零点方式校验
+        List<String> zeroMethod = parameter.getZeroMethod();
+        if (zeroMethod == null || zeroMethod.isEmpty()) {
+            return R.fail("零点方式不能为空");
+        }
+        Set<String> validZeroMethods = new HashSet<>(Arrays.asList("过零点", "插入零点"));
+        for (String zm : zeroMethod) {
+            if (!validZeroMethods.contains(zm)) {
+                return R.fail("零点方式不合法（可选值：过零点、插入零点），当前值：" + zm);
+            }
+        }
+
+        // 4. 重复测量相关校验
+        // 4.1 重复模式校验（枚举值：rmNone/rmCR）
+        String repeatMode = parameter.getRepeatMode();
+        if (isBlank(repeatMode)) {
+            return R.fail("重复模式不能为空");
+        }
+        if (!Arrays.asList("rmNone", "rmCR").contains(repeatMode)) {
+            return R.fail("重复模式不合法（可选值：rmNone-不重复、rmCR-单池重复），当前值：" + repeatMode);
+        }
+
+        // 4.2 单池重复（rmCR）时的关联校验
+        if ("rmCR".equals(repeatMode)) {
+            // 重复次数：2-10的整数
+            String repeatCountStr = parameter.getRepeatCount();
+            if (isBlank(repeatCountStr)) {
+                return R.fail("单池重复模式下，重复次数不能为空");
+            }
+            try {
+                int repeatCount = Integer.parseInt(repeatCountStr);
+                if (repeatCount < 2 || repeatCount > 10) {
+                    return R.fail("重复次数需在2-10范围内，当前值：" + repeatCount);
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("重复次数格式错误（需为整数），当前值：" + repeatCountStr);
+            }
+
+            // 时间间隔：0-60秒，保留1位小数
+            String timeIntervalStr = parameter.getTimeInterval();
+            if (isBlank(timeIntervalStr)) {
+                return R.fail("单池重复模式下，时间间隔不能为空");
+            }
+            try {
+                double timeInterval = Double.parseDouble(timeIntervalStr);
+                if (timeInterval < 0 || timeInterval > 60) {
+                    return R.fail("时间间隔需在0-60秒范围内，当前值：" + timeInterval);
+                }
+                if (timeIntervalStr.contains(".") && timeIntervalStr.split("\\.")[1].length() > 1) {
+                    return R.fail("时间间隔小数位数不能超过1位，当前值：" + timeIntervalStr);
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("时间间隔格式错误（需为数字），当前值：" + timeIntervalStr);
+            }
+        }
+
+        // 4.3 样品池方式校验（枚举值：0/1）
+        String samplePoolWay = parameter.getSamplePoolWay();
+        if (isBlank(samplePoolWay)) {
+            return R.fail("样品池方式不能为空");
+        }
+        if (!Arrays.asList("0", "1").contains(samplePoolWay)) {
+            return R.fail("样品池方式不合法（可选值：0-单池重复后移动、1-依次移动并重复），当前值：" + samplePoolWay);
+        }
+
+        // 5. 统计内容校验
+        List<String> statisticalContent = parameter.getStatisticalContent();
+        if (statisticalContent == null || statisticalContent.isEmpty()) {
+            return R.fail("统计内容不能为空");
+        }
+        Set<String> validStats = new HashSet<>(Arrays.asList("平均值", "SD", "RSD"));
+        for (String stat : statisticalContent) {
+            if (!validStats.contains(stat)) {
+                return R.fail("统计内容不合法（可选值：平均值、SD、RSD），当前值：" + stat);
+            }
+        }
+
+        // 6. 复杂结构参数校验
+        // 6.1 样品输入参数校验（最多10个）
+        List<FInputParam> sampleInputParams = parameter.getSampleInputParams();
+        if (sampleInputParams != null && !sampleInputParams.isEmpty()) {
+            if (sampleInputParams.size() > 10) {
+                return R.fail("样品输入参数最多支持10个，当前数量：" + sampleInputParams.size());
+            }
+            for (int i = 0; i < sampleInputParams.size(); i++) {
+                FInputParam inputParam = sampleInputParams.get(i);
+                if (inputParam == null || isBlank(inputParam.getParamName())) {
+                    return R.fail("第" + (i + 1) + "个样品输入参数标题不能为空");
+                }
+            }
+        }
+
+        // 6.2 待计算结果参数校验（最多5个）
+        List<FPreCountResultParam> resultParams = parameter.getResultParams();
+        if (resultParams != null && !resultParams.isEmpty()) {
+            if (resultParams.size() > 5) {
+                return R.fail("待计算结果参数最多支持5个，当前数量：" + resultParams.size());
+            }
+            for (int i = 0; i < resultParams.size(); i++) {
+                FPreCountResultParam resultParam = resultParams.get(i);
+                if (resultParam == null || isBlank(resultParam.getResultName()) || isBlank(resultParam.getFormulaText())) {
+                    return R.fail("第" + (i + 1) + "个待计算结果参数标题或公式不能为空");
+                }
+            }
+        }
+
+        // 6.3 修约设置校验（最多10个）
+        List<FRoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams != null && !approxParams.isEmpty() && approxParams.size() > 10) {
+            return R.fail("修约设置最多支持10个规则，当前数量：" + approxParams.size());
+        }
+
+        // 6.4 质控设置校验（最多10个，类型合法）
+        List<FQualityConfVO> qcParams = parameter.getQcParams();
+        if (qcParams != null && !qcParams.isEmpty()) {
+            if (qcParams.size() > 10) {
+                return R.fail("质控设置最多支持10个规则，当前数量：" + qcParams.size());
+            }
+            Set<String> validQcTypes = new HashSet<>(Arrays.asList("Abs", "Blank", "Parallel", "R", "Recovery", "Slope"));
+            for (FQualityConfVO qc : qcParams) {
+                if (qc == null || isBlank(qc.getControlType()) || !validQcTypes.contains(qc.getControlType())) {
+                    return R.fail("质控类型不合法（可选值：" + String.join("、", validQcTypes) + "）");
+                }
+            }
+        }
+
+        // 7. 继承参数校验（方法名称等长度限制）
+        if (parameter.getEquationTypeName() != null && parameter.getEquationTypeName().length() > 256) {
+            return R.fail("方法名称长度不能超过256字符");
+        }
+
+        return R.ok(true);
+    }
+
+
+    private boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
+
 
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewRationMethodParamCheckDTO methodDTO) {

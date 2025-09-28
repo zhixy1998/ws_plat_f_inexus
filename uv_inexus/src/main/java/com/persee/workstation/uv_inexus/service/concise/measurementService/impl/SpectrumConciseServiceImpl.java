@@ -135,6 +135,136 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Value("0")
     String noTested;
 
+    private R<Boolean> checkParam(FSpectrumParameter parameter) {
+        // 1. 根对象非空校验
+        if (parameter == null) {
+            return R.fail("光谱扫描参数对象不能为空");
+        }
+
+        // 2. 光度模式校验（枚举值：1-4）
+        String luminosity = parameter.getLuminosity();
+        if (isBlank(luminosity)) {
+            return R.fail("光度模式不能为空");
+        }
+        if (!Arrays.asList("1", "2", "3", "4").contains(luminosity)) {
+            return R.fail("光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity);
+        }
+
+        // 3. 开始波长校验（190-900，数字且格式正确）
+        String startWave = parameter.getStartWaveLength();
+        if (isBlank(startWave)) {
+            return R.fail("开始波长不能为空");
+        }
+        try {
+            double startVal = Double.parseDouble(startWave);
+            if (startVal < 190 || startVal > 900) {
+                return R.fail("开始波长需在190-900范围内，当前值：" + startVal);
+            }
+            // 校验小数点后位数（最多1位）
+            if (startWave.contains(".") && startWave.split("\\.")[1].length() > 1) {
+                return R.fail("开始波长小数点后最多保留1位，当前值：" + startWave);
+            }
+        } catch (NumberFormatException e) {
+            return R.fail("开始波长格式错误（需为数字），当前值：" + startWave);
+        }
+
+        // 4. 结束波长校验（190-900，数字且小于开始波长）
+        String endWave = parameter.getEndWaveLength();
+        if (isBlank(endWave)) {
+            return R.fail("结束波长不能为空");
+        }
+        try {
+            double endVal = Double.parseDouble(endWave);
+            if (endVal < 190 || endVal > 900) {
+                return R.fail("结束波长需在190-900范围内，当前值：" + endVal);
+            }
+            // 校验小数点后位数（最多1位）
+            if (endWave.contains(".") && endWave.split("\\.")[1].length() > 1) {
+                return R.fail("结束波长小数点后最多保留1位，当前值：" + endWave);
+            }
+            // 校验开始波长 > 结束波长
+            double startVal = Double.parseDouble(startWave);
+            if (startVal <= endVal) {
+                return R.fail("开始波长必须大于结束波长（开始：" + startVal + "，结束：" + endVal + "）");
+            }
+        } catch (NumberFormatException e) {
+            return R.fail("结束波长格式错误（需为数字），当前值：" + endWave);
+        }
+
+        // 5. 波长间隔校验（枚举值：0.025,0.05,0.1,0.2,0.5,1.0,2.0,5.0）
+        String waveInterval = parameter.getWaveLengthInterval();
+        if (isBlank(waveInterval)) {
+            return R.fail("波长间隔不能为空");
+        }
+        List<String> validIntervals = Arrays.asList("0.025", "0.05", "0.1", "0.2", "0.5", "1.0", "2.0", "5.0");
+        if (!validIntervals.contains(waveInterval)) {
+            return R.fail("波长间隔不合法（可选值：" + String.join("、", validIntervals) + "），当前值：" + waveInterval);
+        }
+
+        // 6. 重复模式校验（枚举值：0-不重复、1-单池重复）
+        String repeatPattern = parameter.getRepetitionPattern();
+        if (isBlank(repeatPattern)) {
+            return R.fail("重复模式不能为空");
+        }
+        if (!Arrays.asList("0", "1").contains(repeatPattern)) {
+            return R.fail("重复模式不合法（可选值：0-不重复、1-单池重复），当前值：" + repeatPattern);
+        }
+
+        // 7. 单池重复（1）时的关联校验
+        if ("1".equals(repeatPattern)) {
+            // 7.1 重复次数（2-10的整数）
+            String repeatTime = parameter.getRepetitionTime();
+            if (isBlank(repeatTime)) {
+                return R.fail("单池重复模式下，重复次数不能为空");
+            }
+            try {
+                int repeatCount = Integer.parseInt(repeatTime);
+                if (repeatCount < 2 || repeatCount > 10) {
+                    return R.fail("重复次数需在2-10范围内，当前值：" + repeatCount);
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("重复次数格式错误（需为整数），当前值：" + repeatTime);
+            }
+
+            // 7.2 时间间隔（0-60秒，保留1位小数）
+            String timeInterval = parameter.getTimeInterval();
+            if (isBlank(timeInterval)) {
+                return R.fail("单池重复模式下，时间间隔不能为空");
+            }
+            try {
+                double intervalVal = Double.parseDouble(timeInterval);
+                if (intervalVal < 0 || intervalVal > 60) {
+                    return R.fail("时间间隔需在0-60秒范围内，当前值：" + intervalVal);
+                }
+                // 校验小数点后位数（最多1位）
+                if (timeInterval.contains(".") && timeInterval.split("\\.")[1].length() > 1) {
+                    return R.fail("时间间隔小数点后最多保留1位，当前值：" + timeInterval);
+                }
+            } catch (NumberFormatException e) {
+                return R.fail("时间间隔格式错误（需为数字），当前值：" + timeInterval);
+            }
+        }
+
+        // 8. 扫描速度校验（枚举值：0-3）
+        String scanSpeed = parameter.getScanSpeed();
+        if (isBlank(scanSpeed)) {
+            return R.fail("扫描速度不能为空");
+        }
+        if (!Arrays.asList("0", "1", "2", "3").contains(scanSpeed)) {
+            return R.fail("扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：" + scanSpeed);
+        }
+
+
+
+        // 所有校验通过
+        return R.ok(true);
+    }
+
+    // 内部工具方法：判断字符串是否为空（适配JDK1.8）
+    private boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
     /**
      * 查询最近方法数据
      *
