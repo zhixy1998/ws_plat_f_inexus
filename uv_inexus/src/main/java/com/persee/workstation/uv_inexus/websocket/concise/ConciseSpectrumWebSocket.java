@@ -193,6 +193,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                             JSONObject payload = new JSONObject();
                             payload.put("result", "finish");
                             session.sendMessage(new TextMessage(payload.toJSONString()));
+                            session.close();
                         } else {
                             // 全部完成后再告诉前端 finish
                             JSONObject payload = new JSONObject();

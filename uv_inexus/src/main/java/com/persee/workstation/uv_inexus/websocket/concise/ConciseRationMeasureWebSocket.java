@@ -486,6 +486,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             jsonObject.put("result", "finish");
             status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            session.close();
 
 
         } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
@@ -696,14 +697,17 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             jsonObject.put("result", "finish");
             status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            session.close();
         } else {
             log.info("未知的样品种类");
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
             status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            session.close();
         }
         status = 0;
+        session.close();
 
 
     }
