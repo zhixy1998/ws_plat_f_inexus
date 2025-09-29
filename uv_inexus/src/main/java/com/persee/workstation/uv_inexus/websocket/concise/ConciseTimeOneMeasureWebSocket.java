@@ -66,6 +66,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Autowired
+    private FMeasureAnalysisImageService fMeasureAnalysisImageService;
+
+    @Autowired
     private FMeasureSampleService tMeasureSampleService;
 
     @Autowired
@@ -413,6 +416,20 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         if (!save1) {
             sendAndClose(session, "保存分析数据失败");
             return;
+        }
+
+        // 根据分析数据id查询分析数据图片数据
+        QueryWrapper<FMeasureAnalysisImage> wrapper = new QueryWrapper<>();
+        wrapper.eq("analysis_id", analysisData.getId());
+        wrapper.last("limit 1");
+        FMeasureAnalysisImage analysisImage =  fMeasureAnalysisImageService.getOne(wrapper);
+        if (analysisImage == null) {
+            analysisImage = new FMeasureAnalysisImage();
+            analysisImage.setAnalysisId(analysisData.getId());
+            boolean save2 = fMeasureAnalysisImageService.save(analysisImage);
+            if (!save2) {
+                sendAndClose(session, "新增分析数据图片数据失败");
+            }
         }
 
 // 更新样品的测试状态

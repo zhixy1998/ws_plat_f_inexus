@@ -1023,7 +1023,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             // 根据分析id查询分析图片数据
             QueryWrapper<FMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
-            attachmentWrapper.eq("id", analysisData.getId());
+            attachmentWrapper.eq("analysis_id", analysisData.getId());
             attachmentWrapper.last("limit 1");
             FMeasureAnalysisImage attachment =fMeasureAnalysisImageService.getOne(attachmentWrapper);
             if (attachment == null) {

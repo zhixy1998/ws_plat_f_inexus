@@ -58,8 +58,8 @@ public class DevMessageUtil {
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
-                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
-//                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
+//                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
                 String address = socket.getLocalAddress().getHostAddress();
                 Object[] split = address.split("\\.");
                 int length = param.length;
@@ -281,6 +281,29 @@ public class DevMessageUtil {
         }
         List<ChangeParam> changeParam = (List<ChangeParam>) parse;
         return R.ok(changeParam);
+    }
+
+    /**
+     * 光谱扫描:基线(实时推送版)
+     */
+    public void spectrumScanGetBaselineRealTime(Command command, String deviceIp) {
+        R<DatagramSocket> re = messageUtil.getSocket();
+        if (!re.getSuccess()) {
+            log.info("绑定socket失败");
+            return ;
+        }
+        DatagramSocket socket = re.getData();
+
+        Boolean b = changeXml();
+        if (!b) {
+            log.info("转换xml出错");
+            return;
+        }
+        String cmdId = command.getCmdId();
+        Transition transition = xml.get(cmdId);
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        Constants.startTime = LocalDateTime.now();
+        messageUtil.scanSendAndDealBaseline(socket, deviceIp, cmdId, bytes);
     }
 
     /**
@@ -546,6 +569,8 @@ public class DevMessageUtil {
         }
         String cmdId = command.getCmdId();
         Transition transition = xml.get(cmdId);
+        // 获取当前时间作为起始时间
+        Constants.startTime=LocalDateTime.now();
         // 发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
         List<byte[]> responses = messageUtil.singleSendAndReceive2(socket, deviceIp, cmdId, bytes);

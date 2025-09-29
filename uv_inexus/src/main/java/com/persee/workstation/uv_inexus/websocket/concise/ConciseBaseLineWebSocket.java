@@ -1,9 +1,11 @@
 package com.persee.workstation.uv_inexus.websocket.concise;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
@@ -30,10 +32,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -56,6 +55,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     private final Map<String, Future<?>> runningTasks = new ConcurrentHashMap<>();
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
+
+    // 存储任务线程
+    private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
 
 
 
@@ -90,8 +92,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         System.out.println("客户端进入: " + session.getId() + " 时间: " + LocalDateTime.now());
         sessions.put(session.getId(), session);
 
-        // 将耗时逻辑提交到线程池
-        Future<?> future = executor.submit(() -> {
+        // 往前端推送数据的线程
+        Thread taskThread = new Thread(() -> {
             try {
                 runBusinessLogic(session);
             } catch (InterruptedException e) {
@@ -103,6 +105,10 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 sendAndClose(session, "执行异常: " + e.getMessage());
             }
         });
+
+        taskThreads.put(session.getId(), taskThread);
+        taskThread.start();
+
     }
 
     /**
@@ -186,13 +192,43 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             return;
         }
 
+        List<ChangeParam> dataList = new ArrayList<>();
+
         checkInterrupted(session);
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
-        R<List<ChangeParam>> listR = devMessageUtil.spectrumScanGetBaseline(command, ip);
-        if (!listR.getSuccess()) {
-            sendAndClose(session, listR.getMessage());
-            return;
+        devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
+
+        int o =0;
+        while (true) {
+            if (Thread.currentThread().isInterrupted()) {
+                System.out.println("线程被中断，终止任务");
+                return;
+            }
+            List<String> snapshot = new ArrayList<>(Constants.instrumentData);
+            if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
+                // 只要测量数据不不为空则循环处理
+                while (!Constants.measurd_data.isEmpty()) {
+                    ChangeParam changeParam = Constants.measurd_data.get(0);
+                    JSONArray dataArray = new JSONArray();
+                    JSONObject point = new JSONObject();
+                    System.out.println("++++++++++++++++++++++正在推送第: "+o++);
+                    point.put("nm",changeParam.getWl());
+                    dataArray.add(point);
+                    JSONObject payload = new JSONObject();
+                    payload.put("data", dataArray);
+                    if (session.isOpen()) {
+                        try {
+                            session.sendMessage(new TextMessage(payload.toJSONString()));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    dataList.add(Constants.measurd_data.get(0));
+                    Constants.measurd_data.remove(0);
+                }
+                break;
+            }
         }
 
         checkInterrupted(session);
@@ -234,7 +270,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
 
         checkInterrupted(session);
-        task.setZeroParam(JSON.toJSONString(listR.getData()));
+        task.setZeroParam(JSON.toJSONString(dataList));
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
             sendAndClose(session, "保存失败");

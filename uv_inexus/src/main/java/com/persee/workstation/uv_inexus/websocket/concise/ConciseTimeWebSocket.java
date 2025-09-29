@@ -66,6 +66,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Autowired
+    private FMeasureAnalysisImageService tMeasureAnalysisImageService;
+
+    @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
@@ -433,6 +436,16 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "保存分析数据失败");
             return;
         }
+
+        ///  创建分析图片表的对象
+        FMeasureAnalysisImage image = new FMeasureAnalysisImage();
+        image.setAnalysisId(analysisData.getId());
+        boolean save2 = tMeasureAnalysisImageService.save(image);
+        if (!save2) {
+            sendAndClose(session, "保存分析图片数据失败");
+            return;
+        }
+
         List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         for (FTaskSpecimen taskSpecimen : specimen) {
             if (taskSpecimen.getSpecimenKey().equals(sampleId)) {

@@ -85,6 +85,45 @@ public class MessageUtil {
     }
 
     /**
+     * 光谱扫描基线调用
+     *
+     * @param scanSocket 获取socket
+     * @param sendIp     机器ip
+     * @param cmdId      指令
+     * @param sendBytes  发送报文
+     */
+    public void scanSendAndDealBaseline(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
+
+        try {
+            List<byte[]> responses = new ArrayList<>();
+            // 发送主命令
+            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
+                    InetAddress.getByName(sendIp), remotePort);
+            scanSocket.send(packet);
+
+            System.out.print("发送指令 [" + cmdId + "] 报文：");
+            for (byte b : sendBytes) System.out.printf("%02X ", b);
+            System.out.println();
+
+            // 是否为慢命令（用于接收等待时间判断）
+            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
+                    || cmdId.equalsIgnoreCase("Scan")
+                    || cmdId.equalsIgnoreCase("ScanFast")
+                    || cmdId.equalsIgnoreCase("BaseLineFast");
+            int timeoutMs = isSlowCommand ? 5000 : 4500;
+            scanSocket.setSoTimeout(timeoutMs);
+
+            long lastReceiveTime = System.currentTimeMillis();
+
+            new Thread(() -> {
+                scanReceiveAndDealBaseline(scanSocket);
+            }).start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * 非光谱扫描指令使用的发送
      *
      * @param currentSocket
@@ -443,6 +482,62 @@ public class MessageUtil {
                     changeParam.setWl(String.valueOf(wl / 50.0f));
                     System.out.println("s = " + s);
                 } else if (data[3] == 0x02 && changeParam != null) {
+                    int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
+                    int r = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                    changeParam.setD(String.valueOf(d));
+                    changeParam.setR(String.valueOf(r));
+                    System.out.println("d = " + d);
+                    System.out.println("r = " + r);
+                }
+
+                // 检查是否完整：如果有值 wl, s, d, r 都已经填充，认为对象已完成
+                if (changeParam != null && changeParam.getWl() != null && changeParam.getS() != null && changeParam.getD() != null && changeParam.getR() != null) {
+                    Constants.measurd_data.add(changeParam);  // 完成的对象添加到公共列表
+                    System.out.println("已完成一个完整的对象：" + changeParam);
+                    Constants.instrumentData.add(changeParam.toString());
+                    changeParam = null;  // 清空临时对象，准备接收下一个
+                }
+
+            } catch (Exception e) {
+                Constants.instrumentData.add(Constants.EndData);
+                Constants.endTime = LocalDateTime.now();
+                return;
+            }
+        }
+    }
+
+    /**
+     * 基线计算
+     *
+     * @param scanSocket
+     */
+    private void scanReceiveAndDealBaseline(DatagramSocket scanSocket) {
+        int i = 0;
+        ChangeParam changeParam = null;
+        while (Constants.isRunning) {
+            try {
+                DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                scanSocket.receive(receivePacket);
+
+                byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+
+                System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                System.out.print("十六进制回应：");
+                for (byte b : data) System.out.printf("%02X ", b);
+                System.out.println();
+                if (data.length >= 12 && (data[3] & 0xFF) != 0x07) {
+                    if (changeParam == null) {
+                        changeParam = new ChangeParam();
+                    }
+                }
+
+                if (data[3] == 0x05 && changeParam != null) {
+                    int wl = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
+                    int s = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                    changeParam.setS(String.valueOf(s));
+                    changeParam.setWl(String.valueOf(wl / 50.0f));
+                    System.out.println("s = " + s);
+                } else if (data[3] == 0x06 && changeParam != null) {
                     int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     int r = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                     changeParam.setD(String.valueOf(d));
