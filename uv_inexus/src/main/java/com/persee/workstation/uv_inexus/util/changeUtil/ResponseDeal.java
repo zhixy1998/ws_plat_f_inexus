@@ -52,7 +52,6 @@ public class ResponseDeal {
             case "CheckWLamp":
             case "CheckDLamp":
             case "CheckWl":
-            case "GetInitStatus":
             case "Dark":
             case "DisConnect":
             case "DisConnectIAP":
@@ -73,6 +72,10 @@ public class ResponseDeal {
             case "GetCellPos":
                 return parseCellPos(responses, sendBytes);
 
+            case "GetInitStatus":
+                return getInitStatus(responses);
+
+
 
 //            case "NewIP":
 //                return parseNewIP(responses);
@@ -92,6 +95,18 @@ public class ResponseDeal {
 
         byte[] last = responses.get(responses.size() - 1);
         boolean success = last.length >= 5 && (last[4] & 0xFF) == 0;
+        result = success ? "true" : "false"; // 根据结果更新 result
+        return success;
+    }
+
+    private static Boolean getInitStatus(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            result = "false"; // 设置全局变量
+            return false;
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        boolean success = last.length >= 5 && (last[4] & 0xFF) == 1;
         result = success ? "true" : "false"; // 根据结果更新 result
         return success;
     }

@@ -58,8 +58,8 @@ public class DevMessageUtil {
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
-//                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
-                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
+                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+//                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
                 String address = socket.getLocalAddress().getHostAddress();
                 Object[] split = address.split("\\.");
                 int length = param.length;
@@ -96,7 +96,7 @@ public class DevMessageUtil {
                 if (parse.toString().equals("true")) {
                     findDeviceVO.setIsInited(1);
                 } else {
-                    findDeviceVO.setIsInited(2);
+                    findDeviceVO.setIsInited(0);
                 }
             }
             if (cmdId.equals(FindDevEnum.GetAccessoryType.getComId())) {
@@ -135,6 +135,11 @@ public class DevMessageUtil {
         List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         String result = parse.toString();
+
+        if (cmdId.equals(DeviceInitCommandEnum.GetInitStatus.getComId())) {
+            return R.ok();
+        }
+
         if ("false".equals(result)) {
             return R.fail();
         }
