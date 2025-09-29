@@ -672,6 +672,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                         valueData.setColValue(ans==null? null : Double.valueOf(ans));
                         measureAbsDataList.add(valueData);
+                        sendPoint(session, String.valueOf(valueData.getColValue()), countValue, parameter);
                     }
                     saveDataInfo.setCountData(measureAbsDataList);
                     rationService.saveAnalyzeData(saveDataInfo);
