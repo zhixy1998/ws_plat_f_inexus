@@ -1247,6 +1247,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         vo.setMapRelation(snapshot.getMapRelation());
                     }
                 }
+                List<Map<String, Object>> dataList1 = vo.getDataList();
+                for (Map<String, Object> stringObjectMap : dataList1) {
+                    for (String key : stringObjectMap.keySet()) {
+                        Object value = stringObjectMap.get(key);
+                        if (value != null) {
+                            String strValue = value.toString();
+                            if (strValue.length() >= 6) {
+                                stringObjectMap.put(key, strValue.substring(0, 6));
+                            }
+                        }
+                    }
+                }
                 return Result.ok(vo);
             }
             case "定量测定":  {
@@ -1279,6 +1291,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 if (curveInfo.getCode() == 200) {
                     vo.setCurveInfo(curveInfo.getData());
                 }
+                List<Map<String, Object>> dataList1 = vo.getStandDataList();
+                for (Map<String, Object> stringObjectMap : dataList1) {
+                    for (String key : stringObjectMap.keySet()) {
+                        Object value = stringObjectMap.get(key);
+                        if (value != null) {
+                            String strValue = value.toString();
+                            if (strValue.length() >= 6) {
+                                stringObjectMap.put(key, strValue.substring(0, 6));
+                            }
+                        }
+                    }
+                }
                 return Result.ok(vo);
             }
             case "光谱扫描":
@@ -1299,6 +1323,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
                     if (snapshot != null && snapshot.getMapRelation() != null) {
                         vo.setMapRelation(snapshot.getMapRelation());
+                    }
+                }
+                List<Map<String, Object>> dataList1 = vo.getDataList();
+                for (Map<String, Object> stringObjectMap : dataList1) {
+                    for (String key : stringObjectMap.keySet()) {
+                        Object value = stringObjectMap.get(key);
+                        if (value != null) {
+                            String strValue = value.toString();
+                            if (strValue.length() >= 6) {
+                                stringObjectMap.put(key, strValue.substring(0, 6));
+                            }
+                        }
                     }
                 }
                 return Result.ok(vo);
@@ -1323,11 +1359,27 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         vo.setMapRelation(snapshot.getMapRelation());
                     }
                 }
+                List<Map<String, Object>> dataList1 = vo.getDataList();
+                for (Map<String, Object> stringObjectMap : dataList1) {
+                    for (String key : stringObjectMap.keySet()) {
+                        Object value = stringObjectMap.get(key);
+                        if (value != null) {
+                            String strValue = value.toString();
+                            if (strValue.length() >= 6) {
+                                stringObjectMap.put(key, strValue.substring(0, 6));
+                            }
+                        }
+                    }
+                }
+
                 return Result.ok(vo);
             }
             default:
                 return Result.fail("类型错误,请重新选择");
         }
     }
+
+
+
 
 }

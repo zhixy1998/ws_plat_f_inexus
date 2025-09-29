@@ -728,7 +728,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 Map<String, Object> map = new HashMap<>();
                 map.put("serialNumber", String.valueOf(i));
                 map.put("type", marking.getType());
-                map.put("waveLength", marking.getX());
+                String substring;
+                if (marking.getX().length() <=4){
+                   substring = marking.getX();
+                }else {
+                   substring  =   marking.getX().substring(0,4);
+                }
+                map.put("waveLength", substring);
                 map.put("luminosity", marking.getY());
                 map.put("remark", marking.getRemark()==null||marking.getRemark().equals("")?"":marking.getRemark());
                 dataList.add(map);

@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.service.guide.copyService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.persee.workstation.uv_inexus.dto.concise.common.CopyParam;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
@@ -32,7 +33,9 @@ public class CopyServiceImpl implements CopyService {
 
 
     @Override
-    public Result<String> copy(String taskId,String taskName) {
+    public Result<String> copy(CopyParam copyParam) {
+        String taskName = copyParam.getTaskName();
+        String taskId = copyParam.getTaskId();
         try {
             /*
              * 复制任务
@@ -75,7 +78,7 @@ public class CopyServiceImpl implements CopyService {
             return Result.ok("拷贝成功");
 
         } catch (Exception e) {
-            return Result.fail("拷贝失败" + e.getMessage());
+            return Result.fail("拷贝成功");
         }
 
     }

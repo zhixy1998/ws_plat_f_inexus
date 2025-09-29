@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController.
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
+import com.persee.workstation.uv_inexus.dto.concise.common.CopyParam;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
@@ -83,9 +84,7 @@ public class DataManagementController {
 
     @PostMapping("/copy")
     @ApiOperation("另存为")
-    public Result<String> copyProject(
-            @RequestParam("taskId") String taskId,
-    @RequestParam("taskName") String taskName) {
-        return  copyService.copy(taskId,taskName);
+    public Result<String> copyProject(@RequestBody CopyParam copyParam) {
+        return  copyService.copy(copyParam);
     }
 }

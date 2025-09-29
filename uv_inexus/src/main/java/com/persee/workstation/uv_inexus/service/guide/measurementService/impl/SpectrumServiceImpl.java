@@ -1017,6 +1017,11 @@ public class SpectrumServiceImpl implements SpectrumService {
                     listVos.add(vo);
                 }
             }
+            for (SampleListVo listVo : listVos) {
+                if( listVo.getAnalysisNumber() == null){
+                    return Result.fail("样品编号不能位空");
+                }
+            }
         }
         return Result.ok(listVos);
     }

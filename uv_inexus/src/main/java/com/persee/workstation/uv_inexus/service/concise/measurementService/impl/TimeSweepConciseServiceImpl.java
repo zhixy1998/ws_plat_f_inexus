@@ -889,6 +889,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             }
 
             if (StringUtils.hasText(newSample.getId())) {
+                if (newSample.getSampleNumber() == null) {
+                    return Result.fail("样品编号不能位空");
+                }
                 fMeasureSampleService.updateById(newSample);
             } else {
                 FTaskSpecimen specimen = new FTaskSpecimen();
@@ -3084,7 +3087,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         String[] split = upload.getImage().split(",");
         String s = split[1];
-        String fileType = null;
+        String fileType ;
         if (split[0].startsWith("data:image/png")) {
             fileType = "png";
         } else if (split[0].startsWith("data:image/jpeg")) {
@@ -3094,12 +3097,28 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } else {
             fileType = "unknown"; // 兜底
         }
-        byte[] bytes = Base64.decodeBase64(s);
-        if (upload.getImageType().equals("0")){
-            QueryWrapper<FMeasureAnalysisImage> analysisId = new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", upload.getId());
-            analysisId.last("limit 1");
-           FMeasureAnalysisImage byId = fMeasureAnalysisImageService.getOne(analysisId);
-            if (byId == null){
+        byte[] bytes;
+        try {
+            // 用 Apache 的 decodeBase64 方法解码
+            bytes = Base64.decodeBase64(s);
+        } catch (Exception e) {
+            // 解码失败时的处理（比如打印错误信息）
+            System.out.println("Base64 解码失败：" + e.getMessage());
+            return Result.fail("图片解码失败"); // 根据你的业务返回错误
+        }
+        if(upload.getImageType() == null){
+            return Result.fail();
+        }
+
+        if (upload.getImageType().equals("0")) {
+            LambdaQueryWrapper<FMeasureAnalysisImage> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+            lambdaQueryWrapper.eq(FMeasureAnalysisImage::getAnalysisId,upload.getId());
+            FMeasureAnalysisImage byId = fMeasureAnalysisImageService.getOne(lambdaQueryWrapper);
+//            QueryWrapper<FMeasureAnalysisImage> analysisId = new QueryWrapper<FMeasureAnalysisImage>().eq("analysis_id", upload.getId());
+//            analysisId.last("limit 1");
+//
+//            FMeasureAnalysisImage byId = fMeasureAnalysisImageService.getOne(analysisId);
+            if (byId == null) {
                 return Result.fail("图片不存在");
             }
             byId.setImageType(fileType);
@@ -3109,6 +3128,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             byId.setCreateTime(LocalDateTime.now());
             boolean update = fMeasureAnalysisImageService.updateById(byId);
             return Result.ok(update);
+
         }else{
             // 根据任务id查询任务附属表的内容
             FMeasureTaskAttachment byId = fMeasureTaskAttachmentService.getOne(Wrappers.lambdaQuery(FMeasureTaskAttachment.class).eq(FMeasureTaskAttachment::getTaskId, upload.getId()).last("limit 1"));
