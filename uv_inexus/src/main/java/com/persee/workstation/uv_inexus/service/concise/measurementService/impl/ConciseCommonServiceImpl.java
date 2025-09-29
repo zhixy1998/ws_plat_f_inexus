@@ -41,6 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -1020,7 +1021,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             // 根据分析id查询分析图片数据
             QueryWrapper<FMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
-            attachmentWrapper.eq("analysis_id", analysisData.getId());
+            attachmentWrapper.eq("id", analysisData.getId());
             attachmentWrapper.last("limit 1");
             FMeasureAnalysisImage attachment =fMeasureAnalysisImageService.getOne(attachmentWrapper);
             if (attachment == null) {
@@ -1213,6 +1214,26 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
         }
     }
+    public static Object convertSciToDecimal(Object obj) {
+        if (obj == null) { // 额外处理null，避免空指针
+            return null;
+        }
+        String str = String.valueOf(obj);
+        // 核心逻辑：只要含e或E，就尝试转小数
+        if (str.toLowerCase().contains("e")) {
+            try {
+                // 尝试转成Double再格式化，成功则返回小数格式
+                DecimalFormat df = new DecimalFormat("0.##########");
+                return df.format(Double.parseDouble(str));
+            } catch (NumberFormatException e) {
+                // 转失败（如哈希串），直接返回原字符串
+                return str;
+            }
+        } else {
+            // 不含e/E，直接返回原字符串（封装为Object）
+            return str;
+        }}
+
 
     @Override
     public Result newReportTableDataQuery(String taskId, String sampleId) {
@@ -1250,12 +1271,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 List<Map<String, Object>> dataList1 = vo.getDataList();
                 for (Map<String, Object> stringObjectMap : dataList1) {
                     for (String key : stringObjectMap.keySet()) {
+                        if(key.equals("Abs")){
                         Object value = stringObjectMap.get(key);
                         if (value != null) {
-                            String strValue = value.toString();
+                            Object o = convertSciToDecimal(value);
+                            String strValue = o.toString();
                             if (strValue.length() >= 6) {
                                 stringObjectMap.put(key, strValue.substring(0, 6));
                             }
+                        }
                         }
                     }
                 }
@@ -1294,11 +1318,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 List<Map<String, Object>> dataList1 = vo.getStandDataList();
                 for (Map<String, Object> stringObjectMap : dataList1) {
                     for (String key : stringObjectMap.keySet()) {
-                        Object value = stringObjectMap.get(key);
-                        if (value != null) {
-                            String strValue = value.toString();
-                            if (strValue.length() >= 6) {
-                                stringObjectMap.put(key, strValue.substring(0, 6));
+                        if(key.equals("Abs")){
+                            Object value = stringObjectMap.get(key);
+                            if (value != null) {
+                                Object o = convertSciToDecimal(value);
+                                String strValue = o.toString();
+                                if (strValue.length() >= 6) {
+                                    stringObjectMap.put(key, strValue.substring(0, 6));
+                                }
                             }
                         }
                     }
@@ -1328,11 +1355,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 List<Map<String, Object>> dataList1 = vo.getDataList();
                 for (Map<String, Object> stringObjectMap : dataList1) {
                     for (String key : stringObjectMap.keySet()) {
-                        Object value = stringObjectMap.get(key);
-                        if (value != null) {
-                            String strValue = value.toString();
-                            if (strValue.length() >= 6) {
-                                stringObjectMap.put(key, strValue.substring(0, 6));
+                        if(key.equals("Abs")){
+                            Object value = stringObjectMap.get(key);
+                            if (value != null) {
+                                Object o = convertSciToDecimal(value);
+                                String strValue = o.toString();
+                                if (strValue.length() >= 6) {
+                                    stringObjectMap.put(key, strValue.substring(0, 6));
+                                }
                             }
                         }
                     }
@@ -1362,11 +1392,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 List<Map<String, Object>> dataList1 = vo.getDataList();
                 for (Map<String, Object> stringObjectMap : dataList1) {
                     for (String key : stringObjectMap.keySet()) {
-                        Object value = stringObjectMap.get(key);
-                        if (value != null) {
-                            String strValue = value.toString();
-                            if (strValue.length() >= 6) {
-                                stringObjectMap.put(key, strValue.substring(0, 6));
+                        if(key.equals("Abs")){
+                            Object value = stringObjectMap.get(key);
+                            if (value != null) {
+                                Object o = convertSciToDecimal(value);
+                                String strValue = o.toString();
+                                if (strValue.length() >= 6) {
+                                    stringObjectMap.put(key, strValue.substring(0, 6));
+                                }
                             }
                         }
                     }

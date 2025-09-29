@@ -800,6 +800,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 Result<RationSampleDataVO> data = rationService.querySampleData(queryDataDTO);
                 if (data.getCode() == 200) {
                     RationSampleDataVO sampleDataVO = data.getData();
+                    System.out.println(sampleDataVO);
                     vo.setStandDataList(sampleDataVO.getStandSampleData());
                     vo.setUnknowDataList(sampleDataVO.getUnknowSampleData());
                 }
