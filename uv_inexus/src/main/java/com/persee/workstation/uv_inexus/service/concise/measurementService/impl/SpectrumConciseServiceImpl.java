@@ -660,7 +660,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 // 根据测量id任务id以及is_save字段为1的条件去分析数据表中查询数据
                 QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
                 wrapper1.eq("task_id", taskId);
-                wrapper1.eq("measure_id", measureData.getId());
+                wrapper1.eq("measure_data_id", measureData.getId());
                 wrapper1.eq("is_save","1");
                 List<FMeasureAnalysisData> measureAnalysisList = fMeasureAnalysisDataService.list(wrapper1);
                 boolean remove = false;
