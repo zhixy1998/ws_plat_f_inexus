@@ -694,13 +694,16 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
+            status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         } else {
             log.info("未知的样品种类");
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
+            status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
+        status = 0;
 
 
     }
@@ -1314,13 +1317,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
+            status = 0;
             JSONObject object = new JSONObject();
             object.put("error", msg);
             session.sendMessage(new TextMessage(object.toJSONString()));
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            status = 0;
             session.close();
         } catch (IOException ignored) {}
     }
