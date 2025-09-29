@@ -90,6 +90,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
     @Value("0")
     private String error;
 
+    @Value("0")
+    private String noSave;
+
 
     /**
      * 前端连接成功 WebSocket 时触发
@@ -297,12 +300,10 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 measureCount ++;
 
                 R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
-                if (!formulaCount.getSuccess()) {
-                    sendAndClose(session, "公式计算失败");
-                    return;
+                if (formulaCount.getSuccess()) {
+                    data = formulaCount.getData();
+                    photometricService.saveCountData(data, dataId);
                 }
-                data = formulaCount.getData();
-                photometricService.saveCountData(data, dataId);
             }
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
@@ -331,6 +332,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             newData.setRemark(data.getRemark());
 
             newData.setSerialNumber(data.getSerialNumber() + 1);
+            newData.setIsSave(noSave);
             tMeasureDataService.save(newData);
         }
 
@@ -348,6 +350,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 newAnalysisData.setTaskId(taskId);
                 newAnalysisData.setDataVersion(analysisData.getDataVersion() + 1);
                 newAnalysisData.setIsDelete(error);
+                newAnalysisData.setIsSave(noSave);
                 tMeasureAnalysisDataService.save(newAnalysisData);
             }
 

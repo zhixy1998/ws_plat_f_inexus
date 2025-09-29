@@ -662,14 +662,20 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_id", measureData.getId());
                 wrapper1.eq("is_save","1");
-                FMeasureAnalysisData measureAnalysis = fMeasureAnalysisDataService.getOne(wrapper1);
-                for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
-                    if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
-                        fTaskSpeciman.setDeleteType("0");
+                List<FMeasureAnalysisData> measureAnalysisList = fMeasureAnalysisDataService.list(wrapper1);
+                boolean remove = false;
+                if (measureAnalysisList!=null) {
+                    for (FMeasureAnalysisData measureAnalysis : measureAnalysisList) {
+                        for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
+                            if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
+                                fTaskSpeciman.setDeleteType("0");
+                            }
+                        }
+                        // 删除当前分析数据
+                        remove = fMeasureAnalysisDataService.removeById(measureAnalysis.getId());
                     }
                 }
-                // 删除当前分析数据
-                boolean remove = fMeasureAnalysisDataService.removeById(measureAnalysis.getId());
+
                 // 删除当前测量数据
                 boolean remove1 = fMeasureDataService.removeById(measureData.getId());
                 if (!remove&&!remove1) {
@@ -1817,7 +1823,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         // 增益
         Command com8 = new Command();
         com8.setCmdId(SetParamEnum.SetGain.getComId());
-        com8.setParams(new Object[]{scanParamInfo.getGain()});
+        com8.setParams(new Object[]{scanParamInfo.getGain() + 2});
         commands.add(com8);
         R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
         return Result.ok(stringR.getData());
@@ -1918,6 +1924,9 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                             .eq("is_delete", "0")
                             .eq("analysis_number", 1));
                     FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                    if (one == null) {
+                        one = new FMeasureAnalysisData();
+                    }
                     if (one.getAnalysisResult()!=null){
                         Map<String, String> map = new HashMap<>();
                         map.put("measureId", one.getId());
@@ -3066,7 +3075,6 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             return Result.ok(update);
         }
     }
-
 
 
     // 保留原有的downloadWord方法，并适配新参数

@@ -92,6 +92,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
     @Value("0")
     String error;
 
+    @Value("0")
+    String noSave;
+
     private static volatile int status = 0;
 
     private static volatile int digit = 4;
@@ -422,6 +425,30 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             //所有样品测完，拟合曲线
             //拟合曲线
+            int minPointNum = Integer.MIN_VALUE;
+
+            switch(parameter.getCurveType()){
+                case "1":
+                    minPointNum = 2;
+                    break;
+
+                case "2":
+                    minPointNum = 3;
+                    break;
+
+                case "3":
+                    minPointNum = 4;
+                    break;
+
+                case "4":
+                    minPointNum = 5;
+                    break;
+            }
+            if (fitCurveData.size() < minPointNum) {
+                sendAndClose(session, "样品数不足，无法进行曲线拟合");
+                return;
+            }
+
             R<FittingReceiveInfo> infoR = rationService.fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
 
             if (!infoR.getSuccess()) {

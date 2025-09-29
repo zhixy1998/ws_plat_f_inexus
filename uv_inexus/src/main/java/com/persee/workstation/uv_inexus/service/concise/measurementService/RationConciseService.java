@@ -4,6 +4,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
@@ -36,7 +37,7 @@ public interface RationConciseService {
     /**
      * 新建草稿
      */
-    Result<FMeasurementCurrentInfoVO> newDraft(String methodId, String updateBy);
+    Result<FMeasurementCurrentInfoVO> newDraft(SaveDataDto dto);
 
     /**
      * 检查方法参数
