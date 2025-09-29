@@ -1,6 +1,7 @@
 package com.persee.workstation.uv_inexus.websocket;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -33,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 /**
  * WebSocket处理器类，继承自TextWebSocketHandler
@@ -58,16 +60,23 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
     private TMeasureMethodService tMeasureMethodService;
 
     @Autowired
+    private TMeasureSampleService  tMeasureSampleService;
+
+    @Autowired
     private DeviceInfoService deviceInfoService;
 
     @Autowired
     private TMeasureDataService tMeasureDataService;
 
     @Autowired
+    private TMeasureAnalysisImageService tMeasureAnalysisImageService;
+
+    @Autowired
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Autowired
-    private TMeasureSampleService tMeasureSampleService;
+    private TMeasureTaskAttachmentService tMeasureTaskAttachmentService;
+
 
     @Autowired
     private DevMessageUtil devMessageUtil;
@@ -158,6 +167,17 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
             sendAndClose(session, "您的样品已测完,请重新添加样品");
         }
 
+        List<String> sampleIds = newSampleData.stream().map(obj -> obj.getSpecimenKey()).collect(Collectors.toCollection(ArrayList::new));
+        QueryWrapper<TMeasureSample> eq = new QueryWrapper<>();
+        eq.in("id", sampleIds);
+        List<TMeasureSample> list = tMeasureSampleService.list(eq);
+        String maxLocation = list.stream().map(TMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
+
+
+        if (maxLocation == null) {
+            sendAndClose(session, "样品位置出错");
+        }
+
         // 根据多联池模式进行校验
         if (param.getMultiPoolMode().equals("0")){
             // 单池重复连续采样
@@ -177,6 +197,8 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
                     if (counter[0] >= totalTime || !session.isOpen()) {
                         scheduler.shutdown();
                         latch.countDown(); // 通知主线程：这个 specimen 完成了
+                        Constants.endTime = LocalDateTime.now();
+                        saveData(session,originalData,x_data,y_data,specimen.getSpecimenKey(),task,deviceSerialNumber); // 保存数据
                         return;
                     }
 
@@ -197,7 +219,7 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
                     originalData.add(changeParam);
 
                     try {
-                        calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session);
+                        calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session,specimen.getSpecimenKey());
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -208,6 +230,11 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
                     latch.await(); // ⬅️ 等待当前 specimen 的定时器跑完
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
+                }
+
+                TMeasureSample byId = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (byId.getSampleLocation().equals(maxLocation)) {
+                    break;
                 }
             }
 
@@ -220,90 +247,10 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
             sendAndClose(session, "多联池模式参数错误");
             return;
         }
-
-
-//        // 每隔 1 秒执行一次任务
-//        scheduler.scheduleAtFixedRate(() -> {
-//            try {
-//                if (counter[0] >= totalTime || !session.isOpen()) {
-//                    scheduler.shutdown(); // 停止任务
-//                    Constants.endTime = LocalDateTime.now();
-//                    saveData(session,originalData,x_data,y_data,sampleId,task,deviceSerialNumber); // 保存数据
-//                    return;
-//                }
-//
-//                // 计算当前执行的时间差（x 值）
-//                long currentTime = System.currentTimeMillis();
-//                double elapsedTime = (currentTime - startTime) / 1000.0;  // 毫秒转为秒
-//                System.out.println("Elapsed time: " + elapsedTime + " seconds");
-//                System.err.println("-------------------------------"+System.currentTimeMillis());
-//                // 更新 x 值
-//                BigDecimal xValue  = BigDecimal.valueOf(Math.floor(elapsedTime));
-//
-//                // 开始扫描
-//                String ip = deviceInfoService.getIp(deviceSerialNumber);
-//                Command command = new Command(SetParamEnum.Measure.getComId(),new Object[]{});
-//                ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
-//                System.err.println("+++++++++++++++++++++++++++++++"+System.currentTimeMillis());
-//                if (changeParam == null) {
-//                    scheduler.shutdown();
-//                    sendAndClose(session,"扫描失败");
-//                }
-//                originalData.add(changeParam);
-//                // 计算当前 y 值
-//                if (param.getLuminosity().equals("1")){
-//                    String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-//                    String y = DataCountUtil.changeTPercentOrAbs2(null, s);
-//                    x_data.add(xValue);
-//                    y_data.add(new BigDecimal(y));
-//                    JSONObject point = new JSONObject();
-//                    point.put("x", xValue);
-//                    point.put("y", y);
-//                    System.out.println("____"+y);
-//                    session.sendMessage(new TextMessage(point.toJSONString()));
-//                    System.err.println("==============================="+System.currentTimeMillis());
-//                }else if (param.getLuminosity().equals("2")){
-//                    String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-//                    String y = DataCountUtil.changeTPercentOrAbs2(s,null);
-//                    x_data.add(xValue);
-//                    y_data.add(new BigDecimal(y));
-//                    JSONObject point = new JSONObject();
-//                    point.put("x", xValue);
-//                    point.put("y", y);
-//                    System.out.println("-------------------------------"+y);
-//                    session.sendMessage(new TextMessage(point.toJSONString()));
-//                    System.err.println("==============================="+System.currentTimeMillis());
-//                }else if (param.getLuminosity().equals("3")){
-//                    Double sData = Double.valueOf(changeParam.getS());
-//                    String y = String.valueOf((sData / (4095 * 32)) * 100);
-//                    x_data.add(xValue);
-//                    y_data.add(new BigDecimal(y));
-//                    JSONObject point = new JSONObject();
-//                    point.put("x", xValue);
-//                    point.put("y", y);
-//                    System.out.println("-------------------------------"+y);
-//                    session.sendMessage(new TextMessage(point.toJSONString()));
-//                    System.err.println("==============================="+System.currentTimeMillis());
-//                }else if (param.getLuminosity().equals("4")){
-//                    Double rData = Double.valueOf(changeParam.getR());
-//                    String y = String.valueOf((rData / (4095 * 32)) * 100);
-//                    x_data.add(xValue);
-//                    y_data.add(new BigDecimal(y));
-//                    JSONObject point = new JSONObject();
-//                    point.put("x", xValue);
-//                    point.put("y", y);
-//                    System.out.println("-------------------------------"+y);
-//                    session.sendMessage(new TextMessage(point.toJSONString()));
-//                    System.err.println("==============================="+System.currentTimeMillis());
-//                }else{
-//                    session.close();
-//                    sendAndClose(session,"光度模式错误");
-//                }
-//                counter[0]++;
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }, 0, interval, TimeUnit.SECONDS); // 每隔 1 秒执行一次,参数分别是 延迟时间、执行间隔、执行间隔单位
+        JSONObject payload = new JSONObject();
+        payload.put("result", "finish");
+        // 将公共的变量中的数据清除
+        sendAndClose(session, String.valueOf(payload));
     }
 
 
@@ -314,44 +261,65 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
             BigDecimal xValue,
             List<BigDecimal> x_data,
             List<BigDecimal> y_data,
-            WebSocketSession session) throws IOException {
+            WebSocketSession session,
+            String sampleId) throws IOException {
 
         if (param.getLuminosity().equals("1")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
             String y = DataCountUtil.changeTPercentOrAbs2(null, s);
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
+            JSONObject payload = new JSONObject();
+            JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
             point.put("x", xValue);
             point.put("y", y);
-            session.sendMessage(new TextMessage(point.toJSONString()));
+            points.add(point);
+            payload.put("data", points);
+            payload.put("sampleId", sampleId);
+            session.sendMessage(new TextMessage(payload.toJSONString()));
         } else if (param.getLuminosity().equals("2")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
             String y = DataCountUtil.changeTPercentOrAbs2(s, null);
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
+            JSONObject payload = new JSONObject();
+            JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
             point.put("x", xValue);
             point.put("y", y);
-            session.sendMessage(new TextMessage(point.toJSONString()));
+            points.add(point);
+            payload.put("data", points);
+            payload.put("sampleId", sampleId);
+            session.sendMessage(new TextMessage(payload.toJSONString()));
         } else if (param.getLuminosity().equals("3")) {
             Double sData = Double.valueOf(changeParam.getS());
             String y = String.valueOf((sData / (4095 * 32)) * 100);
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
+            JSONObject payload = new JSONObject();
+            JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
             point.put("x", xValue);
             point.put("y", y);
-            session.sendMessage(new TextMessage(point.toJSONString()));
+            points.add(point);
+            payload.put("data", points);
+            payload.put("sampleId", sampleId);
+            session.sendMessage(new TextMessage(payload.toJSONString()));
         } else if (param.getLuminosity().equals("4")) {
             Double rData = Double.valueOf(changeParam.getR());
             String y = String.valueOf((rData / (4095 * 32)) * 100);
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
+            JSONObject payload = new JSONObject();
+            JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
             point.put("x", xValue);
             point.put("y", y);
-            session.sendMessage(new TextMessage(point.toJSONString()));
+            points.add(point);
+            payload.put("data", points);
+            payload.put("sampleId", sampleId);
+            session.sendMessage(new TextMessage(payload.toJSONString()));
         } else {
             sendAndClose(session, "光度模式错误");
             session.close();
@@ -461,6 +429,13 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
             sendAndClose(session, "保存分析数据失败");
             return;
         }
+        TMeasureAnalysisImage tMeasureAnalysisImage = new TMeasureAnalysisImage();
+        tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
+        tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
+        // 创建任务附属表
+        TMeasureTaskAttachment tMeasureTaskAttachment = new TMeasureTaskAttachment();
+        tMeasureTaskAttachment.setTaskId(task.getId());
+        tMeasureTaskAttachmentService.save(tMeasureTaskAttachment);
         List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen taskSpecimen : specimen) {
             if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
@@ -476,10 +451,8 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
             return;
         }
         System.err.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-        JSONObject payload = new JSONObject();
-        payload.put("result", "finish");
-        // 将公共的变量中的数据清除
-        sendAndClose(session, String.valueOf(payload));
+        exceptionHandling();
+
     }
 
 
@@ -582,8 +555,9 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
             exceptionHandling();
             sessions.remove(session.getId());
             session.close();
-        } catch (IOException ignored) {
-            sessions.remove(session.getId());
+        } catch (IOException e) {
+            Thread.currentThread().interrupt();
+            return;
         }
     }
 

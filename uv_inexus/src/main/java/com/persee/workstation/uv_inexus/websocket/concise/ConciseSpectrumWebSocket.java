@@ -7,6 +7,7 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
@@ -34,6 +35,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
@@ -59,6 +61,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     private FMeasureMethodService tMeasureMethodService;
     @Autowired
     private SystemAlgorithmConfService systemAlgorithmConfService;
+    @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
     @Autowired
     private DeviceInfoService deviceInfoService;
     @Autowired
@@ -129,6 +133,28 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "您的样品已测完,请重新添加样品");
         }
 
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            sendAndClose(session, "没有找到对应的附件配置信息");
+        }
+
+        String maxLocation= null;
+        if (configPO.getIsAutoChangePool()) {
+            List<String> sampleIds = newSampleData.stream().map(obj -> obj.getSpecimenKey()).collect(Collectors.toCollection(ArrayList::new));
+            QueryWrapper<FMeasureSample> eq = new QueryWrapper<>();
+            eq.in("id", sampleIds);
+            List<FMeasureSample> list = tMeasureSampleService.list(eq);
+            maxLocation = list.stream().map(FMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
+            if (maxLocation == null|| maxLocation.isEmpty()) {
+                sendAndClose(session, "样品位置出错");
+            }
+        }else{
+            maxLocation = "";
+        }
+
         Integer repetitionTime = Integer.valueOf(spectrumParameter.getRepetitionTime());
         Integer timeInterval = Integer.valueOf(spectrumParameter.getTimeInterval());
         boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
@@ -139,6 +165,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         command.setCmdId(SetParamEnum.Scan.getComId());
         command.setParams(new Object[]{});
         // 往前端推送数据的线程
+        String finalMaxLocation = maxLocation;
         Thread taskThread = new Thread(() -> {
 
             try {
@@ -147,11 +174,22 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     // 不重复
                     for (int i = 0; i < newSampleData.size(); i++) {
                         // 预留: 设置样品池位置
-
+                        FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
+                        if (configPO.getIsAutoChangePool()){
+                            // 根据样品的key查询样品
+                            if (sample == null){
+                                sendAndClose(session, "样品不存在");
+                            }
+                            R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+                            if (!stringR.getSuccess()) {
+                                sendAndClose(session, "设置样品池出错");
+                                return;
+                            }
+                        }
 
                         doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, 1);
                         newSampleData.get(i).setIsTested("1");
-                        if ((i + 1) != newSampleData.size()) {
+                        if ((i + 1) != newSampleData.size()||!sample.getSampleLocation().equals(finalMaxLocation)||configPO.getIsAutoChangePool().equals(true)) {
                             JSONObject payload = new JSONObject();
                             payload.put("result", "finish");
                             session.sendMessage(new TextMessage(payload.toJSONString()));
@@ -166,7 +204,16 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     // 单池重复
                     for (int i = 0; i < newSampleData.size(); i++) {
                         // 预留: 设置样品池位置
-
+                        // 根据样品的key查询样品
+                        FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
+                        if (sample == null){
+                            sendAndClose(session, "样品不存在");
+                        }
+                        R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+                        if (!stringR.getSuccess()) {
+                            sendAndClose(session, "设置样品池出错");
+                            return;
+                        }
 
                         for (int r = 0; r < repetitionTime; r++) {
                             // 根据样品id,任务id和遍历的r+1查询分析数据
@@ -184,6 +231,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                             }
                             doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, r + 1);
 
+                        }
+                        if (sample.getSampleLocation().equals(finalMaxLocation)){
+                            break;
                         }
                     }
                     // 全部完成后再告诉前端 finish

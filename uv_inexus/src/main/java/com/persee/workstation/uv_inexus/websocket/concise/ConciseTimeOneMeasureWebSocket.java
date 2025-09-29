@@ -7,6 +7,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
@@ -68,6 +69,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     private FMeasureSampleService tMeasureSampleService;
 
     @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
     private DevMessageUtil devMessageUtil;
 
     @Autowired
@@ -116,6 +120,34 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
         FTimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+
+
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            sendAndClose(session, "没有找到对应的附件配置信息");
+        }
+
+        if (configPO.getIsAutoChangePool()) {
+            ///  设置样品池位置poolNum
+            // 根据样品id找到样品数据
+            FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+            if (sample == null){
+                sendAndClose(session, "请先创建样品");
+                return;
+            }
+
+            R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+            if (!stringR.getSuccess()) {
+                sendAndClose(session, "设置出错");
+                return;
+            }
+        }
+
 
         Thread taskThread = new Thread(() -> {
             startTimedTask(session, timeSweepParameter, deviceSerialNumber, sampleId, task); // 启动推送任务

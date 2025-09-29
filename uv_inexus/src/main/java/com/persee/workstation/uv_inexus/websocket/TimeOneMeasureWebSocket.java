@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
@@ -18,6 +19,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -39,6 +41,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@Slf4j
 public class TimeOneMeasureWebSocket extends TextWebSocketHandler {
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
@@ -119,6 +122,23 @@ public class TimeOneMeasureWebSocket extends TextWebSocketHandler {
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         // 将方法参数提取出来
         TimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+
+        ///  设置样品池位置poolNum
+        // 根据样品id找到样品数据
+        TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+        if (sample == null){
+            sendAndClose(session, "请先创建样品");
+            return;
+        }
+
+        R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+        if (!stringR.getSuccess()) {
+            log.info("设置出错");
+            sendAndClose(session, "设置出错");
+            return;
+        }
 
         Thread taskThread = new Thread(() -> {
             startTimedTask(session, timeSweepParameter, deviceSerialNumber, sampleId, task); // 启动推送任务

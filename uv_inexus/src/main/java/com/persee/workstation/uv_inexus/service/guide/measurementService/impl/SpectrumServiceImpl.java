@@ -36,6 +36,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.DoIt.TestUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.DoJS.CommandRequestDTO;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
@@ -1840,21 +1841,40 @@ public class SpectrumServiceImpl implements SpectrumService {
         }
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        for (TaskSpecimen specimen : taskSpecimen) {
-            if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
-                specimen.setDeleteType(deleteType);
-                LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                        .eq(TMeasureData::getTaskId, task.getId())
-                        .orderByDesc(TMeasureData::getSerialNumber);
-                List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
-                if (list != null && !list.isEmpty()) {
-                    TMeasureData one = list.get(0);
-                    one.setIsDelete(deleteType);
-                    tMeasureDataService.updateById(one);
+        /// 校验是否有重复的样品编号
+        // 取出所有样品编号
+        List<String> sampleNos = dto.getNewSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+                .filter(Objects::nonNull)    // 过滤掉空值
+                .collect(Collectors.toList());
+        // 查重：找到重复的样品编号
+        Set<String> duplicates = sampleNos.stream()
+                .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!duplicates.isEmpty()) {
+            return Result.fail("样品编号重复");
+        }
+        if(taskSpecimen == null){
+            taskSpecimen = new ArrayList<>();
+        }
+        if (taskSpecimen != null){
+            for (TaskSpecimen specimen : taskSpecimen) {
+                if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+                    specimen.setDeleteType(deleteType);
+                    LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                            .eq(TMeasureData::getTaskId, task.getId())
+                            .orderByDesc(TMeasureData::getSerialNumber);
+                    List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+                    if (list != null && !list.isEmpty()) {
+                        TMeasureData one = list.get(0);
+                        one.setIsDelete(deleteType);
+                        tMeasureDataService.updateById(one);
+                    }
                 }
             }
-        }
+         }
 
         TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
 

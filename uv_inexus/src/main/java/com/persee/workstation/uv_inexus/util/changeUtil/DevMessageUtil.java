@@ -142,6 +142,12 @@ public class DevMessageUtil {
         return R.ok();
     }
 
+    /**
+     * 设置当前样品池位置
+     * @param poolNum
+     * @param deviceIp
+     * @return
+     */
     public R<String> setCurrentCellPos(Integer poolNum, String deviceIp) {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {

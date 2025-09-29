@@ -133,5 +133,6 @@ public interface SpectrumConciseService {
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
 
+    // 上传图片接口
     Result uploadImage(SpectrumImageUpload upload);
 }
