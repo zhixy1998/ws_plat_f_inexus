@@ -2600,6 +2600,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (StringUtils.hasText(task.getFittingParam())) {
             FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
             resultVo = curveData(fittingParam);
+            resultVo.setR(DataCountUtil.addZero(Double.valueOf(fittingParam.getR()), digit));
+            resultVo.setR2(DataCountUtil.addZero(Double.valueOf(fittingParam.getR2()), digit));
         }
 
         if (StringUtils.hasText(task.getSampleKey())) {
