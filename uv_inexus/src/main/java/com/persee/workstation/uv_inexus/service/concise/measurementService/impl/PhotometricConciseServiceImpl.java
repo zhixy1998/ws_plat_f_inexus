@@ -1232,13 +1232,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 if (map.containsKey(absIdentity)) {
                     absHead = map.get(absIdentity);
                 }
-                allMeasureHeads.add(absHead);
-
                 if (allDisplay) {
                     if (map.containsKey(tPercentIdentity)) {
                         tPercentHead = map.get(tPercentIdentity);
                     }
+                    allMeasureHeads.add(absHead);
                     allMeasureHeads.add(tPercentHead);
+                } else {
+                    if (mode.equals(WaveLengthEnum.tPercent.getCode())) {
+                        allMeasureHeads.add(tPercentHead);
+                    } else {
+                        allMeasureHeads.add(absHead);
+                    }
                 }
             }
         }

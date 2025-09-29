@@ -747,8 +747,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         }
 
         JSONObject currentInfo = new JSONObject();
-        currentInfo.put("waveLength", waveLength + "nm");
-        currentInfo.put("currentValue", currentValue + WaveLengthEnum.getName(luminosity));
+        currentInfo.put("waveLength", waveLength);
+        currentInfo.put("currentValue", currentValue);
         session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
         originDataInfo.setData(measureData);
