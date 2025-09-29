@@ -212,6 +212,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             }
             specimen.setIsTested(right);
             task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
             tMeasureTaskService.updateById(task);
 
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
@@ -295,6 +296,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 }
                 specimen.setIsTested(right);
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                task.setDeviceSerialNumber(deviceSerialNumber);
                 tMeasureTaskService.updateById(task);
                 //公式计算
                 measureCount ++;
@@ -307,6 +309,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             }
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setDeviceSerialNumber(deviceSerialNumber);
         tMeasureTaskService.updateById(task);
 
         JSONObject jsonObject = new JSONObject();
@@ -618,7 +621,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
-        repetitionTime = repetitionTime + 1;
+//        repetitionTime = repetitionTime + 1;
 
         jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
         jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + repetitionTime);
@@ -652,6 +655,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         jsonObject.put("value", rsd == null ? "未检出" :String.valueOf(rsd));
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
+        jsonObject.clear();
+        jsonObject.put("sampleId", sample.getId());
         jsonObject.put("key", key);
         jsonObject.remove("identity");
         jsonObject.put("value", String.valueOf(v));
@@ -663,6 +668,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         FPhotometricOriginDataInfo originDataInfo = new FPhotometricOriginDataInfo();
         originDataInfo.setMode(luminosity);
         originDataInfo.setWavelength(waveLength);
+        String currentValue = null;
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sampleKey);
@@ -676,7 +682,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             measureData.put(waveLength + "-" + WaveLengthEnum.er.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.er.getCode());
-            jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, s));
+
+            Double v = DataCountUtil.formatValue(digit, Double.valueOf(s));
+            currentValue = DataCountUtil.addZero(v, digit);
+
+            jsonObject.put("value", currentValue);
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
         } else if (luminosity.equals(WaveLengthEnum.es.getCode())) {
@@ -684,7 +694,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             measureData.put(waveLength + "-" + WaveLengthEnum.es.getCode(), s);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.es.getCode());
-            jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, s));
+
+            Double v = DataCountUtil.formatValue(digit, Double.valueOf(s));
+            currentValue = DataCountUtil.addZero(v, digit);
+
+            jsonObject.put("value", currentValue);
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
         } else {
@@ -701,13 +715,34 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             measureData.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode(), tPercent);
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
-            jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, data));
+
+            Double v = DataCountUtil.formatValue(digit, Double.valueOf(data));
+            String absData = DataCountUtil.addZero(v, digit);
+            jsonObject.put("value", absData);
+
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
-            jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, tPercent));
+
+            Double tp = DataCountUtil.formatValue(digit, Double.valueOf(tPercent));
+            String tPercentData = DataCountUtil.addZero(tp, digit);
+
+            jsonObject.put("value", tPercentData);
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+            if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
+                currentValue = absData;
+            } else {
+                currentValue = tPercentData;
+            }
+
         }
+
+        JSONObject currentInfo = new JSONObject();
+        currentInfo.put("waveLength", waveLength + "nm");
+        currentInfo.put("currentValue", currentValue + WaveLengthEnum.getName(luminosity));
+        session.sendMessage(new TextMessage(currentInfo.toJSONString()));
+
         originDataInfo.setData(measureData);
         return originDataInfo;
     }

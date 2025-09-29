@@ -2259,7 +2259,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (one != null && one.getAnalysisResult() != null) {
                     List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
                     for (FRationCountDataInfo countData : countDataList) {
-                        map.put(countData.getIdentity(), String.valueOf(countData.getColValue()));
+                        map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
                     }
                 }
 
@@ -2692,7 +2692,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         double k3 = info.getK3() == null ? 0 : (double) Math.round(info.getK3() * 1000) / 1000;
         double k4 = info.getK4() == null ? 0 : (double) Math.round(info.getK4() * 1000) / 1000;
 
-        double step = 0.1;
+        double step = 0.01;
+        int dataDigit = 8;
         //采用3位小数来计算
         double minX = (double) Math.round(info.getMinX() * 1000) / 1000;
         double maxX = (double) Math.round(info.getMaxX() * 1000) / 1000;
@@ -2702,8 +2703,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
                 }
                 break;
@@ -2711,8 +2712,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i + k2 * i * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
                 }
                 break;
@@ -2720,8 +2721,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
                 }
                 break;
@@ -2730,8 +2731,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 for (double i = minX - 1; i < maxX + 1; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i + k4 * i * i * i * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
 
                 }
@@ -3423,6 +3424,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         // 通过序列号获取ip
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
+        String wave = "--";
         for (String s : waveLength) {
 
             double v = Double.parseDouble(s);
@@ -3437,11 +3439,16 @@ public class RationServiceConciseImpl implements RationConciseService {
             ChangeParam changeParam = zero.getData();
             changeParam.setWl(s);
             list.add(changeParam);
+            wave = s;
         }
         task.setZeroParam(JSON.toJSONString(list));
 
-        boolean update = fMeasureTaskService.updateById(task);
-        return update ? Result.ok() : Result.fail();
+        fMeasureTaskService.updateById(task);
+
+        fMeasureTaskService.updateById(task);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("waveLength", wave);
+        return Result.ok(jsonObject);
     }
 
     @Override

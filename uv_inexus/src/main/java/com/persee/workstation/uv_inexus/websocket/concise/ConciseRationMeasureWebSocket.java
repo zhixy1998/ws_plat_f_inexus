@@ -955,6 +955,11 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
             String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
+            JSONObject currentInfo = new JSONObject();
+            currentInfo.put("waveLength", waveLength + "nm");
+            currentInfo.put("currentValue", data + "Abs");
+            session.sendMessage(new TextMessage(currentInfo.toJSONString()));
+
             FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
             originDataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
             originDataInfo.setWavelength(waveLength);
@@ -1061,6 +1066,11 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 }
                 String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
                 String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+
+                JSONObject currentInfo = new JSONObject();
+                currentInfo.put("waveLength", waveLength + "nm");
+                currentInfo.put("currentValue", data + "Abs");
+                session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
                 originDataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + i);

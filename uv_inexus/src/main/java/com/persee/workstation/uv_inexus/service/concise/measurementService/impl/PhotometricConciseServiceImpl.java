@@ -1907,6 +1907,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         // 通过序列号获取ip
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
+        String wave = "--";
         for (String s : waveLength) {
 
             double v = Double.parseDouble(s);
@@ -1921,11 +1922,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             ChangeParam changeParam = zero.getData();
             changeParam.setWl(s);
             list.add(changeParam);
+            wave = changeParam.getWl();
         }
         task.setZeroParam(JSON.toJSONString(list));
 
-        boolean update = fMeasureTaskService.updateById(task);
-        return update ? Result.ok() : Result.fail();
+        fMeasureTaskService.updateById(task);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("waveLength", wave);
+        return Result.ok(jsonObject);
     }
 
     @Override
