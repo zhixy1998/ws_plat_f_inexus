@@ -1,42 +1,5 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Random;
-import java.util.stream.Collectors;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -54,42 +17,13 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.PhotoMetricChangeMethodTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureProject;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FMethodParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.PhotometricConciseService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -102,14 +36,27 @@ import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCount
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
-
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.io.*;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service("fPhotometricService")
@@ -179,15 +126,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (parameter.getLuminosity() == null || parameter.getLuminosity().trim().isEmpty()) {
             return R.fail("光度模式不能为空");
         }
-        if (!Arrays.asList("1", "2", "3", "4").contains(parameter.getLuminosity())) {
-            return R.fail("光度模式只能是1(Abs)、2(T%)、3(Es)、4(ER)");
-        }
 
+        if (WaveLengthEnum.getName(parameter.getLuminosity()) == null) {
+            return R.fail("光度模式选择出错");
+        }
         // 2. 校验波长值
         if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
             return R.fail("波长值不能为空");
         }
-        if (parameter.getWaveLength().size() < 1 || parameter.getWaveLength().size() > 26) {
+        if (parameter.getWaveLength().size() > 26) {
             return R.fail("波长值数量必须在1-26个范围内");
         }
         for (String waveStr : parameter.getWaveLength()) {
@@ -196,7 +143,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
             try {
                 double waveLength = Double.parseDouble(waveStr);
-                if (waveLength < 190 || waveLength > 900) {
+                if (waveLength <= 190 || waveLength >= 900) {
                     return R.fail("波长值" + waveStr + "必须在190-900范围内");
                 }
                 // 校验小数点后最多1位
@@ -213,12 +160,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (parameter.getRepetitionPattern() == null || parameter.getRepetitionPattern().trim().isEmpty()) {
             return R.fail("重复模式不能为空");
         }
-        if (!Arrays.asList("rmNone", "rmCR").contains(parameter.getRepetitionPattern())) {
+
+
+        if (!Arrays.asList("单池重复", "不重复").contains(parameter.getRepetitionPattern())) {
             return R.fail("重复模式只能是rmNone(不重复)、rmCR(单池重复)");
         }
 
         // 4. 校验重复次数（单池重复模式下必校验）
-        if ("rmCR".equals(parameter.getRepetitionPattern())) {
+        if ("单池重复".equals(parameter.getRepetitionPattern())) {
             if (parameter.getRepetitionTime() == null || parameter.getRepetitionTime().trim().isEmpty()) {
                 return R.fail("单池重复模式下重复次数不能为空");
             }
@@ -233,7 +182,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         // 5. 校验时间间隔（单池重复模式下必校验）
-        if ("rmCR".equals(parameter.getRepetitionPattern())) {
+        if ("单池重复".equals(parameter.getRepetitionPattern())) {
             if (parameter.getTimeInterval() == null || parameter.getTimeInterval().trim().isEmpty()) {
                 return R.fail("单池重复模式下时间间隔不能为空");
             }
@@ -250,23 +199,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             } catch (NumberFormatException e) {
                 return R.fail("时间间隔必须为有效的数字");
             }
-        }
-
-        // 6. 校验统计内容
-        if (parameter.getStatisticalContent() != null && !parameter.getStatisticalContent().isEmpty()) {
-            for (String content : parameter.getStatisticalContent()) {
-                if (!Arrays.asList("平均值", "SD", "RSD").contains(content)) {
-                    return R.fail("统计内容" + content + "不合法，只能是平均值、SD、RSD");
-                }
-            }
-        }
-
-        // 7. 校验样品池方式
-        if (parameter.getSamplePoolWay() == null || parameter.getSamplePoolWay().trim().isEmpty()) {
-            return R.fail("样品池方式不能为空");
-        }
-        if (!Arrays.asList("0", "1").contains(parameter.getSamplePoolWay())) {
-            return R.fail("样品池方式只能是0(单池重复后再移动)、1(依次移动并重复)");
         }
 
         // 8. 校验输入参数（数量限制）
@@ -378,6 +310,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (checkDTO.getNewMethodParam() == null) {
             return Result.fail("没有可应用的方法参数");
+        }
+
+        R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
@@ -1551,8 +1488,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                             Map<String, String> formattedData = new HashMap<>();
                             // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                             for (Map.Entry<String, String> entry : originData.entrySet()) {
-                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                formattedData.put(entry.getKey(), formattedValue);
+//                                String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
+                                Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
+                                String s = DataCountUtil.addZero(v, digit);
+                                formattedData.put(entry.getKey(), s);
                             }
                             map.putAll(formattedData);
                             map.put("samplingTime", data.getSamplingTime());
@@ -1616,8 +1555,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                 Map<String, String> formattedData = new HashMap<>();
                                 // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                                 for (Map.Entry<String, String> entry : originData.entrySet()) {
-                                    String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
-                                    formattedData.put(entry.getKey(), formattedValue);
+//                                    String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
+                                    Double v = DataCountUtil.formatValue(digit, Double.valueOf(entry.getValue()));
+                                    String s = DataCountUtil.addZero(v, digit);
+                                    formattedData.put(entry.getKey(), s);
                                 }
 
                                 Map<String, String> children = new HashMap<>(formattedData);
@@ -1718,10 +1659,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             Double rsd = DataCountUtil.calculateRSD(values, digit);
 
             FRepeatMeasureData repeatMeasureData = new FRepeatMeasureData();
-            repeatMeasureData.setSd(sd == null ? "未检出" :String.valueOf(sd));
-            repeatMeasureData.setRsd(rsd == null ? "未检出" :String.valueOf(rsd));
+            repeatMeasureData.setSd(sd == null ? "未检出" :DataCountUtil.addZero(sd, digit));
+            repeatMeasureData.setRsd(rsd == null ? "未检出" :DataCountUtil.addZero(rsd, digit));
             otherData.put(entry.getKey(), repeatMeasureData);
-            ans.put(entry.getKey(), String.valueOf(mean));
+            ans.put(entry.getKey(), DataCountUtil.addZero(mean, digit));
         }
         result.setData(ans);
         result.setOtherData(otherData);

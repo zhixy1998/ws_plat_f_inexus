@@ -249,7 +249,7 @@
 <string>光度模式:AJ18:4</string>
 </OutputString>
 <SendBytes>
-<string>181:254:6:5:I18+1:0:0:0:0:0:0:Check</string>
+<string>181:254:6:5:I18:0:0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
 <string>254:181:6:5:AJ18:0:0:0:0:0:0:Check</string>

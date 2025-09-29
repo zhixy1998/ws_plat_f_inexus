@@ -154,35 +154,54 @@ public class DataCountUtil {
 //            return value; // 如果转换失败，返回原始值
 //        }
 //    }
-public static Double formatValue(Integer digit, Double value) {
-    if (value == null || digit == null) {
-        return value;
+    public static Double formatValue(Integer digit, Double value) {
+        if (value == null || digit == null) {
+            return value;
+        }
+
+        if (value.isInfinite() || value.isNaN()) {
+            return value;
+        }
+
+        if (value == 0.0) {
+            return 0.0;
+        }
+
+        // 处理负值（规则3.2.5）
+        boolean isNegative = value < 0;
+        double absValue = Math.abs(value);
+
+        double resultValue;
+
+        if (digit >= 0) {
+            // 修约到小数位
+            resultValue = roundToDecimalPlaces(absValue, digit);
+        } else {
+            // 修约到整数位
+            resultValue = roundToIntegerPlace(absValue, -digit);
+        }
+
+        return isNegative ? -resultValue : resultValue;
     }
 
-    if (value.isInfinite() || value.isNaN()) {
-        return value;
+    //补零
+    public static String addZero(Double value, int digit) {
+
+        StringBuilder s = new StringBuilder(value.toString());
+        String[] split = s.toString().split("\\.");
+        int length = split[1].length();
+        if (length < digit) {
+            for (int i = 0; i < digit - length; i++){
+                s.append("0");
+            }
+            return s.toString();
+        } else if (length > digit) {
+            return split[0] + "." + split[1].substring(0, digit);
+        } else {
+            return value.toString();
+        }
     }
 
-    if (value == 0.0) {
-        return 0.0;
-    }
-
-    // 处理负值（规则3.2.5）
-    boolean isNegative = value < 0;
-    double absValue = Math.abs(value);
-
-    double resultValue;
-
-    if (digit >= 0) {
-        // 修约到小数位
-        resultValue = roundToDecimalPlaces(absValue, digit);
-    } else {
-        // 修约到整数位
-        resultValue = roundToIntegerPlace(absValue, -digit);
-    }
-
-    return isNegative ? -resultValue : resultValue;
-}
 
     /**
      * 修约到指定小数位数（重新实现，确保精度）
@@ -281,6 +300,9 @@ public static Double formatValue(Integer digit, Double value) {
         System.out.println("12.0085000 修约到3位小数: " + formatValue(3, -12.0085000)); // 应得12.000006
         System.out.println("12.0055000 修约到5位小数: " + formatValue(3, -12.0055000)); // 应得12.00001
         System.out.println("12.0000055 修约到4位小数: " + formatValue(4, 12.0000055)); // 应得12.0000
+        Double v = formatValue(4, 12.0000055);
+        String s = addZero(v, 4);
+        System.out.println( s);
 
         System.out.println("\n=== 测试规则3.2.3（5之后有非0数字）===");
         System.out.println("10.5002 修约到个位: " + formatValue(0, 10.5002)); // 应得11

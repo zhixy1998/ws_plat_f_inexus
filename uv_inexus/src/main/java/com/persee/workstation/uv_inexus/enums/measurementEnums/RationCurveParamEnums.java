@@ -21,6 +21,11 @@ public enum RationCurveParamEnums {
     direct_coefficient("direct","直接系数法"),
     standard_curve("standard","标准曲线法"),
 
+    //单池重复
+    single_pool_repeat("单池重复","单池重复"),
+    //不重复
+    no_repeat("不重复","不重复"),
+
     insert_zero("insert_zero","插入零点"),
     force_zero("force_zero","强制过零点");
 

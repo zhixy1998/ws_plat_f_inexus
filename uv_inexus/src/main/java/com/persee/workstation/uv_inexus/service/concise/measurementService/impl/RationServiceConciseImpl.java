@@ -1,50 +1,6 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -63,45 +19,14 @@ import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDelete
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.PhotoMetricChangeMethodTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationChangeMethodTypeEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RationCurveParamEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureProject;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FQualityConfVO;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.RationConciseService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -116,18 +41,29 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationMethodParam;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSaveCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationTaskHeadSnapShot;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRationWavelengthDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
+import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
-
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.io.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service("fRationService")
@@ -293,6 +229,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         task.setUserId(userId);
         task.setProjectItemKey(defaultProjectId);
         task.setCreateTime(LocalDateTime.now());
+        task.setEndSaveTime(LocalDateTime.now());
 
         List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
         List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
@@ -327,6 +264,10 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         if (checkDTO.getNewMethodParam() == null) {
             return Result.fail("没有可应用的方法参数");
+        }
+        R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
@@ -508,17 +449,17 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         // 2.3 微分方式校验（枚举值）
-        String differentialMode = parameter.getDifferentialMode();
-        if (isBlank(differentialMode)) {
-            return R.fail("微分方式不能为空");
-        }
-        List<String> validDiffModes = Arrays.asList(
-                "single", "1st-der", "2nd-der", "3rd-der", "4th-der",
-                "peak", "valley", "max", "min"
-        );
-        if (!validDiffModes.contains(differentialMode)) {
-            return R.fail("微分方式不合法（可选值：" + String.join("、", validDiffModes) + "），当前值：" + differentialMode);
-        }
+//        String differentialMode = parameter.getDifferentialMode();
+//        if (isBlank(differentialMode)) {
+//            return R.fail("微分方式不能为空");
+//        }
+//        List<String> validDiffModes = Arrays.asList(
+//                "single", "1st-der", "2nd-der", "3rd-der", "4th-der",
+//                "peak", "valley", "max", "min"
+//        );
+//        if (!validDiffModes.contains(differentialMode)) {
+//            return R.fail("微分方式不合法（可选值：" + String.join("、", validDiffModes) + "），当前值：" + differentialMode);
+//        }
 
         // 3. 曲线与系数相关校验
         // 3.1 曲线类型校验
@@ -531,53 +472,56 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (isBlank(equationType)) {
             return R.fail("方程类型不能为空");
         }
-        if (!Arrays.asList("qtCFA", "qtAFC").contains(equationType)) {
-            return R.fail("方程类型不合法（可选值：qtCFA、qtAFC），当前值：" + equationType);
-        }
+//        if (!Arrays.asList("qtCFA", "qtAFC").contains(equationType)) {
+//            return R.fail("方程类型不合法（可选值：qtCFA、qtAFC），当前值：" + equationType);
+//        }
 
         // 3.3 系数方式校验（枚举值：0/1）
         String coefficientMode = parameter.getCoefficientMode();
         if (isBlank(coefficientMode)) {
             return R.fail("系数方式不能为空");
         }
-        if (!Arrays.asList("0", "1").contains(coefficientMode)) {
-            return R.fail("系数方式不合法（可选值：0-直接系数法、1-标准曲线法），当前值：" + coefficientMode);
+        if (RationCurveParamEnums.getName(coefficientMode) == null) {
+            return R.fail("系数方式不合法（可选值：直接系数法、标准曲线法）");
         }
-
-        // 3.4 系数参数校验（1-10个，数字且最多3位小数）
-        List<String> coefficientParams = parameter.getCoefficientParams();
-        if (coefficientParams == null || coefficientParams.isEmpty()) {
-            return R.fail("系数参数不能为空");
-        }
-        if (coefficientParams.size() > 10) {
-            return R.fail("系数参数最多支持10个，当前数量：" + coefficientParams.size());
-        }
-        for (int i = 0; i < coefficientParams.size(); i++) {
-            String coeffStr = coefficientParams.get(i);
-            if (isBlank(coeffStr)) {
-                return R.fail("第" + (i + 1) + "个系数参数不能为空字符串");
+        if (RationCurveParamEnums.direct_coefficient.getIdentity().equals(coefficientMode)) {
+            // 3.4 系数参数校验（1-10个，数字且最多3位小数）
+            List<String> coefficientParams = parameter.getCoefficientParams();
+            if (coefficientParams == null || coefficientParams.isEmpty()) {
+                return R.fail("系数参数不能为空");
             }
-            try {
-                Double.parseDouble(coeffStr);
-                if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 3) {
-                    return R.fail("第" + (i + 1) + "个系数参数小数位数不能超过3位，当前值：" + coeffStr);
+            if (coefficientParams.size() > 10) {
+                return R.fail("系数参数最多支持10个，当前数量：" + coefficientParams.size());
+            }
+            for (int i = 0; i < coefficientParams.size(); i++) {
+                String coeffStr = coefficientParams.get(i);
+                if (isBlank(coeffStr)) {
+                    return R.fail("第" + (i + 1) + "个系数参数不能为空字符串");
                 }
-            } catch (NumberFormatException e) {
-                return R.fail("第" + (i + 1) + "个系数参数格式错误（需为数字），当前值：" + coeffStr);
+                try {
+                    Double.parseDouble(coeffStr);
+                    if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 3) {
+                        return R.fail("第" + (i + 1) + "个系数参数小数位数不能超过3位，当前值：" + coeffStr);
+                    }
+                } catch (NumberFormatException e) {
+                    return R.fail("第" + (i + 1) + "个系数参数格式错误（需为数字），当前值：" + coeffStr);
+                }
             }
         }
 
         // 3.5 零点方式校验
         List<String> zeroMethod = parameter.getZeroMethod();
-        if (zeroMethod == null || zeroMethod.isEmpty()) {
-            return R.fail("零点方式不能为空");
-        }
-        Set<String> validZeroMethods = new HashSet<>(Arrays.asList("过零点", "插入零点"));
-        for (String zm : zeroMethod) {
-            if (!validZeroMethods.contains(zm)) {
-                return R.fail("零点方式不合法（可选值：过零点、插入零点），当前值：" + zm);
+//        if (zeroMethod == null || zeroMethod.isEmpty()) {
+//            return R.fail("零点方式不能为空");
+//        }
+        if (zeroMethod != null && !zeroMethod.isEmpty()) {
+            for (String zm : zeroMethod) {
+                if (RationCurveParamEnums.getName(zm) == null) {
+                    return R.fail("零点方式不合法（可选值：过零点、插入零点）" );
+                }
             }
         }
+
 
         // 4. 重复测量相关校验
         // 4.1 重复模式校验（枚举值：rmNone/rmCR）
@@ -585,12 +529,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (isBlank(repeatMode)) {
             return R.fail("重复模式不能为空");
         }
-        if (!Arrays.asList("rmNone", "rmCR").contains(repeatMode)) {
-            return R.fail("重复模式不合法（可选值：rmNone-不重复、rmCR-单池重复），当前值：" + repeatMode);
+
+        if (RationCurveParamEnums.getName(repeatMode) == null) {
+            return R.fail("重复模式不合法" );
         }
 
         // 4.2 单池重复（rmCR）时的关联校验
-        if ("rmCR".equals(repeatMode)) {
+        if ("单池重复".equals(repeatMode)) {
             // 重复次数：2-10的整数
             String repeatCountStr = parameter.getRepeatCount();
             if (isBlank(repeatCountStr)) {
@@ -623,26 +568,6 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
 
-        // 4.3 样品池方式校验（枚举值：0/1）
-        String samplePoolWay = parameter.getSamplePoolWay();
-        if (isBlank(samplePoolWay)) {
-            return R.fail("样品池方式不能为空");
-        }
-        if (!Arrays.asList("0", "1").contains(samplePoolWay)) {
-            return R.fail("样品池方式不合法（可选值：0-单池重复后移动、1-依次移动并重复），当前值：" + samplePoolWay);
-        }
-
-        // 5. 统计内容校验
-        List<String> statisticalContent = parameter.getStatisticalContent();
-        if (statisticalContent == null || statisticalContent.isEmpty()) {
-            return R.fail("统计内容不能为空");
-        }
-        Set<String> validStats = new HashSet<>(Arrays.asList("平均值", "SD", "RSD"));
-        for (String stat : statisticalContent) {
-            if (!validStats.contains(stat)) {
-                return R.fail("统计内容不合法（可选值：平均值、SD、RSD），当前值：" + stat);
-            }
-        }
 
         // 6. 复杂结构参数校验
         // 6.1 样品输入参数校验（最多10个）
@@ -755,6 +680,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             task.setMethodKey(methodId);
             task.setCreateTime(LocalDateTime.now());
+            task.setEndSaveTime(LocalDateTime.now());
             task.setUserId(userId);
             task.setProjectItemKey(defaultProjectId);
             task.setIsDelete(createType);
@@ -775,7 +701,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
             task.setCreateTime(LocalDateTime.now());
-
+            task.setEndSaveTime(LocalDateTime.now());
             fMeasureTaskService.save(task);
 
             ans.setTaskId(task.getId());
@@ -790,6 +716,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 task.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
                 task.setMethodKey(methodId);
                 task.setCreateTime(LocalDateTime.now());
+                task.setEndSaveTime(LocalDateTime.now());
                 task.setUserId(userId);
                 task.setProjectItemKey(defaultProjectId);
                 task.setIsDelete(createType);
@@ -852,6 +779,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     newTask.setDeviceSerialNumber(null);
                     newTask.setIsDelete(createType);
                     newTask.setCreateTime(LocalDateTime.now());
+                    newTask.setEndSaveTime(LocalDateTime.now());
                     newTask.setMeasureType(methodDTO.getMeasureType());
                     fMeasureTaskService.save(newTask);
                     ans.setTaskId(newTask.getId());
@@ -908,7 +836,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                 newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
                 newTask.setTableInfo(task.getTableInfo());
                 newTask.setCreateTime(LocalDateTime.now());
+                newTask.setEndSaveTime(LocalDateTime.now());
                 newTask.setId(null);
+                newTask.setMeasureType(methodDTO.getMeasureType());
                 newTask.setMethodKey(methodId);
                 newTask.setDeviceSerialNumber(null);
                 newTask.setIsDelete(createType);
@@ -1122,6 +1052,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
             newTask.setCreateTime(LocalDateTime.now());
+            newTask.setEndSaveTime(LocalDateTime.now());
             boolean save = false;
             for (int i = 0; i < 3; i++) {
                 if (fMeasureTaskService.save(newTask)) {
@@ -1141,6 +1072,36 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
 
         List<FTaskSpecimen> taskSpecimen = new ArrayList<>();
+
+        /// 校验是否有重复的样品编号
+        // 取出所有样品编号
+        List<String> sampleNos = dto.getNewStandSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+                .filter(Objects::nonNull)    // 过滤掉空值
+                .collect(Collectors.toList());
+        // 查重：找到重复的样品编号
+        Set<String> duplicates = sampleNos.stream()
+                .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!duplicates.isEmpty()) {
+            return Result.fail("标准样品编号重复");
+        }
+
+        List<String> unknownSampleNos = dto.getNewUnknowSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+                .filter(Objects::nonNull)    // 过滤掉空值
+                .collect(Collectors.toList());
+        // 查重：找到重复的样品编号
+        Set<String> isDuplicates = sampleNos.stream()
+                .filter(no -> Collections.frequency(unknownSampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!isDuplicates.isEmpty()) {
+            return Result.fail("未知样品编号重复");
+        }
+
+
         if (StringUtils.hasText(task.getSampleKey())) {
             taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         }
@@ -2272,8 +2233,16 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (StringUtils.hasText(data.getOriginalCalculationData())) {
                     List<FRationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), FRationWavelengthDataInfo.class);
                     for (FRationWavelengthDataInfo dataInfo : list) {
-                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getAbsValue()));
-                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
+//                        String s = DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getAbsValue());
+                        Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
+                        String s = DataCountUtil.addZero(v, digit);
+
+                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
+
+                        Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
+                        String tP = DataCountUtil.addZero(t, digit);
+
+                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
                     }
                 }
 
@@ -2308,8 +2277,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                         Map<String, String> children = new HashMap<>();
 
                         if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
-                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
+
+                            Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
+                            String s = DataCountUtil.addZero(v, digit);
+
+                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
+
+                            Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
+                            String tP = DataCountUtil.addZero(t, digit);
+
+                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
+
+//                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
+//                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
 
                             Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample);
                             if (!ch.isEmpty()) {
@@ -2331,8 +2311,18 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                         } else {
 
-                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
-                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getTPercentValue()));
+                            Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
+                            String s = DataCountUtil.addZero(v, digit);
+
+                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
+
+                            Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
+                            String tP = DataCountUtil.addZero(t, digit);
+
+                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
+
+//                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
+//                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getTPercentValue()));
                             String[] split = dataInfo.getIdentity().split("-");
                             children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
                             childrenList.computeIfAbsent(dataInfo.getIdentity(), k -> new HashMap<>()).putAll(children);
@@ -2352,7 +2342,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (one != null && one.getAnalysisResult() != null) {
                     List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
                     for (FRationCountDataInfo countData : countDataList) {
-                        map.put(countData.getIdentity(), String.valueOf(countData.getColValue()));
+                        map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
                     }
                 }
 
@@ -3410,6 +3400,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
             newTask.setCreateTime(LocalDateTime.now());
+            newTask.setEndSaveTime(LocalDateTime.now());
             boolean save = false;
             for (int i = 0; i < 3; i++) {
                 if (fMeasureTaskService.save(newTask)) {
@@ -3482,6 +3473,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
             newTask.setCreateTime(LocalDateTime.now());
+            newTask.setEndSaveTime(LocalDateTime.now());
             boolean save = false;
             for (int i = 0; i < 3; i++) {
                 if (fMeasureTaskService.save(newTask)) {

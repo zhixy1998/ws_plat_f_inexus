@@ -7,7 +7,7 @@ public enum SampleTypeEnum {
     empty("empty", "空白样品"),
     stand("stand", "标准样品"),
     unKnown("unknown", "未知样品"),
-    quality("quality", "质控样"),
+    quality("quality", "质控样品"),
     kind_stand("0", "标准样品"),
     kind_unknown("1", "未知样品");
 

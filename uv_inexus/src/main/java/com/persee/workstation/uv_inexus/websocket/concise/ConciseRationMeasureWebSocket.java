@@ -271,6 +271,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                             .orderByDesc(FMeasureData::getSerialNumber)
                             .last("limit 1");
                     FMeasureData data = tMeasureDataService.getOne(queryWrapper);
+                    if(data == null) {
+                        data = new FMeasureData();
+                    }
                     List<FRationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), FRationWavelengthDataInfo.class);
                     if (list != null && !list.isEmpty()) {
                         FRationCountDataInfo ansData;
@@ -480,6 +483,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
+            status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
 
@@ -1108,20 +1112,20 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             Double tPercentRsd = DataCountUtil.calculateRSD(tPercentList, digit);
 
             FRepeatMeasureData absData = new FRepeatMeasureData();
-            absData.setSd(absSd == null ? "未检出" :String.valueOf(absSd));
-            absData.setRsd(absRsd == null ? "未检出" :String.valueOf(absRsd));
+            absData.setSd(absSd == null ? "未检出" :DataCountUtil.addZero(absSd, digit));
+            absData.setRsd(absRsd == null ? "未检出" :DataCountUtil.addZero(absRsd, digit));
             otherDataList.put(waveLength + "-" + WaveLengthEnum.abs.getCode(),absData);
 
             FRepeatMeasureData tPercentData = new FRepeatMeasureData();
-            tPercentData.setSd(tPercentSd == null ? "未检出" :String.valueOf(tPercentSd));
-            tPercentData.setRsd(tPercentRsd == null ? "未检出" :String.valueOf(tPercentRsd));
+            tPercentData.setSd(tPercentSd == null ? "未检出" :DataCountUtil.addZero(tPercentSd,digit));
+            tPercentData.setRsd(tPercentRsd == null ? "未检出" :DataCountUtil.addZero(tPercentRsd, digit));
             otherDataList.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode() ,tPercentData);
 
             FRationWavelengthDataInfo info = new FRationWavelengthDataInfo();
             info.setWavelength(waveLength);
-            info.setAbsValue(String.valueOf(absMean));
+            info.setAbsValue(DataCountUtil.addZero(absMean, digit));
             info.setIdentity("result");
-            info.setTPercentValue(String.valueOf(tPercentMean));
+            info.setTPercentValue(DataCountUtil.addZero(tPercentMean,digit));
             info.setOtherData(otherDataList);
             info.setMeasureTime(LocalDateTime.now());
 
@@ -1144,7 +1148,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("sampleId", sample.getId());
             jsonObject.put("key", data.getIdentity());
-            jsonObject.put("value", data.getColValue());
+            jsonObject.put("value", DataCountUtil.addZero(data.getColValue(), digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
             jsonObject.put("key", "samplingTime");
@@ -1193,7 +1197,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             jsonObject.put("key", key);
             jsonObject.put("identity", DataIdentityEnums.avg.getIdentity() + "-" + repetitionTime);
-            jsonObject.put("value", String.valueOf(v));
+            jsonObject.put("value", DataCountUtil.addZero(v, digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
 
@@ -1205,7 +1209,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             jsonObject.put("key", key);
             jsonObject.put("identity", DataIdentityEnums.sd.getIdentity() + "-" + (repetitionTime + 1));
-            jsonObject.put("value", sd == null ? "未检出" :String.valueOf(sd));
+            jsonObject.put("value", sd == null ? "未检出" :DataCountUtil.addZero(sd, digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
 
@@ -1217,13 +1221,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             jsonObject.put("key", key);
             jsonObject.put("identity", DataIdentityEnums.rsd.getIdentity() + "-" + (repetitionTime + 2));
-            jsonObject.put("value", rsd == null ? "未检出" :String.valueOf(rsd));
+            jsonObject.put("value", rsd == null ? "未检出" :DataCountUtil.addZero(rsd, digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
 
         jsonObject.put("key", key);
         jsonObject.remove("identity");
-        jsonObject.put("value", String.valueOf(v));
+        jsonObject.put("value", DataCountUtil.addZero(v, digit));
 
     }
 
@@ -1296,7 +1300,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
-            session.sendMessage(new TextMessage(msg));
+            JSONObject object = new JSONObject();
+            object.put("error", msg);
+            session.sendMessage(new TextMessage(object.toJSONString()));
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
