@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
@@ -127,8 +128,23 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         // 将方法参数提取出来
         SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
 
-
         String ip = deviceInfoService.getIp(deviceSerialNumber);
+
+        ///  设置样品池位置poolNum
+        // 根据样品id找到样品数据
+        TMeasureSample sample = tMeasureSampleService.getById(task.getSampleKey());
+        if (sample == null){
+            sendAndClose(session, "请先创建样品");
+            return;
+        }
+
+        R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+        if (!stringR.getSuccess()) {
+            sendAndClose(session, "设置出错");
+            return;
+        }
+
+
         Command command = new Command();
         command.setCmdId(SetParamEnum.Scan.getComId());
         command.setParams(new Object[]{});

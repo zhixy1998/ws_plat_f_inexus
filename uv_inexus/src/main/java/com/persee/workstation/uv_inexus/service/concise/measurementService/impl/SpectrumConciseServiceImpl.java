@@ -360,14 +360,14 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
             BeanUtils.copyProperties(parameter, parameterVo);
             parameterVo.setLuminosityName(s);
-            if (parameter.getLadderCorrection()!=null){
+            if (parameter.getLadderCorrection() != null) {
                 parameterVo.setLadderCorrectionName(parameter.getLadderCorrection() ? "启用" : "不启用");
             }
-            if (parameter.getScanSpeed()!=null){
+            if (parameter.getScanSpeed() != null) {
                 String s1 = "0".equals(parameter.getScanSpeed()) ? "慢速" : "1".equals(parameter.getScanSpeed()) ? "中速" : "2".equals(parameter.getScanSpeed()) ? "快速" : "极快";
                 parameterVo.setScanSpeedName(s1);
             }
-            if (parameter.getEnergyLamp()!=null){
+            if (parameter.getEnergyLamp() != null) {
                 // 0.钨灯,1.氘灯,2.汞灯
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
@@ -395,14 +395,14 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
         BeanUtils.copyProperties(parameter, parameterVo);
         parameterVo.setLuminosityName(s);
-        if (parameter.getLadderCorrection()!=null){
+        if (parameter.getLadderCorrection() != null) {
             parameterVo.setLadderCorrectionName(parameter.getLadderCorrection() ? "启用" : "不启用");
         }
-        if (parameter.getScanSpeed()!=null){
+        if (parameter.getScanSpeed() != null) {
             String s1 = "0".equals(parameter.getScanSpeed()) ? "慢速" : "1".equals(parameter.getScanSpeed()) ? "中速" : "2".equals(parameter.getScanSpeed()) ? "快速" : "极快";
             parameterVo.setScanSpeedName(s1);
         }
-        if (parameter.getEnergyLamp()!=null){
+        if (parameter.getEnergyLamp() != null) {
             // 0.钨灯,1.氘灯,2.汞灯
             String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
             parameterVo.setEnergyLampName(lamp);
@@ -413,7 +413,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         vo.setMethodCreateTime(format);
         String format1 = method.getMethodUseTime().format(formatter);
         vo.setMethodUseTime(format1);
-        if (task!=null){
+        if (task != null) {
             vo.setTaskId(task.getId());
         }
         vo.setMethodId(method.getId());
@@ -422,6 +422,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
     /**
      * 查找方法按钮
+     *
      * @param pageNum
      * @param pageSize
      * @param updateBy
@@ -470,14 +471,14 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             BeanUtils.copyProperties(parameter, parameterVo);
             String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
             parameterVo.setLuminosityName(s);
-            if (parameter.getLadderCorrection()!=null){
+            if (parameter.getLadderCorrection() != null) {
                 parameterVo.setLadderCorrectionName(parameter.getLadderCorrection() ? "启用" : "不启用");
             }
-            if (parameter.getScanSpeed()!=null){
+            if (parameter.getScanSpeed() != null) {
                 String s1 = "0".equals(parameter.getScanSpeed()) ? "慢速" : "1".equals(parameter.getScanSpeed()) ? "中速" : "2".equals(parameter.getScanSpeed()) ? "快速" : "极快";
                 parameterVo.setScanSpeedName(s1);
             }
-            if (parameter.getEnergyLamp()!=null){
+            if (parameter.getEnergyLamp() != null) {
                 // 0.钨灯,1.氘灯,2.汞灯
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
@@ -491,19 +492,20 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
     /**
      * 查询方法详情
+     *
      * @param paramDto
      * @return
      */
     @Override
     public Result parameterValidation(FParameterValidationDto paramDto) {
         // 校验参数
-        if (paramDto.getMethodId().isEmpty()){
+        if (paramDto.getMethodId().isEmpty()) {
             return Result.fail("方法ID不能为空");
         }
-        if (paramDto.getMeasureType().isEmpty()){
+        if (paramDto.getMeasureType().isEmpty()) {
             return Result.fail("类型不能为空");
         }
-        if (paramDto.getParameter().isEmpty()){
+        if (paramDto.getParameter().isEmpty()) {
             return Result.fail("参数不能为空");
         }
 
@@ -521,10 +523,9 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 //                dbParam = JSON.parseObject(dbParamJson, TransmittanceParam.class);
 //                newParam = paramDto.getParameter().toJavaObject(TransmittanceParam.class);
 //                break;
-            case "光谱扫描":
-            {
+            case "光谱扫描": {
                 FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-                FSpectrumParameter newParameter =  JSON.parseObject(String.valueOf(paramDto.getParameter()), FSpectrumParameter.class);
+                FSpectrumParameter newParameter = JSON.parseObject(String.valueOf(paramDto.getParameter()), FSpectrumParameter.class);
                 // 1. 比较参数
                 boolean sameParam = compareParam(parameter, newParameter);
                 return Result.ok(sameParam);
@@ -550,32 +551,32 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
      */
     @Override
     public Result use(FUseMethodDto paramDto) {
-    Map<String, Object> map = new HashMap<>();
-        if (paramDto.getMethodId2() != null){
+        Map<String, Object> map = new HashMap<>();
+        if (paramDto.getMethodId2() != null) {
             FMeasureMethod method2 = fMeasureMethodService.getById(paramDto.getMethodId2());
-            if (method2 == null){
+            if (method2 == null) {
                 return Result.fail("方法不存在");
             }
             // 将方法的参数取出来
             FSpectrumParameter parameter2 = JSON.parseObject(method2.getMeasurementParamInfo(), FSpectrumParameter.class);
             FSpectrumParameter parameter = new FSpectrumParameter();
             BeanUtils.copyProperties(paramDto.getParameter(), parameter);
-            boolean memberKeys =  compareParam(parameter2, parameter);
-            if( memberKeys){
-                if (method2.getId().equals(paramDto.getMethodId())){
+            boolean memberKeys = compareParam(parameter2, parameter);
+            if (memberKeys) {
+                if (method2.getId().equals(paramDto.getMethodId())) {
                     return Result.fail("请勿重复使用");
-                }else{
+                } else {
                     method2.setMethodUseTime(LocalDateTime.now());
                 }
-            }else{
+            } else {
                 method2.setMethodUseTime(LocalDateTime.now());
             }
             boolean update = fMeasureMethodService.updateById(method2);
-            if (!update){
+            if (!update) {
                 return Result.fail("应用失败");
             }
             Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy());
-            if (draftButton.getCode()==200){
+            if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
             map.put("method", method2);
@@ -588,7 +589,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
         FSpectrumParameter newParam = new FSpectrumParameter();
         // 将方法参数拷贝出来
-        BeanUtils.copyProperties(paramDto.getParameter(),newParam);
+        BeanUtils.copyProperties(paramDto.getParameter(), newParam);
 
         // 3. 参数比较
         boolean sameParam = compareParam(parameter, newParam);
@@ -604,7 +605,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             }
             map.put("method", newMethod);
             Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
-            if (draftButton.getCode()==200){
+            if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
 
@@ -619,7 +620,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             }
             map.put("method", newMethod);
             Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
-            if (draftButton.getCode()==200){
+            if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
 
@@ -627,24 +628,24 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
 
         if (sameParam) {
-            if (method.getId().equals(paramDto.getMethodId())){
+            if (method.getId().equals(paramDto.getMethodId())) {
                 return Result.fail("请勿重复使用");
-            }else{
+            } else {
                 map.put("method", method);
                 Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy());
-                if (draftButton.getCode()==200){
+                if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
                 }
                 return Result.ok(map);
             }
-        }else{
+        } else {
             FMeasureMethod newMethod = createNewMethod(paramDto);
             if (newMethod == null) {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
             Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
-            if (draftButton.getCode()==200){
+            if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
 
@@ -660,16 +661,16 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
      */
     @Override
     public Result whetherSaveData(String taskId, Boolean isSave) {
-        if (taskId == null){
+        if (taskId == null) {
             return Result.fail("没有草稿");
         }
-        if (isSave){
+        if (isSave) {
             // 根据任务id查询测量数据表的测量数据
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
-            if (measureDataList.isEmpty()){
+            if (measureDataList.isEmpty()) {
                 return Result.ok();
             }
             for (FMeasureData measureData : measureDataList) {
@@ -681,23 +682,23 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
                 analysisData.setIsSave("0");
                 boolean update = fMeasureAnalysisDataService.updateById(analysisData);
-                if (!update){
+                if (!update) {
                     return Result.fail("数据保存失败");
                 }
             }
             boolean update = fMeasureDataService.updateBatchById(measureDataList);
-            if ( update){
+            if (update) {
                 return Result.ok();
-            }else{
+            } else {
                 return Result.fail("数据保存失败");
             }
-        }else{
+        } else {
             // 根据任务id查询测量数据表
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id",taskId);
-            wrapper.eq("is_save","1");
+            wrapper.eq("task_id", taskId);
+            wrapper.eq("is_save", "1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
-            if(measureDataList.isEmpty()){
+            if (measureDataList.isEmpty()) {
                 return Result.ok();
             }
             // 根据任务id查询任务数据
@@ -984,6 +985,31 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
                 .filter(Objects::nonNull)    // 过滤掉空值
                 .collect(Collectors.toList());
+
+        // 校验是否存在空编号（null、""、空格都算空）
+        boolean hasEmpty = sampleNos.stream()
+                .anyMatch(no -> no == null || no.trim().isEmpty());
+        if (hasEmpty) {
+            return Result.fail("存在空的样品编号");
+        }
+
+        // 校验样品编号长度是否超过 256
+        boolean tooLongNo = sampleNos.stream()
+                .anyMatch(no -> no.length() > 256);
+        if (tooLongNo) {
+            return Result.fail("样品编号长度不能超过256个字符");
+        }
+
+        // 校验样品名称长度是否超过 256
+        boolean tooLongName = dto.getNewSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleName())
+                .filter(Objects::nonNull)
+                .anyMatch(name -> name.length() > 256);
+        if (tooLongName) {
+            return Result.fail("样品名称长度不能超过256个字符");
+        }
+
+
         // 查重：找到重复的样品编号
         Set<String> duplicates = sampleNos.stream()
                 .filter(no -> Collections.frequency(sampleNos, no) > 1)
@@ -1876,7 +1902,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         // 增益
         Command com8 = new Command();
         com8.setCmdId(SetParamEnum.SetGain.getComId());
-        com8.setParams(new Object[]{scanParamInfo.getGain() + 2});
+        com8.setParams(new Object[]{scanParamInfo.getGain()});
         commands.add(com8);
         R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
         return Result.ok(stringR.getData());
@@ -2060,9 +2086,12 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 yList2.add(String.valueOf(paramDto.getMeasureDataId2()));
             }
         }else if (paramDto.getDataType().equals("1")){
-            FMeasureData measureData2 = fMeasureDataService.getById(paramDto.getMeasureDataId2());
+            FMeasureAnalysisData measureData2 = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId2());
+            if (measureData2 == null) {
+                return Result.fail("请选择源2");
+            }
             // 将测量数据1和2的测量数据提取出来
-            list2 = JSON.parseArray(measureData2.getOriginalCalculationData(), String.class);
+            list2 = JSON.parseArray(measureData2.getAnalysisResult(), String.class);
             for (String s : list2) {
                 String[] split = s.split(",");
                 yList2.add(split[1]);
@@ -3128,6 +3157,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
 
     }
+
 
 
     // 保留原有的downloadWord方法，并适配新参数

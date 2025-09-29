@@ -7,6 +7,7 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
@@ -61,6 +62,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private FMeasureMethodService tMeasureMethodService;
     @Autowired
     private SystemAlgorithmConfService systemAlgorithmConfService;
+    @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
     @Autowired
     private DeviceInfoService deviceInfoService;
     @Autowired
@@ -129,6 +132,32 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
 
         String ip = deviceInfoService.getIp(deviceSerialNumber);
+
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            sendAndClose(session, "没有找到对应的附件配置信息");
+        }
+
+        if (configPO.getIsAutoChangePool()){
+            ///  设置样品池位置poolNum
+            // 根据样品id找到样品数据
+            FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+            if (sample == null){
+                sendAndClose(session, "请先创建样品");
+                return;
+            }
+            R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+            if (!stringR.getSuccess()) {
+                sendAndClose(session, "设置出错");
+                return;
+            }
+        }
+
+
+
         Command command = new Command();
         command.setCmdId(SetParamEnum.Scan.getComId());
         command.setParams(new Object[]{});
@@ -249,6 +278,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
         List<Double> x = new ArrayList<>();
         List<Double> y = new ArrayList<>();
+
 
         // 2. 采集数据，实时推送（每 10 条推一次）
         int pushCount = 0;

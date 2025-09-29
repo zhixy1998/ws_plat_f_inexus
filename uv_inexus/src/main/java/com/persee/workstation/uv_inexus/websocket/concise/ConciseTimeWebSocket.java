@@ -34,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 /**
  * WebSocket处理器类，继承自TextWebSocketHandler
@@ -63,6 +64,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
+
+    @Autowired
+    private FSamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     private FMeasureSampleService tMeasureSampleService;
@@ -156,6 +160,26 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "您的样品已测完,请重新添加样品");
         }
 
+        // 根据序列号查询对应的附件配置表信息
+        QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        wrapper.eq("device_serial_number", deviceSerialNumber);
+        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            sendAndClose(session, "没有找到对应的附件配置信息");
+        }
+        String maxLocation = "";
+        if (configPO.getIsAutoChangePool()){
+            List<String> sampleIds = newSampleData.stream().map(obj -> obj.getSpecimenKey()).collect(Collectors.toCollection(ArrayList::new));
+            QueryWrapper<FMeasureSample> eq = new QueryWrapper<>();
+            eq.in("id", sampleIds);
+            List<FMeasureSample> list = tMeasureSampleService.list(eq);
+            maxLocation = list.stream().map(FMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
+
+            if (maxLocation == null) {
+                sendAndClose(session, "样品位置出错");
+            }
+        }
+
         // 根据多联池模式进行校验
         if (param.getMultiPoolMode().equals("0")){
             // 单池重复连续采样
@@ -208,6 +232,11 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                     latch.await(); // ⬅️ 等待当前 specimen 的定时器跑完
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
+                }
+
+                FMeasureSample byId = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (byId.getSampleLocation().equals(maxLocation)||!configPO.getIsAutoChangePool()) {
+                    break;
                 }
             }
 

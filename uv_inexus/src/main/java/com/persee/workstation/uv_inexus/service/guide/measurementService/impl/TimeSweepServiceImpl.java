@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
@@ -899,6 +900,21 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
         if (task == null) {
             return Result.fail("任务不存在");
+        }
+
+        /// 校验是否有重复的样品编号
+        // 取出所有样品编号
+        List<String> sampleNos = paramDto.getNewSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+                .filter(Objects::nonNull)    // 过滤掉空值
+                .collect(Collectors.toList());
+        // 查重：找到重复的样品编号
+        Set<String> duplicates = sampleNos.stream()
+                .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!duplicates.isEmpty()) {
+            return Result.fail("样品编号重复");
         }
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);

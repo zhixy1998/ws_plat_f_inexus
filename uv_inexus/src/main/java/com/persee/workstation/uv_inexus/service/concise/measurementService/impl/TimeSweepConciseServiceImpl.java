@@ -820,18 +820,42 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
 
         /// 校验是否有重复的样品编号
-        // 取出所有样品编号
+        // 取出所有样品编号（不做过滤）
         List<String> sampleNos = dto.getNewSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
-                .filter(Objects::nonNull)    // 过滤掉空值
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber())
                 .collect(Collectors.toList());
+
+        // 校验是否存在空编号（null、""、空格都算空）
+        boolean hasEmpty = sampleNos.stream()
+                .anyMatch(no -> no == null || no.trim().isEmpty());
+        if (hasEmpty) {
+            return Result.fail("存在空的样品编号");
+        }
+
+        // 校验样品编号长度是否超过 256
+        boolean tooLongNo = sampleNos.stream()
+                .anyMatch(no -> no.length() > 256);
+        if (tooLongNo) {
+            return Result.fail("样品编号长度不能超过256个字符");
+        }
+
+        // 校验样品名称长度是否超过 256
+        boolean tooLongName = dto.getNewSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleName())
+                .filter(Objects::nonNull)
+                .anyMatch(name -> name.length() > 256);
+        if (tooLongName) {
+            return Result.fail("样品名称长度不能超过256个字符");
+        }
+
+
         // 查重：找到重复的样品编号
         Set<String> duplicates = sampleNos.stream()
                 .filter(no -> Collections.frequency(sampleNos, no) > 1)
                 .collect(Collectors.toSet());
-        // 判断如果isTested为true，
+
         if (!duplicates.isEmpty()) {
-            return Result.fail("样品编号重复");
+            return Result.fail("样品编号重复: " + String.join(",", duplicates));
         }
         if(taskSpecimen == null){
             taskSpecimen = new ArrayList<>();
@@ -1479,13 +1503,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
-        if (paramDto.getDataId() == null) {
+        if (paramDto.getDataId() == null||paramDto.getDataId().equals("")) {
             return Result.fail("数据ID不能为空");
         }
-        if (paramDto.getHeight() == null){
+        if (paramDto.getHeight() == null||paramDto.getHeight().equals("")) {
             paramDto.setHeight(50.0);
         }
-        if (paramDto.getDistance() == null){
+        if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
             paramDto.setDistance("1");
         }
         paramDto.setHeight(paramDto.getHeight()/100);
@@ -1755,9 +1779,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 yList2.add(String.valueOf(paramDto.getMeasureDataId2()));
             }
         }else if (paramDto.getDataType().equals("1")){
-            FMeasureData measureData2 = fMeasureDataService.getById(paramDto.getMeasureDataId2());
+            FMeasureAnalysisData measureData2 = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId2());
             // 将测量数据1和2的测量数据提取出来
-            List<String> list2 = JSON.parseArray(measureData2.getOriginalCalculationData(), String.class);
+            List<String> list2 = JSON.parseArray(measureData2.getAnalysisResult(), String.class);
             for (String s : list2) {
                 String[] split = s.split(",");
                 yList2.add(split[1]);
