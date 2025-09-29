@@ -375,6 +375,10 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+            list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
+            list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
+        }
         if (StringUtils.hasText(sample.getSampleLocation())) {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             JSONObject object = new JSONObject();
@@ -449,6 +453,10 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         List<String> waveLengths = parameter.getWaveLength();
 
         list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+        if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+            list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
+            list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
+        }
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
         if (StringUtils.hasText(sample.getSampleLocation())) {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
