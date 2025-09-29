@@ -1,7 +1,6 @@
 package com.persee.workstation.uv_inexus.websocket.concise;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -192,6 +191,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             return;
         }
 
+        Constants.instrumentData.clear();
+
         List<ChangeParam> dataList = new ArrayList<>();
 
         checkInterrupted(session);
@@ -199,37 +200,44 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
 
-        int o =0;
         while (true) {
             if (Thread.currentThread().isInterrupted()) {
                 System.out.println("线程被中断，终止任务");
                 return;
             }
+
+            // 先推实时数据
+            while (!Constants.measurd_data.isEmpty()) {
+                ChangeParam changeParam = Constants.measurd_data.remove(0);
+                JSONObject point = new JSONObject();
+                point.put("nm", changeParam.getWl());
+
+                JSONObject payload = new JSONObject();
+                payload.put("data", point);
+
+                if (session.isOpen()) {
+                    try {
+                        session.sendMessage(new TextMessage(payload.toJSONString()));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                dataList.add(changeParam);
+            }
+
+            // 检查是否结束
             List<String> snapshot = new ArrayList<>(Constants.instrumentData);
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
-                // 只要测量数据不不为空则循环处理
-                while (!Constants.measurd_data.isEmpty()) {
-                    ChangeParam changeParam = Constants.measurd_data.get(0);
-                    JSONArray dataArray = new JSONArray();
-                    JSONObject point = new JSONObject();
-                    System.out.println("++++++++++++++++++++++正在推送第: "+o++);
-                    point.put("nm",changeParam.getWl());
-                    dataArray.add(point);
-                    JSONObject payload = new JSONObject();
-                    payload.put("data", dataArray);
-                    if (session.isOpen()) {
-                        try {
-                            session.sendMessage(new TextMessage(payload.toJSONString()));
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    dataList.add(Constants.measurd_data.get(0));
-                    Constants.measurd_data.remove(0);
-                }
                 break;
             }
+
+            try { Thread.sleep(10); } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
+
 
         checkInterrupted(session);
         FMeasureTask task;
@@ -278,6 +286,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
 
         sendAndClose(session, "保存成功");
+        Constants.instrumentData.clear();
     }
 
     // 中断检测
