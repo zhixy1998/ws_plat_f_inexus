@@ -243,6 +243,10 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                     latch.countDown(); // 通知主线程：这个 specimen 完成了
                     Constants.endTime = LocalDateTime.now();
                     saveData(session,originalData,x_data,y_data,specimen.getSpecimenKey(),task,deviceSerialNumber); // 保存数据
+                    JSONObject payload = new JSONObject();
+                    payload.put("result", "finish");
+                    // 将公共的变量中的数据清除
+                    sendAndClose(session, String.valueOf(payload));
                     return;
                 }
             }
