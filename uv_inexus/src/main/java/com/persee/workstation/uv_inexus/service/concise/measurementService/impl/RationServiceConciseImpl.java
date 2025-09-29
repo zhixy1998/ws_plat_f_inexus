@@ -2580,6 +2580,18 @@ public class RationServiceConciseImpl implements RationConciseService {
             log.info("任务不存在");
             return Result.fail("任务不存在");
         }
+        int digit = Constants.DEFAULT_DECIMAL_NUM;
+
+        R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(taskId);
+        if (attachmentR.getSuccess()) {
+            FMeasureTaskAttachment data = attachmentR.getData();
+            if (data != null && data.getDataParam() != null) {
+                FQueryDataDTO dataDTO = JSON.parseObject(data.getDataParam(), FQueryDataDTO.class);
+                if (dataDTO!=null && dataDTO.getDigit() != null) {
+                    digit = dataDTO.getDigit();
+                }
+            }
+        }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
@@ -2625,13 +2637,13 @@ public class RationServiceConciseImpl implements RationConciseService {
                         List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
                         for (RationCountDataInfo dataInfo : countDataInfoList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                                abs = dataInfo.getColValue().toString();
+                                abs = DataCountUtil.addZero(dataInfo.getColValue(), digit);
                             }
                             if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
-                                sumAbs = dataInfo.getColValue().toString();
+                                sumAbs = DataCountUtil.addZero(dataInfo.getColValue(), digit);
                             }
                             if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
-                                countValue = dataInfo.getColValue()==null?null:dataInfo.getColValue().toString();
+                                countValue = dataInfo.getColValue()==null?null:DataCountUtil.addZero(dataInfo.getColValue(), digit);
                             }
                         }
                     }

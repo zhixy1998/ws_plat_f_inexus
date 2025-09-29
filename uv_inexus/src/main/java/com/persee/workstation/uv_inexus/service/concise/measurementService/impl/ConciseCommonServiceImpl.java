@@ -65,6 +65,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Autowired
     private FMeasureTaskService fMeasureTaskService;
     @Autowired
+    private FMeasureTaskAttachmentService fMeasureTaskAttachmentService;
+    @Autowired
     private FMeasureDataService fMeasureDataService;
     @Autowired
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
@@ -1245,6 +1247,17 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (task == null) {
             return Result.fail("任务不存在");
         }
+        Integer digit = Constants.DEFAULT_DECIMAL_NUM;
+        LambdaQueryWrapper<FMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureTaskAttachment::getTaskId, taskId);
+        FMeasureTaskAttachment attachment = fMeasureTaskAttachmentService.getOne(queryWrapper);
+        if (attachment != null && attachment.getDataParam() != null) {
+            FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+            if (dataDTO.getDigit() != null) {
+                digit = dataDTO.getDigit();
+            }
+        }
+
         switch (task.getMeasureType()) {
             case "光度测量": {
                 FPhotometricReportDataVO vo = new FPhotometricReportDataVO();
@@ -1256,7 +1269,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 FQueryDataDTO queryDataDTO = new FQueryDataDTO();
                 queryDataDTO.setTaskId(taskId);
                 queryDataDTO.setAllDisplay(false);
-                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+                queryDataDTO.setDigit(digit);
                 queryDataDTO.setOption(new ArrayList<>());
                 Result<List<Map<String, Object>>> data = photometricService.queryData(queryDataDTO);
                 if (data.getCode() == 200) {
@@ -1301,7 +1314,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 FQueryDataDTO queryDataDTO = new FQueryDataDTO();
                 queryDataDTO.setTaskId(taskId);
                 queryDataDTO.setAllDisplay(false);
-                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+                queryDataDTO.setDigit(digit);
                 queryDataDTO.setOption(new ArrayList<>());
                 Result<FRationSampleDataVO> data = rationService.querySampleData(queryDataDTO);
                 if (data.getCode() == 200) {

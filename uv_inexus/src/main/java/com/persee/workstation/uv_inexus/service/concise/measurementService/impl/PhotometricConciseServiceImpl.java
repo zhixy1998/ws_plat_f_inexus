@@ -1413,10 +1413,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             attachmentResult = fMeasureTaskAttachmentService.queryByTaskId(taskId);
         }
         FMeasureTaskAttachment attachment = attachmentResult.getData();
-        if (!StringUtils.hasText(attachment.getDataParam())) {
-            attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-            fMeasureTaskAttachmentService.saveOrUpdate(attachment);
+        if (attachment == null) {
+            attachment = new FMeasureTaskAttachment();
         }
+        attachment.setTaskId(taskId);
+        attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        fMeasureTaskAttachmentService.saveOrUpdate(attachment);
 
 
         boolean repeat = false;
