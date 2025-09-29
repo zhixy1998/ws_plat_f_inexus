@@ -239,7 +239,11 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
                 FMeasureSample byId = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (byId.getSampleLocation().equals(maxLocation)||!configPO.getIsAutoChangePool()) {
-                    break;
+                    scheduler.shutdown();
+                    latch.countDown(); // 通知主线程：这个 specimen 完成了
+                    Constants.endTime = LocalDateTime.now();
+                    saveData(session,originalData,x_data,y_data,specimen.getSpecimenKey(),task,deviceSerialNumber); // 保存数据
+                    return;
                 }
             }
 
