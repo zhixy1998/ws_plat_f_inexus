@@ -425,6 +425,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             }
             task.setSampleKey(JSON.toJSONString(taskSpecimen));
             tMeasureTaskService.updateById(task);
+            task = tMeasureTaskService.getById(taskId);
 
             //所有样品测完，拟合曲线
             //拟合曲线
@@ -528,6 +529,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                                 .orderByDesc(FMeasureData::getSerialNumber)
                                 .last("limit 1");
                         FMeasureData data = tMeasureDataService.getOne(queryWrapper);
+                        if (data == null) {
+                            data = new FMeasureData();
+                        }
                         List<FRationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), FRationWavelengthDataInfo.class);
                         if (list != null && !list.isEmpty()) {
                             FRationCountDataInfo ansData;
