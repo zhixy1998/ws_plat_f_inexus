@@ -1,53 +1,5 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.apache.commons.codec.binary.Base64;
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestTemplate;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -63,16 +15,7 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FDifferentialDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FFourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FLuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FPeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FSmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FUpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
@@ -84,29 +27,14 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.common.FTaskHeadSnapshot;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureAnalysisImage;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureData;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureAnalysisImageService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureDataService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.SpectrumConciseService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -118,8 +46,33 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
-
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 简洁模式: 光谱扫描服务业务层实现
@@ -1894,16 +1847,20 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
         com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
         commands.add(com6);
-        // 能量灯
-        Command com7 = new Command();
-        com7.setCmdId(SetParamEnum.SetLampPos.getComId());
-        com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
-        commands.add(com7);
-        // 增益
-        Command com8 = new Command();
-        com8.setCmdId(SetParamEnum.SetGain.getComId());
-        com8.setParams(new Object[]{scanParamInfo.getGain()});
-        commands.add(com8);
+
+        if (scanParamInfo.getLuminosity().equals("2")||scanParamInfo.getLuminosity().equals("3")) {
+            // 能量灯
+            Command com7 = new Command();
+            com7.setCmdId(SetParamEnum.SetLampPos.getComId());
+            com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
+            commands.add(com7);
+            // 增益
+            Command com8 = new Command();
+            com8.setCmdId(SetParamEnum.SetGain.getComId());
+            com8.setParams(new Object[]{scanParamInfo.getGain()});
+            commands.add(com8);
+        }
+
         R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
         return Result.ok(stringR.getData());
     }
