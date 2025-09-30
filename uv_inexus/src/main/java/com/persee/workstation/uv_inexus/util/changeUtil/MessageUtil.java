@@ -409,6 +409,7 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("CheckWLamp")
                     || cmdId.equalsIgnoreCase("CheckDLamp")
                     || cmdId.equalsIgnoreCase("CheckWl")
+                    || cmdId.equalsIgnoreCase("SetWl")
                     || cmdId.equalsIgnoreCase("BaseLineFast");
             int timeoutMs = isSlowCommand ? 15000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
@@ -432,8 +433,8 @@ public class MessageUtil {
 
                     lastReceiveTime = System.currentTimeMillis();
                     if (count > 1) {
-                        currentSocket.setSoTimeout(300);
-                        timeoutMs = 300;
+                        currentSocket.setSoTimeout(500);
+                        timeoutMs = 500;
                     }
 
 
