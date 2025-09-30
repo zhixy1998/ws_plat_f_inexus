@@ -2259,7 +2259,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (one != null && one.getAnalysisResult() != null) {
                     List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
                     for (FRationCountDataInfo countData : countDataList) {
-                        map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                        if (countData.getColValue() != null) {
+                            map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                        }
+
                     }
                 }
 
@@ -2659,21 +2662,22 @@ public class RationServiceConciseImpl implements RationConciseService {
                     } else {
                         measureValue = abs;
                     }
+                    if (countValue != null && measureValue != null) {
+                        if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                            point.put("y", countValue);
+                            point.put("x", measureValue);
 
-                    if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-                        point.put("y", countValue);
-                        point.put("x", measureValue);
-
-                    } else {
-                        point.put("y", measureValue);
-                        point.put("x", countValue);
+                        } else {
+                            point.put("y", measureValue);
+                            point.put("x", countValue);
+                        }
+                        if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                            standPoints.add(point);
+                        } else {
+                            unknownPoints.add(point);
+                        }
                     }
 
-                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                        standPoints.add(point);
-                    } else {
-                        unknownPoints.add(point);
-                    }
                 }
                 resultVo.setUnknowPoints(unknownPoints);
                 resultVo.setStandPoints(standPoints);
