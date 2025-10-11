@@ -171,9 +171,10 @@ public class ResponseDeal {
             return false;
         }
 
-        boolean isEqual = lastResponse[2] == sendBytes[2] &&
-                lastResponse[3] == sendBytes[3] &&
-                lastResponse[4] == sendBytes[4];
+//        boolean isEqual = lastResponse[2] == sendBytes[2] &&
+//                lastResponse[3] == sendBytes[3] &&
+//                lastResponse[4] == sendBytes[4];
+        boolean isEqual = (lastResponse[4] & 0xFF) == 0;
 
         result = isEqual ? "true" : "false";
 

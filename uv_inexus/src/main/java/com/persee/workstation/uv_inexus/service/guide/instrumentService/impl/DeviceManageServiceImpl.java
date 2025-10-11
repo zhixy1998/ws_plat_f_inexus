@@ -164,7 +164,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         recordPO.setDeviceInfoId(infoPO.getId());
         recordPO.setDeviceSerialNumber(infoPO.getDeviceSerialNumber());
 
-        for (int i = 0; i < DeviceInitCommandEnum.getLength(); i++) {
+        for (int i = 1; i <= DeviceInitCommandEnum.getLength(); i++) {
             Command command;
             if (DeviceInitCommandEnum.getComId(i).equals("SetSlit1")) {
                 command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{20});
@@ -197,7 +197,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     private Integer getInitTaskNum(Integer i) {
         switch (i) {
-            case 0:
             case 1:
             case 2:
             case 3:
