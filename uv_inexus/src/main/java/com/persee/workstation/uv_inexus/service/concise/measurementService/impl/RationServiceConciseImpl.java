@@ -399,6 +399,17 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!Objects.equals(oldZero, newZero)) {
             return false;
         }
+        if (!oldParam.getCoefficientMode().equals(newParam.getCoefficientMode())) {
+            return false;
+        }
+
+        List<String> oldCoefficient = oldParam.getCoefficientParams();
+        List<String> newCoefficient = newParam.getCoefficientParams();
+        if (!Objects.equals(oldCoefficient, newCoefficient)) {
+            return false;
+        }
+
+
         return oldParam.getCurveType().equals(newParam.getCurveType()) &&
                 oldParam.getEquationType().equals(newParam.getEquationType());
 
@@ -493,6 +504,12 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (coefficientParams.size() > 10) {
                 return R.fail("系数参数最多支持10个，当前数量：" + coefficientParams.size());
             }
+
+            int curveType = Integer.parseInt(parameter.getCurveType());
+            if (coefficientParams.size() < curveType + 1) {
+                return R.fail("系数参数数量不足，当前数量：" + coefficientParams.size() + "，所需数量：" + (curveType + 1));
+            }
+
             for (int i = 0; i < coefficientParams.size(); i++) {
                 String coeffStr = coefficientParams.get(i);
                 if (isBlank(coeffStr)) {
@@ -674,6 +691,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         ans.setMethodId(methodId);
 
+        FittingReceiveInfo curveInfo = createFittingInfo(methodId);
+        String  fittingInfo = JSONObject.toJSONString(curveInfo);
+
         FMeasureTask task = new FMeasureTask();
         if (!StringUtils.hasText(methodDTO.getCurrentTaskId())) {
             //任务不存在，创建任务和方法
@@ -702,6 +722,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
             task.setCreateTime(LocalDateTime.now());
             task.setEndSaveTime(LocalDateTime.now());
+            task.setFittingParam(fittingInfo);
             fMeasureTaskService.save(task);
 
             ans.setTaskId(task.getId());
@@ -736,7 +757,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 rationTaskHeadSnapShot.setStandHead(unKnowSnapshot);
 
                 task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
-
+                task.setFittingParam(fittingInfo);
                 fMeasureTaskService.save(task);
 
                 ans.setTaskId(task.getId());
@@ -746,6 +767,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             if (!StringUtils.hasText(task.getSampleKey())) {
                 task.setMethodKey(methodId);
+
+                task.setFittingParam(fittingInfo);
+
                 fMeasureTaskService.updateById(task);
 
                 ans.setTaskId(task.getId());
@@ -787,9 +811,6 @@ public class RationServiceConciseImpl implements RationConciseService {
                     return Result.ok(ans);
 
                 } else if (methodDTO.getClearDataRange().equals(RationChangeMethodTypeEnums.curve.getIdentity())) {
-                    task.setMethodKey(methodId);
-                    fMeasureTaskService.updateById(task);
-
                     int digit = Constants.DEFAULT_DECIMAL_NUM;
                     R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
                     if (attachmentR.getSuccess()) {
@@ -801,9 +822,17 @@ public class RationServiceConciseImpl implements RationConciseService {
                             }
                         }
                     }
-
-                    changeStandSampleDataDigit(task.getId(), digit);
-                    changeUnknowSampleDigit(task.getId(), digit);
+                    task.setMethodKey(methodId);
+                    if (StringUtils.hasText(fittingInfo)){
+                        task.setFittingParam(fittingInfo);
+                        changeUnknowSampleDigit(task.getId(), digit);
+                        fMeasureTaskService.updateById(task);
+                    } else {
+                        task.setFittingParam(fittingInfo);
+                        fMeasureTaskService.updateById(task);
+                        changeStandSampleDataDigit(task.getId(), digit);
+                        changeUnknowSampleDigit(task.getId(), digit);
+                    }
 
                     ans.setTaskId(task.getId());
                     ans.setTaskName(task.getTaskName());
@@ -842,6 +871,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 newTask.setMethodKey(methodId);
                 newTask.setDeviceSerialNumber(null);
                 newTask.setIsDelete(createType);
+                newTask.setFittingParam(fittingInfo);
                 fMeasureTaskService.save(newTask);
 
                 ans.setTaskId(newTask.getId());
@@ -871,6 +901,71 @@ public class RationServiceConciseImpl implements RationConciseService {
             anaList.forEach(fMeasureAnalysisData -> fMeasureAnalysisData.setIsSave(saved));
             fMeasureAnalysisDataService.updateBatchById(anaList);
         }
+    }
+
+    private FittingReceiveInfo createFittingInfo(String methodId) {
+        FittingReceiveInfo fittingReceiveInfo = new FittingReceiveInfo();
+
+        FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
+        if (StringUtils.hasText(fMeasureMethod.getMeasurementParamInfo())) {
+            FRationParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FRationParameter.class);
+            if (parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+                int degree = Integer.parseInt(parameter.getCurveType());
+                fittingReceiveInfo.setDegree(degree);
+
+                String variable = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "Abs":"C";
+                String Y = parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "C":"Abs";
+                StringBuilder formula = new StringBuilder();
+                formula.append(Y).append(" = ");
+                List<String> coefficientList = parameter.getCoefficientParams();
+                List<Double> paramList = new ArrayList<>();
+                while (coefficientList.size() < degree + 1) {
+                    coefficientList.add("0");
+                }
+                for (int i = 0; i <= degree; i++) {
+
+                    // 系数索引：从高次到低次（第一个系数是最高次项）
+                    int coeffIndex = degree - i;
+                    double coeffValue = 0.0;
+                    paramList.add(Double.valueOf(coefficientList.get(i)));
+                    // 解析系数值
+                    if (coeffIndex < coefficientList.size()) {
+                        try {
+                            coeffValue = Double.parseDouble(coefficientList.get(coeffIndex));
+
+                        } catch (NumberFormatException ignored) {
+                            // 保持默认值0.0
+                        }
+                    }
+                    // 设置系数字段（根据degree动态设置）
+                    switch (degree - i) {
+                        case 0: fittingReceiveInfo.setK0(coeffValue); break;
+                        case 1: fittingReceiveInfo.setK1(coeffValue); break;
+                        case 2: fittingReceiveInfo.setK2(coeffValue); break;
+                        case 3: fittingReceiveInfo.setK3(coeffValue); break;
+                        case 4: fittingReceiveInfo.setK4(coeffValue); break;
+                    }
+                    if(!coefficientList.get(degree - i).equals("0")){
+                        if (i > 0) {
+                            formula.append(" + ");
+                        }
+                        formula.append(coefficientList.get(degree - i));
+                        if (degree - i > 0) {
+                            formula.append("*").append(variable);
+                            if (degree - i > 1) {
+                                formula.append("^").append(degree - i);
+                            }
+                        }
+                    }
+                }
+                fittingReceiveInfo.setEquation(formula.toString());
+                fittingReceiveInfo.setCoefficients(paramList);
+                return fittingReceiveInfo;
+
+            }
+
+        }
+        return null;
     }
 
     @Override
@@ -2600,11 +2695,16 @@ public class RationServiceConciseImpl implements RationConciseService {
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
 
         FRationFitCurveVO resultVo = new FRationFitCurveVO();
-        if (StringUtils.hasText(task.getFittingParam())) {
+        if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")) {
             FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
             resultVo = curveData(fittingParam);
-            resultVo.setR(DataCountUtil.addZero(Double.valueOf(fittingParam.getR()), digit));
-            resultVo.setR2(DataCountUtil.addZero(Double.valueOf(fittingParam.getR2()), digit));
+            if (StringUtils.hasText(fittingParam.getR())) {
+                resultVo.setR(DataCountUtil.addZero(Double.valueOf(fittingParam.getR()), digit));
+            }
+            if (StringUtils.hasText(fittingParam.getR2())) {
+                resultVo.setR2(DataCountUtil.addZero(Double.valueOf(fittingParam.getR2()), digit));
+            }
+
         }
 
         if (StringUtils.hasText(task.getSampleKey())) {
@@ -2684,8 +2784,6 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
 
-
-
         resultVo.setTaskId(taskId);
         resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
         resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
@@ -2713,8 +2811,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         double step = 0.01;
         int dataDigit = 8;
         //采用3位小数来计算
-        double minX = (double) Math.round(info.getMinX() * 1000) / 1000;
-        double maxX = (double) Math.round(info.getMaxX() * 1000) / 1000;
+        double minX = info.getMinX() == null ? -1 : (double) Math.round(info.getMinX() * 1000) / 1000;
+        double maxX = info.getMaxX() == null ? 1 : (double) Math.round(info.getMaxX() * 1000) / 1000;
 
         switch (info.getDegree()) {
             case 1:
