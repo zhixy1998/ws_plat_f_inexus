@@ -1705,7 +1705,12 @@ public class SpectrumServiceImpl implements SpectrumService {
         com8.setCmdId(SetParamEnum.SetGain.getComId());
         com8.setParams(new Object[]{scanParamInfo.getGain()});
         commands.add(com8);
-        R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
+        R<String> stringR = null;
+        try {
+            stringR = devMessageUtil.spectrumScanSet(commands, ip);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         return Result.ok(stringR.getData());
     }
 

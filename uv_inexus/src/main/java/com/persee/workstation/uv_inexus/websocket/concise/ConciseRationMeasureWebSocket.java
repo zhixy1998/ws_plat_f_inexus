@@ -943,7 +943,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             list.add(new Command("SetWl", new Object[]{waveLength}));
             list.add(new Command("Measure", new Object[]{}));
 
-            R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+            R<ChangeParam> res = null;
+            try {
+                res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             if (!res.getSuccess()) {
                 log.info("测量出错");
                 return R.fail("测量出错");
@@ -1057,7 +1062,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 list.add(new Command("SetWl", new Object[]{waveLength}));
                list.add(new Command("Measure", new Object[]{}));
 
-                R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                R<ChangeParam> res = null;
+                try {
+                    res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 if (!res.getSuccess()) {
                     log.info("测量出错");
                     return R.fail("测量出错");

@@ -64,10 +64,12 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
         System.out.println("前端连接成功: " + session.getId());
 
         // 确保只启动一次推送线程
-        if (pushLoopStarted.compareAndSet(false, true)) {
-            new Thread(this::pushLoop, "PushLoop-Thread").start();
-            System.out.println("推送线程已启动");
-        }
+//        if (pushLoopStarted.compareAndSet(false, true)) {
+//            new Thread(this::pushLoop, "PushLoop-Thread").start();
+//            System.out.println("推送线程已启动");
+//        }
+        new Thread(() -> pushLoop(session), "PushLoop-" + session.getId()).start();
+
 
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
@@ -84,6 +86,7 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
             }
             else {
                 dataWebSocket.startMeasureLoop(ip);
+                System.out.println("startMeasureLoop 启动，ip="+ip);
             }
         }
     }
@@ -118,6 +121,7 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
      * 外部（采集线程）调用这个方法，把数据放进队列
      */
     public static void addData(String rawData) {
+        System.out.println("addData: " + rawData);
         try {
             queue.put(rawData); // 阻塞放入
         } catch (InterruptedException e) {
@@ -128,8 +132,11 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
     /**
      * 循环从队列取数据并推送
      */
-    private void pushLoop() {
-        while (Constants.Running) {
+    private void pushLoop(WebSocketSession session) {
+//        while (Constants.Running)
+        while (session.isOpen())
+        {
+            System.out.println("pushLoop 启动, Constants.Running=" + Constants.Running);
             try {
                 String raw = queue.take(); // 没数据就阻塞等待
 
@@ -147,6 +154,11 @@ public class MeasureWebSocketHandler implements WebSocketHandler {
                 String[] split = raw.split(",");
                 double x = Double.parseDouble(split[0]);
                 double y = Double.parseDouble(split[1]);
+
+                if (y == 0.0) {
+                    System.out.println("跳过数据: x=0, y=0");
+                    continue;
+                }
 
                 // 封装数据
                 Map<String, Object> data = new HashMap<>();

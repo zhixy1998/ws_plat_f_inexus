@@ -144,13 +144,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 //            startInit(infoPO);
 //        }).start();
 
-        new Thread(() -> newStartInit(infoPO)).start();
+        new Thread(() -> {
+            try {
+                newStartInit(infoPO);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
 
         return R.ok(true);
     }
 
 
-    private void newStartInit(DeviceInfoPO infoPO) {
+    private void newStartInit(DeviceInfoPO infoPO) throws Exception {
         log.info("自检开始");
         String ip = infoPO.getIp();
 
@@ -274,7 +280,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     @DS("guide")
-    public List<FindDeviceVO> newFindDevice() {
+    public List<FindDeviceVO> newFindDevice() throws Exception {
         List<Command> list = new ArrayList<>();
         list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
@@ -311,10 +317,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceVO.getDeviceSerialNumber());
 
 
-            dto.setAttachmentTypeName(attachmentInfo.getAttachmentName());
-            dto.setCurrentPoolNum(deviceVO.getCurrentPoolNum());
+//            dto.setAttachmentTypeName(attachmentInfo.getAttachmentName());
+//            dto.setCurrentPoolNum(deviceVO.getCurrentPoolNum());
 
-            samplePoolConfigService.saveSamplePoolInfo(dto);
+//            samplePoolConfigService.saveSamplePoolInfo(dto);
 
             return devices;
         }

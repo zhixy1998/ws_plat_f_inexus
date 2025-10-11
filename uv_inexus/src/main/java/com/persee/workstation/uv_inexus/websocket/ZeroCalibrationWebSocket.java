@@ -211,7 +211,12 @@ public class ZeroCalibrationWebSocket extends TextWebSocketHandler {
 
         // 进行校零
         command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-        R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+        R<ChangeParam> zero = null;
+        try {
+            zero = devMessageUtil.zero(command, ip);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         if (!zero.getSuccess()) {
             sendAndClose(session, zero.getMessage());
             return;

@@ -3,6 +3,7 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.persee.workstation.uv_inexus.websocket.MeasureController;
 import com.persee.workstation.uv_inexus.websocket.MeasureWebSocketHandler;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,7 +33,6 @@ public class ResponseDeal {
             case "SetEndWl":
             case "SetFilter":
             case "SetGain":
-            case "SetResponseTime":
             case "SetPhotoMode":
             case "SetPadModeTrue":
             case "SetPadModeFalse":
@@ -47,7 +47,6 @@ public class ResponseDeal {
             case "InitFilterMotor":
             case "InitSlit1Motor":
             case "InitWlMotor":
-            case "SetSlit1":
             case "InitLampMotor":
             case "CheckWLamp":
             case "CheckDLamp":
@@ -69,12 +68,27 @@ public class ResponseDeal {
             case "BaseLine":
             case "BaseLineFast":
                 return parseBaseLine(responses);
-            case "GetCellPos":
-                return parseCellPos(responses, sendBytes);
+
+
+            case "SetResponseTime":
+                return parseResponseTime(responses, sendBytes);
+
+            case "GetChangeLampWl":
+                return parseChangeLampWl(responses);
+
+//            case "SetCellPos":
+//                return parseCellPos(responses, sendBytes);
+
+            case "SetSlit1":
+                return parseSlit1(responses, sendBytes);
+
+           case "GetCellPos":
+               return parseCellPos(responses, sendBytes);
 
             case "GetInitStatus":
                 return getInitStatus(responses);
-
+            case "GetLampPos":
+                return parseLampPos(responses, sendBytes);
 
 
 //            case "NewIP":
@@ -82,6 +96,114 @@ public class ResponseDeal {
             default:
                 return 0;
         }
+    }
+
+    private static Object parseChangeLampWl(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+        int wl = (((lastResponse[5] & 0xFF) << 8) | (lastResponse[6] & 0xFF));
+        double ChangeLampWl = wl / 50.0;
+        String rawchagelampwl = String.valueOf(ChangeLampWl);
+        MeasureController.addWlData(rawchagelampwl);
+        return true;
+    }
+
+    private static Object parseResponseTime(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        if (sendBytes == null || sendBytes.length < 5) {
+            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            result = "false";
+            return false;
+        }
+
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+        boolean isEqual = lastResponse[2] == sendBytes[2] &&
+                lastResponse[3] == sendBytes[3] &&
+                lastResponse[4] == sendBytes[4];
+
+        result = isEqual ? "true" : "false";
+
+        float time = (lastResponse[4] & 0xFF) / 100.0f;
+        String rawtime = String.valueOf(time);
+        MeasureController.addTimeData(rawtime);
+        return isEqual;
+    }
+
+    private static Object parseSlit1(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        if (sendBytes == null || sendBytes.length < 5) {
+            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            result = "false";
+            return false;
+        }
+
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+        boolean isEqual = lastResponse[2] == sendBytes[2] &&
+                lastResponse[3] == sendBytes[3] &&
+                lastResponse[4] == sendBytes[4];
+
+        result = isEqual ? "true" : "false";
+
+        float Bandwidth = (lastResponse[4] & 0xFF) / 10.f;
+        String SpectralBandwidth = String.valueOf(Bandwidth);
+        MeasureController.addBandwidthData(SpectralBandwidth);
+        return isEqual;
+    }
+
+    private static Object parseLampPos(List<byte[]> responses, byte[] sendBytes) {
+        if (sendBytes == null || sendBytes.length < 5) {
+            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            result = "false";
+            return false;
+        }
+
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+
+        boolean isEqual1 = sendBytes[4] == lastResponse[4];
+
+        result = isEqual1 ? "true" : "false";
+
+        int pos = (lastResponse[4] & 0xFF); //pos == 0 表示
+        return pos;
     }
 
     /**
@@ -279,7 +401,7 @@ public class ResponseDeal {
 
         int pos = (lastResponse[4] & 0xFF) + 1;
         String rawpos = String.valueOf(pos);
-//        MeasureController.addPosData(rawpos);
+        MeasureController.addPosData(rawpos);
         return pos;
     }
 

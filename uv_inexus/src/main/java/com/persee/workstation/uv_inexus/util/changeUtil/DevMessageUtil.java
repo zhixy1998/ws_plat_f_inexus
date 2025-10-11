@@ -3,14 +3,23 @@ package com.persee.workstation.uv_inexus.util.changeUtil;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.util.changeUtil.T800.ProtocolItem;
+import com.persee.workstation.uv_inexus.util.changeUtil.T800.ResponseParser;
+import com.persee.workstation.uv_inexus.util.changeUtil.T800.T800MessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.T800.T800Transition;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -23,43 +32,87 @@ public class DevMessageUtil {
     @Autowired
     ProtocolItemUtil protocolItemUtil;
 
+    @Autowired
+    ProtocolItem protocolItem;
+
+    @Autowired
+    T800MessageUtil t800MessageUtil;
+
 //    @Autowired
 //    private ExperimentTestService experimentService;
 
-    @Value("${device.default.xmlPath}")
-    String xmlPath;
+    @Value("${device.default.T600xmlPath}")
+    String T600xmlPath;
+
+    @Value("${device.default.T800xmlPath}")
+    String T800xmlPath;
+
 
 //    String xmlPath = "E:\\product\\ws_plat_inexus\\uv_inexus\\src\\main\\java\\com\\persee\\workstation\\uv_inexus\\util\\changeUtil\\T600.1.xml" ;
 
-   private volatile static String defaultIp = "255.255.255.255";
-//   private volatile static String defaultIp = "192.168.32.254";
+    private volatile static String defaultIp = "255.255.255.255";
+
+    private volatile static String T800defaultIp = "192.168.61.68";
+//    private volatile static String defaultIp = "192.168.32.254";
     private volatile  Map<String, Transition> xml;
 
     private static String ipEnd = "253";
+
+    private static String flag ;
+
+    // 缓存一份 T800 协议表
+    private  Map<String, T800Transition> t800xml;
 
     /**
      * 连接设备
      * @param list
      * @return
      */
-    public R<FindDeviceVO> connectDevice(List<Command> list) {
+    public R<FindDeviceVO> connectDevice(List<Command> list) throws Exception {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             return R.fail(ans.getMessage());
         }
         DatagramSocket socket = ans.getData();
 
-        Boolean b = changeXml();
+        byte[] sendData = new byte[]{
+                (byte) 0xFF, (byte) 0xB5, 0x00, 0x00, 0x00, 0x14, 0x00, 0x28,
+                0x14, (byte) 0xFC, 0x00, 0x1B, 0x00, 0x10, 0x21, 0x01,
+                0x01, 0x00, 0x00, 0x30, (byte) 0xE0, (byte) 0xA6, 0x66,
+                (byte) 0x89, 0x5A, 0x13, (byte) 0x88, (byte) 0xC0, (byte) 0xA8,
+                0x01, 0x64, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x00,
+                (byte) 0xC0, (byte) 0xA8, 0x01, 0x01, 0x0A, 0x26
+        };
+
+        boolean isT800 = sendBroadcastAndWaitReply(socket, sendData, 5000, 5000);
+
+        System.out.println("最终结果: " + isT800);
+
+        // 2. 根据结果走不同逻辑
+        if (isT800) {
+            flag = "T800";
+            System.out.println("检测到T800设备");
+
+            return connectT800(socket, list);
+        } else {
+            flag = "T600";
+            System.out.println("检测到T600设备");
+            return connectT600(socket, list);
+        }
+    }
+
+    public R<FindDeviceVO> connectT600(DatagramSocket socket, List<Command> list) throws IOException, InterruptedException {
+        Boolean b = changeXml(T600xmlPath);
         if (!b) {
-            return R.fail("xml文件加载失败");
+            return R.fail("T600xml文件加载失败");
         }
         FindDeviceVO findDeviceVO = new FindDeviceVO();
 
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
-//                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
-                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
+                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+//                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
                 String address = socket.getLocalAddress().getHostAddress();
                 Object[] split = address.split("\\.");
                 int length = param.length;
@@ -112,39 +165,121 @@ public class DevMessageUtil {
         return R.ok(findDeviceVO);
     }
 
+    private R<FindDeviceVO> connectT800(DatagramSocket socket, List<Command> list) throws Exception {
+        // 这里可以加载 T800 专用的 XML 或协议定义
+        Boolean b = T800changeXml(T800xmlPath);
+        if (!b) {
+            return R.fail("T800xml文件加载失败");
+        }
+        FindDeviceVO findDeviceVO = new FindDeviceVO();
+        findDeviceVO.setAttachmentType(25);
+        findDeviceVO.setIsDevOpened(1);
+        findDeviceVO.setIp("192.168.61.89");
+        findDeviceVO.setIsInited(1);
+
+        for (Command command : list) {
+            String cmdId = command.getCmdId();
+            if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
+                Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
+                String address = socket.getLocalAddress().getHostAddress();
+                Object[] split = address.split("\\.");
+                int length = param.length;
+                for (int i = 2; i >= 0; i--) {
+                    param[length - i - 2] = split[2-i];
+                }
+                command.setParams(param);
+            }
+
+            //**********************************改这里了********************************************
+            if (!ensureT800ProtocolsLoaded()) {
+                return R.fail("T800 xml 加载失败");
+            }
+
+            T800Transition item = t800xml.get(cmdId);
+            if (item == null) {
+                log.warn("T800 协议中未找到 cmdId={}", cmdId);
+                continue;
+            }
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            t800MessageUtil.sendCommand(cmdId, bytes, defaultIp);
+            String result = t800MessageUtil.getResultSingle(cmdId, 4000);
+            String result1 = ResponseParser.Result;
+
+            if (result != null) {
+                System.out.println("解析结果：" + result);
+            } else {
+                System.out.println("超时未收到解析结果");
+            }
+
+            if (cmdId.equals(FindDevEnum.GetSn.getComId())) {
+                String s = String.valueOf(result1);
+                s = s.substring(0, 16);
+                findDeviceVO.setDeviceSerialNumber(s);
+                continue;
+            }
+            if (cmdId.equals(FindDevEnum.GetInitStatus.getComId())) {
+                if (result1.equals("true")) {
+                    findDeviceVO.setIsInited(1);
+                } else {
+                    findDeviceVO.setIsInited(2);
+                }
+            }
+        }
+        return R.ok(findDeviceVO);
+    }
+
     /**
      * 初始化设备，暂放
      *
      * @param
      * @return
      */
-    public R<String> initDevice(Command  command, String deviceIp) {
+    public R<String> initDevice(Command  command, String deviceIp) throws Exception {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             return R.fail(ans.getMessage());
         }
         DatagramSocket socket = ans.getData();
-
-        Boolean b = changeXml();
-        if (!b) {
-            return R.fail("xml文件加载失败");
+        if(flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("xml文件加载失败");
+            }
+            String cmdId = command.getCmdId();
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            String result = parse.toString();
+            if ("true".equals(result)) {
+                return R.ok();
+            }
         }
-        String cmdId = command.getCmdId();
-        //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
-        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-        String result = parse.toString();
+        else if(flag == "T800"){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("T800xml文件加载失败");
+            }
+            String cmdId = command.getCmdId();
 
-        if (cmdId.equals(DeviceInitCommandEnum.GetInitStatus.getComId())) {
-            return R.ok();
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+//            String result = t800MessageUtil.getResultSingle(cmdId, 3000);
+            String result = ResponseParser.Result;
+
+            if (result != null) {
+                System.out.println("解析结果：" + result);
+            } else {
+                System.out.println("超时未收到解析结果");
+            }
+            if ("true".equals(result)) {
+                return R.ok();
+            }
+
         }
 
-        if ("false".equals(result)) {
-            return R.fail();
-        }
-
-        return R.ok();
+        return R.fail();
     }
 
     /**
@@ -160,7 +295,7 @@ public class DevMessageUtil {
         }
         DatagramSocket socket = ans.getData();
 
-        Boolean b = changeXml();
+        Boolean b = changeXml(T600xmlPath);
         if (!b) {
             return R.fail("xml文件加载失败");
         }
@@ -189,9 +324,9 @@ public class DevMessageUtil {
             return R.fail(ans.getMessage());
         }
         DatagramSocket socket = ans.getData();
-        Boolean b = changeXml();
+        Boolean b = changeXml(T600xmlPath);
         if (!b) {
-            return R.fail("     转换xml出错");
+            return R.fail("转换xml出错");
         }
         String cmdId = command.getCmdId();
         Transition transition = xml.get(cmdId);
@@ -208,28 +343,53 @@ public class DevMessageUtil {
     /**
      * 光谱扫描:设置参数
      */
-    public R<String> spectrumScanSet(List<Command> list, String deviceIp) {
+    public R<String> spectrumScanSet(List<Command> list, String deviceIp) throws Exception {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             log.info("绑定socket失败");
             return R.fail(ans.getMessage());
         }
         DatagramSocket socket = ans.getData();
-        Boolean b = changeXml();
-        if (!b) {
-            return R.fail("转换xml出错");
-        }
-        for (Command command : list) {
-            String cmdId = command.getCmdId();
-            //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
-            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-            if (parse.equals("false")) {
-                return R.fail("解析报文出错");
+
+        if(flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
+            }
+            for (Command command : list) {
+                String cmdId = command.getCmdId();
+                //发送报文组
+                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+                List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+                Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+                if (parse.equals("false")) {
+                    return R.fail("解析报文出错");
+                }
             }
         }
-        return R.ok("true");
+
+        else if(flag == "T800"){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("T800 xml 加载失败");
+            }
+            for (Command command : list) {
+                String cmdId = command.getCmdId();
+                //发送报文组
+                byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+                String result = ResponseParser.Result;
+                if (result != null) {
+                    System.out.println("解析结果：" + result);
+                } else {
+                    System.out.println("超时未收到解析结果");
+                }
+                if ("true".equals(result)) {
+                    return R.ok();
+                }
+            }
+        }
+            return R.ok("true");
     }
 
     /**
@@ -242,7 +402,7 @@ public class DevMessageUtil {
             return Result.fail(ans.getMessage());
         }
         DatagramSocket socket = ans.getData();
-        Boolean b = changeXml();
+        Boolean b = changeXml(T600xmlPath);
         if (!b) {
             return Result.fail("转换xml出错");
         }
@@ -267,20 +427,41 @@ public class DevMessageUtil {
             return R.fail(ans.getMessage());
         }
         DatagramSocket socket = ans.getData();
-        Boolean b = changeXml();
-        if (!b) {
-            return R.fail("转换xml出错");
+
+        if (flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
+            }
+            String cmdId = command.getCmdId();
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse.equals("false")) {
+                return R.fail("基线失败");
+            }
+            List<ChangeParam> changeParam = (List<ChangeParam>) parse;
+            return R.ok(changeParam);
         }
-        String cmdId = command.getCmdId();
-        //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
-        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-        if (parse.equals("false")) {
-            return R.fail("基线失败");
+        else if (flag == "T800") {
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("T800 xml 加载失败");
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams(), t800xml.get(cmdId));
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            String param = ResponseParser.parseScan(bytes);
+//            String json = JSON.toJSONString(param);
+            System.out.println("解析结果 JSON：" + param);
         }
-        List<ChangeParam> changeParam = (List<ChangeParam>) parse;
-        return R.ok(changeParam);
+        return R.fail();
     }
 
     /**
@@ -294,7 +475,7 @@ public class DevMessageUtil {
         }
         DatagramSocket socket = re.getData();
 
-        Boolean b = changeXml();
+        Boolean b = changeXml(T600xmlPath);
         if (!b) {
             log.info("转换xml出错");
             return;
@@ -316,50 +497,95 @@ public class DevMessageUtil {
             return;
         }
         DatagramSocket socket = ans.getData();
-        Boolean b = changeXml();
-        if (!b) {
-            return;
+        if(flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return;
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse.equals("false")) {
+                return;
+            }
         }
-        String cmdId = command.getCmdId();
-        Transition transition = xml.get(cmdId);
-        //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
-        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-        if (parse.equals("false")) {
-            return;
+        else if(flag == "T800"){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return;
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            String result = ResponseParser.Result;
+
+            if (result.equals("false")) {
+                return;
+            }
         }
     }
 
     /**
      * 光度测量：
      */
-    public R<ChangeParam> photometricAndRationMeasurement(List<Command> list, String deviceIp) {
+    public R<ChangeParam> photometricAndRationMeasurement(List<Command> list, String deviceIp) throws Exception {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");
             return R.fail(re.getMessage());
         }
         DatagramSocket socket = re.getData();
-
-        Boolean b = changeXml();
-        if (!b) {
-            return R.fail("转换xml出错");
-        }
         ChangeParam changeParam = null;
-        for (Command command : list) {
-            String cmdId = command.getCmdId();
-            //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
-            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-            if (parse == null || parse.equals("false")) {
-                return R.fail("解析报文出错");
+
+        if(flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
             }
-            if (cmdId.equals("Measure")) {
+
+            for (Command command : list) {
+                String cmdId = command.getCmdId();
+                //发送报文组
+                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+                List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
+                Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+                if (parse == null || parse.equals("false")) {
+                    return R.fail("解析报文出错");
+                }
+                if (cmdId.equals("Measure")) {
+                    changeParam = (ChangeParam) parse;
+                }
+            }
+        }
+        else if(flag == "T800") {
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
+            }
+            for (Command command : list) {
+                String cmdId = command.getCmdId();
+                T800Transition transition = t800xml.get(cmdId);
+
+                byte[] bytes = protocolItem.T800calcSendBytes(command.getParams(), transition);
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+                Object parse = ResponseParser.parseMeasure(bytes);
+                if (parse.equals("false")) {
+                    return R.fail("解析报文出错");
+                }
                 changeParam = (ChangeParam) parse;
             }
+            return R.ok(changeParam);
         }
+
         return R.ok(changeParam);
     }
 
@@ -373,22 +599,48 @@ public class DevMessageUtil {
             return R.fail(re.getMessage());
         }
         DatagramSocket socket = re.getData();
-
-        Boolean b = changeXml();
-        if (!b) {
-            return R.fail("转换xml出错");
-        }
         List<ChangeParam> changeParams = null;
-        for (Command command : list) {
-            String cmdId = command.getCmdId();
-            //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
-            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-            if (parse == null || parse.equals("false")) {
-                return R.fail("解析报文出错");
+
+        if (flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
             }
-            changeParams.add((ChangeParam) parse);
+
+            for (Command command : list) {
+                String cmdId = command.getCmdId();
+                //发送报文组
+                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+                List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
+                Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+                if (parse == null || parse.equals("false")) {
+                    return R.fail("解析报文出错");
+                }
+                changeParams.add((ChangeParam) parse);
+            }
+        }
+        else if (flag == "T800") {
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
+            }
+            for (Command command : list) {
+                String cmdId = command.getCmdId();
+
+                T800Transition transition = t800xml.get(cmdId);
+
+                byte[] bytes = protocolItem.T800calcSendBytes(command.getParams(), transition);
+                try {
+                    t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+                Object parse = ResponseParser.parseMeasure(bytes);
+                if (parse.equals("false")) {
+                    return R.fail("解析报文出错");
+                }
+                changeParams.add((ChangeParam) parse);
+            }
         }
         return R.ok(changeParams);
     }
@@ -400,20 +652,42 @@ public class DevMessageUtil {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");
-            return ;
+            return;
         }
         DatagramSocket socket = re.getData();
 
-        Boolean b = changeXml();
-        if (!b) {
-            log.info("转换xml出错");
-            return;
+        if (flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                log.info("转换xml出错");
+                return;
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            Constants.startTime = LocalDateTime.now();
+            messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes);
         }
-        String cmdId = command.getCmdId();
-        Transition transition = xml.get(cmdId);
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        Constants.startTime = LocalDateTime.now();
-        messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes);
+
+        else if (flag == "T800") {
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                log.info("转换xml出错");
+                return;
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams(), t800xml.get(cmdId));
+            Constants.startTime = LocalDateTime.now();
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+//                Object param = ResponseParser.parseNullReport(bytes);
+//                String json = JSON.toJSONString(param);
+//                System.out.println("解析结果 JSON：" + json);
+        }
     }
 
     /**
@@ -427,7 +701,7 @@ public class DevMessageUtil {
         }
         DatagramSocket socket = re.getData();
 
-        Boolean b = changeXml();
+        Boolean b = changeXml(T600xmlPath);
         if (!b) {
             log.info("转换xml出错");
             return null;
@@ -448,7 +722,7 @@ public class DevMessageUtil {
      * 转换xml为map
      * @return
      */
-    private Boolean changeXml() {
+    private Boolean changeXml(String xmlPath) {
         // 判断xml是否为空
         if (xml!=null&&!xml.isEmpty()) {
             // 如果不为空，则返回true
@@ -456,8 +730,31 @@ public class DevMessageUtil {
         }
 
         try {
-            // 从xmlPath路径加载xml
-            xml = protocolItemUtil.loadFromXml(xmlPath);
+            if(T600xmlPath.equals(xmlPath)){
+                // 从xmlPath路径加载xml
+                xml = protocolItemUtil.loadFromXml(xmlPath);
+            }
+        } catch (Exception e) {
+            // 如果加载失败，则记录错误日志，并返回false
+            log.error("转换xml出错");
+            return false;
+        }
+        // 如果加载成功，则返回true
+        return true;
+    }
+
+    private Boolean T800changeXml(String xmlPath) {
+        // 判断xml是否为空
+        if (t800xml!=null&&!t800xml.isEmpty()) {
+            // 如果不为空，则返回true
+            return true;
+        }
+
+        try {
+            if(T800xmlPath.equals(xmlPath)){
+                // 从xmlPath路径加载xml
+                t800xml = protocolItem.loadFormXml(xmlPath);
+            }
         } catch (Exception e) {
             // 如果加载失败，则记录错误日志，并返回false
             log.error("转换xml出错");
@@ -472,28 +769,52 @@ public class DevMessageUtil {
     /**
      * 光度测量：校零
      */
-    public R<ChangeParam> zero(Command command, String deviceIp) {
+    public R<ChangeParam> zero(Command command, String deviceIp) throws Exception {
         R<DatagramSocket> re = messageUtil.getSocket();
         if (!re.getSuccess()) {
             log.info("绑定socket失败");
             return R.fail(re.getMessage());
         }
         DatagramSocket socket = re.getData();
-        Boolean b = changeXml();
-        if (!b) {
-            return R.fail("转换xml出错");
+
+        if (flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse.equals("false")) {
+                return R.fail("校零失败");
+            }
+            ChangeParam changeParam = (ChangeParam) parse;
+            return R.ok(changeParam);
         }
-        String cmdId = command.getCmdId();
-        Transition transition = xml.get(cmdId);
-        //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
-        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-        if (parse.equals("false")) {
-            return R.fail("校零失败");
+        else if (flag == "T800") {
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("转换xml出错");
+            }
+            String cmdId = command.getCmdId();
+            T800Transition transition = t800xml.get(cmdId);
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,transition);
+            t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            Object parse = ResponseParser.parseMeasure( bytes);
+            if (parse.equals("false")) {
+                return R.fail("解析报文出错");
+            }
+            ChangeParam changeParam = (ChangeParam) parse;
+            return R.ok(changeParam);
+            //需要在t800解析中重写一下
+//            ChangeParam changeParam = (ChangeParam) parse;
+//            return R.ok(changeParam);
         }
-        ChangeParam changeParam = (ChangeParam) parse;
-        return R.ok(changeParam);
+        return R.ok();
     }
 
     /**
@@ -508,7 +829,7 @@ public class DevMessageUtil {
             return R.fail("false");
         }
         DatagramSocket socket = ans.getData();
-        Boolean b = changeXml();
+        Boolean b = changeXml(T600xmlPath);
         if (!b) {
             return R.fail("false");
         }
@@ -535,18 +856,40 @@ public class DevMessageUtil {
             return;
         }
         DatagramSocket socket = ans.getData();
-        Boolean b = changeXml();
-        if (!b) {
-            return;
+
+        if (flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return;
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse.equals("false")) {
+                return;
+            }
         }
-        String cmdId = command.getCmdId();
-        Transition transition = xml.get(cmdId);
-        //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
-        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-        if (parse.equals("false")) {
-            return;
+        else if (flag == "T800") {
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return;
+            }
+            String cmdId = command.getCmdId();
+            T800Transition transition = t800xml.get(cmdId);
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,transition);
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            Object parse = ResponseParser.Result;
+            if (parse.equals("false")) {
+                return;
+            }
         }
 
     }
@@ -562,24 +905,129 @@ public class DevMessageUtil {
         }
         DatagramSocket socket = re.getData();
 
-        Boolean b = changeXml();
-        if (!b) {
-            log.info("转换xml出错");
-            return null;
+        if (flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                log.info("转换xml出错");
+                return null;
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            Constants.startTime=LocalDateTime.now();
+            // 发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive2(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse==null || parse.equals("false")) {
+                return null;
+            }
+            ChangeParam changeParam = (ChangeParam) parse;
+            Constants.timeChangeparam=changeParam;
+            return changeParam;
         }
-        String cmdId = command.getCmdId();
-        Transition transition = xml.get(cmdId);
-        // 获取当前时间作为起始时间
-        Constants.startTime=LocalDateTime.now();
-        // 发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.singleSendAndReceive2(socket, deviceIp, cmdId, bytes);
-        Object parse = ResponseDeal.parse(cmdId, responses, bytes);
-        if (parse==null || parse.equals("false")) {
-            return null;
+
+        else if (flag == "T800") {
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                log.info("转换xml出错");
+                return null;
+            }
+            String cmdId = command.getCmdId();
+            T800Transition transition = t800xml.get(cmdId);
+
+            // 获取当前时间作为起始时间
+            Constants.startTime=LocalDateTime.now();
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,transition);
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            Object parse = ResponseParser.parseMeasure( bytes);
+            if (parse==null || parse.equals("false")) {
+                return null;
+            }
+            ChangeParam changeParam = (ChangeParam) parse;
+            Constants.timeChangeparam=changeParam;
+            return changeParam;
         }
-        ChangeParam changeParam = (ChangeParam) parse;
-        Constants.timeChangeparam=changeParam;
-        return changeParam;
+        return null;
     }
+
+    /**
+     * 判断通信版本
+     */
+    public static boolean sendBroadcastAndWaitReply(DatagramSocket socket, byte[] data, int port, int timeoutMs) {
+        try {
+            // 启用广播
+            socket.setBroadcast(true);
+
+            // 广播地址
+            InetAddress broadcastAddr = InetAddress.getByName("255.255.255.255");
+
+            // 组装报文
+            DatagramPacket packet = new DatagramPacket(data, data.length, broadcastAddr, port);
+
+            // 发送
+            socket.send(packet);
+            System.out.println("广播报文已发送");
+
+            // 设置超时（毫秒）
+            socket.setSoTimeout(timeoutMs);
+
+            // 等待接收
+            byte[] buffer = new byte[4096];
+            DatagramPacket reply = new DatagramPacket(buffer, buffer.length);
+
+            try {
+                socket.receive(reply);  // 阻塞直到收到或超时
+                byte[] recvBytes = Arrays.copyOf(reply.getData(), reply.getLength());
+
+                System.out.print("收到回复：");
+                for (byte b : recvBytes) System.out.printf("%02X ", b);
+                System.out.println();
+
+                // 固定报文（T800 特征报文）
+                byte[] t800Signature = new byte[]{
+                        (byte)0xFF, (byte)0xB5, 0x00, 0x00, 0x00, 0x14, 0x00, 0x28,
+                        0x14, (byte)0xFC, 0x00, 0x1B, 0x00, 0x10, 0x21, 0x01,
+                        0x01, 0x00, 0x00, 0x30, (byte)0xE0, (byte)0xA6, 0x66, (byte)0x89,
+                        0x5A, 0x13, (byte)0x88, (byte)0xC0, (byte)0xA8, 0x01, 0x64, (byte)0xFF,
+                        (byte)0xFF, (byte)0xFF, 0x00, (byte)0xC0, (byte)0xA8, 0x01, 0x01, 0x0A, 0x26
+                };
+
+                // 比较
+                if (Arrays.equals(recvBytes, t800Signature)) {
+                    System.out.println("识别到 T800");
+                    return true; // true = T800
+                } else {
+                    System.out.println("收到非 T800 报文，判定为 T600");
+                    return false; // false = T600
+                }
+
+            } catch (SocketTimeoutException e) {
+                System.out.println("超时未收到回复，判定为 T600");
+//                return false; // 没回复也算 T600
+                return true;// T800
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false; // 出异常也算 T600
+        }
+    }
+
+
+    // 确保已加载
+    private boolean ensureT800ProtocolsLoaded() {
+        if (t800xml != null && !t800xml.isEmpty()) return true;
+        try {
+            t800xml = protocolItem.loadFormXml(T800xmlPath); // 用 ProtocolItem 的方法加载
+            return t800xml != null && !t800xml.isEmpty();
+        } catch (Exception e) {
+            log.error("加载 T800 协议失败", e);
+            return false;
+        }
+    }
+
 }

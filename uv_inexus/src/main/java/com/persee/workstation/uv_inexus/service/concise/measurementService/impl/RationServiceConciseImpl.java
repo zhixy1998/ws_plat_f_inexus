@@ -3450,7 +3450,12 @@ public class RationServiceConciseImpl implements RationConciseService {
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-            R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+            R<ChangeParam> zero = null;
+            try {
+                zero = devMessageUtil.zero(command, ip);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             if (!zero.getSuccess()) {
                 return Result.fail(zero.getMessage());
             }
@@ -3529,7 +3534,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 devMessageUtil.wavelengthLocate(command, ip);
 
                 command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-                R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+                R<ChangeParam> zero = null;
+                try {
+                    zero = devMessageUtil.zero(command, ip);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 if (!zero.getSuccess()) {
                     return Result.fail(zero.getMessage());
                 }
@@ -3548,7 +3558,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 Command com2 = new Command(SetParamEnum.SetEndWl.getComId(), new Object[]{endWaveLength});
                 commands.add(com1);
                 commands.add(com2);
-                R<String> stringR = devMessageUtil.spectrumScanSet(commands,ip);
+                R<String> stringR = null;
+                try {
+                    stringR = devMessageUtil.spectrumScanSet(commands,ip);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 if (!stringR.getSuccess()) {
                     return Result.fail(stringR.getMessage());
                 }

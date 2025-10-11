@@ -1861,7 +1861,12 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             commands.add(com8);
         }
 
-        R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
+        R<String> stringR = null;
+        try {
+            stringR = devMessageUtil.spectrumScanSet(commands, ip);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         return Result.ok(stringR.getData());
     }
 

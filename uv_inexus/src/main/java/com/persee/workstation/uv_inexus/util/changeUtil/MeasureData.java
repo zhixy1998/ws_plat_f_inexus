@@ -25,8 +25,11 @@ public class MeasureData {
 //    @Autowired
 //    private ExperimentTestService experimentService;
 
-    @Value("${device.default.xmlPath}")
-    String xmlPath;
+    @Value("${device.default.T600xmlPath}")
+    String T600xmlPath;
+
+    @Value("${device.default.T800xmlPath}")
+    String T800xmlPath;
 
     /**
      * 启动后台线程，循环发送 Measure 指令（参数固定为 0），并解析返回数据
@@ -45,14 +48,20 @@ public class MeasureData {
                 // 循环发送
                 while (Constants.Running) {
                     try {
-                        Map<String, Transition> xml = protocolItemUtil.loadFromXml(xmlPath);
+                        Map<String, Transition> xml = protocolItemUtil.loadFromXml(T600xmlPath);
                         byte[] sendBytes = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("Measure"));
+                        byte[] sendBytes2 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetChangeLampWl"));
+                        byte[] sendBytes3 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetCellPos"));
 
                         // 发送并接收
                         List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, "Measure", sendBytes);
+                        List<byte[]> responses2 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetChangeLampWl", sendBytes2);
+                        List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetCellPos", sendBytes3);
 
                         // 解析报文
                         Object parseResult = ResponseDeal.parse("Measure", responses, sendBytes);
+                        Object parseResult2 = ResponseDeal.parse("GetChangeLampWl", responses2, sendBytes2);
+                        Object parseResult3 = ResponseDeal.parse("GetCellPos", responses3, sendBytes3);
 
                         if (parseResult == null || "false".equals(parseResult.toString())) {
                             log.print("Measure 指令解析失败");
@@ -60,11 +69,23 @@ public class MeasureData {
                             log.print("Measure 数据解析成功: {}");
                         }
 
+                        if (parseResult2 == null || "false".equals(parseResult2.toString())) {
+                            log.print("GetChangeLampWl 指令解析失败");
+                        } else {
+                            log.print("GetChangeLampWl 数据解析成功: {}");
+                        }
+
+                        if (parseResult3 == null || "false".equals(parseResult3.toString())) {
+                            log.print("GetCellPos 指令解析失败");
+                        } else {
+                            log.print("GetCellPos 数据解析成功: {}");
+                        }
+
                         // 休眠2秒
-                        Thread.sleep(2000);
+                        Thread.sleep(3500);
 
                     } catch (Exception e) {
-                        log.print("Measure 循环异常");
+                        log.print("Measure/GetChangeLampWl 循环异常");
                         try {
                             Thread.sleep(2000); // 出错时延时重试
                         } catch (InterruptedException ignored) {}
@@ -73,7 +94,7 @@ public class MeasureData {
 
 
             } catch (Exception e) {
-                log.print("Measure 循环线程启动失败");
+                log.print("Measure/GetChangeLampWl 循环线程启动失败");
             }
         }, "MeasureLoopThread").start();
     }

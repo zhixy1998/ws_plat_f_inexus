@@ -64,8 +64,13 @@ public class DataCountUtil {
 
             BigDecimal ratio = t.divide(new BigDecimal("100"), MathContext.DECIMAL128);
 
+            double v = ratio.doubleValue();
+            if(v<0) {
+                v=-v;
+            }
+
             // -log10(ratio)
-            double logValue = Math.log10(ratio.doubleValue());
+            double logValue = Math.log10(v);
             BigDecimal absorbance = BigDecimal.valueOf(-logValue)
                     .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
             DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位

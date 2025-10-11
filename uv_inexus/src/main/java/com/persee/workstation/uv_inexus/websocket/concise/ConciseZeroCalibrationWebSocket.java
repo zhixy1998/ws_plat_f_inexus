@@ -165,7 +165,7 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
      * @param session
      * @throws InterruptedException
      */
-    private void runBusinessLogic(WebSocketSession session) throws InterruptedException {
+    private void runBusinessLogic(WebSocketSession session) throws Exception {
         // 检查线程中断
         checkInterrupted(session);
 

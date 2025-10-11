@@ -283,7 +283,11 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
 
                 } else {
-                    r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                    try {
+                        r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 }
 
                 if (!r.getSuccess()) {
@@ -464,7 +468,11 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
                     r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
 
                 } else {
-                    r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                    try {
+                        r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 }
 
                 if (!r.getSuccess()) {
@@ -765,7 +773,7 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
 
 
     //单个样品普通不微分测量
-    public R<RationDataVO> singleSampleSimpleMeasure(TMeasureSample sample, RationParameter parameter, TMeasureTask task, String ip, String sessionId) throws IOException {
+    public R<RationDataVO> singleSampleSimpleMeasure(TMeasureSample sample, RationParameter parameter, TMeasureTask task, String ip, String sessionId) throws Exception {
 
         WebSocketSession session = sessions.get(sessionId);
 
@@ -778,7 +786,7 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
         List<String> waveLengths = parameter.getWaveLength();
 
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
-        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()})); //修改设置响应时间
         LocalDateTime startTime = LocalDateTime.now();
         for (String waveLength : waveLengths) {
             list.add(new Command("SetWl", new Object[]{waveLength}));
@@ -889,7 +897,12 @@ public class RationMeasureWebSocket extends TextWebSocketHandler {
                 list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
                 list.add(new Command("Measure", new Object[]{}));
 
-                R<ChangeParam> res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                R<ChangeParam> res = null;
+                try {
+                    res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 if (!res.getSuccess()) {
                     log.info("测量出错");
                     return R.fail("测量出错");

@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 
 import java.net.*;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.List;
 
 @Service("MessageUtil")
 public class MessageUtil {
@@ -19,6 +22,7 @@ public class MessageUtil {
     Integer localPort;
 
     public static DatagramSocket socket;
+
 
     public R<DatagramSocket> getSocket() {
         String localIp = getEthernetIPv4();
@@ -44,6 +48,8 @@ public class MessageUtil {
         }
         return R.ok(socket);
     }
+
+
 
     /**
      * 光谱扫描调用
@@ -590,9 +596,10 @@ public class MessageUtil {
                 }
 
                 if (data[3] == 0x01 && changeParam != null) {
-                    int s = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
+                    int s = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                    int wl = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     changeParam.setS(String.valueOf(s));
-                    changeParam.setWl(String.valueOf(s / 50.0f));
+                    changeParam.setWl(String.valueOf(wl / 50.0f));
                     System.out.println("s = " + s);
                 } else if (data[3] == 0x02 && changeParam != null) {
                     int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);

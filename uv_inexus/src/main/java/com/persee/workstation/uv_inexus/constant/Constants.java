@@ -110,8 +110,6 @@ public class Constants {
     public static final Integer DEFAULT_DECIMAL_NUM_MAX = 12;
 
     //全局变量用来判断前端是否请求结束
-
-
     public static volatile boolean Running = true;
 
     /*

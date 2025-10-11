@@ -1,6 +1,6 @@
 server:
-  port: 8081
-#  port: 8082
+#  port: 8081
+  port: 8082
 
 spring:
   mvc:
@@ -68,7 +68,8 @@ device:
     sendPort: 5000
     receivePort: 6000
     machineIP: 169.254.110.67
-    xmlPath: "file/T600.1.xml"
+    T600xmlPath: "file/T600.1.xml"
+    T800xmlPath: "file/T800新.1.xml"
 
 sys-manage-default:
   defaultId: "00000000"

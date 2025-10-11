@@ -635,7 +635,12 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 进行校零
         command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-        R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+        R<ChangeParam> zero = null;
+        try {
+            zero = devMessageUtil.zero(command, ip);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         if (!zero.getSuccess()) {
             return Result.fail(zero.getMessage());
         }

@@ -1,42 +1,5 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -47,41 +10,17 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.RepeatConfigEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
-import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureAnalysisData;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureData;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureProject;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.PhotometricService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureAnalysisDataService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureDataService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureSampleService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -90,20 +29,29 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
-import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RepeatMeasureData;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
-
+import com.persee.workstation.uv_inexus.vo.measurementVo.*;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDocument1;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.io.*;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service("photometricService")
@@ -1307,7 +1255,12 @@ public class PhotometricServiceImpl implements PhotometricService {
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-            R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+            R<ChangeParam> zero = null;
+            try {
+                zero = devMessageUtil.zero(command, ip);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             if (!zero.getSuccess()) {
                 return Result.fail(zero.getMessage());
             }

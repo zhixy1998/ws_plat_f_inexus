@@ -152,6 +152,7 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         Thread taskThread = new Thread(() -> {
 
             try {
+                System.out.println("analysisNumber=" + analysisNumber);
                 Integer number = Integer.valueOf(analysisNumber);
                 doOneMeasurement(session, command, spectrumParameter, task, taskId, sampleId, deviceSerialNumber, ip, number);
                 // 全部完成后再告诉前端 finish
@@ -167,6 +168,8 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             }
 
         });
+
+
 
         taskThreads.put(session.getId(), taskThread);
         taskThread.start();
@@ -389,7 +392,8 @@ public class SpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("2")) {
+            }
+            else if (spectrumParameter.getLuminosity().equals("2")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(s, null);
                 Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);

@@ -47,7 +47,7 @@ public class InitRecordServiceImpl implements InitRecordService {
             dao.delete(queryWrapper);
         }
 
-        for (int i = 1; i <= DeviceInitInfoEnum.getLength(); i++) {
+        for (int i = 1; i < DeviceInitInfoEnum.getLength(); i++) {     //我在这去了个  =
             InitRecordPO po = new InitRecordPO();
             po.setInitTaskNum(i);
             po.setDeviceInfoId(deviceInfoId);

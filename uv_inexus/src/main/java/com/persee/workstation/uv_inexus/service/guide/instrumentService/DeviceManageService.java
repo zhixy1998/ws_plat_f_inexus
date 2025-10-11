@@ -7,6 +7,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface DeviceManageService {
@@ -21,7 +22,7 @@ public interface DeviceManageService {
 
     List<FindDeviceVO> findDevice();
 
-    List<FindDeviceVO> newFindDevice();
+    List<FindDeviceVO> newFindDevice() throws Exception;
 
     /**
      * 仪器激活接口
