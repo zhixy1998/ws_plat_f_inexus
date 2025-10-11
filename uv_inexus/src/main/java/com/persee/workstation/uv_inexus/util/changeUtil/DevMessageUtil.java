@@ -252,11 +252,10 @@ public class DevMessageUtil {
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             String result = parse.toString();
-            if ("true".equals(result)) {
-                return R.ok();
+            if ("false".equals(result)) {
+                return R.fail();
             }
-        }
-        else if(flag == "T800"){
+        } else if(flag == "T800"){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
                 return R.fail("T800xml文件加载失败");
@@ -273,13 +272,13 @@ public class DevMessageUtil {
             } else {
                 System.out.println("超时未收到解析结果");
             }
-            if ("true".equals(result)) {
-                return R.ok();
+            if ("false".equals(result)) {
+                return R.fail();
             }
 
         }
+        return R.ok();
 
-        return R.fail();
     }
 
     /**
@@ -1008,7 +1007,7 @@ public class DevMessageUtil {
             } catch (SocketTimeoutException e) {
                 System.out.println("超时未收到回复，判定为 T600");
 //                return false; // 没回复也算 T600
-                return true;// T800
+                return false;// T800
             }
 
         } catch (Exception e) {
