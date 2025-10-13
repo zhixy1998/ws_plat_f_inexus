@@ -66,7 +66,7 @@ public class MeasureController {
         }
 
         // 启动测量循环线程
-//        dataWebSocket.startMeasureLoop(ip);
+        dataWebSocket.startMeasureLoop(ip);
 
         // 启动推送循环线程（只启动一次，避免重复开线程）
             new Thread(this::pushLoop, "PushLoopThread").start();

@@ -4,7 +4,6 @@
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
-import com.persee.workstation.uv_inexus.websocket.MeasureWebSocketHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
@@ -88,7 +87,11 @@ public class ResponseDeal {
             case "GetInitStatus":
                 return getInitStatus(responses);
             case "GetLampPos":
-                return parseLampPos(responses, sendBytes);
+                return parseLampPos(responses);
+
+            case "SearchAround":
+            case "SearchInSameZoom":
+                return pareSearch(responses);
 
 
 //            case "NewIP":
@@ -106,18 +109,31 @@ public class ResponseDeal {
         }
 
         byte[] lastResponse = responses.get(responses.size() - 1);
-        if (lastResponse == null || lastResponse.length < 5) {
-            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+        if (lastResponse == null || lastResponse.length < 6) { // 至少要有6字节
+            System.out.println("回应报文长度不足6字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
             result = "false";
             return false;
         }
 
-        int wl = (((lastResponse[5] & 0xFF) << 8) | (lastResponse[6] & 0xFF));
+        // 判断第3个字节（索引2）是否为 0x05
+        if ((lastResponse[3] & 0xFF) != 0x05) {
+            System.out.printf("最后一条报文第3位不是0x05（实际值: %02X），跳过解析\n", lastResponse[2]);
+            result = "false";
+            return false;
+        }
+
+        // 如果通过检查，则进行解析
+        int wl = (((lastResponse[4] & 0xFF) << 8) | (lastResponse[5] & 0xFF));
         double ChangeLampWl = wl / 50.0;
         String rawchagelampwl = String.valueOf(ChangeLampWl);
+
+        System.out.printf("波长原始值=%d, 解析结果=%.2f\n", wl, ChangeLampWl);
+
         MeasureController.addWlData(rawchagelampwl);
+        result = "true";
         return true;
     }
+
 
     private static Object parseResponseTime(List<byte[]> responses, byte[] sendBytes) {
         if (responses == null || responses.isEmpty()) {
@@ -184,13 +200,7 @@ public class ResponseDeal {
         return isEqual;
     }
 
-    private static Object parseLampPos(List<byte[]> responses, byte[] sendBytes) {
-        if (sendBytes == null || sendBytes.length < 5) {
-            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
-            result = "false";
-            return false;
-        }
-
+    private static Object parseLampPos(List<byte[]> responses) {
         byte[] lastResponse = responses.get(responses.size() - 1);
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
@@ -198,12 +208,7 @@ public class ResponseDeal {
             return false;
         }
 
-
-        boolean isEqual1 = sendBytes[4] == lastResponse[4];
-
-        result = isEqual1 ? "true" : "false";
-
-        int pos = (lastResponse[4] & 0xFF); //pos == 0 表示
+        int pos = (lastResponse[4] & 0xFF); //pos == 0 表示 钨灯，pos == 1 表示 氘灯
         return pos;
     }
 
@@ -313,7 +318,7 @@ public class ResponseDeal {
             double result_y = s0 / 8388607.0 * 100;
 
             String raw = result_x + "," + result_y;
-            MeasureWebSocketHandler.addData(raw); // 放入队列
+            MeasureController.addData(raw); // 放入队列
 
 
         } catch (Exception e) {
@@ -531,6 +536,26 @@ public class ResponseDeal {
         }
 
         return resultList;
+    }
+
+    static List<Integer> deviceInfo = new ArrayList<>();
+    public static List<Integer> pareSearch(List<byte[]> responses) {
+        deviceInfo.clear();
+
+        if (responses == null || responses.isEmpty()) {
+            return deviceInfo; // 返回空列表
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        if (last.length < 12) {
+            return deviceInfo; // 长度不足不处理
+        }
+
+        for (int i = 9; i <= 14; i++) {
+            deviceInfo.add(last[i] & 0xFF); // 转换为无符号十进制数
+        }
+
+        return new ArrayList<>(deviceInfo); // 返回副本，避免外部修改
     }
 
 
