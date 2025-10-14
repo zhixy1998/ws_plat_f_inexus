@@ -3,6 +3,7 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,7 +45,6 @@ public class ResponseDeal {
 
             case "InitSampleCell":
             case "InitFilterMotor":
-            case "InitSlit1Motor":
             case "InitWlMotor":
             case "InitLampMotor":
             case "CheckWLamp":
@@ -53,6 +53,7 @@ public class ResponseDeal {
             case "Dark":
             case "DisConnect":
             case "DisConnectIAP":
+            case "InitSlit1Motor":
                 return parseBooleanFrom5thByte(responses);
             case "SetCellPos":
                 return parseSetCellPos(responses, sendBytes);
@@ -92,6 +93,8 @@ public class ResponseDeal {
             case "SearchAround":
             case "SearchInSameZoom":
                 return pareSearch(responses);
+            case "InitSlit1Moto1":
+                return parseInitSlit1Motor(responses, sendBytes);
 
 
 //            case "NewIP":
@@ -99,6 +102,21 @@ public class ResponseDeal {
             default:
                 return 0;
         }
+    }
+
+    private static Object parseInitSlit1Motor(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            result = "false"; // 设置全局变量
+            return false;
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+
+        if ((last[3] & 0xFF) == 0x04) {
+            boolean success = last.length >= 5 && (last[4] & 0xFF) == 0;
+            result = success ? "true" : "false"; // 根据结果更新 result
+        }
+        return false;
     }
 
     private static Object parseChangeLampWl(List<byte[]> responses) {
@@ -208,9 +226,38 @@ public class ResponseDeal {
             return false;
         }
 
-        int pos = (lastResponse[4] & 0xFF); //pos == 0 表示 钨灯，pos == 1 表示 氘灯
+        int pos = (lastResponse[4] & 0xFF); // pos == 0 表示钨灯亮，pos == 1 表示氘灯亮
+
+        // 构造 dataList
+        List<Map<String, String>> dataList = new ArrayList<>();
+
+        Map<String, String> tungsten = new HashMap<>();
+        tungsten.put("label", "钨灯");
+        tungsten.put("value", pos == 0 ? "亮" : "不亮");
+
+        Map<String, String> deuterium = new HashMap<>();
+        deuterium.put("label", "氘灯");
+        deuterium.put("value", pos == 1 ? "亮" : "不亮");
+
+        dataList.add(tungsten);
+        dataList.add(deuterium);
+
+        Map<String, Object> finalJson = new HashMap<>();
+        finalJson.put("dataList", dataList);
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(finalJson);
+
+            MeasureController.addLampPosData(json);
+            System.out.println("解析灯状态并推送: " + json);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         return pos;
     }
+
 
     /**
      * 通用：最后一条回应的第5位是否为0
@@ -288,7 +335,7 @@ public class ResponseDeal {
         // 转成无符号 int
         return last[4] & 0xFF;
     }
-    /*
+    /**
         S、D、R解析
      */
     public static ChangeParam parseZero(List<byte[]> responses){

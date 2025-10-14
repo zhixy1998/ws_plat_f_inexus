@@ -164,7 +164,8 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("CheckDLamp")
                     || cmdId.equalsIgnoreCase("CheckWl")
                     || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 10000 : 4500;
+
+            int timeoutMs = isSlowCommand ? 18000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
 
             long lastReceiveTime = System.currentTimeMillis();
@@ -185,9 +186,13 @@ public class MessageUtil {
                     System.out.println();
 
                     lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1 && cmdId != "BaseLine" && cmdId != "BaseLineFast") {
-                        currentSocket.setSoTimeout(1300);
-                        timeoutMs = 1300;
+                    if (count > 1 ) {
+                        currentSocket.setSoTimeout(100);
+                        timeoutMs = 100;
+                        if (cmdId == "BaseLine" || cmdId == "BaseLineFast" || cmdId == "Scan" || cmdId == "ScanFast" || cmdId == "CheckWLamp" || cmdId == "CheckDLamp" || cmdId == "CheckWl"){
+                            currentSocket.setSoTimeout(1300);
+                            timeoutMs = 1300;
+                        }
                     }
 
                 } catch (SocketTimeoutException e) {
@@ -439,8 +444,8 @@ public class MessageUtil {
 
                     lastReceiveTime = System.currentTimeMillis();
                     if (count > 1) {
-                        currentSocket.setSoTimeout(500);
-                        timeoutMs = 500;
+                        currentSocket.setSoTimeout(100);
+                        timeoutMs = 100;
                     }
 
 

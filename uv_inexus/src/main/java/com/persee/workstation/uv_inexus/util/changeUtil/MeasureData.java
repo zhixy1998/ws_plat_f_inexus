@@ -52,16 +52,19 @@ public class MeasureData {
                         byte[] sendBytes = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("Measure"));
                         byte[] sendBytes2 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetChangeLampWl"));
                         byte[] sendBytes3 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetCellPos"));
+                        byte[] sendBytes4 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetLampPos"));
 
                         // 发送并接收
                         List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, "Measure", sendBytes);
                         List<byte[]> responses2 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetChangeLampWl", sendBytes2);
                         List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetCellPos", sendBytes3);
+                        List<byte[]> responses4 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetLampPos", sendBytes4);
 
                         // 解析报文
                         Object parseResult = ResponseDeal.parse("Measure", responses, sendBytes);
                         Object parseResult2 = ResponseDeal.parse("GetChangeLampWl", responses2, sendBytes2);
                         Object parseResult3 = ResponseDeal.parse("GetCellPos", responses3, sendBytes3);
+                        Object parseResult4 = ResponseDeal.parse("GetLampPos", responses4, sendBytes4);
 
                         if (parseResult == null || "false".equals(parseResult.toString())) {
                             log.print("Measure 指令解析失败");
@@ -81,11 +84,17 @@ public class MeasureData {
                             log.print("GetCellPos 数据解析成功: {}");
                         }
 
+                        if (parseResult4 == null || "false".equals(parseResult4.toString())) {
+                            log.print("GetLampPos 指令解析失败");
+                        } else {
+                            log.print("GetLampPos 数据解析成功: {}");
+                        }
+
                         // 休眠2秒
                         Thread.sleep(3500);
 
                     } catch (Exception e) {
-                        log.print("Measure/GetChangeLampWl 循环异常");
+                        log.print("Measure/GetChangeLampWl/GetCellPos/GetLampPos 循环异常");
                         try {
                             Thread.sleep(2000); // 出错时延时重试
                         } catch (InterruptedException ignored) {}
@@ -94,7 +103,7 @@ public class MeasureData {
 
 
             } catch (Exception e) {
-                log.print("Measure/GetChangeLampWl 循环线程启动失败");
+                log.print("Measure/GetChangeLampWl/GetCellPos/GetLampPos 循环线程启动失败");
             }
         }, "MeasureLoopThread").start();
     }

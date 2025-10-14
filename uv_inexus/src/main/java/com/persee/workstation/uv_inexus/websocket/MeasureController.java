@@ -42,7 +42,7 @@ public class MeasureController {
 
     private static final BlockingQueue<String> BandwidthQueue = new LinkedBlockingQueue<>();
 
-    private static final BlockingQueue<String> otherQueue = new LinkedBlockingQueue<>();
+    private static final BlockingQueue<String> LampPosQueue = new LinkedBlockingQueue<>();
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -65,7 +65,7 @@ public class MeasureController {
             return;
         }
 
-        // 启动测量循环线程
+        // 启动发送接收线程
         dataWebSocket.startMeasureLoop(ip);
 
         // 启动推送循环线程（只启动一次，避免重复开线程）
@@ -74,6 +74,7 @@ public class MeasureController {
             new Thread(this::pushWlLoop, "PushWlLoopThread").start();
             new Thread(this::pushPosLoop, "PushPosLoopThread").start();
             new Thread(this::pushBandwidthLoop, "PushBandwidthLoopThread").start();
+            new Thread(this::pushLampPosLoop, "PushLampPosThread").start();
 
 
 //            new Thread(this::pushotherLoop, "PushOtherLoopThread").start();
@@ -132,6 +133,15 @@ public class MeasureController {
         System.out.println("addBandwidthData: " + rawData);
         try {
             BandwidthQueue.put(rawData); // 阻塞放入
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public static void addLampPosData(String rawData) {
+        System.out.println("addLampPosData: " + rawData);
+        try {
+            LampPosQueue.put(rawData); // 阻塞放入
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -280,6 +290,23 @@ public class MeasureController {
                 System.out.println("推送数据: " + json);
 
             }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void pushLampPosLoop() {
+        while (Constants.Running) {
+            try {
+                String Lamppos = LampPosQueue.take();
+
+//                Map<String, Object> data = new HashMap<>();
+//                data.put("LampPos", Lamppos);
+//
+//                String json = mapper.writeValueAsString(data);
+                messagingTemplate.convertAndSend("/topic/LampPos", Lamppos);
+                System.out.println("推送数据: " + Lamppos);
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
