@@ -1,22 +1,16 @@
+/*
+ * *****************************************************************************************************
+ * Module name:    **.**
+ *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
+ */
+
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
@@ -33,10 +27,21 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/photometricMeasurement/concise/")
@@ -122,6 +127,19 @@ public class PhotometricConciseController {
     public Result<List<Map<String, Object>>> queryDataInfo(@RequestBody FQueryDataDTO queryDataDTO) {
         return fPhotometricService.queryData(queryDataDTO);
     }
+
+    @GetMapping("reAnalyze")
+    @ApiOperation("重新分析")
+    public Result reAnalyse(@RequestParam String taskId,
+                            @RequestParam String updateBy) {
+        R<Boolean> r = fPhotometricService.reAnalyze(taskId, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
 
     @PostMapping("saveDataInfo")
     @ApiOperation("保存数据接口，用户自定义数据")

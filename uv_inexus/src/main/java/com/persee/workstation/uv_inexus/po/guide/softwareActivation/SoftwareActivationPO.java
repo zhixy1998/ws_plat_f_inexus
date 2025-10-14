@@ -1,3 +1,15 @@
+/*
+ * *****************************************************************************************************
+ * Module name:    **.**
+ *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
+ */
+
 package com.persee.workstation.uv_inexus.po.guide.softwareActivation;
 
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -11,6 +23,7 @@ import com.persee.workstation.uv_inexus.utils.serializer.NullToDashSerializer;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
 /**
  * 软件激活相关实体类，对应包含设备序列号、设备IP等字段的表
  */

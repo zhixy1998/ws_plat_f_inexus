@@ -1,3 +1,15 @@
+/*
+ * *****************************************************************************************************
+ * Module name:    **.**
+ *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
+ */
+
 package com.persee.workstation.uv_inexus.websocket.concise;
 
 import com.alibaba.fastjson.JSON;
@@ -409,13 +421,19 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             ChangeParam response = res.getData();
             machineData.add(response);
             ChangeParam originRsd = new ChangeParam();
-            List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-            for (ChangeParam param : params) {
-                if (param.getWl().equals(waveLength)) {
-                    BeanUtils.copyProperties(param, originRsd);
-                    break;
+            List<ChangeParam> params = new ArrayList<>();
+            if (StringUtils.hasText(task.getZeroParam())) {
+                params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+                if (params!=null) {
+                    for (ChangeParam param : params) {
+                        if (param.getWl().equals(waveLength)) {
+                            BeanUtils.copyProperties(param, originRsd);
+                            break;
+                        }
+                    }
                 }
             }
+
             //处理数据
             FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), response, params, null, sample.getSampleNumber());
             dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
@@ -721,12 +739,15 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         } else {
             ChangeParam originRsd = new ChangeParam();
-            for (ChangeParam param : params) {
-                if (param.getWl().equals(waveLength)) {
-                    BeanUtils.copyProperties(param, originRsd);
-                    break;
+            if (params != null) {
+                for (ChangeParam param : params) {
+                    if (param.getWl().equals(waveLength)) {
+                        BeanUtils.copyProperties(param, originRsd);
+                        break;
+                    }
                 }
             }
+
             String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
             String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
             measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), data);

@@ -1,8 +1,16 @@
-package com.persee.workstation.uv_inexus.service.concise.measurementService;
+/*
+ * *****************************************************************************************************
+ * Module name:    **.**
+ *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
+ */
 
-import java.io.File;
-import java.util.List;
-import java.util.Map;
+package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
@@ -27,6 +35,10 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
+
+import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 public interface PhotometricConciseService {
     /**
@@ -91,6 +103,12 @@ public interface PhotometricConciseService {
      * 查询数据信息
      */
     Result<List<Map<String, Object>>> queryData(FQueryDataDTO queryDataDTO);
+
+    /**
+     * 重新分析数据
+     */
+    R<Boolean> reAnalyze(String taskId, String updateBy);
+
 
     /**
      * 计算公式

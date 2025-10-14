@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ /******************************************************************************************************
+  ~ *Module name:    **.**
+  ~ *
+  ~ *Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+  ~ *               此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+  ~ *Description:
+  ~ *
+  ~ *
+  ~ ***************************************************************************************/
+  -->
+
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.persee.workstation.uv_inexus.dao.guide.instrumentDao.InsConfigDAO">
 

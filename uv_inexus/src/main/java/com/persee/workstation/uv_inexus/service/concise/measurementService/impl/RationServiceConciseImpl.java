@@ -1,3 +1,15 @@
+/*
+ * *****************************************************************************************************
+ * Module name:    **.**
+ *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
+ */
+
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 
@@ -358,30 +370,20 @@ public class RationServiceConciseImpl implements RationConciseService {
                 oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
                 oldParam.getTimeInterval().equals(newParam.getTimeInterval()) && 
                 oldParam.getRepeatMode().equals(newParam.getRepeatMode()) &&
-                oldParam.getRepeatCount().equals(newParam.getRepeatCount());
+                oldParam.getRepeatCount().equals(newParam.getRepeatCount()) &&
+                oldParam.getResponseTime().equals(newParam.getResponseTime()) &&
+                oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
+                oldParam.getSpectralBandwidth().equals(newParam.getSpectralBandwidth());
     }
 
     //检查参数是否改变，true--未改变，false--改变了
     private boolean checkAnalyzeParam(FRationParameter oldParam, FRationParameter newParam) {
-        List<FPreCountResultParam> oldResult = oldParam.getResultParams();
-        List<FPreCountResultParam> newResult = newParam.getResultParams();
-        if (!oldResult.equals(newResult)) {
-            if (newResult.size() != oldResult.size()) {
-                return false;
-            }
 
-            for (int i = 0; i < oldResult.size(); i++) {
-                FPreCountResultParam oldResultParam = oldResult.get(i);
-                FPreCountResultParam newResultParam = newResult.get(i);
-                if (oldResultParam.equals(newResultParam)) {
-                    continue;
-                }
-                if (!oldResultParam.getFormulaText().equals(newResultParam.getFormulaText())) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return Objects.equals(oldParam.getSampleInputParams(),newParam.getSampleInputParams()) &&
+                Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
+                Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
+                Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
+
     }
 
     /*
@@ -1113,27 +1115,63 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail("没有方法！");
         }
 
-        if (dto.getStandHeads() == null || dto.getStandHeads().isEmpty()) {
-            return Result.fail("标准样品表头为空");
+        FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
+        if (method == null) {
+            return Result.fail("没有方法！");
         }
 
         if (dto.getUnknowHeads() == null || dto.getUnknowHeads().isEmpty()) {
             return Result.fail("未知样品表头为空");
         }
 
-        if (dto.getStandHeads().size() > 10) {
-            return Result.fail("标准样品表格新增列数不能超过10列");
-        }
-
         if (dto.getUnknowHeads().size() > 10) {
             return Result.fail("未知样品表格新增列数不能超过10列");
+        }
+
+        FRationParameter rationParameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
+        boolean standHas = false;
+        if (StringUtils.hasText(rationParameter.getCoefficientMode()) && rationParameter.getCoefficientMode().equals(RationCurveParamEnums.standard_curve.getIdentity())) {
+            standHas = true;
+            if (dto.getStandHeads() == null || dto.getStandHeads().isEmpty()) {
+                return Result.fail("标准样品表头为空");
+            }
+
+            if (dto.getStandHeads().size() > 10) {
+                return Result.fail("标准样品表格新增列数不能超过10列");
+            }
+            /// 校验是否有重复的样品编号
+            // 取出所有样品编号
+            List<String> sampleNos = dto.getNewStandSamples().stream()
+                    .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+                    .filter(Objects::nonNull)    // 过滤掉空值
+                    .collect(Collectors.toList());
+            // 查重：找到重复的样品编号
+            Set<String> duplicates = sampleNos.stream()
+                    .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                    .collect(Collectors.toSet());
+            // 判断如果isTested为true，
+            if (!duplicates.isEmpty()) {
+                return Result.fail("标准样品编号重复");
+            }
+        }
+
+        List<String> unknownSampleNos = dto.getNewUnknowSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+                .filter(Objects::nonNull)    // 过滤掉空值
+                .collect(Collectors.toList());
+        // 查重：找到重复的样品编号
+        Set<String> isDuplicates = unknownSampleNos.stream()
+                .filter(no -> Collections.frequency(unknownSampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!isDuplicates.isEmpty()) {
+            return Result.fail("未知样品编号重复");
         }
 
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             FMeasureTask newTask = new FMeasureTask();
 
-            FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
             SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
@@ -1168,39 +1206,13 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         List<FTaskSpecimen> taskSpecimen = new ArrayList<>();
 
-        /// 校验是否有重复的样品编号
-        // 取出所有样品编号
-        List<String> sampleNos = dto.getNewStandSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
-                .filter(Objects::nonNull)    // 过滤掉空值
-                .collect(Collectors.toList());
-        // 查重：找到重复的样品编号
-        Set<String> duplicates = sampleNos.stream()
-                .filter(no -> Collections.frequency(sampleNos, no) > 1)
-                .collect(Collectors.toSet());
-        // 判断如果isTested为true，
-        if (!duplicates.isEmpty()) {
-            return Result.fail("标准样品编号重复");
-        }
-
-        List<String> unknownSampleNos = dto.getNewUnknowSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
-                .filter(Objects::nonNull)    // 过滤掉空值
-                .collect(Collectors.toList());
-        // 查重：找到重复的样品编号
-        Set<String> isDuplicates = sampleNos.stream()
-                .filter(no -> Collections.frequency(unknownSampleNos, no) > 1)
-                .collect(Collectors.toSet());
-        // 判断如果isTested为true，
-        if (!isDuplicates.isEmpty()) {
-            return Result.fail("未知样品编号重复");
-        }
-
 
         if (StringUtils.hasText(task.getSampleKey())) {
             taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         }
+
         if (taskSpecimen == null) {
+
             taskSpecimen = new ArrayList<>();
         }
 
@@ -1227,14 +1239,16 @@ public class RationServiceConciseImpl implements RationConciseService {
         /*
         处理表头
          */
-        if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
-            FTaskHeadSnapshot standHead = new FTaskHeadSnapshot();
-            if (taskHeadSnapShot.getStandHead() != null) {
-                BeanUtils.copyProperties(taskHeadSnapShot.getStandHead(), standHead);
+        if (standHas) {
+            if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
+                FTaskHeadSnapshot standHead = new FTaskHeadSnapshot();
+                if (taskHeadSnapShot.getStandHead() != null) {
+                    BeanUtils.copyProperties(taskHeadSnapShot.getStandHead(), standHead);
+                }
+                standHead.setTaskId(task.getId());
+                standHead.setSampleHeads(dto.getStandHeads());
+                taskHeadSnapShot.setStandHead(standHead);
             }
-            standHead.setTaskId(task.getId());
-            standHead.setSampleHeads(dto.getStandHeads());
-            taskHeadSnapShot.setStandHead(standHead);
         }
 
         if (dto.getUnknowHeads() != null && !dto.getUnknowHeads().isEmpty()) {
@@ -1249,47 +1263,49 @@ public class RationServiceConciseImpl implements RationConciseService {
         task.setTableInfo(JSON.toJSONString(taskHeadSnapShot));
         fMeasureTaskService.updateById(task);
         task = fMeasureTaskService.getById(task.getId());
+        Integer digit = fMeasureTaskAttachmentService.queryLastDigit(task.getId());
+        digit = digit == null ? Constants.DEFAULT_DECIMAL_NUM : digit;
 
+        if (standHas) {
+            for (Map<String, String> map : dto.getNewStandSamples()) {
 
-        for (Map<String, String> map : dto.getNewStandSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                FSampleVO sample = JSON.parseObject(jsonString, FSampleVO.class);
 
-            String jsonString = JSON.toJSONString(map);
-            FSampleVO sample = JSON.parseObject(jsonString, FSampleVO.class);
+                FMeasureSample newSample = new FMeasureSample();
+                BeanUtils.copyProperties(sample, newSample);
+                newSample.setId(sample.getSampleId());
+                newSample.setSampleKind(stand);
+                if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
+                    JSONObject newColData = new JSONObject();
 
-            FMeasureSample newSample = new FMeasureSample();
-            BeanUtils.copyProperties(sample, newSample);
-            newSample.setId(sample.getSampleId());
-            newSample.setSampleKind(stand);
-            if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
-                JSONObject newColData = new JSONObject();
-
-                for (FHeadVO head : dto.getStandHeads()) {
-                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
-                        continue;
+                    for (FHeadVO head : dto.getStandHeads()) {
+                        if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                            continue;
+                        }
+                        String s = map.get(head.getIdentity());
+                        newColData.put(head.getIdentity(), s);
                     }
-                    String s = map.get(head.getIdentity());
-                    newColData.put(head.getIdentity(), s);
+
+                    newSample.setHeads(JSON.toJSONString(dto.getStandHeads()));
+                    newSample.setNewColData(JSON.toJSONString(newColData));
                 }
 
-                newSample.setHeads(JSON.toJSONString(dto.getStandHeads()));
-                newSample.setNewColData(JSON.toJSONString(newColData));
-            }
-
-            if (StringUtils.hasText(newSample.getId())) {
-                fMeasureSampleService.updateById(newSample);
-            } else {
-                FTaskSpecimen specimen = new FTaskSpecimen();
-                specimen.setDeleteType(createType);
-                specimen.setIsTested(noTested);
-                specimen.setSampleType(newSample.getSampleType());
-                specimen.setSampleKind(stand);
-                log.info("新增的标准样品：{}", newSample);
-                fMeasureSampleService.save(newSample);
-                specimen.setSpecimenKey(newSample.getId());
-                taskSpecimen.add(specimen);
+                if (StringUtils.hasText(newSample.getId())) {
+                    fMeasureSampleService.updateById(newSample);
+                } else {
+                    FTaskSpecimen specimen = new FTaskSpecimen();
+                    specimen.setDeleteType(createType);
+                    specimen.setIsTested(noTested);
+                    specimen.setSampleType(newSample.getSampleType());
+                    specimen.setSampleKind(stand);
+                    log.info("新增的标准样品：{}", newSample);
+                    fMeasureSampleService.save(newSample);
+                    specimen.setSpecimenKey(newSample.getId());
+                    taskSpecimen.add(specimen);
+                }
             }
         }
-
 
         for (Map<String, String> map : dto.getNewUnknowSamples()) {
 
@@ -1338,6 +1354,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!b) {
             return Result.fail("任务保存样品信息出错");
         }
+        //重新分析
+        if (standHas) {
+            changeStandSampleDataDigit(task.getId(), digit);
+        }
+        changeUnknowSampleDigit(task.getId(), digit);
 
         if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
             R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
@@ -1351,6 +1372,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
             }
         }
+
+        //公式重算
 
         return Result.ok();
     }
@@ -2263,29 +2286,30 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         FRepeatMeasureData absData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode());
         FRepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
+        String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
 
         if (option != null && !option.isEmpty()) {
             for (String s : option) {
                 Map<String, String> children = new HashMap<>();
                 if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(),wlData.getTPercentValue());
-                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getIdentity(), children);
+                    ans.putIfAbsent(pre + DataIdentityEnums.avg.getIdentity(), children);
                 }
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
-                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getIdentity(), children);
+                    ans.putIfAbsent(pre + DataIdentityEnums.sd.getIdentity(), children);
                 }
                 if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
-                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
+                    ans.putIfAbsent(pre + DataIdentityEnums.rsd.getIdentity(), children);
                 }
             }
         }
@@ -2368,16 +2392,16 @@ public class RationServiceConciseImpl implements RationConciseService {
                 map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
                 map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
                 if (StringUtils.hasText(data.getOriginalCalculationData())) {
-                    Map<String, Map<String, String>> childrenList = new HashMap<>();
+                    Map<String, Map<String, String>> childrenList = new TreeMap<>();
+                    Map<String, Map<String, String>> resultChildrenList = new TreeMap<>();
                     List<Map<String, String>> middle = new ArrayList<>();
                     List<FRationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), FRationWavelengthDataInfo.class);
                     for (FRationWavelengthDataInfo dataInfo : list) {
                         Map<String, String> children = new HashMap<>();
 
+                        Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
+                        String s = DataCountUtil.addZero(v, digit);
                         if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-
-                            Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
-                            String s = DataCountUtil.addZero(v, digit);
 
                             map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
 
@@ -2395,22 +2419,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                                     String key = entry.getKey();
                                     Map<String, String> value = entry.getValue();
 
-                                    if (childrenList.containsKey(key)) {
+                                    if (resultChildrenList.containsKey(key)) {
                                         // 如果键已存在，将新值中的键值对合并到现有Map中
-                                        Map<String, String> existingMap = childrenList.get(key);
+                                        Map<String, String> existingMap = resultChildrenList.get(key);
                                         // 将value中的所有键值对放入existingMap中（相同键会覆盖，新键会添加）
                                         existingMap.putAll(value);
                                     } else {
                                         // 如果键不存在，直接添加（创建副本以避免引用问题）
-                                        childrenList.put(key, new HashMap<>(value));
+                                        resultChildrenList.put(key, new HashMap<>(value));
                                     }
                                 }
                             }
 
                         } else {
-
-                            Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
-                            String s = DataCountUtil.addZero(v, digit);
 
                             children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
 
@@ -2422,11 +2443,13 @@ public class RationServiceConciseImpl implements RationConciseService {
 //                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
 //                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getTPercentValue()));
                             String[] split = dataInfo.getIdentity().split("-");
-                            children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                            String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
+                            children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + split[split.length - 1]);
                             childrenList.computeIfAbsent(dataInfo.getIdentity(), k -> new HashMap<>()).putAll(children);
                         }
                     }
                     childrenList.forEach((key, value) -> middle.add(value));
+                    resultChildrenList.forEach((key, value) -> middle.add(value));
                     map.put("children", middle);
                 }
 

@@ -1,3 +1,15 @@
+/*
+ * *****************************************************************************************************
+ * Module name:    **.**
+ *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
+ */
+
 package com.persee.workstation.uv_inexus.util;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -87,7 +99,7 @@ public class DataCountUtil {
         double r1 = Double.parseDouble(real.getR());
         double s1 = Double.parseDouble(real.getS());
         double a1;
-        if (origin == null){
+        if (origin == null || origin.isEmpty()){
             a1 = 1;
             System.out.println("a1:" + a1);
         }else{

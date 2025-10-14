@@ -1,3 +1,15 @@
+/*
+ * *****************************************************************************************************
+ * Module name:    **.**
+ *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
+ */
+
 package com.persee.workstation.uv_inexus.service.concise.measurementService.impl;
 
 import com.alibaba.excel.EasyExcel;
@@ -1525,12 +1537,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             } else {
                 if (data != null) {
                     if (StringUtils.hasText(data.getOriginalCalculationData())){
-                        Map<String, Map<String, String>> childrenList = new HashMap<>();
+                        Map<String, Map<String, String>> childrenList = new TreeMap<>();
 
                         List<Map<String, String>> middle = new ArrayList<>();
                         List<FPhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), FPhotometricOriginDataInfo.class);
 
-                        Map<String, Map<String, String>> countDataList = new HashMap<>();
+                        Map<String, Map<String, String>> countDataList = new TreeMap<>();
                         FPhotometricOriginDataInfo dataInfo = reCountData(wlDataList, digit);
                         for (FPhotometricOriginDataInfo wlData : wlDataList) {
 
@@ -1570,16 +1582,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                                 Map<String, String> children = new HashMap<>(formattedData);
                                 String[] split = wlData.getIdentity().split("-");
-                                children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                                String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
+                                children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + split[split.length - 1]);
                                 children.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
                                 childrenList.putIfAbsent(wlData.getIdentity(), children);
                             }
                         }
-                        childrenList.putAll(countDataList);
+//                        childrenList.putAll(countDataList);
                         map.put("samplingTime", data.getSamplingTime());
 
                         childrenList.forEach((key, value) -> middle.add(value));
+                        countDataList.forEach((key, value) -> middle.add(value));
                         map.put("children", middle);
                         Map<String, String> countData = getCountData(task, sample, parameter, digit, wlDataList);
                         map.putAll(countData);
@@ -1605,6 +1619,82 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         return Result.ok(ans);
+    }
+
+    @Override
+    public R<Boolean> reAnalyze(String taskId, String updateBy) {
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return R.fail("任务不存在");
+        }
+
+        if (!StringUtils.hasText(task.getMethodKey())) {
+            return R.fail("请先选择方法");
+        }
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return R.fail("方法不存在");
+        }
+        if (!StringUtils.hasText(method.getMeasurementParamInfo())){
+            return R.fail("该方法没有参数");
+        }
+
+        FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
+        if (parameter.getResultParams() == null || parameter.getResultParams().isEmpty()) {
+            return R.fail("该方法没有用于分析的公式");
+        }
+
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            return R.fail("没有样品");
+        }
+
+        Integer digit = fMeasureTaskAttachmentService.queryLastDigit(taskId);
+        digit = digit == null ? Constants.DEFAULT_DECIMAL_NUM : digit;
+
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            if (specimen.getIsTested().equals(noTested)) {
+                continue;
+            }
+            FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+
+            LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(FMeasureData::getTaskId, taskId)
+                    .eq(FMeasureData::getSampleKey, sample.getId())
+                    .orderByDesc(FMeasureData::getSerialNumber)
+                    .last("limit 1");
+            FMeasureData measureData = fMeasureDataService.getOne(queryWrapper);
+            if (measureData != null && StringUtils.hasText(measureData.getOriginalCalculationData())) {
+                List<FPhotometricOriginDataInfo> originDataInfos = JSON.parseArray(measureData.getOriginalCalculationData(), FPhotometricOriginDataInfo.class);
+                R<List<FPhotometricCountDataInfo>> formula = formula(originDataInfos, sample, task, parameter, digit);
+                if (formula.getSuccess()) {
+                    List<FPhotometricCountDataInfo> countDataInfos = formula.getData();
+                    LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                    analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                            .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
+                            .eq(FMeasureAnalysisData::getMeasureDataId, measureData.getId())
+                            .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
+                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                    if (analysisData != null) {
+                        analysisData.setAnalysisResult(JSON.toJSONString(countDataInfos));
+                        fMeasureAnalysisDataService.update(analysisData, analysisDataQueryWrapper);
+                    } else {
+                        analysisData = new FMeasureAnalysisData();
+                        analysisData.setTaskId(taskId);
+                        analysisData.setSampleKey(sample.getId());
+                        analysisData.setMeasureDataId(measureData.getId());
+                        analysisData.setDataVersion(1);
+                        analysisData.setAnalysisResult(JSON.toJSONString(countDataInfos));
+                        analysisData.setIsDelete(createType);
+                        analysisData.setIsSave(noSave);
+                        fMeasureAnalysisDataService.save(analysisData);
+                    }
+                }
+            }
+        }
+
+        return R.ok();
     }
 
     public Map<String,String> getCountData(FMeasureTask task, FMeasureSample sample, FPhotometricParameter parameter, Integer digit, List<FPhotometricOriginDataInfo> wlDataList) {
@@ -1684,6 +1774,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         FRepeatMeasureData absData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode());
         FRepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
+        String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
 
 
         if (wlData.getMode().equals(WaveLengthEnum.abs.getCode()) || wlData.getMode().equals(WaveLengthEnum.tPercent.getCode())) {
@@ -1692,21 +1783,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
@@ -1718,18 +1809,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 for (String s : option) {
                     Map<String, String> children = new HashMap<>();
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
                         children.put(mapName, originData.get(mapName));
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getSd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                        children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getRsd());
                         ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
