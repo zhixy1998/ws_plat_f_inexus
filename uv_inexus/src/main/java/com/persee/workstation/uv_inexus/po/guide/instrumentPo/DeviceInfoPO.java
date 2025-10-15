@@ -26,6 +26,18 @@ public class DeviceInfoPO extends BasePO {
     @TableField("device_ip")
     private String ip;
 
+    @ApiModelProperty("仪器名称")
+    @TableField("device_name")
+    private String deviceName;
+
+    @ApiModelProperty("仪器型号")
+    @TableField("device_model")
+    private String deviceModel;
+
+    @ApiModelProperty("仪器型号名称")
+    @TableField("device_model_name")
+    private String deviceModelName;
+
     @ApiModelProperty("连接仪器的ip")
     @TableField("machine_ip")
     private String machineIp;
@@ -42,6 +54,10 @@ public class DeviceInfoPO extends BasePO {
     @TableField("connect_status")
     private Integer connectStatus;
 
+    @ApiModelProperty("仪器当前状态")
+    @TableField("device_current_status")
+    private Integer deviceCurrentStatus;
+
     @ApiModelProperty("序列号")
     @TableField("device_serial_number")
     private String deviceSerialNumber;
@@ -53,4 +69,8 @@ public class DeviceInfoPO extends BasePO {
     @ApiModelProperty("附件类型")
     @TableField("attachment_type")
     private Integer attachmentType;
+
+    @ApiModelProperty("附件名称")
+    @TableField("attachment_name")
+    private String attachmentName;
 }
