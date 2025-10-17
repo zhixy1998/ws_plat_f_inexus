@@ -1,15 +1,3 @@
-/*
- * *****************************************************************************************************
- * Module name:    **.**
- *
- * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
- *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
- * Description:
- *
- *
- * *************************************************************************************
- */
-
 package com.persee.workstation.uv_inexus.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,9 +42,12 @@ public class MeasureController {
 
     private static final BlockingQueue<String> BandwidthQueue = new LinkedBlockingQueue<>();
 
-    private static final BlockingQueue<String> LampPosQueue = new LinkedBlockingQueue<>();
+    public static final BlockingQueue<Map<String, Object>> LampPosQueue = new LinkedBlockingQueue<>();
+
+    private static final BlockingQueue<String> SampleTypeQueue = new LinkedBlockingQueue<>();
 
     private final ObjectMapper mapper = new ObjectMapper();
+
 
     private static String flag = "false";
     /**
@@ -81,15 +72,18 @@ public class MeasureController {
         dataWebSocket.startMeasureLoop(ip);
 
         // 启动推送循环线程（只启动一次，避免重复开线程）
-            new Thread(this::pushLoop, "PushLoopThread").start();
-            new Thread(this::pushTimeLoop, "PushTimeLoopThread").start();
-            new Thread(this::pushWlLoop, "PushWlLoopThread").start();
-            new Thread(this::pushPosLoop, "PushPosLoopThread").start();
-            new Thread(this::pushBandwidthLoop, "PushBandwidthLoopThread").start();
-            new Thread(this::pushLampPosLoop, "PushLampPosThread").start();
+//        new Thread(this::pushLoop, "PushLoopThread").start();
+//        new Thread(this::pushTimeLoop, "PushTimeLoopThread").start();
+//        new Thread(this::pushWlLoop, "PushWlLoopThread").start();
+//        new Thread(this::pushPosLoop, "PushPosLoopThread").start();
+//        new Thread(this::pushBandwidthLoop, "PushBandwidthLoopThread").start();
+//        new Thread(this::pushLampPosLoop, "PushLampPosThread").start();
+//        new Thread(this::pushSampleTypeLoop, "PushSampleTypeLoopThread").start();
+
+        new Thread(this::pushUnifiedLoop, "PushUnifiedLoopThread").start();
+        new Thread(this::pushLampPosLoop, "PushLampPosLoopThread").start();
 
 
-//            new Thread(this::pushotherLoop, "PushOtherLoopThread").start();
 
         // 主动推送通知给前端
         messagingTemplate.convertAndSend("/topic/measure",
@@ -150,40 +144,103 @@ public class MeasureController {
         }
     }
 
-    public static void addLampPosData(String rawData) {
+//    public static void addLampPosData(String rawData) {
+//        System.out.println("addLampPosData: " + rawData);
+//        try {
+//            LampPosQueue.put(rawData); // 阻塞放入
+//        } catch (InterruptedException e) {
+//            Thread.currentThread().interrupt();
+//        }
+//    }
+
+    public static void addLampPosData(Map<String, Object> rawData) {
         System.out.println("addLampPosData: " + rawData);
         try {
+//            // 解析字符串 -> Map
+//            ObjectMapper mapper = new ObjectMapper();
+//            Map<String, Object> lampData = mapper.readValue(rawData, Map.class);
+
+            // 放入 Map
             LampPosQueue.put(rawData); // 阻塞放入
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("addLampPosData 转换失败: " + rawData);
+        }
+    }
+
+
+    public static void addSampleTypeData(String rawData) {
+        System.out.println("addSampleTypeData: " + rawData);
+        try {
+            SampleTypeQueue.put(rawData); // 阻塞放入
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
-
     /**
-     * 循环从队列取数据并推送（独立线程）
+     * 推送除 LampPos 外的所有通用数据
      */
-    private void pushLoop() {
+    private void pushUnifiedLoop() {
         while (Constants.Running) {
             try {
-                String raw = queue.take(); // 阻塞取数据
-
-                String[] split = raw.split(",");
-                double x = Double.parseDouble(split[0]);
-                double y = Double.parseDouble(split[1]);
-
-
-                if (y == 0.0) {
-                    System.out.println("跳过数据: x=0, y=0");
-                    continue;
+                // 1. 时间
+                if (!timeQueue.isEmpty()) {
+                    String rawtime = timeQueue.poll();
+                    if (rawtime != null) {
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("time", rawtime);
+                        messagingTemplate.convertAndSend("/topic/time", mapper.writeValueAsString(data));
+                        System.out.println("推送时间: " + rawtime);
+                    }
                 }
 
-                Map<String, Object> data = new HashMap<>();
-                data.put("x", x);
-                data.put("y", y);
+                // 2. 波长
+                if (!wlQueue.isEmpty()) {
+                    String rawwl = wlQueue.poll();
+                    if (rawwl != null) {
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("ChangeLampWl", rawwl);
+                        messagingTemplate.convertAndSend("/topic/ChangeLampWl", mapper.writeValueAsString(data));
+                        System.out.println("推送波长: " + rawwl);
+                    }
+                }
 
-                String json = mapper.writeValueAsString(data);
-                messagingTemplate.convertAndSend("/topic/measure", json);
-                System.out.println("推送数据: " + json);
+                // 3. 样品池位置
+                if (!posQueue.isEmpty()) {
+                    String rawpos = posQueue.poll();
+                    if (rawpos != null) {
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("Pos", rawpos);
+                        messagingTemplate.convertAndSend("/topic/Pos", mapper.writeValueAsString(data));
+                        System.out.println("推送位置: " + rawpos);
+                    }
+                }
+
+                // 4. 带宽
+                if (!BandwidthQueue.isEmpty()) {
+                    String rawbw = BandwidthQueue.poll();
+                    if (rawbw != null) {
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("Bandwidth", rawbw);
+                        messagingTemplate.convertAndSend("/topic/Bandwidth", mapper.writeValueAsString(data));
+                        System.out.println("推送带宽: " + rawbw);
+                    }
+                }
+
+                // 5. 样品类型
+                if (!SampleTypeQueue.isEmpty()) {
+                    String sampleType = SampleTypeQueue.poll();
+                    if (sampleType != null) {
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("sampletyple", sampleType);
+                        messagingTemplate.convertAndSend("/topic/sampletyple", mapper.writeValueAsString(data));
+                        System.out.println("推送样品类型: " + sampleType);
+                    }
+                }
+
+                Thread.sleep(50); // 控制循环频率
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -191,137 +248,22 @@ public class MeasureController {
         }
     }
 
-    /*
-    推送响应时间/换灯波长/样品池位置的线程
-    * */
-//    private void pushotherLoop() {
-//        while (Constants.Running) {
-//            try {
-//                // 哪个队列有数据就取哪个
-//                String time = timeQueue.poll();
-//                String wl = wlQueue.poll();
-//                String pos = posQueue.poll();
-//
-//                if (time != null) latestTime = time;
-//                if (wl != null) latestWl = wl;
-//                if (pos != null) latestPos = pos;
-//
-//                // 如果有至少一个更新，就组装 JSON 推送
-//                if (time != null || wl != null || pos != null) {
-//                    Map<String, Object> data = new HashMap<>();
-//                    data.put("time", latestTime);
-//                    data.put("ChangeLampWl", latestWl);
-//                    data.put("Pos", latestPos);
-//
-//                    String json = mapper.writeValueAsString(data);
-//                    messagingTemplate.convertAndSend("/topic/measureData", json);
-//                    System.out.println("推送数据: " + json);
-//                }
-//
-//                Thread.sleep(50); // 控制频率，避免空转
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }
-//    }
-
-    /*
-    推送响应时间线程
-    * */
-    private void pushTimeLoop() {
-        while (Constants.Running) {
-            try {
-                String rawtime = timeQueue.take(); // 阻塞取数据
-
-                Map<String, Object> data = new HashMap<>();
-                data.put("time", rawtime);
-
-                String json = mapper.writeValueAsString(data);
-                messagingTemplate.convertAndSend("/topic/time", json);
-                System.out.println("推送数据: " + json);
-
-            }catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /*
-    推送换灯波长的线程
-    * */
-    private void pushWlLoop() {
-        while (Constants.Running) {
-            try {
-                String rawwl = wlQueue.take(); // 阻塞取数据
-
-                Map<String, Object> data = new HashMap<>();
-                data.put("ChangeLampWl", rawwl);
-
-                String json = mapper.writeValueAsString(data);
-                messagingTemplate.convertAndSend("/topic/ChangeLampWl", json);
-                System.out.println("推送数据: " + json);
-
-            }catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-     /*
-    推送样品池位置的线程
-    * */
-
-    private void pushPosLoop() {
-        while (Constants.Running) {
-            try{
-                String rawpos = posQueue.take();
-
-                Map<String, Object> data = new HashMap<>();
-                data.put("Pos", rawpos);
-
-                String json = mapper.writeValueAsString(data);
-                messagingTemplate.convertAndSend("/topic/Pos", json);
-                System.out.println("推送数据: " + json);
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private void pushBandwidthLoop() {
-        while (Constants.Running) {
-            try {
-                String rawBandwidth = BandwidthQueue.take(); // 阻塞取数据
-
-                Map<String, Object> data = new HashMap<>();
-                data.put("Bandwidth", rawBandwidth);
-
-                String json = mapper.writeValueAsString(data);
-                messagingTemplate.convertAndSend("/topic/Bandwidth", json);
-                System.out.println("推送数据: " + json);
-
-            }catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
+    /**
+     * 推送灯位状态（LampPos）
+     */
     private void pushLampPosLoop() {
         while (Constants.Running) {
             try {
-                String Lamppos = LampPosQueue.take();
-
-//                Map<String, Object> data = new HashMap<>();
-//                data.put("LampPos", Lamppos);
-//
-//                String json = mapper.writeValueAsString(data);
-                messagingTemplate.convertAndSend("/topic/LampPos", Lamppos);
-                System.out.println("推送数据: " + Lamppos);
+                Map<String, Object> lampData = LampPosQueue.take(); // 阻塞取 Map
+                String json = mapper.writeValueAsString(lampData);
+                messagingTemplate.convertAndSend("/topic/LampPos", json);
+                System.out.println("推送灯状态数据: " + json);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
-}
 
+
+
+}

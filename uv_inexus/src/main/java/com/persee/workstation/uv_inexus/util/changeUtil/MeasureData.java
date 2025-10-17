@@ -65,18 +65,21 @@ public class MeasureData {
                         byte[] sendBytes2 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetChangeLampWl"));
                         byte[] sendBytes3 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetCellPos"));
                         byte[] sendBytes4 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetLampPos"));
+                        byte[] sendBytes5 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetAccessoryType"));
 
                         // 发送并接收
                         List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, "Measure", sendBytes);
                         List<byte[]> responses2 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetChangeLampWl", sendBytes2);
                         List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetCellPos", sendBytes3);
                         List<byte[]> responses4 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetLampPos", sendBytes4);
+                        List<byte[]> responses5 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetAccessoryType", sendBytes5);
 
                         // 解析报文
                         Object parseResult = ResponseDeal.parse("Measure", responses, sendBytes);
                         Object parseResult2 = ResponseDeal.parse("GetChangeLampWl", responses2, sendBytes2);
                         Object parseResult3 = ResponseDeal.parse("GetCellPos", responses3, sendBytes3);
                         Object parseResult4 = ResponseDeal.parse("GetLampPos", responses4, sendBytes4);
+                        Object parseResult5 = ResponseDeal.parse("GetAccessoryType", responses5, sendBytes5);
 
                         if (parseResult == null || "false".equals(parseResult.toString())) {
                             log.print("Measure 指令解析失败");
@@ -100,6 +103,12 @@ public class MeasureData {
                             log.print("GetLampPos 指令解析失败");
                         } else {
                             log.print("GetLampPos 数据解析成功: {}");
+                        }
+
+                        if (parseResult5 == null || "false".equals(parseResult5.toString())) {
+                            log.print("GetAccessoryType 指令解析失败");
+                        } else {
+                            log.print("GetAccessoryType 数据解析成功: {}");
                         }
 
                         // 休眠2秒

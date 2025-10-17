@@ -15,16 +15,29 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
+import static com.persee.workstation.uv_inexus.websocket.MeasureController.addLampPosData;
+
 @Slf4j
 public class ResponseDeal {
 
     public static String result = "false";
+
+    public static String Sn = null;
+
+    private static final String[] SAMPLE_TYPE_NAMES = {
+            "1", "T700镜面反射附件", "1", "T700标准及微量样品池",
+            "3", "3", "T700可变角度样品架", "T700超微量样品池",
+            "2", "T700试管架", "1", "5", "未识别",
+            "T600标准及微量样品池", "1", "1", "3",
+            "1", "T600试管架", "T600可变角度样品架", "T600超微量样品池",
+            "3", "5", "T600镜面反射附件", "2"
+    };
+
     /**
      * 根据命令ID分发解析逻辑
      */
@@ -217,10 +230,10 @@ public class ResponseDeal {
             return false;
         }
 
-//        boolean isEqual = lastResponse[2] == sendBytes[2] &&
-//                lastResponse[3] == sendBytes[3] &&
-//                lastResponse[4] == sendBytes[4];
-        boolean isEqual = (lastResponse[4] & 0xFF) == 0;
+        boolean isEqual = lastResponse[2] == sendBytes[2] &&
+                lastResponse[3] == sendBytes[3] &&
+                lastResponse[4] == sendBytes[4];
+//        boolean isEqual = (lastResponse[4] & 0xFF) == 0;
 
         result = isEqual ? "true" : "false";
 
@@ -230,45 +243,77 @@ public class ResponseDeal {
         return isEqual;
     }
 
-    private static Object parseLampPos(List<byte[]> responses) {
-        byte[] lastResponse = responses.get(responses.size() - 1);
-        if (lastResponse == null || lastResponse.length < 5) {
-            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
-            result = "false";
-            return false;
-        }
-
-        int pos = (lastResponse[4] & 0xFF); // pos == 0 表示钨灯亮，pos == 1 表示氘灯亮
-
-        // 构造 dataList
-        List<Map<String, String>> dataList = new ArrayList<>();
-
-        Map<String, String> tungsten = new HashMap<>();
-        tungsten.put("label", "钨灯");
-        tungsten.put("value", pos == 0 ? "亮" : "不亮");
-
-        Map<String, String> deuterium = new HashMap<>();
-        deuterium.put("label", "氘灯");
-        deuterium.put("value", pos == 1 ? "亮" : "不亮");
-
-        dataList.add(tungsten);
-        dataList.add(deuterium);
-
-        Map<String, Object> finalJson = new HashMap<>();
-        finalJson.put("dataList", dataList);
-
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            String json = mapper.writeValueAsString(finalJson);
-
-            MeasureController.addLampPosData(json);
-            System.out.println("解析灯状态并推送: " + json);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return pos;
+//    private static Object parseLampPos(List<byte[]> responses) {
+//        byte[] lastResponse = responses.get(responses.size() - 1);
+//        if (lastResponse == null || lastResponse.length < 5) {
+//            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+//            result = "false";
+//            return false;
+//        }
+//
+//        int pos = (lastResponse[4] & 0xFF); // pos == 0 表示钨灯亮，pos == 1 表示氘灯亮
+//
+//        // 构造 dataList
+//        List<Map<String, String>> dataList = new ArrayList<>();
+//
+//        Map<String, String> tungsten = new HashMap<>();
+//        tungsten.put("label", "钨灯");
+//        tungsten.put("value", pos == 0 ? "亮" : "不亮");
+//
+//        Map<String, String> deuterium = new HashMap<>();
+//        deuterium.put("label", "氘灯");
+//        deuterium.put("value", pos == 1 ? "亮" : "不亮");
+//
+//        dataList.add(tungsten);
+//        dataList.add(deuterium);
+//
+//        Map<String, Object> finalJson = new HashMap<>();
+//        finalJson.put("dataList", dataList);
+//
+//        try {
+//            ObjectMapper mapper = new ObjectMapper();
+//            String json = mapper.writeValueAsString(finalJson);
+//
+//            MeasureController.addLampPosData(json);
+//            System.out.println("解析灯状态并推送: " + json);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//
+//        return pos;
+//    }
+private static Object parseLampPos(List<byte[]> responses) {
+    byte[] lastResponse = responses.get(responses.size() - 1);
+    if (lastResponse == null || lastResponse.length < 5) {
+        System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+        result = "false";
+        return false;
     }
+
+    int pos = (lastResponse[4] & 0xFF); // pos == 0 钨灯亮, pos ==1 氘灯亮
+
+    List<Map<String, String>> dataList = new ArrayList<>();
+
+    Map<String, String> tungsten = new HashMap<>();
+    tungsten.put("label", "钨灯");
+    tungsten.put("value", pos == 0 ? "亮" : "不亮");
+
+    Map<String, String> deuterium = new HashMap<>();
+    deuterium.put("label", "氘灯");
+    deuterium.put("value", pos == 1 ? "亮" : "不亮");
+
+    dataList.add(tungsten);
+    dataList.add(deuterium);
+
+    Map<String, Object> lampData = new HashMap<>();
+    lampData.put("dataList", dataList);
+
+    // 入队 Map（现在队列类型是 Map）
+    addLampPosData(lampData);
+
+    System.out.println("解析灯状态完成，入队等待推送: " + lampData);
+    return pos;
+}
 
 
     /**
@@ -332,6 +377,8 @@ public class ResponseDeal {
 
         sn.insert(2, "-");
 
+        Sn = sn.toString().replace("\u0000", "").trim();;
+
         return sn.toString(); // 存储到全局变量
     }
 
@@ -344,46 +391,95 @@ public class ResponseDeal {
         }
 
         byte[] last = responses.get(responses.size() - 1);
+
+        int type = (last[4] & 0xFF);
+        String sampleType = (type >= 0 && type < SAMPLE_TYPE_NAMES.length)
+                ? SAMPLE_TYPE_NAMES[type]
+                : "未知类型(" + type + ")";
+
+        // 添加到队列，供推送线程发送
+        MeasureController.addSampleTypeData(sampleType);
         // 转成无符号 int
         return last[4] & 0xFF;
     }
+
     /**
         S、D、R解析
      */
-    public static ChangeParam parseZero(List<byte[]> responses){
+    public static ChangeParam parseZero(List<byte[]> responses) {
         ChangeParam param = new ChangeParam();
 
-        if (responses == null || responses.size() < 2) {
-            System.out.println("回应数量不足，无法解析 Zero");
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应为空，无法解析 Zero");
             return null;
         }
 
         try {
-            // 倒数第二条
-            byte[] secondLast = responses.get(responses.size() - 2);
-            int wl0 = (((secondLast[5] & 0xFF) << 8) | (secondLast[6] & 0xFF));
-            int s0 = ((secondLast[8] & 0xFF) << 16) | ((secondLast[9] & 0xFF) << 8) | (secondLast[10] & 0xFF);
-            param.setS(String.valueOf(s0));
+            // 遍历所有回应，根据第3个字节判断类型
+            for (byte[] resp : responses) {
+                if (resp == null || resp.length < 11) {
+                    continue; // 跳过无效报文
+                }
 
-            // 倒数第一条
-            byte[] last = responses.get(responses.size() - 1);
-            int d0 = ((last[4] & 0xFF) << 16) | ((last[5] & 0xFF) << 8) | (last[6] & 0xFF);
-            int r0 = ((last[8] & 0xFF) << 16) | ((last[9] & 0xFF) << 8) | (last[10] & 0xFF);
+                int cmdType1 = resp[2] & 0xFF;
+                int cmdType = resp[3] & 0xFF; // 第3个字节
 
-            param.setD(String.valueOf(d0));
-            param.setR(String.valueOf(r0));
+                // 0x03 或 0x05 => 解析 wl0 和 s0
+                if (cmdType == 0x03) {
+                    int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
+                    int s0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    param.setS(String.valueOf(s0));
+                    param.setWl(String.valueOf(wl0)); // 可选：记录 wl0，方便计算
+                } else if (cmdType == 0x07 && cmdType1 == 0x13) {
+                    int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
+                    int s0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    param.setS(String.valueOf(s0));
+                    param.setWl(String.valueOf(wl0));
+                } else if (cmdType == 0x08 && cmdType1 == 0x13) {
+                    int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
+                    int r0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
 
-            double result_x = wl0 / 50.0;
-            double result_y = s0 / 8388607.0 * 100;
+                    param.setD(String.valueOf(d0));
+                    param.setR(String.valueOf(r0));
 
-            String raw = result_x + "," + result_y;
-            MeasureController.addData(raw); // 放入队列
+                    // 若之前解析到 wl0、s0，可计算并推送
+                    if (param.getWl() != null && param.getS() != null) {
+                        double wl0 = Double.parseDouble(param.getWl());
+                        double s0 = Double.parseDouble(param.getS());
+                        double result_x = wl0 / 50.0;
+                        double result_y = s0 / 8388607.0 * 100;
 
+                        String raw = result_x + "," + result_y;
+                        MeasureController.addData(raw); // 推送
+                    }
+                }
+
+                // 0x04 或 0x06 => 解析 d0 和 r0，并计算结果
+                else if (cmdType == 0x04) {
+                    int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
+                    int r0 = ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+
+                    param.setD(String.valueOf(d0));
+                    param.setR(String.valueOf(r0));
+
+                    // 若之前解析到 wl0、s0，可计算并推送
+                    if (param.getWl() != null && param.getS() != null) {
+                        double wl0 = Double.parseDouble(param.getWl());
+                        double s0 = Double.parseDouble(param.getS());
+                        double result_x = wl0 / 50.0;
+                        double result_y = s0 / 8388607.0 * 100;
+
+                        String raw = result_x + "," + result_y;
+                        MeasureController.addData(raw); // 推送
+                    }
+                }
+            }
 
         } catch (Exception e) {
             System.out.println("Zero解析异常: " + e.getMessage());
             return null;
         }
+
         return param;
     }
 
