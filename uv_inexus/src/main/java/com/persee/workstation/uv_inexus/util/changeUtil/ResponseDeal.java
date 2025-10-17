@@ -121,12 +121,44 @@ public class ResponseDeal {
             case "InitSlit1Moto1":
                 return parseInitSlit1Motor(responses, sendBytes);
 
+            case "GetPhotoMode":
+                return parsePhotoMode(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
             default:
                 return 0;
         }
+    }
+
+    private static Object parsePhotoMode(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        for (int i = 0; i < responses.size(); i++) {
+            byte[] data = responses.get(i);
+
+            if (data[3] == 0x05)  {
+                int mode = data[4] & 0xFF;
+                if (mode == 0){
+                    String photomode = "Abs";
+                    MeasureController.addPhotoModeData(photomode);
+                } else if (mode == 1) {
+                    String photomode = "T%";
+                    MeasureController.addPhotoModeData(photomode);
+                }else if (mode == 2) {
+                    String photomode = "Es";
+                    MeasureController.addPhotoModeData(photomode);
+                }else if (mode == 3) {
+                    String photomode = "Er";
+                    MeasureController.addPhotoModeData(photomode);
+                }
+            }
+        }
+        return true;
     }
 
     private static Object parseInitSlit1Motor(List<byte[]> responses, byte[] sendBytes) {
@@ -377,9 +409,13 @@ private static Object parseLampPos(List<byte[]> responses) {
 
         sn.insert(2, "-");
 
-        Sn = sn.toString().replace("\u0000", "").trim();;
+        // 处理空字符和trim，然后截取前16位
+        String rawSn = sn.toString().replace("\u0000", "").trim();
 
-        return sn.toString(); // 存储到全局变量
+        // 确保只取前16位，若长度不足则取全部
+        Sn = rawSn.length() >= 16 ? rawSn.substring(0, 16) : rawSn;
+
+        return Sn; // 返回处理后的结果
     }
 
     /**
@@ -427,17 +463,17 @@ private static Object parseLampPos(List<byte[]> responses) {
                 // 0x03 或 0x05 => 解析 wl0 和 s0
                 if (cmdType == 0x03) {
                     int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int s0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
                     param.setS(String.valueOf(s0));
                     param.setWl(String.valueOf(wl0)); // 可选：记录 wl0，方便计算
                 } else if (cmdType == 0x07 && cmdType1 == 0x13) {
                     int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int s0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
                     param.setS(String.valueOf(s0));
                     param.setWl(String.valueOf(wl0));
                 } else if (cmdType == 0x08 && cmdType1 == 0x13) {
                     int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int r0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int r0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
 
                     param.setD(String.valueOf(d0));
                     param.setR(String.valueOf(r0));
@@ -457,7 +493,7 @@ private static Object parseLampPos(List<byte[]> responses) {
                 // 0x04 或 0x06 => 解析 d0 和 r0，并计算结果
                 else if (cmdType == 0x04) {
                     int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int r0 = ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int r0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
 
                     param.setD(String.valueOf(d0));
                     param.setR(String.valueOf(r0));
@@ -500,7 +536,7 @@ private static Object parseLampPos(List<byte[]> responses) {
             // 只处理 第5位 != 0 的回应
             if (data.length >= 12 && (data[4] & 0xFF) != 0) {
                 int x = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
-                int y = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                int y = ((data[7] & 0xFF) << 24) | ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                 xList.add(x / 50.0);
                 yList.add(y / 8388607.0 * 100);
             } else {
@@ -658,7 +694,7 @@ private static Object parseLampPos(List<byte[]> responses) {
                 // 如果第四位字节为 05，解析 s
                 if (fourthByte == 0x05) {
                     // 只有 s0 的值
-                    int s0 = ((response[8] & 0xFF) << 16) | ((response[9] & 0xFF) << 8) | (response[10] & 0xFF);
+                    int s0 = ((response[7] & 0xFF) << 24) | ((response[8] & 0xFF) << 16) | ((response[9] & 0xFF) << 8) | (response[10] & 0xFF);
                     Double wl0 = (double) ((((response[5] & 0xFF) << 8) | (response[6] & 0xFF))/50.0f);
                     tempParam = new ChangeParam(); // 创建一个新的 ChangeParam 对象，等待 0x06 补充
                     tempParam.setS(String.valueOf(s0)); // 设置 s0

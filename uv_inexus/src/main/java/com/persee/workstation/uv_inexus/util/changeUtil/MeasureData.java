@@ -66,6 +66,7 @@ public class MeasureData {
                         byte[] sendBytes3 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetCellPos"));
                         byte[] sendBytes4 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetLampPos"));
                         byte[] sendBytes5 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetAccessoryType"));
+                        byte[] sendBytes6 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetPhotoMode"));
 
                         // 发送并接收
                         List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, "Measure", sendBytes);
@@ -73,6 +74,8 @@ public class MeasureData {
                         List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetCellPos", sendBytes3);
                         List<byte[]> responses4 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetLampPos", sendBytes4);
                         List<byte[]> responses5 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetAccessoryType", sendBytes5);
+                        List<byte[]> responses6 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetPhotoMode", sendBytes6);
+
 
                         // 解析报文
                         Object parseResult = ResponseDeal.parse("Measure", responses, sendBytes);
@@ -80,6 +83,7 @@ public class MeasureData {
                         Object parseResult3 = ResponseDeal.parse("GetCellPos", responses3, sendBytes3);
                         Object parseResult4 = ResponseDeal.parse("GetLampPos", responses4, sendBytes4);
                         Object parseResult5 = ResponseDeal.parse("GetAccessoryType", responses5, sendBytes5);
+                        Object parseResult6 = ResponseDeal.parse("GetPhotoMode", responses6, sendBytes6);
 
                         if (parseResult == null || "false".equals(parseResult.toString())) {
                             log.print("Measure 指令解析失败");
@@ -109,6 +113,12 @@ public class MeasureData {
                             log.print("GetAccessoryType 指令解析失败");
                         } else {
                             log.print("GetAccessoryType 数据解析成功: {}");
+                        }
+
+                        if (parseResult6 == null || "false".equals(parseResult6.toString())) {
+                            log.print("GetPhotoMode 指令解析失败");
+                        } else {
+                            log.print("GetPhotoMode 数据解析成功: {}");
                         }
 
                         // 休眠2秒

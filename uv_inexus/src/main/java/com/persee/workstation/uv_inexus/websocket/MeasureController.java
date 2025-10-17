@@ -42,6 +42,8 @@ public class MeasureController {
 
     private static final BlockingQueue<String> BandwidthQueue = new LinkedBlockingQueue<>();
 
+    private static final BlockingQueue<String> PhotoModeQueue = new LinkedBlockingQueue<>();
+
     public static final BlockingQueue<Map<String, Object>> LampPosQueue = new LinkedBlockingQueue<>();
 
     private static final BlockingQueue<String> SampleTypeQueue = new LinkedBlockingQueue<>();
@@ -144,6 +146,14 @@ public class MeasureController {
         }
     }
 
+    public static void addPhotoModeData(String rawData) {
+        System.out.println("addPhotoModeData: " + rawData);
+        try {
+            PhotoModeQueue.put(rawData); // 阻塞放入
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 //    public static void addLampPosData(String rawData) {
 //        System.out.println("addLampPosData: " + rawData);
 //        try {
@@ -237,6 +247,17 @@ public class MeasureController {
                         data.put("sampletyple", sampleType);
                         messagingTemplate.convertAndSend("/topic/sampletyple", mapper.writeValueAsString(data));
                         System.out.println("推送样品类型: " + sampleType);
+                    }
+                }
+
+                // 6. 光度模式
+                if (!PhotoModeQueue.isEmpty()) {
+                    String photomode = PhotoModeQueue.poll();
+                    if (photomode != null) {
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("photomode", photomode);
+                        messagingTemplate.convertAndSend("/topic/photomode", mapper.writeValueAsString(data));
+                        System.out.println("推送光度模式: " + photomode);
                     }
                 }
 
