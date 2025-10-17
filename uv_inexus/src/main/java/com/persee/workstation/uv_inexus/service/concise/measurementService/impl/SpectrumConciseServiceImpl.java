@@ -49,6 +49,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
@@ -2726,10 +2727,10 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 BigDecimal value = new BigDecimal(split[1]);
                 value = value.setScale(digit, RoundingMode.HALF_UP);
                 map.put("x", split[0]);
-                map.put("y", value.stripTrailingZeros().toPlainString());
+                map.put("y", DataCountUtil.addZero(Double.valueOf(value.stripTrailingZeros().toPlainString()), digit));
             } else {
                 map.put("x", split[0]);
-                map.put("y", split[1]);
+                map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
             }
             if (gauges != null && peaks.size() != 0) {
                 for (FPeakValleyMarking gauge : gauges) {

@@ -2728,7 +2728,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 resultVo.setR2(DataCountUtil.addZero(Double.valueOf(fittingParam.getR2()), digit));
             }
 
-        }
+         }
 
         if (StringUtils.hasText(task.getSampleKey())) {
             List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -2884,8 +2884,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         vo.setDataList(dataList);
         vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
-        vo.setR(info.getR());
-        vo.setR2(info.getR2());
+        vo.setR(DataCountUtil.addZero(Double.valueOf(info.getR()), dataDigit));
+        vo.setR2(DataCountUtil.addZero(Double.valueOf(info.getR2()), dataDigit));
         return vo;
     }
 

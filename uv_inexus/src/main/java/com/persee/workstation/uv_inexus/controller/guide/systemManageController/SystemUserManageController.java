@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.dto.systemUserManageDto.CreateSystemUser
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.guide.systemUserManageService.SystemUserManageService;
+import com.persee.workstation.uv_inexus.utils.IPUtils.ipUtils;
 import com.persee.workstation.uv_inexus.vo.systemUserManageVo.QueryUserVO;
 import com.persee.workstation.uv_inexus.vo.systemUserManageVo.SystemUserGroupInfo;
 import io.swagger.annotations.Api;
@@ -23,6 +24,7 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @RestController
@@ -33,6 +35,11 @@ public class SystemUserManageController {
     @Autowired
     SystemUserManageService userManageService;
 
+    @GetMapping("/test/ip")
+    public String testIp(HttpServletRequest request) {
+        String ip = ipUtils.getIpAddress(request);
+        return "当前访问IP: " + ip;
+    }
     @PostMapping("/createNewUser")
     @ApiOperation("添加用户")
     public Result<Boolean> createNewUser(@RequestBody CreateSystemUserDTO dto){

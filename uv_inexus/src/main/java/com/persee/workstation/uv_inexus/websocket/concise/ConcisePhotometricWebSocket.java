@@ -228,12 +228,12 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             tMeasureTaskService.updateById(task);
 
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-            R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
-            if (!formulaCount.getSuccess()) {
-                sendAndClose(session, "公式计算失败");
-                return;
-            }
-            data = formulaCount.getData();
+//            R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
+//            if (!formulaCount.getSuccess()) {
+//                sendAndClose(session, "公式计算失败");
+//                return;
+//            }
+//            data = formulaCount.getData();
 
             photometricService.saveCountData(data, dataId);
 
@@ -313,11 +313,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 //公式计算
                 measureCount ++;
 
-                R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
-                if (formulaCount.getSuccess()) {
-                    data = formulaCount.getData();
-                    photometricService.saveCountData(data, dataId);
-                }
+//                R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
+//                if (formulaCount.getSuccess()) {
+//                    data = formulaCount.getData();
+//                    photometricService.saveCountData(data, dataId);
+//                }
             }
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));

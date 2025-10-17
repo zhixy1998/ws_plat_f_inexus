@@ -1,6 +1,11 @@
 server:
-  port: 8081
-#  port: 8082
+  port: 8081  # HTTPS默认端口
+  ssl:
+    key-store: classpath:keystore.p12  # 证书路径
+    key-store-password: px123456  # 证书密码（与生成时一致）
+    key-store-type: PKCS12  # 证书类型
+    key-alias: myhttps  # 证书别名（与生成时一致）
+    enabled: true  # 启用HTTPS
 
 spring:
   mvc:
@@ -76,7 +81,8 @@ sys-manage-default:
   userId: "11111111"
 
 python-code:
-  baseUrl: http://192.168.61.82:8002/
+#  baseUrl: http://192.168.61.82:8002/
+  baseUrl: http://192.168.61.47:8000/
 
 
 
