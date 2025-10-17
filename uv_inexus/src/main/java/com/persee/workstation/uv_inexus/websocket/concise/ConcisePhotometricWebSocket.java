@@ -153,8 +153,15 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "缺少波长， 无法测量");
             return;
         }
-
-        digit = StringUtils.hasText(di) ? Integer.parseInt(di) : Constants.DEFAULT_DECIMAL_NUM;
+        if (StringUtils.hasText(di)) {
+            try {
+                digit = Integer.parseInt(di);
+            } catch (Exception e) {
+                digit = Constants.DEFAULT_DECIMAL_NUM;
+            }
+        } else {
+            digit = Constants.DEFAULT_DECIMAL_NUM;
+        }
 
         if (sampleId != null) {
             TaskSpecimen specimen = new TaskSpecimen();

@@ -55,7 +55,7 @@ public class MeasureController {
     /**
      * 前端调用：stompClient.send("/app/measure/start", {}, JSON.stringify({"deviceSerialNumber":"123"}))
      */
-    @MessageMapping("/measure/start")
+//    @MessageMapping("/measure/start")
     public void startMeasure(String deviceSerialNumber) {
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
             messagingTemplate.convertAndSend("/topic/measure",

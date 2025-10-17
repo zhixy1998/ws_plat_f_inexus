@@ -21,10 +21,10 @@ import java.util.Map;
 public enum DeviceConnectMessageEnum {
 //0-未连接，1-联机中，2-联机成功，3-联机失败
 
-    CONNECT_NO(0,"not connect"),
-    CONNECT_ING(1, "connect to device"),
-    CONNECT_SUCCESS(2,"connect success"),
-    CONNECT_FALSE(3,"connect failed");
+    CONNECT_NO(0,"未联机"),
+    CONNECT_ING(1, "联机中"),
+    CONNECT_SUCCESS(2,"联机成功"),
+    CONNECT_FALSE(3,"联机失败");
 
 
 

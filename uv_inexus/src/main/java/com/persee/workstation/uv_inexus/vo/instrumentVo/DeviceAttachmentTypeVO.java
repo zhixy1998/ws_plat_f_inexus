@@ -29,4 +29,7 @@ public class DeviceAttachmentTypeVO {
 
     @ApiModelProperty("样本池数量")
     private Integer samplePoolNum;
+
+    @ApiModelProperty("附件种类")
+    private Integer attachmentKind;
 }

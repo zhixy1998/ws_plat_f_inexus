@@ -20,12 +20,12 @@ import com.persee.workstation.uv_inexus.util.changeUtil.T800.ResponseParser;
 import com.persee.workstation.uv_inexus.util.changeUtil.T800.T800MessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.T800.T800Transition;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -72,7 +72,7 @@ public class DevMessageUtil {
 
     private static String ipEnd = "253";
 
-    private static String flag ;
+    private static String flag = "T600" ;
 
     // 缓存一份 T800 协议表
     private  Map<String, T800Transition> t800xml;
@@ -83,6 +83,11 @@ public class DevMessageUtil {
      * @return
      */
     public R<FindDeviceVO> connectDevice(List<Command> list) throws Exception {
+        while (!DetectionConstants.isDeviceIdle) {
+            Thread.sleep(100);
+        }
+        DetectionConstants.isDeviceIdle = true;
+
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             return R.fail(ans.getMessage());
@@ -98,7 +103,7 @@ public class DevMessageUtil {
                 (byte) 0xC0, (byte) 0xA8, 0x01, 0x01, 0x0A, 0x26
         };
 
-        boolean isT800 = sendBroadcastAndWaitReply(socket, sendData, 5000, 5000);
+        boolean isT800 = sendBroadcastAndWaitReply(socket, sendData, 5000, 100);
 
         System.out.println("最终结果: " + isT800);
 
@@ -115,7 +120,7 @@ public class DevMessageUtil {
         }
     }
 
-    public R<FindDeviceVO> connectT600(DatagramSocket socket, List<Command> list) throws IOException, InterruptedException {
+    public R<FindDeviceVO> connectT600(DatagramSocket socket, List<Command> list) {
         Boolean b = changeXml(T600xmlPath);
         if (!b) {
             return R.fail("T600xml文件加载失败");
@@ -284,6 +289,58 @@ public class DevMessageUtil {
     }
 
     /**
+     * 仪器校正
+     */
+    public R<String> deviceCalibration(Command command, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+        if(flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("xml文件加载失败");
+            }
+            String cmdId = command.getCmdId();
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            String result = parse.toString();
+            if ("false".equals(result)) {
+                return R.fail();
+            }
+        } else if(flag == "T800"){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("T800xml文件加载失败");
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                return R.fail("T800发送命令失败");
+            }
+//            String result = t800MessageUtil.getResultSingle(cmdId, 3000);
+            String result = ResponseParser.Result;
+
+            if (result != null) {
+                System.out.println("解析结果：" + result);
+            } else {
+                System.out.println("超时未收到解析结果");
+            }
+            if ("false".equals(result)) {
+                return R.fail();
+            }
+
+        }
+        return R.ok();
+    }
+
+    /**
      * 初始化设备，暂放
      *
      * @param
@@ -332,7 +389,58 @@ public class DevMessageUtil {
 
         }
         return R.ok();
+    }
 
+    /**
+     * 初始化之后，设置初始化状态
+     */
+    public R<String> setDeviceInitStatus(String deviceIp, Integer status) throws Exception {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+
+        if(flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("xml文件加载失败");
+            }
+            String cmdId = "SetInitStatus";
+            Object[] param = new Object[]{status};
+
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(param, xml.get(cmdId));
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            String result = parse.toString();
+            if ("false".equals(result)) {
+                return R.fail();
+            }
+        } else if(flag == "T800"){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("T800xml文件加载失败");
+            }
+            String cmdId = "SetInitStatus";
+            Object[] param = new Object[]{status};
+
+            byte[] bytes = protocolItem.T800calcSendBytes(param ,t800xml.get(cmdId));
+            t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+//            String result = t800MessageUtil.getResultSingle(cmdId, 3000);
+            String result = ResponseParser.Result;
+
+            if (result != null) {
+                System.out.println("解析结果：" + result);
+            } else {
+                System.out.println("超时未收到解析结果");
+            }
+            if ("false".equals(result)) {
+                return R.fail();
+            }
+
+        }
+        return R.ok();
     }
 
     /**

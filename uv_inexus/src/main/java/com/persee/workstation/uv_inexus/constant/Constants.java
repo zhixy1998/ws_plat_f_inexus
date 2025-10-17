@@ -44,6 +44,7 @@ public class Constants {
     public final static Integer INIT_TASK_STATUS_ING = 0;
     public final static Integer INIT_TASK_STATUS_SUCCESS = 1;
     public final static Integer INIT_TASK_STATUS_FALSE = 2;
+    public final static Integer INIT_TASK_STATUS_NO = 3;
 
     /**
      * 开机状态：0-未开机，1-开机，2-软关机
@@ -58,6 +59,17 @@ public class Constants {
     public final static Integer CONNECT_DEVICE_ING = 1;
     public final static Integer CONNECT_DEVICE_SUCCESS = 2;
     public final static Integer CONNECT_DEVICE_FALSE = 3;
+
+    /**
+     * 仪器当前状态 0-空闲，1-初始化中，2-测量中，3-回显线程占用中，4其他指令-占用
+     */
+    public final static Integer DEVICE_STATUS_IDLE = 0;
+    public final static Integer DEVICE_STATUS_INIT = 1;
+    public final static Integer DEVICE_STATUS_MEASURE = 2;
+    public final static Integer DEVICE_STATUS_ECHO = 3;
+    public final static Integer DEVICE_STATUS_OTHER = 4;
+
+
 
     public static volatile LocalDateTime startTime=null;
     public static volatile LocalDateTime endTime = null;
@@ -128,5 +140,7 @@ public class Constants {
     * 样品输入参数正则
      */
     public static final Pattern PARAM_PATTERN = Pattern.compile("^[A-Z]{1,2}\\d{1,10}$");
+
+
 
 }

@@ -64,7 +64,7 @@ public class InitRecordServiceImpl implements InitRecordService {
             po.setInitTaskNum(i);
             po.setDeviceInfoId(deviceInfoId);
             po.setDeviceSerialNumber(deviceSerialNumber);
-            po.setInitStatus(Constants.INIT_TASK_STATUS_ING);
+            po.setInitStatus(Constants.INIT_TASK_STATUS_NO);
 
             dao.insert(po);
         }

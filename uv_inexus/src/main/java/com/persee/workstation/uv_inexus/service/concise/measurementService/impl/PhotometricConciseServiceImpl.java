@@ -320,13 +320,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Override
     public Result<FMethodChangeCheckVO> checkMethodParam(NewPhotometricMethodParamCheckDTO checkDTO) {
 
-        if (checkDTO.getNewMethodParam() == null) {
+        if (Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法参数");
         }
 
-        R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
-        if (!r.getSuccess()) {
-            return Result.fail(r.getMessage());
+        if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
+            R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
+            if (!r.getSuccess()) {
+                return Result.fail(r.getMessage());
+            }
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
@@ -352,8 +354,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         FMeasureMethod method = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
         FPhotometricParameter oldParam = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
-
-        FPhotometricParameter methodParam = checkDTO.getNewMethodParam();
+        FPhotometricParameter methodParam = new FPhotometricParameter();
+        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+            FMeasureMethod newMethod = fMeasureMethodService.getById(checkDTO.getNewMethodId());
+            methodParam = JSON.parseObject(newMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
+        } else {
+            methodParam = checkDTO.getNewMethodParam();
+        }
 
         String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
         String frontJson = JSON.toJSONString(methodParam, SerializerFeature.SortField);
@@ -416,33 +423,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     //检查参数是否改变，true--未改变，false--改变了
     private boolean checkAnalyzeParam(FPhotometricParameter oldParam, FPhotometricParameter newParam) {
-        List<FPreCountResultParam> oldResult = oldParam.getResultParams();
-        List<FPreCountResultParam> newResult = newParam.getResultParams();
-
-        if (oldResult == null ) {
-            oldResult = new ArrayList<>();
-        }
-        if (newResult == null ) {
-            newResult = new ArrayList<>();
-        }
-
-        if (!oldResult.equals(newResult)) {
-            if (newResult.size() != oldResult.size()) {
-                return false;
-            }
-
-            for (int i = 0; i < oldResult.size(); i++) {
-                FPreCountResultParam oldResultParam = oldResult.get(i);
-                FPreCountResultParam newResultParam = newResult.get(i);
-                if (oldResultParam.equals(newResultParam)) {
-                    continue;
-                }
-                if (!oldResultParam.getFormulaText().equals(newResultParam.getFormulaText())) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return Objects.equals(oldParam.getSampleInputParams(),newParam.getSampleInputParams()) &&
+                Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
+                Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
+                Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
     }
 
 
@@ -450,7 +434,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewPhotometricMethodParamCheckDTO methodDTO) {
 
-        if (methodDTO.getNewMethodParam() == null && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+        if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法或参数");
         }
         if (!StringUtils.hasText(methodDTO.getMeasureType())) {

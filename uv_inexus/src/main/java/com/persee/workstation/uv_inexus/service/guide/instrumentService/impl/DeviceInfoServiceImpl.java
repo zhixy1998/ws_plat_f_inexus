@@ -77,5 +77,26 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         }
     }
 
+    @Override
+    public void updateDeviceCurrentStatus(String deviceSerialNumber, Integer currentStatus) {
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber)
+                .last("limit 1");
+        DeviceInfoPO deviceInfoPO = dao.selectOne(queryWrapper);
+        deviceInfoPO.setDeviceCurrentStatus(currentStatus);
+        dao.update(deviceInfoPO, queryWrapper);
+    }
+
+    @Override
+    public Boolean changeDeviceName(String deviceSerialNumber, String newDeviceName, String updateBy) {
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber)
+                .last("limit 1");
+        DeviceInfoPO deviceInfoPO = dao.selectOne(queryWrapper);
+        deviceInfoPO.setDeviceName(newDeviceName);
+        deviceInfoPO.setUpdateBy(updateBy);
+        return dao.update(deviceInfoPO, queryWrapper) > 0;
+    }
+
 
 }

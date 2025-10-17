@@ -34,7 +34,7 @@ public class InitRecordPO extends BasePO {
     @TableField("init_task_num")
     private Integer initTaskNum;
 
-    @ApiModelProperty("初始化状态,0-进行中，1-成功，2-失败")
+    @ApiModelProperty("初始化状态,0-进行中，1-成功，2-失败, 3-待自检")
     @TableField("init_status")
     private Integer initStatus;
 }

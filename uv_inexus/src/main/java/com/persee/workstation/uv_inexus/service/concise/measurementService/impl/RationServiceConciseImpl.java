@@ -274,12 +274,14 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public Result<FMethodChangeCheckVO> checkMethodParam(NewRationMethodParamCheckDTO checkDTO) {
 
-        if (checkDTO.getNewMethodParam() == null) {
+        if (Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法参数");
         }
-        R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
-        if (!r.getSuccess()) {
-            return Result.fail(r.getMessage());
+        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+            R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
+            if (!r.getSuccess()) {
+                return Result.fail(r.getMessage());
+            }
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
@@ -287,7 +289,6 @@ public class RationServiceConciseImpl implements RationConciseService {
         vo.setParamChange(false);
         vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity());
         vo.setMessage(PhotoMetricChangeMethodTypeEnum.noChange.getMessage());
-
 
         if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
             log.info("生成新方法");
@@ -316,8 +317,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureMethod method = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
         FRationParameter oldParam = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
 
-        FRationParameter methodParam = checkDTO.getNewMethodParam();
-
+        FRationParameter methodParam = new FRationParameter();
+        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+            FMeasureMethod newMethod = fMeasureMethodService.getById(checkDTO.getNewMethodId());
+            methodParam = JSON.parseObject(newMethod.getMeasurementParamInfo(), FRationParameter.class);
+        } else {
+            methodParam = checkDTO.getNewMethodParam();
+        }
         String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
         String frontJson = JSON.toJSONString(methodParam, SerializerFeature.SortField);
 
@@ -655,7 +661,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewRationMethodParamCheckDTO methodDTO) {
 
-        if (methodDTO.getNewMethodParam() == null && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+        if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法或参数");
         }
         if (!StringUtils.hasText(methodDTO.getMeasureType())) {

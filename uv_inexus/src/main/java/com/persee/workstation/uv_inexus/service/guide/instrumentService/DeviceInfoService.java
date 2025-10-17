@@ -25,4 +25,8 @@ public interface DeviceInfoService {
     //查找附件类型
     String getAttachmentType(String deviceSerialNumber);
 
+    void updateDeviceCurrentStatus(String deviceSerialNumber, Integer currentStatus);
+
+    Boolean changeDeviceName(String deviceSerialNumber, String newDeviceName, String updateBy);
+
 }
