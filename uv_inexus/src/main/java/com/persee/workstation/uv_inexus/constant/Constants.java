@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.constant;
 
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,6 +98,9 @@ public class Constants {
 
     public static volatile ChangeParam timeChangeparam = new ChangeParam();
 
+    /// 测量状态
+    public static volatile boolean measureStatus = false;
+
 //    public static volatile List<String> r_data = new ArrayList<>();
 //    public static volatile List<String> s_data = new ArrayList<>();
 //    public static volatile List<String> d_data = new ArrayList<>();
@@ -104,6 +108,9 @@ public class Constants {
     public static volatile List<String> s_data = new ArrayList<>();
     public static volatile List<String> d_data = new ArrayList<>();
     public static volatile List<String> r_data = new ArrayList<>();
+
+    // 时间扫描发送的时间
+    public static volatile List<BigDecimal> sendIntervals = new ArrayList<>();
 
     public static final String EndData = "0D0A,000";
 

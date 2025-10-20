@@ -17,6 +17,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
@@ -31,9 +32,8 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.websocket.MyWebSocketHandler;
-import org.mybatis.logging.Logger;
-import org.mybatis.logging.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 @Component
 public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     // 创建日志记录器，用于记录类中的日志信息
-    private static final Logger log = LoggerFactory.getLogger(MyWebSocketHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(TimingWebSocket.class);
 
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
@@ -69,6 +69,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     // 存储任务线程
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
+
+    private String ip;
 
 
 
@@ -136,6 +138,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
     }
 
+
+
+
     /**
      * 重写afterConnectionClosed方法，用于处理WebSocket连接关闭后的操作
      * @param session WebSocket会话对象，包含连接的相关信息
@@ -143,7 +148,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-            System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
+        System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
         sessions.remove(session.getId());
 
         // 中断正在执行的任务
@@ -151,6 +156,19 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         if (future != null) {
             future.cancel(true);
         }
+        if (!Constants.measureStatus){
+            try {
+                R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
+                if (stop.getSuccess()){
+                    log.info("停止成功");
+                }else {
+                    log.info("停止失败");
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
 
         try {
             session.close();
@@ -158,6 +176,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             e.printStackTrace();
         }
     }
+
+
+
 
 
 
@@ -170,6 +191,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         try {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
+            exceptionHandling();
             session.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -208,7 +230,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         List<ChangeParam> dataList = new ArrayList<>();
 
         checkInterrupted(session);
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
 
@@ -297,8 +319,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             return;
         }
 
+        Constants.measureStatus = true;
         sendAndClose(session, "保存成功");
-        Constants.instrumentData.clear();
+
     }
 
     // 中断检测
@@ -336,5 +359,16 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         cmd.setCmdId(cmdEnum.getComId());
         cmd.setParams(new Object[]{value});
         return cmd;
+    }
+
+    /**
+     * 全局数据清空
+     */
+    private void exceptionHandling() {
+        Constants.startTime = null;
+        Constants.endTime = null;
+        Constants.measurd_data.clear();
+        Constants.instrumentData.clear();
+        Constants.measureStatus = false;
     }
 }

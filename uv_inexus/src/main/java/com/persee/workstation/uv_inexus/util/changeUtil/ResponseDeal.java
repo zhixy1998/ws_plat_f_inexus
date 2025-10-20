@@ -370,6 +370,7 @@ private static Object parseLampPos(List<byte[]> responses) {
 
     // 入队 Map（现在队列类型是 Map）
     addLampPosData(lampData);
+
     System.out.println("解析灯状态完成，入队等待推送: " + lampData);
     return pos;
 }

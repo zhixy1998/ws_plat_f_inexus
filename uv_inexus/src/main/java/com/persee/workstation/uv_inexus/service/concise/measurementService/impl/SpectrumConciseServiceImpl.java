@@ -1120,6 +1120,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
+                    vo.setSampleLocation(null);
                     vo.setAnalysisNumber(1);
                     vo.setColor(null);
                     vo.setData(null);
@@ -1140,6 +1141,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setSampleLocation(sample.getSampleLocation());
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
                     if (measureData.getAnalysisResult() == null) {
@@ -1186,6 +1188,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                         vo.setAnalysisId(null);
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(i + 1);
+                        vo.setSampleLocation(null);
                         vo.setColor(null);
                         vo.setData(null);
                         vo.setDeleteType("0");
@@ -1194,6 +1197,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                         vo.setAnalysisId(measureData.getId());
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                        vo.setSampleLocation(sample.getSampleLocation());
                         vo.setColor(measureData.getColor());
                         if (measureData.getAnalysisResult() == null) {
                             vo.setData(null);
@@ -1845,33 +1849,38 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
         commands.add(com3);
-        // 波长间隔
+        // 扫描间隔
         Command com4 = new Command();
         com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
         com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
         commands.add(com4);
-        // 扫描速度
+        // 光谱带宽
         Command com5 = new Command();
-        com5.setCmdId(SetParamEnum.SetScanSpeed.getComId());
-        com5.setParams(new Object[]{scanParamInfo.getScanSpeed()});
+        com5.setCmdId(SetParamEnum.SetSlit1.getComId());
+        com5.setParams(new Object[]{scanParamInfo.getSpectralBandwidth()});
         commands.add(com5);
-        // 换灯波长
+        // 扫描速度
         Command com6 = new Command();
-        com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
-        com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        com6.setCmdId(SetParamEnum.SetScanSpeed.getComId());
+        com6.setParams(new Object[]{scanParamInfo.getScanSpeed()});
         commands.add(com6);
+        // 换灯波长
+        Command com7 = new Command();
+        com7.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
+        com7.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        commands.add(com7);
 
-        if (scanParamInfo.getLuminosity().equals("2")||scanParamInfo.getLuminosity().equals("3")) {
+        if (scanParamInfo.getLuminosity().equals("3")||scanParamInfo.getLuminosity().equals("4")) {
             // 能量灯
-            Command com7 = new Command();
-            com7.setCmdId(SetParamEnum.SetLampPos.getComId());
-            com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
-            commands.add(com7);
-            // 增益
             Command com8 = new Command();
-            com8.setCmdId(SetParamEnum.SetGain.getComId());
-            com8.setParams(new Object[]{scanParamInfo.getGain()});
+            com8.setCmdId(SetParamEnum.SetLampPos.getComId());
+            com8.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
             commands.add(com8);
+            // 增益
+            Command com9 = new Command();
+            com9.setCmdId(SetParamEnum.SetGain.getComId());
+            com9.setParams(new Object[]{scanParamInfo.getGain()});
+            commands.add(com9);
         }
 
         R<String> stringR = null;
@@ -2164,6 +2173,25 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
         if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
+        }
+        // 根据任务id查询任务数据
+        FMeasureTask task = fMeasureTaskService.getById(paramDto.getTaskId());
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        // 根据任务中的方法key查询方法并且提取方法参数
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        // 提取方法参数
+        FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        if (spectrumParameter == null) {
+            return Result.fail("方法参数错误");
+        }
+        // 判断光度模式是否是1
+        if (spectrumParameter.getLuminosity().equals("1")){
+            return Result.fail("Abs光度模式不可使用高级运算");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
@@ -2725,9 +2753,8 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             Map<String, Object> map = new HashMap<>();
             if (digit != null) {
                 BigDecimal value = new BigDecimal(split[1]);
-                value = value.setScale(digit, RoundingMode.HALF_UP);
                 map.put("x", split[0]);
-                map.put("y", DataCountUtil.addZero(Double.valueOf(value.stripTrailingZeros().toPlainString()), digit));
+                map.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
             } else {
                 map.put("x", split[0]);
                 map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));

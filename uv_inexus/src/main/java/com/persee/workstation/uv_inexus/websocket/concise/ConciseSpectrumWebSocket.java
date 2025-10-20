@@ -20,6 +20,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
@@ -32,6 +33,8 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -51,12 +54,15 @@ import java.util.stream.Collectors;
 
 @Component
 public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
+    private static final Logger log = LoggerFactory.getLogger(TimingWebSocket.class);
 
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     // 存储任务线程
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
+
+    private String ip;
 
 
     @Autowired
@@ -134,6 +140,17 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         List<ChangeParam> baselineData = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
         // 将任务中的样品数据取出来
         List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        /// 如果样品数据为空则创建一个样品
+        if (sampleData == null) {
+            // 创建样品
+            FMeasureSample sample = new FMeasureSample();
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+            sample.setSampleName("默认样品"+collect);
+            sample.setSampleNumber("1");
+        }
         List<FTaskSpecimen> newSampleData = new ArrayList<>();
         for (FTaskSpecimen taskSpecimen : sampleData) {
             // 样品未测量并且未删除
@@ -141,9 +158,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 newSampleData.add(taskSpecimen);
             }
         }
-        if (newSampleData.size() == 0 && sampleData.size() != 0){
-            sendAndClose(session, "您的样品已测完,请重新添加样品");
-        }
+        /// 如果是样品数据中有数据
 
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
@@ -153,18 +168,24 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "没有找到对应的附件配置信息");
         }
 
-        String maxLocation= null;
-        if (configPO.getIsAutoChangePool()) {
+        String maxLocation= "";
+        if (configPO.getIsAutoChangePool()){
             List<String> sampleIds = newSampleData.stream().map(obj -> obj.getSpecimenKey()).collect(Collectors.toCollection(ArrayList::new));
             QueryWrapper<FMeasureSample> eq = new QueryWrapper<>();
             eq.in("id", sampleIds);
             List<FMeasureSample> list = tMeasureSampleService.list(eq);
             maxLocation = list.stream().map(FMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
-            if (maxLocation == null|| maxLocation.isEmpty()) {
-                sendAndClose(session, "样品位置出错");
+        }
+
+        boolean poolStatus = false;
+        if (configPO.getIsAutoChangePool()){
+            List<FSamplePoolStatus> poolStatuses = com.alibaba.fastjson.JSON.parseArray(configPO.getPoolInfo(), FSamplePoolStatus.class);
+            for (FSamplePoolStatus status : poolStatuses) {
+                if (status.getPoolStatus()){
+                    poolStatus = true;
+                    break;
+                }
             }
-        }else{
-            maxLocation = "";
         }
 
         Integer repetitionTime = Integer.valueOf(spectrumParameter.getRepetitionTime());
@@ -172,12 +193,13 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
         int repeatCount = repetitionTime != null ? repetitionTime : 1;
         long repeatInterval = timeInterval != null ? timeInterval : 0;
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = new Command();
         command.setCmdId(SetParamEnum.Scan.getComId());
         command.setParams(new Object[]{});
         // 往前端推送数据的线程
         String finalMaxLocation = maxLocation;
+        boolean finalPoolStatus = poolStatus;
         Thread taskThread = new Thread(() -> {
 
             try {
@@ -188,24 +210,40 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                         // 预留: 设置样品池位置
                         FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
                         if (configPO.getIsAutoChangePool()){
-                            // 根据样品的key查询样品
                             if (sample == null){
-                                sendAndClose(session, "样品不存在");
-                            }
-                            R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
-                            if (!stringR.getSuccess()) {
-                                sendAndClose(session, "设置样品池出错");
+                                sendAndClose(session, "请先创建样品");
                                 return;
+                            }
+
+                            if (finalPoolStatus){
+                                R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+                                if (!stringR.getSuccess()) {
+                                    sendAndClose(session, "设置出错");
+                                    return;
+                                }
+                                JSONObject object = new JSONObject();
+                                object.put("currentPoolNum",sample.getSampleLocation());
+                                try {
+                                    session.sendMessage(new TextMessage(object.toJSONString()));
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
                             }
                         }
 
                         doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, 1);
                         newSampleData.get(i).setIsTested("1");
-                        if ((i + 1) != newSampleData.size()||!sample.getSampleLocation().equals(finalMaxLocation)||configPO.getIsAutoChangePool().equals(true)) {
-                            JSONObject payload = new JSONObject();
-                            payload.put("result", "finish");
-                            session.sendMessage(new TextMessage(payload.toJSONString()));
-                            session.close();
+                        if (configPO.getIsAutoChangePool().equals(true)){
+                            if ((i + 1) != newSampleData.size()&&!sample.getSampleLocation().equals(finalMaxLocation)) {
+                                JSONObject payload = new JSONObject();
+                                payload.put("result", "finish");
+                                session.sendMessage(new TextMessage(payload.toJSONString()));
+                            }else {
+                                // 全部完成后再告诉前端 finish
+                                JSONObject payload = new JSONObject();
+                                payload.put("result", "finish");
+                                sendAndClose(session, String.valueOf(payload));
+                            }
                         } else {
                             // 全部完成后再告诉前端 finish
                             JSONObject payload = new JSONObject();
@@ -217,16 +255,40 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     // 单池重复
                     for (int i = 0; i < newSampleData.size(); i++) {
                         // 预留: 设置样品池位置
-                        // 根据样品的key查询样品
                         FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
-                        if (sample == null){
-                            sendAndClose(session, "样品不存在");
+                        if (configPO.getIsAutoChangePool()){
+                            if (sample == null){
+                                sendAndClose(session, "请先创建样品");
+                                return;
+                            }
+
+                            if (finalPoolStatus){
+                                R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+                                if (!stringR.getSuccess()) {
+                                    sendAndClose(session, "设置出错");
+                                    return;
+                                }
+                                JSONObject object = new JSONObject();
+                                object.put("currentPoolNum",sample.getSampleLocation());
+                                try {
+                                    session.sendMessage(new TextMessage(object.toJSONString()));
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
                         }
-                        R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
-                        if (!stringR.getSuccess()) {
-                            sendAndClose(session, "设置样品池出错");
-                            return;
+                        // 根据样品的key查询样品
+                        if (configPO.getIsAutoChangePool()){
+                            if (sample == null){
+                                sendAndClose(session, "样品不存在");
+                            }
+                            R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
+                            if (!stringR.getSuccess()) {
+                                sendAndClose(session, "设置样品池出错");
+                                return;
+                            }
                         }
+
 
                         for (int r = 0; r < repetitionTime; r++) {
                             // 根据样品id,任务id和遍历的r+1查询分析数据
@@ -245,10 +307,11 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                             doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, r + 1);
 
                         }
-                        if (sample.getSampleLocation().equals(finalMaxLocation)){
+                        if (!configPO.getIsAutoChangePool().equals(true)||sample.getSampleLocation().equals(finalMaxLocation)){
                             break;
                         }
                     }
+                    Constants.measureStatus = true;
                     // 全部完成后再告诉前端 finish
                     JSONObject payload = new JSONObject();
                     payload.put("result", "finish");
@@ -294,8 +357,21 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         // 打印客户端退出信息，包括会话ID、退出时间和关闭原因
         System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
         Thread taskThread = taskThreads.remove(session.getId());
+        exceptionHandling();
         if (taskThread != null) {
             taskThread.interrupt(); // 直接打断子线程
+        }
+        if (!Constants.measureStatus){
+            try {
+                R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
+                if (stop.getSuccess()){
+                    log.info("停止成功");
+                }else {
+                    log.info("停止失败");
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
         sessions.remove(session.getId());
         exceptionHandling(); // 清空公共数据
@@ -409,8 +485,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                                    String ip,
                                                    Integer count) throws IOException {
 
-        spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
-
         // 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
 
@@ -429,6 +503,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             // 采集 & 计算一个点
             List<String> snapshot = new ArrayList<>(Constants.instrumentData);
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
+                if (snapshot.get(0).equals(Constants.EndData)){
+                    break;
+                }
                 while (!Constants.measurd_data.isEmpty()) {
                     calcOnePoint(spectrumParameter, baselineCopy, x, y);
                     pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId);
@@ -520,16 +597,15 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         if (baselineCopy != null && !baselineCopy.isEmpty()) {
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
+                String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("2")) {
                 String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(s, null);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
+                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + s);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
-                y.add(Double.parseDouble(yy));
+                y.add(Double.parseDouble(s));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
                 System.out.println("----sData:" + sData);
@@ -797,6 +873,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         Constants.originalCalculationData.clear();
         Constants.startTime = null;
         Constants.endTime = null;
+        Constants.measureStatus = false;
     }
 
 
@@ -815,6 +892,19 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             this.instrumentSnapshot = instrumentSnapshot;
             this.originalCalcSnapshot = originalCalcSnapshot;
         }
+    }
+
+    /**
+     * 构建命令
+     * @param cmdEnum
+     * @param value
+     * @return
+     */
+    private Command buildCommand(SetParamEnum cmdEnum, Object value) {
+        Command cmd = new Command();
+        cmd.setCmdId(cmdEnum.getComId());
+        cmd.setParams(new Object[]{value});
+        return cmd;
     }
 
 }

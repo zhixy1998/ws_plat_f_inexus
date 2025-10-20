@@ -91,7 +91,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
-        log.info("查询仪器信息");
+//        log.info("查询仪器信息");
         DeviceInfoVO vo = new DeviceInfoVO();
 
         List<DeviceInitInfo> infoList = new ArrayList<>();

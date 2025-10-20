@@ -1593,17 +1593,55 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         FTimeSweepParamter time = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
         List<Command> commands = new ArrayList<>();
-        commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getSpectralBandwidth()));
+        // 设置光度模式
+        commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getLuminosity()));
+        // 设置换灯波长
         commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
+        // 设置响应时间
+        commands.add(buildCommand(SetParamEnum.SetResponseTime, time.getResponseTime()));
+        // 设置波长
+        commands.add(buildCommand(SetParamEnum.SetWl, time.getWaveLength()));
+        // 设置光谱带宽
+        commands.add(buildCommand(SetParamEnum.SetSlit1, time.getSpectralBandwidth()));
 
-        if (time.getLuminosity().equals("2")||time.getLuminosity().equals("3")) {
+        if (time.getLuminosity().equals("3")||time.getLuminosity().equals("4")) {
+            // 设置能量灯
             commands.add(buildCommand(SetParamEnum.SetLampPos, time.getEnergyLamp()));
+            // 设置增益
             commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
         }
 
         R<String> stringR = devMessageUtil.timeSweepSet(commands, ip);
         return Result.ok(stringR.getData());
     }
+
+//    /**
+//     * 设置测量参数
+//     * @param methodId
+//     * @param deviceSerialNumber
+//     * @return
+//     */
+//    @Override
+//    public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
+//        // 根据序列号查询设备ip
+//        String ip = deviceInfoService.getIp(deviceSerialNumber);
+//        FMeasureMethod method = fMeasureMethodService.getOne(new QueryWrapper<FMeasureMethod>().eq("id", methodId).eq("measurement_type","时间扫描"));
+//        if (method == null) {
+//            return Result.fail("方法不存在");
+//        }
+//        FTimeSweepParamter time = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+//        List<Command> commands = new ArrayList<>();
+//        commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getSpectralBandwidth()));
+//        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
+//
+//        if (time.getLuminosity().equals("2")||time.getLuminosity().equals("3")) {
+//            commands.add(buildCommand(SetParamEnum.SetLampPos, time.getEnergyLamp()));
+//            commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
+//        }
+//
+//        R<String> stringR = devMessageUtil.timeSweepSet(commands, ip);
+//        return Result.ok(stringR.getData());
+//    }
 
     /**
      * 查询历史方法
@@ -1850,6 +1888,27 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
         }
+
+        // 根据任务id查询任务数据
+        FMeasureTask task = fMeasureTaskService.getById(paramDto.getTaskId());
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        // 根据任务中的方法key查询方法并且提取方法参数
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        // 提取方法参数
+        FTimeSweepParamter timeSweepParamter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+        if (timeSweepParamter == null) {
+            return Result.fail("方法参数错误");
+        }
+        // 判断光度模式是否是1
+        if (timeSweepParamter.getLuminosity().equals("1")){
+            return Result.fail("Abs光度模式不可使用高级运算");
+        }
+
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
         if (analysisData.size()>0){
