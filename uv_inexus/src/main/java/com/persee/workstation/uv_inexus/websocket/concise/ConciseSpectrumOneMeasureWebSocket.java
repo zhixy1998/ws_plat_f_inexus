@@ -249,7 +249,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         // 打印客户端退出信息，包括会话ID、退出时间和关闭原因
         System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
         Thread taskThread = taskThreads.remove(session.getId());
-        exceptionHandling();
         if (taskThread != null) {
             taskThread.interrupt(); // 直接打断子线程
         }
@@ -285,7 +284,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             Thread.currentThread().interrupt();
             return;
         }
-        exceptionHandling();
         System.out.println("连接异常: " + exception.getMessage());
     }
 
@@ -790,7 +788,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
-            exceptionHandling();
             sessions.remove(session.getId());
             session.close();
         } catch (IOException e) {

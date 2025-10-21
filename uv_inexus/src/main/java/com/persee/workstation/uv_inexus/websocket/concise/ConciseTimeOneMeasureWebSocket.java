@@ -616,6 +616,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                 throw new RuntimeException(e);
             }
         }
+        exceptionHandling();
 
     }
 
@@ -628,7 +629,6 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
-            exceptionHandling();
             session.close();
         } catch (IOException e) {
             Thread.currentThread().interrupt();

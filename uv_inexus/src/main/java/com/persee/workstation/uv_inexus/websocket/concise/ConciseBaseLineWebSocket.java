@@ -157,6 +157,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             future.cancel(true);
         }
         if (!Constants.measureStatus){
+            System.err.println("启动停止命令");
             try {
                 R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                 if (stop.getSuccess()){
@@ -168,6 +169,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 throw new RuntimeException(e);
             }
         }
+
+        exceptionHandling();
 
 
         try {
@@ -191,7 +194,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         try {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
-            exceptionHandling();
+
             session.close();
         } catch (IOException e) {
             throw new RuntimeException(e);

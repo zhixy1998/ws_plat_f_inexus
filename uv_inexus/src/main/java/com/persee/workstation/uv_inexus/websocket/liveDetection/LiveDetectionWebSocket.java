@@ -68,7 +68,7 @@ public class LiveDetectionWebSocket {
     String measureTopic;
 
 
-    @MessageMapping("/detection/start")
+//    @MessageMapping("/detection/start")
     public void startMeasure(String deviceSerialNumber) {
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
             messagingTemplate.convertAndSend(measureTopic,

@@ -533,7 +533,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             return;
         }
         Constants.measureStatus = true;
-        exceptionHandling();
 
     }
 
@@ -579,6 +578,8 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             }
         }
 
+        exceptionHandling();
+
         // 取消正在执行的任务
         if (future != null && !future.isDone()) {
             future.cancel(true);
@@ -596,7 +597,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
-            exceptionHandling();
             session.close();
         } catch (IOException e) {
             Thread.currentThread().interrupt();

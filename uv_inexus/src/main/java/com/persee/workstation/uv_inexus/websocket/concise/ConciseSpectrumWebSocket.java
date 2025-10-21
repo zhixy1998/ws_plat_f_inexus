@@ -16,6 +16,7 @@ package com.persee.workstation.uv_inexus.websocket.concise;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
@@ -92,7 +93,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     @Autowired
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
 
-
     /**
      * 当WebSocket连接建立后调用此方法
      *
@@ -150,7 +150,36 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     .collect(Collectors.joining());
             sample.setSampleName("默认样品"+collect);
             sample.setSampleNumber("1");
+            // 设置样品池位置为当前位置
+            LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+            FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+            if (configPO == null) {
+                sendAndClose(session, "没有找到对应的附件配置信息");
+            }
+
+            if (configPO.getIsAutoChangePool()){
+                sample.setSampleLocation(configPO.getCurrentPoolNum().toString());
+            }
+
+            boolean save = tMeasureSampleService.save(sample);
+            if (!save) {
+                sendAndClose(session, "创建样品失败");
+                return;
+            }
+            FTaskSpecimen fTaskSpecimen = new FTaskSpecimen();
+            fTaskSpecimen.setSpecimenKey(sample.getId());
+            fTaskSpecimen.setDeleteType("0");
+            fTaskSpecimen.setIsTested("0");
+            sampleData.add(fTaskSpecimen);
+            task.setSampleKey(JSON.toJSONString(sampleData));
+            boolean update = tMeasureTaskService.updateById(task);
+            if (!update) {
+                sendAndClose(session, "更新任务失败");
+                return;
+            }
         }
+
         List<FTaskSpecimen> newSampleData = new ArrayList<>();
         for (FTaskSpecimen taskSpecimen : sampleData) {
             // 样品未测量并且未删除
@@ -158,7 +187,72 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 newSampleData.add(taskSpecimen);
             }
         }
-        /// 如果是样品数据中有数据
+
+        /// 如果新样品为空同时旧样品不为空则先收集所有样品id去样品表中进行查询,然后再查询所有样品,找到最大的编号再+1给到最新的编号
+        if (newSampleData.isEmpty()&&!sampleData.isEmpty()) {
+            // 1. 收集所有样品的ID
+            List<String> sampleIds = sampleData.stream()
+                    .map(FTaskSpecimen::getSpecimenKey) // 假设 FTaskSpecimen 是样品的类，getSpecimenKey() 获取样品ID
+                    .collect(Collectors.toList());
+
+            // 2. 查询样品表
+            List<FMeasureSample> samples = tMeasureSampleService.list(new QueryWrapper<FMeasureSample>().in("id", sampleIds));
+
+            // 3. 找到最大的样品编号
+            String maxSampleId = samples.stream()
+                    .map(FMeasureSample::getSampleNumber) // 获取样品编号
+                    .max(Comparator.naturalOrder())        // 获取最大编号
+                    .orElse("0");                         // 如果没有样品，则默认从 "0" 开始
+
+            // 4. 新样品编号 = 最大编号 + 1
+            int newSampleNumber = Integer.parseInt(maxSampleId) + 1;
+
+            // 5. 创建新的样品
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+            LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+            FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+            if (configPO == null) {
+                sendAndClose(session, "没有找到对应的附件配置信息");
+            }
+            FMeasureSample sample = new FMeasureSample();
+            sample.setSampleName("默认样品" + collect);   // collect 是之前随机生成的字符
+            sample.setSampleNumber(String.valueOf(newSampleNumber)); // 设置新样品编号
+
+            // 6. 设置样品池位置
+            if (configPO.getIsAutoChangePool()){
+                sample.setSampleLocation(configPO.getCurrentPoolNum().toString());
+            }
+
+            // 7. 保存样品
+            boolean save = tMeasureSampleService.save(sample);
+            if (!save) {
+                sendAndClose(session, "创建样品失败");
+                return;
+            }
+            FTaskSpecimen fTaskSpecimen = new FTaskSpecimen();
+            fTaskSpecimen.setSpecimenKey(sample.getId());
+            fTaskSpecimen.setDeleteType("0");
+            fTaskSpecimen.setIsTested("0");
+            sampleData.add(fTaskSpecimen);
+            task.setSampleKey(JSON.toJSONString(sampleData));
+            boolean update = tMeasureTaskService.updateById(task);
+            if (!update) {
+                sendAndClose(session, "更新任务失败");
+                return;
+            }
+
+            for (FTaskSpecimen taskSpecimen : sampleData) {
+                // 样品未测量并且未删除
+                if ("0".equals(taskSpecimen.getDeleteType()) && "0".equals(taskSpecimen.getIsTested())) {
+                    newSampleData.add(taskSpecimen);
+                }
+            }
+
+        }
 
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
@@ -357,7 +451,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         // 打印客户端退出信息，包括会话ID、退出时间和关闭原因
         System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
         Thread taskThread = taskThreads.remove(session.getId());
-        exceptionHandling();
         if (taskThread != null) {
             taskThread.interrupt(); // 直接打断子线程
         }
@@ -394,7 +487,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Thread.currentThread().interrupt();
             return;
         }
-        exceptionHandling();
         System.out.println("连接异常: " + exception.getMessage());
     }
 
@@ -852,7 +944,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
-            exceptionHandling();
             sessions.remove(session.getId());
             session.close();
         } catch (IOException e) {
