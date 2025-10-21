@@ -115,12 +115,15 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
     private static volatile boolean isSd = false;
     private static volatile boolean isRsd = false;
     private static volatile boolean reCount = false;
+
     /**
      * 前端连接成功 WebSocket 时触发
+     *
      * @param session
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
+
 
         if (status != 0) {
             sendAndClose(session, "已有连接，不要重复操作");
@@ -134,8 +137,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String sampleId = getQueryParam(query, "sampleId");
-        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
-        String updateBy= getQueryParam(query, "updateBy");
+        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        String updateBy = getQueryParam(query, "updateBy");
         int di = Integer.parseInt(getQueryParam(query, "digit"));
         isAvg = StringUtils.hasText(getQueryParam(query, "avg"));
         isSd = StringUtils.hasText(getQueryParam(query, "sd"));
@@ -173,98 +176,112 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         } else {
             digit = di;
         }
-        R<FMeasureTaskAttachment> attachmentR = attachmentService.queryByTaskId(taskId);
-        if (attachmentR.getSuccess()) {
-            FMeasureTaskAttachment attachment = attachmentR.getData();
-            if (attachment != null && StringUtils.hasText(attachment.getDataParam())) {
-                QueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
-                if (queryDataDTO.getDigit() != digit) {
-                    reCount = true;
+
+        R<Boolean> usedDevice = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        if (!usedDevice.getSuccess()) {
+            sendAndClose(session, usedDevice.getMessage());
+            return;
+        }
+        try {
+
+            R<FMeasureTaskAttachment> attachmentR = attachmentService.queryByTaskId(taskId);
+            if (attachmentR.getSuccess()) {
+                FMeasureTaskAttachment attachment = attachmentR.getData();
+                if (attachment != null && StringUtils.hasText(attachment.getDataParam())) {
+                    QueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
+                    if (queryDataDTO.getDigit() != digit) {
+                        reCount = true;
+                    }
                 }
             }
-        }
 
-        // 检查任务中是否存在空白样本，如果存在则设置empty为true
-        empty = taskSpecimen.stream()
-                .anyMatch(specimen ->
-                        specimen.getSampleType() != null &&
-                        specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
-                );
+            // 检查任务中是否存在空白样本，如果存在则设置empty为true
+            empty = taskSpecimen.stream()
+                    .anyMatch(specimen ->
+                            specimen.getSampleType() != null &&
+                                    specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
+                    );
 
-        FMeasureSample dealSample = tMeasureSampleService.getById(sampleId);
-        if (dealSample == null) {
-            sendAndClose(session, "样品不存在");
-            return;
-        }
-        String sampleKind = dealSample.getSampleKind();
-        if (sampleKind == null) {
-            sendAndClose(session, "样品信息缺失");
-            return;
-        }
-        String ip = infoService.getIp(deviceSerialNumber);
+            FMeasureSample dealSample = tMeasureSampleService.getById(sampleId);
+            if (dealSample == null) {
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, "样品不存在");
+                return;
+            }
+            String sampleKind = dealSample.getSampleKind();
+            if (sampleKind == null) {
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, "样品信息缺失");
+                return;
+            }
+            String ip = infoService.getIp(deviceSerialNumber);
 
-        boolean repeat = parameter.getRepeatMode().equals("单池重复");
+            boolean repeat = parameter.getRepeatMode().equals("单池重复");
 
-        R<FRationDataVO> r;
-        if (repeat) {
-            //重复测量，单独处理！
-            r = singleSampleRepeatMeasure(dealSample, parameter, task, ip, session.getId());
+            R<FRationDataVO> r;
+            if (repeat) {
+                //重复测量，单独处理！
+                r = singleSampleRepeatMeasure(dealSample, parameter, task, ip, session.getId());
 
-        } else {
-            r = singleSampleSimpleMeasure(dealSample, parameter, task, ip, session.getId());
-        }
+            } else {
+                r = singleSampleSimpleMeasure(dealSample, parameter, task, ip, session.getId());
+            }
 
-        if (!r.getSuccess()) {
-            sendAndClose(session, r.getMessage());
-            return;
-        }
-        FRationDataVO data = r.getData();
+            if (!r.getSuccess()) {
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, r.getMessage());
+                return;
+            }
+            FRationDataVO data = r.getData();
 
-        //保存数据
-        R<FRationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
-        if (!saved.getSuccess()) {
-            log.info("数据保存异常");
-            sendAndClose(session, saved.getMessage());
-            return;
-        }
+            //保存数据
+            R<FRationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
+            if (!saved.getSuccess()) {
+                log.info("数据保存异常");
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, saved.getMessage());
+                return;
+            }
 
-        //后续添加仪器状态检测
+            //后续添加仪器状态检测
 
-        if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
 
-            rationService.changeStandSampleDataDigit(taskId, digit);
-            rationService.changeUnknowSampleDigit(taskId, digit);
+                rationService.changeStandSampleDataDigit(taskId, digit);
+                rationService.changeUnknowSampleDigit(taskId, digit);
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("result", "finish");
-            status = 0;
-            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            session.close();
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
+                status = 0;
+                infoService.releaseDevice(deviceSerialNumber);
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                session.close();
 
-        }else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+            } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
 
-            rationService.changeUnknowSampleDigit(taskId, digit);
+                rationService.changeUnknowSampleDigit(taskId, digit);
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("result", "finish");
-            status = 0;
-            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            session.close();
-        } else {
-            log.info("未知的样品种类");
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("result", "finish");
-            status = 0;
-            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            session.close();
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
+                status = 0;
+                infoService.releaseDevice(deviceSerialNumber);
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                session.close();
+            } else {
+                log.info("未知的样品种类");
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
+                status = 0;
+                infoService.releaseDevice(deviceSerialNumber);
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                session.close();
+            }
+        } catch (Exception e) {
+            log.info("连接异常{}", e.getMessage());
+            infoService.releaseDevice(deviceSerialNumber);
+            sendAndClose(session, "连接异常");
         }
     }
-
-
-
-
-
-
 
 
     private static void initParams() {
@@ -297,7 +314,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         }
     }
 
-    private void emptySampleDeal(Integer digit, FRationCountDataInfo ansData, FRationSaveCountDataInfo dealData){
+    private void emptySampleDeal(Integer digit, FRationCountDataInfo ansData, FRationSaveCountDataInfo dealData) {
         empty = true;
 
         FRationCountDataInfo yAbs = new FRationCountDataInfo();
@@ -398,7 +415,6 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
     }
 
 
-
     //单个样品普通不微分测量
     public R<FRationDataVO> singleSampleSimpleMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String ip, String sessionId) throws IOException {
 
@@ -487,7 +503,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         dataInfo.setStartTime(startTime);
         dataInfo.setEndTime(endTime);
 
-        R<FRationCountDataInfo> absValue = rationService.countAbsValue(originDataList, parameter,digit);
+        R<FRationCountDataInfo> absValue = rationService.countAbsValue(originDataList, parameter, digit);
         if (!absValue.getSuccess()) {
             log.info("计算出错");
             sendAndClose(session, absValue.getMessage());
@@ -512,7 +528,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
     }
 
     //微分测
-    public R<Boolean> singleSampleDifferentialMeasure(){
+    public R<Boolean> singleSampleDifferentialMeasure() {
         return R.ok();
     }
 
@@ -542,7 +558,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         for (int i = 0; i < repeatCount; i++) {
             for (String waveLength : waveLengths) {
                 list.add(new Command("SetWl", new Object[]{waveLength}));
-               list.add(new Command("Measure", new Object[]{}));
+                list.add(new Command("Measure", new Object[]{}));
 
                 R<ChangeParam> res = null;
                 try {
@@ -627,20 +643,20 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             Double tPercentRsd = DataCountUtil.calculateRSD(tPercentList, digit);
 
             FRepeatMeasureData absData = new FRepeatMeasureData();
-            absData.setSd(absSd == null ? "未检出" :DataCountUtil.addZero(absSd, digit));
-            absData.setRsd(absRsd == null ? "未检出" :DataCountUtil.addZero(absRsd, digit));
-            otherDataList.put(waveLength + "-" + WaveLengthEnum.abs.getCode(),absData);
+            absData.setSd(absSd == null ? "未检出" : DataCountUtil.addZero(absSd, digit));
+            absData.setRsd(absRsd == null ? "未检出" : DataCountUtil.addZero(absRsd, digit));
+            otherDataList.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), absData);
 
             FRepeatMeasureData tPercentData = new FRepeatMeasureData();
-            tPercentData.setSd(tPercentSd == null ? "未检出" :DataCountUtil.addZero(tPercentSd,digit));
-            tPercentData.setRsd(tPercentRsd == null ? "未检出" :DataCountUtil.addZero(tPercentRsd, digit));
-            otherDataList.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode() ,tPercentData);
+            tPercentData.setSd(tPercentSd == null ? "未检出" : DataCountUtil.addZero(tPercentSd, digit));
+            tPercentData.setRsd(tPercentRsd == null ? "未检出" : DataCountUtil.addZero(tPercentRsd, digit));
+            otherDataList.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData);
 
             FRationWavelengthDataInfo info = new FRationWavelengthDataInfo();
             info.setWavelength(waveLength);
             info.setAbsValue(DataCountUtil.addZero(absMean, digit));
             info.setIdentity("result");
-            info.setTPercentValue(DataCountUtil.addZero(tPercentMean,digit));
+            info.setTPercentValue(DataCountUtil.addZero(tPercentMean, digit));
             info.setOtherData(otherDataList);
             info.setMeasureTime(LocalDateTime.now());
 
@@ -702,7 +718,6 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
-        repetitionTime = repetitionTime + 1;
 
         if (isAvg) {
             jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
@@ -724,7 +739,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
             jsonObject.put("key", key);
             jsonObject.put("identity", DataIdentityEnums.sd.getIdentity() + "-" + (repetitionTime + 1));
-            jsonObject.put("value", sd == null ? "未检出" :DataCountUtil.addZero(sd, digit));
+            jsonObject.put("value", sd == null ? "未检出" : DataCountUtil.addZero(sd, digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
 
@@ -736,7 +751,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
             jsonObject.put("key", key);
             jsonObject.put("identity", DataIdentityEnums.rsd.getIdentity() + "-" + (repetitionTime + 2));
-            jsonObject.put("value", rsd == null ? "未检出" :DataCountUtil.addZero(rsd, digit));
+            jsonObject.put("value", rsd == null ? "未检出" : DataCountUtil.addZero(rsd, digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
 
@@ -748,6 +763,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
     /**
      * 收到前端消息时触发
+     *
      * @param session
      * @param message
      * @throws IOException
@@ -771,6 +787,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
     /**
      * 前端连接关闭时触发
+     *
      * @param session
      * @param closeStatus
      */
@@ -783,6 +800,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
     /**
      * 连接异常时触发
+     *
      * @param session
      * @param exception
      */
@@ -795,6 +813,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
     /**
      * 获取查询参数
+     *
      * @param query
      * @param key
      * @return
@@ -810,6 +829,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
     /**
      * 发送消息并关闭连接
+     *
      * @param session
      * @param msg
      */
@@ -823,6 +843,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             jsonObject.put("result", "finish");
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             session.close();
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
     }
 }

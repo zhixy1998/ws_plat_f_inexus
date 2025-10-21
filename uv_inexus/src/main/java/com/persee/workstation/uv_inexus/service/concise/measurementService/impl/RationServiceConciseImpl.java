@@ -1545,6 +1545,8 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty, deviceSerialNumber);
+
+        System.out.println("111111");
         return Result.ok(result);
 
     }

@@ -177,6 +177,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         } else {
             digit = di;
         }
+
+        R<Boolean> usedDevice = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        if (!usedDevice.getSuccess()) {
+            sendAndClose(session, usedDevice.getMessage());
+            return;
+        }
+
         R<FMeasureTaskAttachment> attachmentR = attachmentService.queryByTaskId(taskId);
         if (attachmentR.getSuccess()) {
             FMeasureTaskAttachment attachment = attachmentR.getData();
@@ -198,6 +205,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
         R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
         if (!poolInfo.getSuccess()) {
+            infoService.releaseDevice(deviceSerialNumber);
             sendAndClose(session, "无样品池信息");
             return;
         }
@@ -215,6 +223,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         if (isAutoChangePool) {
             if (usefulLocation == null || usefulLocation.isEmpty()) {
                 log.info("无可用位置");
+                infoService.releaseDevice(deviceSerialNumber);
                 sendAndClose(session, "无可用样品池位置");
                 return;
             }
@@ -361,6 +370,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.valueOf(sample.getSampleLocation()), updateBy);
                 }
                 if (!r.getSuccess()) {
+                    infoService.releaseDevice(deviceSerialNumber);
                     sendAndClose(session, r.getMessage());
                     return;
                 }
@@ -384,6 +394,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     R<FRationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
                     if (!saved.getSuccess()) {
                         log.info("数据保存异常");
+                        infoService.releaseDevice(deviceSerialNumber);
                         sendAndClose(session, saved.getMessage());
                         return;
                     }
@@ -461,6 +472,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     break;
             }
             if (fitCurveData.size() < minPointNum) {
+                infoService.releaseDevice(deviceSerialNumber);
                 sendAndClose(session, "样品数不足，无法进行曲线拟合");
                 return;
             }
@@ -468,6 +480,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             R<FittingReceiveInfo> infoR = rationService.fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
 
             if (!infoR.getSuccess()) {
+                infoService.releaseDevice(deviceSerialNumber);
                 sendAndClose(session, infoR.getMessage());
                 return;
             }
@@ -497,10 +510,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
-            status = 0;
-            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            session.close();
 
+            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
         } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
             boolean repeat = parameter.getRepeatMode().equals("单池重复");
@@ -601,6 +612,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 }
 
                 if (!r.getSuccess()) {
+                    infoService.releaseDevice(deviceSerialNumber);
                     sendAndClose(session, r.getMessage());
                     return;
                 }
@@ -613,6 +625,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 R<FRationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
                 if (!saved.getSuccess()) {
                     log.info("数据保存异常");
+                    infoService.releaseDevice(deviceSerialNumber);
                     sendAndClose(session, saved.getMessage());
                     return;
                 }
@@ -695,6 +708,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
 //                    if (!formula.getSuccess()) {
 //                        log.info("公式计算异常");
+//                    infoService.releaseDevice(deviceSerialNumber);
 //                        sendAndClose(session, formula.getMessage());
 //                        return;
 //                    }
@@ -709,21 +723,17 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
-            status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            session.close();
         } else {
             log.info("未知的样品种类");
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
-            status = 0;
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-            session.close();
+
         }
         status = 0;
+        infoService.releaseDevice(deviceSerialNumber);
         session.close();
-
-
     }
 
     public void reCountUnknowSampleData(WebSocketSession session, List<TaskSpecimen> dealSampleList, String taskId, FittingReceiveInfo curveData, FRationParameter parameter) throws IOException {
@@ -1232,7 +1242,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
-        repetitionTime = repetitionTime + 1;
+//        repetitionTime = repetitionTime + 1;
 
         if (isAvg) {
             jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());

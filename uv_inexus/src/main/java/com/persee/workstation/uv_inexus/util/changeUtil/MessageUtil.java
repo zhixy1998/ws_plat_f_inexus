@@ -206,7 +206,7 @@ public class MessageUtil {
                     if (count > 1 ) {
                         currentSocket.setSoTimeout(100);
                         timeoutMs = 100;
-                        if (cmdId == "BaseLine" || cmdId == "BaseLineFast" || cmdId == "Scan" || cmdId == "ScanFast" || cmdId == "CheckWLamp" || cmdId == "CheckDLamp" || cmdId == "CheckWl"){
+                        if (cmdId.equals("BaseLine") || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl")){
                             currentSocket.setSoTimeout(1300);
                             timeoutMs = 1300;
                         }

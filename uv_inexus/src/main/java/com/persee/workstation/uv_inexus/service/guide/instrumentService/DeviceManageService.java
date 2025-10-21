@@ -99,7 +99,7 @@ public interface DeviceManageService {
     R<Boolean> checkDeviceStatus(String deviceSerialNumber);
 
     /**
-     * 更新仪器状态
+     * 更新仪器当前状态
      */
     R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status);
 

@@ -86,7 +86,7 @@ public class DevMessageUtil {
         while (!DetectionConstants.isDeviceIdle) {
             Thread.sleep(100);
         }
-        DetectionConstants.isDeviceIdle = true;
+        DetectionConstants.isDeviceIdle = false;
 
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {

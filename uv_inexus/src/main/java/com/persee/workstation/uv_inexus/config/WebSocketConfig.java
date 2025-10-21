@@ -50,6 +50,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     ConciseRationMeasureWebSocket ConciseRationWebSocket;
 
     @Autowired
+    ConciseRationOneSampleReMeasureWebSocket ConciseRationOneSampleReMeasureWebSocket;
+
+    @Autowired
     ConcisePhotometricWebSocket ConcisePhotometricWebSocket;
 
     @Autowired
@@ -124,6 +127,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(conciseZeroCalibrationWebSocket, "/ws/concise/zeroCalibration")
                 .setAllowedOrigins("*");
         registry.addHandler(ConciseRationWebSocket, "/ws/concise/ration")
+                .setAllowedOrigins("*");
+        registry.addHandler(ConciseRationOneSampleReMeasureWebSocket, "/ws/concise/rationReMeasureOne")
                 .setAllowedOrigins("*");
         registry.addHandler(ConcisePhotometricWebSocket, "/ws/concise/photometric")
                 .setAllowedOrigins("*");

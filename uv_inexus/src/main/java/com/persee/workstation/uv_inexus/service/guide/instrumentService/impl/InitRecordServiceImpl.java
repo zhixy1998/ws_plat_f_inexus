@@ -15,7 +15,7 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.InitRecordDAO;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitInfoEnum;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ public class InitRecordServiceImpl implements InitRecordService {
                 .eq(InitRecordPO::getInitTaskNum, po.getInitTaskNum())
                 .eq(InitRecordPO::getDeviceInfoId, po.getDeviceInfoId());
         List<InitRecordPO> poList = dao.selectList(queryWrapper);
-        if (poList.size() > 0) {
+        if (!poList.isEmpty()) {
             log.info("更新状态值");
             dao.update(po, queryWrapper);
         } else {
@@ -48,27 +48,29 @@ public class InitRecordServiceImpl implements InitRecordService {
     }
 
     @Override
-    public void initAllTask(String deviceSerialNumber,String deviceInfoId) {
-
+    public void initAllTask(String deviceSerialNumber, String deviceInfoId, List<DeviceInitEntryInfo> initEntryList) {
         LambdaQueryWrapper<InitRecordPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(InitRecordPO::getDeviceSerialNumber, deviceSerialNumber)
                 .eq(InitRecordPO::getDeviceInfoId, deviceInfoId);
 
         List<InitRecordPO> poList = dao.selectList(queryWrapper);
-        if (poList.size() != 0) {
+        if (!poList.isEmpty()) {
             dao.delete(queryWrapper);
         }
 
-        for (int i = 1; i <= DeviceInitInfoEnum.getLength(); i++) {     //我在这去了个  =
+        for (int i = 0; i < initEntryList.size(); i++) {     //我在这去了个  =
             InitRecordPO po = new InitRecordPO();
             po.setInitTaskNum(i);
             po.setDeviceInfoId(deviceInfoId);
             po.setDeviceSerialNumber(deviceSerialNumber);
             po.setInitStatus(Constants.INIT_TASK_STATUS_NO);
+            DeviceInitEntryInfo entryInfo = initEntryList.get(i);
+            po.setInitCmdId(entryInfo.getInitComId());
+            po.setInitCmdName(entryInfo.getInitComName());
+            po.setInitCmdValue(entryInfo.getInitComValue());
 
             dao.insert(po);
         }
-
     }
 
 
@@ -76,8 +78,14 @@ public class InitRecordServiceImpl implements InitRecordService {
     public List<InitRecordPO> searchInitStatus(String deviceSerialNumber, String deviceIp) {
         LambdaQueryWrapper<InitRecordPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(InitRecordPO::getDeviceSerialNumber, deviceSerialNumber)
-                .eq(InitRecordPO::getDeviceInfoId, deviceIp);
+                .eq(InitRecordPO::getDeviceInfoId, deviceIp)
+                .orderByAsc(InitRecordPO::getInitTaskNum);
 
         return dao.selectList(queryWrapper);
+    }
+
+    @Override
+    public InitRecordPO selectById(String id) {
+        return dao.selectById(id);
     }
 }

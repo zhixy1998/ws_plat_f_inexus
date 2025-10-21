@@ -200,7 +200,7 @@ public class LiveDetectionWebSocket {
                         log.print("Measure/GetChangeLampWl/GetCellPos/GetLampPos 循环异常");
                         DetectionConstants.isDeviceIdle = true;
                         try {
-                            Thread.sleep(2000); // 出错时延时重试
+                            Thread.sleep(DetectionConstants.interval); // 出错时延时重试
                         } catch (InterruptedException ignored) {
                             DetectionConstants.isDeviceIdle = true;
                         }

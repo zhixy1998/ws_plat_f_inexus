@@ -13,10 +13,13 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,9 +39,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
         queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber);
 
-        DeviceInfoPO po = dao.selectOne(queryWrapper);
-
-        return po;
+        return dao.selectOne(queryWrapper);
     }
 
     @Override
@@ -96,6 +97,53 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         deviceInfoPO.setDeviceName(newDeviceName);
         deviceInfoPO.setUpdateBy(updateBy);
         return dao.update(deviceInfoPO, queryWrapper) > 0;
+    }
+
+
+
+    @Override
+    public R<Boolean> useDevice(String deviceSerialNumber, Integer status) {
+
+        DeviceInfoPO info = getInfo(deviceSerialNumber);
+        Integer isInited = info.getIsInited();
+
+        Integer connectStatus = info.getConnectStatus();
+        if (connectStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
+            return R.fail( "设备正在初始化，请等待");
+        }
+        if (connectStatus.equals(Constants.DEVICE_STATUS_MEASURE) && !DetectionConstants.isDeviceIdle){
+            return R.fail( "设备正在测量，请等待");
+        }
+
+        if (isInited == null || isInited == 0) {
+            log.info("未初始化");
+            return R.fail("未初始化");
+        }
+
+        int count = 0;
+        while (count < 40) {
+            if (DetectionConstants.isDeviceIdle){
+                DetectionConstants.isDeviceIdle = false;
+                updateDeviceCurrentStatus(deviceSerialNumber, status);
+                return R.ok();
+            }
+            try {
+                Thread.sleep(50);
+                count ++;
+            } catch (InterruptedException e) {
+                log.error(e.getMessage());
+                return R.fail("系统异常");
+            }
+        }
+
+        return R.fail("设备正在使用中，请等待");
+    }
+
+    @Override
+    public void releaseDevice(String deviceSerialNumber) {
+        DetectionConstants.isDeviceIdle = true;
+        updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+
     }
 
 

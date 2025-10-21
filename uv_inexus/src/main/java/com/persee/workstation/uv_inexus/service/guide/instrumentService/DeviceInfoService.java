@@ -12,6 +12,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 
 public interface DeviceInfoService {
@@ -28,5 +29,11 @@ public interface DeviceInfoService {
     void updateDeviceCurrentStatus(String deviceSerialNumber, Integer currentStatus);
 
     Boolean changeDeviceName(String deviceSerialNumber, String newDeviceName, String updateBy);
+
+    //占用仪器
+    R<Boolean> useDevice(String deviceSerialNumber, Integer status);
+
+    //释放仪器
+    void releaseDevice(String deviceSerialNumber);
 
 }
