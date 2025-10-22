@@ -70,6 +70,7 @@ public class DetectionResponseInfoVO {
         if (attachmentName != null) map.put("attachmentName", attachmentName);
         if (attachmentKind != null) map.put("attachmentKind", attachmentKind);
         if (totalPoolNum != null) map.put("totalPoolNum", totalPoolNum);
+        if (luminosity != null) map.put("luminosity", luminosity);
 
         return Collections.unmodifiableMap(map);
     }

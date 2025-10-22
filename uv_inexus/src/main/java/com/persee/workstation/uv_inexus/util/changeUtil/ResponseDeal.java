@@ -148,7 +148,7 @@ public class ResponseDeal {
             if (data[3] == 0x05)  {
                 int mode = data[4] & 0xFF;
 
-                DetectionConstants.luminosity = String.valueOf(mode + 1);
+                DetectionConstants.luminosity = String.valueOf(mode);
 
                 if (mode == 0){
                     String photomode = "Abs";
@@ -493,12 +493,12 @@ private static Object parseLampPos(List<byte[]> responses) {
                     int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
                     int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
                     param.setS(String.valueOf(s0));
-                    param.setWl(String.valueOf(wl0)); // 可选：记录 wl0，方便计算
+                    param.setWl(String.valueOf(wl0/50.f)); // 可选：记录 wl0，方便计算
                 } else if (cmdType == 0x07 && cmdType1 == 0x13) {
                     int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
                     int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
                     param.setS(String.valueOf(s0));
-                    param.setWl(String.valueOf(wl0));
+                    param.setWl(String.valueOf(wl0/50.f));
                 } else if (cmdType == 0x08 && cmdType1 == 0x13) {
                     int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
                     int r0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
@@ -569,7 +569,7 @@ private static Object parseLampPos(List<byte[]> responses) {
             int d0 = ((last[4] & 0xFF) << 16) | ((last[5] & 0xFF) << 8) | (last[6] & 0xFF);
             int r0 = ((last[8] & 0xFF) << 16) | ((last[9] & 0xFF) << 8) | (last[10] & 0xFF);
 
-            param.setWl(String.valueOf(wl0 / 50.0));
+            param.setWl(String.valueOf(wl0/50.f));
             param.setD(String.valueOf(d0));
             param.setR(String.valueOf(r0));
 

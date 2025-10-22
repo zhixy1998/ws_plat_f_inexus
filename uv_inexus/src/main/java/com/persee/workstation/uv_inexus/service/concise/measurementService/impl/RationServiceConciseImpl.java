@@ -1439,14 +1439,21 @@ public class RationServiceConciseImpl implements RationConciseService {
         FRationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), FRationTaskHeadSnapShot.class);
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(sampleKey, FTaskSpecimen.class);
+        FMeasureSample newSample = fMeasureSampleService.getById(sampleId);
+        Boolean b = revokeDelSampleNumRepeat(taskSpecimen, newSample);
+        if (!b) {
+            return Result.fail("要恢复的样品编号重复，请处理重复编号后再恢复！");
+        }
+
+
         for (FTaskSpecimen specimen : taskSpecimen) {
             if (specimen.getSpecimenKey().equals(sampleId)) {
                 specimen.setDeleteType(createType);
-                FMeasureSample newSample = fMeasureSampleService.getById(sampleId);
+
                 if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
-                    newSample.setHeads(String.valueOf(shot.getUnknownHead().getSampleHeads()));
+                    newSample.setHeads(JSON.toJSONString(shot.getUnknownHead().getSampleHeads()));
                 } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                    newSample.setHeads(String.valueOf(shot.getStandHead().getSampleHeads()));
+                    newSample.setHeads(JSON.toJSONString(shot.getStandHead().getSampleHeads()));
                 }
                 fMeasureSampleService.updateById(newSample);
 
@@ -1481,6 +1488,31 @@ public class RationServiceConciseImpl implements RationConciseService {
 
 
         return Result.ok();
+    }
+
+    private Boolean revokeDelSampleNumRepeat(List<FTaskSpecimen> taskSpecimen, FMeasureSample sample) {
+
+        String sampleKind = sample.getSampleKind();
+        List<String> sampleNumList = new ArrayList<>();
+
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            if (!specimen.getSampleKind().equals(sampleKind)) {
+                continue;
+            }
+            if (specimen.getDeleteType().equals(deleteType) || specimen.getSpecimenKey().equals(sample.getId())) {
+                continue;
+            }
+            FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+            if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                sampleNumList.add(measureSample.getSampleNumber());
+            }
+
+        }
+        if (sampleNumList.contains(sample.getSampleNumber())) {
+            return false;
+        }
+        return true;
+
     }
 
     @Override
@@ -3601,6 +3633,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
         String wave = "--";
+        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
         for (String s : waveLength) {
 
             double v = Double.parseDouble(s);
@@ -3626,9 +3662,10 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         fMeasureTaskService.updateById(task);
 
-        fMeasureTaskService.updateById(task);
+        deviceInfoService.releaseDevice(deviceSerialNumber);
+
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("waveLength", wave);
+        jsonObject.put("waveLength", wave + "nm");
         return Result.ok(jsonObject);
     }
 

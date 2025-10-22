@@ -67,8 +67,10 @@ public class LiveDetectionWebSocket {
     @Value("/topic/detection")
     String measureTopic;
 
+    private static volatile boolean status = true;
 
-//    @MessageMapping("/detection/start")
+
+    @MessageMapping("/detection/start")
     public void startMeasure(String deviceSerialNumber) {
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
             messagingTemplate.convertAndSend(measureTopic,
@@ -83,8 +85,13 @@ public class LiveDetectionWebSocket {
             return;
         }
 
-        // 启动发送接收线程
-        this.startMeasureLoop(deviceSerialNumber);
+        if (status) {
+            // 启动发送接收线程
+            this.startMeasureLoop(deviceSerialNumber);
+            status = false;
+        }
+
+
 
 
         // 主动推送通知给前端
@@ -101,7 +108,7 @@ public class LiveDetectionWebSocket {
             return R.fail("绑定 socket 失败，请检查网线接口");
         }
 
-        new Thread(() -> {
+        Thread measureThread = new Thread(() -> {
             try {
                 // 获取 socket
 
@@ -149,7 +156,7 @@ public class LiveDetectionWebSocket {
                                 ChangeParam measureParam = (ChangeParam) parseResult;
                                 if (!Objects.isNull(measureParam)) {
                                     String luminosity = DetectionConstants.luminosity;
-                                    vo.setX(measureParam.getWl());
+                                    vo.setX(measureParam.getWl() + "nm");
 
                                     if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
                                         ChangeParam zeroParam = DetectionConstants.zeroResult.get(measureParam.getWl());
@@ -160,10 +167,10 @@ public class LiveDetectionWebSocket {
                                             s = DataCountUtil.countTPercent(null, measureParam, 1.0);
                                         }
                                         String abs = DataCountUtil.changeTPercentOrAbs(null, s);
-                                        vo.setY(abs);
+                                        vo.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
                                     } else if(luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
                                         String s = DataCountUtil.countErOrEs(measureParam, luminosity);
-                                        vo.setY(s);
+                                        vo.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
                                     } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
                                         ChangeParam zeroParam = DetectionConstants.zeroResult.get(measureParam.getWl());
                                         String s;
@@ -172,7 +179,7 @@ public class LiveDetectionWebSocket {
                                         } else {
                                             s = DataCountUtil.countTPercent(null, measureParam, 1.0);
                                         }
-                                        vo.setY(s);
+                                        vo.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
                                     }
                                 }
 
@@ -180,10 +187,11 @@ public class LiveDetectionWebSocket {
                                 List<DetectionLampStatus> dataList = getDetectionLampStatuses((int) parseResult);
                                 vo.setDataList(dataList);
                             } else if (comId.equals(LiveDetectionCmdEnum.GetPhotoMode.getComId())) {
-                                vo.setLuminosity(DetectionConstants.luminosity);
+                                vo.setLuminosity(WaveLengthEnum.getName(DetectionConstants.luminosity));
                             }
                         }
 
+                        vo.setY(vo.getY() + WaveLengthEnum.getName(DetectionConstants.luminosity));
                         Map<String, Object> map = vo.toMap();
                         ConcurrentHashMap<String, Object> detectionInfo = DetectionConstants.detectionInfo;
                         JSONObject jsonObject = new JSONObject();
@@ -210,29 +218,41 @@ public class LiveDetectionWebSocket {
             } catch (Exception e) {
                 log.print("Measure/GetChangeLampWl/GetCellPos/GetLampPos 循环线程启动失败");
                 DetectionConstants.isDeviceIdle = true;
-                return;
+            }  finally {
+                status = true;
+                DetectionConstants.isDeviceIdle = true;
             }
-        }, "MeasureLoopThread").start();
+        }, "MeasureLoopThread");
+
+        // 添加线程结束监听器
+        measureThread.setUncaughtExceptionHandler((thread, exception) -> {
+            log.print("测量线程异常终止: " + exception.getMessage());
+            status = true;
+            DetectionConstants.isDeviceIdle = true;
+        });
+
+        measureThread.start();
+
         return R.ok();
     }
 
     @MessageMapping("/detection/stop")
     public void stopMeasure() {
         Constants.Running = false;
+        status = true;
         messagingTemplate.convertAndSend(measureTopic, "停止测量");
     }
 
     private static List<DetectionLampStatus> getDetectionLampStatuses(int parseResult) {
-        int pos = parseResult;
         List<DetectionLampStatus> dataList = new ArrayList<>();
         DetectionLampStatus status = new DetectionLampStatus();
         status.setLabel("氘灯");
-        status.setValue(pos == 1 ? "亮" : "不亮");
+        status.setValue(parseResult == 1 ? "亮" : "不亮");
         dataList.add(status);
 
         DetectionLampStatus status1 = new DetectionLampStatus();
         status1.setLabel("钨灯");
-        status1.setValue(pos == 0 ? "亮" : "不亮");
+        status1.setValue(parseResult == 0 ? "亮" : "不亮");
         dataList.add(status1);
         return dataList;
     }
