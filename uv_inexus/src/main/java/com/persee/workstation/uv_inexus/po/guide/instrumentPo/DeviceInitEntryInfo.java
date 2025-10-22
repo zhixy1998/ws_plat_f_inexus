@@ -11,10 +11,12 @@ package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class DeviceInitEntryInfo {
 
-    private String initComId;
+    private List<String> initComId;
 
     private String initComName;
 

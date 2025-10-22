@@ -82,6 +82,17 @@ public class DeviceController {
         }
     }
 
+    @GetMapping("/stopInit")
+    @ApiOperation("停止初始化")
+    public Result<Boolean> stopInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        R<Boolean> r = deviceManageService.stopInit(deviceSerialNumber, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     @GetMapping("/changeDeviceName")
     @ApiOperation("更改仪器名称")
     public Result<Boolean> updateDeviceName(@RequestParam String deviceSerialNumber,

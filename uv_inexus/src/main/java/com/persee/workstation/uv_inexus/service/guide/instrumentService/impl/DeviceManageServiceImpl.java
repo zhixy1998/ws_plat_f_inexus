@@ -22,7 +22,10 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKindEnum;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationInfoEnum;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreCommandEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
@@ -43,7 +46,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -85,6 +90,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Value("${device.default.receivePort}")
     Integer receivePort;
 
+    private static volatile Map<String, Boolean> stopInit = new HashMap<>();
+
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
 //        log.info("查询仪器信息");
@@ -109,6 +116,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         vo.setUserName(updateBy);
         vo.setIsDevOpened(deviceInfoPO.getIsDevOpened());
         vo.setDeviceSerialNumber(deviceSerialNumber);
+        vo.setDeviceName(deviceInfoPO.getDeviceName());
 
         String connect = DeviceConnectMessageEnum.getName(deviceInfoPO.getConnectStatus()) + " IP="
                 + deviceInfoPO.getIp() + " port=" + sendPort;
@@ -177,15 +185,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         new Thread(() -> {
             try {
+                stopInit.put(initDTO.getDeviceSerialNumber(), false);
                 newStartInit(infoPO, attachmentInfo.getAttachmentKind());
             } catch (Exception e) {
+                DetectionConstants.isDeviceIdle = true;
                 throw new RuntimeException(e);
             }
         }).start();
 
         return R.ok(true);
     }
-
 
     private void newStartInit(DeviceInfoPO infoPO, Integer attachmentType) throws Exception {
         log.info("自检开始");
@@ -195,23 +204,31 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         for (InitRecordPO recordPO : list) {
             updateRunning(recordPO);
             recordPO = initRecordService.selectById(recordPO.getId());
-            String cmdId = recordPO.getInitCmdId();
-            Command command = dealCommand(attachmentType, cmdId);
 
-            R<String> initDevice = devMessageUtil.initDevice(command, ip);
-            if (!initDevice.getSuccess()) {
-                log.info("{}指令初始化异常", cmdId);
-                DetectionConstants.isDeviceIdle = true;
-                if (recordPO.getInitCmdId().equals(DeviceInitPreCommandEnum.GetAccessoryType.getComId())) {
-                    infoPO.setConnectStatus(Constants.CONNECT_DEVICE_FALSE);
+            List<String> cmdIdList = recordPO.getInitCmdIdList();
+
+            int count = 0;
+            while (count < cmdIdList.size() && !stopInit.get(infoPO.getDeviceSerialNumber())) {
+                String cmdId = cmdIdList.get(count);
+                Command command = dealCommand(attachmentType, cmdId);
+                R<String> initDevice = devMessageUtil.initDevice(command, ip);
+                if (!initDevice.getSuccess()) {
+                    log.info("{}指令初始化异常", cmdId);
+                    failDeal(infoPO, recordPO);
+                    infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+                    devMessageUtil.setDeviceInitStatus(ip, 1);
+                    return;
                 }
-                failDeal(infoPO, recordPO);
-                infoService.updateDeviceCurrentStatus(infoPO.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
-                devMessageUtil.setDeviceInitStatus(ip, 1);
+                count++;
+                log.info("{}指令初始化成功", cmdId);
+            }
+            if (count != cmdIdList.size()) {
+                log.info("自检已停止");
+                updateStop(recordPO, infoPO);
+                infoService.releaseDevice(infoPO.getDeviceSerialNumber());
                 return;
             }
-            log.info("{}指令初始化成功", cmdId);
-
+            log.info("{}成功", recordPO.getInitCmdName());
             updateSuccess(recordPO);
 
         }
@@ -242,24 +259,39 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     private void updateSuccess(InitRecordPO recordPO) {
-        recordPO.setInitStatus(Constants.INIT_TASK_STATUS_SUCCESS);
+        recordPO.setInitStatus(Constants.INIT_TASK_SUCCESS);
         initRecordService.saveOrUpdateInitTask(recordPO);
     }
 
+    private void updateStop(InitRecordPO recordPO, DeviceInfoPO po) {
+        recordPO.setInitStatus(Constants.INIT_TASK_STOP);
+        initRecordService.saveOrUpdateInitTask(recordPO);
+
+        po.setIsInited(Constants.INIT_STATUS_STOP);
+        infoService.saveOrUpdateInfo(po);
+    }
+
     private void updateRunning(InitRecordPO recordPO) {
-        recordPO.setInitStatus(Constants.INIT_TASK_STATUS_ING);
+        recordPO.setInitStatus(Constants.INIT_TASK_ING);
         initRecordService.saveOrUpdateInitTask(recordPO);
     }
 
     private void failDeal(DeviceInfoPO po, InitRecordPO recordPO) {
 
-
-        recordPO.setInitStatus(Constants.INIT_STATUS_FALSE);
+        recordPO.setInitStatus(Constants.INIT_TASK_FALSE);
         initRecordService.saveOrUpdateInitTask(recordPO);
 
         po.setIsInited(Constants.INIT_STATUS_FALSE);
         infoService.saveOrUpdateInfo(po);
     }
+
+    @Override
+    public R<Boolean> stopInit(String deviceSerialNumber, String updateBy) {
+        stopInit.put(deviceSerialNumber, true);
+
+        return R.ok();
+    }
+
 
     @Override
     public Boolean startDevice(DeviceStartDTO startDTO) {
@@ -364,7 +396,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         for (int i = 0; i < DeviceInitPreCommandEnum.getLength(); i++) {
             DeviceInitEntryInfo entry = new DeviceInitEntryInfo();
             DeviceInitPreCommandEnum anEnum = DeviceInitPreCommandEnum.getEnum(i);
-            entry.setInitComId(anEnum.getComId());
+            entry.setInitComId(anEnum.getComIdList());
             entry.setInitComName(anEnum.getDescription());
             entry.setInitComValue(anEnum.getComValue());
             ans.add(entry);

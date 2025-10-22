@@ -11,20 +11,20 @@ package com.persee.workstation.uv_inexus.enums.instrumentEnums;
 
 import lombok.Getter;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Getter
 public enum DeviceInitPreCommandEnum {
 
-    GetAccessoryType( 0,"Connect", "连接仪器", ""),
-    InitSampleCell(1,"InitSampleCell", "初始化样品池", ""),
-    SetCellPos(2,"SetCellPos", "初始样品池位置", "");
+    InitSampleCell(0,  Arrays.asList("InitSampleCell", "SetCellPos"), "附件初始化", "");
 
     private final Integer num;
 
     // 获取comId
-    private final String comId;
+    private final List<String> comIdList;
     // 获取description
     private final String comValue;
 
@@ -39,9 +39,9 @@ public enum DeviceInitPreCommandEnum {
     }
 
     // 构造函数
-    DeviceInitPreCommandEnum(Integer num, String comId, String description, String comValue) {
+    DeviceInitPreCommandEnum(Integer num, List<String> comIdList, String description, String comValue) {
         this.num = num;
-        this.comId = comId;
+        this.comIdList = comIdList;
         this.description = description;
         this.comValue = comValue;
     }

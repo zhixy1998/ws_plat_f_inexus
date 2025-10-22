@@ -39,13 +39,15 @@ public class Constants {
     public final static Integer INIT_STATUS_SUCCESS = 1;
     public final static Integer INIT_STATUS_FALSE = 2;
     public final static Integer INIT_STATUS_RUNNING = 3;
+    public final static Integer INIT_STATUS_STOP = 4;
     /**
      * 初始化各条目状态值：0-进行中，1-成功，2-失败
      */
-    public final static Integer INIT_TASK_STATUS_ING = 0;
-    public final static Integer INIT_TASK_STATUS_SUCCESS = 1;
-    public final static Integer INIT_TASK_STATUS_FALSE = 2;
-    public final static Integer INIT_TASK_STATUS_NO = 3;
+    public final static Integer INIT_TASK_ING = 0;
+    public final static Integer INIT_TASK_SUCCESS = 1;
+    public final static Integer INIT_TASK_FALSE = 2;
+    public final static Integer INIT_TASK_NO = 3;
+    public final static Integer INIT_TASK_STOP = 4;
 
     /**
      * 开机状态：0-未开机，1-开机，2-软关机

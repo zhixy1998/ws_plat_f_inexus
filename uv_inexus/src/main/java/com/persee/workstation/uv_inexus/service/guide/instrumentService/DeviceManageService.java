@@ -32,6 +32,8 @@ public interface DeviceManageService {
 
     R<Boolean> init(DeviceInitDTO initDTO);
 
+    R<Boolean> stopInit(String deviceSerialNumber, String updateBy);
+
     Boolean startDevice(DeviceStartDTO startDTO);
 
     Boolean softClose(DeviceSoftCloseDTO closeDTO);

@@ -14,14 +14,17 @@ package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("t_ins_init_temp")
+@TableName(value = "t_ins_init_temp", autoResultMap = true)
 public class InitRecordPO extends BasePO {
 
     @ApiModelProperty("仪器信息id")
@@ -40,9 +43,9 @@ public class InitRecordPO extends BasePO {
     @TableField("init_status")
     private Integer initStatus;
 
-    @ApiModelProperty("初始化指令")
-    @TableField("init_cmd_id")
-    private String initCmdId;
+    @ApiModelProperty("初始化指令id")
+    @TableField(value = "init_cmd_id", typeHandler = JacksonTypeHandler.class)
+    private List<String> initCmdIdList;
 
     @ApiModelProperty("初始化指令名称")
     @TableField("init_cmd_name")

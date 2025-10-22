@@ -107,7 +107,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         Integer isInited = info.getIsInited();
 
-        Integer connectStatus = info.getConnectStatus();
+        Integer connectStatus = info.getDeviceCurrentStatus();
         if (connectStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
             return R.fail( "设备正在初始化，请等待");
         }
