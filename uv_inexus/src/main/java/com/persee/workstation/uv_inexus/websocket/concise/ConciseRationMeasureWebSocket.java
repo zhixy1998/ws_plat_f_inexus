@@ -199,7 +199,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         empty = taskSpecimen.stream()
                 .anyMatch(specimen ->
                         specimen.getSampleType() != null &&
-                        specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
+                        specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
+                                specimen.getDeleteType() != null &&
+                                specimen.getDeleteType().equals("0")
                 );
 
         List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
@@ -698,7 +700,15 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
                         valueData.setColValue(ans==null? null : Double.valueOf(ans));
                         measureAbsDataList.add(valueData);
-                        sendPoint(session, String.valueOf(valueData.getColValue()), countValue, parameter);
+
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("sampleId", specimen.getSpecimenKey());
+                        jsonObject.put("key", valueData.getIdentity());
+                        jsonObject.put("value", valueData.getColValue());
+                        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                        sendPoint(session, DataCountUtil.addZero(valueData.getColValue(), digit), countValue, parameter);
+
                     }
                     saveDataInfo.setCountData(measureAbsDataList);
                     rationService.saveAnalyzeData(saveDataInfo);

@@ -1413,6 +1413,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
         }
+
+        FMeasureSample measureSample = fMeasureSampleService.getById(sampleId);
+
+        Integer i = fMeasureTaskAttachmentService.queryLastDigit(taskId);
+        Integer digit = i == null ? Constants.DEFAULT_DECIMAL_NUM : i;
+
+        if (measureSample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            changeStandSampleDataDigit(taskId, digit);
+            changeUnknowSampleDigit(taskId, digit);
+        } else {
+            changeUnknowSampleDigit(taskId, digit);
+        }
+
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
         boolean b = fMeasureTaskService.updateById(task);
         return Result.ok(true);
@@ -1452,7 +1465,22 @@ public class RationServiceConciseImpl implements RationConciseService {
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
 
-        return Result.ok(fMeasureTaskService.updateById(task));
+        fMeasureTaskService.updateById(task);
+
+        FMeasureSample measureSample = fMeasureSampleService.getById(sampleId);
+
+        Integer i = fMeasureTaskAttachmentService.queryLastDigit(taskId);
+        Integer digit = i == null ? Constants.DEFAULT_DECIMAL_NUM : i;
+
+        if (measureSample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            changeStandSampleDataDigit(taskId, digit);
+            changeUnknowSampleDigit(taskId, digit);
+        } else {
+            changeUnknowSampleDigit(taskId, digit);
+        }
+
+
+        return Result.ok();
     }
 
     @Override
@@ -3071,7 +3099,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         empty = taskSpecimen.stream()
                 .anyMatch(specimen ->
                         specimen.getSpecimenKey().equals(dealSampleKind)
-                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
+                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
+                                specimen.getDeleteType() != null &&
+                                specimen.getDeleteType().equals("0")
                 );
 
         for (FTaskSpecimen specimen : taskSpecimen) {
@@ -3270,7 +3300,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         empty = taskSpecimen.stream()
                 .anyMatch(specimen ->
                         specimen.getSpecimenKey().equals(dealSampleKind)
-                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
+                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
+                                specimen.getDeleteType() != null &&
+                                specimen.getDeleteType().equals(createType)
                 );
 
         for (FTaskSpecimen specimen : taskSpecimen) {
@@ -3297,14 +3329,11 @@ public class RationServiceConciseImpl implements RationConciseService {
                     .orderByDesc(FMeasureData::getSerialNumber)
                     .last("limit 1");
             FMeasureData data = fMeasureDataService.getOne(queryWrapper);
-            if (data == null) {
+            if (data == null ||!StringUtils.hasText(data.getOriginalCalculationData())) {
                 log.info("没有测量数据");
                 continue;
             }
-            if (!StringUtils.hasText(data.getOriginalCalculationData())) {
-                log.info("没有测量数据");
-                continue;
-            }
+
             List<FRationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), FRationWavelengthDataInfo.class);
             if (list == null || list.isEmpty()) {
                 log.info("没有测量数据");
