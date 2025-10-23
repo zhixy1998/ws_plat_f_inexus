@@ -2594,7 +2594,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 4. 构建表头和数据阶段（保持不变）
         // log.info("【步骤4/5】开始构建导出表头和数据");
         List<FHeadVO> heads = new ArrayList<>();
-        heads.add(new FHeadVO("波长nm", "wavelength")); // 波长列标题
+        heads.add(new FHeadVO("时间 s", "wavelength")); // 波长列标题
         sampleYMap.keySet().forEach(title -> heads.add(new FHeadVO(title, title))); // 样品列标题
 
         // log.info("【步骤4/5】表头构建完成，表头数量: {}", heads.size());
@@ -2745,6 +2745,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             FHeadVO head = heads.get(i);
             // 使用 getName() 获取表头显示文本（如"波长nm"）
             String headName = head.getName();
+//            System.out.println("1212121" + headName);
             cell.setText(headName);
         }
 

@@ -14,6 +14,8 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService.impl
 
 
 import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelWriter;
+import com.alibaba.excel.write.metadata.WriteSheet;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -3799,14 +3801,13 @@ public class RationServiceConciseImpl implements RationConciseService {
      * @return 生成的文件对象
      */
     public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit) {
-        log.info("开始导出11111111，taskId: {}, fileType: {}", taskId, fileType, allDisplay, digit);
+        log.info("开始导出11111111，taskId: {}, fileType: {}, allDisplay: {}, digit: {}", taskId, fileType, allDisplay, digit);
         // 1. 基础参数校验（复用原逻辑）
         if (!StringUtils.hasText(taskId)) {
             return R.fail("缺少任务id");
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            // log.error("导出失败：任务不存在，taskId: {}", taskId);
             return R.fail("任务不存在");
         }
         // 处理fileType默认值和合法性
@@ -3823,20 +3824,22 @@ public class RationServiceConciseImpl implements RationConciseService {
             allDisplay = true;
         }
 
-        // 2. 准备表头和数据（完全复用原downloadWord逻辑）
+        // 2. 准备表头和数据（修改：适配两类样品）
         String methodId = task.getMethodKey();
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             return R.fail("测量方法不存在");
         }
 
-        // 构建表头（与原逻辑一致）
+        // 构建表头（修改：新增“样品类型”列，放在序号后）
         List<FHeadVO> heads = new ArrayList<>();
-        // 添加动态表头
+        // 添加动态表头（复用原逻辑）
         List<FHeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay, null).getData();
         heads.addAll(vos);
-        // // 最前面加序号列（所有格式统一需要）
+        // 最前面加序号列
         heads.add(0, new FHeadVO("序号", "serialNumber"));
+        // 新增“样品类型”列（关键：用于区分标准/未知样品）
+//        heads.add(1, new FHeadVO("样品类型", "sampleType"));
 
         // 查询数据（复用原逻辑）
         FQueryDataDTO queryDataDTO = new FQueryDataDTO();
@@ -3845,47 +3848,65 @@ public class RationServiceConciseImpl implements RationConciseService {
         queryDataDTO.setAllDisplay(allDisplay);
         queryDataDTO.setDigit(digit);
         Result<FRationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
-        if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) { // 校验查询是否成功
+        if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
             return R.fail("查询样品数据失败：" + sampleDataResult.getMessage());
         }
         FRationSampleDataVO dataVO = sampleDataResult.getData();
-        if (dataVO == null) { // 校验VO对象是否为空
+        if (dataVO == null) {
             return R.fail("样品数据为空");
         }
-        // 2. 仅提取标准样品数据（standSampleData）
-        List<Map<String, Object>> data = dataVO.getStandSampleData();
-        // 3. 校验标准样品数据是否为空
-        if (data == null || data.isEmpty()) {
-            return R.fail("没有可导出的标准样品数据");
+
+        // 数据处理（核心修改：合并标准样品+未知样品，添加区分标识）
+        List<Map<String, Object>> allData = new ArrayList<>();
+        // 处理标准样品：添加“样品类型”标识
+        List<Map<String, Object>> standData = dataVO.getStandSampleData();
+        if (standData != null && !standData.isEmpty()) {
+            for (Map<String, Object> row : standData) {
+                row.put("sampleType", "标准样品"); // 标识标准样品
+                allData.add(row);
+            }
         }
-        // 给数据加序号（与序号列对应）
-        for (int i = 0; i < data.size(); i++) {
-            data.get(i).put("serialNumber", i + 1);
+        // 处理未知样品：添加“样品类型”标识（新增逻辑）
+        List<Map<String, Object>> unknownData = dataVO.getUnknowSampleData();
+        if (unknownData != null && !unknownData.isEmpty()) {
+            for (Map<String, Object> row : unknownData) {
+                row.put("sampleType", "未知样品"); // 标识未知样品
+                allData.add(row);
+            }
+        }
+        // 校验合并后的数据是否为空（修改：覆盖两类样品的空值判断）
+        if (allData.isEmpty()) {
+            return R.fail("没有可导出的样品数据（标准样品和未知样品均为空）");
+        }
+        // 重新添加序号（修改：基于合并后的总数据量排序）
+        for (int i = 0; i < allData.size(); i++) {
+            allData.get(i).put("serialNumber", i + 1);
         }
 
-        // 3. 按格式生成文件（核心分支）
+        // 3. 按格式生成文件（修改：传递合并后的allData）
         String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
         File file = new File(fileName);
         try {
             switch (fileType) {
                 case "word":
-                    generateWordFile(file, task, method, heads, data, vos.size());
+                    // 传递allData（原data替换为allData）
+                    generateWordFile(file, task, method, heads, allData, vos.size());
                     break;
                 case "txt":
-                    generateTxtFile(file, heads, data);
+                    // 传递allData
+                    generateTxtFile(file, heads, allData);
                     break;
                 case "xlsx":
-                    generateExcelFile(file, heads, data);
+                    // 传递allData
+                    generateExcelFile(file, heads, allData);
                     break;
             }
             return R.ok(file);
         } catch (Exception e) {
-            // 关键：打印完整异常堆栈（包含具体错误代码行）
             log.error("文件生成失败！taskId={}, fileType={}, allDisplay={}", taskId, fileType, allDisplay, e);
             if (file.exists()) {
                 file.delete();
             }
-            // 返回具体错误信息（而非模糊的“文件生成失败”）
             return R.fail("文件生成失败：" + e.getMessage());
         }
     }
@@ -3896,11 +3917,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         return downloadFile(taskId, allDisplay, "word", digit);
     }
 
-    /**
-     * 生成Word文件（修复原逻辑的表格列错位问题）
-     */
     private void generateWordFile(File file, FMeasureTask task, FMeasureMethod method,
-                                 List<FHeadVO> heads, List<Map<String, Object>> data, int vosSize) throws Exception {
+                                  List<FHeadVO> heads, List<Map<String, Object>> allData, int vosSize) throws Exception {
         XWPFDocument doc = new XWPFDocument();
         CTDocument1 document = doc.getDocument();
         CTBody body = document.getBody();
@@ -3926,308 +3944,383 @@ public class RationServiceConciseImpl implements RationConciseService {
         run.setText("方法：" + method.getMethodName() + "\r");
         run.setText("测试数据：");
 
-        // 修复表格创建逻辑：直接创建1行N列（N=表头数量），避免列错位
-        int columnCount = heads.size();
-        XWPFTable table = doc.createTable(1, columnCount);
-        table.setWidth("100%");
+        // -------------------------- 标准样品表格 --------------------------
+        List<Map<String, Object>> standData = allData.stream()
+                .filter(row -> "标准样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        if (standData != null && !standData.isEmpty()) {
+            // 标准样品标题
+            XWPFParagraph standTitlePara = doc.createParagraph();
+            XWPFRun standTitleRun = standTitlePara.createRun();
+            standTitleRun.setText("标准样品数据");
+            standTitleRun.setBold(true);
+            standTitleRun.setFontSize(12);
 
-        // 填充表头（修复原逻辑的表头赋值问题 + 增加日志排查）
-        XWPFTableRow headerRow = table.getRow(0);
-        // 先打印headerRow是否为空，排除行对象本身的问题
-        if (headerRow == null) {
-            log.error("表头行对象headerRow为null！无法填充表头");
-            throw new RuntimeException("表头行对象为空，无法继续生成Word文件");
-        }
-        // log.info("表头行headerRow创建成功，开始填充表头（总列数：{}）", columnCount);
+            // 创建表格
+            int columnCount = heads.size();
+            XWPFTable standTable = doc.createTable(1, columnCount);
+            standTable.setWidth("100%");
 
-        for (int i = 0; i < columnCount; i++) {
-            // 1. 打印当前循环索引，方便定位具体哪一列出问题
-            // log.info("正在处理表头第 {} 列（从0开始计数）", i);
-
-            // 2. 验证单元格cell是否存在
-            XWPFTableCell cell = headerRow.getCell(i);
-            if (cell == null) {
-                // log.error("表头第 {} 列的单元格cell为null！", i);
-                // 可选：若单元格为null，主动创建一个（避免后续空指针）
-                cell = headerRow.createCell();
-                // log.warn("已为表头第 {} 列主动创建空单元格", i);
+            // 填充表头
+            XWPFTableRow standHeaderRow = standTable.getRow(0);
+            if (standHeaderRow == null) {
+                log.error("标准样品表头行对象为null！");
+                throw new RuntimeException("标准样品表头行对象为空");
             }
-
-            // 3. 验证heads列表在当前索引是否有值
-            if (i >= heads.size()) {
-                // log.error("表头索引 {} 超出heads列表长度！heads列表实际长度：{}", i, heads.size());
-                cell.setText("未定义列"); // 给默认值，避免空指针
-                continue;
-            }
-            FHeadVO head = heads.get(i);
-            if (head == null) {
-                // log.error("表头第 {} 列的HeadVO对象为null！", i);
-                cell.setText("空表头"); // 给默认值
-                continue;
-            }
-
-            // 4. 验证表头名称name是否存在（字段缺失检查）
-            String headName = head.getName();
-            if (headName == null || headName.trim().isEmpty()) {
-                // log.warn("表头第 {} 列的名称name为空（HeadVO.getIdentity()：{}）", i, head.getIdentity());
-                headName = "未命名列（" + head.getIdentity() + "）"; // 用identity补全，方便排查
-            }
-
-            // 最终填充单元格
-            cell.setText(headName);
-            // log.info("表头第 {} 列填充完成：cell内容 = {}", i, headName);
-        }
-
-        // 填充数据行（修复原逻辑的索引越界问题）
-        int rowIndex = 0;
-        for (Map<String, Object> map : data) {
-            XWPFTableRow row = table.createRow();
-            rowIndex++;
-            // 第0列：序号
-            XWPFTableCell indexCell = row.getCell(0);
-            if (indexCell != null) {
-                indexCell.setText(String.valueOf(rowIndex));
-            }
-
-            // 填充其他列（从1开始，与表头对应）
-            for (int i = 1; i < columnCount; i++) {
-                // 1. 获取当前列对应的表头信息
+            for (int i = 0; i < columnCount; i++) {
+                XWPFTableCell cell = standHeaderRow.getCell(i);
+                if (cell == null) {
+                    cell = standHeaderRow.createCell();
+                }
                 FHeadVO head = i < heads.size() ? heads.get(i) : null;
-                if (head == null) {
-                    continue; // 表头不存在则跳过
+                String headName = head != null && head.getName() != null ? head.getName().trim() : "未命名列";
+                if (headName.isEmpty()) {
+                    headName = "未命名列（" + (head != null ? head.getIdentity() : i) + "）";
                 }
+                cell.setText(headName);
+            }
 
-                // 2. 获取原始数据（不做默认值处理，保留null）
-                String identity = head.getIdentity();
-                Object originalValue = map != null ? map.get(identity) : null;
-
-                // 3. 原始值直接转换为字符串（不做任何额外处理）
-                String cellData;
-                if (originalValue == null) {
-                    cellData = ""; // null值保留空字符串
-                } else {
-                    cellData = originalValue.toString(); // 原值直接转换
+            // 填充数据行（核心修改：空值统一处理为"-"）
+            int standRowIndex = 0;
+            for (Map<String, Object> map : standData) {
+                XWPFTableRow row = standTable.createRow();
+                standRowIndex++;
+                // 第0列：序号
+                XWPFTableCell indexCell = row.getCell(0);
+                if (indexCell != null) {
+                    indexCell.setText(String.valueOf(standRowIndex));
                 }
+                // 填充其他列
+                for (int i = 1; i < columnCount; i++) {
+                    FHeadVO head = i < heads.size() ? heads.get(i) : null;
+                    if (head == null) continue;
 
-                // 4. 仅处理单元格为空的情况（避免空指针）
-                XWPFTableCell cell = row.getCell(i);
-                if (cell != null) {
-                    cell.setText(cellData);
+                    String identity = head.getIdentity();
+                    // 空值统一处理：null或空字符串都显示为"-"
+                    Object originalValue = map.get(identity);
+                    String cellData = (originalValue == null || originalValue.toString().trim().isEmpty()) ? "-" : originalValue.toString();
+
+                    XWPFTableCell cell = row.getCell(i);
+                    if (cell != null) {
+                        cell.setText(cellData);
+                    }
+                }
+            }
+
+            // 表格样式
+            for (XWPFTableRow row : standTable.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    XWPFParagraph para = cell.getParagraphArray(0);
+                    para.setAlignment(ParagraphAlignment.CENTER);
+                    cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
                 }
             }
         }
 
-        // 表格样式（复用原逻辑）
-        for (XWPFTableRow row : table.getRows()) {
-            for (XWPFTableCell cell : row.getTableCells()) {
-                XWPFParagraph paragraph1 = cell.getParagraphArray(0);
-                paragraph1.setAlignment(ParagraphAlignment.CENTER);
-                cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+        // -------------------------- 未知样品表格 --------------------------
+        List<Map<String, Object>> unknownData = allData.stream()
+                .filter(row -> "未知样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        if (unknownData != null && !unknownData.isEmpty()) {
+            // 未知样品标题（空行分隔）
+            doc.createParagraph();
+            XWPFParagraph unknownTitlePara = doc.createParagraph();
+            XWPFRun unknownTitleRun = unknownTitlePara.createRun();
+            unknownTitleRun.setText("未知样品数据");
+            unknownTitleRun.setBold(true);
+            unknownTitleRun.setFontSize(12);
+
+            // 创建表格
+            int columnCount = heads.size();
+            XWPFTable unknownTable = doc.createTable(1, columnCount);
+            unknownTable.setWidth("100%");
+
+            // 填充表头
+            XWPFTableRow unknownHeaderRow = unknownTable.getRow(0);
+            if (unknownHeaderRow == null) {
+                log.error("未知样品表头行对象为null！");
+                throw new RuntimeException("未知样品表头行对象为空");
+            }
+            for (int i = 0; i < columnCount; i++) {
+                XWPFTableCell cell = unknownHeaderRow.getCell(i);
+                if (cell == null) {
+                    cell = unknownHeaderRow.createCell();
+                }
+                FHeadVO head = i < heads.size() ? heads.get(i) : null;
+                String headName = head != null && head.getName() != null ? head.getName().trim() : "未命名列";
+                if (headName.isEmpty()) {
+                    headName = "未命名列（" + (head != null ? head.getIdentity() : i) + "）";
+                }
+                cell.setText(headName);
+            }
+
+            // 填充数据行（同样空值处理为"-"）
+            int unknownRowIndex = 0;
+            for (Map<String, Object> map : unknownData) {
+                XWPFTableRow row = unknownTable.createRow();
+                unknownRowIndex++;
+                // 第0列：序号
+                XWPFTableCell indexCell = row.getCell(0);
+                if (indexCell != null) {
+                    indexCell.setText(String.valueOf(unknownRowIndex));
+                }
+                // 填充其他列
+                for (int i = 1; i < columnCount; i++) {
+                    FHeadVO head = i < heads.size() ? heads.get(i) : null;
+                    if (head == null) continue;
+
+                    String identity = head.getIdentity();
+                    Object originalValue = map.get(identity);
+                    String cellData = (originalValue == null || originalValue.toString().trim().isEmpty()) ? "-" : originalValue.toString();
+
+                    XWPFTableCell cell = row.getCell(i);
+                    if (cell != null) {
+                        cell.setText(cellData);
+                    }
+                }
+            }
+
+            // 表格样式
+            for (XWPFTableRow row : unknownTable.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    XWPFParagraph para = cell.getParagraphArray(0);
+                    para.setAlignment(ParagraphAlignment.CENTER);
+                    cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.CENTER);
+                }
             }
         }
 
-        // 写入文件（修复原逻辑的流关闭问题）
+        // 写入文件
         try (FileOutputStream out = new FileOutputStream(file)) {
             doc.write(out);
         } finally {
-            doc.close(); // 关闭文档对象，释放资源
+            doc.close();
         }
     }
 
-    /**
-     * 生成TXT文件（UTF-8编码，制表符分隔）
-     */
-    private void generateTxtFile(File file, List<FHeadVO> heads, List<Map<String, Object>> data) throws Exception {
-        // 前置校验：避免核心参数为null导致后续流处理报错
+    private void generateTxtFile(File file, List<FHeadVO> heads, List<Map<String, Object>> allData) throws Exception {
+        // 前置校验（复用原逻辑）
         if (heads == null) {
             throw new IllegalArgumentException("表头列表heads不能为null");
         }
-        if (data == null) {
+        if (allData == null) {
             throw new IllegalArgumentException("数据列表data不能为null");
         }
         if (file == null) {
             throw new IllegalArgumentException("输出文件File不能为null");
         }
 
-        // 使用BufferedWriter保证效率，UTF-8避免中文乱码（try-with-resources自动关流）
+        // 按类型分组
+        List<Map<String, Object>> standData = allData.stream()
+                .filter(row -> "标准样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        List<Map<String, Object>> unknownData = allData.stream()
+                .filter(row -> "未知样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+
+        // 写入文件（复用原流逻辑）
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
 
-            // 1. 写入表头（制表符分隔）—— 重点防护heads中的null元素
+            // 1. 写入表头（复用原逻辑）
             String headerLine = heads.stream()
-                    // 过滤并处理heads中的null元素
                     .map(head -> {
                         if (head == null) {
-                            // log.warn("表头列表中存在null元素，使用默认表头名称");
                             return "未命名列";
                         }
-                        // 处理表头名称为null/空的情况
                         String headName = head.getName();
                         return (headName == null || headName.trim().isEmpty()) ? "未命名列" : headName;
                     })
                     .collect(Collectors.joining("\t"));
             writer.write(headerLine);
-            writer.newLine(); // 换行
+            writer.newLine();
 
-            // 2. 写入数据（与表头顺序一致）—— 防护null的Map、null的字段值、枚举处理null
-            for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
-                Map<String, Object> map = data.get(rowIdx);
-                // 防护：当前数据行的Map为null
-                if (map == null) {
-                    // log.warn("数据列表第{}行的Map为null，跳过该行数据", rowIdx + 1);
-                    continue;
-                }
-
-                List<String> rowData = new ArrayList<>();
-                for (FHeadVO head : heads) {
-                    // 防护：表头为null（避免后续head.getIdentity()报错）
-                    String identity = head != null ? head.getIdentity() : "unknown";
-                    // 从Map取值：用getOrDefault避免key不存在，同时防护value为null
-                    Object value = map.getOrDefault(identity, "");
-                    String cellData = value == null ? "" : String.valueOf(value);
-
-                    // 特殊字段格式化（与Word/Excel保持一致，增加null防护）
-                    if (head != null && "sampleType".equals(identity)) {
-                        // 防护：cellData为null/空/字符串"null"
-                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        } else {
-                            // 防护：枚举方法返回null时用"-"替代
-                            String typeName = SampleTypeEnum.getName(cellData);
-                            cellData = typeName == null ? "-" : typeName;
-                        }
-                    }
-                    if (head != null && "sampleLocation".equals(identity)) {
-                        // 防护：避免拼接"样品null"或"样品"（空值）
-                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        } else {
-                            cellData = "样品" + cellData;
-                        }
-                    }
-
-                    // 最终统一空值处理：将空字符串/"null"转为"-"
-                    if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                        cellData = "-";
-                    }
-
-                    rowData.add(cellData);
-                }
-
-                // 写入当前行数据（制表符分隔）
-                writer.write(String.join("\t", rowData));
+            // 2. 写入标准样品数据（修改：确保sampleType字段正确获取）
+            if (standData != null && !standData.isEmpty()) {
+                writer.write("------------------ 标准样品数据 ------------------");
                 writer.newLine();
-                // log.debug("TXT文件第{}行数据写入完成", rowIdx + 1);
+                for (int rowIdx = 0; rowIdx < standData.size(); rowIdx++) {
+                    Map<String, Object> map = standData.get(rowIdx);
+                    if (map == null) {
+                        log.warn("标准样品数据第{}行的Map为null，跳过该行数据", rowIdx + 1);
+                        continue;
+                    }
+
+                    List<String> rowData = new ArrayList<>();
+                    for (FHeadVO head : heads) {
+                        String identity = head != null ? head.getIdentity() : "unknown";
+                        // 核心修改：直接从map中获取"sampleType"字段，避免依赖枚举转换（若枚举逻辑无必要可简化）
+                        Object value = map.get(identity);
+                        String cellData = (value == null || value.toString().trim().isEmpty() || "null".equalsIgnoreCase(value.toString())) ? "-" : value.toString();
+
+                        // 若需保留枚举转换逻辑，可调整为：
+                        // if (head != null && "sampleType".equals(identity)) {
+                        //     cellData = (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) ? "-" : SampleTypeEnum.getName(cellData);
+                        // }
+
+                        rowData.add(cellData);
+                    }
+                    writer.write(String.join("\t", rowData));
+                    writer.newLine();
+                }
             }
 
-            // log.info("TXT文件生成成功，路径：{}", file.getAbsolutePath());
-        } catch (FileNotFoundException e) {
-            // log.error("TXT文件路径不存在或无法写入：{}", file.getAbsolutePath(), e);
-            throw e;
-        } catch (IOException e) {
-            // log.error("TXT文件写入IO异常", e);
-            throw e;
+            // 3. 写入未知样品数据（同理修改sampleType字段处理）
+            if (unknownData != null && !unknownData.isEmpty()) {
+                writer.write("------------------ 未知样品数据 ------------------");
+                writer.newLine();
+                for (int rowIdx = 0; rowIdx < unknownData.size(); rowIdx++) {
+                    Map<String, Object> map = unknownData.get(rowIdx);
+                    if (map == null) {
+                        log.warn("未知样品数据第{}行的Map为null，跳过该行数据", rowIdx + 1);
+                        continue;
+                    }
+
+                    List<String> rowData = new ArrayList<>();
+                    for (FHeadVO head : heads) {
+                        String identity = head != null ? head.getIdentity() : "unknown";
+                        Object value = map.get(identity);
+                        String cellData = (value == null || value.toString().trim().isEmpty() || "null".equalsIgnoreCase(value.toString())) ? "-" : value.toString();
+                        rowData.add(cellData);
+                    }
+                    writer.write(String.join("\t", rowData));
+                    writer.newLine();
+                }
+            }
+
+            log.info("TXT文件生成成功，路径：{}", file.getAbsolutePath());
         } catch (Exception e) {
-            // log.error("TXT文件生成未知异常", e);
+            log.error("TXT文件生成失败", e);
             throw e;
         }
     }
 
-    /**
-     * 生成 XLSX 文件（修复空指针异常）
-     */
-    private void generateExcelFile(File file, List<FHeadVO> heads, List<Map<String, Object>> data) throws Exception {
-        // 1. 校验核心参数是否为null（避免后续调用方法时报错）
+    private void generateExcelFile(File file, List<FHeadVO> heads, List<Map<String, Object>> allData) throws Exception {
+        // 1. 校验核心参数（复用原逻辑）
         if (heads == null) {
             throw new IllegalArgumentException("表头列表heads不能为null");
         }
-        if (data == null) {
+        if (allData == null) {
             throw new IllegalArgumentException("数据列表data不能为null");
         }
 
-        // 2. 转换表头（处理空表头和null元素）
+        // 2. 转换表头（复用原逻辑）
         List<List<String>> excelHeads = new ArrayList<>();
         for (int i = 0; i < heads.size(); i++) {
             FHeadVO head = heads.get(i);
-            // 防护：当前表头为null
             if (head == null) {
-                // log.warn("表头列表第{}个元素为null，使用默认表头", i);
+                log.warn("表头列表第{}个元素为null，使用默认表头", i);
                 excelHeads.add(Collections.singletonList("未命名列_" + i));
-            continue;
-        }
-        // 防护：表头名称为null/空
-        String headName = head.getName();
-        if (headName == null || headName.trim().isEmpty()) {
-            headName = "未命名列（" + head.getIdentity() + "）";
-            // log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
-        }
-        excelHeads.add(Collections.singletonList(headName));
-    }
-
-    // 3. 转换数据（处理空Map和null值）
-    List<List<Object>> excelData = new ArrayList<>();
-        for (int rowIdx = 0; rowIdx < data.size(); rowIdx++) {
-            Map<String, Object> map = data.get(rowIdx);
-            // 防护：当前数据行为null
-            if (map == null) {
-                // log.warn("数据列表第{}行的Map为null，跳过该行", rowIdx);
                 continue;
             }
+            String headName = head.getName();
+            if (headName == null || headName.trim().isEmpty()) {
+                headName = "未命名列（" + head.getIdentity() + "）";
+                log.warn("表头第{}列名称为空，使用默认名称：{}", i, headName);
+            }
+            excelHeads.add(Collections.singletonList(headName));
+        }
 
-            List<Object> rowData = new ArrayList<>();
-            for (int colIdx = 0; colIdx < heads.size(); colIdx++) {
-                FHeadVO head = heads.get(colIdx);
-                // 防护：表头为null时，直接填充默认值
-                if (head == null) {
-                    rowData.add("-");
+        // 3. 处理标准样品数据（完全复用原逻辑）
+        List<Map<String, Object>> standData = allData.stream()
+                .filter(row -> "标准样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        List<List<Object>> standExcelData = new ArrayList<>();
+        if (standData != null && !standData.isEmpty()) {
+            for (int rowIdx = 0; rowIdx < standData.size(); rowIdx++) {
+                Map<String, Object> map = standData.get(rowIdx);
+                if (map == null) {
+                    log.warn("标准样品数据第{}行的Map为null，跳过该行", rowIdx);
                     continue;
                 }
-
-                // 提取字段值，防护null
-                Object value = map.get(head.getIdentity());
-                String cellData = "-"; // 默认空值
-
-                if (value != null) {
-                    cellData = String.valueOf(value);
-                    // 特殊字段格式化（增加null防护）
-                    if ("sampleType".equals(head.getIdentity())) {
-                        // 防护：cellData为null/空
-                        if (cellData == null || cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                            cellData = "-";
-                        } else {
-                            // 防护：枚举方法返回null
-                            String typeName = SampleTypeEnum.getName(cellData);
-                            cellData = typeName == null ? "-" : typeName;
+                List<Object> rowData = new ArrayList<>();
+                for (int colIdx = 0; colIdx < heads.size(); colIdx++) {
+                    FHeadVO head = heads.get(colIdx);
+                    String cellData = "-";
+                    if (head != null) {
+                        Object value = map.get(head.getIdentity());
+                        if (value != null) {
+                            cellData = String.valueOf(value);
+                            if ("sampleType".equals(head.getIdentity())) {
+                                // 仅处理空值，直接显示存储的“标准样品”“未知样品”
+                                cellData = (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) ? "-" : cellData;
+                            }
+                            if ("sampleLocation".equals(head.getIdentity())) {
+                                cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
+                            }
+                            cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
+                            if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                                cellData = "-";
+                            }
                         }
                     }
-                    if ("sampleLocation".equals(head.getIdentity())) {
-                        // 防护：避免拼接"样品null"
-                        cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
-                    }
-                    // 清除特殊字符，防护空字符串
-                    cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
-                    if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
-                        cellData = "-";
-                    }
+                    rowData.add(cellData);
                 }
-
-                rowData.add(cellData);
+                standExcelData.add(rowData);
             }
-            excelData.add(rowData);
         }
 
-        // 4. 写入Excel（确保流正确关闭，防护空列表）
-        if (excelHeads.isEmpty()) {
-            log.warn("表头为空，生成空Excel文件");
+        // 4. 新增：处理未知样品数据（完全复制标准样品的处理逻辑）
+        List<Map<String, Object>> unknownData = allData.stream()
+                .filter(row -> "未知样品".equals(row.get("sampleType")))
+                .collect(Collectors.toList());
+        List<List<Object>> unknownExcelData = new ArrayList<>();
+        if (unknownData != null && !unknownData.isEmpty()) {
+            for (int rowIdx = 0; rowIdx < unknownData.size(); rowIdx++) {
+                Map<String, Object> map = unknownData.get(rowIdx);
+                if (map == null) {
+                    log.warn("未知样品数据第{}行的Map为null，跳过该行", rowIdx);
+                    continue;
+                }
+                List<Object> rowData = new ArrayList<>();
+                for (int colIdx = 0; colIdx < heads.size(); colIdx++) {
+                    FHeadVO head = heads.get(colIdx);
+                    String cellData = "-";
+                    if (head != null) {
+                        Object value = map.get(head.getIdentity());
+                        if (value != null) {
+                            cellData = String.valueOf(value);
+                            if ("sampleType".equals(head.getIdentity())) {
+                                // 仅处理空值，直接显示存储的“标准样品”“未知样品”
+                                cellData = (cellData.trim().isEmpty() || "null".equalsIgnoreCase(cellData)) ? "-" : cellData;
+                            }
+                            if ("sampleLocation".equals(head.getIdentity())) {
+                                cellData = (cellData == null || "null".equalsIgnoreCase(cellData)) ? "-" : ("样品" + cellData);
+                            }
+                            cellData = cellData.replace("\r", "").replace("\n", "").replace("\t", " ");
+                            if (cellData.isEmpty() || "null".equalsIgnoreCase(cellData)) {
+                                cellData = "-";
+                            }
+                        }
+                    }
+                    rowData.add(cellData);
+                }
+                unknownExcelData.add(rowData);
+            }
         }
+
+        // 5. 写入Excel（标准样品+未知样品分Sheet）
         try (OutputStream out = new FileOutputStream(file)) {
-            EasyExcel.write(out)
+            ExcelWriter writer = EasyExcel.write(out).build();
+
+            // 写入标准样品Sheet
+            WriteSheet standSheet = EasyExcel.writerSheet(0, "标准样品")
                     .head(excelHeads)
-                    .sheet("测量数据")
-                    .doWrite(excelData);
+                    .build();
+            writer.write(standExcelData, standSheet);
+
+            // 写入未知样品Sheet（仅当有数据时）
+            if (unknownExcelData != null && !unknownExcelData.isEmpty()) {
+                WriteSheet unknownSheet = EasyExcel.writerSheet(1, "未知样品")
+                        .head(excelHeads)
+                        .build();
+                writer.write(unknownExcelData, unknownSheet);
+            }
+
+            writer.finish();
         } catch (Exception e) {
-            log.error("EasyExcel写入文件失败", e);
-            throw e; // 向上抛出，由外层处理
+            log.error("Excel写入失败", e);
+            throw e;
         }
     }
 
