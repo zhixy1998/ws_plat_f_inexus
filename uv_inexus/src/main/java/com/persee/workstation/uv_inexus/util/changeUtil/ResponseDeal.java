@@ -16,7 +16,9 @@
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -58,7 +60,7 @@ public class ResponseDeal {
             case "SetEndWl":
             case "SetFilter":
             case "SetGain":
-            case "SetPhotoMode":
+
             case "SetPadModeTrue":
             case "SetPadModeFalse":
             case "SetPCModeTrue":
@@ -67,7 +69,8 @@ public class ResponseDeal {
             case "SetProgrammeModeFalse":
             case "SetInitStatus":
                 return parseCompareBytes(responses, sendBytes);
-
+            case "SetPhotoMode":
+                return parseMode(responses, sendBytes);
             case "InitSampleCell":
             case "InitFilterMotor":
             case "InitWlMotor":
@@ -85,6 +88,7 @@ public class ResponseDeal {
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
+                return measure(responses);
             case "Zero":
                 return parseZero(responses);
             case "ScanFast":
@@ -121,6 +125,8 @@ public class ResponseDeal {
             case "InitSlit1Moto1":
                 return parseInitSlit1Motor(responses, sendBytes);
 
+            case "GetPhotoMode":
+                return parsePhotoMode(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
@@ -128,6 +134,40 @@ public class ResponseDeal {
                 return 0;
         }
     }
+
+    private static Object parsePhotoMode(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        for (int i = 0; i < responses.size(); i++) {
+            byte[] data = responses.get(i);
+
+            if (data[3] == 0x05)  {
+                int mode = data[4] & 0xFF;
+
+                DetectionConstants.luminosity = String.valueOf(mode);
+
+                if (mode == 0){
+                    String photomode = "Abs";
+                    MeasureController.addPhotoModeData(photomode);
+                } else if (mode == 1) {
+                    String photomode = "T%";
+                    MeasureController.addPhotoModeData(photomode);
+                }else if (mode == 2) {
+                    String photomode = "Es";
+                    MeasureController.addPhotoModeData(photomode);
+                }else if (mode == 3) {
+                    String photomode = "Er";
+                    MeasureController.addPhotoModeData(photomode);
+                }
+            }
+        }
+        return true;
+    }
+
 
     private static Object parseInitSlit1Motor(List<byte[]> responses, byte[] sendBytes) {
         if (responses == null || responses.isEmpty()) {
@@ -173,6 +213,11 @@ public class ResponseDeal {
         System.out.printf("波长原始值=%d, 解析结果=%.2f\n", wl, ChangeLampWl);
 
         MeasureController.addWlData(rawchagelampwl);
+
+        if (DetectionConstants.detectionInfo != null && rawchagelampwl != null) {
+            DetectionConstants.detectionInfo.put("changeLampWl", rawchagelampwl);
+        }
+
         result = "true";
         return true;
     }
@@ -207,6 +252,15 @@ public class ResponseDeal {
         float time = (lastResponse[4] & 0xFF) / 100.0f;
         String rawtime = String.valueOf(time);
         MeasureController.addTimeData(rawtime);
+
+        long l = System.currentTimeMillis();
+        if (DetectionConstants.detectionInfo != null && rawtime != null) {
+            DetectionConstants.detectionInfo.put("time", rawtime);
+        }
+
+        long l1 = System.currentTimeMillis() - l;
+        System.out.println("耗时：" + l1);
+
         return isEqual;
     }
 
@@ -240,6 +294,11 @@ public class ResponseDeal {
         float Bandwidth = (lastResponse[4] & 0xFF) / 10.f;
         String SpectralBandwidth = String.valueOf(Bandwidth);
         MeasureController.addBandwidthData(SpectralBandwidth);
+
+        if (DetectionConstants.detectionInfo != null && SpectralBandwidth != null) {
+            DetectionConstants.detectionInfo.put("bandwidth", SpectralBandwidth);
+        }
+
         return isEqual;
     }
 
@@ -297,6 +356,7 @@ private static Object parseLampPos(List<byte[]> responses) {
     Map<String, String> tungsten = new HashMap<>();
     tungsten.put("label", "钨灯");
     tungsten.put("value", pos == 0 ? "亮" : "不亮");
+
 
     Map<String, String> deuterium = new HashMap<>();
     deuterium.put("label", "氘灯");
@@ -377,9 +437,13 @@ private static Object parseLampPos(List<byte[]> responses) {
 
         sn.insert(2, "-");
 
-        Sn = sn.toString().replace("\u0000", "").trim();;
+        // 处理空字符和trim，然后截取前16位
+        String rawSn = sn.toString().replace("\u0000", "").trim();
 
-        return sn.toString(); // 存储到全局变量
+        // 确保只取前16位，若长度不足则取全部
+        Sn = rawSn.length() >= 16 ? rawSn.substring(0, 16) : rawSn;
+
+        return Sn; // 返回处理后的结果
     }
 
     /**
@@ -427,17 +491,17 @@ private static Object parseLampPos(List<byte[]> responses) {
                 // 0x03 或 0x05 => 解析 wl0 和 s0
                 if (cmdType == 0x03) {
                     int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int s0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
                     param.setS(String.valueOf(s0));
-                    param.setWl(String.valueOf(wl0)); // 可选：记录 wl0，方便计算
+                    param.setWl(String.valueOf(wl0/50.f)); // 可选：记录 wl0，方便计算
                 } else if (cmdType == 0x07 && cmdType1 == 0x13) {
                     int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int s0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
                     param.setS(String.valueOf(s0));
-                    param.setWl(String.valueOf(wl0));
+                    param.setWl(String.valueOf(wl0/50.f));
                 } else if (cmdType == 0x08 && cmdType1 == 0x13) {
                     int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int r0 = ( (resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int r0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
 
                     param.setD(String.valueOf(d0));
                     param.setR(String.valueOf(r0));
@@ -457,7 +521,7 @@ private static Object parseLampPos(List<byte[]> responses) {
                 // 0x04 或 0x06 => 解析 d0 和 r0，并计算结果
                 else if (cmdType == 0x04) {
                     int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int r0 = ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int r0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
 
                     param.setD(String.valueOf(d0));
                     param.setR(String.valueOf(r0));
@@ -474,6 +538,40 @@ private static Object parseLampPos(List<byte[]> responses) {
                     }
                 }
             }
+
+        } catch (Exception e) {
+            System.out.println("Zero解析异常: " + e.getMessage());
+            return null;
+        }
+        if (StringUtils.hasText(param.getWl())) {
+            DetectionConstants.zeroResult.putIfAbsent(param.getWl(), param);
+        }
+        return param;
+    }
+
+    public static ChangeParam measure(List<byte[]> responses){
+        ChangeParam param = new ChangeParam();
+
+        if (responses == null || responses.size() < 2) {
+            System.out.println("回应数量不足，无法解析 Zero");
+            return null;
+        }
+
+        try {
+            // 倒数第二条
+            byte[] secondLast = responses.get(responses.size() - 2);
+            int wl0 = (((secondLast[5] & 0xFF) << 8) | (secondLast[6] & 0xFF));
+            int s0 = ((secondLast[8] & 0xFF) << 16) | ((secondLast[9] & 0xFF) << 8) | (secondLast[10] & 0xFF);
+            param.setS(String.valueOf(s0));
+
+            // 倒数第一条
+            byte[] last = responses.get(responses.size() - 1);
+            int d0 = ((last[4] & 0xFF) << 16) | ((last[5] & 0xFF) << 8) | (last[6] & 0xFF);
+            int r0 = ((last[8] & 0xFF) << 16) | ((last[9] & 0xFF) << 8) | (last[10] & 0xFF);
+
+            param.setWl(String.valueOf(wl0/50.f));
+            param.setD(String.valueOf(d0));
+            param.setR(String.valueOf(r0));
 
         } catch (Exception e) {
             System.out.println("Zero解析异常: " + e.getMessage());
@@ -500,7 +598,7 @@ private static Object parseLampPos(List<byte[]> responses) {
             // 只处理 第5位 != 0 的回应
             if (data.length >= 12 && (data[4] & 0xFF) != 0) {
                 int x = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
-                int y = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
+                int y = ((data[7] & 0xFF) << 24) | ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                 xList.add(x / 50.0);
                 yList.add(y / 8388607.0 * 100);
             } else {
@@ -563,6 +661,11 @@ private static Object parseLampPos(List<byte[]> responses) {
         int pos = (lastResponse[4] & 0xFF) + 1;
         String rawpos = String.valueOf(pos);
         MeasureController.addPosData(rawpos);
+
+        if (DetectionConstants.detectionInfo != null && rawpos != null) {
+            DetectionConstants.detectionInfo.put("pos", rawpos);
+        }
+
         return pos;
     }
 
@@ -617,6 +720,40 @@ private static Object parseLampPos(List<byte[]> responses) {
         return isEqual;
     }
 
+    /**
+     * 设置光度模式
+     */
+    private static Boolean parseMode(List<byte[]> responses, byte[] sendBytes) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        if (sendBytes == null || sendBytes.length < 5) {
+            System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
+            result = "false";
+            return false;
+        }
+
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+
+        boolean isEqual = lastResponse[2] == sendBytes[2] &&
+                lastResponse[3] == sendBytes[3] &&
+                lastResponse[4] == sendBytes[4];
+        //设置光度模式时，实时更新共享变量
+        int mode = lastResponse[4] & 0xFF;
+        DetectionConstants.luminosity = String.valueOf(mode);
+
+        result = isEqual ? "true" : "false";
+        return isEqual;
+    }
+
     /*
         处理查找searcharound指令
     * */
@@ -658,7 +795,7 @@ private static Object parseLampPos(List<byte[]> responses) {
                 // 如果第四位字节为 05，解析 s
                 if (fourthByte == 0x05) {
                     // 只有 s0 的值
-                    int s0 = ((response[8] & 0xFF) << 16) | ((response[9] & 0xFF) << 8) | (response[10] & 0xFF);
+                    int s0 = ((response[7] & 0xFF) << 24) | ((response[8] & 0xFF) << 16) | ((response[9] & 0xFF) << 8) | (response[10] & 0xFF);
                     Double wl0 = (double) ((((response[5] & 0xFF) << 8) | (response[6] & 0xFF))/50.0f);
                     tempParam = new ChangeParam(); // 创建一个新的 ChangeParam 对象，等待 0x06 补充
                     tempParam.setS(String.valueOf(s0)); // 设置 s0

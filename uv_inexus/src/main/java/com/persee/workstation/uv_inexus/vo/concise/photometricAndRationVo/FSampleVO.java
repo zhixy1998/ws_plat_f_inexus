@@ -44,6 +44,9 @@ public class FSampleVO {
     @ApiModelProperty("样品位置")
     private String sampleLocation;
 
+    @ApiModelProperty("平行样组id")
+    private String parallelGroupId;
+
     // 取样量
     @ApiModelProperty("取样量")
     private String sampleVolume;

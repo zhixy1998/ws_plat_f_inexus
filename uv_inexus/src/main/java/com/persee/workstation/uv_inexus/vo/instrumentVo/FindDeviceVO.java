@@ -33,6 +33,21 @@ public class FindDeviceVO {
     @ApiModelProperty("附件类型")
     private Integer attachmentType;
 
+    @ApiModelProperty("附件种类")
+    private Integer attachmentKind;
+
+    @ApiModelProperty("附件名称")
+    private String attachmentName;
+
     @ApiModelProperty("当前样品池位置")
     private Integer currentPoolNum;
+
+    @ApiModelProperty("总池数")
+    private Integer totalPoolNum;
+
+    @ApiModelProperty("仪器名称")
+    private String deviceName;
+
+    @ApiModelProperty("仪器型号名称")
+    private String deviceModelName;
 }

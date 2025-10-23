@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjector
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAutoInjectorService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
@@ -39,6 +40,9 @@ public class DeviceController {
     private DeviceManageService deviceManageService;
 
     @Autowired
+    private DeviceInfoService deviceInfoService;
+
+    @Autowired
     private DeviceMonitorService monitorService;
 
     @Autowired
@@ -47,7 +51,7 @@ public class DeviceController {
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
     public Result<List<FindDeviceVO>> findDevice() throws Exception {
-        List<FindDeviceVO> device = deviceManageService.newFindDevice();
+        List<FindDeviceVO> device = deviceManageService.findDevice();
         if (device == null) {
             return Result.fail("查找设备异常");
         } else {
@@ -76,7 +80,30 @@ public class DeviceController {
         }else {
             return Result.fail(init.getMessage());
         }
+    }
 
+    @GetMapping("/stopInit")
+    @ApiOperation("停止初始化")
+    public Result<Boolean> stopInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        R<Boolean> r = deviceManageService.stopInit(deviceSerialNumber, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/changeDeviceName")
+    @ApiOperation("更改仪器名称")
+    public Result<Boolean> updateDeviceName(@RequestParam String deviceSerialNumber,
+                                            @RequestParam String updateBy,
+                                            @RequestParam String deviceName){
+        Boolean r = deviceInfoService.changeDeviceName(deviceSerialNumber, deviceName, updateBy);
+        if (r) {
+            return Result.ok(true);
+        } else {
+            return Result.fail("更新失败");
+        }
     }
 
 

@@ -13,13 +13,17 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 
-import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.QueryDeviceConfigVO;
 
-import java.io.IOException;
 import java.util.List;
 
 public interface DeviceManageService {
@@ -28,13 +32,14 @@ public interface DeviceManageService {
 
     R<Boolean> init(DeviceInitDTO initDTO);
 
+    R<Boolean> stopInit(String deviceSerialNumber, String updateBy);
+
     Boolean startDevice(DeviceStartDTO startDTO);
 
     Boolean softClose(DeviceSoftCloseDTO closeDTO);
 
-    List<FindDeviceVO> findDevice();
 
-    List<FindDeviceVO> newFindDevice() throws Exception;
+    List<FindDeviceVO> findDevice() throws Exception;
 
     /**
      * 仪器激活接口
@@ -96,7 +101,7 @@ public interface DeviceManageService {
     R<Boolean> checkDeviceStatus(String deviceSerialNumber);
 
     /**
-     * 更新仪器状态
+     * 更新仪器当前状态
      */
     R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status);
 

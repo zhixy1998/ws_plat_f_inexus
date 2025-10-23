@@ -16,41 +16,39 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.CalibrationTempDAO;
-import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
-import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.InsConfigDAO;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.*;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKindEnum;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationInfoEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitInfoEnum;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreCommandEnum;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.CalibrationTempPO;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
-import com.persee.workstation.uv_inexus.util.ByteUse;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.DeviceInitCommandEnum;
 import com.persee.workstation.uv_inexus.util.changeUtil.FindDevEnum;
-import com.persee.workstation.uv_inexus.vo.ScanParamInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -80,15 +78,23 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Autowired
     FSamplePoolConfigService samplePoolConfigService;
 
+    @Autowired
+    DeviceModelInfoDAO deviceModelInfoDAO;
+
+    @Autowired
+    DeviceTypeInfoDAO deviceTypeInfoDAO;
+
     @Value("${device.default.sendPort}")
     Integer sendPort;
 
     @Value("${device.default.receivePort}")
     Integer receivePort;
 
+    private static volatile Map<String, Boolean> stopInit = new HashMap<>();
+
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
-        log.info("查询仪器信息");
+//        log.info("查询仪器信息");
         DeviceInfoVO vo = new DeviceInfoVO();
 
         List<DeviceInitInfo> infoList = new ArrayList<>();
@@ -110,6 +116,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         vo.setUserName(updateBy);
         vo.setIsDevOpened(deviceInfoPO.getIsDevOpened());
         vo.setDeviceSerialNumber(deviceSerialNumber);
+        vo.setDeviceName(deviceInfoPO.getDeviceName());
 
         String connect = DeviceConnectMessageEnum.getName(deviceInfoPO.getConnectStatus()) + " IP="
                 + deviceInfoPO.getIp() + " port=" + sendPort;
@@ -122,7 +129,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         for (InitRecordPO recordPO : initList) {
             DeviceInitInfo info = new DeviceInitInfo();
             info.setInitTaskNum(recordPO.getInitTaskNum());
-            info.setInitProject(DeviceInitInfoEnum.getName(recordPO.getInitTaskNum()));
+            info.setInitProject(recordPO.getInitCmdName());
             info.setInitStatus(recordPO.getInitStatus());
 
             infoList.add(info);
@@ -141,13 +148,27 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
 
         DeviceInfoPO infoPO = infoService.getInfo(initDTO.getDeviceSerialNumber());
-        if (infoPO == null || infoPO.getId() == null || infoPO.getDeviceSerialNumber() == null) {
+        if (infoPO == null || !StringUtils.hasText(infoPO.getId()) || !StringUtils.hasText(infoPO.getDeviceModel())) {
             log.info("未找到连接仪器信息！");
             return R.fail("未查找到仪器信息");
         }
         log.info("调用机器初始化接口");
 
-        initRecordService.initAllTask(initDTO.getDeviceSerialNumber(), infoPO.getId());
+        LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DeviceModelInfoPO::getDevModel, infoPO.getDeviceModel());
+        DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+
+        List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
+
+        DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(initDTO.getDeviceSerialNumber());
+        Integer kind = attachmentInfo.getAttachmentKind();
+
+        if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
+            List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
+            initRecordService.initAllTask(initDTO.getDeviceSerialNumber(), infoPO.getId(), allInitEntry);
+        } else {
+            initRecordService.initAllTask(initDTO.getDeviceSerialNumber(), infoPO.getId(), initEntry);
+        }
 
         infoPO.setIsInited(Constants.INIT_STATUS_RUNNING);
         infoService.saveOrUpdateInfo(infoPO);
@@ -156,10 +177,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 //            startInit(infoPO);
 //        }).start();
 
+        R<Boolean> r = infoService.useDevice(initDTO.getDeviceSerialNumber(), Constants.DEVICE_STATUS_INIT);
+        if (!r.getSuccess()) {
+            log.info(r.getMessage());
+            return R.fail(r.getMessage());
+        }
+
         new Thread(() -> {
             try {
-                newStartInit(infoPO);
+                stopInit.put(initDTO.getDeviceSerialNumber(), false);
+                newStartInit(infoPO, attachmentInfo.getAttachmentKind());
             } catch (Exception e) {
+                DetectionConstants.isDeviceIdle = true;
                 throw new RuntimeException(e);
             }
         }).start();
@@ -167,90 +196,102 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok(true);
     }
 
-
-    private void newStartInit(DeviceInfoPO infoPO) throws Exception {
+    private void newStartInit(DeviceInfoPO infoPO, Integer attachmentType) throws Exception {
         log.info("自检开始");
         String ip = infoPO.getIp();
 
-        InitRecordPO recordPO = new InitRecordPO();
-        recordPO.setDeviceInfoId(infoPO.getId());
-        recordPO.setDeviceSerialNumber(infoPO.getDeviceSerialNumber());
+        List<InitRecordPO> list = initRecordService.searchInitStatus(infoPO.getDeviceSerialNumber(), infoPO.getId());
+        for (InitRecordPO recordPO : list) {
+            updateRunning(recordPO);
+            recordPO = initRecordService.selectById(recordPO.getId());
 
-        for (int i = 1; i <= DeviceInitCommandEnum.getLength(); i++) {
-            Command command;
-            if (DeviceInitCommandEnum.getComId(i).equals("SetSlit1")) {
-                command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{20});
-            } else if (DeviceInitCommandEnum.getComId(i).equals("SetCellPos")) {
-                command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{1});
-            } else {
-                command = new Command(DeviceInitCommandEnum.getComId(i), new Object[]{});
+            List<String> cmdIdList = recordPO.getInitCmdIdList();
+
+            int count = 0;
+            while (count < cmdIdList.size() && !stopInit.get(infoPO.getDeviceSerialNumber())) {
+                String cmdId = cmdIdList.get(count);
+                Command command = dealCommand(attachmentType, cmdId);
+                R<String> initDevice = devMessageUtil.initDevice(command, ip);
+                if (!initDevice.getSuccess()) {
+                    log.info("{}指令初始化异常", cmdId);
+                    failDeal(infoPO, recordPO);
+                    devMessageUtil.setDeviceInitStatus(ip, 1);
+                    infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+                    return;
+                }
+                count++;
+                log.info("{}指令初始化成功", cmdId);
             }
-
-            R<String> initDevice = devMessageUtil.initDevice(command, ip);
-            if (!initDevice.getSuccess()) {
-                log.info("{}指令初始化异常", DeviceInitCommandEnum.getComId(i));
-                infoPO.setConnectStatus(Constants.CONNECT_DEVICE_FALSE);
-                recordPO.setInitTaskNum(getInitTaskNum(i));
-                failDeal(infoPO, recordPO);
+            if (count != cmdIdList.size()) {
+                log.info("自检已停止");
+                updateStop(recordPO, infoPO);
+                infoService.releaseDevice(infoPO.getDeviceSerialNumber());
                 return;
             }
-            log.info("{}指令初始化成功", DeviceInitCommandEnum.getComId(i));
-            if (i < 3) {
-                infoPO.setIsDevOpened(Constants.DEVICE_IS_OPEN);
-                infoPO.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
-                infoService.saveOrUpdateInfo(infoPO);
-            }
-            recordPO.setInitTaskNum(getInitTaskNum(i));
+            log.info("{}成功", recordPO.getInitCmdName());
             updateSuccess(recordPO);
+
         }
+
         infoPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
         infoService.saveOrUpdateInfo(infoPO);
+
+        devMessageUtil.setDeviceInitStatus(ip, 1);
+
+        infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+
     }
 
-    private Integer getInitTaskNum(Integer i) {
-        switch (i) {
-            case 1:
-            case 2:
-            case 3:
-                return 1;
-            case 4:
-                return 2;
-            case 5:
-            case 6:
-                return 3;
-            case 7:
-                return 4;
-            case 8:
-                return 5;
-            case 9:
-                return 6;
-            case 10:
-                return 7;
-            default:
-                return 8;
+    private static Command dealCommand(Integer attachmentType, String cmdId) {
+        Command command;
+        if (cmdId.equals("SetSlit1")) {
+            if (attachmentType.equals(DeviceAttachmentKindEnum.INTEGRAL_BALL.getType())) {
+                command = new Command(cmdId, new Object[]{5});
+            } else {
+                command = new Command(cmdId, new Object[]{2});
+            }
+        } else if (cmdId.equals("SetCellPos")) {
+            command = new Command(cmdId, new Object[]{1});
+        } else {
+            command = new Command(cmdId, new Object[]{});
         }
-
+        return command;
     }
 
     private void updateSuccess(InitRecordPO recordPO) {
-        recordPO.setInitStatus(Constants.INIT_TASK_STATUS_SUCCESS);
+        recordPO.setInitStatus(Constants.INIT_TASK_SUCCESS);
+        initRecordService.saveOrUpdateInitTask(recordPO);
+    }
+
+    private void updateStop(InitRecordPO recordPO, DeviceInfoPO po) {
+        recordPO.setInitStatus(Constants.INIT_TASK_STOP);
+        initRecordService.saveOrUpdateInitTask(recordPO);
+
+        po.setIsInited(Constants.INIT_STATUS_STOP);
+        infoService.saveOrUpdateInfo(po);
+    }
+
+    private void updateRunning(InitRecordPO recordPO) {
+        recordPO.setInitStatus(Constants.INIT_TASK_ING);
         initRecordService.saveOrUpdateInitTask(recordPO);
     }
 
     private void failDeal(DeviceInfoPO po, InitRecordPO recordPO) {
 
+        recordPO.setInitStatus(Constants.INIT_TASK_FALSE);
+        initRecordService.saveOrUpdateInitTask(recordPO);
+
         po.setIsInited(Constants.INIT_STATUS_FALSE);
         infoService.saveOrUpdateInfo(po);
-
-        if (recordPO != null) {
-            for (int i = recordPO.getInitTaskNum(); i <= DeviceInitInfoEnum.getLength(); i++) {
-                recordPO.setInitTaskNum(i);
-                recordPO.setInitStatus(Constants.INIT_STATUS_FALSE);
-                initRecordService.saveOrUpdateInitTask(recordPO);
-            }
-
-        }
     }
+
+    @Override
+    public R<Boolean> stopInit(String deviceSerialNumber, String updateBy) {
+        stopInit.put(deviceSerialNumber, true);
+
+        return R.ok();
+    }
+
 
     @Override
     public Boolean startDevice(DeviceStartDTO startDTO) {
@@ -263,35 +304,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public List<FindDeviceVO> findDevice() {
-        log.info("发送广播查找设备");
-        FindDeviceVO deviceVO = messageUtils.searchDevice();
-
-        if (deviceVO != null) {
-            log.info("查找到设备");
-
-            DeviceInfoPO po = new DeviceInfoPO();
-            po.setIsInited(deviceVO.getIsInited());
-            po.setIp(deviceVO.getIp());
-            po.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
-            po.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
-            po.setIsDevOpened(1);
-            po.setDevicePort(sendPort);
-            deviceVO.setIsDevOpened(1);
-
-            infoService.saveOrUpdateInfo(po);
-
-            List<FindDeviceVO> list = new ArrayList<>();
-            list.add(deviceVO);
-            return list;
-        }
-        log.info("未查找到设备");
-        return null;
-    }
-
-    @Override
     @DS("guide")
-    public List<FindDeviceVO> newFindDevice() throws Exception {
+    public List<FindDeviceVO> findDevice() throws Exception {
         List<Command> list = new ArrayList<>();
         list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
@@ -301,41 +315,94 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         list.add(new Command(FindDevEnum.GetInitStatus.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetCellPos.getComId(), new Object[]{}));
 
+        List<FindDeviceVO> devices = new ArrayList<>();
 
         R<FindDeviceVO> connected = devMessageUtil.connectDevice(list);
+        DetectionConstants.isDeviceIdle = true;
         if (connected.getSuccess()) {
             log.info("找到设备");
             FindDeviceVO deviceVO = connected.getData();
-            DeviceInfoPO po = new DeviceInfoPO();
-            po.setIsInited(deviceVO.getIsInited());
+            DeviceInfoPO po = infoService.getInfo(deviceVO.getDeviceSerialNumber());
+            if (po == null) {
+                po = new DeviceInfoPO();
+            }
+
+            if (deviceVO.getIsInited() == null || deviceVO.getIsInited() == 0) {
+                po.setIsInited(Constants.INIT_STATUS_NO);
+            }
+
+            if (po.getIsInited() == null) {
+                po.setIsInited(Constants.INIT_STATUS_NO);
+            }
+
             po.setIp(deviceVO.getIp());
             po.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
             po.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
             po.setIsDevOpened(1);
             po.setAttachmentType(deviceVO.getAttachmentType());
             po.setDevicePort(sendPort);
-            deviceVO.setIsDevOpened(1);
+            po.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
 
+            //TODO 根据仪器序列号，获取型号信息，还需要调整
+            String deviceModel = deviceVO.getDeviceSerialNumber().substring(3, 8);
+            po.setDeviceModel(deviceModel);
+
+            LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
+            DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+
+            deviceVO.setDeviceModelName(modelInfoPO.getDevName());
+            po.setDeviceModelName(modelInfoPO.getDevName());
+
+            if (StringUtils.hasText(po.getDeviceName())) {
+                deviceVO.setDeviceName(po.getDeviceName());
+            }
+
+            List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
+
+            //附件处理
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceVO.getDeviceSerialNumber());
+            FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
+
+            BeanUtils.copyProperties(deviceVO, dto);
+            dto.setAttachmentTypeName(attachmentInfo.getAttachmentName());
+            samplePoolConfigService.saveSamplePoolInfo(dto);
+
+            po.setAttachmentName(attachmentInfo.getAttachmentName());
             infoService.saveOrUpdateInfo(po);
 
-            List<FindDeviceVO> devices = new ArrayList<>();
+            if (deviceVO.getIsInited() == 0) {
+
+                if (attachmentInfo.getAttachmentKind().equals(1)){
+                    List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
+                    initRecordService.initAllTask(deviceVO.getDeviceSerialNumber(), po.getId(), allInitEntry);
+                }
+
+                initRecordService.initAllTask(deviceVO.getDeviceSerialNumber(), po.getId(), initEntry);
+            }
+
+            BeanUtils.copyProperties(po, deviceVO);
+            deviceVO.setAttachmentKind(attachmentInfo.getAttachmentKind());
             devices.add(deviceVO);
-
-            FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
-            dto.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
-            dto.setAttachmentType(deviceVO.getAttachmentType());
-
-            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceVO.getDeviceSerialNumber());
-
-
-//            dto.setAttachmentTypeName(attachmentInfo.getAttachmentName());
-//            dto.setCurrentPoolNum(deviceVO.getCurrentPoolNum());
-
-//            samplePoolConfigService.saveSamplePoolInfo(dto);
 
             return devices;
         }
         return null;
+    }
+
+    public List<DeviceInitEntryInfo> addInitEntry(List<DeviceInitEntryInfo> initEntry) {
+        List<DeviceInitEntryInfo> ans = new ArrayList<>();
+
+        for (int i = 0; i < DeviceInitPreCommandEnum.getLength(); i++) {
+            DeviceInitEntryInfo entry = new DeviceInitEntryInfo();
+            DeviceInitPreCommandEnum anEnum = DeviceInitPreCommandEnum.getEnum(i);
+            entry.setInitComId(anEnum.getComIdList());
+            entry.setInitComName(anEnum.getDescription());
+            entry.setInitComValue(anEnum.getComValue());
+            ans.add(entry);
+        }
+        ans.addAll(initEntry);
+        return ans;
     }
 
 
@@ -413,9 +480,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.info("缺少序列号");
             return R.fail("缺少序列号");
         }
+
+        if (dto.getCalibrationType() == null || DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()) == null) {
+            log.info("缺少校准类型");
+            return R.fail("缺少校准类型");
+        }
+
         String ip = infoService.getIp(dto.getDeviceSerialNumber());
         log.info("调用校准");
 
+        if (dto.getCalibrationType() == 1) {
+            //波长校正
+            Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
+            devMessageUtil.deviceCalibration(command, ip);
+        } else if (dto.getCalibrationType() == 2) {
+            //暗电流校正
+            Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
+            devMessageUtil.deviceCalibration(command, ip);
+        }
 
         LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
@@ -464,12 +546,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                         .eq(CalibrationTempPO::getParam, param.getParam()).orderByDesc(CalibrationTempPO::getId);
 
                 CalibrationTempPO tempPO = tempDao.selectOne(queryWrapper);
-                param.setLastValue(tempPO.getParamValue());
-
-
+                if (tempPO != null) {
+                    param.setLastValue(tempPO.getParamValue());
+                }
             }
-
-
             vo.setParams(params);
         }
 
@@ -484,19 +564,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status) {
+
         return null;
     }
 
     @Override
     public void test() {
-        String ip = "169.254.110.254";
-        ScanParamInfo info = new ScanParamInfo();
-        info.setWaveLengthInterval("0.5");
-        info.setStartWaveLength("400");
-        info.setEndWaveLength("700");
-//        messageUtils.searchDevice();+
-//        messageUtils.initUtil(ip, sendPort, ByteUse.LinkMachineSend, 2);
-        messageUtils.setScanParam(ip, sendPort, ByteUse.SpectrumScanAllConfig);
+        List<DeviceTypeInfoPO> deviceTypeInfoPOS = deviceTypeInfoDAO.selectList(null);
+        for (DeviceTypeInfoPO po : deviceTypeInfoPOS) {
+            log.info("{}", po);
+
+            LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+            query.eq(DeviceModelInfoPO::getDevTypeId, po.getId());
+            List<DeviceModelInfoPO> modelInfoPOS = deviceModelInfoDAO.selectList(query);
+            for (DeviceModelInfoPO modelInfoPO : modelInfoPOS) {
+                log.info("{}", modelInfoPO);
+            }
+
+        }
 
     }
 

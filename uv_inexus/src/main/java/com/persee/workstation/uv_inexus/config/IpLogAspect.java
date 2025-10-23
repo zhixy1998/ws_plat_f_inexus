@@ -24,7 +24,7 @@ public class IpLogAspect {
             // 使用工具类获取IP
             String ip = ipUtils.getIpAddress(request);
             // 记录日志（可根据需要调整，如存入日志系统）
-            System.out.println("访问接口: " + joinPoint.getSignature() + ", 访问IP: " + ip);
+//            System.out.println("访问接口: " + joinPoint.getSignature() + ", 访问IP: " + ip);
         }
     }
 }

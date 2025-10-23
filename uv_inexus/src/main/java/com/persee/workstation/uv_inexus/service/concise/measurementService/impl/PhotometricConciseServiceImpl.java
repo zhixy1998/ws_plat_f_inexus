@@ -320,13 +320,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Override
     public Result<FMethodChangeCheckVO> checkMethodParam(NewPhotometricMethodParamCheckDTO checkDTO) {
 
-        if (checkDTO.getNewMethodParam() == null) {
+        if (Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法参数");
         }
 
-        R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
-        if (!r.getSuccess()) {
-            return Result.fail(r.getMessage());
+        if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
+            R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
+            if (!r.getSuccess()) {
+                return Result.fail(r.getMessage());
+            }
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
@@ -352,8 +354,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         FMeasureMethod method = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
         FPhotometricParameter oldParam = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
-
-        FPhotometricParameter methodParam = checkDTO.getNewMethodParam();
+        FPhotometricParameter methodParam = new FPhotometricParameter();
+        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+            FMeasureMethod newMethod = fMeasureMethodService.getById(checkDTO.getNewMethodId());
+            methodParam = JSON.parseObject(newMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
+        } else {
+            methodParam = checkDTO.getNewMethodParam();
+        }
 
         String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
         String frontJson = JSON.toJSONString(methodParam, SerializerFeature.SortField);
@@ -416,33 +423,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     //检查参数是否改变，true--未改变，false--改变了
     private boolean checkAnalyzeParam(FPhotometricParameter oldParam, FPhotometricParameter newParam) {
-        List<FPreCountResultParam> oldResult = oldParam.getResultParams();
-        List<FPreCountResultParam> newResult = newParam.getResultParams();
-
-        if (oldResult == null ) {
-            oldResult = new ArrayList<>();
-        }
-        if (newResult == null ) {
-            newResult = new ArrayList<>();
-        }
-
-        if (!oldResult.equals(newResult)) {
-            if (newResult.size() != oldResult.size()) {
-                return false;
-            }
-
-            for (int i = 0; i < oldResult.size(); i++) {
-                FPreCountResultParam oldResultParam = oldResult.get(i);
-                FPreCountResultParam newResultParam = newResult.get(i);
-                if (oldResultParam.equals(newResultParam)) {
-                    continue;
-                }
-                if (!oldResultParam.getFormulaText().equals(newResultParam.getFormulaText())) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return Objects.equals(oldParam.getSampleInputParams(),newParam.getSampleInputParams()) &&
+                Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
+                Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
+                Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
     }
 
 
@@ -450,7 +434,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewPhotometricMethodParamCheckDTO methodDTO) {
 
-        if (methodDTO.getNewMethodParam() == null && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+        if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法或参数");
         }
         if (!StringUtils.hasText(methodDTO.getMeasureType())) {
@@ -968,22 +952,34 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Override
     public Result revokeDel(String taskId, String sampleId) {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
+
+        FTaskHeadSnapshot shot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+
+
         String sampleKey = task.getSampleKey();
+        FMeasureSample newSample = fMeasureSampleService.getById(sampleId);
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(sampleKey, FTaskSpecimen.class);
+        Boolean b = revokeDelSampleNumRepeat(taskSpecimen, newSample);
+        if (!b) {
+            return Result.fail("要恢复的样品编号重复，请处理重复编号后再恢复！");
+        }
+
         for (FTaskSpecimen specimen : taskSpecimen) {
             if (specimen.getSpecimenKey().equals(sampleId)) {
                 specimen.setDeleteType(createType);
-            }
-            LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
-                    .eq(FMeasureData::getTaskId, task.getId())
-                     .orderByDesc(FMeasureData::getSerialNumber);
-            List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
-            if (list != null && !list.isEmpty()) {
-                FMeasureData one = list.get(0);
-                one.setIsDelete(createType);
-                fMeasureDataService.updateById(one);
+                newSample.setHeads(JSON.toJSONString(shot.getSampleHeads()));
+                fMeasureSampleService.updateById(newSample);
+                LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
+                        .eq(FMeasureData::getTaskId, task.getId())
+                        .orderByDesc(FMeasureData::getSerialNumber);
+                List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+                if (list != null && !list.isEmpty()) {
+                    FMeasureData one = list.get(0);
+                    one.setIsDelete(createType);
+                    fMeasureDataService.updateById(one);
+                }
             }
 
         }
@@ -991,6 +987,29 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setSampleKey(jsonString);
 
         return Result.ok(fMeasureTaskService.updateById(task));
+    }
+
+    private Boolean revokeDelSampleNumRepeat(List<FTaskSpecimen> taskSpecimen, FMeasureSample sample) {
+
+        String sampleKind = sample.getSampleKind();
+        List<String> sampleNumList = new ArrayList<>();
+
+        for (FTaskSpecimen specimen : taskSpecimen) {
+
+            if (specimen.getDeleteType().equals(deleteType) || specimen.getSpecimenKey().equals(sample.getId())) {
+                continue;
+            }
+            FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+            if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                sampleNumList.add(measureSample.getSampleNumber());
+            }
+
+        }
+        if (sampleNumList.contains(sample.getSampleNumber())) {
+            return false;
+        }
+        return true;
+
     }
 
     @Override
@@ -2006,10 +2025,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
         String wave = "--";
+        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
         for (String s : waveLength) {
+            Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{photometricParameter.getLuminosity()});
+            devMessageUtil.wavelengthLocate(command, ip);
 
             double v = Double.parseDouble(s);
-            Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
+            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
@@ -2030,8 +2055,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setZeroParam(JSON.toJSONString(list));
 
         fMeasureTaskService.updateById(task);
+        deviceInfoService.releaseDevice(deviceSerialNumber);
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("waveLength", wave);
+        jsonObject.put("waveLength", wave + "nm");
         return Result.ok(jsonObject);
     }
 

@@ -27,6 +27,8 @@ public class FSampleListVo {
     private String sampleId;
     // 分析编号
     private Integer analysisNumber;
+    // 样品位置
+    private String sampleLocation;
     // 颜色
     private String color;
     // 数据

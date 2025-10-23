@@ -44,7 +44,8 @@ public enum SetParamEnum {
     Scan("Scan", "扫描"),
     Measure("Measure","测量"),
     SetWl("SetWl", "设置波长"),
-    GetAccessoryType("GetAccessoryType", "读取样品池类型");
+    GetAccessoryType("GetAccessoryType", "读取样品池类型"),
+    Stop("Stop", "停止");
 
     private final String comId;
     private final String description;

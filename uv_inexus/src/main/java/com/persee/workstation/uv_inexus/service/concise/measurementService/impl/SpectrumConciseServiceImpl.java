@@ -635,6 +635,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
+            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();
@@ -645,6 +646,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_data_id", measureData.getId());
+                wrapper1.last("limit 1");
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
                 analysisData.setIsSave("0");
                 boolean update = fMeasureAnalysisDataService.updateById(analysisData);
@@ -663,6 +665,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
+            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();
@@ -676,6 +679,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_data_id", measureData.getId());
                 wrapper1.eq("is_save","1");
+                wrapper1.last("limit 1");
                 List<FMeasureAnalysisData> measureAnalysisList = fMeasureAnalysisDataService.list(wrapper1);
                 boolean remove = false;
                 if (measureAnalysisList!=null) {
@@ -1120,6 +1124,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
+                    vo.setSampleLocation(sample.getSampleLocation());
                     vo.setAnalysisNumber(1);
                     vo.setColor(null);
                     vo.setData(null);
@@ -1140,6 +1145,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setSampleLocation(sample.getSampleLocation());
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
                     if (measureData.getAnalysisResult() == null) {
@@ -1186,6 +1192,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                         vo.setAnalysisId(null);
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(i + 1);
+                        vo.setSampleLocation(sample.getSampleLocation());
                         vo.setColor(null);
                         vo.setData(null);
                         vo.setDeleteType("0");
@@ -1194,6 +1201,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                         vo.setAnalysisId(measureData.getId());
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                        vo.setSampleLocation(sample.getSampleLocation());
                         vo.setColor(measureData.getColor());
                         if (measureData.getAnalysisResult() == null) {
                             vo.setData(null);
@@ -1643,7 +1651,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         List<FPeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), FPeakValleyMarking.class);
         // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
         for (FPeakValleyMarking marking : list) {
-            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+            if (marking.getX().equals(paramDto.getX())) {
                 marking.setRemark(paramDto.getRemark());
                 break;
             }
@@ -1708,6 +1716,10 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
         if (paramDto.getDistance() == null){
             paramDto.setDistance("1");
+        }
+        Integer i1 = Integer.valueOf(paramDto.getDistance());
+        if (i1<1){
+            return Result.fail("峰谷间距不可以小于1");
         }
         paramDto.setHeight(paramDto.getHeight() / 100);
         FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
@@ -1795,7 +1807,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
         // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
         for (FPeakValleyMarking marking : list) {
-            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+            if (marking.getX().equals(paramDto.getX())) {
                 marking.setRemark(paramDto.getRemark());
                 break;
             }
@@ -1845,33 +1857,38 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
         commands.add(com3);
-        // 波长间隔
+        // 扫描间隔
         Command com4 = new Command();
         com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
         com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
         commands.add(com4);
-        // 扫描速度
+        // 光谱带宽
         Command com5 = new Command();
-        com5.setCmdId(SetParamEnum.SetScanSpeed.getComId());
-        com5.setParams(new Object[]{scanParamInfo.getScanSpeed()});
+        com5.setCmdId(SetParamEnum.SetSlit1.getComId());
+        com5.setParams(new Object[]{scanParamInfo.getSpectralBandwidth()});
         commands.add(com5);
-        // 换灯波长
+        // 扫描速度
         Command com6 = new Command();
-        com6.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
-        com6.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        com6.setCmdId(SetParamEnum.SetScanSpeed.getComId());
+        com6.setParams(new Object[]{scanParamInfo.getScanSpeed()});
         commands.add(com6);
+        // 换灯波长
+        Command com7 = new Command();
+        com7.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
+        com7.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        commands.add(com7);
 
-        if (scanParamInfo.getLuminosity().equals("2")||scanParamInfo.getLuminosity().equals("3")) {
+        if (scanParamInfo.getLuminosity().equals("3")||scanParamInfo.getLuminosity().equals("4")) {
             // 能量灯
-            Command com7 = new Command();
-            com7.setCmdId(SetParamEnum.SetLampPos.getComId());
-            com7.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
-            commands.add(com7);
-            // 增益
             Command com8 = new Command();
-            com8.setCmdId(SetParamEnum.SetGain.getComId());
-            com8.setParams(new Object[]{scanParamInfo.getGain()});
+            com8.setCmdId(SetParamEnum.SetLampPos.getComId());
+            com8.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
             commands.add(com8);
+            // 增益
+            Command com9 = new Command();
+            com9.setCmdId(SetParamEnum.SetGain.getComId());
+            com9.setParams(new Object[]{scanParamInfo.getGain()});
+            commands.add(com9);
         }
 
         R<String> stringR = null;
@@ -1976,7 +1993,8 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                             .eq("sample_key", taskSpeciman.getSpecimenKey())
                             .eq("analysis_type", "5")
                             .eq("is_delete", "0")
-                            .eq("analysis_number", 1));
+                            .eq("analysis_number", 1)
+                            .last("limit 1"));
                     FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                     if (one == null) {
                         one = new FMeasureAnalysisData();
@@ -2164,6 +2182,25 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
         if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
+        }
+        // 根据任务id查询任务数据
+        FMeasureTask task = fMeasureTaskService.getById(paramDto.getTaskId());
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        // 根据任务中的方法key查询方法并且提取方法参数
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+        // 提取方法参数
+        FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        if (spectrumParameter == null) {
+            return Result.fail("方法参数错误");
+        }
+        // 判断光度模式是否是1
+        if (spectrumParameter.getLuminosity().equals("1")){
+            return Result.fail("Abs光度模式不可使用高级运算");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
@@ -2725,9 +2762,8 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             Map<String, Object> map = new HashMap<>();
             if (digit != null) {
                 BigDecimal value = new BigDecimal(split[1]);
-                value = value.setScale(digit, RoundingMode.HALF_UP);
                 map.put("x", split[0]);
-                map.put("y", DataCountUtil.addZero(Double.valueOf(value.stripTrailingZeros().toPlainString()), digit));
+                map.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
             } else {
                 map.put("x", split[0]);
                 map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));

@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.constant;
 
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,12 +39,15 @@ public class Constants {
     public final static Integer INIT_STATUS_SUCCESS = 1;
     public final static Integer INIT_STATUS_FALSE = 2;
     public final static Integer INIT_STATUS_RUNNING = 3;
+    public final static Integer INIT_STATUS_STOP = 4;
     /**
      * 初始化各条目状态值：0-进行中，1-成功，2-失败
      */
-    public final static Integer INIT_TASK_STATUS_ING = 0;
-    public final static Integer INIT_TASK_STATUS_SUCCESS = 1;
-    public final static Integer INIT_TASK_STATUS_FALSE = 2;
+    public final static Integer INIT_TASK_ING = 0;
+    public final static Integer INIT_TASK_SUCCESS = 1;
+    public final static Integer INIT_TASK_FALSE = 2;
+    public final static Integer INIT_TASK_NO = 3;
+    public final static Integer INIT_TASK_STOP = 4;
 
     /**
      * 开机状态：0-未开机，1-开机，2-软关机
@@ -58,6 +62,17 @@ public class Constants {
     public final static Integer CONNECT_DEVICE_ING = 1;
     public final static Integer CONNECT_DEVICE_SUCCESS = 2;
     public final static Integer CONNECT_DEVICE_FALSE = 3;
+
+    /**
+     * 仪器当前状态 0-空闲，1-初始化中，2-测量中，3-回显线程占用中，4其他指令-占用
+     */
+    public final static Integer DEVICE_STATUS_IDLE = 0;
+    public final static Integer DEVICE_STATUS_INIT = 1;
+    public final static Integer DEVICE_STATUS_MEASURE = 2;
+    public final static Integer DEVICE_STATUS_ECHO = 3;
+    public final static Integer DEVICE_STATUS_OTHER = 4;
+
+
 
     public static volatile LocalDateTime startTime=null;
     public static volatile LocalDateTime endTime = null;
@@ -85,6 +100,11 @@ public class Constants {
 
     public static volatile ChangeParam timeChangeparam = new ChangeParam();
 
+    /// 测量状态
+    public static volatile boolean measureStatus = false;
+    /// 占用状态
+    public static volatile boolean occupancyStatus= false;
+
 //    public static volatile List<String> r_data = new ArrayList<>();
 //    public static volatile List<String> s_data = new ArrayList<>();
 //    public static volatile List<String> d_data = new ArrayList<>();
@@ -92,6 +112,9 @@ public class Constants {
     public static volatile List<String> s_data = new ArrayList<>();
     public static volatile List<String> d_data = new ArrayList<>();
     public static volatile List<String> r_data = new ArrayList<>();
+
+    // 时间扫描发送的时间
+    public static volatile List<BigDecimal> sendIntervals = new ArrayList<>();
 
     public static final String EndData = "0D0A,000";
 
@@ -128,5 +151,7 @@ public class Constants {
     * 样品输入参数正则
      */
     public static final Pattern PARAM_PATTERN = Pattern.compile("^[A-Z]{1,2}\\d{1,10}$");
+
+
 
 }
