@@ -215,8 +215,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 if (!initDevice.getSuccess()) {
                     log.info("{}指令初始化异常", cmdId);
                     failDeal(infoPO, recordPO);
-                    infoService.releaseDevice(infoPO.getDeviceSerialNumber());
                     devMessageUtil.setDeviceInitStatus(ip, 1);
+                    infoService.releaseDevice(infoPO.getDeviceSerialNumber());
                     return;
                 }
                 count++;
@@ -327,8 +327,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 po = new DeviceInfoPO();
             }
 
-            if (deviceVO.getIsInited() == 0) {
-                po.setIsInited(0);
+            if (deviceVO.getIsInited() == null || deviceVO.getIsInited() == 0) {
+                po.setIsInited(Constants.INIT_STATUS_NO);
             }
 
             if (po.getIsInited() == null) {
