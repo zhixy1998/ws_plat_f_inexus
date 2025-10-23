@@ -102,6 +102,8 @@ public class Constants {
 
     /// 测量状态
     public static volatile boolean measureStatus = false;
+    /// 占用状态
+    public static volatile boolean occupancyStatus= false;
 
 //    public static volatile List<String> r_data = new ArrayList<>();
 //    public static volatile List<String> s_data = new ArrayList<>();

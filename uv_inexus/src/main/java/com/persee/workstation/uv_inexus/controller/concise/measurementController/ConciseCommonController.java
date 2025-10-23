@@ -162,5 +162,11 @@ public class ConciseCommonController {
         return conciseCommonService.newReportTableDataQuery(taskId, sampleId);
     }
 
+    @GetMapping("isAddSample")
+    @ApiOperation("是否添加样品")
+    public Result isAddSample(@RequestParam String taskId,@RequestParam String deviceSerialNumber) {
+        return conciseCommonService.isAddSample(taskId,deviceSerialNumber);
+    }
+
 
 }

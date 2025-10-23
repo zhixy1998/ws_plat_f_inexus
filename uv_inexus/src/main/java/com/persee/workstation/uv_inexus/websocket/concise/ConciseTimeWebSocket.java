@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
@@ -49,8 +50,13 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private Future<?> future;
     private String ip;
+    private String deviceSerialNumber;
+    private boolean occupancyStatus = false;
 
 
+
+    @Autowired
+    private TimeSweepConciseService timeSweepConciseService;
 
     @Autowired
     private FMeasureTaskService tMeasureTaskService;
@@ -88,6 +94,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     // 当WebSocket连接建立成功时，会调用此方法
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        occupancyStatus = false;
 
         // 将耗时逻辑提交到线程池
         future = executor.submit(() -> {
@@ -96,23 +103,53 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 sessions.put(session.getId(), session);
                 String query = Objects.requireNonNull(session.getUri()).getQuery();
                 String taskId = getQueryParam(query, "taskId");
-                String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+                deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+                String updateBy = getQueryParam(query, "updateBy");
                 if (taskId == null) {
-                    sendAndClose(session, "缺少 taskId 参数");
+                    sendClose(session, "缺少 taskId 参数");
                     return;
                 }
                 if (deviceSerialNumber == null) {
-                    sendAndClose(session, "缺少 deviceSerialNumber 参数");
+                    sendClose(session, "缺少 deviceSerialNumber 参数");
+                    return;
+                }
+                if (updateBy == null) {
+                    sendClose(session, "缺少 updateBy 参数");
                     return;
                 }
                 // 根据任务id查询任务数据
                 FMeasureTask task = tMeasureTaskService.getById(taskId);
+                if (task == null) {
+                    sendClose(session, "任务不存在");
+                    return;
+                }
+
+                //占用仪器
+                R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+                if (!message.getSuccess()) {
+                    sendClose(session, message.getMessage());
+                    return;
+                }
+                occupancyStatus=true;
+
+                /// 设置参数
+                Result result = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+                if (result.getCode() != 200) {
+                    sendAndClose(session, "设置参数失败");
+                    return;
+                }
+
                 // 根据方法id查询方法数据
                 FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+                if (method == null) {
+                    sendAndClose(session, "方法不存在");
+                    return;
+                }
                 // 将方法参数提取出来
                 FTimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
 
-                startTimedTask(session, timeSweepParameter, deviceSerialNumber, task);
+
+                startTimedTask(session, timeSweepParameter, deviceSerialNumber, task,updateBy);
             } catch (Exception e) {
                 e.printStackTrace();
                 sendAndClose(session, "执行异常: " + e.getMessage());
@@ -122,7 +159,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
 
     // 开始定时任务
-    private void startTimedTask(WebSocketSession session, FTimeSweepParamter param, String deviceSerialNumber, FMeasureTask task) {
+    private void startTimedTask(WebSocketSession session, FTimeSweepParamter param, String deviceSerialNumber, FMeasureTask task,String updateBy) {
         // 获取任务的校零参数
         final ChangeParam baselineData = (task.getZeroParam() != null && !task.getZeroParam().equals(""))
                 ? JSON.parseObject(task.getZeroParam(), ChangeParam.class)
@@ -130,6 +167,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
         // 获取任务样品参数
         List<FTaskSpecimen> specimenList = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+
         List<FTaskSpecimen> newSampleData = new ArrayList<>();
         for (FTaskSpecimen taskSpecimen : specimenList) {
             if ("0".equals(taskSpecimen.getDeleteType()) && "0".equals(taskSpecimen.getIsTested())) {
@@ -137,10 +175,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             }
         }
 
-        if (newSampleData.isEmpty() && !specimenList.isEmpty()) {
-            sendAndClose(session, "您的样品已测完,请重新添加样品");
-            return;
-        }
+
 
         ip = deviceInfoService.getIp(deviceSerialNumber);
         // 根据序列号查询对应的附件配置表信息
@@ -190,6 +225,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                         sendAndClose(session, "设置出错");
                         return;
                     }
+                    fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
                     JSONObject object = new JSONObject();
                     object.put("currentPoolNum",sample.getSampleLocation());
                     try {
@@ -532,7 +568,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "更新任务失败");
             return;
         }
-        Constants.measureStatus = true;
 
     }
 
@@ -542,7 +577,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private void exceptionHandling() {
         Constants.startTime = null;
         Constants.endTime = null;
-        Constants.measureStatus = false;
     }
 
 
@@ -552,6 +586,16 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         super.handleTextMessage(session, message);
         // 处理客户端发来的消息
         log.info("收到客户端消息: " + message.getPayload());
+        if (message.getPayload().equals("close")){
+            // 如果线程正在被使用
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
+            log.info("前端关闭");
+            sessions.remove(session.getId());
+            session.close();
+        }
     }
 
     // 当WebSocket连接关闭时，会调用此方法
@@ -565,18 +609,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             scheduler.shutdownNow();  // 强制停止所有任务
             log.info("定时任务已强制停止");
         }
-        if (!Constants.measureStatus){
-            try {
-                R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
-                if (stop.getSuccess()){
-                    log.info("停止成功");
-                }else {
-                    log.info("停止失败");
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
 
         exceptionHandling();
 
@@ -588,6 +620,25 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     }
 
+    /**
+     * 连接异常时触发
+     * @param session
+     * @param exception
+     */
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        sessions.remove(session.getId());
+        try {
+            session.close();
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }
+        System.out.println("连接异常: " + exception.getMessage());
+    }
+
 
     /**
      * 发送消息并关闭连接
@@ -596,9 +647,29 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
+            // 释放设备
+            deviceInfoService.releaseDevice(deviceSerialNumber);
             session.sendMessage(new TextMessage(msg));
             session.close();
         } catch (IOException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+    }
+
+    /**
+     * 发送消息并关闭连接2
+     *
+     * @param session
+     * @param msg
+     */
+    private void sendClose(WebSocketSession session, String msg) {
+        try {
+            session.sendMessage(new TextMessage(msg));
+            sessions.remove(session.getId());
+            session.close();
+        } catch (IOException e) {
+            handleTransportError(session, e);
             Thread.currentThread().interrupt();
             return;
         }

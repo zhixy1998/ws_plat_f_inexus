@@ -72,6 +72,14 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     private String ip;
 
+    private String deviceSerialNumber;
+
+    // 设备占用状态
+    private boolean occupancyStatus = false;
+
+    // 测量状态
+    private boolean measureStatus = false;
+
 
 
 
@@ -102,6 +110,11 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        // 设备占用状态
+        occupancyStatus = false;
+
+        // 测量状态
+        measureStatus = false;
         System.out.println("客户端进入: " + session.getId() + " 时间: " + LocalDateTime.now());
         sessions.put(session.getId(), session);
 
@@ -136,7 +149,56 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
         // 回显
         session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
+
+        if (message.getPayload().equals("close")){
+            // 如果线程正在被使用
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
+            if (measureStatus){
+                try {
+                    R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
+                    if (stop.getSuccess()){
+                        log.info("停止成功");
+                    }else {
+                        log.info("停止失败");
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            Thread thread = taskThreads.get(session.getId());
+            // 强制停止线程
+            thread.interrupt();
+            taskThreads.remove(session.getId());
+            log.info("前端关闭");
+            sessions.remove(session.getId());
+            session.close();
+        }
     }
+
+
+    /**
+     * 连接异常时触发
+     *
+     * @param session
+     * @param exception
+     */
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        sessions.remove(session.getId());
+        try {
+            session.close();
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }
+        System.out.println("连接异常: " + exception.getMessage());
+    }
+
 
 
 
@@ -156,19 +218,19 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         if (future != null) {
             future.cancel(true);
         }
-        if (!Constants.measureStatus){
-            System.err.println("启动停止命令");
-            try {
-                R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
-                if (stop.getSuccess()){
-                    log.info("停止成功");
-                }else {
-                    log.info("停止失败");
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
+//        if (!Constants.measureStatus){
+//            System.err.println("启动停止命令");
+//            try {
+//                R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
+//                if (stop.getSuccess()){
+//                    log.error("停止成功");
+//                }else {
+//                    log.error("停止失败");
+//                }
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
 
         exceptionHandling();
 
@@ -192,14 +254,35 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
-
             session.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
+    }
+
+    /**
+     * 发送消息并关闭连接2
+     *
+     * @param session
+     * @param msg
+     */
+    private void sendClose(WebSocketSession session, String msg) {
+        try {
+            session.sendMessage(new TextMessage(msg));
+            sessions.remove(session.getId());
+            session.close();
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }
     }
 
 
@@ -210,18 +293,28 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String methodId = getQueryParam(query, "methodId");
-        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
 
         if (methodId == null || methodId.equals("")) {
-            sendAndClose(session, "方法编号不能为空");
+            sendClose(session, "方法编号不能为空");
             return;
         }
         if (deviceSerialNumber == null || deviceSerialNumber.equals("")) {
-            sendAndClose(session, "设备编号不能为空");
+            sendClose(session, "设备编号不能为空");
             return;
         }
 
+        //占用仪器
+        R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        if (!message.getSuccess()) {
+            sendClose(session, message.getMessage());
+            return;
+        }
+
+        occupancyStatus = true;
+
         checkInterrupted(session);
+        /// 设置参数
         Result result = spectrumService.setUpParametersPort(methodId, deviceSerialNumber);
         if (result.getCode() != 200) {
             sendAndClose(session, "设置参数失败");
@@ -236,6 +329,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
+        measureStatus = true;
 
         while (true) {
             if (Thread.currentThread().isInterrupted()) {
@@ -266,6 +360,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             // 检查是否结束
             List<String> snapshot = new ArrayList<>(Constants.instrumentData);
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
+                measureStatus = false;
                 break;
             }
 

@@ -56,9 +56,7 @@ import org.springframework.util.StringUtils;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum.QUANTITATIVE_MEASUREMENT;
@@ -1440,7 +1438,124 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
     }
 
+    /**
+     * 是否添加样本
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result isAddSample(String taskId,String deviceSerialNumber) {
 
+        if (StringUtils.isEmpty(taskId)){
+            return Result.fail("任务id不能为空");
+        }
+        if (StringUtils.isEmpty(deviceSerialNumber)){
+            return Result.fail("设备编号不能为空");
+        }
+        // 根据任务id查询任务信息
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        List<FTaskSpecimen> sampleData = com.alibaba.fastjson2.JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (sampleData==null) {
+            // 创建样品
+            FMeasureSample sample = new FMeasureSample();
+            Random random = new Random();
+            int collect = 100 + random.nextInt(900);
+            sample.setSampleName("默认样品"+collect);
+            sample.setSampleNumber("1");
+            // 设置样品位置为当前样品池位置
+            LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+            FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+            if (configPO == null) {
+                return Result.fail("未找到样品池信息");
+            }
+
+            if (configPO.getIsAutoChangePool()){
+                sample.setSampleLocation(configPO.getCurrentPoolNum().toString());
+            }
+
+            boolean save = fMeasureSampleService.save(sample);
+            if (!save) {
+                return Result.fail("创建样品失败");
+            }
+            FTaskSpecimen fTaskSpecimen = new FTaskSpecimen();
+            fTaskSpecimen.setSpecimenKey(sample.getId());
+            fTaskSpecimen.setDeleteType("0");
+            fTaskSpecimen.setIsTested("0");
+            sampleData = new ArrayList<>();
+            sampleData.add(fTaskSpecimen);
+            task.setSampleKey(JSON.toJSONString(sampleData));
+            boolean update = fMeasureTaskService.updateById(task);
+            if (!update) {
+                return Result.fail("更新任务失败");
+            }
+            return Result.ok(true);
+        }
+        boolean status = true;
+        for (FTaskSpecimen fTaskSpecimen : sampleData) {
+            if (fTaskSpecimen.getIsTested().equals("0")&&fTaskSpecimen.getDeleteType().equals("0")) {
+                status = false;
+                break;
+            }
+        }
+        if (status){
+            // 1. 收集所有样品的ID
+            List<String> sampleIds = sampleData.stream()
+                    .map(FTaskSpecimen::getSpecimenKey) // 假设 FTaskSpecimen 是样品的类，getSpecimenKey() 获取样品ID
+                    .collect(Collectors.toList());
+
+            // 2. 查询样品表
+            List<FMeasureSample> samples = fMeasureSampleService.list(new QueryWrapper<FMeasureSample>().in("id", sampleIds));
+
+            // 3. 找到最大的样品编号
+            String maxSampleId = samples.stream()
+                    .map(FMeasureSample::getSampleNumber) // 获取样品编号
+                    .max(Comparator.naturalOrder())        // 获取最大编号
+                    .orElse("0");                         // 如果没有样品，则默认从 "0" 开始
+
+            // 4. 新样品编号 = 最大编号 + 1
+            int newSampleNumber = Integer.parseInt(maxSampleId) + 1;
+
+            // 5. 创建新的样品
+            Random random = new Random();
+            int collect = 100 + random.nextInt(900);
+            LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+            FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+            if (configPO == null) {
+                return Result.fail("未找到样品池信息");
+            }
+            FMeasureSample sample = new FMeasureSample();
+            sample.setSampleName("默认样品" + collect);   // collect 是之前随机生成的字符
+            sample.setSampleNumber(String.valueOf(newSampleNumber)); // 设置新样品编号
+
+            // 6. 设置样品池位置
+            if (configPO.getIsAutoChangePool()){
+                sample.setSampleLocation(configPO.getCurrentPoolNum().toString());
+            }
+
+            // 7. 保存样品
+            boolean save = fMeasureSampleService.save(sample);
+            if (!save) {
+                return Result.fail("创建样品失败");
+            }
+            FTaskSpecimen fTaskSpecimen = new FTaskSpecimen();
+            fTaskSpecimen.setSpecimenKey(sample.getId());
+            fTaskSpecimen.setDeleteType("0");
+            fTaskSpecimen.setIsTested("0");
+            sampleData.add(fTaskSpecimen);
+            task.setSampleKey(com.alibaba.fastjson2.JSON.toJSONString(sampleData));
+            boolean update = fMeasureTaskService.updateById(task);
+            if (!update) {
+                return Result.fail("更新任务失败");
+            }
+            return Result.ok(true);
+        }
+        return Result.ok(false);
+    }
 
 
 }

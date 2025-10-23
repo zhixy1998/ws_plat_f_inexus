@@ -20,6 +20,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
@@ -66,6 +67,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
 
     private String ip;
+    private String deviceSerialNumber;
+    private boolean occupancyStatus = false;
 
 
     @Autowired
@@ -95,12 +98,14 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     @Autowired
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
 
+
     /**
      * 当WebSocket连接建立后调用此方法
      * @param session 当前WebSocket会话，包含连接信息
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        occupancyStatus = false;
         // 打印客户端连接信息，包括会话ID和连接时间
         System.out.println("客户端进入: " + session.getId() + " 时间: " + LocalDateTime.now());
 
@@ -108,7 +113,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         sessions.put(session.getId(), session);
 
         if (Constants.endTime != null||Constants.startTime != null) {
-            sendAndClose(session, "当前测量未结束,无法开启新的测试");
+            sendClose(session, "当前测量未结束,无法开启新的测试");
             return;
         }
 
@@ -116,32 +121,53 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         String taskId = getQueryParam(query, "taskId");
         String sampleId = getQueryParam(query, "sampleId");
         String analysisNumber = getQueryParam(query, "analysisNumber");
-        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        String updateBy = getQueryParam(query, "updateBy");
 
         if (taskId == null) {
-            sendAndClose(session, "缺少 taskId 参数");
+            sendClose(session, "缺少 taskId 参数");
             return;
         }
 
         if (sampleId == null) {
-            sendAndClose(session, "缺少 sampleId 参数");
+            sendClose(session, "缺少 sampleId 参数");
             return;
         }
 
         if (analysisNumber == null) {
-            sendAndClose(session, "缺少 analysisNumber 参数");
+            sendClose(session, "缺少 analysisNumber 参数");
             return;
         }
 
         if (deviceSerialNumber == null) {
-            sendAndClose(session, "缺少 deviceSerialNumber 参数");
+            sendClose(session, "缺少 deviceSerialNumber 参数");
+            return;
+        }
+
+        if (updateBy == null) {
+            sendClose(session, "缺少 updateBy 参数");
             return;
         }
 
         // 根据任务id查询任务数据
         FMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task.getSampleKey()==null||task.getSampleKey().equals("")) {
-            sendAndClose(session, "请先创建样品");
+            sendClose(session, "请先创建样品");
+            return;
+        }
+
+        //占用仪器
+        R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        if (!message.getSuccess()) {
+            sendClose(session, message.getMessage());
+            return;
+        }
+        occupancyStatus = true;
+
+        /// 设置参数
+        Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+        if (result.getCode() != 200) {
+            sendAndClose(session, "设置参数失败");
             return;
         }
 
@@ -185,6 +211,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     sendAndClose(session, "设置出错");
                     return;
                 }
+                fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
                 JSONObject object = new JSONObject();
                 object.put("currentPoolNum",sample.getSampleLocation());
                 try {
@@ -205,7 +232,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             try {
                 Integer number = Integer.valueOf(analysisNumber);
                 doOneMeasurement(session, command, spectrumParameter, task, taskId, sampleId, deviceSerialNumber, ip, number);
-                Constants.measureStatus = true;
                 // 全部完成后再告诉前端 finish
                 JSONObject payload = new JSONObject();
                 payload.put("result", "finish");
@@ -237,6 +263,20 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
         // 回显
         session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
+        if (message.getPayload().equals("close")){
+            // 如果线程正在被使用
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
+            Thread thread = taskThreads.get(session.getId());
+            // 强制停止线程
+            thread.interrupt();
+            taskThreads.remove(session.getId());
+            log.info("前端关闭");
+            sessions.remove(session.getId());
+            session.close();
+        }
     }
 
     /**
@@ -251,18 +291,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         Thread taskThread = taskThreads.remove(session.getId());
         if (taskThread != null) {
             taskThread.interrupt(); // 直接打断子线程
-        }
-        if (!Constants.measureStatus){
-            try {
-                R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
-                if (stop.getSuccess()){
-                    log.info("停止成功");
-                }else {
-                    log.info("停止失败");
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
         }
         sessions.remove(session.getId());
         exceptionHandling(); // 清空公共数据
@@ -279,6 +307,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         sessions.remove(session.getId());
         try {
             session.close();
+            deviceInfoService.releaseDevice(deviceSerialNumber);
         } catch (IOException e) {
             handleTransportError(session, e);
             Thread.currentThread().interrupt();
@@ -787,6 +816,26 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
+            // 释放设备
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+            session.sendMessage(new TextMessage(msg));
+            sessions.remove(session.getId());
+            session.close();
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }
+    }
+
+    /**
+     * 发送消息并关闭连接2
+     *
+     * @param session
+     * @param msg
+     */
+    private void sendClose(WebSocketSession session, String msg) {
+        try {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
             session.close();
@@ -821,7 +870,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         Constants.originalCalculationData.clear();
         Constants.startTime = null;
         Constants.endTime = null;
-        Constants.measureStatus = false;
     }
 
 

@@ -3633,10 +3633,6 @@ public class RationServiceConciseImpl implements RationConciseService {
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
         String wave = "--";
-        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-        if (!r.getSuccess()) {
-            return Result.fail(r.getMessage());
-        }
         for (String s : waveLength) {
 
             double v = Double.parseDouble(s);

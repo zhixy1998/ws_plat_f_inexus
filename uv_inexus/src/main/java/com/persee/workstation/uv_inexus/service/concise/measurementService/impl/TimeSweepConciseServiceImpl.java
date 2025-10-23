@@ -546,6 +546,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
+            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()){
                 return Result.ok();
@@ -556,6 +557,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_data_id", measureData.getId());
+                wrapper1.last("limit 1");
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
                 analysisData.setIsSave("0");
                 boolean update = fMeasureAnalysisDataService.updateById(analysisData);
@@ -574,6 +576,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id",taskId);
             wrapper.eq("is_save","1");
+            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if(measureDataList.isEmpty()){
                 return Result.ok();
@@ -587,6 +590,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_id", measureData.getId());
                 wrapper1.eq("is_save","1");
+                wrapper1.last("limit 1");
                 FMeasureAnalysisData measureAnalysis = fMeasureAnalysisDataService.getOne(wrapper1);
                 for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
                     if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
@@ -1009,6 +1013,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
                     vo.setAnalysisNumber(1);
+                    vo.setSampleLocation(sample.getSampleLocation());
                     vo.setColor(null);
                     vo.setData(null);
                     vo.setDeleteType("0");
@@ -1029,6 +1034,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setSampleLocation(sample.getSampleLocation());
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
                     vo.setData(getSampleData(measureData, digit));
@@ -1474,6 +1480,10 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         if (paramDto.getHeight() == null||paramDto.getHeight().equals("")) {
             paramDto.setHeight(50.0);
+        }
+        Integer i1 = Integer.valueOf(paramDto.getDistance());
+        if (i1<1){
+            return Result.fail("峰谷间距不可以小于1");
         }
         if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
             paramDto.setDistance("1");

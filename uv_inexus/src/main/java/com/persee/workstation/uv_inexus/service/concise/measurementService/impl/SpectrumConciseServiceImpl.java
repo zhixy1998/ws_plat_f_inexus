@@ -635,6 +635,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
+            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();
@@ -645,6 +646,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_data_id", measureData.getId());
+                wrapper1.last("limit 1");
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper1);
                 analysisData.setIsSave("0");
                 boolean update = fMeasureAnalysisDataService.updateById(analysisData);
@@ -663,6 +665,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
             wrapper.eq("task_id", taskId);
             wrapper.eq("is_save", "1");
+            wrapper.last("limit 1");
             List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
             if (measureDataList.isEmpty()) {
                 return Result.ok();
@@ -676,6 +679,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_data_id", measureData.getId());
                 wrapper1.eq("is_save","1");
+                wrapper1.last("limit 1");
                 List<FMeasureAnalysisData> measureAnalysisList = fMeasureAnalysisDataService.list(wrapper1);
                 boolean remove = false;
                 if (measureAnalysisList!=null) {
@@ -1647,7 +1651,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         List<FPeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), FPeakValleyMarking.class);
         // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
         for (FPeakValleyMarking marking : list) {
-            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+            if (marking.getX().equals(paramDto.getX())) {
                 marking.setRemark(paramDto.getRemark());
                 break;
             }
@@ -1712,6 +1716,10 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
         if (paramDto.getDistance() == null){
             paramDto.setDistance("1");
+        }
+        Integer i1 = Integer.valueOf(paramDto.getDistance());
+        if (i1<1){
+            return Result.fail("峰谷间距不可以小于1");
         }
         paramDto.setHeight(paramDto.getHeight() / 100);
         FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
@@ -1799,7 +1807,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
         }
         // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
         for (FPeakValleyMarking marking : list) {
-            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+            if (marking.getX().equals(paramDto.getX())) {
                 marking.setRemark(paramDto.getRemark());
                 break;
             }
@@ -1985,7 +1993,8 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
                             .eq("sample_key", taskSpeciman.getSpecimenKey())
                             .eq("analysis_type", "5")
                             .eq("is_delete", "0")
-                            .eq("analysis_number", 1));
+                            .eq("analysis_number", 1)
+                            .last("limit 1"));
                     FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                     if (one == null) {
                         one = new FMeasureAnalysisData();

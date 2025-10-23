@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.websocket.concise;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -31,9 +32,8 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.websocket.MyWebSocketHandler;
-import org.mybatis.logging.Logger;
-import org.mybatis.logging.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
 @Component
 public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
     // 创建日志记录器，用于记录类中的日志信息
-    private static final Logger log = LoggerFactory.getLogger(MyWebSocketHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(TimingWebSocket.class);
 
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
@@ -68,6 +68,10 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
     private final Map<String, Future<?>> runningTasks = new ConcurrentHashMap<>();
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
+
+    private String deviceSerialNumber;
+
+    private boolean occupancyStatus = false;
 
 
 
@@ -98,6 +102,7 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        occupancyStatus = false;
         System.out.println("客户端进入: " + session.getId() + " 时间: " + LocalDateTime.now());
         sessions.put(session.getId(), session);
 
@@ -128,6 +133,16 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
         // 回显
         session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
+        if (message.getPayload().equals("close")){
+            // 如果线程正在被使用
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
+            log.info("前端关闭");
+            sessions.remove(session.getId());
+            session.close();
+        }
     }
 
     /**
@@ -153,6 +168,26 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 连接异常时触发
+     *
+     * @param session
+     * @param exception
+     */
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        sessions.remove(session.getId());
+        try {
+            session.close();
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }
+        System.out.println("连接异常: " + exception.getMessage());
+    }
+
 
 
     /**
@@ -161,6 +196,25 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
      * @param msg
      */
     private void sendAndClose(WebSocketSession session, String msg) {
+        try {
+            // 释放设备
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+            session.sendMessage(new TextMessage(msg));
+            sessions.remove(session.getId());
+            session.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+
+    /**
+     * 发送消息并关闭连接2
+     * @param session
+     * @param msg
+     */
+    private void sendClose(WebSocketSession session, String msg) {
         try {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
@@ -184,26 +238,34 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String methodId = getQueryParam(query, "methodId");
-        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
 
         if (methodId == null || methodId.equals("")) {
-            sendAndClose(session, "方法编号不能为空");
+            sendClose(session, "方法编号不能为空");
             return;
         }
         if (deviceSerialNumber == null || deviceSerialNumber.equals("")) {
-            sendAndClose(session, "设备编号不能为空");
+            sendClose(session, "设备编号不能为空");
             return;
         }
         FMeasureMethod methodData = tMeasureMethodService.getById(methodId);
         if (methodData == null) {
-            sendAndClose(session, "方法不存在");
+            sendClose(session, "方法不存在");
             return;
         }
         FTimeSweepParamter timeSweepParamter = JSON.parseObject(methodData.getMeasurementParamInfo(), FTimeSweepParamter.class);
         if (timeSweepParamter.getWaveLength() == null || timeSweepParamter.getWaveLength().isEmpty()) {
-            sendAndClose(session, "波长不能为空");
+            sendClose(session, "波长不能为空");
             return;
         }
+
+        //占用仪器
+        R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        if (!message.getSuccess()) {
+            sendClose(session, message.getMessage());
+            return;
+        }
+        occupancyStatus = true;
 
         // 检测中断
         checkInterrupted(session);
