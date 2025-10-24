@@ -32,6 +32,12 @@ public class SystemManageDTO {
     @ApiModelProperty("远程数据访问用户上限")
     private Integer remoteDataAccessNum;
 
+    @ApiModelProperty("物联代理IP配置")
+    private String ipConfiguration;
+
+    @ApiModelProperty("物联代理端口配置")
+    private String portConfiguration;
+
     @ApiModelProperty("仪器使用模式")
     private String deviceUseMode;
 

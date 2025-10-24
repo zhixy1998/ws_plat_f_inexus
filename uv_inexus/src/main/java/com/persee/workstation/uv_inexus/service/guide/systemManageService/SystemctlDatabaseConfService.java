@@ -12,27 +12,35 @@
 
 package com.persee.workstation.uv_inexus.service.guide.systemManageService;
 
-import com.persee.workstation.uv_inexus.dto.systemManageDto.InitSystemConf;
+import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemCustomManageDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemDataBaseVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemManageUserConfVO;
 
 public interface SystemctlDatabaseConfService {
 
+    /**
+     * 数据库配置(维修人员)
+     */
     Boolean saveDatabaseConf(SystemDataBaseConfDTO dto);
 
-    SystemDataBaseVO queryDatabaseConf();
+    /**
+     * 系统配置保存(用户)
+     */
+    Boolean saveCustomDatabaseConf(SystemCustomManageDTO dto);
+
+    /**
+     * 查询系统配置(用户)
+     */
+    SystemManageUserConfVO querySysManageUserConf(String updateBy);
+
+    /**
+     * 查询数据库(维修人员)
+     */
+    SystemDataBaseVO queryDatabaseConf(String updateBy);
 
     Boolean resetDatabaseConf(String updateBy);
 
-    Boolean changeFastLoginSwitch(Boolean switchStatus, String updateBy);
-
-    Result<InitSystemConf> updateSystemDatabaseConf(InitSystemConf initSystemConf);
-
-    Result<InitSystemConf> initSystemConf();
-
-    Result<Boolean> updateAutoTime(Integer autoTime);
-
-    Result<String> getAutoTime();
+    Boolean getDefaultClassicSwitch();
 
 }

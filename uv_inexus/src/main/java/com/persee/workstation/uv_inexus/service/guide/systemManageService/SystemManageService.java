@@ -12,12 +12,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.systemManageService;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemManageDTO;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemManagerConf;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.ConfigVO;
-import com.persee.workstation.uv_inexus.vo.systemManageVo.LongDistanceConfigVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemManageVO;
 
 public interface SystemManageService {
@@ -27,14 +22,8 @@ public interface SystemManageService {
 
     Boolean resetSystemManage(String updateBy);
 
-    Result<String> changeLanguage(String language);
+    Boolean changeLanguage(String language);
 
-    Result<Boolean> setConfiguration(ConfigVO configVO) throws JsonProcessingException;
-
-    Result<Boolean> longDistanceConfig(LongDistanceConfigVO longDistanceConfigVO);
-
-    Result<SystemManagerConf> changeSystemManagerConf(SystemManagerConf systemManagerConf) throws JsonProcessingException;
-
-    Result<SystemManagerConf> getSystemManagerConf() throws JsonProcessingException;
+    String queryLanguage();
 
 }

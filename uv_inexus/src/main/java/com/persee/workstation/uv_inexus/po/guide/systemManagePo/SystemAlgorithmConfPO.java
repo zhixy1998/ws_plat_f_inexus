@@ -37,4 +37,12 @@ public class SystemAlgorithmConfPO extends BasePO {
     @ApiModelProperty("Abs门限系数k")
     @TableField("abs_k")
     private String Abs;
+
+    @ApiModelProperty("峰间距")
+    @TableField("peak_interval")
+    private String peakInterval;
+
+    @ApiModelProperty("峰谷差")
+    @TableField("peak_valley_diff")
+    private String peakValleyDiff;
 }

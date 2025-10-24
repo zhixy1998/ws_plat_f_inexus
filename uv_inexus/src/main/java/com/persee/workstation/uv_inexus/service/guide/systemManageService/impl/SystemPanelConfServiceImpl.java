@@ -14,12 +14,14 @@ package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemPanelConfDAO;
+import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemLoginConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelOrderDTO;
 import com.persee.workstation.uv_inexus.enums.systemManageEnums.SystemManageEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemPanelConfPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemPanelConfService;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemLoginConfVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemPanelConfVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -48,9 +50,11 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
     @Override
     public Boolean savePanelConf(SystemPanelConfDTO dto) {
         SystemPanelConfPO po = dao.selectById(userId);
+        SystemPanelConfPO defaultPO = dao.selectById(defaultId);
 
         if (po == null) {
             po = new SystemPanelConfPO();
+            BeanUtils.copyProperties(defaultPO, po);
             BeanUtils.copyProperties(dto, po);
             po.setId(userId);
             po.setCreateBy(dto.getUpdateBy());
@@ -65,6 +69,11 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
                 panelOrder.add(SystemManageEnum.taskPanel.getName());
             }
             po.setPanelOrder(JSON.toJSONString(panelOrder));
+
+            if (po.getQuickLoginSwitch() == null || !po.getQuickLoginSwitch()){
+                po.setDefaultQuickLogin(false);
+            }
+
             return dao.insert(po) > 0;
         } else {
             BeanUtils.copyProperties(dto, po);
@@ -77,6 +86,10 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
             }
             LinkedHashSet<String> set = dealPanelOrder(panelOrder, po);
             po.setPanelOrder(JSON.toJSONString(new ArrayList<>(set)));
+
+            if (po.getQuickLoginSwitch() == null || !po.getQuickLoginSwitch()){
+                po.setDefaultQuickLogin(false);
+            }
 
             return dao.updateById(po) > 0;
         }
@@ -188,5 +201,32 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
         dao.updateById(po);
 
         return R.ok();
+    }
+
+    @Override
+    public R<Boolean> changeLoginInfo(SystemLoginConfDTO dto) {
+
+        SystemPanelConfDTO confDTO = new SystemPanelConfDTO();
+        BeanUtils.copyProperties(dto, confDTO);
+        Boolean b = this.savePanelConf(confDTO);
+
+        if (b) {
+            return R.ok();
+        } else {
+            return R.fail();
+        }
+    }
+
+    @Override
+    public R<SystemLoginConfVO> queryLoginInfo() {
+        SystemLoginConfVO vo = new SystemLoginConfVO();
+        SystemPanelConfPO po = dao.selectById(userId);
+        SystemPanelConfPO confPO = dao.selectById(defaultId);
+        if (po == null) {
+            BeanUtils.copyProperties(confPO, vo);
+        } else {
+           BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
+        }
+        return R.ok(vo);
     }
 }

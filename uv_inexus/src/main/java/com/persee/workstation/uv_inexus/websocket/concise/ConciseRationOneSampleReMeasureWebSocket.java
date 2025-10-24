@@ -250,22 +250,34 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 rationService.changeStandSampleDataDigit(taskId, digit);
                 rationService.changeUnknowSampleDigit(taskId, digit);
 
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("result", "finish");
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成");
+                session.sendMessage(new TextMessage(message.toJSONString()));
+
                 status = 0;
                 infoService.releaseDevice(deviceSerialNumber);
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
                 session.close();
 
             } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
 
                 rationService.changeUnknowSampleDigit(taskId, digit);
 
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("result", "finish");
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成");
+                session.sendMessage(new TextMessage(message.toJSONString()));
+
                 status = 0;
                 infoService.releaseDevice(deviceSerialNumber);
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
                 session.close();
             } else {
                 log.info("未知的样品种类");
@@ -276,10 +288,16 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
                 session.close();
             }
+
         } catch (Exception e) {
             log.info("连接异常{}", e.getMessage());
+            status = 0;
             infoService.releaseDevice(deviceSerialNumber);
-            sendAndClose(session, "连接异常");
+            sendAndClose(session, "测量出错");
+        } finally {
+            status = 0;
+            infoService.releaseDevice(deviceSerialNumber);
+            session.close();
         }
     }
 

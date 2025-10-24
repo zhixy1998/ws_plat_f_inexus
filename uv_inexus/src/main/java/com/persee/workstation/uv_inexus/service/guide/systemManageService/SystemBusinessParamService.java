@@ -13,11 +13,21 @@
 package com.persee.workstation.uv_inexus.service.guide.systemManageService;
 
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemBusinessParamDTO;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAutoLogoutConfVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemManageMeasureConfVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemStandCurveConfVO;
 
 public interface SystemBusinessParamService {
 
     SystemBusinessParamVO queryBusinessParam();
+
+    R<SystemManageMeasureConfVO> queryMeasureConf();
+
+    R<SystemStandCurveConfVO> queryStandCurveConf();
+
+    R<SystemAutoLogoutConfVO> queryAutoLogoutConf();
 
     Boolean saveBusinessParam(SystemBusinessParamDTO dto);
 

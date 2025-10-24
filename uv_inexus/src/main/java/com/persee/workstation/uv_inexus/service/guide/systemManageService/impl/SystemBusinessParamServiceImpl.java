@@ -14,9 +14,13 @@ package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemBusinessParamDAO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemBusinessParamDTO;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemBusinessParamPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAutoLogoutConfVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemManageMeasureConfVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemStandCurveConfVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
@@ -53,6 +57,42 @@ public class SystemBusinessParamServiceImpl implements SystemBusinessParamServic
         }
 
         return vo;
+    }
+
+    @Override
+    public R<SystemManageMeasureConfVO> queryMeasureConf() {
+        SystemBusinessParamPO po = dao.selectById(userId);
+        SystemBusinessParamPO defPo = dao.selectById(defaultId);
+        SystemManageMeasureConfVO vo = new SystemManageMeasureConfVO();
+        BeanUtils.copyProperties(defPo, vo);
+        if (po != null) {
+            BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
+        }
+        return R.ok(vo);
+    }
+
+    @Override
+    public R<SystemStandCurveConfVO> queryStandCurveConf() {
+        SystemBusinessParamPO po = dao.selectById(userId);
+        SystemBusinessParamPO defPo = dao.selectById(defaultId);
+        SystemStandCurveConfVO vo = new SystemStandCurveConfVO();
+        BeanUtils.copyProperties(defPo, vo);
+        if (po != null) {
+            BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
+        }
+        return R.ok(vo);
+    }
+
+    @Override
+    public R<SystemAutoLogoutConfVO> queryAutoLogoutConf() {
+        SystemBusinessParamPO po = dao.selectById(userId);
+        SystemBusinessParamPO defPo = dao.selectById(defaultId);
+        SystemAutoLogoutConfVO vo = new SystemAutoLogoutConfVO();
+        BeanUtils.copyProperties(defPo, vo);
+        if (po != null) {
+            BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
+        }
+        return R.ok(vo);
     }
 
     private static String[] getNullPropertyNames(Object source) {

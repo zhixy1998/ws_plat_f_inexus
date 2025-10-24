@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.po.guide.systemManagePo;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
+import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,20 +23,32 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("t_system_business_param")
+@ApiModel("系统业务参数")
 public class SystemBusinessParamPO extends BasePO {
 
-    @ApiModelProperty("峰间距")
-    @TableField("peak_interval")
-    private String peakInterval;
+    @ApiModelProperty("标准曲线配置, 1-显示R,2-显示R2")
+    @TableField("standard_curve_conf")
+    private String standardCurveConf;
 
-    @ApiModelProperty("峰谷差")
-    @TableField("peak_valley_diff")
-    private String peakValleyDiff;
+    @ApiModelProperty("显示已删除")
+    @TableField("show_deleted")
+    private Boolean showDeleted;
 
+    @ApiModelProperty("显示样品测量时间")
+    @TableField("show_measure_time")
+    private Boolean showMeasureTime;
+
+    @ApiModelProperty("自动保存开关")
+    @TableField("auto_save_switch")
+    private Boolean autoSaveSwitch;
 
     @ApiModelProperty("自动保存间隔")
     @TableField("auto_save_time")
     private String autoSaveTime;
+
+    @ApiModelProperty("自动登出开关")
+    @TableField("auto_leave_switch")
+    private Boolean autoLeaveSwitch;
 
     @ApiModelProperty("自动登出时间")
     @TableField("auto_leave_time")

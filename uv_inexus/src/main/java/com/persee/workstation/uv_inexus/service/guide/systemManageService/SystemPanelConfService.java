@@ -12,9 +12,11 @@
 
 package com.persee.workstation.uv_inexus.service.guide.systemManageService;
 
+import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemLoginConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelOrderDTO;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemLoginConfVO;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemPanelConfVO;
 
 import java.util.List;
@@ -29,4 +31,8 @@ public interface SystemPanelConfService {
     List<String> queryPanelOrder();
 
     R<Boolean> savePanelOrder(SystemPanelOrderDTO dto);
+
+    R<Boolean> changeLoginInfo(SystemLoginConfDTO dto);
+
+    R<SystemLoginConfVO> queryLoginInfo();
 }

@@ -511,9 +511,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     reCountUnknowSampleData(session, testUnknowSample, taskId, fittingReceiveInfo, parameter);
                 }
 
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成");
+                session.sendMessage(new TextMessage(message.toJSONString()));
+
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("result", "finish");
-
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
             } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
@@ -731,16 +734,16 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 }
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
                 tMeasureTaskService.updateById(task);
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成");
+                session.sendMessage(new TextMessage(message.toJSONString()));
 
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("result", "finish");
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             } else {
                 log.info("未知的样品种类");
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("result", "finish");
-                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
-
+                sendAndClose(session, "未知的样品种类");
             }
         } catch (Exception e) {
             log.error("出现异常：{}", e.getMessage());

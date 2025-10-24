@@ -276,7 +276,7 @@ public static Double formatValue(Integer digit, Double value) {
     /**
      * 修约到指定小数位数（重新实现，确保精度）
      */
-    private static BigDecimal roundToDecimalPlaces(BigDecimal value, int decimalPlaces) {
+    public static BigDecimal roundToDecimalPlaces(BigDecimal value, int decimalPlaces) {
         if (decimalPlaces < 0) return value;
 
         // 使用BigDecimal确保精度
@@ -365,7 +365,7 @@ public static Double formatValue(Integer digit, Double value) {
     // 测试方法
     public static void main(String[] args) {
         System.out.println("=== 重点测试12.0000055 ===");
-//        System.out.println("12.0085000 修约到3位小数: " + formatValue(3, -12.0085000)); // 应得12.000006
+        System.out.println("12.35 修约到3位小数: " + formatValue(-3, 12.35000)); // 应得12.000006
 //        System.out.println("12.0055000 修约到5位小数: " + formatValue(3, -12.0055000)); // 应得12.00001
 //        System.out.println("12.0000055 修约到4位小数: " + formatValue(4, 12.0000055)); // 应得12.0000
 //        Double v = formatValue(4, 12.0000055);

@@ -361,6 +361,10 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         task.setDeviceSerialNumber(deviceSerialNumber);
         tMeasureTaskService.updateById(task);
 
+        JSONObject message = new JSONObject();
+        message.put("success", "测量完成");
+        session.sendMessage(new TextMessage(message.toJSONString()));
+
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("result", "finish");
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
@@ -944,7 +948,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
-            session.sendMessage(new TextMessage(msg));
+            JSONObject message = new JSONObject();
+            message.put("error", msg);
+            session.sendMessage(new TextMessage(message.toJSONString()));
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("result", "finish");
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));

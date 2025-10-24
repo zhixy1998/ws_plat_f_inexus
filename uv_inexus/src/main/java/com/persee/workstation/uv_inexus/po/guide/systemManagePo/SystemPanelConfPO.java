@@ -42,17 +42,20 @@ public class SystemPanelConfPO extends BasePO {
     @TableField(value = "panel_order")
     private String panelOrder;
 
+    @ApiModelProperty("启用快捷登录")
+    @TableField(value = "quick_login_switch")
+    private Boolean quickLoginSwitch;
 
-    @ApiModelProperty("默认进入经典模式")
-    @TableField("classic_Switch")
-    private Boolean classicSwitch;
+    @ApiModelProperty("默认选中快捷登录，true-选中")
+    @TableField(value = "default_quick_login")
+    private Boolean defaultQuickLogin;
 
-    @ApiModelProperty("自动保存开关")
-    @TableField("auto_save_switch")
-    private Boolean autoSaveSwitch;
+    @ApiModelProperty("自动开机")
+    @TableField(value = "is_auto_boot")
+    private Boolean isAutoBoot;
 
-    @ApiModelProperty("自动保存间隔")
-    @TableField("auto_save_interval")
-    private Integer autoSaveInterval;
+    @ApiModelProperty("自动进入实验测试")
+    @TableField(value = "is_auto_enter_experiment")
+    private Boolean isAutoEnterExperiment;
 
 }

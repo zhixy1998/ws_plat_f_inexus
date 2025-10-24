@@ -29,12 +29,15 @@ public class SystemPanelConfDTO {
     @ApiModelProperty(value = "用户")
     private String updateBy;
 
-    @ApiModelProperty("默认进入经典模式")
-    private Boolean classicSwitch;
+    @ApiModelProperty("启用快捷登录")
+    private Boolean quickLoginSwitch;
 
-    @ApiModelProperty("自动保存开关")
-    private Boolean autoSaveSwitch;
+    @ApiModelProperty("默认选中快捷登录，true-选中")
+    private Boolean defaultQuickLogin;
 
-    @ApiModelProperty("自动保存间隔")
-    private Integer autoSaveInterval;
+    @ApiModelProperty("自动开机")
+    private Boolean isAutoBoot;
+
+    @ApiModelProperty("自动进入实验测试")
+    private Boolean isAutoEnterExperiment;
 }

@@ -12,7 +12,6 @@
 
 package com.persee.workstation.uv_inexus.dto.systemManageDto;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -22,12 +21,8 @@ public class SystemDataBaseConfDTO {
     @ApiModelProperty("全局端口")
     private String globalPort;
 
-    @ApiModelProperty("自动进入测量开关")
-    @TableField(value = "auto_measure")
-    private Boolean autoMeasure;
-
-    @ApiModelProperty("快捷登录开关")
-    private Boolean fastLoginSwitch;
+    @ApiModelProperty("默认进入经典模式")
+    private Boolean defaultEnterClassic;
 
     @ApiModelProperty("主数据库ip")
     private String mainDatabaseIp;

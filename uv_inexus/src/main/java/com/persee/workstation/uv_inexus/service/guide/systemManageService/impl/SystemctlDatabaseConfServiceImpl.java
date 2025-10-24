@@ -13,13 +13,12 @@
 package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemDatabaseConfDAO;
-import com.persee.workstation.uv_inexus.dto.systemManageDto.InitSystemConf;
+import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemCustomManageDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemDataBaseConfDTO;
-import com.persee.workstation.uv_inexus.enums.systemManageEnums.AutoTimeEnum;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemDatabaseConfPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemctlDatabaseConfService;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemDataBaseVO;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemManageUserConfVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
@@ -50,24 +49,64 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
 
         SystemDatabaseConfPO po = dao.selectById(userId);
 
+
         if (po == null) {
             po = new SystemDatabaseConfPO();
+            SystemDatabaseConfPO defaultPo = dao.selectById(defaultId);
+            BeanUtils.copyProperties(defaultPo, po);
 
             BeanUtils.copyProperties(dto, po);
 
             po.setId(userId);
             po.setCreateBy(dto.getUpdateBy());
+            po.setUpdateBy(dto.getUpdateBy());
 
             return dao.insert(po) > 0;
         } else {
             BeanUtils.copyProperties(dto, po);
             po.setId(userId);
+            po.setUpdateBy(dto.getUpdateBy());
             return dao.updateById(po) > 0;
         }
     }
 
     @Override
-    public SystemDataBaseVO queryDatabaseConf() {
+    public Boolean saveCustomDatabaseConf(SystemCustomManageDTO dto) {
+        SystemDatabaseConfPO po = dao.selectById(userId);
+        if (po == null) {
+            po = new SystemDatabaseConfPO();
+            SystemDatabaseConfPO defaultPo = dao.selectById(defaultId);
+            BeanUtils.copyProperties(defaultPo, po);
+            BeanUtils.copyProperties(dto, po);
+
+            po.setId(userId);
+            po.setCreateBy(dto.getUpdateBy());
+            po.setUpdateBy(dto.getUpdateBy());
+
+            return dao.insert(po) > 0;
+        } else {
+            BeanUtils.copyProperties(dto, po);
+            po.setId(userId);
+            po.setUpdateBy(dto.getUpdateBy());
+            return dao.updateById(po) > 0;
+        }
+    }
+
+    @Override
+    public SystemManageUserConfVO querySysManageUserConf(String updateBy) {
+
+        SystemDatabaseConfPO userDataPO = dao.selectById(userId);
+        SystemDatabaseConfPO confPO = dao.selectById(defaultId);
+        SystemManageUserConfVO vo = new SystemManageUserConfVO();
+
+        BeanUtils.copyProperties(confPO, vo);
+        if (userDataPO != null) {
+            BeanUtils.copyProperties(userDataPO, vo, getNullPropertyNames(userDataPO));
+        }
+        return vo;
+    }
+    @Override
+    public SystemDataBaseVO queryDatabaseConf(String updateBy) {
 
         SystemDatabaseConfPO userDataPO = dao.selectById(userId);
         SystemDatabaseConfPO confPO = dao.selectById(defaultId);
@@ -102,70 +141,16 @@ public class SystemctlDatabaseConfServiceImpl implements SystemctlDatabaseConfSe
         return true;
     }
 
+
     @Override
-    public Boolean changeFastLoginSwitch(Boolean switchStatus, String updateBy) {
+    public Boolean getDefaultClassicSwitch() {
         SystemDatabaseConfPO po = dao.selectById(userId);
-        if (po == null) {
-            po = new SystemDatabaseConfPO();
-            po.setId(userId);
-            po.setCreateBy(updateBy);
-            po.setUpdateBy(updateBy);
-            po.setFastLoginSwitch(switchStatus);
-            return dao.insert(po) > 0;
+        SystemDatabaseConfPO defaultPo = dao.selectById(defaultId);
+        if (po != null && po.getDefaultEnterClassic() != null) {
+            return po.getDefaultEnterClassic();
         } else {
-            po.setUpdateBy(updateBy);
-            po.setFastLoginSwitch(switchStatus);
-            return dao.updateById(po) > 0;
+            return defaultPo.getDefaultEnterClassic();
         }
     }
-
-    public Result<InitSystemConf> updateSystemDatabaseConf(InitSystemConf initSystemConf) {
-
-        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
-        if (systemDatabaseConfPO != null) {
-            BeanUtils.copyProperties(initSystemConf, systemDatabaseConfPO);
-            dao.updateById(systemDatabaseConfPO);
-            return Result.ok(initSystemConf);
-        }
-        return Result.fail();
-
-    }
-
-    public Result<InitSystemConf> initSystemConf() {
-        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
-        if (systemDatabaseConfPO != null) {
-            InitSystemConf initSystemConf = new InitSystemConf();
-            BeanUtils.copyProperties(systemDatabaseConfPO,initSystemConf);
-            return Result.ok(initSystemConf);
-        }
-        return Result.fail();
-
-    }
-
-    @Override
-    public Result<Boolean> updateAutoTime(Integer autoTime) {
-        String byTimeEnum = AutoTimeEnum.getByTimeEnum(autoTime);
-        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
-        if (systemDatabaseConfPO != null) {
-            SystemDatabaseConfPO systemDatabaseConf = new SystemDatabaseConfPO();
-            BeanUtils.copyProperties(systemDatabaseConfPO, systemDatabaseConf);
-            systemDatabaseConf.setAutoSaveTime(byTimeEnum);
-            int i = dao.updateById(systemDatabaseConf);
-            if (i == 0) {
-                return Result.fail(false);
-            }
-        }
-        return Result.ok(true);
-    }
-
-    @Override
-    public Result<String> getAutoTime() {
-        SystemDatabaseConfPO systemDatabaseConfPO = dao.selectById("00000000");
-        if (systemDatabaseConfPO == null) {
-            return Result.fail();
-        }
-        return Result.ok(systemDatabaseConfPO.getAutoSaveTime());
-    }
-
 
 }

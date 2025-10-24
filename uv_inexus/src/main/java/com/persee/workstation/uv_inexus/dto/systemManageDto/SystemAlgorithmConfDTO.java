@@ -27,6 +27,12 @@ public class SystemAlgorithmConfDTO {
     @ApiModelProperty("Abs门限系数k")
     private String Abs;
 
+    @ApiModelProperty("峰间距")
+    private String peakInterval;
+
+    @ApiModelProperty("峰谷差")
+    private String peakValleyDiff;
+
     @ApiModelProperty(value = "用户")
     private String updateBy;
 }
