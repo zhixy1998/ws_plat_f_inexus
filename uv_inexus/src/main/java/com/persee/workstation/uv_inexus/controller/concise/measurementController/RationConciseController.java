@@ -114,6 +114,12 @@ public class RationConciseController {
         return rationService.revokeDel(taskId, sampleId);
     }
 
+    @GetMapping("saveTask")
+    @ApiOperation("保存任务接口")
+    public Result<Boolean> saveTask(@RequestParam String taskId, @RequestParam String updateBy){
+        return rationService.saveButton(taskId, updateBy);
+    }
+
     @GetMapping("getStandTableHead")
     @ApiOperation("获取标准样品表头信息接口")
     public Result<List<FHeadVO>> getTableHead(@RequestParam String taskId,

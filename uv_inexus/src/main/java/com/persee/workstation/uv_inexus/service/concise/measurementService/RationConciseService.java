@@ -90,6 +90,10 @@ public interface RationConciseService {
      */
     Result<FRationMethodParam> queryMethodParam(String methodId);
     /**
+     * 保存按钮
+     */
+    Result<Boolean> saveButton(String taskId, String updateBy);
+    /**
      *  查询表格头
      */
     Result<List<FHeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);

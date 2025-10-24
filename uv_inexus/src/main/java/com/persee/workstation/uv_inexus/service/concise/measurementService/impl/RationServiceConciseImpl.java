@@ -127,10 +127,10 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Value("0")
     private String createType;
 
-    @Value("0")
+    @Value("1")
     String noSave;
 
-    @Value("1")
+    @Value("0")
     String saved;
 
     @Value("0")
@@ -227,10 +227,14 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!StringUtils.hasText(methodId)) {
             return Result.fail("请选择方法");
         }
-
-        if (StringUtils.hasText(taskId) && isSave) {
-            saveData(taskId);
+        FMeasureTask oldTask = null;
+        if (StringUtils.hasText(taskId) ) {
+            oldTask = fMeasureTaskService.getById(taskId);
+            if (isSave) {
+                saveData(taskId);
+            }
         }
+
 
         SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String userId = sysUserPO.getId();
@@ -245,20 +249,24 @@ public class RationServiceConciseImpl implements RationConciseService {
         task.setCreateTime(LocalDateTime.now());
         task.setEndSaveTime(LocalDateTime.now());
 
-        List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
-        List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
+        if (oldTask != null && StringUtils.hasText(oldTask.getTableInfo())) {
+            task.setTableInfo(oldTask.getTableInfo());
+        } else {
+            List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+            List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
 
-        FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
+            FRationTaskHeadSnapShot rationTaskHeadSnapShot = new FRationTaskHeadSnapShot();
 
-        FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
-        standSnapshot.setSampleHeads(standHead);
-        rationTaskHeadSnapShot.setStandHead(standSnapshot);
+            FTaskHeadSnapshot standSnapshot = new FTaskHeadSnapshot();
+            standSnapshot.setSampleHeads(standHead);
+            rationTaskHeadSnapShot.setStandHead(standSnapshot);
 
-        FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
-        unKnowSnapshot.setSampleHeads(unknownHead);
-        rationTaskHeadSnapShot.setUnknownHead(unKnowSnapshot);
+            FTaskHeadSnapshot unKnowSnapshot = new FTaskHeadSnapshot();
+            unKnowSnapshot.setSampleHeads(unknownHead);
+            rationTaskHeadSnapShot.setUnknownHead(unKnowSnapshot);
 
-        task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
+            task.setTableInfo(JSON.toJSONString(rationTaskHeadSnapShot));
+        }
 
         boolean save = fMeasureTaskService.save(task);
         FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
@@ -1539,6 +1547,25 @@ public class RationServiceConciseImpl implements RationConciseService {
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());
         return Result.ok(param);
+    }
+
+    @Override
+    public Result<Boolean> saveButton(String taskId, String updateBy) {
+
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail("未创建任务，无法保存");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
+        }
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+        String id = po.getId();
+        task.setUserId(id);
+        task.setIsDelete("1");
+        fMeasureTaskService.updateById(task);
+        saveData(taskId);
+        return Result.ok(true);
     }
 
     //标准样品表头
@@ -2822,9 +2849,16 @@ public class RationServiceConciseImpl implements RationConciseService {
                     String countValue = null;
                     String measureValue;
 
+                    LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(FMeasureData::getTaskId, taskId)
+                            .eq(FMeasureData::getSampleKey, sample.getId())
+                            .orderByDesc(FMeasureData::getSerialNumber).last("limit 1");
+                    FMeasureData data = fMeasureDataService.getOne(queryWrapper);
+
                     LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
                     analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
                             .eq(FMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
+                            .eq(FMeasureAnalysisData::getMeasureDataId, data.getId())
                             .orderByDesc(FMeasureAnalysisData::getDataVersion)
                             .last("limit 1");
                     FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);

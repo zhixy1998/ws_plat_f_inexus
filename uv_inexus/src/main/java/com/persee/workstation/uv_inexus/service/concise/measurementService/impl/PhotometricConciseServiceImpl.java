@@ -272,9 +272,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (!StringUtils.hasText(methodId)) {
             return Result.fail("请选择方法");
         }
-
-        if (StringUtils.hasText(taskId) && isSave) {
-            saveData(taskId);
+        FMeasureTask oldTask = null;
+        if (StringUtils.hasText(taskId)) {
+            oldTask = fMeasureTaskService.getById(taskId);
+            if (isSave) {
+                saveData(taskId);
+            }
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
@@ -295,11 +298,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setCreateTime(LocalDateTime.now());
         List<FTaskSpecimen> samples = new ArrayList<>();
         task.setSampleKey(JSON.toJSONString(samples));
+        if (oldTask != null && StringUtils.hasText(oldTask.getTableInfo())) {
+            task.setTableInfo(oldTask.getTableInfo());
+        } else {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+            FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
+            snapshot.setSampleHeads(preHead);
+            task.setTableInfo(JSON.toJSONString(snapshot));
+        }
 
-        List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
-        FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();
-        snapshot.setSampleHeads(preHead);
-        task.setTableInfo(JSON.toJSONString(snapshot));
+
 
         boolean save = fMeasureTaskService.save(task);
         FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
@@ -2075,6 +2083,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setUserId(id);
         task.setIsDelete("1");
         fMeasureTaskService.updateById(task);
+        saveData(taskId);
         return Result.ok(true);
     }
 
