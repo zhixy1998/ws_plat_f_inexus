@@ -2854,6 +2854,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                             .eq(FMeasureData::getSampleKey, sample.getId())
                             .orderByDesc(FMeasureData::getSerialNumber).last("limit 1");
                     FMeasureData data = fMeasureDataService.getOne(queryWrapper);
+                    if (data == null) {
+                        continue;
+                    }
 
                     LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
                     analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
@@ -3333,6 +3336,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             specimen.setIsTested(tested);
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setFittingParam("{}");
 
         //拟合曲线
         R<FittingReceiveInfo> infoR = fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
