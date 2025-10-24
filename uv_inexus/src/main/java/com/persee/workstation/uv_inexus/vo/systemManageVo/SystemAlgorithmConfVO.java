@@ -19,13 +19,13 @@ import lombok.Data;
 public class SystemAlgorithmConfVO {
 
     @ApiModelProperty("透过率门限系数k")
-    private String Transmittance;
+    private String transmittance;
 
     @ApiModelProperty("积分球门限系数k")
-    private String IntegratingSphere;
+    private String integratingSphere;
 
     @ApiModelProperty("Abs门限系数k")
-    private String Abs;
+    private String abs;
 
     @ApiModelProperty("峰间距")
     private String peakInterval;
