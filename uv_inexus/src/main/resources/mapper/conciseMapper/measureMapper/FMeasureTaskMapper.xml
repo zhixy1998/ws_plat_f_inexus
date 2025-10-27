@@ -35,7 +35,4 @@
             and sample_kind = #{sample_kind}
         </if>
     </select>
-    <select id="countByMethodKey" resultType="java.lang.Integer">
-        select count(1) from t800_uv_inexus_concise.f_t_measure_task where method_key = #{methodKey}
-    </select>
 </mapper>
