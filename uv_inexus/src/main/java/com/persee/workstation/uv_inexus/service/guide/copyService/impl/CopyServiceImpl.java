@@ -26,13 +26,10 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeas
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureSampleService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
 import com.persee.workstation.uv_inexus.service.guide.copyService.CopyService;
-import org.ehcache.core.util.CollectionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
 import java.util.List;
-import java.util.UUID;
 
 
 @Service
@@ -56,9 +53,10 @@ public class CopyServiceImpl implements CopyService {
              * 复制任务
              */
             FMeasureTask task = fMeasureTaskService.getById(taskId);
-            //自定义任务的ID
-            String uuid = UUID.randomUUID().toString().replace("-", "");
-            task.setId(uuid);
+                task.setId(null);
+                task.setTaskName(taskName);
+                fMeasureTaskService.save(task);
+
 
             /*
              * 复制样品
@@ -68,69 +66,27 @@ public class CopyServiceImpl implements CopyService {
             taskSpecimen.forEach(sample ->{
                 String specimenKey = sample.getSpecimenKey();
                 FMeasureSample newSample = fMeasureSampleService.getById(specimenKey);
-                //保存样本数据，生成新的样本ID
                 newSample.setId(null);
                 fMeasureSampleService.save(newSample);
-
-                //进行数据复制
-                LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(FMeasureData::getTaskId, taskId);
-                queryWrapper.eq(FMeasureData::getSampleKey, specimenKey);
-                List<FMeasureData> fMeasureDataList = fMeasureDataService.list(queryWrapper);
-
-                //构建新的数据list
-                if (!CollectionUtils.isEmpty(fMeasureDataList)) {
-                    fMeasureDataList.forEach(m -> {
-                        m.setId(null);
-                        m.setTaskId(task.getId());
-                        //数据拿到新的样本ID进行关联
-                        m.setSampleKey(newSample.getId());
-                    });
-                }
-                fMeasureDataService.saveBatch(fMeasureDataList);
-
-                LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
-                queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
-                queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
-                List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
-                if (!CollectionUtils.isEmpty(fMeasureAnalysisDataList)) {
-                    fMeasureAnalysisDataList.forEach(analysisData -> {
-                        analysisData.setId(null);
-                        analysisData.setTaskId(task.getId());
-                        analysisData.setSampleKey(newSample.getId());
-                    });
-                    fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
-                }
-                //新的样本ID生成并赋值给json，用于任务表中的样本关联字段
-                sample.setSpecimenKey(newSample.getId());
                     }
             );
-
-//            task.setId(null);
-            task.setTaskName(taskName);
-            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-            fMeasureTaskService.save(task);
-
-//            /*
-//             * 复制数据
-//             */
-//            LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-//            queryWrapper.eq(FMeasureData::getTaskId, taskId);
-//            queryWrapper.eq(FMeasureData::getSampleKey, sampleKey);
-//            List<FMeasureData> fMeasureDataList = fMeasureDataService.list(queryWrapper);
-//            for (FMeasureData fMeasureData : fMeasureDataList) {
-//                fMeasureData.setId(null);
-//                fMeasureData.setTaskId(task.getId());
-//                fMeasureDataService.save(fMeasureData);
-//            }
-//            LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
-//            queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
-//            List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
-//            for (FMeasureAnalysisData fMeasureAnalysisData : fMeasureAnalysisDataList) {
-//                fMeasureAnalysisData.setId(null);
-//                fMeasureAnalysisData.setTaskId(task.getId());
-//                fMeasureAnalysisDataService.save(fMeasureAnalysisData);
-//            }
+            /*
+             * 复制数据
+             */
+            LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(FMeasureData::getTaskId, taskId);
+            List<FMeasureData> fMeasureDataList = fMeasureDataService.list(queryWrapper);
+            for (FMeasureData fMeasureData : fMeasureDataList) {
+                fMeasureData.setId(null);
+                fMeasureDataService.save(fMeasureData);
+            }
+            LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
+            queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
+            List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
+            for (FMeasureAnalysisData fMeasureAnalysisData : fMeasureAnalysisDataList) {
+                fMeasureAnalysisData.setId(null);
+                fMeasureAnalysisDataService.save(fMeasureAnalysisData);
+            }
             return Result.ok("拷贝成功");
 
         } catch (Exception e) {

@@ -66,8 +66,4 @@ public interface ConciseCommonService {
 
     // 是否添加样品
     Result isAddSample(String taskId,String deviceSerialNumber);
-    //删除方法
-    Result<String> delMethod(String methodId);
-
-    Result delTask(String taskId);
 }

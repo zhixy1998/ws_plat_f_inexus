@@ -51,7 +51,6 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepRepo
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.text.DecimalFormat;
@@ -1556,32 +1555,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.ok(true);
         }
         return Result.ok(false);
-    }
-
-    @Override
-    public Result delMethod(String methodId) {
-        if (!StringUtils.hasText(methodId)) {
-            return Result.fail("参数不能为空");
-        }
-        QueryWrapper<FMeasureTask> wrapper = new QueryWrapper<>();
-        wrapper.eq("method_key", methodId);
-        wrapper.eq("is_delete", "0");
-        wrapper.last("LIMIT 1");
-        FMeasureTask task = fMeasureTaskService.getOne(wrapper,false);
-        if (!ObjectUtils.isEmpty(task)){
-            return Result.fail("存在与该历史方法相关联的历史文件，请删除关联历史文件之后进行方法删除！！！");
-        }
-        boolean b = fMeasureMethodService.removeById(methodId);
-        if (!b) {
-            return Result.fail("更新任务失败");
-        }
-        return Result.ok(true);
-    }
-
-    @Override
-    public Result delTask(String  taskId) {
-        boolean b=fMeasureTaskService.delTask(taskId);
-        return Result.ok(true);
     }
 
 

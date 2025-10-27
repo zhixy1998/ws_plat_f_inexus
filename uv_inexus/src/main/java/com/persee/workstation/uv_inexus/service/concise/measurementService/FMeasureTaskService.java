@@ -23,6 +23,5 @@ public interface FMeasureTaskService extends IService<FMeasureTask> {
 
     boolean save(FMeasureTask entity);
 
-    boolean delTask(String taskId);
 }
 
