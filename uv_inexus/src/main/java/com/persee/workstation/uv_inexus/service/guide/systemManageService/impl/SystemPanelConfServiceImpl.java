@@ -97,17 +97,17 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
 
     private static LinkedHashSet<String> dealPanelOrder(List<String> panelOrder, SystemPanelConfPO po) {
         LinkedHashSet<String> set = new LinkedHashSet<>(panelOrder);
-        if (po.getProjectStatisticsSwitch()) {
+        if (po.getProjectStatisticsSwitch() != null && po.getProjectStatisticsSwitch()) {
             set.add(SystemManageEnum.projectPanel.getName());
         } else {
             set.remove(SystemManageEnum.projectPanel.getName());
         }
-        if (po.getMethodListSwitch()) {
+        if (po.getMethodListSwitch() != null && po.getMethodListSwitch()) {
             set.add(SystemManageEnum.methodPanel.getName());
         } else {
             set.remove(SystemManageEnum.methodPanel.getName());
         }
-        if (po.getTaskListSwitch()) {
+        if (po.getTaskListSwitch() != null && po.getTaskListSwitch()) {
             set.add(SystemManageEnum.taskPanel.getName());
         } else {
             set.remove(SystemManageEnum.taskPanel.getName());
@@ -207,6 +207,11 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
     public R<Boolean> changeLoginInfo(SystemLoginConfDTO dto) {
 
         SystemPanelConfDTO confDTO = new SystemPanelConfDTO();
+        SystemPanelConfPO po = dao.selectById(userId);
+        if (po == null) {
+            po = dao.selectById(defaultId);
+        }
+        BeanUtils.copyProperties(po, confDTO);
         BeanUtils.copyProperties(dto, confDTO);
         Boolean b = this.savePanelConf(confDTO);
 

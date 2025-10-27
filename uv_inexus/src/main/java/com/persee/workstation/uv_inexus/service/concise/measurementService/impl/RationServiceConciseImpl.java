@@ -127,10 +127,10 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Value("0")
     private String createType;
 
-    @Value("1")
+    @Value("0")
     String noSave;
 
-    @Value("0")
+    @Value("1")
     String saved;
 
     @Value("0")
@@ -2710,6 +2710,37 @@ public class RationServiceConciseImpl implements RationConciseService {
         
         List<Double> data = new ArrayList<>();
         FittingParam param = new FittingParam();
+
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
+
+        if (!StringUtils.hasText(parameter.getCurveType())){
+            return R.fail("请选择曲线类型");
+        }
+        int minPointNum = Integer.MAX_VALUE;
+
+        switch (parameter.getCurveType()) {
+            case "1":
+                minPointNum = 2;
+                break;
+            case "2":
+                minPointNum = 3;
+                break;
+
+            case "3":
+                minPointNum = 4;
+                break;
+
+            case "4":
+                minPointNum = 5;
+                break;
+        }
+        if (inputParam.size() < minPointNum) {
+            log.info("数据点数不足，不进行曲线拟合");
+            return R.fail("数据点数不足，不进行曲线拟合");
+        }
+
+
         if (empty) {
             for (FRationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
@@ -2725,8 +2756,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
 
-        FMeasureMethod method = fMeasureMethodService.getById(methodId);
-        FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
+
 
         List<String> zeroMethod = parameter.getZeroMethod();
 

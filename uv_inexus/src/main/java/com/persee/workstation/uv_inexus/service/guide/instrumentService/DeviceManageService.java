@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
@@ -104,6 +105,9 @@ public interface DeviceManageService {
      * 更新仪器当前状态
      */
     R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status);
+
+    R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
+
 
     void test();
 

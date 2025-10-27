@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import io.swagger.annotations.Api;
@@ -166,6 +167,12 @@ public class ConciseCommonController {
     @ApiOperation("是否添加样品")
     public Result isAddSample(@RequestParam String taskId,@RequestParam String deviceSerialNumber) {
         return conciseCommonService.isAddSample(taskId,deviceSerialNumber);
+    }
+
+    @GetMapping("queryDeviceTypeInfo")
+    @ApiOperation("查询设备类型信息")
+    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam String deviceSerialNumber) {
+        return conciseCommonService.queryDeviceTypeInfo(deviceSerialNumber);
     }
 
 

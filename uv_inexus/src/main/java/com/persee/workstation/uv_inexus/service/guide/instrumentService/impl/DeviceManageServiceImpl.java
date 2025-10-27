@@ -26,6 +26,9 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKi
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationInfoEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreCommandEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
@@ -36,6 +39,8 @@ import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FindDevEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -566,6 +571,72 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     public R<Boolean> updateDeviceStatus(String deviceSerialNumber, String status) {
 
         return null;
+    }
+
+    @Override
+    public R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null) {
+            return R.fail("未找到该设备");
+        }
+
+        String devModel = deviceSerialNumber.substring(3, 8);
+
+        LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+        query.eq(DeviceModelInfoPO::getDevModel, devModel);
+
+        DeviceModelInfoPO deviceModelInfoPO = deviceModelInfoDAO.selectOne(query);
+        if (deviceModelInfoPO == null) {
+            return R.fail("未识别该型号");
+        }
+
+        DeviceMeasureVO ans = new DeviceMeasureVO();
+
+        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
+
+        Integer devTypeId = deviceModelInfoPO.getDevTypeId();
+
+        DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
+        ans = changeType(deviceTypeInfoPO);
+        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth());
+
+        return R.ok(ans);
+    }
+
+    private DeviceMeasureVO changeType(DeviceTypeInfoPO po) {
+
+        DeviceMeasureVO ans = new DeviceMeasureVO();
+        List<DeviceConfParam> middle = new ArrayList<>();
+        BeanUtils.copyProperties(po, ans);
+        po.getLuminosity().forEach(i -> {
+            DeviceConfParam param = new DeviceConfParam();
+            param.setParamValue(String.valueOf(i + 1));
+            param.setParamName(WaveLengthEnum.getName(String.valueOf(i + 1)));
+            middle.add(param);
+        });
+        ans.setLuminosity(middle);
+
+        List<DeviceConfParam> lamp = new ArrayList<>();
+        po.getLampType().forEach(i -> {
+            DeviceConfParam param = new DeviceConfParam();
+            param.setParamValue(i.toString());
+            param.setParamName(EnergyLampEnums.getName(i.toString()));
+            lamp.add(param);
+        });
+        ans.setLampType(lamp);
+
+        List<DeviceConfParam> scanSpeed = new ArrayList<>();
+        po.getScanSpeed().forEach(i -> {
+            DeviceConfParam param = new DeviceConfParam();
+            param.setParamName(i);
+            param.setParamValue(ScanSpeedEnum.getCodeByName(i));
+            scanSpeed.add(param);
+        });
+        ans.setScanSpeed(scanSpeed);
+
+        return ans;
+
     }
 
     @Override

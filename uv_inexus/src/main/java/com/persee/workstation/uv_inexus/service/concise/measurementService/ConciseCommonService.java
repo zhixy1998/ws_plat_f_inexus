@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 
 /**
@@ -66,4 +67,6 @@ public interface ConciseCommonService {
 
     // 是否添加样品
     Result isAddSample(String taskId,String deviceSerialNumber);
+
+    Result<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
 }

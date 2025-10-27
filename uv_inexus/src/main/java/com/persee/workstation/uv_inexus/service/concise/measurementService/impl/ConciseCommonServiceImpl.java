@@ -29,13 +29,11 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
-import com.persee.workstation.uv_inexus.vo.concise.common.FMethodInfoVO;
-import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
-import com.persee.workstation.uv_inexus.vo.concise.common.SaveStateVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.*;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
@@ -96,6 +94,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    DeviceManageService deviceManageService;
 
     @Autowired
     LaTeXConverter latexConverter;
@@ -741,10 +742,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 }
                 param.deleteCharAt(param.length() - 1);
                 vo.setCurveParams(param.toString());
-                vo.setR(fittingReceiveInfo.getR());
-                vo.setR2(fittingReceiveInfo.getR2());
-                vo.setCurveFormula(fittingReceiveInfo.getEquation());
-                vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree()));
+                vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
+                vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
+                vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());
+                vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree() == null ? "" : fittingReceiveInfo.getDegree()));
             }
 
             StringBuilder wave = new StringBuilder();
@@ -1555,6 +1556,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.ok(true);
         }
         return Result.ok(false);
+    }
+
+    @Override
+    public Result<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
+
+        R<DeviceMeasureVO> re = deviceManageService.queryDeviceTypeInfo(deviceSerialNumber);
+        if (!re.getSuccess()) {
+            return Result.fail(re.getMessage());
+        }
+
+        return Result.ok(re.getData());
+
     }
 
 
