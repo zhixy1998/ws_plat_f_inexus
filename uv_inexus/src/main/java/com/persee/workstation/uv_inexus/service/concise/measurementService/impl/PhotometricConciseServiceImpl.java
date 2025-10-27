@@ -1210,6 +1210,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
             for (FTaskSpecimen specimen : taskSpecimen) {
+
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (StringUtils.hasText(measureSample.getHeads())){
                     List<FHeadVO> heads = JSON.parseArray(measureSample.getHeads(), FHeadVO.class);
@@ -1485,7 +1490,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
 
         for (FTaskSpecimen specimen : taskSpecimen) {
-            if (!allDisplay && specimen.getDeleteType().equals("1")) {
+            if (!allDisplay && specimen.getDeleteType().equals(deleteType)) {
                 continue;
             }
 

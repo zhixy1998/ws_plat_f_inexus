@@ -38,6 +38,9 @@ public class TokenConfig implements WebMvcConfigurer {
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/reportDataQuery");
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/queryReportTableData");
         excludePath.add("/com/persee/workstation/uv-inexus/system/logout"); //登出
+        excludePath.add("/com/persee/workstation/uv-inexus/systemManage/changeLanguage");
+        excludePath.add("/com/persee/workstation/uv-inexus/systemManage/queryLanguage");
+        excludePath.add("/com/persee/workstation/uv-inexus/systemManage/queryLoginSwitch");
         excludePath.add("/static/**");  //静态资源
         excludePath.add("/assets/**");  //静态资源
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/obtainReportParameters");
