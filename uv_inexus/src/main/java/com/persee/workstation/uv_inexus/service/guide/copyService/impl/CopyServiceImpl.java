@@ -85,22 +85,25 @@ public class CopyServiceImpl implements CopyService {
                         m.setTaskId(task.getId());
                         //数据拿到新的样本ID进行关联
                         m.setSampleKey(newSample.getId());
+
+                        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
+                        queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
+                        queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
+                        List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
+                        if (!CollectionUtils.isEmpty(fMeasureAnalysisDataList)) {
+                            fMeasureAnalysisDataList.forEach(analysisData -> {
+                                analysisData.setId(null);
+                                analysisData.setMeasureDataId(m.getId());
+                                analysisData.setTaskId(task.getId());
+                                analysisData.setSampleKey(newSample.getId());
+                            });
+                            fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
+                        }
                     });
                 }
                 fMeasureDataService.saveBatch(fMeasureDataList);
 
-                LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
-                queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
-                queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
-                List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
-                if (!CollectionUtils.isEmpty(fMeasureAnalysisDataList)) {
-                    fMeasureAnalysisDataList.forEach(analysisData -> {
-                        analysisData.setId(null);
-                        analysisData.setTaskId(task.getId());
-                        analysisData.setSampleKey(newSample.getId());
-                    });
-                    fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
-                }
+
                 //新的样本ID生成并赋值给json，用于任务表中的样本关联字段
                 sample.setSpecimenKey(newSample.getId());
                     }
