@@ -97,6 +97,8 @@ public class ResponseDeal {
             case "BaseLine":
             case "BaseLineFast":
                 return parseBaseLine(responses);
+            case "GetWlList":
+                return parseWllist(responses);
 
 
             case "SetResponseTime":
@@ -374,6 +376,54 @@ private static Object parseLampPos(List<byte[]> responses) {
     System.out.println("解析灯状态完成，入队等待推送: " + lampData);
     return pos;
 }
+
+    private static Object parseWllist(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        List<Map<String, Object>> resultList = new ArrayList<>();
+
+        try {
+            for (byte[] resp : responses) {
+                if (resp == null || resp.length < 11) {
+                    System.out.println("回应报文长度不足11字节，跳过解析");
+                    continue;
+                }
+
+                int cmdType1 = resp[2] & 0xFF; // 第3个字节（索引2）
+                int cmdType = resp[3] & 0xFF;   // 第4个字节（索引3）
+
+                // 满足条件：第3字节为19 或 第4字节为10 时解析
+                if (cmdType1 == 19 || cmdType == 10) {
+                    int n = resp[5] & 0xFF;
+
+                    int theoryStep = ((resp[7] & 0xFF) << 8) | (resp[8] & 0xFF);
+
+                    int actualStep = ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("n", n);
+                    item.put("theoryStep", theoryStep);
+                    item.put("actualStep", actualStep);
+
+                    resultList.add(item);
+                }
+            }
+
+            System.out.println("WlList 解析结果：" + resultList);
+
+            result = "true"; // 解析成功标记
+            return resultList; // 返回最终解析列表
+
+        } catch (Exception e) {
+            System.out.println("WlList 解析异常: " + e.getMessage());
+            result = "false";
+            return null;
+        }
+    }
 
 
     /**

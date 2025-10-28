@@ -35,8 +35,7 @@ public enum SampleTableEnum {
     WAVELENGTH("waveLength", "波长"),
     LUMINOSITY("luminosity", "光度"),
     TIME("time", "时间"),
-    PEAKVALLEY("peakValley", "峰谷"),
-    GAUGEPOINT("gaugePoint", "标记点");
+    PEAKVALLEYGAUGEPOINT("peakValleyGaugePoint", "峰谷/标记点");
 
 
 

@@ -56,7 +56,7 @@ public interface ConciseCommonService {
     Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto);
 
     // 获取报告参数
-    Result obtainReportParameters(String taskId,String sampleId,String serialNumber);
+    Result obtainReportParameters(String taskId);
 
 
     // 获取报告所有参数
@@ -69,4 +69,8 @@ public interface ConciseCommonService {
     Result isAddSample(String taskId,String deviceSerialNumber);
 
     Result<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
+    //删除方法
+    Result<String> delMethod(String methodId);
+
+    Result delTask(String taskId);
 }

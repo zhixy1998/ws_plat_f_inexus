@@ -13,6 +13,7 @@
 package com.persee.workstation.uv_inexus.websocket.concise;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -131,15 +132,13 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
-        // 回显
-        session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
         if (message.getPayload().equals("close")){
             // 如果线程正在被使用
             if (occupancyStatus){
                 // 释放线程
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
-            log.info("前端关闭");
+            session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
         }
@@ -318,7 +317,7 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
             taskAttachment.setTaskId(task.getId());
             boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
             if (!save || !save1) {
-                sendAndClose(session, "保存失败");
+                sendAndClose(session, "校零失败");
                 return;
             }
         }
@@ -327,11 +326,15 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
         task.setZeroParam(JSON.toJSONString(zero.getData()));
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
-            sendAndClose(session, "保存失败");
+            sendAndClose(session, "校零失败");
             return;
         }
+        // 向前端发送当前波长,格式是nm 当前波长值nm
+        JSONObject point = new JSONObject();
+        point.put("nm", timeSweepParamter.getWaveLength()+"nm");
+        session.sendMessage(new TextMessage(point.toJSONString()));
 
-        sendAndClose(session, "保存成功");
+        sendAndClose(session, "校零成功");
     }
 
     // 中断检测

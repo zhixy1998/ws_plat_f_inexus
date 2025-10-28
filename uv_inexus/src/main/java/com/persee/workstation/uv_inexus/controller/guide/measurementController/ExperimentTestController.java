@@ -147,8 +147,8 @@ public class ExperimentTestController {
     @GetMapping("queryReportTableData")
     @ApiOperation("查询报告表格数据")
     public Result reportTableDataQuery(@RequestParam String taskId,
-                                  @RequestParam(required = false) String sampleId){
-        return experimentTestService.newReportTableDataQuery(taskId, sampleId);
+                                  @RequestParam(required = false) List<String> sampleIds){
+        return experimentTestService.newReportTableDataQuery(taskId, sampleIds);
     }
 
     @GetMapping("obtainReportParameters")

@@ -40,6 +40,8 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
 
     @Autowired
     FMeasureTaskAttachmentService fMeasureTaskAttachmentService;
+    @Autowired
+    FMeasureTaskMapper fMeasureTaskMapper;
 
     @Override
     public boolean save(FMeasureTask entity) {
@@ -60,6 +62,12 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
         fMeasureTaskAttachmentService.save(taskAttachment);
 
         return true;
+    }
+
+    @Override
+    public boolean delTask(String taskId) {
+        int i=fMeasureTaskMapper.delTask(taskId);
+        return i!=0;
     }
 }
 

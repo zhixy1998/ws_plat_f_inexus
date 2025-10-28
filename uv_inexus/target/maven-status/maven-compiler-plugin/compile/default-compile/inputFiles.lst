@@ -6,6 +6,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\systemManagePo\SystemBusinessParamPO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\measurementController\TimeSweepController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\sysUserPermissionService\impl\UserPermissionServiceImpl.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\liveDetection\DetectionResponseInfoVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\config\CorsConfig.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\pythonUtil\RestUtil.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\softwareActivation\impl\SoftwareActivationServiceImpl.java
@@ -69,6 +70,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\impl\ConciseCommonServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\parseReport\StandardPretreatmentDao.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\excel\StandardDetectionUVVISPhotometryExcelModel.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\systemManageDto\SystemCustomManageDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\systemManageController\AuditTrailController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\TaskCount.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\systemManageService\impl\SystemBusinessParamServiceImpl.java
@@ -84,7 +86,9 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\DifferentialDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\common\FSampleListVo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\ration\FRationDataVO.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\utils\IPUtils\ipUtils.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\concise\ConciseRationMeasureWebSocket.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\concise\ConciseRationOneSampleReMeasureWebSocket.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\AddNewProjectVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\ration\FRationReportDataVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\photometricDto\NewPhotometricMethodParamCheckDTO.java
@@ -93,6 +97,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\systemManageDto\SystemPanelOrderDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\standardPo\TReportStandardDetection.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\softwareActivation\impl\DeviceDiscoveryServiceImpl.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\enums\instrumentEnums\DeviceInitPreCommandEnum.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\SpectrumParameter.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\parseReport\PretreatmentDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\common\FMeasureTaskDTO.java
@@ -109,6 +114,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\equalSampleService\EqualSampleService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\Command.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\measurementService\SpectrumService.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\enums\instrumentEnums\DeviceAttachmentKindEnum.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\instrumentDto\DeviceInitDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\photometric\FPhotometricSampleAndDataVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemManageVo\SystemLogSwitchVO.java
@@ -154,9 +160,11 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\instrumentDao\InsConfigDAO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\nettyUtil\EtoX\EtoX.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\ration\FRationEmptyInfo.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\config\IpLogAspect.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\enums\systemUserManageEnums\SystemRoleEnum.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\QueryTaskDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\enums\instrumentEnums\DeviceTestTypeEnum.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\common\TableData.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\params\FMethodParam.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\concise\measurementDao\MethodManagementMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\SeekingPeaksValleysDto.java
@@ -229,6 +237,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\PhotometricOriginDataInfo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\sysUserPermissionDto\PermissionTreeDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\utils\OperateLog\LogUtils.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\instrumentPo\DeviceInitEntryInfo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureTask.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\sysUserPermissionService\impl\SysUserServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\TimeWebSocket2.java
@@ -261,7 +270,6 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\systemUserManagePo\SystemUserManagePO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\config\RestTemplateConfig.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\timesweep\TimeSweepSearchMethodVo.java
-E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\concise\ConciseTimeWebSocket2.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\systemManageDto\SystemManageDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\params\FTaskHeadSnapshot.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\RationMeasureWebSocket.java
@@ -275,11 +283,13 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\TaskCountByTime.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\spectrum\SpectralReport.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\parseReport\impl\ExportServiceImpl.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\liveDetection\DetectionLampStatus.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\parseReport\QualityControlMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\QueryMeasuredDataVo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\SaveDataVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\TaskBaseVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureMethod.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\instrumentPo\DeviceModelInfoPO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\sysUserPermissionService\RoleGroupUserTreeService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\T800\ProtocolItemCalculator.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\FindDevEnum.java
@@ -296,12 +306,14 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\sysUserPermissionDao\SysPermissionMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\systemManageDto\InitSystemConf.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\utils\AESencryption\ZipFileUtil.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemManageVo\SystemManageMeasureConfVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\parseReport\DetectionDao.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemUserManageVo\SystemUserInfoVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\common\EqualSampleParam.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\instrumentDto\UserLoginDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\impl\FMeasureDataServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\measurementController\PhotometricController.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\liveDetection\LiveDetectionCmdEnum.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\config\WebSocketConfig.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\instrumentDao\InjectorTrayParamDAO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\spectrum\FUseMethodDto.java
@@ -324,6 +336,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\FormulaCheckParam.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\LuminosityConversionDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\model\TaskHeadSnapshot.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\instrumentPo\DeviceTypeInfoPO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\parseReport\StandardPretreatmentService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\systemManagePo\SystemDatabaseConfPO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\concise\measurementController\SpectrumConciseController.java
@@ -443,6 +456,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\FMeasureTaskService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\instrumentService\InitRecordService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\concise\measurementDao\ProjectManagementMapper.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemManageVo\SystemLoginConfVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\common\FSeekingPeaksValleysDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\concise\measurementController\PhotometricConciseController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\SpectralMethodParameterDto.java
@@ -470,10 +484,12 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\TimeSweepMethodParameterDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\T800\T800Transition.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\parseReport\DetectionController.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemManageVo\SystemManageUserConfVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\RationMethodParameterDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemManageVo\SystemBusinessParamVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\nettyUtil\SeRePa\DynamicCommandService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\standardDao\TReportStandardDetectionMapper.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\common\DeviceConfParam.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\userManageVo\LoginUserInfoVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\TaskHeadSnapshotDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\PreCountResultParam.java
@@ -517,6 +533,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\measurementDao\TMeasureTaskAttachmentMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\ProtocolItemUtil.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RationTaskHeadSnapShot.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\enums\measurementEnums\ScanSpeedEnum.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\spectrum\FParameterValidationDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\FMeasureAnalysisData.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\systemUserManageService\SystemUserManageService.java
@@ -540,6 +557,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\photometricAndRationVo\FHeadVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\systemUserPermissionPo\SysGroupPO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\common\FAnalysisDataGaugePointDto.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\systemManageDto\SystemLoginConfDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\systemManageDto\SystemBusinessParamDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\DevMessageUtil.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\sysUserPermissionService\SysRoleService.java
@@ -569,6 +587,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\nettyUtil\DoIt\TestUtil.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\params\FTimeSweepParamter.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\SpectrumScan.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemManageVo\SystemStandCurveConfVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\impl\FMeasureSampleServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\PhotometricReportDataVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\systemManagePo\SystemPanelConfPO.java
@@ -582,6 +601,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\instrumentDto\DeviceQueryDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\spectrum\MeasureVo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\measurementDao\TMeasureDataMapper.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\instrumentDao\DeviceTypeInfoDAO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\measurementController\measure\TMeasureAnalysisDataController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\MeasureData.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\FourOperationsParamDto.java
@@ -590,6 +610,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\instrumentDao\InitRecordDAO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureAnalysisImage.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\measurementService\impl\PhotometricServiceImpl.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\enums\instrumentEnums\DeviceCalibrationInfoEnum.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RationSampleDataVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\systemManagePo\SystemLogSwitchPO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\QueryDataDTO.java
@@ -616,6 +637,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureProject.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\systemUserManageService\impl\SystemUserPermissionServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\systemManageDao\SystemAlgorithmConfDAO.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\liveDetection\DetectionConstants.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\standardService\TReportStandardPretreatmentService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\systemUserManageService\SystemUserGroupManageService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\measurementService\TMeasureProjectService.java
@@ -625,6 +647,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\utils\OperateLog\AuthInterceptor.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\FSamplePoolConfigService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\parseReport\ImportService.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\liveDetection\LiveDetectionWebSocket.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\SpectrumConciseService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\PaginationService\PaginationService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\sysUserPermissionDao\SysRoleMapper.java
@@ -634,6 +657,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\parseReport\CalculationFormulaDao.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\impl\ConcisePublicUtilServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RationEmptyInfo.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\instrumentDao\DeviceModelInfoDAO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\model\BasePO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\impl\FMeasureTaskAttachmentServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\Sample.java
@@ -678,6 +702,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\excel\StandardPretreatmentExcelModel.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\Transition.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\concise\ConciseSpectrumWebSocket.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\concise\common\DeviceMeasureVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\common\FLuminosityConversionDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\sysUserPermissionController\UserRoutePermissionController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\FMeasureDraftService.java
@@ -705,6 +730,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\impl\FMeasureAnalysisImageServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\websocket\PhotometricWebSocket.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\standardService\impl\TReportStandardPretreatmentServiceImpl.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\systemManageVo\SystemAutoLogoutConfVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\parseReport\ExportController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\systemManageController\SystemManageController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\parseReport\RoundingRules.java

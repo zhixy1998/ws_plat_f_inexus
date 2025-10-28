@@ -130,7 +130,6 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
 
     @Override
     public R<Boolean> updateSamplePoolInfo(FSamplePoolInfoChangeDto changeDto) {
-
         if (!StringUtils.hasText(changeDto.getDeviceSerialNumber())) {
             log.info("未连接仪器");
             return R.fail("未连接仪器");

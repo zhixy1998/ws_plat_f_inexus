@@ -82,6 +82,12 @@ public class ConciseCommonController {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
 
+    @PostMapping("delMethod")
+    @ApiOperation("删除方法")
+    public Result<String> delMethod(@RequestParam("methodId") String methodId) {
+        return conciseCommonService.delMethod(methodId);
+    }
+
     @PostMapping("queryHistoryTask")
     @ApiOperation("历史草稿")
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(@RequestBody SelectTaskDto selectTaskDto) {
@@ -92,6 +98,12 @@ public class ConciseCommonController {
     @ApiOperation("修改任务名称")
     public Result updateTask(@RequestBody UpdateTaskDto updateTaskDto) {
         return conciseCommonService.updateTask(updateTaskDto);
+    }
+
+    @PostMapping("delTask")
+    @ApiOperation("删除历史文件")
+    public Result delTask(@RequestParam("taskId") String taskId) {
+        return conciseCommonService.delTask(taskId);
     }
 
     @PostMapping("changeSampleAttachmentInfo")
@@ -142,10 +154,8 @@ public class ConciseCommonController {
 
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告通用数据接口")
-    public Result obtainReportParameters(@RequestParam String taskId,
-                                         @RequestParam(required = false) String sampleId,
-                                         @RequestParam(required = false) String serialNumber) {
-        return conciseCommonService.obtainReportParameters(taskId, sampleId, serialNumber);
+    public Result obtainReportParameters(@RequestParam String taskId) {
+        return conciseCommonService.obtainReportParameters(taskId);
     }
 
     @GetMapping("queryReportAllParameters")

@@ -32,5 +32,6 @@ public interface FMeasureTaskMapper extends BaseMapper<FMeasureTask> {
     List<FHeadVO> getPreHead(@Param("measure_type") String measureType, @Param("sample_kind") String sampleKind);
 
 
+    int delTask(String taskId);
 }
 

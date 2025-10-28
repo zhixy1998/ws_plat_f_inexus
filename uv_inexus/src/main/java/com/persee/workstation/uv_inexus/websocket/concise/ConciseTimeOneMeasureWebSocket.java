@@ -35,6 +35,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
@@ -364,26 +365,34 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         if (param.getLuminosity().equals("1")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
             String y = DataCountUtil.changeTPercentOrAbs2(null,s);
+            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", integerPart);
             point.put("y", y);
+            point.put("nm", param.getWaveLength()+"nm");
+            point.put("xType", "s");
+            point.put("yType", "Abs");
             points.add(point);
             payload.put("data", points);
             payload.put("sampleId", sampleId);
             session.sendMessage(new TextMessage(payload.toJSONString()));
         } else if (param.getLuminosity().equals("2")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
+            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(s));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", integerPart);
             point.put("y", s);
+            point.put("nm", param.getWaveLength()+"nm");
+            point.put("xType", "s");
+            point.put("yType", "T%");
             points.add(point);
             payload.put("data", points);
             payload.put("sampleId", sampleId);
@@ -391,13 +400,17 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("3")) {
             Double sData = Double.valueOf(changeParam.getS());
             String y = String.valueOf((sData / (4095 * 32)) * 100);
+            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", integerPart);
             point.put("y", y);
+            point.put("nm", param.getWaveLength()+"nm");
+            point.put("xType", "s");
+            point.put("yType", "Es");
             points.add(point);
             payload.put("data", points);
             payload.put("sampleId", sampleId);
@@ -405,13 +418,17 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("4")) {
             Double rData = Double.valueOf(changeParam.getR());
             String y = String.valueOf((rData / (4095 * 32)) * 100);
+            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", integerPart);
             point.put("y", y);
+            point.put("nm", param.getWaveLength()+"nm");
+            point.put("xType", "s");
+            point.put("yType", "Er");
             points.add(point);
             payload.put("data", points);
             payload.put("sampleId", sampleId);
@@ -624,7 +641,6 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     // 当WebSocket接收到消息时，会调用此方法
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        super.handleTextMessage(session, message);
         // 处理客户端发来的消息
         log.info("收到客户端消息: " + message.getPayload());
         if (message.getPayload().equals("close")){
@@ -633,7 +649,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                 // 释放线程
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
-            log.info("前端关闭");
+            session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
         }

@@ -43,6 +43,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
@@ -247,7 +248,18 @@ public class TimeWebSocket extends TextWebSocketHandler {
         sendAndClose(session, String.valueOf(payload));
     }
 
-
+    /**
+     * 计算并推送数据给前端
+     * @param param
+     * @param baselineData
+     * @param changeParam
+     * @param xValue
+     * @param x_data
+     * @param y_data
+     * @param session
+     * @param sampleId
+     * @throws IOException
+     */
     private void calculateAndPushYValue(
             TimeSweepParamter param,
             ChangeParam baselineData,
@@ -258,6 +270,9 @@ public class TimeWebSocket extends TextWebSocketHandler {
             WebSocketSession session,
             String sampleId) throws IOException {
 
+        // 创建一个格式化对象来显示整数
+        DecimalFormat decimalFormat = new DecimalFormat("#");
+
         if (param.getLuminosity().equals("1")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
             String y = DataCountUtil.changeTPercentOrAbs2(null, s);
@@ -266,7 +281,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", decimalFormat.format(xValue));  // 格式化 xValue 为整数
             point.put("y", y);
             points.add(point);
             payload.put("data", points);
@@ -280,7 +295,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", decimalFormat.format(xValue));  // 格式化 xValue 为整数
             point.put("y", y);
             points.add(point);
             payload.put("data", points);
@@ -294,7 +309,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", decimalFormat.format(xValue));  // 格式化 xValue 为整数
             point.put("y", y);
             points.add(point);
             payload.put("data", points);
@@ -308,7 +323,7 @@ public class TimeWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", xValue);
+            point.put("x", decimalFormat.format(xValue));  // 格式化 xValue 为整数
             point.put("y", y);
             points.add(point);
             payload.put("data", points);

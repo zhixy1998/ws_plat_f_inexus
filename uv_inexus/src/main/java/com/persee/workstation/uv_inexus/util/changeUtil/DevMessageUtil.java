@@ -12,6 +12,7 @@
 
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -975,6 +976,8 @@ public class DevMessageUtil {
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            String jsonString = JSON.toJSONString(parse);
+            log.info("解析结果 JSON：" + jsonString);
             if (parse.equals("false")) {
                 return R.fail("校零失败");
             }

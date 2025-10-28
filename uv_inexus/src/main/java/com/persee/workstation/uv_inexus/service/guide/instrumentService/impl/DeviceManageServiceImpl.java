@@ -654,6 +654,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         }
 
+        try {
+            devMessageUtil.zero(new Command("GetWlList", null), "169.254.180.253");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
 }

@@ -207,8 +207,8 @@ public interface SpectrumService {
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
 
     // 查询表格头
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds);
 
     // 查询表格数据
-    List<Map<String, Object>> queryTableData(String taskId, String sampleId);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
 }
