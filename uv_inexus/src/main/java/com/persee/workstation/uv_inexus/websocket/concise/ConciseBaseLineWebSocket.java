@@ -147,8 +147,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
-        // 回显
-        session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
 
         if (message.getPayload().equals("close")){
             // 如果线程正在被使用
@@ -157,6 +155,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
             if (measureStatus){
+                // 强制停止基线/测量线程
+                Constants.sendMeasureThread.interrupt();
                 try {
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()){
@@ -172,7 +172,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             // 强制停止线程
             thread.interrupt();
             taskThreads.remove(session.getId());
-            log.info("前端关闭");
+            session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
         }
@@ -212,26 +212,14 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
         sessions.remove(session.getId());
-
+        if (Constants.sendMeasureThread != null){
+            Constants.sendMeasureThread.interrupt();
+        }
         // 中断正在执行的任务
         Future<?> future = runningTasks.remove(session.getId());
         if (future != null) {
             future.cancel(true);
         }
-//        if (!Constants.measureStatus){
-//            System.err.println("启动停止命令");
-//            try {
-//                R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
-//                if (stop.getSuccess()){
-//                    log.error("停止成功");
-//                }else {
-//                    log.error("停止失败");
-//                }
-//            } catch (Exception e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-
         exceptionHandling();
 
 
@@ -396,7 +384,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             task.setDeviceSerialNumber(deviceSerialNumber);
             boolean save1 = tMeasureTaskService.save(task);
             if (!save1) {
-                sendAndClose(session, "保存失败");
+                sendAndClose(session, "基线失败");
                 return;
             }
 
@@ -404,7 +392,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             taskAttachment.setTaskId(task.getId());
             boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
             if (!save) {
-                sendAndClose(session, "保存失败");
+                sendAndClose(session, "基线失败");
                 return;
             }
         }
@@ -413,12 +401,12 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         task.setZeroParam(JSON.toJSONString(dataList));
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
-            sendAndClose(session, "保存失败");
+            sendAndClose(session, "基线失败");
             return;
         }
 
         Constants.measureStatus = true;
-        sendAndClose(session, "保存成功");
+        sendAndClose(session, "基线成功");
 
     }
 

@@ -760,7 +760,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result newReportTableDataQuery(String taskId, String sampleId) {
+    public Result newReportTableDataQuery(String taskId, List<String> sampleIds) {
 
         if (!StringUtils.hasText(taskId)) {
             return Result.fail("请选择任务");
@@ -830,13 +830,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             case "光谱扫描":
             {
                 SpectrumReportDataVO vo = new SpectrumReportDataVO();
-                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), true);
+                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), sampleIds);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, sampleId);
+                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, sampleIds);
                 if (dataList != null){
                     vo.setDataList(dataList);
                 }
@@ -852,13 +852,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             case "时间扫描":
             {
                 TimeSweepReportDataVo vo = new TimeSweepReportDataVo();
-                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), true);
+                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), sampleIds);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, sampleId);
+                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, sampleIds);
                 if (dataList != null){
                     vo.setDataList(dataList);
                 }

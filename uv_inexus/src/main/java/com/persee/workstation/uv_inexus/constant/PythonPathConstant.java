@@ -13,7 +13,7 @@
 package com.persee.workstation.uv_inexus.constant;
 
 public class PythonPathConstant {
-//    private static final String httpUrl= "http://192.168.61.48:8000/";
+//    private static final String httpUrl= "http://192.168.61.54:8000/";
     private static final String httpUrl= "http://192.168.61.82:8002/";
     // 最小二乘接口路径
     public final static String LEAST_SQUARE_FIT = httpUrl+"least_squares_fitting";
