@@ -150,8 +150,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         }
         FMeasureTask task = tMeasureTaskService.getById(taskId);
 
-        if (task == null || !StringUtils.hasText(task.getSampleKey())) {
-            sendAndClose(session, "任务或样品不存在");
+        if (task == null) {
+            sendAndClose(session, "任务不存在");
             return;
         }
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -271,6 +271,15 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             photometricService.saveCountData(data, dataId);
 
         } else {
+
+            R<Boolean> createR = photometricService.createSample(taskId, updateBy);
+            if (!createR.getSuccess()) {
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, createR.getMessage());
+                return;
+            }
+            task = tMeasureTaskService.getById(task.getId());
+            taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
             List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
             R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
@@ -664,7 +673,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                         data.put(waveLength + "-" + originDataInfo.getMode(), String.valueOf(v));
                         originDataInfo.setData(data);
                         originDataList.add(originDataInfo);
-                        repeatSend(session, doubles, sample, repetitionTime, waveLength + "-" + WaveLengthEnum.er.getCode());
+                        repeatSend(session, doubles, sample, repetitionTime, waveLength + "-" + parameter.getLuminosity());
                     }
                 }
                 break;

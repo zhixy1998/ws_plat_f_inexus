@@ -199,8 +199,6 @@ public class MessageUtil {
 
                     System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
 
-
-
                     System.out.print("十六进制回应：");
                     for (byte b : reply) System.out.printf("%02X ", b);
                     System.out.println();

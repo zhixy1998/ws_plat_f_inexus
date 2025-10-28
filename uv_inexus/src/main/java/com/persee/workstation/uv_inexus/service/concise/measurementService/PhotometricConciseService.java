@@ -84,6 +84,11 @@ public interface PhotometricConciseService {
     Result<List<JSONObject>> newQuerySampleInfo(String taskId);
 
     /**
+     * 创建样品
+     */
+    R<Boolean> createSample(String taskId, String updateBy);
+
+    /**
      * 查询样品的表头
      */
     Result<List<FHeadVO>> querySampleHeads(String taskId);

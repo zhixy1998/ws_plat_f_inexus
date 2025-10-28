@@ -156,10 +156,18 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         }
 
         FMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task == null || !StringUtils.hasText(task.getSampleKey())) {
-            sendAndClose(session, "任务或样品不存在");
+        if (task == null) {
+            sendAndClose(session, "任务不存在");
             return;
         }
+
+        R<Boolean> createR = rationService.createSample(taskId, sampleKind, updateBy);
+        if (!createR.getSuccess()) {
+            infoService.releaseDevice(deviceSerialNumber);
+            sendAndClose(session, createR.getMessage());
+            return;
+        }
+        task = tMeasureTaskService.getById(task.getId());
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
@@ -476,7 +484,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 }
                 if (fitCurveData.size() < minPointNum) {
                     infoService.releaseDevice(deviceSerialNumber);
-                    sendAndClose(session, "样品数不足，无法进行曲线拟合");
+                    sendAndClose(session, "已测样品数不足，无法进行曲线拟合");
                     return;
                 }
 
@@ -1061,7 +1069,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("sampleId", sample.getId());
             jsonObject.put("key", data.getIdentity());
-            jsonObject.put("value", data.getColValue());
+            jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, String.valueOf(data.getColValue())));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
             jsonObject.put("key", "samplingTime");
@@ -1151,12 +1159,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     jsonObject.put("sampleId", sample.getId());
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
                     jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.abs.getCode() + "-" + i);
-                    jsonObject.put("value", originDataInfo.getAbsValue());
+                    jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getAbsValue()));
                     session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
                     jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.tPercent.getCode() + "-" + i);
-                    jsonObject.put("value", originDataInfo.getTPercentValue());
+                    jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue()));
                     session.sendMessage(new TextMessage(jsonObject.toJSONString()));
                 }
 
@@ -1253,7 +1261,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         if (StringUtils.hasText(identity)) {
             jsonObject.put("identity", identity);
         }
-        jsonObject.put("value", value);
+        jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, value));
         session.sendMessage(new TextMessage(jsonObject.toJSONString()));
     }
 
@@ -1302,10 +1310,10 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             jsonObject.put("value", rsd == null ? "未检出" :DataCountUtil.addZero(rsd, digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
         }
-
-        jsonObject.put("key", key);
         jsonObject.remove("identity");
+        jsonObject.put("key", key);
         jsonObject.put("value", DataCountUtil.addZero(v, digit));
+        session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
     }
 

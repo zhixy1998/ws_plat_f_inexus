@@ -151,6 +151,19 @@ public class RationConciseController {
         return rationService.queryCurveInfo(taskId, methodId);
     }
 
+    @GetMapping("createSample")
+    @ApiOperation("创建样品接口")
+    public Result createSample(@RequestParam String taskId,
+                               @RequestParam String sampleKind,
+                               @RequestParam String updateBy) {
+        R<Boolean> r = rationService.createSample(taskId, sampleKind, updateBy);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok();
+        }
+    }
+
     @GetMapping("zero")
     @ApiOperation("校零接口")
     public Result photoZero(@RequestParam String deviceSerialNumber,

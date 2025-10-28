@@ -15,7 +15,6 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService.impl
 
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
-import com.alibaba.excel.write.metadata.WriteSheet;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -124,10 +123,10 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Value("0")
     private String createType;
 
-    @Value("0")
+    @Value("1")
     String noSave;
 
-    @Value("1")
+    @Value("0")
     String saved;
 
     @Value("0")
@@ -284,7 +283,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
             return Result.fail("没有可应用的方法参数");
         }
-        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+        if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
             R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
             if (!r.getSuccess()) {
                 return Result.fail(r.getMessage());
@@ -1837,6 +1836,106 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         List<FHeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty, deviceSerialNumber);
         return Result.ok(result);
+    }
+
+    @Override
+    public R<Boolean> createSample(String taskId, String sampleKind, String updateBy) {
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+        Result<List<FHeadVO>> listResult = querySampleHeads(taskId, sampleKind);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+            return R.fail(listResult.getMessage());
+        }
+
+        List<FHeadVO> heads = listResult.getData();
+        //动态表头
+        List<FHeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+                dynamicHeads.add(head);
+            }
+        });
+
+        if (taskSpecimen.isEmpty()) {
+            FMeasureSample newSample = new FMeasureSample();
+            Random random = new Random();
+            int collect = 100 + random.nextInt(900);
+
+            newSample.setSampleName("默认样品"+collect);
+            newSample.setSampleNumber("1");
+            if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            } else {
+                newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+            }
+
+            newSample.setSampleKind(sampleKind);
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                return R.fail("保存失败");
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
+
+        } else {
+            boolean hasNoTested = false;
+            List<String> sampleNumList = new ArrayList<>();
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getSampleKind().equals(sampleKind) && specimen.getDeleteType().equals(createType) && specimen.getIsTested().equals(noTested)) {
+                    hasNoTested = true;
+                    break;
+                }
+                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                    sampleNumList.add(measureSample.getSampleNumber());
+                }
+            }
+            if (hasNoTested) {
+                return R.ok(true);
+            }
+
+            FMeasureSample newSample = new FMeasureSample();
+            Random random = new Random();
+            int collect = 100 + random.nextInt(900);
+
+            newSample.setSampleName("默认样品" + collect);
+
+            String maxSampleId = sampleNumList.stream() // 获取样品编号
+                    .max(Comparator.naturalOrder())        // 获取最大编号
+                    .orElse("0");
+
+            newSample.setSampleNumber(String.valueOf(Integer.parseInt(maxSampleId) + 1));
+
+            if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            } else {
+                newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+            }
+            newSample.setSampleKind(sampleKind);
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                return R.fail("保存失败");
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
+        }
+
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        boolean update = fMeasureTaskService.updateById(task);
+        if (!update) {
+            return R.fail("更新失败");
+        }
+        return R.ok(true);
     }
 
     @Override
@@ -3701,9 +3800,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         List<ChangeParam> list = new ArrayList<>();
         String wave = "--";
         for (String s : waveLength) {
+            Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{WaveLengthEnum.abs.getCode()});
+            devMessageUtil.wavelengthLocate(command, ip);
 
             double v = Double.parseDouble(s);
-            Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
+            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});

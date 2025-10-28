@@ -154,7 +154,21 @@ public class DataCountUtil {
     public static String formatValueWithBigDecimal(Integer digit, String value) {
         try {
             BigDecimal bd = new BigDecimal(value);
+
+            boolean isNegative = bd.compareTo(BigDecimal.ZERO) < 0;
+            bd = bd.abs();
+
+            if (digit >=0) {
+                bd = roundToDecimalPlaces(bd, digit);
+            } else {
+                bd = roundToIntegerPlace(bd, -digit);
+            }
             bd = bd.setScale(digit, RoundingMode.HALF_UP);
+
+            if (isNegative) {
+                bd = bd.negate();
+            }
+
             return bd.toString();
         } catch (NumberFormatException e) {
             return value; // 如果转换失败，返回原始值

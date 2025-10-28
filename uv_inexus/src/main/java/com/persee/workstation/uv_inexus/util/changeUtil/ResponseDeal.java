@@ -400,9 +400,9 @@ private static Object parseLampPos(List<byte[]> responses) {
                 if (cmdType1 == 19 || cmdType == 10) {
                     int n = resp[5] & 0xFF;
 
-                    int theoryStep = ((resp[7] & 0xFF) << 8) | (resp[8] & 0xFF);
+                    int theoryStep = ((resp[8] & 0xFF) << 8) | (resp[7] & 0xFF);
 
-                    int actualStep = ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                    int actualStep = ((resp[10] & 0xFF) << 8) | (resp[9] & 0xFF);
 
                     Map<String, Object> item = new HashMap<>();
                     item.put("n", n);

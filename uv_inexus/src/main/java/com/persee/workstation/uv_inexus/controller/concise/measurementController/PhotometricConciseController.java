@@ -88,6 +88,19 @@ public class PhotometricConciseController {
         return fPhotometricService.querySampleHeads(taskId);
     }
 
+    @GetMapping("createSample")
+    @ApiOperation("创建样本接口")
+    public Result<Boolean> createSample(@RequestParam String taskId,
+                               @RequestParam String updateBy) {
+        R<Boolean> r = fPhotometricService.createSample(taskId, updateBy);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok();
+        }
+
+    }
+
     @GetMapping("getCurrentInfo")
     @ApiOperation("获取当前信息")
     public Result<FMeasurementCurrentInfoVO> getCurrentInfo(@RequestParam String updateBy,

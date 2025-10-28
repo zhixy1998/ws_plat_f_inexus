@@ -32,6 +32,7 @@ import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotD
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
@@ -115,10 +116,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Value("0")
     String createType;
 
-    @Value("0")
+    @Value("1")
     String noSave;
 
-    @Value("1")
+    @Value("0")
     String saved;
 
     @Value("0")
@@ -1057,6 +1058,99 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     }
 
     @Override
+    public R<Boolean> createSample(String taskId, String updateBy) {
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return R.fail("任务不存在");
+        }
+
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+        Result<List<FHeadVO>> listResult = querySampleHeads(taskId);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+            return R.fail(listResult.getMessage());
+        }
+
+        List<FHeadVO> heads = listResult.getData();
+        //动态表头
+        List<FHeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+                dynamicHeads.add(head);
+            }
+        });
+
+        if (taskSpecimen.isEmpty()) {
+            FMeasureSample newSample = new FMeasureSample();
+            Random random = new Random();
+            int collect = 100 + random.nextInt(900);
+
+            newSample.setSampleName("默认样品"+collect);
+            newSample.setSampleNumber("1");
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                return R.fail("保存失败");
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+
+        } else {
+            boolean hasNoTested = false;
+            List<String> sampleNumList = new ArrayList<>();
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(createType) && specimen.getIsTested().equals(noTested)) {
+                    hasNoTested = true;
+                    break;
+                }
+                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                    sampleNumList.add(measureSample.getSampleNumber());
+                }
+            }
+            if (hasNoTested) {
+                return R.ok(true);
+            }
+
+            FMeasureSample newSample = new FMeasureSample();
+            Random random = new Random();
+            int collect = 100 + random.nextInt(900);
+
+            newSample.setSampleName("默认样品" + collect);
+
+            String maxSampleId = sampleNumList.stream() // 获取样品编号
+                    .max(Comparator.naturalOrder())        // 获取最大编号
+                    .orElse("0");
+
+            newSample.setSampleNumber(String.valueOf(Integer.parseInt(maxSampleId) + 1));
+
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                return R.fail("保存失败");
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+        }
+
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        boolean update = fMeasureTaskService.updateById(task);
+        if (!update) {
+            return R.fail("更新失败");
+        }
+        return R.ok(true);
+    }
+
+    @Override
     public Result<List<FHeadVO>> querySampleHeads(String taskId) {
 
         if (!StringUtils.hasText(taskId)) {
@@ -1750,7 +1844,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (one != null) {
             List<FPhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), FPhotometricCountDataInfo.class);
 
-            if (map.isEmpty()) {
+            if (map.isEmpty() && countList != null) {
                 for (FPhotometricCountDataInfo count : countList) {
 
                     String s = DataCountUtil.formatValueWithBigDecimal(digit, count.getCountValue());
@@ -1914,6 +2008,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         fMeasureData.setSamplingTime(sampleAndDataVO.getSampleTime());
 
         fMeasureData.setIsDelete(createType);
+        fMeasureData.setIsSave(noSave);
 
         fMeasureDataService.saveOrUpdate(fMeasureData);
 

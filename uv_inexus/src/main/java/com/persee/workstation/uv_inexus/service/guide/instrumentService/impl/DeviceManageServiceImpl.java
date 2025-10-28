@@ -216,16 +216,27 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             while (count < cmdIdList.size() && !stopInit.get(infoPO.getDeviceSerialNumber())) {
                 String cmdId = cmdIdList.get(count);
                 Command command = dealCommand(attachmentType, cmdId);
-                R<String> initDevice = devMessageUtil.initDevice(command, ip);
-                if (!initDevice.getSuccess()) {
+                try {
+                    R<String> initDevice = devMessageUtil.initDevice(command, ip);
+                    if (!initDevice.getSuccess()) {
+                        log.info("{}指令初始化异常", cmdId);
+                        failDeal(infoPO, recordPO);
+                        devMessageUtil.setDeviceInitStatus(ip, 1);
+                        infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+                        return;
+                    }
+                    count++;
+                    log.info("{}指令初始化成功", cmdId);
+                } catch (Exception e) {
                     log.info("{}指令初始化异常", cmdId);
                     failDeal(infoPO, recordPO);
                     devMessageUtil.setDeviceInitStatus(ip, 1);
                     infoService.releaseDevice(infoPO.getDeviceSerialNumber());
                     return;
+
                 }
-                count++;
-                log.info("{}指令初始化成功", cmdId);
+
+
             }
             if (count != cmdIdList.size()) {
                 log.info("自检已停止");

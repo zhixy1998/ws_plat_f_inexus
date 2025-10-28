@@ -91,9 +91,6 @@ public class LiveDetectionWebSocket {
             status = false;
         }
 
-
-
-
         // 主动推送通知给前端
         messagingTemplate.convertAndSend(measureTopic,
                 "开始测量: " + deviceSerialNumber + ", ip=" + ip);
