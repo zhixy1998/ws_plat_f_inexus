@@ -81,7 +81,9 @@ public class CopyServiceImpl implements CopyService {
                 //构建新的数据list
                 if (!CollectionUtils.isEmpty(fMeasureDataList)) {
                     fMeasureDataList.forEach(m -> {
-                        m.setId(null);
+                        String uuid1 = UUID.randomUUID().toString().replace("-", "");
+
+                        m.setId(uuid1);
                         m.setTaskId(task.getId());
                         //数据拿到新的样本ID进行关联
                         m.setSampleKey(newSample.getId());
