@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,16 +22,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
@@ -43,6 +49,9 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     // 注入角色Mapper用于校验角色是否存在
     @Autowired
     private SysRoleMapper sysRoleMapper;
+
+
+
 
     // 分页查询
     @Override
@@ -70,7 +79,15 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     @Override
     @Transactional
     public Result<String> addGroup(GroupSaveDTO saveDTO) {
-        // 1. 校验角色是否存在
+        // 1. 校验组名是否已存在
+        QueryWrapper<SysGroupPO> nameCheckWrapper = new QueryWrapper<>();
+        nameCheckWrapper.eq("group_name", saveDTO.getGroupName());
+        Long count = baseMapper.selectCount(nameCheckWrapper);
+        if (count > 0) {
+            return Result.fail("小组名已存在，请更改");
+        }
+
+        // 2. 校验角色是否存在
         String roleId = saveDTO.getRoleId();
         if (roleId == null || roleId.isEmpty()) {
             return Result.fail("角色ID不能为空");
@@ -80,7 +97,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
             return Result.fail("该角色不存在，请刷新重试！");
         }
 
-        // 2. 封装小组信息并保存
+        // 3. 封装小组信息并保存
         SysGroupPO groupPO = new SysGroupPO();
         BeanUtils.copyProperties(saveDTO, groupPO);
         groupPO.setCreateBy("admin");  // 修正拼写错误（原"amdin"）

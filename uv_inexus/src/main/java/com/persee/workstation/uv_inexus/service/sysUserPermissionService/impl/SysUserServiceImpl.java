@@ -77,7 +77,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
 
     @Override
     @Transactional  // 事务保证：用户和关联关系同时成功/失败
-    public Result<String> addUser(UserSaveDTO saveDTO) {
+    public Result<String>   addUser(UserSaveDTO saveDTO) {
         // 1. 检查用户名是否已存在
         QueryWrapper<SysUserPO> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("username", saveDTO.getUsername());
@@ -104,7 +104,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         userPO.setCreated(LocalDateTime.now());
         baseMapper.insert(userPO);  // 保存用户，生成用户ID
 
-        // 4. 添加用户-小组关联
+//        // 4.检验所属小组是否为禁用
+//        if (groupPO.getStatus() != null && groupPO.getStatus() == 0) {
+//            userPO.setStatus(0);  // 设置用户状态为禁用
+//        }
+        // 5. 添加用户-小组关联
         SysUserGroupPO userGroupPO = new SysUserGroupPO();
         userGroupPO.setUserId(userPO.getId());  // 绑定用户ID
         userGroupPO.setGroupId(groupId);  // 绑定小组ID
