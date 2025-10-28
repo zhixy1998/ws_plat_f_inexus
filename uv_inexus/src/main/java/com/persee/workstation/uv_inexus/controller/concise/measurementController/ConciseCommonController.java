@@ -26,6 +26,8 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/")
 @RestController
 @Api("简洁模式: 通用接口")
@@ -185,5 +187,9 @@ public class ConciseCommonController {
         return conciseCommonService.queryDeviceTypeInfo(deviceSerialNumber);
     }
 
-
+    @PostMapping("/copy")
+    @ApiOperation("另存为")
+    public Result<String> copyProject(@Valid @RequestBody CopyParam copyParam) {
+        return  conciseCommonService.copy(copyParam);
+    }
 }

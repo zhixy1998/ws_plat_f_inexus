@@ -27,6 +27,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
@@ -49,6 +50,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepRepo
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
@@ -1420,6 +1422,90 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result delTask(String  taskId) {
         boolean b=fMeasureTaskService.delTask(taskId);
         return Result.ok(true);
+    }
+
+    @Override
+    public Result<String> copy(CopyParam copyParam) {
+        String taskName = copyParam.getTaskName();
+        String taskId = copyParam.getTaskId();
+        if (com.baomidou.mybatisplus.core.toolkit.StringUtils.isBlank(taskId)){
+            return Result.fail("拷贝失败,传入taskId不能为空！！！");
+        }
+        try {
+            /*
+             * 复制任务
+             */
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            if (ObjectUtils.isEmpty(task)){
+                return Result.fail("未找到任务！！！");
+            }
+            //自定义任务的ID
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            task.setId(uuid);
+            task.setEndSaveTime(LocalDateTime.now());
+            /*
+             * 复制样品
+             */
+            String sampleKey = task.getSampleKey();
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(sampleKey, TaskSpecimen.class);
+            if (!CollectionUtils.isEmpty(taskSpecimen)) {
+                taskSpecimen.forEach(sample -> {
+                            String specimenKey = sample.getSpecimenKey();
+                            FMeasureSample newSample = fMeasureSampleService.getById(specimenKey);
+                            //保存样本数据，生成新的样本ID
+                            newSample.setId(null);
+                            fMeasureSampleService.save(newSample);
+
+                            //进行数据复制
+                            LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                            queryWrapper.eq(FMeasureData::getTaskId, taskId);
+                            queryWrapper.eq(FMeasureData::getSampleKey, specimenKey);
+                            List<FMeasureData> fMeasureDataList = fMeasureDataService.list(queryWrapper);
+
+                            //构建新的数据list
+                            if (!CollectionUtils.isEmpty(fMeasureDataList)) {
+                                fMeasureDataList.forEach(m -> {
+                                    String uuid1 = UUID.randomUUID().toString().replace("-", "");
+
+                                    m.setId(uuid1);
+                                    m.setTaskId(task.getId());
+                                    //数据拿到新的样本ID进行关联
+                                    m.setSampleKey(newSample.getId());
+
+                                    LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
+                                    queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
+                                    queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
+                                    List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
+                                    if (!CollectionUtils.isEmpty(fMeasureAnalysisDataList)) {
+                                        fMeasureAnalysisDataList.forEach(analysisData -> {
+                                            analysisData.setId(null);
+                                            analysisData.setMeasureDataId(m.getId());
+                                            analysisData.setTaskId(task.getId());
+                                            analysisData.setSampleKey(newSample.getId());
+                                        });
+                                        fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
+                                    }
+                                });
+                            }
+                            fMeasureDataService.saveBatch(fMeasureDataList);
+
+
+                            //新的样本ID生成并赋值给json，用于任务表中的样本关联字段
+                            sample.setSpecimenKey(newSample.getId());
+                        }
+                );
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            }
+
+//            task.setId(null);
+            task.setTaskName(taskName);
+            fMeasureTaskService.save(task);
+            return Result.ok("拷贝成功");
+
+        } catch (Exception e) {
+            return Result.fail("拷贝失败");
+        }
+
     }
 
 

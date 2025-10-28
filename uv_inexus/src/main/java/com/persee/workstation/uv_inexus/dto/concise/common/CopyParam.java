@@ -14,6 +14,10 @@ package com.persee.workstation.uv_inexus.dto.concise.common;
 
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import lombok.NonNull;
+
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 
 @Data
 public class CopyParam {
