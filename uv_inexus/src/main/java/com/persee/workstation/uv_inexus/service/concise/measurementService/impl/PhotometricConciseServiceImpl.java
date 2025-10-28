@@ -1575,13 +1575,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         List<FPhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), FPhotometricOriginDataInfo.class);
 
                         Map<String, Map<String, String>> countDataList = new TreeMap<>();
-                        FPhotometricOriginDataInfo dataInfo = reCountData(wlDataList, digit);
-                        for (FPhotometricOriginDataInfo wlData : wlDataList) {
+                        List<FPhotometricOriginDataInfo> dataInfo = reCountData(wlDataList, digit);
+                        for (FPhotometricOriginDataInfo wlData : dataInfo) {
 
                             if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                                wlDataList.remove(wlData);
-                                BeanUtils.copyProperties(dataInfo, wlData);
-                                wlDataList.add(dataInfo);
                                 map.putAll(wlData.getData());
                                 Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
                                 if (!ch.isEmpty()) {
@@ -1618,7 +1615,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                 children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + split[split.length - 1]);
                                 children.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
-                                childrenList.putIfAbsent(wlData.getIdentity(), children);
+                                childrenList.computeIfAbsent(wlData.getIdentity(), k -> new HashMap<>()).putAll(children);
+
+//                                childrenList.putIfAbsent(wlData.getIdentity(), children);
                             }
                         }
 //                        childrenList.putAll(countDataList);
@@ -1763,18 +1762,20 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         return map;
     }
 
-    private FPhotometricOriginDataInfo reCountData(List<FPhotometricOriginDataInfo> wlDataList, Integer digit) {
+    private List<FPhotometricOriginDataInfo> reCountData(List<FPhotometricOriginDataInfo> wlDataList, Integer digit) {
 
         Map<String, List<Double>> data = new HashMap<>();
         Map<String, FRepeatMeasureData> otherData = new HashMap<>();
         Map<String, String> ans = new HashMap<>();
-        FPhotometricOriginDataInfo result = new FPhotometricOriginDataInfo();
+        List<FPhotometricOriginDataInfo> result = new ArrayList<>();
+        List<FPhotometricOriginDataInfo> middle = new ArrayList<>();
 
         for (FPhotometricOriginDataInfo wlData : wlDataList) {
             if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                BeanUtils.copyProperties(wlData, result);
+                result.add(wlData);
                 continue;
             }
+            middle.add(wlData);
 
             wlData.getData().forEach((key, value) -> {
                 data.computeIfAbsent(key, k -> new ArrayList<>()).add(Double.parseDouble(value));
@@ -1793,8 +1794,28 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             otherData.put(entry.getKey(), repeatMeasureData);
             ans.put(entry.getKey(), DataCountUtil.addZero(mean, digit));
         }
-        result.setData(ans);
-        result.setOtherData(otherData);
+
+        for (FPhotometricOriginDataInfo info : result) {
+            Map<String, String> ansMap = info.getData();
+            ans.forEach((key, value) -> {
+                if (ansMap.containsKey(key)) {
+                    ansMap.put(key, value);
+                }
+            });
+            info.setData(ans);
+
+            Map<String, FRepeatMeasureData> other = info.getOtherData();
+            otherData.forEach((key, value) -> {
+                if (other.containsKey(key)) {
+                    other.put(key, value);
+                }
+            });
+            info.setOtherData(other);
+        }
+
+        result.addAll(middle);
+
+
         return result;
     }
 
@@ -1819,20 +1840,20 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode()));
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), originData.get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode()));
-                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
+                        ans.putIfAbsent(pre + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
-                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
+                        ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
                         children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
-                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
+                        ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
             }
@@ -1843,19 +1864,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     if (DataIdentityEnums.avg.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
                         children.put(mapName, originData.get(mapName));
-                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.avg.getIdentity(), children);
+                        ans.putIfAbsent(pre + "-" + DataIdentityEnums.avg.getIdentity(), children);
                     }
                     if (DataIdentityEnums.sd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getSd());
-                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.sd.getIdentity(), children);
+                        ans.putIfAbsent(pre + "-" + DataIdentityEnums.sd.getIdentity(), children);
                     }
                     if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
                         children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                         FRepeatMeasureData measureData = wlData.getOtherData().get(mapName);
                         children.put(mapName, measureData.getRsd());
-                        ans.putIfAbsent(wlData.getWavelength() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
+                        ans.putIfAbsent(pre + "-" + DataIdentityEnums.rsd.getIdentity(), children);
                     }
                 }
             }
