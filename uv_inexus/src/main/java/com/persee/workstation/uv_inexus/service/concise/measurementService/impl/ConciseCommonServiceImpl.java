@@ -1072,14 +1072,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         List<String> sampleIdList = Arrays.asList(sampleId.split(","));
 
         Integer digit = Constants.DEFAULT_DECIMAL_NUM;
+        FQueryDataDTO dataDTO = new FQueryDataDTO();
         LambdaQueryWrapper<FMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(FMeasureTaskAttachment::getTaskId, taskId);
         FMeasureTaskAttachment attachment = fMeasureTaskAttachmentService.getOne(queryWrapper);
         if (attachment != null && attachment.getDataParam() != null) {
-            FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
-            if (dataDTO.getDigit() != null) {
-                digit = dataDTO.getDigit();
-            }
+            dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
         }
 
         switch (task.getMeasureType()) {
@@ -1090,12 +1088,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
-                FQueryDataDTO queryDataDTO = new FQueryDataDTO();
-                queryDataDTO.setTaskId(taskId);
-                queryDataDTO.setAllDisplay(false);
-                queryDataDTO.setDigit(digit);
-                queryDataDTO.setOption(new ArrayList<>());
-                Result<List<Map<String, Object>>> data = photometricService.queryData(queryDataDTO);
+
+                if (dataDTO == null) {
+                    dataDTO = new FQueryDataDTO();
+                    dataDTO.setTaskId(taskId);
+                    dataDTO.setAllDisplay(false);
+                    dataDTO.setDigit(digit);
+                    dataDTO.setOption(new ArrayList<>());
+                }
+
+                Result<List<Map<String, Object>>> data = photometricService.queryData(dataDTO);
                 if (data.getCode() == 200) {
                     vo.setDataList(data.getData());
 //                    data.getData().forEach(item -> {
@@ -1135,12 +1137,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 if (unknowHeads.getCode() == 200) {
                     vo.setUnknowHeadList(unknowHeads.getData());
                 }
-                FQueryDataDTO queryDataDTO = new FQueryDataDTO();
-                queryDataDTO.setTaskId(taskId);
-                queryDataDTO.setAllDisplay(false);
-                queryDataDTO.setDigit(digit);
-                queryDataDTO.setOption(new ArrayList<>());
-                Result<FRationSampleDataVO> data = rationService.querySampleData(queryDataDTO);
+                if (dataDTO == null) {
+                    dataDTO = new FQueryDataDTO();
+                    dataDTO.setTaskId(taskId);
+                    dataDTO.setAllDisplay(false);
+                    dataDTO.setDigit(digit);
+                    dataDTO.setOption(new ArrayList<>());
+                }
+                Result<FRationSampleDataVO> data = rationService.querySampleData(dataDTO);
                 if (data.getCode() == 200) {
                     FRationSampleDataVO sampleDataVO = data.getData();
                     vo.setStandDataList(sampleDataVO.getStandSampleData());
