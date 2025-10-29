@@ -129,6 +129,8 @@ public class ResponseDeal {
 
             case "GetPhotoMode":
                 return parsePhotoMode(responses);
+            case "GetResponseTime":
+                return parseGetResponseTime(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
@@ -136,6 +138,33 @@ public class ResponseDeal {
                 return 0;
         }
     }
+
+    private static Object parseGetResponseTime(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+        float time = (lastResponse[4] & 0xFF) / 100.0f;
+        String rawtime = String.valueOf(time);
+        MeasureController.addTimeData(rawtime);
+
+        long l = System.currentTimeMillis();
+        if (DetectionConstants.detectionInfo != null && rawtime != null) {
+            DetectionConstants.detectionInfo.put("time", rawtime);
+        }
+
+        long l1 = System.currentTimeMillis() - l;
+        System.out.println("耗时：" + l1);
+        return true;
+    }
+
 
     private static Object parsePhotoMode(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
@@ -436,7 +465,7 @@ private static Object parseLampPos(List<byte[]> responses) {
         }
 
         byte[] last = responses.get(responses.size() - 1);
-        boolean success = last.length >= 5 && (last[4] & 0xFF) == 0;
+        boolean success = last.length >= 5 && (last[4] & 0xFF) == 0 && (last[3] & 0xFF) != 7;
         result = success ? "true" : "false"; // 根据结果更新 result
         return success;
     }
