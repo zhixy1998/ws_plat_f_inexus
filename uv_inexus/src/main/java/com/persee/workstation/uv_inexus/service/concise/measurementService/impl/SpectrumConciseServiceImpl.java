@@ -49,6 +49,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -59,6 +60,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.*;
@@ -109,8 +111,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private FMeasureAnalysisDataService fMeasureAnalysisDataService;
-@Autowired
-private FMeasureAnalysisImageService fMeasureAnalysisImageService;
+    @Autowired
+    private FMeasureAnalysisImageService fMeasureAnalysisImageService;
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
 
@@ -134,6 +136,9 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
     @Autowired
     private DeviceInfoService deviceInfoService;
+
+    @Autowired
+    private SystemAlgorithmConfService systemAlgorithmConfService;
 
     @Autowired
     private DevMessageUtil devMessageUtil;
@@ -1737,14 +1742,15 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
      */
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
-        if (paramDto.getDataId() == null) {
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+        if (paramDto.getDataId() == null||paramDto.getDataId().equals("")) {
             return Result.fail("数据ID不能为空");
         }
-        if (paramDto.getHeight() == null){
-            paramDto.setHeight(50.0);
+        if (paramDto.getHeight() == null||paramDto.getHeight().equals("")) {
+            paramDto.setHeight(Double.valueOf(Integer.valueOf(confVO.getPeakInterval())));
         }
-        if (paramDto.getDistance() == null){
-            paramDto.setDistance("1");
+        if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
+            paramDto.setDistance(confVO.getPeakValleyDiff());
         }
         Integer i1 = Integer.valueOf(paramDto.getDistance());
         if (i1<1){
@@ -2669,7 +2675,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
 
     @Override
-    public Result<List<FHeadVO>> tableHead(String taskId, String methodId,List<String> sampleIds) {
+    public Result<List<FHeadVO>> tableHead(String taskId, String methodId,List<String> sampleIds,List<String> analysisIds) {
         // 根据方法id查找方法
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
@@ -2680,27 +2686,53 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
         // 2. 波长
         ans.add(new FHeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
-
-        // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
-        if (sampleIds.size() == 1){
-            addLuminosityMode(ans,parameter.getLuminosity());
-            ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
-            ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
-            return Result.ok(ans);
+        // 判断是否是重复模式
+        if (parameter.getRepetitionPattern().equals("0")){
+            /// 非重复模式
+            // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
+            if (sampleIds.size() == 1){
+                addLuminosityMode(ans,parameter.getLuminosity());
+                ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
+                ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
+                return Result.ok(ans);
+            }else{
+                // 根据样品id查询多个样品的样品信息
+                QueryWrapper<FMeasureSample> qw = new QueryWrapper<>();
+                qw.in("id", sampleIds);
+                List<FMeasureSample> samples = fMeasureSampleService.list(qw);
+                if (samples == null || samples.isEmpty()){
+                    return Result.fail("样品信息不存在");
+                }
+                for (FMeasureSample sample : samples) {
+                    ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
+                    ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
+                }
+                return Result.ok(ans);
+            }
         }else{
-            // 根据样品id查询多个样品的样品信息
-            QueryWrapper<FMeasureSample> qw = new QueryWrapper<>();
-            qw.in("id", sampleIds);
-            List<FMeasureSample> samples = fMeasureSampleService.list(qw);
-            if (samples == null || samples.isEmpty()){
-                return Result.fail("样品信息不存在");
+            /// 重复模式
+            // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
+            if (sampleIds.size() == 1 && analysisIds.size() == 1){
+                addLuminosityMode(ans,parameter.getLuminosity());
+                ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
+                ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
+                return Result.ok(ans);
+            }else{
+                // 根据分析id查询多个分析id的信息
+                QueryWrapper<FMeasureAnalysisData> qw = new QueryWrapper<>();
+                qw.in("id", analysisIds);
+                List<FMeasureAnalysisData> analysiss = fMeasureAnalysisDataService.list(qw);
+                if (analysiss == null || analysiss.isEmpty()){
+                    return Result.fail("样品信息不存在");
+                }
+                for (FMeasureAnalysisData analysis : analysiss) {
+                    ans.add(new FHeadVO(analysis.getAnalysisName(), "sampleNumber", "name", "样品名称"));
+                    ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
+                }
+                return Result.ok(ans);
             }
-            for (FMeasureSample sample : samples) {
-                ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
-                ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
-            }
-            return Result.ok(ans);
         }
+
     }
 
     /**
@@ -2710,7 +2742,7 @@ private FMeasureAnalysisImageService fMeasureAnalysisImageService;
      * @return
      */
     @Override
-    public List<Map<String, Object>> queryTableData(String taskId,List<String> sampleIds) {
+    public List<Map<String, Object>> queryTableData(String taskId,String methodId,List<String> sampleIds,List<String> analysisIds) {
         // 校验参数
         if (StringUtils.isEmpty(taskId) || sampleIds == null || sampleIds.isEmpty()) {
             return null;

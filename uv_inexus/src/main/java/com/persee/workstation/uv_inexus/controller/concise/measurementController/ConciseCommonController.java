@@ -171,8 +171,9 @@ public class ConciseCommonController {
     @GetMapping("queryReportTableData")
     @ApiOperation("查询报告表格数据")
     public Result reportTableDataQuery(@RequestParam String taskId,
-                                       @RequestParam(required = false) String sampleId){
-        return conciseCommonService.newReportTableDataQuery(taskId, sampleId);
+                                       @RequestParam(required = false) String sampleId,
+                                       @RequestParam(required = false) String analysisId){
+        return conciseCommonService.newReportTableDataQuery(taskId, sampleId,analysisId);
     }
 
     @GetMapping("isAddSample")

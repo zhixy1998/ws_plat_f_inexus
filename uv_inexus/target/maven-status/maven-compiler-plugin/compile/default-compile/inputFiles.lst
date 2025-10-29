@@ -278,7 +278,6 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\sysUserPermissionDto\RoleSaveDTO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\enums\measurementEnums\TableHeadILocateEnums.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\utils\PasswordUtils\PasswordUtils.java
-E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\copyService\impl\CopyServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\sysUserPermissionDao\SysUserMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\TaskCountByTime.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\spectrum\SpectralReport.java
@@ -563,7 +562,6 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\sysUserPermissionService\SysRoleService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\PhotometricParam.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\instrumentDto\DeviceStartDTO.java
-E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\copyService\CopyService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\utils\serializer\NullToDashSerializer.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\RecentlyCompletedTasksVo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\spectrum\SpectralReportParametersVo.java

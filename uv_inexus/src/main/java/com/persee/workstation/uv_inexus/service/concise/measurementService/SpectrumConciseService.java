@@ -126,10 +126,10 @@ public interface SpectrumConciseService {
     Result luminanceModeConversionPort(FLuminosityConversionDto paramDto);
 
     // 查询表格头
-    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds);
+    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds, List<String> analysisIds);
 
     // 查询表格数据
-    List<Map<String, Object>> queryTableData(String taskId,List<String> sampleIds);
+    List<Map<String, Object>> queryTableData(String taskId,String methodId,List<String> sampleIds,List<String> analysisIds);
 
     /**
      * 导出到word

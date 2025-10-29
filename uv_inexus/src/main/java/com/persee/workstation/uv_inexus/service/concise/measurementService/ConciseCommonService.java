@@ -63,7 +63,7 @@ public interface ConciseCommonService {
     Result queryReportAllParameters(String taskId, String sampleId, String serialNumber);
 
     // 新的报表数据查询
-    Result newReportTableDataQuery(String taskId, String sampleId);
+    Result newReportTableDataQuery(String taskId, String sampleId,String analysisId);
 
     // 是否添加样品
     Result isAddSample(String taskId,String deviceSerialNumber);

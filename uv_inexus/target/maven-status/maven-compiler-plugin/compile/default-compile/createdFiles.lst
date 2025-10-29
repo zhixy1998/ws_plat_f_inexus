@@ -9,7 +9,6 @@ com\persee\workstation\uv_inexus\util\SendMessageUtils.class
 com\persee\workstation\uv_inexus\controller\guide\AESencryptionController\FileCryptoController.class
 com\persee\workstation\uv_inexus\dto\systemManageDto\SystemAlgorithmConfDTO.class
 com\persee\workstation\uv_inexus\po\guide\instrumentPo\DeviceInitEntryInfo.class
-com\persee\workstation\uv_inexus\service\guide\copyService\CopyService.class
 com\persee\workstation\uv_inexus\dto\measurementDto\ProjectManagementDto.class
 com\persee\workstation\uv_inexus\vo\measurementVo\spectrum\SpectralReport.class
 com\persee\workstation\uv_inexus\service\guide\measurementService\SampleHeadTemplateService.class
@@ -394,7 +393,6 @@ com\persee\workstation\uv_inexus\po\guide\systemManagePo\SystemLogSwitchPO.class
 com\persee\workstation\uv_inexus\controller\sysUserPermissionController\SysUserLoginController.class
 com\persee\workstation\uv_inexus\dto\measurementDto\MeasureDataGaugePointDto.class
 com\persee\workstation\uv_inexus\dto\measurementDto\SelectMethodsByTypeResult.class
-com\persee\workstation\uv_inexus\service\guide\copyService\impl\CopyServiceImpl.class
 com\persee\workstation\uv_inexus\enums\instrumentEnums\DeviceSamplePoolPurpose.class
 com\persee\workstation\uv_inexus\service\guide\parseReport\impl\RoundingRulesServiceImpl.class
 com\persee\workstation\uv_inexus\vo\measurementVo\timeSweep\TimeSweepReport.class

@@ -548,6 +548,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
 
+    /**
+     * 获取报告参数
+     * @param taskId
+     * @return
+     */
     @Override
     public Result obtainReportParameters(String taskId) {
 
@@ -1057,8 +1062,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }}
 
 
+    /**
+     * 新建报告表数据查询
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
     @Override
-    public Result newReportTableDataQuery(String taskId, String sampleId) {
+    public Result newReportTableDataQuery(String taskId, String sampleId,String analysisId) {
 
         if (!StringUtils.hasText(taskId)) {
             return Result.fail("请选择任务");
@@ -1067,11 +1078,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (task == null) {
             return Result.fail("任务不存在");
         }
-        if (!StringUtils.hasText(sampleId)){
-            return Result.fail("请选择样品");
+        // 根据任务id查询方法,再从json转换为对象方法参数
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
         }
-        // 样品根据逗号进行分割然后存入List中
-        List<String> sampleIdList = Arrays.asList(sampleId.split(","));
 
         Integer digit = Constants.DEFAULT_DECIMAL_NUM;
         FQueryDataDTO dataDTO = new FQueryDataDTO();
@@ -1180,16 +1191,29 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "光谱扫描":
             {
+                if (!StringUtils.hasText(sampleId)){
+                    return Result.fail("请选择样品");
+                }
+                // 样品根据逗号进行分割然后存入List中
+                List<String> sampleIdList = Arrays.asList(sampleId.split(","));
+                FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+                // 判断方法参数中的重复模式为true的话就分割分析id
+                List<String> analysisIdList = new ArrayList<>();
+                if (param.getRepetitionPattern()!=null&&param.getRepetitionPattern().equals("1")) {
+                    analysisIdList = Arrays.asList(analysisId.split(","));
+                }
                 FSpectrumReportDataVO vo = new FSpectrumReportDataVO();
-                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList);
+                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList, analysisIdList);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, sampleIdList);
+                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, task.getMethodKey() ,sampleIdList, analysisIdList);
                 if (dataList != null){
                     vo.setDataList(dataList);
+                }else{
+                    vo.setDataList(new ArrayList<>());
                 }
 
                 if (StringUtils.hasText(task.getTableInfo())) {
@@ -1217,6 +1241,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "时间扫描":
             {
+                if (!StringUtils.hasText(sampleId)){
+                    return Result.fail("请选择样品");
+                }
+                // 样品根据逗号进行分割然后存入List中
+                List<String> sampleIdList = Arrays.asList(sampleId.split(","));
                 FTimeSweepReportDataVo vo = new FTimeSweepReportDataVo();
                 Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList);
                 if (result.getCode() == 200) {

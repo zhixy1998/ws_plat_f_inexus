@@ -49,6 +49,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
@@ -59,6 +60,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadV
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterVo;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepSearchMethodVo;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.*;
@@ -102,6 +104,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     @Autowired
     private FMeasureSampleService fMeasureSampleService;
+
+    @Autowired
+    private SystemAlgorithmConfService systemAlgorithmConfService;
 
 
     @Autowired
@@ -1531,18 +1536,20 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         if (paramDto.getDataId() == null||paramDto.getDataId().equals("")) {
             return Result.fail("数据ID不能为空");
         }
         if (paramDto.getHeight() == null||paramDto.getHeight().equals("")) {
-            paramDto.setHeight(50.0);
-        }
-        Integer i1 = Integer.valueOf(paramDto.getDistance());
-        if (i1<1){
-            return Result.fail("峰谷间距不可以小于1");
+            paramDto.setHeight(Double.valueOf(Integer.valueOf(confVO.getPeakInterval())));
         }
         if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
-            paramDto.setDistance("1");
+            paramDto.setDistance(confVO.getPeakValleyDiff());
+        }
+        double value = Double.valueOf(paramDto.getDistance());
+        Integer i1 = (int) value;
+        if (i1<1){
+            return Result.fail("峰谷间距不可以小于1");
         }
         paramDto.setHeight(paramDto.getHeight()/100);
         FMeasureAnalysisData tMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
