@@ -283,15 +283,6 @@ public class ResponseDeal {
         float time = (lastResponse[4] & 0xFF) / 100.0f;
         String rawtime = String.valueOf(time);
         MeasureController.addTimeData(rawtime);
-
-        long l = System.currentTimeMillis();
-        if (DetectionConstants.detectionInfo != null && rawtime != null) {
-            DetectionConstants.detectionInfo.put("time", rawtime);
-        }
-
-        long l1 = System.currentTimeMillis() - l;
-        System.out.println("耗时：" + l1);
-
         return isEqual;
     }
 

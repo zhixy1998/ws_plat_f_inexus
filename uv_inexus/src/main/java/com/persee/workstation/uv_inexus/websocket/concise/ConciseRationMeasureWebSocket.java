@@ -505,8 +505,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                 if (session.isOpen()) {
                     JSONObject payload = new JSONObject();
-                    payload.put("r2", curveData.getR2());
-                    payload.put("r", curveData.getR());
+                    if (StringUtils.hasText(curveData.getR2())) {
+                        payload.put("r2", curveData.getR2());
+                    }
+                    if (StringUtils.hasText(curveData.getR())) {
+                        payload.put("r", curveData.getR());
+                    }
                     payload.put("dataList", curveData.getDataList());
                     payload.put("curveType", curveData.getCurveType());
                     payload.put("equation", curveData.getEquation());

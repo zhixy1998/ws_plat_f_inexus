@@ -22,7 +22,7 @@ public enum LiveDetectionCmdEnum {
 
     Connect(1, "Connect", null, 2),
     GetPhotoMode(2, "GetPhotoMode", null, 2),
-    SetResponseTime(3, "SetResponseTime", "0.5", 2),
+    GetResponseTime(3, "GetResponseTime", null, 2),
     Measure(4, "Measure", null, 3),
     GetChangeLampWl(5, "GetChangeLampWl", null, 2),
     GetCellPos(6, "GetCellPos", null, 2),
