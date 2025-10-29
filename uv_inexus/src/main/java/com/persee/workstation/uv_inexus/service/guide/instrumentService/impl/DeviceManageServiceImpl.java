@@ -146,6 +146,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public R<Integer> queryDeviceStatus(String deviceSerialNumber) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null || info.getDeviceCurrentStatus() == null) {
+            log.info("未找到连接仪器信息！");
+            return R.fail("未查找到仪器信息");
+        }
+        log.info("查询仪器状态");
+        return R.ok(info.getDeviceCurrentStatus());
+    }
+
+    @Override
     public R<Boolean> init(DeviceInitDTO initDTO) {
         if (initDTO.getDeviceSerialNumber().isEmpty()) {
             log.info("未传仪器序列号！");

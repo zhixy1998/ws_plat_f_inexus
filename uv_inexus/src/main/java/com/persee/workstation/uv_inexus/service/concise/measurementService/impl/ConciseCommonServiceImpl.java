@@ -241,6 +241,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         return Result.ok(vo);
     }
 
+    @Override
+    public Result<Integer> queryDeviceStatus(String deviceSerialNumber) {
+        R<Integer> r = deviceManageService.queryDeviceStatus(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     /**
      * 保存草稿按钮
      * @param taskId

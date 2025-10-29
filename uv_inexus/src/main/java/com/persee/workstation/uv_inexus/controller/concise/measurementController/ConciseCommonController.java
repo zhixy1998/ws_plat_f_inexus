@@ -59,6 +59,12 @@ public class ConciseCommonController {
         return conciseCommonService.querySaveState(taskId);
     }
 
+    @GetMapping("queryDeviceStatus")
+    @ApiOperation("查询设备状态")
+    public Result queryDeviceStatus(@RequestParam String deviceSerialNumber) {
+        return conciseCommonService.queryDeviceStatus(deviceSerialNumber);
+    }
+
 
     @GetMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")

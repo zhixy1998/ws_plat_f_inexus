@@ -486,8 +486,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
             JSONObject currentInfo = new JSONObject();
-            currentInfo.put("waveLength", waveLength);
-            currentInfo.put("currentValue", data);
+            currentInfo.put("waveLength", waveLength + "nm");
+            currentInfo.put("currentValue", data + "Abs");
             session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
             FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
@@ -603,8 +603,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
                 JSONObject currentInfo = new JSONObject();
-                currentInfo.put("waveLength", waveLength);
-                currentInfo.put("currentValue", data);
+                currentInfo.put("waveLength", waveLength + "nm");
+                currentInfo.put("currentValue", data + "Abs");
                 session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();

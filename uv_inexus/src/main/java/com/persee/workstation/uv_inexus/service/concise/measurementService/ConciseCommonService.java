@@ -31,6 +31,8 @@ public interface ConciseCommonService {
     // 查询保存状态
     Result querySaveState(String taskId);
 
+    Result<Integer> queryDeviceStatus(String deviceSerialNumber);
+
     // 保存草稿按钮
     Result saveDraftButton(String taskId);
 
