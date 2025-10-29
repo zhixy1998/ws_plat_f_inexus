@@ -90,7 +90,7 @@ public class ConciseCommonController {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
 
-    @PostMapping("delMethod")
+    @GetMapping("delMethod")
     @ApiOperation("删除方法")
     public Result<String> delMethod(@RequestParam("methodId") String methodId) {
         return conciseCommonService.delMethod(methodId);
@@ -108,7 +108,7 @@ public class ConciseCommonController {
         return conciseCommonService.updateTask(updateTaskDto);
     }
 
-    @PostMapping("delTask")
+    @GetMapping("delTask")
     @ApiOperation("删除历史文件")
     public Result delTask(@RequestParam("taskId") String taskId) {
         return conciseCommonService.delTask(taskId);

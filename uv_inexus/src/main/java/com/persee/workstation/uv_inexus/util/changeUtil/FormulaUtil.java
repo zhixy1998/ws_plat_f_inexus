@@ -16,18 +16,12 @@ import java.util.*;
 
 @Component
 public class FormulaUtil {
-    /*List<Map<String, Object>> resultList = new ArrayList<>();
-        Map<String, Object> item = new HashMap<>();
-        item.put("n", 1);
-        item.put("theoryStep", 32805);
-        item.put("actualStep", 32805);
-        formulaUtil.addFormula(resultList,"30-U1604-01-0010");
-        formulaUtil.calculateWl(2730,"30-U1604-01-0010");
-        formulaUtil.calculateStep(55,"30-U1604-01-0010");*/
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
 
-    // 根据实际步数计算理论步数，进而推算理论波长传回软件t=ka+b
+    /*
+    * 根据步数计算波长
+    * */
     public double calculateWl(double actualStep, String deviceSerialNumber) {
         try {
             List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
@@ -47,7 +41,10 @@ public class FormulaUtil {
         String formula = deviceInfoDAO.getFormula(deviceSerialNumber);
         return JSONArray.parseArray(formula, LinearSegment.class);
     }
-    // 根据实际步数计算理论步数，进而推算理论波长传回软件t=ka+b
+
+    /*
+    * 根据波长计算步数
+    * */
     public double calculateStep(double wl, String deviceSerialNumber) {
         try {
             List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
@@ -85,22 +82,16 @@ public class FormulaUtil {
     }
 
     //添加计算公式
-    public Result addFormula(List<Map<String, Object>> resultList, String deviceSerialNumber) {
-        if (CollectionUtils.isEmpty(resultList)|| StringUtils.isBlank(deviceSerialNumber)){
-            return Result.fail("resultList，deviceSerialNumber不能为空！！！");
+    public Result addFormula(List<StepPoint> stepPoints, String deviceSerialNumber) {
+        if (CollectionUtils.isEmpty(stepPoints)|| StringUtils.isBlank(deviceSerialNumber)){
+            return Result.fail("stepPoints，deviceSerialNumber不能为空！！！");
         }
-        ArrayList<StepPoint> stepPoints = new ArrayList<>();
-        resultList.sort(new Comparator<Map<String, Object>>() {
+        stepPoints.sort(new Comparator<StepPoint>() {
             @Override
-            public int compare(Map<String, Object> o1, Map<String, Object> o2) {
-                return MapUtils.getDouble(o1, "actualStep").compareTo(MapUtils.getDouble(o2, "actualStep"));
+            public int compare(StepPoint s1, StepPoint s2) {
+                return Double.compare(s1.getActualStep(),s2.getActualStep());
             }
         });
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        for (Map<String, Object> map : resultList) {
-            stepPoints.add(objectMapper.convertValue(map, StepPoint.class));
-        }
         //要存到数据库中的json串
         ArrayList<LinearSegment> list = new ArrayList<>();
         for (int i = 0; i < stepPoints.size(); i++) {

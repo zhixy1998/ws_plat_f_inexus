@@ -397,6 +397,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         LambdaQueryWrapper<FMeasureTask> fMeasureTaskLambdaQueryWrapper = new LambdaQueryWrapper<>();
         fMeasureTaskLambdaQueryWrapper.eq(FMeasureTask::getMeasureType, methodType)
                 .eq(FMeasureTask::getUserId, userId)
+                .eq(FMeasureTask::getIsDelete,"0")
                 .orderByDesc(FMeasureTask::getEndSaveTime);
 
         if (selectKey != null) {
@@ -1460,7 +1461,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result delTask(String  taskId) {
         boolean b=fMeasureTaskService.delTask(taskId);
-        return Result.ok(true);
+        if (b){
+            return Result.ok(true);
+        }
+        return Result.fail();
     }
 
     @Override

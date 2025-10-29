@@ -15,6 +15,7 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -404,7 +405,7 @@ private static Object parseLampPos(List<byte[]> responses) {
             return false;
         }
 
-        List<Map<String, Object>> resultList = new ArrayList<>();
+        ArrayList<StepPoint> resultList = new ArrayList<>();
 
         try {
             for (byte[] resp : responses) {
@@ -424,12 +425,7 @@ private static Object parseLampPos(List<byte[]> responses) {
 
                     int actualStep = ((resp[10] & 0xFF) << 8) | (resp[9] & 0xFF);
 
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("n", n);
-                    item.put("theoryStep", theoryStep);
-                    item.put("actualStep", actualStep);
-
-                    resultList.add(item);
+                    resultList.add(new StepPoint(actualStep, theoryStep, n));
                 }
             }
 
