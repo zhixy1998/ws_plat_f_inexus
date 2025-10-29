@@ -73,4 +73,8 @@ public class DeviceInfoPO extends BasePO {
     @ApiModelProperty("附件名称")
     @TableField("attachment_name")
     private String attachmentName;
+
+    @ApiModelProperty("计算公式")
+    @TableField("linear_segment")
+    private String linearSegment;
 }
