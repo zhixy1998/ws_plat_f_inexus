@@ -1542,6 +1542,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
 //            task.setId(null);
             task.setTaskName(taskName);
+            //另存为之后的设置为保存
+            task.setIsSave("0");
             fMeasureTaskService.save(task);
             return Result.ok("拷贝成功");
 
