@@ -91,8 +91,9 @@ public class PhotometricConciseController {
     @GetMapping("createSample")
     @ApiOperation("创建样本接口")
     public Result<Boolean> createSample(@RequestParam String taskId,
-                               @RequestParam String updateBy) {
-        R<Boolean> r = fPhotometricService.createSample(taskId, updateBy);
+                                        @RequestParam String updateBy,
+                                        @RequestParam String deviceSerialNumber) {
+        R<Boolean> r = fPhotometricService.createSample(taskId, updateBy, deviceSerialNumber);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {

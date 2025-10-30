@@ -45,7 +45,7 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
             log.info("触发快捷登录，使用默认用户");
             // 建议在Constants类中定义默认值，避免硬编码（示例：Constants.DEFAULT_USERNAME）
-            loginDTO.setUserName("admin");
+            loginDTO.setUserName("kh-admin");
             loginDTO.setPassword("123456");
         }
 

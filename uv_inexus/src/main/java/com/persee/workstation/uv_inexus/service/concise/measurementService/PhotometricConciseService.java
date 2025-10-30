@@ -86,7 +86,7 @@ public interface PhotometricConciseService {
     /**
      * 创建样品
      */
-    R<Boolean> createSample(String taskId, String updateBy);
+    R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber);
 
     /**
      * 查询样品的表头

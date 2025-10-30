@@ -272,7 +272,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         } else {
 
-            R<Boolean> createR = photometricService.createSample(taskId, updateBy);
+            R<Boolean> createR = photometricService.createSample(taskId, updateBy, deviceSerialNumber);
             if (!createR.getSuccess()) {
                 infoService.releaseDevice(deviceSerialNumber);
                 sendAndClose(session, createR.getMessage());
@@ -840,7 +840,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         JSONObject currentInfo = new JSONObject();
         currentInfo.put("waveLength", waveLength + "nm");
-        currentInfo.put("currentValue", currentValue + WaveLengthEnum.getName(luminosity));
+        currentInfo.put("currentValue", DataCountUtil.formatValueWithBigDecimal(digit, currentValue) + WaveLengthEnum.getName(luminosity));
         session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
         originDataInfo.setData(measureData);

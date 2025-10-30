@@ -161,7 +161,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             return;
         }
 
-        R<Boolean> createR = rationService.createSample(taskId, sampleKind, updateBy);
+        R<Boolean> createR = rationService.createSample(taskId, sampleKind, updateBy, deviceSerialNumber);
         if (!createR.getSuccess()) {
             infoService.releaseDevice(deviceSerialNumber);
             sendAndClose(session, createR.getMessage());
@@ -1028,7 +1028,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             JSONObject currentInfo = new JSONObject();
 
             currentInfo.put("waveLength", waveLength + "nm");
-            currentInfo.put("currentValue", data + WaveLengthEnum.abs.getName());
+            currentInfo.put("currentValue", DataCountUtil.formatValueWithBigDecimal(digit, data) + WaveLengthEnum.abs.getName());
             session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
             FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
@@ -1145,7 +1145,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                 JSONObject currentInfo = new JSONObject();
                 currentInfo.put("waveLength", waveLength + "nm");
-                currentInfo.put("currentValue", data + WaveLengthEnum.abs.getName());
+                currentInfo.put("currentValue", DataCountUtil.formatValueWithBigDecimal(digit, data) + WaveLengthEnum.abs.getName());
                 session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();

@@ -190,7 +190,7 @@ public class ConciseCommonController {
 
     @GetMapping("queryDeviceTypeInfo")
     @ApiOperation("查询设备类型信息")
-    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam String deviceSerialNumber) {
+    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam(required = false) String deviceSerialNumber) {
         return conciseCommonService.queryDeviceTypeInfo(deviceSerialNumber);
     }
 

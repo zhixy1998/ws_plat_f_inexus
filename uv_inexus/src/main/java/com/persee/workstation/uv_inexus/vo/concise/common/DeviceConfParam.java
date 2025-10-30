@@ -10,13 +10,20 @@
 package com.persee.workstation.uv_inexus.vo.concise.common;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class DeviceConfParam {
 
     private String paramName;
 
     private String paramValue;
+
+    public DeviceConfParam(String paramName, String paramValue) {
+        this.paramName = paramName;
+        this.paramValue = paramValue;
+    }
 }

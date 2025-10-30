@@ -155,8 +155,9 @@ public class RationConciseController {
     @ApiOperation("创建样品接口")
     public Result createSample(@RequestParam String taskId,
                                @RequestParam String sampleKind,
-                               @RequestParam String updateBy) {
-        R<Boolean> r = rationService.createSample(taskId, sampleKind, updateBy);
+                               @RequestParam String updateBy,
+                               @RequestParam String deviceSerialNumber) {
+        R<Boolean> r = rationService.createSample(taskId, sampleKind, updateBy, deviceSerialNumber);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {

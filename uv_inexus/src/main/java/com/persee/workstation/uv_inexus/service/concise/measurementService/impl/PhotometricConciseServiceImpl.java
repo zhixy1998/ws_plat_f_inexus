@@ -140,6 +140,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.fail("光度模式不能为空");
         }
 
+        if (parameter.getLuminosity().equals(WaveLengthEnum.es.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())) {
+            String energyLamp = parameter.getEnergyLamp();
+            Integer gain = parameter.getGain();
+            if (!StringUtils.hasText(energyLamp)) {
+                return R.fail(WaveLengthEnum.getName(parameter.getLuminosity()) + "模式下请选择能量灯并设置增益");
+            }
+            if (gain == null) {
+                return R.fail(WaveLengthEnum.getName(parameter.getLuminosity()) + "模式下请设置增益");
+            }
+        }
+
         if (WaveLengthEnum.getName(parameter.getLuminosity()) == null) {
             return R.fail("光度模式选择出错");
         }
@@ -511,6 +522,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureMethod method = fMeasureMethodService.getById(methodId);
             method.setMethodUseTime(LocalDateTime.now());
             fMeasureMethodService.updateById(method);
+            setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
             return Result.ok(ans);
 
         } else {
@@ -539,6 +551,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 FMeasureMethod method = fMeasureMethodService.getById(methodId);
                 method.setMethodUseTime(LocalDateTime.now());
                 fMeasureMethodService.updateById(method);
+                setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
                 return Result.ok(ans);
             }
 
@@ -551,6 +564,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 FMeasureMethod method = fMeasureMethodService.getById(methodId);
                 method.setMethodUseTime(LocalDateTime.now());
                 fMeasureMethodService.updateById(method);
+                setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
                 return Result.ok(ans);
             }
 
@@ -585,6 +599,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     FMeasureMethod method = fMeasureMethodService.getById(methodId);
                     method.setMethodUseTime(LocalDateTime.now());
                     fMeasureMethodService.updateById(method);
+                    setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
                     return Result.ok(ans);
 
                 } else if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.analyze.getIdentity())) {
@@ -607,6 +622,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     }
                     ans.setTaskId(task.getId());
                     ans.setTaskName(task.getTaskName());
+                    setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
                     return Result.ok(ans);
 
                 } else {
@@ -617,6 +633,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     FMeasureMethod method = fMeasureMethodService.getById(methodId);
                     method.setMethodUseTime(LocalDateTime.now());
                     fMeasureMethodService.updateById(method);
+                    setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
                     return Result.ok(ans);
 
                 }
@@ -645,12 +662,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 FMeasureMethod method = fMeasureMethodService.getById(methodId);
                 method.setMethodUseTime(LocalDateTime.now());
                 fMeasureMethodService.updateById(method);
+                setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
                 return Result.ok(ans);
             }
         }
     }
 
     private void saveData(String taskId) {
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        task.setEndSaveTime(LocalDateTime.now());
+        task.setIsSave(saved);
+        fMeasureTaskService.updateById(task);
         LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(FMeasureData::getTaskId, taskId)
                 .eq(FMeasureData::getIsSave, noSave);
@@ -718,6 +740,53 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         analysisData.setAnalysisResult(JSON.toJSONString(data));
         analysisData.setIsSave(createType);
         return fMeasureAnalysisDataService.updateById(analysisData);
+    }
+
+    private void setParamToDevice(String methodId, String deviceSerialNumber) {
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info("设备未连接,无需下发参数");
+            return;
+        }
+
+        FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
+        if (fMeasureMethod == null) {
+            log.warn("找不到对应的测量方法: methodId={}", methodId);
+            return;
+        }
+
+        FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
+        if (parameter == null) {
+            log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
+            return;
+        }
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        if (StringUtils.hasText(ip)) {
+            List<Command> list = new ArrayList<>();
+
+            String wave = StringUtils.hasText(parameter.getLuminosity()) ? parameter.getLuminosity(): WaveLengthEnum.abs.getCode();
+            String responseTime = StringUtils.hasText(parameter.getResponseTime()) ? parameter.getResponseTime() : "0.5";
+
+            list.add(new Command("SetPhotoMode", new Object[]{wave}));
+            list.add(new Command("SetResponseTime", new Object[]{responseTime}));
+            if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+
+                String lampPos = StringUtils.hasText(parameter.getEnergyLamp()) ? parameter.getEnergyLamp() : "0";
+                int gain = parameter.getGain() == null ? 3: parameter.getGain();
+
+                list.add(new Command("SetLampPos", new Object[]{lampPos}));
+                list.add(new Command("SetGain", new Object[]{gain}));
+            }
+            try {
+                deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+                devMessageUtil.photometricAndRationMeasurement(list, ip);
+            } catch (Exception e) {
+                log.info("参数设置异常");
+            } finally {
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
+        }
+
     }
 
 
@@ -1058,7 +1127,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     }
 
     @Override
-    public R<Boolean> createSample(String taskId, String updateBy) {
+    public R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber) {
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
@@ -1085,10 +1154,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (taskSpecimen.isEmpty()) {
             FMeasureSample newSample = new FMeasureSample();
-            Random random = new Random();
-            int collect = 100 + random.nextInt(900);
 
-            newSample.setSampleName("默认样品"+collect);
+            newSample.setSampleName("默认样品" + 1);
             newSample.setSampleNumber("1");
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
             if (!dynamicHeads.isEmpty()) {
@@ -1111,7 +1178,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 }
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
-                    sampleNumList.add(measureSample.getSampleNumber());
+                    sampleNumList.add(measureSample.getSampleName());
                 }
             }
             if (hasNoTested) {
@@ -1119,16 +1186,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
 
             FMeasureSample newSample = new FMeasureSample();
-            Random random = new Random();
-            int collect = 100 + random.nextInt(900);
 
-            newSample.setSampleName("默认样品" + collect);
+            Integer maxSampleId = sampleNumList.stream()
+                    .filter(sample -> sample.startsWith("默认样品"))
+                    .map(sample -> Integer.parseInt(sample.replace("默认样品", "")))  // 获取样品编号部分
+                    .max(Integer::compareTo)
+                    .orElse(0);
 
-            String maxSampleId = sampleNumList.stream() // 获取样品编号
-                    .max(Comparator.naturalOrder())        // 获取最大编号
-                    .orElse("0");
+            newSample.setSampleNumber(String.valueOf(maxSampleId + 1));
+            newSample.setSampleName("默认样品" + maxSampleId + 1);
 
-            newSample.setSampleNumber(String.valueOf(Integer.parseInt(maxSampleId) + 1));
 
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
             if (!dynamicHeads.isEmpty()) {
@@ -1146,6 +1213,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
             return R.fail("更新失败");
+        }
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
         }
         return R.ok(true);
     }
@@ -2203,6 +2279,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         String id = po.getId();
         task.setUserId(id);
         task.setIsDelete("1");
+        task.setEndSaveTime(LocalDateTime.now());
         fMeasureTaskService.updateById(task);
         saveData(taskId);
         return Result.ok(true);

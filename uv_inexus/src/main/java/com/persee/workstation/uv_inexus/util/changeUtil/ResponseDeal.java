@@ -99,7 +99,7 @@ public class ResponseDeal {
             case "BaseLineFast":
                 return parseBaseLine(responses);
             case "GetWlList":
-                return parseWllist(responses);
+                return parseWlList(responses);
 
 
             case "SetResponseTime":
@@ -398,7 +398,7 @@ private static Object parseLampPos(List<byte[]> responses) {
     return pos;
 }
 
-    private static Object parseWllist(List<byte[]> responses) {
+    private static Object parseWlList(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
             result = "false";

@@ -50,10 +50,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -598,6 +595,34 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            DeviceMeasureVO ans = new DeviceMeasureVO();
+            ans.setConnectMode(1);
+            ans.setMinWavelength("190");
+            ans.setMaxWavelength("1100");
+            ans.setBandWidth(Arrays.asList("2"));
+            ans.setGain(Arrays.asList(1, 2, 3, 4));
+            ans.setScanInterval(Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0"));
+            ans.setResponseTime(Arrays.asList("0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2"));
+            List<DeviceConfParam> list = new ArrayList<>();
+            list.add(new DeviceConfParam(WaveLengthEnum.abs.getName(), WaveLengthEnum.abs.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.tPercent.getName(), WaveLengthEnum.tPercent.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.es.getName(), WaveLengthEnum.es.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.er.getName(), WaveLengthEnum.er.getCode()));
+            ans.setLuminosity(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(EnergyLampEnums.Tungsten.getName(), EnergyLampEnums.Tungsten.getIdentity()));
+            list.add(new DeviceConfParam(EnergyLampEnums.Deuterium.getName(), EnergyLampEnums.Deuterium.getIdentity()));
+            ans.setLampType(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(ScanSpeedEnum.SLOW.getName(), ScanSpeedEnum.SLOW.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.MEDIUM.getName(), ScanSpeedEnum.MEDIUM.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.FAST.getName(), ScanSpeedEnum.FAST.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
+            ans.setScanSpeed(list);
+            return R.ok(ans);
+        }
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null) {
