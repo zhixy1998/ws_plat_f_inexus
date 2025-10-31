@@ -559,16 +559,27 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
         log.info("检测仪器类型");
         String type = "T600"; //暂时默认用T600
+
+        R<DeviceMeasureVO> deviceMeasureVOR = queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            log.info("查询仪器类型失败");
+            return null;
+        }
+        DeviceMeasureVO measureVO = deviceMeasureVOR.getData();
+
+
         List<DeviceCalibrationVO> info = configDAO.getCalibrationInfo(type);
         for (DeviceCalibrationVO vo : info) {
             List<DeviceCalibrationParams> params = configDAO.getCalibrationParams(vo.getCalibrationType());
             for (DeviceCalibrationParams param : params) {
                 List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
                 param.setData(value);
+
                 LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(CalibrationTempPO::getCalibrationType, vo.getCalibrationType())
                         .eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
-                        .eq(CalibrationTempPO::getParam, param.getParam()).orderByDesc(CalibrationTempPO::getId);
+                        .eq(CalibrationTempPO::getParam, param.getParam())
+                        .orderByDesc(CalibrationTempPO::getId);
 
                 CalibrationTempPO tempPO = tempDao.selectOne(queryWrapper);
                 if (tempPO != null) {

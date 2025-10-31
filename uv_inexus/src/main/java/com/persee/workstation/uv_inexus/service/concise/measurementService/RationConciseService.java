@@ -102,8 +102,9 @@ public interface RationConciseService {
      */
     Result<List<FHeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
 
-    R<Boolean> createSample(String taskId, String sampleKind, String updateBy, String deviceSerialNumber);
+    R<Boolean> checkAllSampleTest(String taskId);
 
+    R<Boolean> createSample(String taskId, String sampleKind, Double normalConcentration, String updateBy, String deviceSerialNumber);
 
     R<String> saveRationSampleMeasureData(FRationDataVO dataInfo);
     R<FRationSaveCountDataInfo> saveSampleMeasureData(FRationDataVO dataInfo);

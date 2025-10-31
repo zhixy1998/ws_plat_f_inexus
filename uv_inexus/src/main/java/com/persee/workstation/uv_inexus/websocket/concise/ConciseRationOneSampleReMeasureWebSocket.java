@@ -140,9 +140,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         String updateBy = getQueryParam(query, "updateBy");
         int di = Integer.parseInt(getQueryParam(query, "digit"));
-        isAvg = StringUtils.hasText(getQueryParam(query, "avg"));
-        isSd = StringUtils.hasText(getQueryParam(query, "sd"));
-        isRsd = StringUtils.hasText(getQueryParam(query, "rsd"));
+        isAvg = getQueryParam(query, "avg").equals("true");
+        isSd = getQueryParam(query, "sd").equals("true");
+        isRsd = getQueryParam(query, "rsd").equals("true");
 
         if (deviceSerialNumber == null) {
             sendAndClose(session, "未连接仪器");

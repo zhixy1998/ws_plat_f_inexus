@@ -151,13 +151,25 @@ public class RationConciseController {
         return rationService.queryCurveInfo(taskId, methodId);
     }
 
+    @GetMapping("checkAllSampleTestStatus")
+    @ApiOperation("检查样品是否都测量了")
+    public Result<Boolean> checkCreateNewSample(@RequestParam String taskId){
+        R<Boolean> r = rationService.checkAllSampleTest(taskId);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok(r.getData());
+        }
+    }
+
     @GetMapping("createSample")
     @ApiOperation("创建样品接口")
     public Result createSample(@RequestParam String taskId,
                                @RequestParam String sampleKind,
+                               @RequestParam(required = false) Double normalConcentration,
                                @RequestParam String updateBy,
                                @RequestParam String deviceSerialNumber) {
-        R<Boolean> r = rationService.createSample(taskId, sampleKind, updateBy, deviceSerialNumber);
+        R<Boolean> r = rationService.createSample(taskId, sampleKind, normalConcentration, updateBy, deviceSerialNumber);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {
