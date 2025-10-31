@@ -94,9 +94,11 @@ public class MessageUtil {
 
             long lastReceiveTime = System.currentTimeMillis();
 
-            new Thread(() -> {
+            Thread sendMeasure = new Thread(() -> {
                 scanReceiveAndDeal(scanSocket);
-            }).start();
+            });
+            Constants.sendMeasureThread = sendMeasure;
+            sendMeasure.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -133,9 +135,11 @@ public class MessageUtil {
 
             long lastReceiveTime = System.currentTimeMillis();
 
-            new Thread(() -> {
+            Thread sendMeasure = new Thread(() -> {
                 scanReceiveAndDealBaseline(scanSocket);
-            }).start();
+            });
+            Constants.sendMeasureThread = sendMeasure;
+            sendMeasure.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -194,8 +198,6 @@ public class MessageUtil {
                     responses.add(reply);
 
                     System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
-
-
 
                     System.out.print("十六进制回应：");
                     for (byte b : reply) System.out.printf("%02X ", b);

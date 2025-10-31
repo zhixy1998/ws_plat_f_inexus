@@ -104,6 +104,8 @@ public class Constants {
     public static volatile boolean measureStatus = false;
     /// 占用状态
     public static volatile boolean occupancyStatus= false;
+    /// 存储发送线程
+    public static volatile Thread sendMeasureThread = null;
 
 //    public static volatile List<String> r_data = new ArrayList<>();
 //    public static volatile List<String> s_data = new ArrayList<>();

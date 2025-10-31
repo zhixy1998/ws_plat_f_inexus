@@ -164,7 +164,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
         // 1. 查询该角色下的所有启用组
         LambdaQueryWrapper<SysGroupPO> groupQuery = new LambdaQueryWrapper<>();
         groupQuery.eq(SysGroupPO::getRoleId, roleId)
-                  .eq(SysGroupPO::getStatus, 1)
+
                   .orderByAsc(SysGroupPO::getGroupName);
         List<SysGroupPO> groupList = sysGroupMapper.selectList(groupQuery);
 
@@ -207,7 +207,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
         // 查询启用的用户
         LambdaQueryWrapper<SysUserPO> userQuery = new LambdaQueryWrapper<>();
         userQuery.in(SysUserPO::getId, userIds)
-                 .eq(SysUserPO::getStatus, 1)
+
                  .orderByAsc(SysUserPO::getRealName);
         List<SysUserPO> userList = sysUserMapper.selectList(userQuery);
 

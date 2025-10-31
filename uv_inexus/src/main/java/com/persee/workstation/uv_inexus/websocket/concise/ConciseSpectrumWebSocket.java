@@ -111,6 +111,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         // 将当前会话添加到sessions集合中
         sessions.put(session.getId(), session);
 
+        exceptionHandling();
+
         if (Constants.endTime != null || Constants.startTime != null) {
             sendClose(session, "当前测量未结束,无法开启新的测试");
             return;
@@ -359,8 +361,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
-        // 回显
-        session.sendMessage(new TextMessage("服务端已收到: " + message.getPayload()));
         if (message.getPayload().equals("close")){
             // 如果线程正在被使用
             if (occupancyStatus){
@@ -369,6 +369,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             }
             if (measureStatus){
                 try {
+                    // 强制停止基线/测量的线程
+                    Constants.sendMeasureThread.interrupt();
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()){
                         log.info("停止成功");
@@ -383,7 +385,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             // 强制停止线程
             thread.interrupt();
             taskThreads.remove(session.getId());
-            log.info("前端关闭");
+            session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
         }
@@ -399,6 +401,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         // 打印客户端退出信息，包括会话ID、退出时间和关闭原因
         System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
+        if (Constants.sendMeasureThread != null){
+            Constants.sendMeasureThread.interrupt();
+        }
         Thread taskThread = taskThreads.remove(session.getId());
         if (taskThread != null) {
             taskThread.interrupt(); // 直接打断子线程
@@ -515,6 +520,26 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                                    String ip,
                                                    Integer count) throws IOException {
 
+        String luminosity = null;
+        switch (spectrumParameter.getLuminosity()){
+            case "1":
+                luminosity = "Abs";
+                break;
+            case "2":
+                luminosity = "T%";
+                break;
+            case "3":
+                luminosity = "Es";
+                break;
+            case "4":
+                luminosity = "Er";
+                break;
+            default:
+                luminosity = "Abs";
+                break;
+        }
+
+
         // 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
         measureStatus=true;
@@ -539,14 +564,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 }
                 while (!Constants.measurd_data.isEmpty()) {
                     calcOnePoint(spectrumParameter, baselineCopy, x, y);
-                    pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId);
+                    pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId, luminosity);
                 }
                 break;
             }
 
             while (!Constants.measurd_data.isEmpty()) {
                 calcOnePoint(spectrumParameter, baselineCopy, x, y);
-                pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId);
+                pushCount = pushDataIfNeeded(session, x, y, pushCount, count, sampleId,  luminosity);
             }
 
             try { Thread.sleep(10); } catch (InterruptedException e) {
@@ -556,7 +581,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         }
 
         // 推送剩余数据
-        pushRemainingData(session, x, y, pushCount, count, sampleId);
+        pushRemainingData(session, x, y, pushCount, count, sampleId, luminosity);
 
         // 返回快照 + x/y
         return new MeasurementResult(
@@ -570,7 +595,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
 
     // 推送逻辑：每 10 个点推送一次
-    private int pushDataIfNeeded(WebSocketSession session, List<Double> x, List<Double> y, int pushCount, Integer count, String sampleId) throws IOException {
+    private int pushDataIfNeeded(WebSocketSession session, List<Double> x, List<Double> y, int pushCount, Integer count, String sampleId,String luminosity) throws IOException {
 //        if (x.size() >= (pushCount + 1) * 10) {
         if (x.size() >= (pushCount + 1) * 10) {
             JSONArray dataArray = new JSONArray();
@@ -578,6 +603,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 JSONObject point = new JSONObject();
                 point.put("x", x.get(i));
                 point.put("y", y.get(i));
+                point.put("xType", "nm");
+                point.put("yType", luminosity);
                 dataArray.add(point);
             }
             JSONObject payload = new JSONObject();
@@ -593,7 +620,13 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     }
 
     // 推送剩余数据（最后不足10条的情况）
-    private void pushRemainingData(WebSocketSession session, List<Double> x, List<Double> y, int pushCount, Integer count, String sampleId) throws IOException {
+    private void pushRemainingData(WebSocketSession session,
+                                   List<Double> x,
+                                   List<Double> y,
+                                   int pushCount,
+                                   Integer count,
+                                   String sampleId,
+                                   String luminosity) throws IOException {
         int startIndex = pushCount * 10;
         if (startIndex < x.size()) {
             JSONArray dataArray = new JSONArray();
@@ -601,6 +634,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 JSONObject point = new JSONObject();
                 point.put("x", x.get(i));
                 point.put("y", y.get(i));
+                point.put("xType", "nm");
+                point.put("yType", luminosity);
                 dataArray.add(point);
             }
             JSONObject payload = new JSONObject();
@@ -921,6 +956,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         Constants.originalCalculationData.clear();
         Constants.startTime = null;
         Constants.endTime = null;
+        Constants.sendMeasureThread = null;
     }
 
 

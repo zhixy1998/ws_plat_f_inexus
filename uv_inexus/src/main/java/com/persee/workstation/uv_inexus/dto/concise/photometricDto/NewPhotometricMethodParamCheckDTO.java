@@ -43,6 +43,9 @@ public class NewPhotometricMethodParamCheckDTO {
     @ApiModelProperty("是否保存原有数据, true-保存，false-不保存")
     private Boolean isSaveDraft;
 
+    @ApiModelProperty("序列号")
+    private String deviceSerialNumber;
+
     @ApiModelProperty("用户")
     private String updateBy;
 }

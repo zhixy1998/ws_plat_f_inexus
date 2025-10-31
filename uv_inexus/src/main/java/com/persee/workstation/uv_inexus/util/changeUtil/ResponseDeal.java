@@ -15,6 +15,7 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +98,8 @@ public class ResponseDeal {
             case "BaseLine":
             case "BaseLineFast":
                 return parseBaseLine(responses);
+            case "GetWlList":
+                return parseWlList(responses);
 
 
             case "SetResponseTime":
@@ -127,6 +130,8 @@ public class ResponseDeal {
 
             case "GetPhotoMode":
                 return parsePhotoMode(responses);
+            case "GetResponseTime":
+                return parseGetResponseTime(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
@@ -134,6 +139,33 @@ public class ResponseDeal {
                 return 0;
         }
     }
+
+    private static Object parseGetResponseTime(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+        float time = (lastResponse[4] & 0xFF) / 100.0f;
+        String rawtime = String.valueOf(time);
+        MeasureController.addTimeData(rawtime);
+
+        long l = System.currentTimeMillis();
+        if (DetectionConstants.detectionInfo != null && rawtime != null) {
+            DetectionConstants.detectionInfo.put("time", rawtime);
+        }
+
+        long l1 = System.currentTimeMillis() - l;
+        System.out.println("耗时：" + l1);
+        return true;
+    }
+
 
     private static Object parsePhotoMode(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
@@ -252,15 +284,6 @@ public class ResponseDeal {
         float time = (lastResponse[4] & 0xFF) / 100.0f;
         String rawtime = String.valueOf(time);
         MeasureController.addTimeData(rawtime);
-
-        long l = System.currentTimeMillis();
-        if (DetectionConstants.detectionInfo != null && rawtime != null) {
-            DetectionConstants.detectionInfo.put("time", rawtime);
-        }
-
-        long l1 = System.currentTimeMillis() - l;
-        System.out.println("耗时：" + l1);
-
         return isEqual;
     }
 
@@ -375,6 +398,49 @@ private static Object parseLampPos(List<byte[]> responses) {
     return pos;
 }
 
+    private static Object parseWlList(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+
+        ArrayList<StepPoint> resultList = new ArrayList<>();
+
+        try {
+            for (byte[] resp : responses) {
+                if (resp == null || resp.length < 11) {
+                    System.out.println("回应报文长度不足11字节，跳过解析");
+                    continue;
+                }
+
+                int cmdType1 = resp[2] & 0xFF; // 第3个字节（索引2）
+                int cmdType = resp[3] & 0xFF;   // 第4个字节（索引3）
+
+                // 满足条件：第3字节为19 或 第4字节为10 时解析
+                if (cmdType1 == 19 || cmdType == 10) {
+                    int n = resp[5] & 0xFF;
+
+                    int theoryStep = ((resp[8] & 0xFF) << 8) | (resp[7] & 0xFF);
+
+                    int actualStep = ((resp[10] & 0xFF) << 8) | (resp[9] & 0xFF);
+
+                    resultList.add(new StepPoint(actualStep, theoryStep, n));
+                }
+            }
+
+            System.out.println("WlList 解析结果：" + resultList);
+
+            result = "true"; // 解析成功标记
+            return resultList; // 返回最终解析列表
+
+        } catch (Exception e) {
+            System.out.println("WlList 解析异常: " + e.getMessage());
+            result = "false";
+            return null;
+        }
+    }
+
 
     /**
      * 通用：最后一条回应的第5位是否为0
@@ -386,7 +452,7 @@ private static Object parseLampPos(List<byte[]> responses) {
         }
 
         byte[] last = responses.get(responses.size() - 1);
-        boolean success = last.length >= 5 && (last[4] & 0xFF) == 0;
+        boolean success = last.length >= 5 && (last[4] & 0xFF) == 0 && (last[3] & 0xFF) != 7;
         result = success ? "true" : "false"; // 根据结果更新 result
         return success;
     }

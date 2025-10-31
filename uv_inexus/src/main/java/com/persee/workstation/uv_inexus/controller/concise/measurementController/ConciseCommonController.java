@@ -26,6 +26,8 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/")
 @RestController
 @Api("简洁模式: 通用接口")
@@ -57,6 +59,12 @@ public class ConciseCommonController {
         return conciseCommonService.querySaveState(taskId);
     }
 
+    @GetMapping("queryDeviceStatus")
+    @ApiOperation("查询设备状态")
+    public Result queryDeviceStatus(@RequestParam String deviceSerialNumber) {
+        return conciseCommonService.queryDeviceStatus(deviceSerialNumber);
+    }
+
 
     @GetMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")
@@ -82,7 +90,7 @@ public class ConciseCommonController {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
 
-    @PostMapping("delMethod")
+    @GetMapping("delMethod")
     @ApiOperation("删除方法")
     public Result<String> delMethod(@RequestParam("methodId") String methodId) {
         return conciseCommonService.delMethod(methodId);
@@ -100,7 +108,7 @@ public class ConciseCommonController {
         return conciseCommonService.updateTask(updateTaskDto);
     }
 
-    @PostMapping("delTask")
+    @GetMapping("delTask")
     @ApiOperation("删除历史文件")
     public Result delTask(@RequestParam("taskId") String taskId) {
         return conciseCommonService.delTask(taskId);
@@ -154,10 +162,8 @@ public class ConciseCommonController {
 
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告通用数据接口")
-    public Result obtainReportParameters(@RequestParam String taskId,
-                                         @RequestParam(required = false) String sampleId,
-                                         @RequestParam(required = false) String serialNumber) {
-        return conciseCommonService.obtainReportParameters(taskId, sampleId, serialNumber);
+    public Result obtainReportParameters(@RequestParam String taskId) {
+        return conciseCommonService.obtainReportParameters(taskId);
     }
 
     @GetMapping("queryReportAllParameters")
@@ -171,8 +177,9 @@ public class ConciseCommonController {
     @GetMapping("queryReportTableData")
     @ApiOperation("查询报告表格数据")
     public Result reportTableDataQuery(@RequestParam String taskId,
-                                       @RequestParam(required = false) String sampleId){
-        return conciseCommonService.newReportTableDataQuery(taskId, sampleId);
+                                       @RequestParam(required = false) String sampleId,
+                                       @RequestParam(required = false) String analysisId){
+        return conciseCommonService.newReportTableDataQuery(taskId, sampleId,analysisId);
     }
 
     @GetMapping("isAddSample")
@@ -183,9 +190,13 @@ public class ConciseCommonController {
 
     @GetMapping("queryDeviceTypeInfo")
     @ApiOperation("查询设备类型信息")
-    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam String deviceSerialNumber) {
+    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam(required = false) String deviceSerialNumber) {
         return conciseCommonService.queryDeviceTypeInfo(deviceSerialNumber);
     }
 
-
+    @PostMapping("/copy")
+    @ApiOperation("另存为")
+    public Result<String> copyProject(@Valid @RequestBody CopyParam copyParam) {
+        return  conciseCommonService.copy(copyParam);
+    }
 }

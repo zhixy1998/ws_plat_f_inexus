@@ -50,10 +50,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -146,6 +143,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public R<Integer> queryDeviceStatus(String deviceSerialNumber) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null || info.getDeviceCurrentStatus() == null) {
+            log.info("未找到连接仪器信息！");
+            return R.fail("未查找到仪器信息");
+        }
+        log.info("查询仪器状态");
+        return R.ok(info.getDeviceCurrentStatus());
+    }
+
+    @Override
     public R<Boolean> init(DeviceInitDTO initDTO) {
         if (initDTO.getDeviceSerialNumber().isEmpty()) {
             log.info("未传仪器序列号！");
@@ -216,16 +225,27 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             while (count < cmdIdList.size() && !stopInit.get(infoPO.getDeviceSerialNumber())) {
                 String cmdId = cmdIdList.get(count);
                 Command command = dealCommand(attachmentType, cmdId);
-                R<String> initDevice = devMessageUtil.initDevice(command, ip);
-                if (!initDevice.getSuccess()) {
+                try {
+                    R<String> initDevice = devMessageUtil.initDevice(command, ip);
+                    if (!initDevice.getSuccess()) {
+                        log.info("{}指令初始化异常", cmdId);
+                        failDeal(infoPO, recordPO);
+                        devMessageUtil.setDeviceInitStatus(ip, 1);
+                        infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+                        return;
+                    }
+                    count++;
+                    log.info("{}指令初始化成功", cmdId);
+                } catch (Exception e) {
                     log.info("{}指令初始化异常", cmdId);
                     failDeal(infoPO, recordPO);
                     devMessageUtil.setDeviceInitStatus(ip, 1);
                     infoService.releaseDevice(infoPO.getDeviceSerialNumber());
                     return;
+
                 }
-                count++;
-                log.info("{}指令初始化成功", cmdId);
+
+
             }
             if (count != cmdIdList.size()) {
                 log.info("自检已停止");
@@ -576,6 +596,34 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
 
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            DeviceMeasureVO ans = new DeviceMeasureVO();
+            ans.setConnectMode(1);
+            ans.setMinWavelength("190");
+            ans.setMaxWavelength("1100");
+            ans.setBandWidth(Arrays.asList("2"));
+            ans.setGain(Arrays.asList(1, 2, 3, 4));
+            ans.setScanInterval(Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0"));
+            ans.setResponseTime(Arrays.asList("0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2"));
+            List<DeviceConfParam> list = new ArrayList<>();
+            list.add(new DeviceConfParam(WaveLengthEnum.abs.getName(), WaveLengthEnum.abs.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.tPercent.getName(), WaveLengthEnum.tPercent.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.es.getName(), WaveLengthEnum.es.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.er.getName(), WaveLengthEnum.er.getCode()));
+            ans.setLuminosity(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(EnergyLampEnums.Tungsten.getName(), EnergyLampEnums.Tungsten.getIdentity()));
+            list.add(new DeviceConfParam(EnergyLampEnums.Deuterium.getName(), EnergyLampEnums.Deuterium.getIdentity()));
+            ans.setLampType(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(ScanSpeedEnum.SLOW.getName(), ScanSpeedEnum.SLOW.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.MEDIUM.getName(), ScanSpeedEnum.MEDIUM.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.FAST.getName(), ScanSpeedEnum.FAST.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
+            ans.setScanSpeed(list);
+            return R.ok(ans);
+        }
+
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null) {
             return R.fail("未找到该设备");
@@ -652,6 +700,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 log.info("{}", modelInfoPO);
             }
 
+        }
+
+        try {
+            devMessageUtil.zero(new Command("GetWlList", null), "169.254.180.253");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
 
     }

@@ -266,11 +266,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             if (rolePO.getStatus() != 1) {
                 return Result.fail("该角色已禁用，无法查询下属组");
             }
-            
+
             // 3. 使用MyBatis-Plus的LambdaQueryWrapper查询
             LambdaQueryWrapper<SysGroupPO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(SysGroupPO::getRoleId, roleId)  // 匹配角色ID
-                       .eq(SysGroupPO::getStatus, 1)       // 只查询启用状态的组
+                       //.eq(SysGroupPO::getStatus, 1)       // 只查询启用状态的组
                        .orderByAsc(SysGroupPO::getGroupName); // 按组名称升序排列
             
             // 执行查询

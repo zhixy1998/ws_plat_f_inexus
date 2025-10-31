@@ -27,6 +27,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
@@ -49,6 +50,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepRepo
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
@@ -239,6 +241,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         return Result.ok(vo);
     }
 
+    @Override
+    public Result<Integer> queryDeviceStatus(String deviceSerialNumber) {
+        R<Integer> r = deviceManageService.queryDeviceStatus(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     /**
      * 保存草稿按钮
      * @param taskId
@@ -385,6 +397,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         LambdaQueryWrapper<FMeasureTask> fMeasureTaskLambdaQueryWrapper = new LambdaQueryWrapper<>();
         fMeasureTaskLambdaQueryWrapper.eq(FMeasureTask::getMeasureType, methodType)
                 .eq(FMeasureTask::getUserId, userId)
+                .eq(FMeasureTask::getIsDelete,"0")
                 .orderByDesc(FMeasureTask::getEndSaveTime);
 
         if (selectKey != null) {
@@ -546,8 +559,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
 
+    /**
+     * 获取报告参数
+     * @param taskId
+     * @return
+     */
     @Override
-    public Result obtainReportParameters(String taskId,String sampleId,String serialNumber) {
+    public Result obtainReportParameters(String taskId) {
 
         if ((taskId == null)) {
             return Result.fail("任务id不能为空");
@@ -810,101 +828,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setMethodName(method.getMethodName());
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())) {
-
-//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-//            SpectralReportVo vo = new SpectralReportVo();
-////            FMeasureTask task = fMeasureTaskService.getById(taskId);
-//            FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
-//            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
-//            FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
-//            SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-//            FMeasureData data =fMeasureDataService.getOne(new QueryWrapper<FMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
-//            // 根据方法表的计算公式id和前处理id进行查
-//            if(StringUtils.hasText(method.getMultipleCalculationFormulaKey())) {
-//                CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
-//                vo.setCalculationFormula(calculationFormula.getResultName());
-//            }
-//            if(StringUtils.hasText(method.getPreprocessKey())){
-//                StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
-//                vo.setReferenceStandard(serviceById.getPretreatmentDescription());
-//            }
-//            FMeasureSample byId =fMeasureSampleService.getById(data.getSampleKey());
-//            vo.setSampleName(byId.getSampleName());
-//            vo.setSampleNumber(byId.getSampleNumber());
-//            vo.setDataType("测量数据");
-//            vo.setScanSpeed(methodparam.getScanSpeed().equals("0")?"慢速":methodparam.getScanSpeed().equals("1")?"中速":methodparam.getScanSpeed().equals("2")?"快速":"极快");
-//            vo.setStartWavelength(methodparam.getStartWaveLength());
-//            vo.setEndWavelength(methodparam.getEndWaveLength());
-//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-//            vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
-//            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
-//            vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
-//            vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
-//            vo.setProject(project.getProjectName());
-//            vo.setDetector(user.getUserName());
-//            vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
-//            vo.setGain(methodparam.getGain().toString());
-//            vo.setStairCorrection(methodparam.getLadderCorrection() == true ? "启用" : "不启用");
-//            vo.setSpectrumScanImage(data.getDataImage());
-//            vo.setScanInterval(methodparam.getWaveLengthInterval());
-//            vo.setMethodName(method.getMethodName());
-//            vo.setTaskName(task.getTaskName());
-//            return Result.ok(vo);
-            // 校验任务id
-            // 校验样品id
-            if (StringUtils.isEmpty(sampleId)) {
-                return Result.fail("请选择样品");
-            }
-            // 根据任务中的所属项目的Key查询项目
-//            FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
-//            if (project == null) {
-//                return Result.fail("项目不存在");
-//            }
             // 根据任务中的方法key查询方法
             FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
                 return Result.fail("方法不存在");
-            }
-            // 根据样品id查询样品数据
-            FMeasureSample sample =fMeasureSampleService.getById(sampleId);
-            if (sample == null) {
-                return Result.fail("样品不存在");
-            }
-            // 编写查询测量的条件
-            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id",taskId);
-            wrapper.eq("sample_key",sampleId);
-            // 如果存在编号，则查询该设备编号的测量数据
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                wrapper.eq("serial_number",serialNumber);
-            }
-            wrapper.last("limit 1");
-            FMeasureData measureData =fMeasureDataService.getOne(wrapper);
-            if (measureData == null) {
-//                return Result.fail("未找到该测量数据");
-                measureData = new FMeasureData();
-            }
-            // 编写分析的查询条件
-            QueryWrapper<FMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
-            analysisWrapper.eq("task_id", taskId);
-            analysisWrapper.eq("sample_key", sampleId);
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                analysisWrapper.eq("analysis_number", serialNumber);
-            }
-            analysisWrapper.last("limit 1");
-            FMeasureAnalysisData analysisData =fMeasureAnalysisDataService.getOne(analysisWrapper);
-            if (analysisData == null) {
-                analysisData = new FMeasureAnalysisData();
-//                return Result.fail("没有找到该分析数据");
-            }
-            // 根据分析id查询分析图片数据
-            QueryWrapper<FMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
-            attachmentWrapper.eq("analysis_id", analysisData.getId());
-            attachmentWrapper.last("limit 1");
-            FMeasureAnalysisImage attachment =fMeasureAnalysisImageService.getOne(attachmentWrapper);
-            if (attachment == null) {
-//                return Result.fail("没有找到对应的图片数据");
-                attachment = new FMeasureAnalysisImage();
             }
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
@@ -913,12 +840,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setEndWaveLength(param.getEndWaveLength());
             vo.setScanSpeed(param.getScanSpeed());
             vo.setTimeInterval(param.getTimeInterval());
-            if (measureData.getMeasurementStartTime() != null) {
-                vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
-            }
-            if (measureData.getMeasurementEndTime() != null) {
-                vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
-            }
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setRepetitionPattern(param.getRepetitionPattern().equals("0")?"不重复":"单池重复");
             if (param.getRepetitionPattern().equals("1")){
@@ -937,10 +858,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setGain(param.getGain().toString());
 //            vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
-            vo.setSampleName(sample.getSampleName());
-            vo.setSampleNumber(sample.getSampleNumber());
-
-            vo.setSpectrumScanImage(attachment.getImageBase64());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
@@ -948,98 +865,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setInstrumentModel("T600");
             return Result.ok(vo);
         }else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
-//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-//            SpectralReportVo vo = new SpectralReportVo();
-//            FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
-//            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
-//            FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
-//            TimeSweepParamter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
-//            FMeasureData data =fMeasureDataService.getOne(new QueryWrapper<FMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
-//            // 根据方法表的计算公式id和前处理id进行查
-//            if(StringUtils.hasText(method.getMultipleCalculationFormulaKey())) {
-//                CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
-//                vo.setCalculationFormula(calculationFormula.getResultName());
-//            }
-//            if(StringUtils.hasText(method.getPreprocessKey())){
-//                StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
-//                vo.setReferenceStandard(serviceById.getPretreatmentDescription());
-//            }
-//            FMeasureSample byId =fMeasureSampleService.getById(data.getSampleKey());
-//            vo.setSampleName(byId.getSampleName());
-//            vo.setSampleNumber(byId.getSampleNumber());
-//            vo.setDataType("测量数据");
-//            vo.setInstrumentWavelength(methodparam.getWaveLength());
-//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-//            vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
-//            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
-//            vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
-//            vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
-//            vo.setProject(project.getProjectName());
-//            vo.setDetector(user.getUserName());
-//            if (methodparam.getScanUnit()!=null) {
-//                vo.setTimeUnit(methodparam.getScanUnit());
-//                vo.setTimeUnitName(methodparam.getScanUnit().equals("0")?"秒":"分钟");
-//            }
-//            vo.setTotalNumber(methodparam.getTotalNumber());
-//            vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
-//            vo.setGain(methodparam.getGain().toString());
-//            vo.setScanTime(methodparam.getScanTime());
-//            vo.setScanInterval(methodparam.getIntervalTime());
-//            vo.setMethodName(method.getMethodName());
-//            vo.setTimeScanImage(data.getDataImage());
-//            vo.setTaskName(task.getTaskName());
-//            return Result.ok(vo);
-            // 校验样品id
-            if (StringUtils.isEmpty(sampleId)) {
-                return Result.fail("请选择样品");
-            }
-            // 根据任务中的所属项目的Key查询项目
-//            FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
-//            if (project == null) {
-//                return Result.fail("项目不存在");
-//            }
             // 根据任务中的方法key查询方法
             FMeasureMethod method =fMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
                 return Result.fail("方法不存在");
-            }
-            // 根据样品id查询样品数据
-            FMeasureSample sample =fMeasureSampleService.getById(sampleId);
-            if (sample == null) {
-                return Result.fail("样品不存在");
-            }
-            // 编写查询测量的条件
-            QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id",taskId);
-            wrapper.eq("sample_key",sampleId);
-            // 如果存在编号，则查询该设备编号的测量数据
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                wrapper.eq("serial_number",serialNumber);
-            }
-            wrapper.last("limit 1");
-            FMeasureData measureData =fMeasureDataService.getOne(wrapper);
-            if (measureData == null) {
-                return Result.fail("未找到该测量数据");
-            }
-            // 编写分析的查询条件
-            QueryWrapper<FMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
-            analysisWrapper.eq("task_id", taskId);
-            analysisWrapper.eq("sample_key", sampleId);
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                analysisWrapper.eq("analysis_number", serialNumber);
-            }
-            analysisWrapper.last("limit 1");
-            FMeasureAnalysisData analysisData =fMeasureAnalysisDataService.getOne(analysisWrapper);
-            if (analysisData == null) {
-                return Result.fail("没有找到该分析数据");
-            }
-            // 根据分析id查询分析图片数据
-            QueryWrapper<FMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
-            attachmentWrapper.eq("analysis_id", analysisData.getId());
-            attachmentWrapper.last("limit 1");
-            FMeasureAnalysisImage attachment =fMeasureAnalysisImageService.getOne(attachmentWrapper);
-            if (attachment == null) {
-                return Result.fail("没有找到对应的图片数据");
             }
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
@@ -1049,8 +878,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setTimeUnit(param.getScanUnit().equals("0")?"分":"秒");
             vo.setTimeInterval(param.getIntervalTime());
             vo.setTotalNumber(param.getTotalNumber());
-            vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
-            vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
             vo.setMultiPoolMode(param.getMultiPoolMode().equals("0") ? "顺序单池连续采样" : "循环多池交替采样");
             ///  仪器
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
@@ -1064,9 +891,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setGain(param.getGain().toString());
 //            vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
-            vo.setSampleName(sample.getSampleName());
-            vo.setSampleNumber(sample.getSampleNumber());
-            vo.setTimeScanImage(attachment.getImageBase64());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
@@ -1249,8 +1073,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }}
 
 
+    /**
+     * 新建报告表数据查询
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
     @Override
-    public Result newReportTableDataQuery(String taskId, String sampleId) {
+    public Result newReportTableDataQuery(String taskId, String sampleId,String analysisId) {
 
         if (!StringUtils.hasText(taskId)) {
             return Result.fail("请选择任务");
@@ -1259,15 +1089,19 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (task == null) {
             return Result.fail("任务不存在");
         }
+        // 根据任务id查询方法,再从json转换为对象方法参数
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
+        }
+
         Integer digit = Constants.DEFAULT_DECIMAL_NUM;
+        FQueryDataDTO dataDTO = new FQueryDataDTO();
         LambdaQueryWrapper<FMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(FMeasureTaskAttachment::getTaskId, taskId);
         FMeasureTaskAttachment attachment = fMeasureTaskAttachmentService.getOne(queryWrapper);
         if (attachment != null && attachment.getDataParam() != null) {
-            FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
-            if (dataDTO.getDigit() != null) {
-                digit = dataDTO.getDigit();
-            }
+            dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
         }
 
         switch (task.getMeasureType()) {
@@ -1278,12 +1112,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
-                FQueryDataDTO queryDataDTO = new FQueryDataDTO();
-                queryDataDTO.setTaskId(taskId);
-                queryDataDTO.setAllDisplay(false);
-                queryDataDTO.setDigit(digit);
-                queryDataDTO.setOption(new ArrayList<>());
-                Result<List<Map<String, Object>>> data = photometricService.queryData(queryDataDTO);
+
+                if (dataDTO == null) {
+                    dataDTO = new FQueryDataDTO();
+                    dataDTO.setTaskId(taskId);
+                    dataDTO.setAllDisplay(false);
+                    dataDTO.setDigit(digit);
+                    dataDTO.setOption(new ArrayList<>());
+                }
+
+                Result<List<Map<String, Object>>> data = photometricService.queryData(dataDTO);
                 if (data.getCode() == 200) {
                     vo.setDataList(data.getData());
 //                    data.getData().forEach(item -> {
@@ -1323,12 +1161,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 if (unknowHeads.getCode() == 200) {
                     vo.setUnknowHeadList(unknowHeads.getData());
                 }
-                FQueryDataDTO queryDataDTO = new FQueryDataDTO();
-                queryDataDTO.setTaskId(taskId);
-                queryDataDTO.setAllDisplay(false);
-                queryDataDTO.setDigit(digit);
-                queryDataDTO.setOption(new ArrayList<>());
-                Result<FRationSampleDataVO> data = rationService.querySampleData(queryDataDTO);
+                if (dataDTO == null) {
+                    dataDTO = new FQueryDataDTO();
+                    dataDTO.setTaskId(taskId);
+                    dataDTO.setAllDisplay(false);
+                    dataDTO.setDigit(digit);
+                    dataDTO.setOption(new ArrayList<>());
+                }
+                Result<FRationSampleDataVO> data = rationService.querySampleData(dataDTO);
                 if (data.getCode() == 200) {
                     FRationSampleDataVO sampleDataVO = data.getData();
                     vo.setStandDataList(sampleDataVO.getStandSampleData());
@@ -1362,16 +1202,29 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "光谱扫描":
             {
+                if (!StringUtils.hasText(sampleId)){
+                    return Result.fail("请选择样品");
+                }
+                // 样品根据逗号进行分割然后存入List中
+                List<String> sampleIdList = Arrays.asList(sampleId.split(","));
+                FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+                // 判断方法参数中的重复模式为true的话就分割分析id
+                List<String> analysisIdList = new ArrayList<>();
+                if (param.getRepetitionPattern()!=null&&param.getRepetitionPattern().equals("1")) {
+                    analysisIdList = Arrays.asList(analysisId.split(","));
+                }
                 FSpectrumReportDataVO vo = new FSpectrumReportDataVO();
-                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), true);
+                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList, analysisIdList);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, sampleId);
+                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, task.getMethodKey() ,sampleIdList, analysisIdList);
                 if (dataList != null){
                     vo.setDataList(dataList);
+                }else{
+                    vo.setDataList(new ArrayList<>());
                 }
 
                 if (StringUtils.hasText(task.getTableInfo())) {
@@ -1399,14 +1252,19 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "时间扫描":
             {
+                if (!StringUtils.hasText(sampleId)){
+                    return Result.fail("请选择样品");
+                }
+                // 样品根据逗号进行分割然后存入List中
+                List<String> sampleIdList = Arrays.asList(sampleId.split(","));
                 FTimeSweepReportDataVo vo = new FTimeSweepReportDataVo();
-                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), true);
+                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, sampleId);
+                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, sampleIdList);
                 if (dataList != null){
                     vo.setDataList(dataList);
                 }
@@ -1446,117 +1304,126 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
      * @return
      */
     @Override
-    public Result isAddSample(String taskId,String deviceSerialNumber) {
-
-        if (StringUtils.isEmpty(taskId)){
+    public Result isAddSample(String taskId, String deviceSerialNumber) {
+        if (StringUtils.isEmpty(taskId)) {
             return Result.fail("任务id不能为空");
         }
-        if (StringUtils.isEmpty(deviceSerialNumber)){
+        if (StringUtils.isEmpty(deviceSerialNumber)) {
             return Result.fail("设备编号不能为空");
         }
+
         // 根据任务id查询任务信息
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             return Result.fail("任务不存在");
         }
+
         List<FTaskSpecimen> sampleData = com.alibaba.fastjson2.JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-        if (sampleData==null) {
-            // 创建样品
-            FMeasureSample sample = new FMeasureSample();
-            Random random = new Random();
-            int collect = 100 + random.nextInt(900);
-            sample.setSampleName("默认样品"+collect);
-            sample.setSampleNumber("1");
-            // 设置样品位置为当前样品池位置
-            LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-            FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
-            if (configPO == null) {
-                return Result.fail("未找到样品池信息");
-            }
-
-            if (configPO.getIsAutoChangePool()){
-                sample.setSampleLocation(configPO.getCurrentPoolNum().toString());
-            }
-
-            boolean save = fMeasureSampleService.save(sample);
-            if (!save) {
-                return Result.fail("创建样品失败");
-            }
-            FTaskSpecimen fTaskSpecimen = new FTaskSpecimen();
-            fTaskSpecimen.setSpecimenKey(sample.getId());
-            fTaskSpecimen.setDeleteType("0");
-            fTaskSpecimen.setIsTested("0");
-            sampleData = new ArrayList<>();
-            sampleData.add(fTaskSpecimen);
-            task.setSampleKey(JSON.toJSONString(sampleData));
-            boolean update = fMeasureTaskService.updateById(task);
-            if (!update) {
-                return Result.fail("更新任务失败");
-            }
-            return Result.ok(true);
+        if (sampleData == null) {
+            // 如果没有样品，直接创建第一个样品
+            return createSample(task, deviceSerialNumber, 1);
         }
+
+        // 1. 查询任务中的所有样品编号，查找最大编号并递增
         boolean status = true;
         for (FTaskSpecimen fTaskSpecimen : sampleData) {
-            if (fTaskSpecimen.getIsTested().equals("0")&&fTaskSpecimen.getDeleteType().equals("0")) {
+            if (fTaskSpecimen.getIsTested().equals("0") && fTaskSpecimen.getDeleteType().equals("0")) {
                 status = false;
                 break;
             }
         }
-        if (status){
-            // 1. 收集所有样品的ID
+
+        if (status) {
+            // 2. 查询现有的样品编号
             List<String> sampleIds = sampleData.stream()
-                    .map(FTaskSpecimen::getSpecimenKey) // 假设 FTaskSpecimen 是样品的类，getSpecimenKey() 获取样品ID
+                    .map(FTaskSpecimen::getSpecimenKey)
                     .collect(Collectors.toList());
 
-            // 2. 查询样品表
+            // 3. 查询样品表获取当前样品
             List<FMeasureSample> samples = fMeasureSampleService.list(new QueryWrapper<FMeasureSample>().in("id", sampleIds));
 
-            // 3. 找到最大的样品编号
-            String maxSampleId = samples.stream()
-                    .map(FMeasureSample::getSampleNumber) // 获取样品编号
-                    .max(Comparator.naturalOrder())        // 获取最大编号
-                    .orElse("0");                         // 如果没有样品，则默认从 "0" 开始
+            // 4. 找到当前所有“默认样品”编号，并递增查找下一个可用的编号
+            int newSampleNumber = findNextSampleNumber(samples);
 
-            // 4. 新样品编号 = 最大编号 + 1
-            int newSampleNumber = Integer.parseInt(maxSampleId) + 1;
-
-            // 5. 创建新的样品
-            Random random = new Random();
-            int collect = 100 + random.nextInt(900);
-            LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-            FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
-            if (configPO == null) {
-                return Result.fail("未找到样品池信息");
-            }
-            FMeasureSample sample = new FMeasureSample();
-            sample.setSampleName("默认样品" + collect);   // collect 是之前随机生成的字符
-            sample.setSampleNumber(String.valueOf(newSampleNumber)); // 设置新样品编号
-
-            // 6. 设置样品池位置
-            if (configPO.getIsAutoChangePool()){
-                sample.setSampleLocation(configPO.getCurrentPoolNum().toString());
-            }
-
-            // 7. 保存样品
-            boolean save = fMeasureSampleService.save(sample);
-            if (!save) {
-                return Result.fail("创建样品失败");
-            }
-            FTaskSpecimen fTaskSpecimen = new FTaskSpecimen();
-            fTaskSpecimen.setSpecimenKey(sample.getId());
-            fTaskSpecimen.setDeleteType("0");
-            fTaskSpecimen.setIsTested("0");
-            sampleData.add(fTaskSpecimen);
-            task.setSampleKey(com.alibaba.fastjson2.JSON.toJSONString(sampleData));
-            boolean update = fMeasureTaskService.updateById(task);
-            if (!update) {
-                return Result.fail("更新任务失败");
-            }
-            return Result.ok(true);
+            // 5. 创建新样品
+            return createSample(task, deviceSerialNumber, newSampleNumber);
         }
+
         return Result.ok(false);
+    }
+
+    /**
+     * 根据现有样品查找下一个可用的样品编号
+     */
+    private int findNextSampleNumber(List<FMeasureSample> samples) {
+        // 获取所有样品编号（假设编号的格式为：默认样品1、默认样品2、默认样品N）
+        List<Integer> sampleNumbers = samples.stream()
+                .filter(sample -> sample.getSampleName().startsWith("默认样品"))
+                .map(sample -> Integer.parseInt(sample.getSampleName().replace("默认样品", "")))  // 获取样品编号部分
+                .collect(Collectors.toList());
+
+        // 获取最大编号并加1作为新编号
+        int maxSampleNumber = sampleNumbers.stream()
+                .max(Integer::compareTo)
+                .orElse(0);
+
+        return maxSampleNumber + 1;  // 返回下一个可用编号
+    }
+
+    /**
+     * 创建新的样品
+     */
+    private Result createSample(FMeasureTask task, String deviceSerialNumber, int newSampleNumber) {
+        // 创建新的样品
+        FMeasureSample sample = new FMeasureSample();
+        Random random = new Random();
+        int collect = 100 + random.nextInt(900);
+        sample.setSampleName("默认样品" + newSampleNumber);  // 使用新样品编号创建样品名称
+        sample.setSampleNumber(String.valueOf(newSampleNumber));  // 设置新样品编号
+
+        // 设置样品池位置
+        LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        if (configPO == null) {
+            return Result.fail("未找到样品池信息");
+        }
+
+        if (configPO.getIsAutoChangePool()) {
+            sample.setSampleLocation(configPO.getCurrentPoolNum().toString());
+        }
+
+        // 保存新样品
+        boolean save = fMeasureSampleService.save(sample);
+        if (!save) {
+            return Result.fail("创建样品失败");
+        }
+
+        // 将新样品加入任务样品列表
+        FTaskSpecimen fTaskSpecimen = new FTaskSpecimen();
+        fTaskSpecimen.setSpecimenKey(sample.getId());
+        fTaskSpecimen.setDeleteType("0");
+        fTaskSpecimen.setIsTested("0");
+
+        List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+
+        if (sampleData == null){
+            sampleData = new ArrayList<>();
+            // 添加新样品到任务
+            sampleData.add(fTaskSpecimen);
+        }else{
+            // 添加新样品到任务
+            sampleData.add(fTaskSpecimen);
+        }
+        task.setSampleKey(JSON.toJSONString(sampleData));
+
+        // 更新任务
+        boolean update = fMeasureTaskService.updateById(task);
+        if (!update) {
+            return Result.fail("更新任务失败");
+        }
+
+        return Result.ok(true);
     }
 
     @Override
@@ -1594,7 +1461,96 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result delTask(String  taskId) {
         boolean b=fMeasureTaskService.delTask(taskId);
-        return Result.ok(true);
+        if (b){
+            return Result.ok(true);
+        }
+        return Result.fail();
+    }
+
+    @Override
+    public Result<String> copy(CopyParam copyParam) {
+        String taskName = copyParam.getTaskName();
+        String taskId = copyParam.getTaskId();
+        if (com.baomidou.mybatisplus.core.toolkit.StringUtils.isBlank(taskId)){
+            return Result.fail("拷贝失败,传入taskId不能为空！！！");
+        }
+        try {
+            /*
+             * 复制任务
+             */
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            if (ObjectUtils.isEmpty(task)){
+                return Result.fail("未找到任务！！！");
+            }
+            //自定义任务的ID
+            String uuid = UUID.randomUUID().toString().replace("-", "");
+            task.setId(uuid);
+            task.setEndSaveTime(LocalDateTime.now());
+            /*
+             * 复制样品
+             */
+            String sampleKey = task.getSampleKey();
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(sampleKey, TaskSpecimen.class);
+            if (!CollectionUtils.isEmpty(taskSpecimen)) {
+                taskSpecimen.forEach(sample -> {
+                            String specimenKey = sample.getSpecimenKey();
+                            FMeasureSample newSample = fMeasureSampleService.getById(specimenKey);
+                            //保存样本数据，生成新的样本ID
+                            newSample.setId(null);
+                            fMeasureSampleService.save(newSample);
+
+                            //进行数据复制
+                            LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                            queryWrapper.eq(FMeasureData::getTaskId, taskId);
+                            queryWrapper.eq(FMeasureData::getSampleKey, specimenKey);
+                            List<FMeasureData> fMeasureDataList = fMeasureDataService.list(queryWrapper);
+
+                            //构建新的数据list
+                            if (!CollectionUtils.isEmpty(fMeasureDataList)) {
+                                fMeasureDataList.forEach(m -> {
+                                    String uuid1 = UUID.randomUUID().toString().replace("-", "");
+
+                                    m.setId(uuid1);
+                                    m.setTaskId(task.getId());
+                                    //数据拿到新的样本ID进行关联
+                                    m.setSampleKey(newSample.getId());
+
+                                    LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
+                                    queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
+                                    queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
+                                    List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
+                                    if (!CollectionUtils.isEmpty(fMeasureAnalysisDataList)) {
+                                        fMeasureAnalysisDataList.forEach(analysisData -> {
+                                            analysisData.setId(null);
+                                            analysisData.setMeasureDataId(m.getId());
+                                            analysisData.setTaskId(task.getId());
+                                            analysisData.setSampleKey(newSample.getId());
+                                        });
+                                        fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
+                                    }
+                                });
+                            }
+                            fMeasureDataService.saveBatch(fMeasureDataList);
+
+
+                            //新的样本ID生成并赋值给json，用于任务表中的样本关联字段
+                            sample.setSpecimenKey(newSample.getId());
+                        }
+                );
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            }
+
+//            task.setId(null);
+            task.setTaskName(taskName);
+            //另存为之后的设置为保存
+            task.setIsSave("0");
+            fMeasureTaskService.save(task);
+            return Result.ok("拷贝成功");
+
+        } catch (Exception e) {
+            return Result.fail("拷贝失败");
+        }
+
     }
 
 

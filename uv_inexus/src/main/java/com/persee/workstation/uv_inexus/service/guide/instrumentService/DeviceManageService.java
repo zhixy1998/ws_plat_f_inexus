@@ -31,6 +31,8 @@ public interface DeviceManageService {
 
     R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy);
 
+    R<Integer> queryDeviceStatus(String deviceSerialNumber);
+
     R<Boolean> init(DeviceInitDTO initDTO);
 
     R<Boolean> stopInit(String deviceSerialNumber, String updateBy);

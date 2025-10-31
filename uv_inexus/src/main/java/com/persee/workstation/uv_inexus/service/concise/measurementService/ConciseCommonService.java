@@ -31,6 +31,8 @@ public interface ConciseCommonService {
     // 查询保存状态
     Result querySaveState(String taskId);
 
+    Result<Integer> queryDeviceStatus(String deviceSerialNumber);
+
     // 保存草稿按钮
     Result saveDraftButton(String taskId);
 
@@ -56,14 +58,14 @@ public interface ConciseCommonService {
     Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto);
 
     // 获取报告参数
-    Result obtainReportParameters(String taskId,String sampleId,String serialNumber);
+    Result obtainReportParameters(String taskId);
 
 
     // 获取报告所有参数
     Result queryReportAllParameters(String taskId, String sampleId, String serialNumber);
 
     // 新的报表数据查询
-    Result newReportTableDataQuery(String taskId, String sampleId);
+    Result newReportTableDataQuery(String taskId, String sampleId,String analysisId);
 
     // 是否添加样品
     Result isAddSample(String taskId,String deviceSerialNumber);
@@ -73,4 +75,6 @@ public interface ConciseCommonService {
     Result<String> delMethod(String methodId);
 
     Result delTask(String taskId);
+    //另存为方法
+    Result<String> copy(CopyParam copyParam);
 }
