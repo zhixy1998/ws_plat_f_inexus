@@ -206,11 +206,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             }
         }
 
-        Integer repetitionTime = Integer.valueOf(spectrumParameter.getRepetitionTime());
         Integer timeInterval = Integer.valueOf(spectrumParameter.getTimeInterval());
         boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
-        int repeatCount = repetitionTime != null ? repetitionTime : 1;
-        long repeatInterval = timeInterval != null ? timeInterval : 0;
         ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = new Command();
         command.setCmdId(SetParamEnum.Scan.getComId());
@@ -308,9 +305,22 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                 return;
                             }
                         }
+                        int repetitionTime= Integer.parseInt(spectrumParameter.getRepetitionTime());
+                        int startIndex = 0;
+                        // 根据样品id去分析数据表进行查询
+                        QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
+                        eq.eq("sample_key", newSampleData.get(i).getSpecimenKey());
+                        List<FMeasureAnalysisData> list = tMeasureAnalysisDataService.list(eq);
+                        if (!list.isEmpty()){
+                            // 统计分析结果不为空的数量（假设分析结果字段叫 analysisResult，可按你实际字段改）
+                            long notNullCount = list.stream()
+                                    .filter(data -> data.getAnalysisResult() != null)
+                                    .count();
+                            startIndex = (int) notNullCount;
+                        }
 
 
-                        for (int r = 0; r < repetitionTime; r++) {
+                        for (int r = startIndex; r < repetitionTime; r++) {
                             // 根据样品id,任务id和遍历的r+1查询分析数据
                             QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                             queryWrapper.eq("task_id", taskId);
@@ -898,14 +908,62 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         }
 
         // 更新任务状态
-        for (FTaskSpecimen taskSample : sampleData) {
-            if (taskSample.getSpecimenKey().equals(sampleId)) {
-                taskSample.setIsTested("1");
+        List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        // 如果不是重复模式的情况直接更新任务状态
+        if(spectrumParameter.getRepetitionPattern().equals("不重复")){
+            for (FTaskSpecimen taskSample : specimen) {
+                if (taskSample.getSpecimenKey().equals(sampleId)) {
+                    taskSample.setIsTested("1");
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(specimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            boolean update = tMeasureTaskService.updateById(task);
+            if (!update) {
+                sendAndClose(session, "更新任务失败");
+                return;
+            }
+        }else{
+            // 如果是重复模式的情况，需要判断是否全部测完
+            // 根据重复次数遍历
+            boolean success = false;
+            Integer count = Integer.valueOf(spectrumParameter.getRepetitionTime());
+            for (int i = 0; i < count; i++) {
+                // 根据任务id,样品id和编号查询分析数据
+                QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", taskId);
+                queryWrapper.eq("sample_key", sampleId);
+                queryWrapper.eq("analysis_number", i+1);
+                queryWrapper.eq("analysis_type", "5");
+                queryWrapper.last("limit 1");
+                FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+                if(analysisData==null){
+                    sendAndClose( session, "数据保存失败");
+                }
+                // 判断数据是否不为空或者不为null
+                if(analysisData.getAnalysisResult()==null){
+                    success=true;
+                    break;
+                }
+            }
+
+            if (success){
+                // 不更新任务状态
+            }else{
+                for (FTaskSpecimen taskSample : specimen) {
+                    if (taskSample.getSpecimenKey().equals(sampleId)) {
+                        taskSample.setIsTested("1");
+                    }
+                }
+                task.setSampleKey(JSON.toJSONString(specimen));
+                task.setDeviceSerialNumber(deviceSerialNumber);
+                boolean update = tMeasureTaskService.updateById(task);
+                if (!update) {
+                    sendAndClose(session, "更新任务失败");
+                    return;
+                }
             }
         }
-        task.setSampleKey(JSON.toJSONString(sampleData));
-        task.setDeviceSerialNumber(deviceSerialNumber);
-        tMeasureTaskService.updateById(task);
     }
 
     /**

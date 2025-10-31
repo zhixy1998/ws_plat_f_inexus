@@ -29,4 +29,6 @@ public class FUseMethodDto {
     private String type;
     // 方法参数
     private FSpectrumParameterVo parameter;
+    // 序列号
+    private String deviceSerialNumber;
 }

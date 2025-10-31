@@ -1208,11 +1208,22 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 // 样品根据逗号进行分割然后存入List中
                 List<String> sampleIdList = Arrays.asList(sampleId.split(","));
                 FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
                 // 判断方法参数中的重复模式为true的话就分割分析id
                 List<String> analysisIdList = new ArrayList<>();
-                if (param.getRepetitionPattern()!=null&&param.getRepetitionPattern().equals("1")) {
+                if (param.getRepetitionPattern()!=null&&param.getRepetitionPattern().equals("单池重复")) {
                     analysisIdList = Arrays.asList(analysisId.split(","));
+                    // 过滤掉分析结果为null的分析id
+                    analysisIdList = analysisIdList.stream()
+                            .filter(id -> {
+                                // 根据分析ID查询分析数据结果
+                                // `getAnalysisResultById` 来根据分析ID获取分析结果
+                                String analysisResult = getAnalysisResultById(id);
+                                return analysisResult != null; // 只保留分析结果不为null的分析ID
+                            })
+                            .collect(Collectors.toList());
                 }
+
                 FSpectrumReportDataVO vo = new FSpectrumReportDataVO();
                 Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList, analysisIdList);
                 if (result.getCode() == 200) {
@@ -1551,6 +1562,24 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("拷贝失败");
         }
 
+    }
+
+
+    /**
+     * 根据分析ID获取分析结果
+     * @param analysisId
+     * @return
+     */
+    private String getAnalysisResultById(String analysisId) {
+        // 根据分析ID从数据库获取分析结果
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
+        if (analysisData == null) {
+            return null;
+        }
+        if (analysisData.getAnalysisResult()==null|| analysisData.getAnalysisResult().isEmpty()){
+            return null;
+        }
+        return analysisData.getAnalysisResult();
     }
 
 

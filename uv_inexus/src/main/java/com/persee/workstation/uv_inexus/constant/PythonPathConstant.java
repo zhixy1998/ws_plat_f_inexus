@@ -21,7 +21,7 @@ import javax.annotation.PostConstruct;
 public class PythonPathConstant {
 
     @Value("${python-code.baseUrl}")
-    public static String httpUrl;
+    public String httpUrl;
 
 
     // 最小二乘接口路径

@@ -30,6 +30,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\nettyUtil\CmdConstant.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureData.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RationSaveCountDataInfo.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\concise\measurementPo\params\FRoundingParamVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\FMeasureAnalysisImageService.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\concise\measurementDao\TaskManagementMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\FMeasureSampleService.java
@@ -287,6 +288,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\QueryMeasuredDataVo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\SaveDataVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\TaskBaseVO.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\util\changeUtil\FormulaUtil.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureMethod.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\instrumentPo\DeviceModelInfoPO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\sysUserPermissionService\RoleGroupUserTreeService.java
@@ -296,6 +298,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\parseReport\RoundingRulesMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\measurementDto\SpectrumSpecimenDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\measurementService\impl\TMeasureAnalysisDataServiceImpl.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\instrumentPo\model\LinearSegment.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\measurementService\impl\RationServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\systemUserManageDao\SystemUserManageDAO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\common\EqualAndSample.java
@@ -426,6 +429,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\concise\measurementController\RationConciseController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dto\concise\common\FMethodParamRequestDto.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureAnalysisData.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\po\guide\instrumentPo\model\StepPoint.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\MethodBaseVo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\guide\systemUserManageService\impl\SystemUserGroupManageServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\measurementDao\TMeasureSampleMapper.java
@@ -571,6 +575,7 @@ E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inex
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\SpectrumBasicParameterVo.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\guide\parseReport\CalculationFormulaMapper.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RationWavelengthDataInfo.java
+E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RoundingParamVO.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\service\concise\measurementService\impl\PhotometricConciseServiceImpl.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\controller\guide\measurementController\ExperimentTestController.java
 E:\product\ws_plat_inexus\uv_inexus\src\main\java\com\persee\workstation\uv_inexus\dao\concise\measurementDao\FMeasureProjectMapper.java

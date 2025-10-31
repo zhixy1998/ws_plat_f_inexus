@@ -458,7 +458,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             if (!update){
                 return Result.fail("应用失败");
             }
-            Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode()==200){
                 map.put("taskId", draftButton.getData());
             }
@@ -486,7 +486,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode()==200){
                 map.put("taskId", draftButton.getData());
             }
@@ -501,7 +501,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode()==200){
                 map.put("taskId", draftButton.getData());
             }
@@ -514,7 +514,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail("请勿重复使用");
             }else{
                 map.put("method", method);
-                Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy());
+                Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
                 if (draftButton.getCode()==200){
                     map.put("taskId", draftButton.getData());
                 }
@@ -526,7 +526,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode()==200){
                 map.put("taskId", draftButton.getData());
             }
@@ -628,7 +628,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
 
     @Override
-    public Result createDraftButton(String methodId, String updateBy) {
+    public Result createDraftButton(String methodId, String updateBy,String deviceSerialNumber) {
         if (methodId == null) {
             return Result.fail("请先创建方法或者选择方法");
         }
@@ -660,6 +660,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         fMeasureTask.setCreateTime(LocalDateTime.now());
         fMeasureTask.setIsSave("0");
         fMeasureTask.setIsDelete(createType);
+        fMeasureTask.setDeviceSerialNumber(deviceSerialNumber);
         boolean save = fMeasureTaskService.save(fMeasureTask);
         return save ? Result.ok(fMeasureTask.getId()) : Result.fail();
     }
@@ -1520,6 +1521,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (dataAll!=null && dataAll.size()!=0){
             if (digit!=null){
                 for (FPeakValleyMarking data : dataAll){
+                    double xValue = Double.parseDouble(data.getX());
+                    int x = (int) xValue;
+                    data.setX(String.valueOf(x));
                     BigDecimal value = new BigDecimal(data.getY());
                     value = value.setScale(digit, RoundingMode.HALF_UP);
                     data.setY(value.stripTrailingZeros().toPlainString());
@@ -1546,8 +1550,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
             paramDto.setDistance(confVO.getPeakValleyDiff());
         }
-        double value = Double.valueOf(paramDto.getDistance());
-        Integer i1 = (int) value;
+        double value = Double.parseDouble(paramDto.getDistance());
+        int i1 = (int) value;
         if (i1<1){
             return Result.fail("峰谷间距不可以小于1");
         }
