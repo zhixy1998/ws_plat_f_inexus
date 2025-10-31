@@ -44,7 +44,7 @@ import com.persee.workstation.uv_inexus.utils.AESencryption.ZipFileUtil;
 import io.swagger.annotations.ApiOperation;
 
 @RestController
-@RequestMapping("/api/crypto")
+@RequestMapping("/com/persee/workstation/uv-inexus/crypto")
 public class FileCryptoController {
     public static final String FIXED_KEY = "pFFKQ9huIh0taRfethpTv6DLXYJPJw1YGZtrEoSHJp0=";
     public static final String EXCEL_EXTENSION = ".xlsx";
