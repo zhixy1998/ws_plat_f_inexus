@@ -176,17 +176,19 @@ public class PhotometricConciseController {
         return fPhotometricService.saveButton(taskId, updateBy);
     }
 
+    // 原有的downloadDoc方法（已注释）
+    /*
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
     public ResponseEntity<?> downloadDoc(
             @ApiParam("任务ID") @RequestParam String taskId,
             @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
-            @ApiParam("导出格式（word/excel/txt）") 
+            @ApiParam("导出格式（word/excel/txt）")
             @RequestParam(required = false) String fileType,
             // 新增 digit 参数（根据实际需求调整 required 和描述）
-            @ApiParam(value = "数字参数（说明digit的业务含义，如：XX编号）", required = false) 
+            @ApiParam(value = "数字参数（说明digit的业务含义，如：XX编号）", required = false)
             @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
-        
+
         // 调用 Service 层的多格式导出方法
         R<File> result = fPhotometricService.downloadFile(taskId, allDisplay, fileType, digit);
         System.out.println("111111111111111111");
@@ -197,7 +199,7 @@ public class PhotometricConciseController {
 
             // 编码文件名（避免中文乱码）
             String fileName = URLEncoder.encode(file.getName(), "UTF-8");
-            
+
             // 异步删除临时文件（10秒后）
             new Thread(() -> {
                 try {
@@ -215,7 +217,54 @@ public class PhotometricConciseController {
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(resource);
         }
-        
+
+        // 导出失败时，返回错误信息
+        return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
+    }
+    */
+
+    @GetMapping("downloadDoc")
+    @ApiOperation("多格式文件下载接口（支持word/excel/txt）- 集成children和option数据")
+    public ResponseEntity<?> downloadDoc(
+            @ApiParam("任务ID") @RequestParam String taskId,
+            @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
+            @ApiParam("导出格式（word/excel/txt）")
+            @RequestParam(required = false) String fileType,
+            @ApiParam(value = "数字参数（说明digit的业务含义，如：XX编号）", required = false)
+            @RequestParam(value = "digit", required = false) Integer digit,
+            @ApiParam(value = "选项参数（对应queryData的option）", required = false)
+            @RequestParam(value = "option", required = false) List<String> option) throws Exception {
+
+        // 调用 Service 层的新多格式导出方法（集成children和option）
+        R<File> result = fPhotometricService.downloadFileWithChildren(taskId, allDisplay, fileType, digit, option);
+//        R<File> result = fPhotometricService.downloadFile(taskId, allDisplay, fileType, digit);
+        System.out.println("新downloadDoc方法调用成功");
+        if (result.getSuccess()) {
+            File file = result.getData();
+            FileInputStream fis = new FileInputStream(file);
+            InputStreamResource resource = new InputStreamResource(fis);
+
+            // 编码文件名（避免中文乱码）
+            String fileName = URLEncoder.encode(file.getName(), "UTF-8");
+
+            // 异步删除临时文件（10秒后）
+            new Thread(() -> {
+                try {
+                    Thread.sleep(10000);
+                    boolean deleteSuccess = file.delete();
+                    System.out.println("临时文件删除结果：" + deleteSuccess);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            // 构造响应头，指定下载和文件类型
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+        }
+
         // 导出失败时，返回错误信息
         return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }

@@ -169,4 +169,9 @@ public interface PhotometricConciseService {
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit);
 
+    /**
+     * 多格式文件导出（集成children和option数据）
+     */
+    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option);
+
 }

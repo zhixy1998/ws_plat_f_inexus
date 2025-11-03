@@ -2589,6 +2589,129 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
     }
 
+    /**
+     * 多格式文件导出（集成children和option数据）
+     * @param taskId 任务ID
+     * @param allDisplay 是否显示全部数据
+     * @param fileType 导出格式（word/txt/xlsx）
+     * @param digit 数字精度
+     * @param option 选项参数（对应queryData的option）
+     * @return 生成的文件对象
+     */
+    @Override
+    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option) {
+        log.info("开始导出（集成children和option），taskId: {}, fileType: {}, option: {}", taskId, fileType, option);
+        
+        // 1. 基础参数校验
+        if (!StringUtils.hasText(taskId)) {
+            return R.fail("缺少任务id");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            log.error("导出失败：任务不存在，taskId: {}", taskId);
+            return R.fail("任务不存在");
+        }
+        
+        // 处理fileType默认值和合法性
+        if (!StringUtils.hasText(fileType)) {
+            fileType = "word"; 
+        } else {
+            fileType = fileType.toLowerCase();
+        }
+        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
+            return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
+        }
+        if (allDisplay == null) {
+            allDisplay = true;
+        }
+
+        // 2. 准备表头和数据（集成children和option）
+        String methodId = task.getMethodKey();
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return R.fail("测量方法不存在");
+        }
+
+        // 构建表头
+        List<FHeadVO> heads = new ArrayList<>();
+        List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay, null).getData();
+        heads.addAll(vos);
+        heads.add(0, new FHeadVO("序号", "serialNumber")); // 序号列固定在第0位
+
+        // 3. 查询数据（使用queryData方法，传入option参数）
+        FQueryDataDTO queryDataDTO = new FQueryDataDTO();
+        queryDataDTO.setOption(option != null ? option : new ArrayList<>());
+        queryDataDTO.setTaskId(taskId);
+        queryDataDTO.setAllDisplay(allDisplay);
+        queryDataDTO.setDigit(digit);
+        List<Map<String, Object>> data = queryData(queryDataDTO).getData();
+
+        // 4. 处理children数据（展开children到主数据中）
+        List<Map<String, Object>> expandedData = new ArrayList<>();
+        if (data != null && !data.isEmpty()) {
+            for (Map<String, Object> item : data) {
+                // 添加主数据行
+                expandedData.add(item);
+                
+                // 如果有children，展开children数据
+                Object childrenObj = item.get("children");
+                if (childrenObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+                    for (Map<String, Object> child : children) {
+                        // 为children数据添加父级信息
+                        Map<String, Object> childRow = new HashMap<>(child);
+                        // 可以添加一些标识来区分这是children数据
+                        childRow.put("isChildData", true);
+                        expandedData.add(childRow);
+                    }
+                }
+            }
+        }
+
+        // 如果没有数据，构造空行
+        if (expandedData.isEmpty()) {
+            log.warn("无实际数据，构造空行导出，taskId: {}", taskId);
+            Map<String, Object> emptyRow = new HashMap<>();
+            emptyRow.put("serialNumber", 1);
+            for (FHeadVO head : vos) {
+                if (head != null && StringUtils.hasText(head.getIdentity())) {
+                    emptyRow.put(head.getIdentity(), "");
+                }
+            }
+            expandedData.add(emptyRow);
+        } else {
+            // 重新编号
+            for (int i = 0; i < expandedData.size(); i++) {
+                expandedData.get(i).put("serialNumber", i + 1);
+            }
+        }
+
+        // 5. 按格式生成文件
+        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
+        File file = new File(fileName);
+        try {
+            switch (fileType) {
+                case "word":
+                    generateWordFile(file, task, method, heads, expandedData, vos.size());
+                    break;
+                case "txt":
+                    generateTxtFile(file, heads, expandedData);
+                    break;
+                case "xlsx":
+                    generateExcelFile(file, heads, expandedData);
+                    break;
+            }
+            return R.ok(file);
+        } catch (Exception e) {
+            log.error("文件生成失败", e);
+            if (file.exists()) {
+                file.delete();
+            }
+            return R.fail("文件生成失败：" + e.getMessage());
+        }
+    }
+
 
     // ---------------------- 新增：三格式文件生成具体实现 ----------------------
     /**
