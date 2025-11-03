@@ -22,11 +22,11 @@ public class LinearSegment {
     private Double b;
 
 
-    public LinearSegment(Double minActualStep, Double maxActualStep, Double maxTheoryStep, Double minTheoryStep, Double k, Double b) {
+    public LinearSegment(Double minActualStep, Double maxActualStep, Double minTheoryStep, Double maxTheoryStep, Double k, Double b) {
         this.minActualStep = minActualStep;
         this.maxActualStep = maxActualStep;
-        this.maxTheoryStep = maxTheoryStep;
         this.minTheoryStep = minTheoryStep;
+        this.maxTheoryStep = maxTheoryStep;
         this.k = k;
         this.b = b;
     }

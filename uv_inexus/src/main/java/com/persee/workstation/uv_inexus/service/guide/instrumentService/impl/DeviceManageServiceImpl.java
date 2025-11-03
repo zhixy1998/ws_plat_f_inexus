@@ -339,6 +339,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         list.add(new Command(FindDevEnum.GetAccessoryType.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetInitStatus.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetCellPos.getComId(), new Object[]{}));
+        list.add(new Command(FindDevEnum.GetWlList.getComId(), new Object[]{}));
 
         List<FindDeviceVO> devices = new ArrayList<>();
 

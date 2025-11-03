@@ -4250,6 +4250,172 @@ public class RationServiceConciseImpl implements RationConciseService {
         return downloadFile(taskId, allDisplay, "word", digit);
     }
 
+    @Override
+    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option) {
+        log.info("开始导出（集成children和option），taskId: {}, fileType: {}, option: {}", taskId, fileType, option);
+        
+        // 1. 基础参数校验
+        if (!StringUtils.hasText(taskId)) {
+            return R.fail("缺少任务id");
+        }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            log.error("导出失败：任务不存在，taskId: {}", taskId);
+            return R.fail("任务不存在");
+        }
+        
+        // 处理fileType默认值和合法性
+        if (!StringUtils.hasText(fileType)) {
+            fileType = "word"; 
+        } else {
+            fileType = fileType.toLowerCase();
+        }
+        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
+            return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
+        }
+        if (allDisplay == null) {
+            allDisplay = true;
+        }
+
+        // 2. 准备表头和数据（集成children和option）
+        String methodId = task.getMethodKey();
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return R.fail("测量方法不存在");
+        }
+
+        // 2.1 获取标准样品表头
+        Result<List<FHeadVO>> standHeadResult = getStandSampleTableHead(taskId, methodId, allDisplay, null);
+        if (!standHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return R.fail("获取标准样品表头失败：" + standHeadResult.getMessage());
+        }
+        List<FHeadVO> standHeads = standHeadResult.getData();
+
+        // 2.2 获取未知样品表头
+        Result<List<FHeadVO>> unknownHeadResult = getUnknownSampleTableHead(taskId, methodId, allDisplay, null);
+        if (!unknownHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return R.fail("获取未知样品表头失败：" + unknownHeadResult.getMessage());
+        }
+        List<FHeadVO> unknownHeads = unknownHeadResult.getData();
+        // 补充未知样品固定列（序号+样品类型）
+        if (unknownHeads == null) unknownHeads = new ArrayList<>();
+        unknownHeads.add(0, new FHeadVO("序号", "serialNumber"));
+        unknownHeads.add(1, new FHeadVO("样品类型", "sampleType"));
+
+        // 2.3 页面设置参数
+        int vosSize = standHeads.size();
+
+        // 3. 查询数据（使用querySampleData方法，传入option参数）
+        FQueryDataDTO queryDataDTO = new FQueryDataDTO();
+        queryDataDTO.setOption(option != null ? option : new ArrayList<>());
+        queryDataDTO.setTaskId(taskId);
+        queryDataDTO.setAllDisplay(allDisplay);
+        queryDataDTO.setDigit(digit);
+        Result<FRationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
+        if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return R.fail("查询样品数据失败：" + sampleDataResult.getMessage());
+        }
+        FRationSampleDataVO dataVO = sampleDataResult.getData();
+        if (dataVO == null) {
+            return R.fail("样品数据为空");
+        }
+
+        // 4. 处理children数据（展开children到主数据中）
+        List<Map<String, Object>> allData = new ArrayList<>();
+        
+        // 处理标准样品数据
+        List<Map<String, Object>> standData = dataVO.getStandSampleData();
+        if (standData != null && !standData.isEmpty()) {
+            for (Map<String, Object> item : standData) {
+                // 添加主数据行
+                item.put("sampleType", "标准样品");
+                allData.add(item);
+                
+                // 如果有children，展开children数据
+                Object childrenObj = item.get("children");
+                if (childrenObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+                    for (Map<String, Object> child : children) {
+                        // 为children数据添加父级信息
+                        Map<String, Object> childRow = new HashMap<>(child);
+                        childRow.put("sampleType", "标准样品");
+                        childRow.put("isChildData", true);
+                        allData.add(childRow);
+                    }
+                }
+            }
+        }
+        
+        // 处理未知样品数据
+        List<Map<String, Object>> unknownData = dataVO.getUnknowSampleData();
+        if (unknownData != null && !unknownData.isEmpty()) {
+            for (Map<String, Object> item : unknownData) {
+                // 添加主数据行
+                item.put("sampleType", "未知样品");
+                allData.add(item);
+                
+                // 如果有children，展开children数据
+                Object childrenObj = item.get("children");
+                if (childrenObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+                    for (Map<String, Object> child : children) {
+                        // 为children数据添加父级信息
+                        Map<String, Object> childRow = new HashMap<>(child);
+                        childRow.put("sampleType", "未知样品");
+                        childRow.put("isChildData", true);
+                        allData.add(childRow);
+                    }
+                }
+            }
+        }
+
+        // 如果没有数据，构造空行
+        if (allData.isEmpty()) {
+            log.warn("无实际数据，构造空行导出，taskId: {}", taskId);
+            Map<String, Object> emptyRow = new HashMap<>();
+            emptyRow.put("serialNumber", 1);
+            emptyRow.put("sampleType", "标准样品");
+            for (FHeadVO head : standHeads) {
+                if (head != null && StringUtils.hasText(head.getIdentity())) {
+                    emptyRow.put(head.getIdentity(), "");
+                }
+            }
+            allData.add(emptyRow);
+        } else {
+            // 重新编号
+            for (int i = 0; i < allData.size(); i++) {
+                allData.get(i).put("serialNumber", i + 1);
+            }
+        }
+
+        // 5. 按格式生成文件（关键：传递独立表头）
+        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
+        File file = new File(fileName);
+        try {
+            switch (fileType) {
+                case "word":
+                    // 调用修改后的generateWordFile，传递standHeads和unknownHeads
+                    generateWordFile(file, task, method, standHeads, unknownHeads, allData, vosSize);
+                    break;
+                case "txt":
+                    generateTxtFile(file, standHeads, unknownHeads, allData);
+                    break;
+                case "xlsx":
+                    generateExcelFile(file, standHeads, unknownHeads, allData, taskId, methodId);
+                    break;
+            }
+            return R.ok(file);
+        } catch (Exception e) {
+            log.error("文件生成失败", e);
+            if (file.exists()) {
+                file.delete();
+            }
+            return R.fail("文件生成失败：" + e.getMessage());
+        }
+    }
+
     // word导出
     private void generateWordFile(File file, FMeasureTask task, FMeasureMethod method,
                                   List<FHeadVO> standHeads,  // 标准样品表头

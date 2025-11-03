@@ -226,6 +226,7 @@ public class RationConciseController {
         }
     }
 
+    /*
     @GetMapping("downloadDoc")
     @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
     public ResponseEntity<?> downloadDoc(
@@ -240,6 +241,52 @@ public class RationConciseController {
         // 调用 Service 层的多格式导出方法
         R<File> result = rationService.downloadFile(taskId, allDisplay, fileType, digit);
         System.out.println("2222222222222");
+        if (result.getSuccess()) {
+            File file = result.getData();
+            FileInputStream fis = new FileInputStream(file);
+            InputStreamResource resource = new InputStreamResource(fis);
+
+            // 编码文件名（避免中文乱码）
+            String fileName = URLEncoder.encode(file.getName(), "UTF-8");
+            
+            // 异步删除临时文件（10秒后）
+            new Thread(() -> {
+                try {
+                    Thread.sleep(10000);
+                    boolean deleteSuccess = file.delete();
+                    System.out.println("临时文件删除结果：" + deleteSuccess);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            // 构造响应头，指定下载和文件类型
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+        }
+        
+        // 导出失败时，返回错误信息
+        return ResponseEntity.badRequest().body("导出失败："  + result.getMessage());
+    }
+    */
+
+    @GetMapping("downloadDoc")
+    @ApiOperation("多格式文件下载接口（支持word/excel/txt）- 集成children和option数据")
+    public ResponseEntity<?> downloadDoc(
+            @ApiParam("任务ID") @RequestParam String taskId,
+            @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
+            @ApiParam("导出格式（word/excel/txt）") 
+            @RequestParam(required = false) String fileType,
+            @ApiParam(value = "修约", required = false) 
+            @RequestParam(value = "digit", required = false) Integer digit,
+            @ApiParam(value = "选项参数列表", required = false)
+            @RequestParam(value = "option", required = false) List<String> option) throws Exception {
+        
+        // 调用 Service 层的多格式导出方法（集成children和option数据）
+        R<File> result = rationService.downloadFileWithChildren(taskId, allDisplay, fileType, digit, option);
+        
         if (result.getSuccess()) {
             File file = result.getData();
             FileInputStream fis = new FileInputStream(file);
