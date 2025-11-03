@@ -17,7 +17,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("t_ins_info_temp")
 public class DeviceInfoPO extends BasePO {
@@ -53,6 +55,10 @@ public class DeviceInfoPO extends BasePO {
     @ApiModelProperty("联机状态,0-未连接，1-联机中，2-联机成功，3-联机失败")
     @TableField("connect_status")
     private Integer connectStatus;
+
+    @ApiModelProperty("激活状态，0-未激活，1-激活")
+    @TableField("is_activated")
+    private Integer isActivated;
 
     @ApiModelProperty("仪器当前状态")
     @TableField("device_current_status")
