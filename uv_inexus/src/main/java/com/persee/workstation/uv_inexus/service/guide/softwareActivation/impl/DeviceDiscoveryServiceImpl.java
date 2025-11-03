@@ -12,16 +12,6 @@
 
 package com.persee.workstation.uv_inexus.service.guide.softwareActivation.impl;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -30,9 +20,19 @@ import com.persee.workstation.uv_inexus.dao.guide.softwareActivation.DeviceDisco
 import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.po.guide.softwareActivation.SoftwareActivationPO;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceDiscoveryService;
-
+import com.persee.workstation.uv_inexus.util.changeUtil.ResponseDeal;
+import com.persee.workstation.uv_inexus.util.changeUtil.T800.ResponseParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -40,8 +40,8 @@ import lombok.extern.slf4j.Slf4j;
 public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
     private final DeviceDiscoveryServiceMapper softwareActivationMapper;
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    
+    private static final DateTimeFormatter  DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     // 状态定义
     private static final int STATUS_HISTORY = 0;
     private static final int STATUS_NEW = 1;
@@ -59,23 +59,28 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     public List<DeviceInfoDTO> generateMockDeviceData() {
         List<DeviceInfoDTO> mockData = new ArrayList<>();
         String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
-        
-        mockData.add(buildDeviceInfo("DEV001", "192.168.51.10", "Windows设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV002", "192.168.51.11", "Linux设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV003", "192.168.51.12", "嵌入式设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV004", "192.168.51.13", "Windows设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV005", "192.168.51.14", "新增设备", currentTime));
-        
+
+
+        String sn = ResponseDeal.Sn;
+
+        if (sn == null || sn.isEmpty()) {
+            sn = "UNKNOWN-SN";
+        }
+
+
+        sn = sn.substring(0, 16);
+
+        // 使用解析好的序列号替代
+        mockData.add(buildDeviceInfo(sn, currentTime));
         return mockData;
     }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<DeviceInfoDTO> addNonDuplicateDevicesToDb() {
         return addNonDuplicateDevicesToDb1(null);
     }
-    
+
     /**
      * 带参处理方法：自动新增/更新符合条件的设备
      */
@@ -83,7 +88,7 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     @Transactional(rollbackFor = Exception.class)
     public List<DeviceInfoDTO> addNonDuplicateDevicesToDb1(Map<String, String> searchParams) {
         log.info("===== 自动执行设备处理（新增/更新） =====");
-        
+
         // 1. 用搜索参数过滤模拟数据（模糊匹配）
         List<DeviceInfoDTO> filteredDevices = getFilteredDevices(searchParams);
         if (filteredDevices.isEmpty()) {
@@ -91,8 +96,8 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
             return new ArrayList<>();
         }
         String targetNumbers = filteredDevices.stream()
-               .map(DeviceInfoDTO::getDeviceNumber)
-               .collect(Collectors.joining(","));
+                .map(DeviceInfoDTO::getDeviceNumber)
+                .collect(Collectors.joining(","));
         log.info("过滤后待处理设备：{}条，编号：{}", filteredDevices.size(), targetNumbers);
 
         // 2. 数据库中精确匹配设备编号
@@ -125,16 +130,16 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     @Override
     public IPage<DeviceInfoDTO> getAddedDevicesPage(Page<DeviceInfoDTO> page, Map<String, String> searchParams) {
         log.info("===== 启动分页查询 =====");
-        
+
         // 自动处理设备（新增/更新）
         addNonDuplicateDevicesToDb1(searchParams);
-        
+
         // 1. 构建查询条件，添加排序规则
         LambdaQueryWrapper<SoftwareActivationPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(SoftwareActivationPO::getIsAddStatus, STATUS_NEW, STATUS_DUPLICATE, STATUS_HISTORY)
                 // 关键：按isAddStatus降序排序（2 → 1 → 0）
-                .orderByDesc(SoftwareActivationPO::getIsAddStatus); 
-        
+                .orderByDesc(SoftwareActivationPO::getIsAddStatus);
+
         // 模糊查询条件
         if (searchParams!= null && searchParams.containsKey("deviceNumber")) {
             String keyword = searchParams.get("deviceNumber").trim().toLowerCase();
@@ -151,8 +156,8 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
         // 3. 转换为DTO返回
         List<DeviceInfoDTO> dtoList = poPage.getRecords().stream()
-            .map(this::convertToDTO)
-            .collect(Collectors.toList());
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
 
         Page<DeviceInfoDTO> resultPage = new Page<>();
         resultPage.setRecords(dtoList);
@@ -178,9 +183,9 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         }
 
         List<DeviceInfoDTO> filtered = allDevices.stream()
-               .filter(device -> device.getDeviceNumber()!= null 
+                .filter(device -> device.getDeviceNumber()!= null
                         && device.getDeviceNumber().toLowerCase().contains(keyword))
-               .collect(Collectors.toList());
+                .collect(Collectors.toList());
         log.info("模拟数据模糊过滤结果：关键词'{}'，匹配{}条设备", keyword, filtered.size());
         return filtered;
     }
@@ -189,13 +194,13 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     // 从数据库查询已存在的设备（精确匹配编号）
     private Map<String, SoftwareActivationPO> getExistingDevicesFromDb(List<DeviceInfoDTO> devices) {
         List<String> deviceNumbers = devices.stream()
-               .map(DeviceInfoDTO::getDeviceNumber)
-               .collect(Collectors.toList());
+                .map(DeviceInfoDTO::getDeviceNumber)
+                .collect(Collectors.toList());
         LambdaQueryWrapper<SoftwareActivationPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(SoftwareActivationPO::getDeviceNumber, deviceNumbers);
         List<SoftwareActivationPO> existingPOs = softwareActivationMapper.selectList(queryWrapper);
         return existingPOs.stream()
-               .collect(Collectors.toMap(SoftwareActivationPO::getDeviceNumber, po -> po));
+                .collect(Collectors.toMap(SoftwareActivationPO::getDeviceNumber, po -> po));
     }
 
 
@@ -204,8 +209,8 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         String deviceNumber = device.getDeviceNumber();
         LambdaUpdateWrapper<SoftwareActivationPO> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(SoftwareActivationPO::getId, existingPO.getId())
-                   .set(SoftwareActivationPO::getIsAddStatus, STATUS_NEW)
-                   .set(SoftwareActivationPO::getModificationTime, currentTime);
+                .set(SoftwareActivationPO::getIsAddStatus, STATUS_NEW)
+                .set(SoftwareActivationPO::getModificationTime, currentTime);
         int updateRows = softwareActivationMapper.update(null, updateWrapper);
         log.info("设备{}：已存在，状态更新为2（重复），影响行数={}", deviceNumber, updateRows);
         device.setIsAddStatus(STATUS_NEW);
@@ -217,16 +222,16 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     private void forceAddNewDevice(DeviceInfoDTO device, String currentTime) {
         String deviceNumber = device.getDeviceNumber();
         log.info("设备{}：数据库不存在，执行新增", deviceNumber);
-        
+
         // 构建PO对象
         device.setIsAddStatus(STATUS_DUPLICATE);
         device.setModificationTime(currentTime);
         SoftwareActivationPO newPO = convertToPO(device);
-        
+
         // 执行插入
         int insertRows = softwareActivationMapper.insert(newPO);
         log.info("设备{}：插入数据库，影响行数={}", deviceNumber, insertRows);
-        
+
         // 验证插入结果
         if (insertRows <= 0) {
             log.error("设备{}：插入失败，重试一次", deviceNumber);
@@ -235,28 +240,27 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
                 throw new RuntimeException("设备" + deviceNumber + "新增失败");
             }
         }
-        
+
         // 确认新增成功
         SoftwareActivationPO insertedPO = softwareActivationMapper.selectOne(
-            new LambdaQueryWrapper<SoftwareActivationPO>()
-               .eq(SoftwareActivationPO::getDeviceNumber, deviceNumber)
-               .eq(SoftwareActivationPO::getIsAddStatus, STATUS_DUPLICATE)
+                new LambdaQueryWrapper<SoftwareActivationPO>()
+                        .eq(SoftwareActivationPO::getDeviceNumber, deviceNumber)
+                        .eq(SoftwareActivationPO::getIsAddStatus, STATUS_DUPLICATE)
         );
         if (insertedPO == null) {
             throw new RuntimeException("设备" + deviceNumber + "新增后查询不到");
         }
-        
+
         log.info("设备{}：新增成功，ID={}", deviceNumber, insertedPO.getId());
         device.setId(insertedPO.getId());
     }
 
 
     // 构建设备DTO
-    private DeviceInfoDTO buildDeviceInfo(String deviceNumber, String ip, String type, String currentTime) {
+    private DeviceInfoDTO buildDeviceInfo(String deviceNumber, String currentTime) {
         DeviceInfoDTO dto = new DeviceInfoDTO();
         dto.setDeviceNumber(deviceNumber);
-        dto.setDeviceIp(ip);
-        dto.setType(type);
+//        dto.setDeviceIp(Ip);
         dto.setModificationTime(currentTime);
         dto.setAdditionalFunctions("默认功能");
         return dto;
@@ -299,15 +303,15 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     @Transactional(rollbackFor = Exception.class)
     public boolean resetAllDeviceAddStatus() {
         log.info("===== 执行所有设备isAddStatus重置为0 =====");
-        
+
         // 构建更新条件：更新所有记录的isAddStatus为0
         LambdaUpdateWrapper<SoftwareActivationPO> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.set(SoftwareActivationPO::getIsAddStatus, STATUS_HISTORY);
-        
+
         // 执行更新
         int updateRows = softwareActivationMapper.update(null, updateWrapper);
         log.info("重置完成，共影响{}条记录", updateRows);
-        
+
         // 返回更新结果（只要影响行数≥0就视为成功，即使没有数据可更新）
         return updateRows >= 0;
     }
