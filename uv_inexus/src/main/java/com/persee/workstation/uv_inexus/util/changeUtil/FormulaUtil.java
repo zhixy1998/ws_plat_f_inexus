@@ -2,11 +2,10 @@ package com.persee.workstation.uv_inexus.util.changeUtil;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
-import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,11 +17,15 @@ import java.util.*;
 public class FormulaUtil {
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
+    @Autowired
+    DeviceInfoService infoService;
+    @Autowired
+    MessageUtil messageUtil;
 
     /*
-    * 根据步数计算波长
-    * */
-    public double calculateWl(double actualStep, String deviceSerialNumber) {
+     * 根据步数计算波长
+     * */
+    public Double calculateWl(double actualStep, String deviceSerialNumber) {
         try {
             List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
             if (CollectionUtils.isNotEmpty(linearSegment)) {
@@ -32,30 +35,31 @@ public class FormulaUtil {
                     }
                 }
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             return actualStep / 50;
         }
         return actualStep / 50;
     }
-    public List<LinearSegment> getLinearSegment(String deviceSerialNumber){
+
+    public List<LinearSegment> getLinearSegment(String deviceSerialNumber) {
         String formula = deviceInfoDAO.getFormula(deviceSerialNumber);
         return JSONArray.parseArray(formula, LinearSegment.class);
     }
 
     /*
-    * 根据波长计算步数
-    * */
-    public double calculateStep(double wl, String deviceSerialNumber) {
+     * 根据波长计算步数
+     * */
+    public Double calculateStep(double wl, String deviceSerialNumber) {
         try {
             List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
-            if (CollectionUtils.isNotEmpty(linearSegment)){
-            for (LinearSegment segment : linearSegment) {
-                if (segment.containsWl(wl)) {
-                    return (wl * 50 - segment.getB()) / segment.getK();
+            if (CollectionUtils.isNotEmpty(linearSegment)) {
+                for (LinearSegment segment : linearSegment) {
+                    if (segment.containsWl(wl)) {
+                        return (wl * 50 - segment.getB()) / segment.getK();
+                    }
                 }
             }
-            }
-        }catch (Exception e){
+        } catch (Exception e) {
             return wl * 50;
         }
         return wl * 50;
@@ -82,14 +86,26 @@ public class FormulaUtil {
     }
 
     //添加计算公式
-    public Result addFormula(List<StepPoint> stepPoints, String deviceSerialNumber) {
-        if (CollectionUtils.isEmpty(stepPoints)|| StringUtils.isBlank(deviceSerialNumber)){
-            return Result.fail("stepPoints，deviceSerialNumber不能为空！！！");
+    public String addFormula(Object obj, String deviceSerialNumber) {
+        List<StepPoint> stepPoints = new ArrayList<>();
+
+        if (obj instanceof List<?>) {
+            List<?> rawList = (List<?>) obj;
+            if (!rawList.isEmpty() && rawList.get(0) instanceof StepPoint) {
+                stepPoints = (List<StepPoint>) obj; // 安全转换
+            } else {
+                return "";
+            }
+        } else {
+            return "";
+        }
+        if (CollectionUtils.isEmpty(stepPoints) || StringUtils.isBlank(deviceSerialNumber)) {
+            return "";
         }
         stepPoints.sort(new Comparator<StepPoint>() {
             @Override
             public int compare(StepPoint s1, StepPoint s2) {
-                return Double.compare(s1.getActualStep(),s2.getActualStep());
+                return Double.compare(s1.getActualStep(), s2.getActualStep());
             }
         });
         //要存到数据库中的json串
@@ -105,7 +121,7 @@ public class FormulaUtil {
             Double b = MapUtils.getDouble(line, "b");
             list.add(new LinearSegment(point1.getActualStep(), point2.getActualStep(), point1.getTheoryStep(), point2.getTheoryStep(), k, b));
         }
-        int i=deviceInfoDAO.updateFormula(deviceSerialNumber, JSONArray.from(list).toString());
-        return i!=0?Result.ok():Result.fail();
+        return JSONArray.from(list).toString();
     }
+
 }

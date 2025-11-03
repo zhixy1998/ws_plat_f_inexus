@@ -50,4 +50,7 @@ public class FindDeviceVO {
 
     @ApiModelProperty("仪器型号名称")
     private String deviceModelName;
+
+    @ApiModelProperty("计算公式")
+    private String linearSegment;
 }

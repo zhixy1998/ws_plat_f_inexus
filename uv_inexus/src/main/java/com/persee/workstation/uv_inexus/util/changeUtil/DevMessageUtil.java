@@ -131,7 +131,8 @@ public class DevMessageUtil {
             return R.fail("T600xml文件加载失败");
         }
         FindDeviceVO findDeviceVO = new FindDeviceVO();
-
+        //获取的波长值临时存储
+        Object temp=new Object();
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
@@ -221,12 +222,15 @@ public class DevMessageUtil {
                 Integer s = (Integer) parse;
                 findDeviceVO.setAttachmentType(s);
             }
+            if (cmdId.equals(FindDevEnum.GetWlList.getComId())) {
+                temp=parse;
+            }
             if (cmdId.equals(FindDevEnum.GetCellPos.getComId())) {
                 Integer s = (Integer) parse;
                 findDeviceVO.setCurrentPoolNum(s);
             }
         }
-
+        findDeviceVO.setLinearSegment(formulaUtil.addFormula(temp,findDeviceVO.getDeviceSerialNumber()));
         byte[] sendBytes = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("Measure"));
 
         return R.ok(findDeviceVO);
