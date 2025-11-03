@@ -12,16 +12,6 @@
 
 package com.persee.workstation.uv_inexus.service.guide.softwareActivation.impl;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -30,9 +20,19 @@ import com.persee.workstation.uv_inexus.dao.guide.softwareActivation.DeviceDisco
 import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.po.guide.softwareActivation.SoftwareActivationPO;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceDiscoveryService;
-
+import com.persee.workstation.uv_inexus.util.changeUtil.ResponseDeal;
+import com.persee.workstation.uv_inexus.util.changeUtil.T800.ResponseParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -40,7 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
     private final DeviceDiscoveryServiceMapper softwareActivationMapper;
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter  DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
     // 状态定义
     private static final int STATUS_HISTORY = 0;
@@ -59,16 +59,27 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     public List<DeviceInfoDTO> generateMockDeviceData() {
         List<DeviceInfoDTO> mockData = new ArrayList<>();
         String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
-        
-        mockData.add(buildDeviceInfo("DEV001", "192.168.51.10", "Windows设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV002", "192.168.51.11", "Linux设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV003", "192.168.51.12", "嵌入式设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV004", "192.168.51.13", "Windows设备", currentTime));
-        mockData.add(buildDeviceInfo("DEV005", "192.168.51.14", "新增设备", currentTime));
-        
+
+
+        String sn = ResponseDeal.Sn;
+        String sn1 = ResponseParser.Sn;
+
+        if (sn == null || sn.isEmpty()) {
+            sn = "UNKNOWN-SN";
+        }
+
+        if (sn1 == null || sn1.isEmpty()) {
+            sn1 = "UNKNOWN-SN";
+        }
+
+        sn = sn.substring(0, 16);
+        sn1 = sn1.substring(0, 16);
+        // 使用解析好的序列号替代
+        mockData.add(buildDeviceInfo(sn, currentTime));
+        mockData.add(buildDeviceInfo(sn1, currentTime));
+
         return mockData;
     }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -252,11 +263,10 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
 
     // 构建设备DTO
-    private DeviceInfoDTO buildDeviceInfo(String deviceNumber, String ip, String type, String currentTime) {
+    private DeviceInfoDTO buildDeviceInfo(String deviceNumber, String currentTime) {
         DeviceInfoDTO dto = new DeviceInfoDTO();
         dto.setDeviceNumber(deviceNumber);
-        dto.setDeviceIp(ip);
-        dto.setType(type);
+//        dto.setDeviceIp(Ip);
         dto.setModificationTime(currentTime);
         dto.setAdditionalFunctions("默认功能");
         return dto;
