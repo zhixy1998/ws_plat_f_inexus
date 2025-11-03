@@ -161,13 +161,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             return;
         }
 
-        R<Boolean> createR = rationService.createSample(taskId, sampleKind, updateBy, deviceSerialNumber);
-        if (!createR.getSuccess()) {
-            infoService.releaseDevice(deviceSerialNumber);
-            sendAndClose(session, createR.getMessage());
-            return;
-        }
-        task = tMeasureTaskService.getById(task.getId());
+//        R<Boolean> createR = rationService.createSample(taskId, sampleKind, updateBy, deviceSerialNumber);
+//        if (!createR.getSuccess()) {
+//            infoService.releaseDevice(deviceSerialNumber);
+//            sendAndClose(session, createR.getMessage());
+//            return;
+//        }
+//        task = tMeasureTaskService.getById(task.getId());
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 

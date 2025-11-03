@@ -926,7 +926,16 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (StringUtils.hasText(ip)) {
             List<Command> list = new ArrayList<>();
             list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
-            list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+
+            String responseTime = StringUtils.hasText(parameter.getResponseTime()) ? parameter.getResponseTime() : "0.5";
+            list.add(new Command("SetResponseTime", new Object[]{responseTime}));
+
+            String waveLength = "660";
+            if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()){
+                waveLength = parameter.getWaveLength().get(parameter.getWaveLength().size() - 1);
+            }
+            list.add(new Command("SetWl", new Object[]{waveLength}));
+
             try {
                 deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
                 devMessageUtil.photometricAndRationMeasurement(list, ip);
@@ -1601,7 +1610,6 @@ public class RationServiceConciseImpl implements RationConciseService {
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
         task.setUserId(id);
-        task.setIsDelete("1");
         fMeasureTaskService.updateById(task);
         saveData(taskId);
         return Result.ok(true);
@@ -1882,8 +1890,39 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public R<Boolean> createSample(String taskId, String sampleKind, String updateBy, String deviceSerialNumber) {
+    public R<Boolean> checkAllSampleTest(String taskId) {
+
         FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return R.fail("任务不存在");
+        }
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            return R.ok(true);
+        }
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (taskSpecimen == null || taskSpecimen.isEmpty()) {
+            return R.ok(true);
+        }
+        boolean allTested = true;
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            if(specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                if (specimen.getIsTested().equals(noTested)) {
+                    allTested = false;
+                    break;
+                }
+            }
+        }
+
+        return R.ok(allTested);
+    }
+
+    @Override
+    public R<Boolean> createSample(String taskId, String sampleKind, Double normalConcentration, String updateBy, String deviceSerialNumber) {
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+
+        if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity()) && normalConcentration == null) {
+            return R.fail("请设置标准浓度");
+        }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         if (taskSpecimen == null) {
@@ -1913,6 +1952,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
             } else {
                 newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+                newSample.setNormalConcentration(String.valueOf(normalConcentration));
             }
 
             newSample.setSampleKind(sampleKind);
@@ -1937,6 +1977,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())){
                     sampleNumList.add(measureSample.getSampleName());
+                    sampleNumList.add(measureSample.getSampleNumber());
                 }
             }
             if (hasNoTested) {
@@ -1946,18 +1987,20 @@ public class RationServiceConciseImpl implements RationConciseService {
             FMeasureSample newSample = new FMeasureSample();
 
             Integer maxSampleId = sampleNumList.stream()
-                    .filter(sample -> sample.startsWith("默认样品"))
                     .map(sample -> Integer.parseInt(sample.replace("默认样品", "")))  // 获取样品编号部分
                     .max(Integer::compareTo)
                     .orElse(0);
 
-            newSample.setSampleNumber(String.valueOf(maxSampleId + 1));
-            newSample.setSampleName("默认样品" + maxSampleId + 1);
+            int num = maxSampleId + 1;
+            newSample.setSampleNumber(String.valueOf(num));
+            newSample.setSampleName("默认样品" + num);
+
 
             if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
             } else {
                 newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+                newSample.setNormalConcentration(String.valueOf(normalConcentration));
             }
             newSample.setSampleKind(sampleKind);
             if (!dynamicHeads.isEmpty()) {
@@ -2706,7 +2749,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (one != null && one.getAnalysisResult() != null) {
                     List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
                     for (FRationCountDataInfo countData : countDataList) {
-                        map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                        if (countData.getColValue() !=null) {
+                            map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                        }
                     }
                 }
 

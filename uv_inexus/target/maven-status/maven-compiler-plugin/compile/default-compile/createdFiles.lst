@@ -120,6 +120,7 @@ com\persee\workstation\uv_inexus\dao\concise\measurementDao\ProjectManagementMap
 com\persee\workstation\uv_inexus\dto\measurementDto\CreateTaskParamDto.class
 com\persee\workstation\uv_inexus\service\guide\softwareActivation\DeviceDiscoveryService.class
 com\persee\workstation\uv_inexus\controller\sysUserPermissionController\UserPermissionController.class
+com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RoundingParamVO.class
 com\persee\workstation\uv_inexus\vo\measurementVo\Sample.class
 com\persee\workstation\uv_inexus\dto\sysUserPermissionDto\PermissionTreeDTO.class
 com\persee\workstation\uv_inexus\service\concise\measurementService\impl\FMeasureProjectServiceImpl.class
@@ -164,6 +165,7 @@ com\persee\workstation\uv_inexus\enums\instrumentEnums\DeviceConnectMessageEnum.
 com\persee\workstation\uv_inexus\dao\guide\parseReport\DetectionMapper.class
 com\persee\workstation\uv_inexus\vo\instrumentVo\DeviceAttachmentTypeVO.class
 com\persee\workstation\uv_inexus\util\nettyUtil\SeRePa\CommandExecutor.class
+com\persee\workstation\uv_inexus\po\guide\instrumentPo\model\StepPoint.class
 com\persee\workstation\uv_inexus\util\changeUtil\T800\T800MessageUtil.class
 com\persee\workstation\uv_inexus\dto\measurementDto\RationAddOrDeleteSampleDTO.class
 com\persee\workstation\uv_inexus\dto\measurementDto\TaskManagementDto.class
@@ -301,8 +303,10 @@ com\persee\workstation\uv_inexus\dto\sysUserPermissionDto\RoleGroupUserTreeDTO$U
 com\persee\workstation\uv_inexus\enums\measurementEnums\SampleTypeEnum.class
 com\persee\workstation\uv_inexus\po\guide\instrumentPo\DeviceTypeInfoPO.class
 com\persee\workstation\uv_inexus\websocket\concise\TimingWebSocket$MeasurementResult.class
+com\persee\workstation\uv_inexus\po\concise\measurementPo\params\FRoundingParamVO.class
 com\persee\workstation\uv_inexus\po\concise\measurementPo\params\FTimeSweepParamter.class
 com\persee\workstation\uv_inexus\service\concise\measurementService\FMeasureAnalysisDataService.class
+com\persee\workstation\uv_inexus\po\guide\instrumentPo\model\LinearSegment.class
 com\persee\workstation\uv_inexus\dto\concise\common\FMeasureTaskDTO.class
 com\persee\workstation\uv_inexus\dto\systemUserManageDto\AddSystemPermissionDTO.class
 com\persee\workstation\uv_inexus\controller\sysUserPermissionController\RoleController.class
@@ -389,6 +393,7 @@ com\persee\workstation\uv_inexus\constant\PythonPathConstant.class
 com\persee\workstation\uv_inexus\dao\guide\measurementDao\TMeasureTaskMapper.class
 com\persee\workstation\uv_inexus\vo\measurementVo\ProjectTaskMethodVo.class
 com\persee\workstation\uv_inexus\dao\guide\systemManageDao\SystemDatabaseConfDAO.class
+com\persee\workstation\uv_inexus\util\changeUtil\FormulaUtil.class
 com\persee\workstation\uv_inexus\po\guide\systemManagePo\SystemLogSwitchPO.class
 com\persee\workstation\uv_inexus\controller\sysUserPermissionController\SysUserLoginController.class
 com\persee\workstation\uv_inexus\dto\measurementDto\MeasureDataGaugePointDto.class
@@ -693,6 +698,7 @@ com\persee\workstation\uv_inexus\service\guide\measurementService\impl\SpectrumS
 com\persee\workstation\uv_inexus\dto\measurementDto\SeekingPeaksValleysDto.class
 com\persee\workstation\uv_inexus\po\guide\measurementPo\TMeasureTask.class
 com\persee\workstation\uv_inexus\util\nettyUtil\ProtocolltemList\ProtocolItem.class
+com\persee\workstation\uv_inexus\util\changeUtil\FormulaUtil$1.class
 com\persee\workstation\uv_inexus\vo\instrumentVo\QueryDeviceConfigVO.class
 com\persee\workstation\uv_inexus\vo\measurementVo\photometricAndRationVo\RoundingVO.class
 com\persee\workstation\uv_inexus\websocket\concise\ConciseSpectrumWebSocket$MeasurementResult.class

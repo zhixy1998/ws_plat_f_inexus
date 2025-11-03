@@ -30,4 +30,6 @@ public class TimeUseMethodDto extends FTimeSweepParamter {
     private String type;
     // 方法参数
     private FTimeSweepParamterVo parameter;
+    // 序列号
+    private String deviceSerialNumber;
 }

@@ -766,9 +766,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             String wave = StringUtils.hasText(parameter.getLuminosity()) ? parameter.getLuminosity(): WaveLengthEnum.abs.getCode();
             String responseTime = StringUtils.hasText(parameter.getResponseTime()) ? parameter.getResponseTime() : "0.5";
+            String waveLength = "660";
+            if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()){
+                waveLength = parameter.getWaveLength().get(parameter.getWaveLength().size() - 1);
+            }
 
             list.add(new Command("SetPhotoMode", new Object[]{wave}));
             list.add(new Command("SetResponseTime", new Object[]{responseTime}));
+            list.add(new Command("SetWl", new Object[]{waveLength}));
             if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
 
                 String lampPos = StringUtils.hasText(parameter.getEnergyLamp()) ? parameter.getEnergyLamp() : "0";
@@ -1193,8 +1198,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     .max(Integer::compareTo)
                     .orElse(0);
 
-            newSample.setSampleNumber(String.valueOf(maxSampleId + 1));
-            newSample.setSampleName("默认样品" + maxSampleId + 1);
+            int number = maxSampleId + 1;
+
+            newSample.setSampleNumber(String.valueOf(number));
+            newSample.setSampleName("默认样品" + number);
 
 
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -1923,9 +1930,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (map.isEmpty() && countList != null) {
                 for (FPhotometricCountDataInfo count : countList) {
 
-                    String s = DataCountUtil.formatValueWithBigDecimal(digit, count.getCountValue());
-                    map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
-
+                    if (count.getCountValue() != null) {
+                        String s = DataCountUtil.formatValueWithBigDecimal(digit, count.getCountValue());
+                        map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
+                    }
                 }
             }
         }
@@ -2278,7 +2286,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
         task.setUserId(id);
-        task.setIsDelete("1");
         task.setEndSaveTime(LocalDateTime.now());
         fMeasureTaskService.updateById(task);
         saveData(taskId);

@@ -16,6 +16,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
@@ -178,8 +179,9 @@ public class ConciseCommonController {
     @ApiOperation("查询报告表格数据")
     public Result reportTableDataQuery(@RequestParam String taskId,
                                        @RequestParam(required = false) String sampleId,
-                                       @RequestParam(required = false) String analysisId){
-        return conciseCommonService.newReportTableDataQuery(taskId, sampleId,analysisId);
+                                       @RequestParam(required = false) String analysisId,
+                                       @RequestParam(required = false) Boolean allDisplay){
+        return conciseCommonService.newReportTableDataQuery(taskId, sampleId,analysisId,allDisplay);
     }
 
     @GetMapping("isAddSample")
@@ -198,5 +200,12 @@ public class ConciseCommonController {
     @ApiOperation("另存为")
     public Result<String> copyProject(@Valid @RequestBody CopyParam copyParam) {
         return  conciseCommonService.copy(copyParam);
+    }
+
+
+    @PostMapping("checkApproximateRange")
+    @ApiOperation("检查修约区间是否正确")
+    public Result<Boolean> checkApproximateRange(@RequestBody FRoundingVO vo) {
+        return conciseCommonService.checkApproximateRange(vo);
     }
 }

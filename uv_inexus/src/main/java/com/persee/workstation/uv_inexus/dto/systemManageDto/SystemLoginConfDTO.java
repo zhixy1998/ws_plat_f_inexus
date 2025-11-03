@@ -15,8 +15,8 @@ import lombok.Data;
 @Data
 public class SystemLoginConfDTO {
 
-    @ApiModelProperty("启用快捷登录")
-    private Boolean quickLoginSwitch;
+//    @ApiModelProperty("启用快捷登录")
+//    private Boolean quickLoginSwitch;
 
     @ApiModelProperty("默认选中快捷登录，true-选中")
     private Boolean defaultQuickLogin;

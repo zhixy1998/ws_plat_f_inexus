@@ -546,7 +546,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (!update) {
                 return Result.fail("应用失败");
             }
-            Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -575,7 +575,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -590,7 +590,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -603,7 +603,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("请勿重复使用");
             } else {
                 map.put("method", method);
-                Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy());
+                Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
                 }
@@ -615,7 +615,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -721,7 +721,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @return
      */
     @Override
-    public Result createDraftButton(String methodId,String updateBy) {
+    public Result createDraftButton(String methodId,String updateBy,String deviceSerialNumber) {
         if (methodId == null) {
             return Result.fail("请先创建方法或者选择方法");
         }
@@ -753,6 +753,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         fMeasureTask.setCreateTime(LocalDateTime.now());
         fMeasureTask.setIsSave("0");
         fMeasureTask.setIsDelete(createType);
+        fMeasureTask.setDeviceSerialNumber(deviceSerialNumber);
         boolean save = fMeasureTaskService.save(fMeasureTask);
         return save ? Result.ok(fMeasureTask.getId()) : Result.fail();
     }
@@ -1752,7 +1753,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
             paramDto.setDistance(confVO.getPeakValleyDiff());
         }
-        Integer i1 = Integer.valueOf(paramDto.getDistance());
+        double distance =Double.parseDouble(paramDto.getDistance());
+        int i1 = (int) distance;
         if (i1<1){
             return Result.fail("峰谷间距不可以小于1");
         }
@@ -2687,7 +2689,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 2. 波长
         ans.add(new FHeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
         // 判断是否是重复模式
-        if (parameter.getRepetitionPattern().equals("0")){
+        if (parameter.getRepetitionPattern().equals("不重复")){
             /// 非重复模式
             // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
             if (sampleIds.size() == 1){
@@ -2718,6 +2720,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
                 return Result.ok(ans);
             }else{
+                if (analysisIds== null|| analysisIds.isEmpty()){
+                    return Result.ok(null);
+                }
                 // 根据分析id查询多个分析id的信息
                 QueryWrapper<FMeasureAnalysisData> qw = new QueryWrapper<>();
                 qw.in("id", analysisIds);
@@ -2749,209 +2754,311 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         List<Map<String, Object>> arrayList = new ArrayList<>();
 
-
-        // 判断样品长度是否为1
-        if (sampleIds.size() == 1) {
-            // 单样品表数据
-            QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id", taskId);
-            wrapper.eq("analysis_number",1);
-            wrapper.eq("sample_key", sampleIds.get(0));
-            wrapper.last("limit 1");
-            FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getOne(wrapper);
-            if (measureAnalysisData == null) {
-                return null;
-            }
-            int id =1;
-            List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
-            if (peaks != null && !peaks.isEmpty()){
-                for (FPeakValleyMarking peak : peaks) {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), peak.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), peak.getY());
-                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
-                    map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark()!=null?peak.getRemark():"");
-                    arrayList.add(map);
+        // 根据方法id查找方法
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        // 判断是否是重复模式
+        if (parameter.getRepetitionPattern().equals("不重复")) {
+            // 非重复模式
+            // 判断样品长度是否为1
+            if (sampleIds.size() == 1) {
+                // 单样品表数据
+                QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
+                wrapper.eq("task_id", taskId);
+                wrapper.eq("analysis_number", 1);
+                wrapper.eq("sample_key", sampleIds.get(0));
+                wrapper.last("limit 1");
+                FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getOne(wrapper);
+                if (measureAnalysisData == null) {
+                    return null;
                 }
-            }
-            if (valleys != null && !valleys.isEmpty()){
-                for (FPeakValleyMarking valley : valleys) {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), valley.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), valley.getY());
-                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
-                    map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark()!=null?valley.getRemark():"");
-                    arrayList.add(map);
-                }
-            }
-            if (gaugePoints != null && !gaugePoints.isEmpty()){
-                for (FPeakValleyMarking gaugePoint : gaugePoints) {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), gaugePoint.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), gaugePoint.getY());
-                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
-                    map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark()!=null?gaugePoint.getRemark():"");
-                    arrayList.add(map);
-                }
-            }
-
-            return arrayList;
-        }else{
-            // 多样品表数据
-            // 根据任务id和样品id查询分析数据
-            QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-            eq.eq("task_id", taskId);
-            eq.eq("analysis_number",1);
-            eq.in("sample_key", sampleIds);
-
-            List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(eq);
-            if (analysisDataList == null || analysisDataList.isEmpty()) {
-                return null;
-            }
-
-            List<Integer> list = new ArrayList<>();
-            List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
-            for (String s : result) {
-                String[] split = s.split(",");
-                double value = Double.parseDouble(split[0]);
-                list.add((int) value);
-            }
-            int id = 1;
-            for (Integer i : list) {
-                Map<String, Object> map = new HashMap<>();
-                Map<String,Object> resultMap = new HashMap<>();
-                resultMap.put(SampleTableEnum.ID.getIdentity(),id++);
-                for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
-                    List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-                    List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                    List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-                    for (String data : datas) {
-                        String[] split = data.split(",");
-                        double value = Double.parseDouble(split[0]);
-                        int value1 = (int) value;
-                        if (value1 == i) {
-                            if (resultMap.get("sampleNumber") == null){
-                                List<String> y = new ArrayList<>();
-                                y.add(split[1]);
-                                resultMap.put("sampleNumber", y);
-                            }else{
-                                List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                y.add(split[1]);
-                                resultMap.put("sampleNumber", y);
-                            }
-                            boolean statePeak = false;
-                            boolean stateValley = false;
-                            if (peaks != null){
-                                for (FPeakValleyMarking peak : peaks) {
-                                    if (peak.getX().equals(split[0])){
-                                        if (resultMap.get("peakValley")==null){
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("峰");
-                                            resultMap.put("peakValley", peakList);
-                                        }else{
-                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                            peakList.add("峰");
-                                            resultMap.put("peakValley", peakList);
-                                        }
-                                        statePeak = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (valleys != null){
-                                for (FPeakValleyMarking valley : valleys) {
-                                    if (valley.getX().equals(split[0])){
-                                        if (resultMap.get("peakValley")==null){
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("谷");
-                                            resultMap.put("peakValley", peakList);
-                                        }else{
-                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                            peakList.add("谷");
-                                            resultMap.put("peakValley", peakList);
-                                        }
-                                        stateValley = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
-                            if (!statePeak&&!stateValley){
-                                if (resultMap.get("peakValley")==null){
-                                    List<String> peakList = new ArrayList<>();
-                                    peakList.add("");
-                                    resultMap.put("peakValley", peakList);
-                                }else{
-                                    List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                    peakList.add("");
-                                    resultMap.put("peakValley", peakList);
-                                }
-                            }
-                            break;
-                        }
+                int id = 1;
+                List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
+                List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
+                List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
+                if (peaks != null && !peaks.isEmpty()) {
+                    for (FPeakValleyMarking peak : peaks) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put(SampleTableEnum.ID.getIdentity(), id++);
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), peak.getX());
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), peak.getY());
+                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
+                        map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
+                        arrayList.add(map);
                     }
                 }
-                map.put(String.valueOf(i),resultMap);
-                arrayList.add(map);
-            }
-            return arrayList;
+                if (valleys != null && !valleys.isEmpty()) {
+                    for (FPeakValleyMarking valley : valleys) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put(SampleTableEnum.ID.getIdentity(), id++);
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), valley.getX());
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), valley.getY());
+                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
+                        map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
+                        arrayList.add(map);
+                    }
+                }
+                if (gaugePoints != null && !gaugePoints.isEmpty()) {
+                    for (FPeakValleyMarking gaugePoint : gaugePoints) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put(SampleTableEnum.ID.getIdentity(), id++);
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), gaugePoint.getX());
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), gaugePoint.getY());
+                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
+                        map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
+                        arrayList.add(map);
+                    }
+                }
 
+                return arrayList;
+            } else {
+                // 多样品表数据
+                // 根据任务id和样品id查询分析数据
+                QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
+                eq.eq("task_id", taskId);
+                eq.eq("analysis_number", 1);
+                eq.in("sample_key", sampleIds);
+
+                List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(eq);
+                if (analysisDataList == null || analysisDataList.isEmpty()) {
+                    return null;
+                }
+
+                List<Integer> list = new ArrayList<>();
+                List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
+                for (String s : result) {
+                    String[] split = s.split(",");
+                    double value = Double.parseDouble(split[0]);
+                    list.add((int) value);
+                }
+                int id = 1;
+                for (Integer i : list) {
+                    Map<String, Object> map = new HashMap<>();
+                    Map<String, Object> resultMap = new HashMap<>();
+                    resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
+                    for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
+                        List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
+                        List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
+                        List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            double value = Double.parseDouble(split[0]);
+                            int value1 = (int) value;
+                            if (value1 == i) {
+                                if (resultMap.get("sampleNumber") == null) {
+                                    List<String> y = new ArrayList<>();
+                                    y.add(split[1]);
+                                    resultMap.put("sampleNumber", y);
+                                } else {
+                                    List<String> y = (List<String>) resultMap.get("sampleNumber");
+                                    y.add(split[1]);
+                                    resultMap.put("sampleNumber", y);
+                                }
+                                boolean statePeak = false;
+                                boolean stateValley = false;
+                                if (peaks != null) {
+                                    for (FPeakValleyMarking peak : peaks) {
+                                        if (peak.getX().equals(split[0])) {
+                                            if (resultMap.get("peakValley") == null) {
+                                                List<String> peakList = new ArrayList<>();
+                                                peakList.add("峰");
+                                                resultMap.put("peakValley", peakList);
+                                            } else {
+                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                                peakList.add("峰");
+                                                resultMap.put("peakValley", peakList);
+                                            }
+                                            statePeak = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (valleys != null) {
+                                    for (FPeakValleyMarking valley : valleys) {
+                                        if (valley.getX().equals(split[0])) {
+                                            if (resultMap.get("peakValley") == null) {
+                                                List<String> peakList = new ArrayList<>();
+                                                peakList.add("谷");
+                                                resultMap.put("peakValley", peakList);
+                                            } else {
+                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                                peakList.add("谷");
+                                                resultMap.put("peakValley", peakList);
+                                            }
+                                            stateValley = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
+                                if (!statePeak && !stateValley) {
+                                    if (resultMap.get("peakValley") == null) {
+                                        List<String> peakList = new ArrayList<>();
+                                        peakList.add("");
+                                        resultMap.put("peakValley", peakList);
+                                    } else {
+                                        List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                        peakList.add("");
+                                        resultMap.put("peakValley", peakList);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    map.put(String.valueOf(i), resultMap);
+                    arrayList.add(map);
+                }
+                return arrayList;
+            }
+        } else {
+            // 重复模式
+            // 判断样品长度是否为1
+            if (sampleIds.size() == 1&& analysisIds.size() == 1) {
+                // 单样品表数据
+                FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getById(analysisIds.get(0));
+                if (measureAnalysisData == null) {
+                    return null;
+                }
+                int id = 1;
+                List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
+                List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
+                List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
+                if (peaks != null && !peaks.isEmpty()) {
+                    for (FPeakValleyMarking peak : peaks) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put(SampleTableEnum.ID.getIdentity(), id++);
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), peak.getX());
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), peak.getY());
+                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
+                        map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
+                        arrayList.add(map);
+                    }
+                }
+                if (valleys != null && !valleys.isEmpty()) {
+                    for (FPeakValleyMarking valley : valleys) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put(SampleTableEnum.ID.getIdentity(), id++);
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), valley.getX());
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), valley.getY());
+                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
+                        map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
+                        arrayList.add(map);
+                    }
+                }
+                if (gaugePoints != null && !gaugePoints.isEmpty()) {
+                    for (FPeakValleyMarking gaugePoint : gaugePoints) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put(SampleTableEnum.ID.getIdentity(), id++);
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), gaugePoint.getX());
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), gaugePoint.getY());
+                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
+                        map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
+                        arrayList.add(map);
+                    }
+                }
+
+                return arrayList;
+            } else {
+                // 多样品表数据
+                // 根据任务id和样品id查询分析数据
+                QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
+                eq.in("id", analysisIds);
+
+                List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(eq);
+                if (analysisDataList == null || analysisDataList.isEmpty()) {
+                    return null;
+                }
+
+                List<Integer> list = new ArrayList<>();
+                List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
+                for (String s : result) {
+                    String[] split = s.split(",");
+                    double value = Double.parseDouble(split[0]);
+                    list.add((int) value);
+                }
+                int id = 1;
+                for (Integer i : list) {
+                    Map<String, Object> map = new HashMap<>();
+                    Map<String, Object> resultMap = new HashMap<>();
+                    resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
+                    for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
+                        List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
+                        List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
+                        List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            double value = Double.parseDouble(split[0]);
+                            int value1 = (int) value;
+                            if (value1 == i) {
+                                if (resultMap.get("sampleNumber") == null) {
+                                    List<String> y = new ArrayList<>();
+                                    y.add(split[1]);
+                                    resultMap.put("sampleNumber", y);
+                                } else {
+                                    List<String> y = (List<String>) resultMap.get("sampleNumber");
+                                    y.add(split[1]);
+                                    resultMap.put("sampleNumber", y);
+                                }
+                                boolean statePeak = false;
+                                boolean stateValley = false;
+                                if (peaks != null) {
+                                    for (FPeakValleyMarking peak : peaks) {
+                                        if (peak.getX().equals(split[0])) {
+                                            if (resultMap.get("peakValley") == null) {
+                                                List<String> peakList = new ArrayList<>();
+                                                peakList.add("峰");
+                                                resultMap.put("peakValley", peakList);
+                                            } else {
+                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                                peakList.add("峰");
+                                                resultMap.put("peakValley", peakList);
+                                            }
+                                            statePeak = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (valleys != null) {
+                                    for (FPeakValleyMarking valley : valleys) {
+                                        if (valley.getX().equals(split[0])) {
+                                            if (resultMap.get("peakValley") == null) {
+                                                List<String> peakList = new ArrayList<>();
+                                                peakList.add("谷");
+                                                resultMap.put("peakValley", peakList);
+                                            } else {
+                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                                peakList.add("谷");
+                                                resultMap.put("peakValley", peakList);
+                                            }
+                                            stateValley = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
+                                if (!statePeak && !stateValley) {
+                                    if (resultMap.get("peakValley") == null) {
+                                        List<String> peakList = new ArrayList<>();
+                                        peakList.add("");
+                                        resultMap.put("peakValley", peakList);
+                                    } else {
+                                        List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                        peakList.add("");
+                                        resultMap.put("peakValley", peakList);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    map.put(String.valueOf(i), resultMap);
+                    arrayList.add(map);
+                }
+                return arrayList;
+            }
 
         }
-
-
-
-
-
-
-
-
-
-
-
-//        // 根据任务id和样品id查询分析数据
-//        QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-//        eq.eq("task_id", taskId);
-//        eq.eq("sample_key", sampleId);
-//        eq.orderByDesc("analysis_number");
-//        eq.last("LIMIT 1");
-//        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(eq);
-//        if (analysisData == null) {
-//            return null;
-//        }
-//        // 解析分析数据
-//        List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
-//        // 解析峰谷数据
-//        List<FPeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), FPeakValleyMarking.class);
-//        List<FPeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), FPeakValleyMarking.class);
-//        List<Map<String, Object>> arrayList = new ArrayList<>();
-//        // 根据长度遍历
-//        for (int i = 0; i < result.size(); i++) {
-//            // 根据,进行分割数据
-//            String[] split = result.get(i).split(",");
-//            Map<String, Object> map = new HashMap<>();
-//            map.put(SampleTableEnum.ID.getIdentity(), i + 1);
-//            for (FPeakValleyMarking peak : peaks) {
-//                if (peak.getX().equals(split[0])){
-//                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "峰");
-//                }
-//            }
-//            for (FPeakValleyMarking grade : valleys) {
-//                if (grade.getX().equals(split[0])){
-//                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "谷");
-//                }
-//            }
-//            map.put(SampleTableEnum.WAVELENGTH.getIdentity(), split[0]);
-//            map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
-//            map.put(SampleTableEnum.REMARK.getIdentity(), null);
-//            arrayList.add(map);
-//        }
-//        return arrayList;
     }
 
 

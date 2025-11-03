@@ -1080,7 +1080,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
      * @return
      */
     @Override
-    public Result newReportTableDataQuery(String taskId, String sampleId,String analysisId) {
+    public Result newReportTableDataQuery(String taskId, String sampleId,String analysisId, Boolean allDisplay) {
 
         if (!StringUtils.hasText(taskId)) {
             return Result.fail("请选择任务");
@@ -1107,7 +1107,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         switch (task.getMeasureType()) {
             case "光度测量": {
                 FPhotometricReportDataVO vo = new FPhotometricReportDataVO();
-                Result<List<FHeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), true, null);
+                if (allDisplay == null) {
+                    allDisplay = false;
+                }
+
+                Result<List<FHeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
@@ -1153,11 +1157,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "定量测定":  {
                 FRationReportDataVO vo = new FRationReportDataVO();
-                Result<List<FHeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true, null);
+                Result<List<FHeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (standHeads.getCode() == 200) {
                     vo.setStandHeadList(standHeads.getData());
                 }
-                Result<List<FHeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), true, null);
+                Result<List<FHeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (unknowHeads.getCode() == 200) {
                     vo.setUnknowHeadList(unknowHeads.getData());
                 }
@@ -1208,11 +1212,22 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 // 样品根据逗号进行分割然后存入List中
                 List<String> sampleIdList = Arrays.asList(sampleId.split(","));
                 FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
                 // 判断方法参数中的重复模式为true的话就分割分析id
                 List<String> analysisIdList = new ArrayList<>();
-                if (param.getRepetitionPattern()!=null&&param.getRepetitionPattern().equals("1")) {
+                if (param.getRepetitionPattern()!=null&&param.getRepetitionPattern().equals("单池重复")) {
                     analysisIdList = Arrays.asList(analysisId.split(","));
+                    // 过滤掉分析结果为null的分析id
+                    analysisIdList = analysisIdList.stream()
+                            .filter(id -> {
+                                // 根据分析ID查询分析数据结果
+                                // `getAnalysisResultById` 来根据分析ID获取分析结果
+                                String analysisResult = getAnalysisResultById(id);
+                                return analysisResult != null; // 只保留分析结果不为null的分析ID
+                            })
+                            .collect(Collectors.toList());
                 }
+
                 FSpectrumReportDataVO vo = new FSpectrumReportDataVO();
                 Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList, analysisIdList);
                 if (result.getCode() == 200) {
@@ -1551,6 +1566,110 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("拷贝失败");
         }
 
+    }
+
+
+    /**
+     * 根据分析ID获取分析结果
+     * @param analysisId
+     * @return
+     */
+    private String getAnalysisResultById(String analysisId) {
+        // 根据分析ID从数据库获取分析结果
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
+        if (analysisData == null) {
+            return null;
+        }
+        if (analysisData.getAnalysisResult()==null|| analysisData.getAnalysisResult().isEmpty()){
+            return null;
+        }
+        return analysisData.getAnalysisResult();
+    }
+
+    @Override
+    public Result<Boolean> checkApproximateRange(FRoundingVO vo) {
+        List<FRoundingParamVO> params = vo.getRoundingParams();
+
+        // 1. 检查每个区间内部的合法性
+        for (FRoundingParamVO param : params) {
+            Double lowerLimit = param.getLowerLimit();
+            Double upperLimit = param.getUpperLimit();
+
+            // 只有当下限和上限都不为空时才进行检查
+            if (lowerLimit != null && upperLimit != null) {
+                // 下限值不能大于上限值
+                if (lowerLimit > upperLimit) {
+                    return Result.fail("下限值不能大于上限值");
+                }
+                // 如果下限值等于上限值且为有限值，必须同时包含两端点
+                if (lowerLimit.equals(upperLimit)) {
+                    if (!param.getIsLowerLimitIncluded() || !param.getIsUpperLimitIncluded()) {
+                        return Result.fail("当上下限值相等且为有限值时，必须同时包含两端点");
+                    }
+                }
+            }
+        }
+
+        // 2. 检查区间之间是否重叠
+        // 过滤掉无效区间（上下限都为null）
+        List<FRoundingParamVO> validParams = params.stream()
+                .filter(p -> p.getLowerLimit() != null || p.getUpperLimit() != null)
+                .collect(Collectors.toList());
+
+        // 按下限值排序，null值（负无穷）排在最前
+        List<FRoundingParamVO> sortedParams = validParams.stream()
+                .sorted((p1, p2) -> {
+                    Double lower1 = p1.getLowerLimit();
+                    Double lower2 = p2.getLowerLimit();
+
+                    // null值处理（视为负无穷）
+                    if (lower1 == null) return -1;
+                    if (lower2 == null) return 1;
+
+                    return lower1.compareTo(lower2);
+                })
+                .collect(Collectors.toList());
+
+        // 检查相邻区间是否有重叠
+        for (int i = 0; i < sortedParams.size() - 1; i++) {
+            if (isOverlapping(sortedParams.get(i), sortedParams.get(i + 1))) {
+                return Result.fail("区间之间不能存在重叠");
+            }
+        }
+
+        return Result.ok(true);
+    }
+
+    /**
+     * 判断两个区间是否重叠
+     *
+     * @param interval1 第一个区间
+     * @param interval2 第二个区间
+     * @return 如果重叠返回true，否则返回false
+     */
+    private boolean isOverlapping(FRoundingParamVO interval1, FRoundingParamVO interval2) {
+        Double lower1 = interval1.getLowerLimit();
+        Double upper1 = interval1.getUpperLimit();
+        boolean includeLower1 = Boolean.TRUE.equals(interval1.getIsLowerLimitIncluded());
+        boolean includeUpper1 = Boolean.TRUE.equals(interval1.getIsUpperLimitIncluded());
+
+        Double lower2 = interval2.getLowerLimit();
+        Double upper2 = interval2.getUpperLimit();
+        boolean includeLower2 = Boolean.TRUE.equals(interval2.getIsLowerLimitIncluded());
+        boolean includeUpper2 = Boolean.TRUE.equals(interval2.getIsUpperLimitIncluded());
+
+        // 处理null边界值（null表示无穷）
+        if (upper1 == null || lower2 == null) {
+            return true;
+        }
+
+        if (upper1 > lower2) {
+            return true;
+        } else if (upper1.equals(lower2)) {
+            return includeUpper1 && includeLower2;
+        }
+
+        return false;
     }
 
 
