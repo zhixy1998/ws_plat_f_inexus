@@ -1529,7 +1529,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                                     m.setTaskId(task.getId());
                                     //数据拿到新的样本ID进行关联
                                     m.setSampleKey(newSample.getId());
-
+                                    m.setIsSave("0");
                                     LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
                                     queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
                                     queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
@@ -1540,6 +1540,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                                             analysisData.setMeasureDataId(m.getId());
                                             analysisData.setTaskId(task.getId());
                                             analysisData.setSampleKey(newSample.getId());
+                                            analysisData.setIsSave("0");
                                         });
                                         fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
                                     }
