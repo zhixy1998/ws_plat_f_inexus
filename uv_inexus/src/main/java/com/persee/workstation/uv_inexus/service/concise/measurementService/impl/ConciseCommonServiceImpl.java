@@ -103,6 +103,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     LaTeXConverter latexConverter;
+    @Autowired
+    RationConciseService rationConciseService;
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -1484,11 +1486,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Override
     public Result<String> copy(CopyParam copyParam) {
+
         String taskName = copyParam.getTaskName();
         String taskId = copyParam.getTaskId();
         if (com.baomidou.mybatisplus.core.toolkit.StringUtils.isBlank(taskId)){
             return Result.fail("拷贝失败,传入taskId不能为空！！！");
         }
+        rationConciseService.saveButton(copyParam.getTaskId(),copyParam.getUpdateBy());
         try {
             /*
              * 复制任务
@@ -1560,6 +1564,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             task.setTaskName(taskName);
             //另存为之后的设置为保存
             task.setIsSave("0");
+            task.setCreateTime(LocalDateTime.now());
             fMeasureTaskService.save(task);
             return Result.ok("拷贝成功");
 
