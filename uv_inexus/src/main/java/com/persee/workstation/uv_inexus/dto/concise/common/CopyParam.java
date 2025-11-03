@@ -25,4 +25,6 @@ public class CopyParam {
     String taskId;
     @ApiModelProperty("任务新名字")
     String taskName;
+    @ApiModelProperty("修改者")
+    String updateBy;
 }
