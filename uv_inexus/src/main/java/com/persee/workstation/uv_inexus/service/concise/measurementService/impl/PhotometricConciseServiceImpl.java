@@ -888,6 +888,22 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 //            vo.setProjectId(fMeasureProject.getId());
 //            vo.setProjectName(fMeasureProject.getProjectName());
         }
+        FMeasureTask fMeasureTask = new FMeasureTask();
+
+
+        fMeasureTask.setCreateTime(LocalDateTime.now());
+        fMeasureTask.setMethodKey(vo.getMethodId());
+        fMeasureTask.setMeasureType(measureType);
+        fMeasureTask.setEndSaveTime(LocalDateTime.now());
+        fMeasureTask.setIsSave(noSave);
+        fMeasureTask.setIsDelete(createType);
+
+        fMeasureTask.setUserId(id);
+        fMeasureTask.setTaskName(vo.getMethodName()+newTaskName);
+
+        boolean save = fMeasureTaskService.save(fMeasureTask);
+        vo.setTaskId(fMeasureTask.getId());
+        vo.setTaskName(fMeasureTask.getTaskName());
         return Result.ok(vo);
 
     }

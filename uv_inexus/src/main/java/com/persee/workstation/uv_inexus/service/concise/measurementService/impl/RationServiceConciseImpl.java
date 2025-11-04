@@ -1101,13 +1101,14 @@ public class RationServiceConciseImpl implements RationConciseService {
                 .orderByDesc(FMeasureMethod::getMethodCreateTime);
         List<FMeasureMethod> list = fMeasureMethodService.list(queryWrapper);
         if (list == null|| list.isEmpty()){
-            LambdaQueryWrapper<FMeasureProject> projectWrapper = new LambdaQueryWrapper<>();
-            projectWrapper.eq(FMeasureProject::getCreatorKey, updateBy)
-                    .orderByDesc(FMeasureProject::getCreateTime);
-            List<FMeasureProject> projectList = fMeasureProjectService.list(projectWrapper);
-            if (projectList == null || projectList.isEmpty()){
-                return Result.ok(vo);
-            }
+            queryWrapper.clear();
+            queryWrapper.eq(FMeasureMethod::getProjectItemKey, "default")
+                    .eq(FMeasureMethod::getMeasurementType, measureType)
+                    .last("limit 1");
+            FMeasureMethod one = fMeasureMethodService.getOne(queryWrapper);
+            vo.setMethodId(one.getId());
+            vo.setMethodName(one.getMethodName());
+
 
         } else {
             FMeasureMethod fMeasureMethod = list.get(0);
@@ -1115,6 +1116,22 @@ public class RationServiceConciseImpl implements RationConciseService {
             vo.setMethodId(fMeasureMethod.getId());
             vo.setMethodName(fMeasureMethod.getMethodName());
         }
+        FMeasureTask fMeasureTask = new FMeasureTask();
+
+
+        fMeasureTask.setCreateTime(LocalDateTime.now());
+        fMeasureTask.setMethodKey(vo.getMethodId());
+        fMeasureTask.setMeasureType(measureType);
+        fMeasureTask.setEndSaveTime(LocalDateTime.now());
+        fMeasureTask.setIsSave(noSave);
+        fMeasureTask.setIsDelete(createType);
+
+        fMeasureTask.setUserId(id);
+        fMeasureTask.setTaskName(vo.getMethodName()+newTaskName);
+
+        boolean save = fMeasureTaskService.save(fMeasureTask);
+        vo.setTaskId(fMeasureTask.getId());
+        vo.setTaskName(fMeasureTask.getTaskName());
         return Result.ok(vo);
     }
 
