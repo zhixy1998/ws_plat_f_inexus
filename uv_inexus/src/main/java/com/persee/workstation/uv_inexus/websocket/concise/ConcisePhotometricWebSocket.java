@@ -114,6 +114,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
     private static volatile boolean isSd = false;
     private static volatile boolean isRsd = false;
 
+    private String deviceSerialNumber;
+
 
     /**
      * 前端连接成功 WebSocket 时触发
@@ -136,7 +138,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String sampleId = getQueryParam(query, "sampleId");
-        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         String di = getQueryParam(query, "digit");
         String updateBy = getQueryParam(query, "updateBy");
         isAvg = getQueryParam(query, "avg").equals("true");
@@ -955,6 +957,17 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
         status = 0;
+        try {
+            session.close();
+            infoService.releaseDevice(deviceSerialNumber);
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }finally {
+            infoService.releaseDevice(deviceSerialNumber);
+        }
+        System.out.println("连接异常: " + exception.getMessage());
         DetectionConstants.isDeviceIdle = true;
         System.out.println("连接异常: " + exception.getMessage());
     }

@@ -346,7 +346,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
             }
-            vo.setParameter(parameterVo);
+            vo.setMethodParam(parameterVo);
             // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
             String format = method.getMethodCreateTime().format(formatter);
             vo.setMethodCreateTime(format);
@@ -381,7 +381,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
             parameterVo.setEnergyLampName(lamp);
         }
-        vo.setParameter(parameterVo);
+        vo.setMethodParam(parameterVo);
         // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
         String format = method.getMethodCreateTime().format(formatter);
         vo.setMethodCreateTime(format);
@@ -457,7 +457,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
             }
-            methodVo.setParameter(parameterVo);
+            methodVo.setMethodParam(parameterVo);
             methodVos.add(methodVo);
         }
         vo.setRecords(methodVos);
@@ -1407,7 +1407,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (digit != null) {
                     BigDecimal value = new BigDecimal(split[1]);
                     map.put("x", split[0]);
-                    map.put("y", value.setScale(digit, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString());
+                    map.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
                     originalMap.put("x", split[0]);
                     originalMap.put("y", split[1]);  // 无小数位数限制，原始数据
                 } else {
@@ -3031,14 +3031,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
 
                 // 遍历样品id进行逐个查询
-                for (String sampleId : sampleIds) {
-                    // 根据任务id和样品id查询分析数据
-                    QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-                    eq.eq("task_id", taskId);
-                    eq.eq("analysis_number", 1);
-                    eq.eq("sample_key", sampleId); // 修改查询条件，逐个查询
-
-                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(eq);
+                for (String analysisId : analysisIds) {
+                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
 
                     // 如果没有找到该样品的分析数据，则跳过
                     if (analysisData != null) {

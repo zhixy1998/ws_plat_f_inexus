@@ -119,6 +119,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
     private static volatile boolean isSd = false;
     private static volatile boolean isRsd = false;
     private static volatile boolean reCount = false;
+
+    private String deviceSerialNumber;
     /**
      * 前端连接成功 WebSocket 时触发
      * @param session
@@ -137,7 +139,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         // 解析参数
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
-        String deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
+        deviceSerialNumber= getQueryParam(query, "deviceSerialNumber");
         String sampleKind= getQueryParam(query, "sampleKind");
         String updateBy= getQueryParam(query, "updateBy");
         int di = Integer.parseInt(getQueryParam(query, "digit"));
@@ -1394,6 +1396,17 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
+        try {
+            session.close();
+            infoService.releaseDevice(deviceSerialNumber);
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }finally {
+            infoService.releaseDevice(deviceSerialNumber);
+        }
+        System.out.println("连接异常: " + exception.getMessage());
         status = 0;
         System.out.println("连接异常: " + exception.getMessage());
     }

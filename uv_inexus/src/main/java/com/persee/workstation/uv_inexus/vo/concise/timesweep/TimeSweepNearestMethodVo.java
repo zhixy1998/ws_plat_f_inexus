@@ -36,7 +36,7 @@ public class TimeSweepNearestMethodVo {
     private String measurementType;
 
     // 测量参数信息
-    private FTimeSweepParamterVo parameter;
+    private FTimeSweepParamterVo methodParam;
 
     // 是否共享方法(0.否 1.是)
     private String isSharingMethod;

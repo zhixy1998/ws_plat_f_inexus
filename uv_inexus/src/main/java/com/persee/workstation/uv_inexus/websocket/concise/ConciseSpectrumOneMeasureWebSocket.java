@@ -51,6 +51,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -72,6 +74,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private String deviceSerialNumber;
     private boolean occupancyStatus = false;
     private boolean measureStatus = false;
+    private Integer digit;
 
 
     @Autowired
@@ -129,6 +132,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         String analysisNumber = getQueryParam(query, "analysisNumber");
         deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         String updateBy = getQueryParam(query, "updateBy");
+        digit = Integer.parseInt(getQueryParam(query, "digit"));
 
         if (taskId == null) {
             sendClose(session, "缺少 taskId 参数");
@@ -267,16 +271,17 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
+
         if (message.getPayload().equals("close")){
-            // 如果线程正在被使用
-            if (occupancyStatus){
-                // 释放线程
-                deviceInfoService.releaseDevice(deviceSerialNumber);
-            }
+
+            Thread thread = taskThreads.get(session.getId());
+            // 强制停止线程
+            thread.interrupt();
+            taskThreads.remove(session.getId());
             if (measureStatus){
+                // 强制停止基线/测量线程
+                Constants.sendMeasureThread.interrupt();
                 try {
-                    // 强制停止基线/测量的线程
-                    Constants.sendMeasureThread.interrupt();
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()){
                         log.info("停止成功");
@@ -285,15 +290,21 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
+                } finally {
+                    session.sendMessage(new TextMessage("停止成功"));
+                    sessions.remove(session.getId());
+                    session.close();
+                    deviceInfoService.releaseDevice(deviceSerialNumber);
                 }
             }
-            Thread thread = taskThreads.get(session.getId());
-            // 强制停止线程
-            thread.interrupt();
-            taskThreads.remove(session.getId());
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
+            // 如果线程正在被使用
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
         }
     }
 
@@ -333,6 +344,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             handleTransportError(session, e);
             Thread.currentThread().interrupt();
             return;
+        }finally {
+            deviceInfoService.releaseDevice(deviceSerialNumber);
         }
         System.out.println("连接异常: " + exception.getMessage());
     }
@@ -455,8 +468,9 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             JSONArray dataArray = new JSONArray();
             for (int i = pushCount * 10; i < x.size(); i++) {
                 JSONObject point = new JSONObject();
+                BigDecimal value = new BigDecimal(y.get(i));
                 point.put("x", x.get(i));
-                point.put("y", y.get(i));
+                point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
                 point.put("xType", "nm");
                 point.put("yType", luminosity);
                 dataArray.add(point);
@@ -480,8 +494,9 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             JSONArray dataArray = new JSONArray();
             for (int i = startIndex; i < x.size(); i++) {
                 JSONObject point = new JSONObject();
+                BigDecimal value = new BigDecimal(y.get(i));
                 point.put("x", x.get(i));
-                point.put("y", y.get(i));
+                point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
                 point.put("xType", "nm");
                 point.put("yType", luminosity);
                 dataArray.add(point);

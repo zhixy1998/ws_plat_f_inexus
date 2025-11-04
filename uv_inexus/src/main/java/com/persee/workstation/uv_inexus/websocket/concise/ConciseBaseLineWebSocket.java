@@ -154,11 +154,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
 
         if (message.getPayload().equals("close")){
-            // 如果线程正在被使用
-            if (occupancyStatus){
-                // 释放线程
-                deviceInfoService.releaseDevice(deviceSerialNumber);
-            }
+
             Thread thread = taskThreads.get(session.getId());
             // 强制停止线程
             thread.interrupt();
@@ -175,11 +171,21 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
+                } finally {
+                    session.sendMessage(new TextMessage("停止成功"));
+                    sessions.remove(session.getId());
+                    session.close();
+                    deviceInfoService.releaseDevice(deviceSerialNumber);
                 }
             }
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
+            // 如果线程正在被使用
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
         }
     }
 
@@ -200,6 +206,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             handleTransportError(session, e);
             Thread.currentThread().interrupt();
             return;
+        } finally {
+            deviceInfoService.releaseDevice(deviceSerialNumber);
         }
         System.out.println("连接异常: " + exception.getMessage());
     }

@@ -314,7 +314,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
             }
-            vo.setParameter(parameterVo);
+            vo.setMethodParam(parameterVo);
             // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
             String format = method.getMethodCreateTime().format(formatter);
             vo.setMethodCreateTime(format);
@@ -349,7 +349,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
             parameterVo.setEnergyLampName(lamp);
         }
-        vo.setParameter(parameterVo);
+        vo.setMethodParam(parameterVo);
         // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
         String format = method.getMethodCreateTime().format(formatter);
         vo.setMethodCreateTime(format);
@@ -424,7 +424,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
             }
-            methodVo.setParameter(parameterVo);
+            methodVo.setMethodParam(parameterVo);
             methodVos.add(methodVo);
         }
         vo.setRecords(methodVos);
@@ -1175,18 +1175,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
                 BigDecimal x = new BigDecimal(xValue);
                 x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
-                map.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));  // 格式化为字符串
+                map.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));  // 格式化为字符串
 
                 // 处理 y 值并根据 digit 进行精度控制
                 if (digit != null) {
                     BigDecimal y = new BigDecimal(yValue);
                     y = y.setScale(digit, RoundingMode.HALF_UP); // 保留 digit 位小数
-                    map.put("y", y.stripTrailingZeros().toPlainString());
-                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));
+                    map.put("y", y.toPlainString());
+                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));
                     originalMap.put("y", split[1]);  // 原始数据
                 } else {
                     map.put("y", yValue);
-                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));
+                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));
                     originalMap.put("y", split[1]);  // 原始数据
                 }
 
