@@ -1976,7 +1976,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         for (FPhotometricCountDataInfo count : dataVO) {
 
-            String resultIdentity = count.getResultIdentity();
+            String resultIdentity = count.getResultIdentity() + "-" + count.getFormulaText();
 
             List<FRoundingParamVO> list = roundingInfo.get(resultIdentity);
             if (roundingInfo.containsKey(resultIdentity) && list != null) {
@@ -2048,30 +2048,32 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             formulaData = dataRounding(formulaData, parameter);
             for (FPhotometricCountDataInfo count : formulaData) {
-                String s = DataCountUtil.formatValueWithBigDecimal(digit, count.getCountValue());
+                String s = count.getCountValue();
                 map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
             }
-        }
+        } else {
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                    .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
+                    .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
 
-        LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-        analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
-                .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
+            FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            if (one != null) {
+                List<FPhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), FPhotometricCountDataInfo.class);
 
-        FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-        if (one != null) {
-            List<FPhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), FPhotometricCountDataInfo.class);
+                countList = dataRounding(countList, parameter);
 
-            if (map.isEmpty() && countList != null) {
-                for (FPhotometricCountDataInfo count : countList) {
-
-                    if (count.getCountValue() != null) {
-                        String s = DataCountUtil.formatValueWithBigDecimal(digit, count.getCountValue());
-                        map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
+                if (countList != null) {
+                    for (FPhotometricCountDataInfo count : countList) {
+                        if (count.getCountValue() != null) {
+                            String s = count.getCountValue();
+                            map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
+                        }
                     }
                 }
             }
         }
+
         return map;
     }
 
