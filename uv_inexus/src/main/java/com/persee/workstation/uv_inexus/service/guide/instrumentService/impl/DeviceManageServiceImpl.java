@@ -587,14 +587,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return null;
         }
         DeviceMeasureVO measureVO = deviceMeasureVOR.getData();
+        List<String> bandWidth = measureVO.getBandWidth();
+        List<DataNameValue> band = new ArrayList<>();
+        for (String s : bandWidth) {
+            band.add(new DataNameValue("", s));
+        }
 
 
         List<DeviceCalibrationVO> info = configDAO.getCalibrationInfo(type);
         for (DeviceCalibrationVO vo : info) {
             List<DeviceCalibrationParams> params = configDAO.getCalibrationParams(vo.getCalibrationType());
             for (DeviceCalibrationParams param : params) {
-                List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
-                param.setData(value);
+
+                if (param.getParamName().equals("光谱带宽")) {
+                    param.setData(band);
+                } else {
+                    List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
+                    param.setData(value);
+                }
 
                 LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(CalibrationTempPO::getCalibrationType, vo.getCalibrationType())
