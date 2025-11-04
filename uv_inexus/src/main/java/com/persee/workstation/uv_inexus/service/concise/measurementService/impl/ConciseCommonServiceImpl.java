@@ -26,10 +26,12 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
@@ -108,6 +110,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     LaTeXConverter latexConverter;
     @Autowired
     RationConciseService rationConciseService;
+
+    @Autowired
+    DeviceInfoService deviceInfoService;
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -649,12 +654,28 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
 
-            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            DeviceInfoPO info = null;
+            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
+                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+
+            if (info !=null && StringUtils.hasText(info.getDeviceModelName())){
+
+                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
+                vo.setInstrumentModel(info.getDeviceModelName());
+            } else {
+                vo.setInstrumentName("紫外可见分光光度计");
+                vo.setInstrumentModel("T600");
+            }
+
+
             vo.setLuminosityMode(WaveLengthEnum.getName(methodparam.getLuminosity()));
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
 
-            vo.setInstrumentName("紫外可见分光光度计");
-            vo.setInstrumentModel("T600");
+
+
+
 
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
