@@ -358,6 +358,26 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (task!=null){
             vo.setTaskId(task.getId());
         }
+        if (Objects.isNull(task)){
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+            String id = po.getId();
+            FMeasureTask fMeasureTask = new FMeasureTask();
+
+
+            fMeasureTask.setCreateTime(LocalDateTime.now());
+            fMeasureTask.setMethodKey(vo.getMethodId());
+            fMeasureTask.setMeasureType(measureType);
+            fMeasureTask.setEndSaveTime(LocalDateTime.now());
+            fMeasureTask.setIsSave("1");
+            fMeasureTask.setIsDelete(createType);
+
+            fMeasureTask.setUserId(id);
+            fMeasureTask.setTaskName(vo.getMethodName()+"文件数据");
+
+            boolean save = fMeasureTaskService.save(fMeasureTask);
+            vo.setTaskId(fMeasureTask.getId());
+
+        }
         vo.setMethodId(method.getId());
         return Result.ok(vo);
     }
