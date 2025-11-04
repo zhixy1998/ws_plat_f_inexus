@@ -1681,8 +1681,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<Command> commands = new ArrayList<>();
         // 设置光度模式
         commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getLuminosity()));
+        Double v2 = formulaUtil.calculateStep(Double.parseDouble(time.getChangeLampWaveLength()), deviceSerialNumber);
         // 设置换灯波长
-        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
+        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, v2));
         // 设置响应时间
         commands.add(buildCommand(SetParamEnum.SetResponseTime, time.getResponseTime()));
         Double v = formulaUtil.calculateStep(Double.parseDouble(time.getWaveLength()), deviceSerialNumber);
