@@ -83,8 +83,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     private boolean measureStatus = false;
 
 
-
-
     @Autowired
     private SpectrumConciseService spectrumService;
 
@@ -111,6 +109,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     /**
      * 当WebSocket连接建立后调用此方法
+     *
      * @param session 当前WebSocket会话，包含连接信息
      */
     @Override
@@ -144,6 +143,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     /**
      * 处理接收到的文本消息
+     *
      * @param session 当前WebSocket会话
      * @param message 接收到的文本消息对象
      * @throws Exception 可能抛出的异常
@@ -153,37 +153,32 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
 
-        if (message.getPayload().equals("close")){
+        try {
+            if (message.getPayload().equals("close")) {
 
-            Thread thread = taskThreads.get(session.getId());
-            // 强制停止线程
-            thread.interrupt();
-            taskThreads.remove(session.getId());
-            if (measureStatus){
-                // 强制停止基线/测量线程
-                Constants.sendMeasureThread.interrupt();
-                try {
+                Thread thread = taskThreads.get(session.getId());
+                // 强制停止线程
+                thread.interrupt();
+                taskThreads.remove(session.getId());
+                if (measureStatus) {
+
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
-                    if (stop.getSuccess()){
+                    if (stop.getSuccess()) {
                         log.info("停止成功");
-                    }else {
+                    } else {
                         log.info("停止失败");
                     }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                } finally {
-                    session.sendMessage(new TextMessage("停止成功"));
-                    sessions.remove(session.getId());
-                    session.close();
-                    deviceInfoService.releaseDevice(deviceSerialNumber);
+
                 }
+
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
-            // 如果线程正在被使用
-            if (occupancyStatus){
-                // 释放线程
+            if (occupancyStatus) {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
         }
@@ -213,19 +208,17 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     }
 
 
-
-
-
     /**
      * 重写afterConnectionClosed方法，用于处理WebSocket连接关闭后的操作
+     *
      * @param session WebSocket会话对象，包含连接的相关信息
-     * @param status 关闭状态，包含连接关闭的原因和代码
+     * @param status  关闭状态，包含连接关闭的原因和代码
      */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
         sessions.remove(session.getId());
-        if (Constants.sendMeasureThread != null){
+        if (Constants.sendMeasureThread != null) {
             Constants.sendMeasureThread.interrupt();
         }
         // 中断正在执行的任务
@@ -244,18 +237,15 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     }
 
 
-
-
-
-
     /**
      * 发送消息并关闭连接
+     *
      * @param session
      * @param msg
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
-            if (occupancyStatus){
+            if (occupancyStatus) {
                 // 释放线程
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
@@ -370,7 +360,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 break;
             }
 
-            try { Thread.sleep(10); } catch (InterruptedException e) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
             }
@@ -454,6 +446,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     /**
      * 构建命令
+     *
      * @param cmdEnum
      * @param value
      * @return

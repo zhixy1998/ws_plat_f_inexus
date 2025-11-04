@@ -1288,12 +1288,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
                 // 遍历任务中的样品id，删除未测试且在报告中的样品
                 List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
-                    if (taskSpecimen.getIsTested().equals("0")) {
-                        // 如果当前样品未测还在报告中，则将当前样品删除
-                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
-                    }
-                }
+//                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
+//                    if (taskSpecimen.getIsTested().equals("0")) {
+//                        // 如果当前样品未测还在报告中，则将当前样品删除
+//                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
+//                    }
+//                }
 
                 // 继续后续操作，使用 filteredSampleIdList 进行查询
                 FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
@@ -1366,14 +1366,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 // 创建一个新的列表，用于保存删除后的结果，保持顺序不变
                 List<String> filteredSampleIdList = new ArrayList<>(sampleIdList);
 
-                // 遍历任务中的样品id
-                List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
-                    if (taskSpecimen.getIsTested().equals("0")) {
-                        // 如果当前样品未测且在报告中，则将当前样品删除
-                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
-                    }
-                }
+//                // 遍历任务中的样品id
+//                List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+//                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
+//                    if (taskSpecimen.getIsTested().equals("0")) {
+//                        // 如果当前样品未测且在报告中，则将当前样品删除
+//                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
+//                    }
+//                }
 
                 // 获取表头
                 Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), filteredSampleIdList);
