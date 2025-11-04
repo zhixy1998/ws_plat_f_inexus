@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,6 +90,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private FormulaUtil formulaUtil;
 
     // WebSocket 会话对象
     private WebSocketSession currentSession;
@@ -294,6 +298,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                         return;
                     }
 
+                    Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+                    changeParam.setWl(String.valueOf(v));
 
                     originalData.add(changeParam);
 

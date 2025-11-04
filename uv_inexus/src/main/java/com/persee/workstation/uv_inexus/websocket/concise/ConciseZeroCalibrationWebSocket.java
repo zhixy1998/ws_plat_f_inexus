@@ -33,6 +33,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -279,17 +280,18 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
         // 检测中断
         checkInterrupted(session);
         String ip = deviceInfoService.getIp(deviceSerialNumber);
-        // 定位当前波长
-        Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{Double.parseDouble(timeSweepParamter.getWaveLength())});
-        devMessageUtil.wavelengthLocate(command, ip);
 
         // 进行校零
-        command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+        Command command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
         R<ChangeParam> zero = devMessageUtil.zero(command, ip);
         if (!zero.getSuccess()) {
             sendAndClose(session, zero.getMessage());
             return;
         }
+
+        zero.getData().setWl(timeSweepParamter.getWaveLength());
+
+        DetectionConstants.zeroResult.put(Double.parseDouble(zero.getData().getWl()), zero.getData());
 
         // 检测中断
         checkInterrupted(session);

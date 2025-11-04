@@ -1299,21 +1299,24 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         vo.setMapRelation(snapshot.getMapRelation());
                     }
                 }
-                List<Map<String, Object>> dataList1 = vo.getDataList();
-                for (Map<String, Object> stringObjectMap : dataList1) {
-                    for (String key : stringObjectMap.keySet()) {
-                        if(key.equals("Abs")){
-                            Object value = stringObjectMap.get(key);
-                            if (value != null) {
-                                Object o = convertSciToDecimal(value);
-                                String strValue = o.toString();
-                                if (strValue.length() >= 6) {
-                                    stringObjectMap.put(key, strValue.substring(0, 6));
+                if ( vo.getDataList() != null){
+                    List<Map<String, Object>> dataList1 = vo.getDataList();
+                    for (Map<String, Object> stringObjectMap : dataList1) {
+                        for (String key : stringObjectMap.keySet()) {
+                            if(key.equals("Abs")){
+                                Object value = stringObjectMap.get(key);
+                                if (value != null) {
+                                    Object o = convertSciToDecimal(value);
+                                    String strValue = o.toString();
+                                    if (strValue.length() >= 6) {
+                                        stringObjectMap.put(key, strValue.substring(0, 6));
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
                 return Result.ok(vo);
             }
             case "时间扫描":
@@ -1358,22 +1361,24 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     }
                 }
 
-                // 格式化数据中的 "Abs" 值
-                List<Map<String, Object>> dataList1 = vo.getDataList();
-                for (Map<String, Object> stringObjectMap : dataList1) {
-                    for (String key : stringObjectMap.keySet()) {
-                        if(key.equals("Abs")){
-                            Object value = stringObjectMap.get(key);
-                            if (value != null) {
-                                Object o = convertSciToDecimal(value);
-                                String strValue = o.toString();
-                                if (strValue.length() >= 6) {
-                                    stringObjectMap.put(key, strValue.substring(0, 6));
-                                }
-                            }
-                        }
-                    }
-                }
+             if ( vo.getDataList() != null){
+                 // 格式化数据中的 "Abs" 值
+                 List<Map<String, Object>> dataList1 = vo.getDataList();
+                 for (Map<String, Object> stringObjectMap : dataList1) {
+                     for (String key : stringObjectMap.keySet()) {
+                         if(key.equals("Abs")){
+                             Object value = stringObjectMap.get(key);
+                             if (value != null) {
+                                 Object o = convertSciToDecimal(value);
+                                 String strValue = o.toString();
+                                 if (strValue.length() >= 6) {
+                                     stringObjectMap.put(key, strValue.substring(0, 6));
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
 
                 return Result.ok(vo);
             }

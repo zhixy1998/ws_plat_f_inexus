@@ -53,6 +53,7 @@ import com.persee.workstation.uv_inexus.service.guide.systemManageService.System
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -144,6 +145,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     @Autowired
     private DevMessageUtil devMessageUtil;
+
+    @Autowired
+    private FormulaUtil formulaUtil;
 
 
     @Autowired
@@ -1681,8 +1685,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
         // 设置响应时间
         commands.add(buildCommand(SetParamEnum.SetResponseTime, time.getResponseTime()));
+        Double v = formulaUtil.calculateStep(Double.parseDouble(time.getWaveLength()), deviceSerialNumber);
         // 设置波长
-        commands.add(buildCommand(SetParamEnum.SetWl, time.getWaveLength()));
+        commands.add(buildCommand(SetParamEnum.SetWl,v ));
         // 设置光谱带宽
         commands.add(buildCommand(SetParamEnum.SetSlit1, time.getSpectralBandwidth()));
 

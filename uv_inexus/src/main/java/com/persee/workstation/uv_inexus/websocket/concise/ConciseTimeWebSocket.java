@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,6 +92,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     // WebSocket 会话对象
     private WebSocketSession currentSession;
+
+    @Autowired
+    private FormulaUtil formulaUtil;
 
     // 当WebSocket连接建立成功时，会调用此方法
     @Override
@@ -314,7 +318,10 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                         return;
                     }
 
+                    Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+                    changeParam.setWl(String.valueOf(v));
 
+                    // 记录原始数据
                     originalData.add(changeParam);
 
                     // 计算并推送 Y 值（光度模式等相关计算）
