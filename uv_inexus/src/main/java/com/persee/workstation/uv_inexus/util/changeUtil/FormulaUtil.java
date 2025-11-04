@@ -44,15 +44,14 @@ public class FormulaUtil {
     }
 
     /**
-     * 传入步数和公式 计算波长
+     * 根据波长计算波长
+     *
      * @param actualStep
-     * @param linearSegment
+     * @param linearSegments
      * @return
      */
-    public Double calculateWavelength(double actualStep, String linearSegment) {
+    public Double calculateWavelength(double actualStep, List<LinearSegment> linearSegments) {
         try {
-
-            List<LinearSegment> linearSegments = JSONArray.parseArray(linearSegment, LinearSegment.class);
             if (CollectionUtils.isNotEmpty(linearSegments)) {
                 for (LinearSegment segment : linearSegments) {
                     if (segment.containsActualStep(actualStep)) {
@@ -65,6 +64,7 @@ public class FormulaUtil {
         }
         return actualStep / 50;
     }
+
     private Double roundToOneDecimal(Double value) {
         if (value == null) {
             return null;
@@ -73,6 +73,12 @@ public class FormulaUtil {
         bd = bd.setScale(1, RoundingMode.HALF_UP);
         return bd.doubleValue();
     }
+
+    /**
+     * 获取公式
+     * @param deviceSerialNumber
+     * @return
+     */
     public List<LinearSegment> getLinearSegment(String deviceSerialNumber) {
         String formula = deviceInfoDAO.getFormula(deviceSerialNumber);
         return JSONArray.parseArray(formula, LinearSegment.class);
@@ -98,14 +104,14 @@ public class FormulaUtil {
     }
 
     /**
-     * 传入波长和公式 计算步数
+     * 根据波长计算步数
+     *
      * @param wl
-     * @param linearSegment
+     * @param list
      * @return
      */
-    public Double calculateStepByWavelength(double wl, String linearSegment) {
+    public Double calculateStepByWavelength(double wl, List<LinearSegment> list) {
         try {
-            List<LinearSegment> list = JSONArray.parseArray(linearSegment, LinearSegment.class);
             if (CollectionUtils.isNotEmpty(list)) {
                 for (LinearSegment segment : list) {
                     if (segment.containsWl(wl)) {
