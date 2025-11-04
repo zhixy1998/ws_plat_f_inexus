@@ -635,13 +635,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
                     if (taskSpecimen != null && !taskSpecimen.isEmpty()) {
                         for (FTaskSpecimen specimen : taskSpecimen) {
+                            if (specimen.getIsTested().equals(noTested)) {
+                                continue;
+                            }
 
                             FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
                             FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
-                            Boolean b = dealData(task, specimen.getSpecimenKey(), parameter);
-                            if (!b) {
-                                return Result.fail("重新分析出错");
-                            }
+                            dealData(task, specimen.getSpecimenKey(), parameter);
                         }
                     }
                     ans.setTaskId(task.getId());
@@ -718,7 +718,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     }
 
 
-    private Boolean dealData(FMeasureTask task, String sampleId, FPhotometricParameter parameter) {
+    private R<Boolean> dealData(FMeasureTask task, String sampleId, FPhotometricParameter parameter) {
 
         /*
         分析数据，不保存数据
@@ -733,7 +733,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureData one = fMeasureDataService.getOne(queryWrapper);
         if (one == null || !StringUtils.hasText(one.getOriginalCalculationData())) {
             log.info("没有测量数据");
-            return false;
+            return R.fail("没有测量数据");
         }
 
         int digit = Constants.DEFAULT_DECIMAL_NUM;
@@ -751,7 +751,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         R<List<FPhotometricCountDataInfo>> formula = formula(listData, sample, task, parameter, digit);
         if (!formula.getSuccess()) {
-            return false;
+            return R.fail(formula.getMessage());
         }
 
         List<FPhotometricCountDataInfo> data = formula.getData();
@@ -768,9 +768,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (analysisData != null) {
             analysisData.setAnalysisResult(JSON.toJSONString(data));
             analysisData.setIsSave(noSave);
-            return fMeasureAnalysisDataService.updateById(analysisData);
+            boolean b = fMeasureAnalysisDataService.updateById(analysisData);
+            if (!b) {
+                log.warn("更新数据失败");
+                return R.fail("更新数据失败");
+            }
         }
-        return true;
+        return R.ok(true);
 
     }
 
@@ -867,15 +871,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 .orderByDesc(FMeasureMethod::getMethodCreateTime);
         List<FMeasureMethod> list = fMeasureMethodService.list(queryWrapper);
         if (list == null || list.isEmpty()) {
-            LambdaQueryWrapper<FMeasureProject> projectWrapper = new LambdaQueryWrapper<>();
-            projectWrapper.eq(FMeasureProject::getCreatorKey, updateBy)
-                    .orderByDesc(FMeasureProject::getCreateTime);
-            List<FMeasureProject> projectList = fMeasureProjectService.list(projectWrapper);
-            if (projectList == null || projectList.isEmpty()) {
-                return Result.ok(vo);
-            }
-//            vo.setProjectName(projectList.get(0).getProjectName());
-//            vo.setProjectId(projectList.get(0).getId());
+            queryWrapper.clear();
+            queryWrapper.eq(FMeasureMethod::getProjectItemKey, "default")
+                    .eq(FMeasureMethod::getMeasurementType, measureType)
+                    .last("limit 1");
+            FMeasureMethod one = fMeasureMethodService.getOne(queryWrapper);
+            vo.setMethodId(one.getId());
+            vo.setMethodName(one.getMethodName());
 
         } else {
             FMeasureMethod fMeasureMethod = list.get(0);

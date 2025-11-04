@@ -887,7 +887,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendAndClose(session, countedData.getMessage());
+            sendAndClose(session, "公式计算出错");
             return R.fail(countedData.getMessage());
         }
         List<FPhotometricCountDataInfo> countDataInfos = countedData.getData();

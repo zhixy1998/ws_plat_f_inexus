@@ -13,10 +13,11 @@
 package com.persee.workstation.uv_inexus.vo.instrumentVo;
 
 import io.swagger.annotations.ApiModelProperty;
-import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class DataNameValue {
 
     @ApiModelProperty("键")
@@ -24,4 +25,9 @@ public class DataNameValue {
 
     @ApiModelProperty("值")
     private String dataValue;
+
+    public DataNameValue(String dataKey, String dataValue) {
+        this.dataKey = dataKey;
+        this.dataValue = dataValue;
+    }
 }
