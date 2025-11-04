@@ -26,4 +26,7 @@ public class FCheckFormulaDto {
     private List<FInputParam> inputParamList;
 
     private FPreCountResultParam newFormula;
+
+    @ApiModelProperty("测量类型")
+    private String measureType;
 }

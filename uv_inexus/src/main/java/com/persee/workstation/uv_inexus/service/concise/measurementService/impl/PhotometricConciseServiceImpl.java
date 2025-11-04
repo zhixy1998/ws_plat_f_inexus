@@ -765,9 +765,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 .last("limit 1");
 
         FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper);
-        analysisData.setAnalysisResult(JSON.toJSONString(data));
-        analysisData.setIsSave(noSave);
-        return fMeasureAnalysisDataService.updateById(analysisData);
+        if (analysisData != null) {
+            analysisData.setAnalysisResult(JSON.toJSONString(data));
+            analysisData.setIsSave(noSave);
+            return fMeasureAnalysisDataService.updateById(analysisData);
+        }
+        return true;
+
     }
 
     private void setParamToDevice(String methodId, String deviceSerialNumber) {
@@ -1210,7 +1214,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(createType) && specimen.getIsTested().equals(noTested)) {
+                if (specimen.getDeleteType().equals(createType)) {
                     hasNoTested = true;
                     break;
                 }
@@ -2030,7 +2034,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 if (roundingType.equals(RoundingTypeEnums.SIGNIFICANT_FIGURES.getCode())) {
                     ans = DataCountUtil.formatToSignificantDigits(param.getDecimalPlaces(), BigDecimal.valueOf(middle));
                 } else {
-                    ans = String.valueOf(DataCountUtil.formatValue(param.getDecimalPlaces(), middle));
+                    ans = DataCountUtil.addZero(DataCountUtil.formatValue(param.getDecimalPlaces(), middle), param.getDecimalPlaces());
                 }
                 return ans;
             }

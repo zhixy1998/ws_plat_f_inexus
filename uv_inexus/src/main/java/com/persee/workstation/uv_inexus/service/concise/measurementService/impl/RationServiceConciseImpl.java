@@ -876,6 +876,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                     task.setMethodKey(methodId);
                     fMeasureTaskService.updateById(task);
 
+                    int digit = Constants.DEFAULT_DECIMAL_NUM;
+                    R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
+                    if (attachmentR.getSuccess()) {
+                        FMeasureTaskAttachment attachment = attachmentR.getData();
+                        if (StringUtils.hasText(attachment.getDataParam())) {
+                            FQueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+                            if (queryDataDTO.getDigit() != null) {
+                                digit = queryDataDTO.getDigit();
+                            }
+                        }
+                    }
+                    changeStandSampleDataDigit(task.getId(), digit);
+                    changeUnknowSampleDigit(task.getId(), digit);
                     //TODO 公式重算
 
                     ans.setTaskId(task.getId());
@@ -1992,7 +2005,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getSampleKind().equals(sampleKind) && specimen.getDeleteType().equals(createType) && specimen.getIsTested().equals(noTested)) {
+                if (specimen.getSampleKind().equals(sampleKind) && specimen.getDeleteType().equals(createType)) {
                     hasNoTested = true;
                     break;
                 }

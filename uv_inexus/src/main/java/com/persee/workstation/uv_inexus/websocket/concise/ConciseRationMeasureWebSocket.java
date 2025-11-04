@@ -467,7 +467,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                 //所有样品测完，拟合曲线
                 //拟合曲线
-                int minPointNum = Integer.MIN_VALUE;
+                int minPointNum = Integer.MIN_VALUE + 1;
 
                 switch (parameter.getCurveType()) {
                     case "1":
@@ -486,9 +486,15 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         minPointNum = 5;
                         break;
                 }
+
+                if (parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
+                    minPointNum = minPointNum - 1;
+                }
+
                 if (fitCurveData.size() < minPointNum) {
                     infoService.releaseDevice(deviceSerialNumber);
-                    sendAndClose(session, "已测样品数不足，无法进行曲线拟合");
+                    log.info("数据点数不足，不进行曲线拟合");
+                    sendAndClose(session, "已测样品数不足，不进行曲线拟合");
                     return;
                 }
 
@@ -497,7 +503,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 if (!infoR.getSuccess()) {
                     log.info("曲线拟合异常");
                     infoService.releaseDevice(deviceSerialNumber);
-                    sendAndClose(session, infoR.getMessage());
+                    sendAndClose(session, "数据有误，无法拟合曲线");
                     return;
                 }
                 FittingReceiveInfo fittingReceiveInfo = infoR.getData();
@@ -740,20 +746,20 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         rationService.saveAnalyzeData(saveDataInfo);
                         //定量的公式计算----待定
 //                    rationService.formula()
-                        R<List<FRationCountDataInfo>> formula = rationService.formula(saveDataInfo.getAnalyzeDataId(), data.getWavelengthData(), sample, task, parameter, digit);
-
-                        if (!formula.getSuccess()) {
-                            log.info("公式计算异常");
-                            infoService.releaseDevice(deviceSerialNumber);
-                            sendAndClose(session, formula.getMessage());
-                            return;
-                    }
-                    List<FRationCountDataInfo> formulaData = formula.getData();
-
-                    formulaData = rationService.dataRounding(formulaData, parameter);
-
-                    saveDataInfo.getCountData().addAll(formulaData);
-                    rationService.saveAnalyzeData(saveDataInfo);
+//                        R<List<FRationCountDataInfo>> formula = rationService.formula(saveDataInfo.getAnalyzeDataId(), data.getWavelengthData(), sample, task, parameter, digit);
+//
+//                        if (!formula.getSuccess()) {
+//                            log.info("公式计算异常");
+//                            infoService.releaseDevice(deviceSerialNumber);
+//                            sendAndClose(session, formula.getMessage());
+//                            return;
+//                        }
+//                        List<FRationCountDataInfo> formulaData = formula.getData();
+//
+//                        formulaData = rationService.dataRounding(formulaData, parameter);
+//
+//                        saveDataInfo.getCountData().addAll(formulaData);
+//                        rationService.saveAnalyzeData(saveDataInfo);
                     }
                     specimen.setIsTested(right);
                 }
