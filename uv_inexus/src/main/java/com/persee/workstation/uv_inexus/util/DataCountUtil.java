@@ -147,6 +147,66 @@ public class DataCountUtil {
     }
 
     /**
+     * 有效位数修约
+     */
+    public static String formatToSignificantDigits(Integer significantDigits, Double value) {
+        if (value == 0.0) {
+            StringBuilder zeros = new StringBuilder("0.");
+            for (int i = 0; i < significantDigits - 1; i++) {
+                zeros.append("0");
+            }
+            return zeros.toString();
+        }
+
+        // 计算值的指数部分
+        int exponent = (int) Math.floor(Math.log10(Math.abs(value)));
+
+        // 计算需要的小数位数
+        int decimalPlaces = significantDigits - 1 - exponent;
+
+        // 使用BigDecimal确保精度
+        BigDecimal bd = BigDecimal.valueOf(value);
+
+        if (decimalPlaces >= 0) {
+            // 小数情况或整数但位数不足
+            // 直接使用 roundToDecimalPlaces 实现四舍六入五成双修约
+            bd = DataCountUtil.roundToDecimalPlaces(bd, decimalPlaces);
+
+            // 格式化为指定位数的小数
+            StringBuilder formatPattern = new StringBuilder("0");
+            if (decimalPlaces > 0) {
+                formatPattern.append(".");
+                for (int i = 0; i < decimalPlaces; i++) {
+                    formatPattern.append("0");
+                }
+            }
+            DecimalFormat df = new DecimalFormat(formatPattern.toString());
+            return df.format(bd);
+        } else {
+            // 整数位数超过有效数字位数，使用科学计数法
+            // 先将数字调整为1位整数形式
+            double normalized = value * Math.pow(10, -exponent);
+            BigDecimal normalizedBd = BigDecimal.valueOf(normalized);
+            // 修约到指定有效位数-1位小数，使用四舍六入五成双规则
+            normalizedBd = DataCountUtil.roundToDecimalPlaces(normalizedBd, significantDigits - 1);
+
+            // 构造科学计数法表示 1.23*10^3 格式
+            StringBuilder scientificPattern = new StringBuilder("0.");
+            for (int i = 0; i < significantDigits - 1; i++) {
+                scientificPattern.append("0");
+            }
+            DecimalFormat scientificFormat = new DecimalFormat(scientificPattern.toString());
+            return scientificFormat.format(normalizedBd) + "*10^" + exponent;
+        }
+    }
+
+
+    // 重载方法，支持BigDecimal输入
+    public static String formatToSignificantDigits(Integer significantDigits, BigDecimal value) {
+        return formatToSignificantDigits(significantDigits, value.doubleValue());
+    }
+
+    /**
      * 使用BigDecimal格式化数字到指定小数位数
      * @param value 需要格式化的值
      * @return 格式化后的字符串

@@ -36,4 +36,9 @@ public interface DeviceInfoService {
     //释放仪器
     void releaseDevice(String deviceSerialNumber);
 
+    //激活仪器
+    void activeDevice(String deviceSerialNumber);
+
+    //查询仪器激活状态
+    Integer queryDeviceActivationStatus(String deviceSerialNumber);
 }

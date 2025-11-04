@@ -13,6 +13,7 @@
 package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 
 import java.util.List;
 
@@ -20,4 +21,9 @@ public interface ConcisePublicUtilService {
 
 
     R<Boolean> changeSampleLocation(String taskId, List<Integer> usefulLocation);
+
+    /**
+     * 检查修约条件是否合法
+     */
+    R<Boolean> checkApproximateRange(FRoundingVO vo);
 }

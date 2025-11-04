@@ -62,7 +62,7 @@ public interface DeviceManageService {
      * 查询光谱带宽接口
      * @return
      */
-    List<Double> getBandWidth();
+    List<Double> getBandWidth(String deviceSerialNumber);
 
     /**
      * 仪器配置接口

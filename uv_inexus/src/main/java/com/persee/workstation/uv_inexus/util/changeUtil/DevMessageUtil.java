@@ -231,8 +231,6 @@ public class DevMessageUtil {
             }
         }
         findDeviceVO.setLinearSegment(formulaUtil.addFormula(temp,findDeviceVO.getDeviceSerialNumber()));
-        byte[] sendBytes = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("Measure"));
-
         return R.ok(findDeviceVO);
     }
 

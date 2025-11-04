@@ -12,6 +12,21 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.softwareActivation;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.softwareActivation.SoftwareActivationPO;
+import com.persee.workstation.uv_inexus.service.guide.activationKeyService.DecryptService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceDiscoveryService;
+import com.persee.workstation.uv_inexus.service.guide.softwareActivation.SoftwareActivationService;
+import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,30 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.guide.softwareActivation.SoftwareActivationPO;
-import com.persee.workstation.uv_inexus.service.guide.activationKeyService.DecryptService;
-import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceDiscoveryService;
-import com.persee.workstation.uv_inexus.service.guide.softwareActivation.SoftwareActivationService;
-import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
-
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/softwareActivation")
@@ -59,6 +50,9 @@ public class SoftwareActivationController {
     
     @Autowired
     private DeviceDiscoveryService deviceDiscoveryService;
+
+    @Autowired
+    DeviceInfoService deviceInfoService;
 
     /**
      * 软件激活接口：通过ID查询设备，验证激活码并更新状态
@@ -124,6 +118,8 @@ public class SoftwareActivationController {
             activationPO.setActivationTime(fullTime);  // 记录激活时间
             activationPO.setExpirationDate(expirationDateStr);  // 更新过期时间
             softwareActivationService.updateById(activationPO);
+
+            deviceInfoService.activeDevice(codeDeviceNumber);
 
             return Result.ok("激活成功");
 

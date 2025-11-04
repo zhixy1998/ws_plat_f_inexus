@@ -148,8 +148,8 @@ public class DeviceController {
 
     @GetMapping("/getBandWidth")
     @ApiOperation("查询光谱带宽")
-    public Result<List<Double>> getBandWidth(){
-        List<Double> bandWidth = deviceManageService.getBandWidth();
+    public Result<List<Double>> getBandWidth(@RequestParam String deviceSerialNumber){
+        List<Double> bandWidth = deviceManageService.getBandWidth(deviceSerialNumber);
         return Result.ok(bandWidth);
     }
 

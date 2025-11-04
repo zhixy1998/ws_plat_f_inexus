@@ -27,6 +27,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
@@ -147,6 +148,12 @@ public interface RationConciseService {
 
     //暂不用
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
+
+    /**
+     * 数据修约
+     */
+    List<FRationCountDataInfo> dataRounding(List<FRationCountDataInfo> dataVO, FPhotometricParameter parameter);
+
 
     R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
 

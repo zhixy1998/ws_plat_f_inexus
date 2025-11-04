@@ -35,6 +35,9 @@ public class DeviceInfoVO {
     @ApiModelProperty(value = "自检状态", example = "0：未完成；1：自检成功； 2：自检失败； 3：自检进行中")
     private Integer isInited;
 
+    @ApiModelProperty("激活状态")
+    private Integer isActivated;
+
     @ApiModelProperty(value = "联机信息", example = "connect to device：ip=1.1.1.2 port=30500，连接中")
     private String connectMessage;
 

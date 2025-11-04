@@ -111,6 +111,11 @@ public interface PhotometricConciseService {
      */
     R<Boolean> reAnalyze(String taskId, String updateBy);
 
+    /**
+     * 数据修约
+     */
+    List<FPhotometricCountDataInfo> dataRounding(List<FPhotometricCountDataInfo> dataVO,  FPhotometricParameter parameter);
+
 
     /**
      * 计算公式

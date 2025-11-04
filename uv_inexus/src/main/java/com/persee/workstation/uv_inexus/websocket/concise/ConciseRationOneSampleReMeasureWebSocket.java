@@ -30,6 +30,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -97,6 +98,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
+    FormulaUtil formulaUtil;
 
     @Value("1")
     String right;
@@ -214,17 +218,17 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 sendAndClose(session, "样品信息缺失");
                 return;
             }
-            String ip = infoService.getIp(deviceSerialNumber);
+
 
             boolean repeat = parameter.getRepeatMode().equals("单池重复");
 
             R<FRationDataVO> r;
             if (repeat) {
                 //重复测量，单独处理！
-                r = singleSampleRepeatMeasure(dealSample, parameter, task, ip, session.getId());
+                r = singleSampleRepeatMeasure(dealSample, parameter, task, deviceSerialNumber, session.getId());
 
             } else {
-                r = singleSampleSimpleMeasure(dealSample, parameter, task, ip, session.getId());
+                r = singleSampleSimpleMeasure(dealSample, parameter, task, deviceSerialNumber, session.getId());
             }
 
             if (!r.getSuccess()) {
@@ -434,7 +438,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
 
     //单个样品普通不微分测量
-    public R<FRationDataVO> singleSampleSimpleMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String ip, String sessionId) throws IOException {
+    public R<FRationDataVO> singleSampleSimpleMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
 
@@ -445,6 +449,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         FRationDataVO dataInfo = new FRationDataVO();
 
         List<String> waveLengths = parameter.getWaveLength();
+        String ip = infoService.getIp(deviceSerialNumber);
 
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
@@ -456,7 +461,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         }
         LocalDateTime startTime = LocalDateTime.now();
         for (String waveLength : waveLengths) {
-            list.add(new Command("SetWl", new Object[]{waveLength}));
+            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+
+            list.add(new Command("SetWl", new Object[]{step}));
             list.add(new Command("Measure", new Object[]{}));
 
             R<ChangeParam> res = null;
@@ -550,7 +557,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         return R.ok();
     }
 
-    public R<FRationDataVO> singleSampleRepeatMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String ip, String sessionId) throws IOException {
+    public R<FRationDataVO> singleSampleRepeatMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
         int repeatCount = Integer.parseInt(parameter.getRepeatCount());
 
         WebSocketSession session = sessions.get(sessionId);
@@ -562,6 +569,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         FRationDataVO ans = new FRationDataVO();
 
         List<String> waveLengths = parameter.getWaveLength();
+
+        String ip = infoService.getIp(deviceSerialNumber);
 
         LocalDateTime startTime = LocalDateTime.now();
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
@@ -575,7 +584,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
         for (int i = 0; i < repeatCount; i++) {
             for (String waveLength : waveLengths) {
-                list.add(new Command("SetWl", new Object[]{waveLength}));
+
+                Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+                list.add(new Command("SetWl", new Object[]{step}));
                 list.add(new Command("Measure", new Object[]{}));
 
                 R<ChangeParam> res = null;
