@@ -129,7 +129,7 @@ public interface SpectrumConciseService {
     Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds, List<String> analysisIds);
 
     // 查询表格数据
-    List<Map<String, Object>> queryTableData(String taskId,String methodId,List<String> sampleIds,List<String> analysisIds);
+    List<Map<String, Object>> queryTableData(String taskId,String methodId,List<String> sampleIds,List<String> analysisIds, Integer digit);
 
     /**
      * 导出到word

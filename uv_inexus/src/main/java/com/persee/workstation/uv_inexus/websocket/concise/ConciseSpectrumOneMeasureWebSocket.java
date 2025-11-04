@@ -665,80 +665,39 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
                 tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
             }else{
-                // 如果是重复模式的情况下,根据重复次数创建三个测量数据,并且将测量好的数据存储到对应的编号中
-                Integer RepetitionTime = Integer.valueOf(spectrumParameter.getRepetitionTime());
-                for (int i = 0; i < RepetitionTime; i++) {
-                    if ((i+1)!=number){
-                        FMeasureData measureData = new FMeasureData();
-                        measureData.setSerialNumber(i+1);
-                        measureData.setTaskId(taskId);
-                        measureData.setSampleKey(sampleId);
-                        measureData.setInstrumentData(null);
-                        measureData.setOriginalCalculationData(null);
-                        measureData.setMeasurementStartTime(null);
-                        measureData.setMeasurementEndTime(null);
-                        measureData.setIsSave("1");
-                        measureData.setIsDelete("0");
-                        boolean save = traceDataService.save(measureData);
-                        FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
-                        analysisData.setAnalysisNumber(i+1);
-                        analysisData.setAnalysisName(sample.getSampleName()+"("+analysisData.getAnalysisNumber()+")");
-                        analysisData.setTaskId(taskId);
-                        analysisData.setSampleKey(sampleId);
-                        analysisData.setMeasureDataId(measureData.getId());
-                        analysisData.setAnalysisParam(null);
-                        analysisData.setAnalysisResult(null);
-                        analysisData.setAnalysisType("5");
-                        analysisData.setPeak(null);
-                        analysisData.setGrain(null);
-                        analysisData.setColor("#000000");
-                        analysisData.setIsSave("1");
-                        analysisData.setIsDelete("0");
-                        boolean save1 = tMeasureAnalysisDataService.save(analysisData);
-                        FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
-                        tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
-                        boolean save2 = tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
-                        if(!(save&&save1&&save2)){
-                            sendAndClose( session, "数据保存失败");
-                            return;
-                        }
-                    }else{
-                        FMeasureData measureData = new FMeasureData();
-                        measureData.setSerialNumber(i+1);
-                        measureData.setTaskId(taskId);
-                        measureData.setSampleKey(sampleId);
-                        measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
-                        measureData.setOriginalCalculationData(JSON.toJSONString(listData));
-                        measureData.setMeasurementStartTime(Constants.startTime);
-                        measureData.setMeasurementEndTime(Constants.endTime);
-                        measureData.setIsSave("1");
-                        measureData.setIsDelete("0");
-                        boolean save = traceDataService.save(measureData);
+                FMeasureData measureData = new FMeasureData();
+                measureData.setSerialNumber(number);
+                measureData.setTaskId(taskId);
+                measureData.setSampleKey(sampleId);
+                measureData.setInstrumentData(JSON.toJSONString(Constants.instrumentData));
+                measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+                measureData.setMeasurementStartTime(Constants.startTime);
+                measureData.setMeasurementEndTime(Constants.endTime);
+                measureData.setIsSave("1");
+                measureData.setIsDelete("0");
+                boolean save = traceDataService.save(measureData);
 
-                        FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
-                        analysisData.setAnalysisNumber(i+1);
-                        analysisData.setAnalysisName(sample.getSampleName()+"("+analysisData.getAnalysisNumber()+")");
-                        analysisData.setTaskId(taskId);
-                        analysisData.setSampleKey(sampleId);
-                        analysisData.setMeasureDataId(measureData.getId());
-                        analysisData.setAnalysisParam(JSON.toJSONString(Constants.instrumentData));
-                        analysisData.setAnalysisResult(JSON.toJSONString(listData));
-                        analysisData.setAnalysisType("5");
-                        analysisData.setPeak(JSON.toJSONString(peakValleys));
-                        analysisData.setGrain(JSON.toJSONString(markings));
-                        analysisData.setColor("#000000");
-                        analysisData.setIsSave("1");
-                        analysisData.setIsDelete("0");
-                        boolean save1 = tMeasureAnalysisDataService.save(analysisData);
-                        FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
-                        tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
-                        boolean save2 = tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
-                        if(!(save&&save1&&save2)){
-                            sendAndClose( session, "数据保存失败");
-                            return;
-                        }
-
-                    }
+                FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
+                analysisData.setAnalysisNumber(number);
+                analysisData.setAnalysisName(sample.getSampleName()+"("+analysisData.getAnalysisNumber()+")");
+                analysisData.setTaskId(taskId);
+                analysisData.setSampleKey(sampleId);
+                analysisData.setMeasureDataId(measureData.getId());
+                analysisData.setAnalysisParam(JSON.toJSONString(Constants.instrumentData));
+                analysisData.setAnalysisResult(JSON.toJSONString(listData));
+                analysisData.setAnalysisType("5");
+                analysisData.setPeak(JSON.toJSONString(peakValleys));
+                analysisData.setGrain(JSON.toJSONString(markings));
+                analysisData.setColor("#000000");
+                analysisData.setIsSave("1");
+                analysisData.setIsDelete("0");
+                boolean save1 = tMeasureAnalysisDataService.save(analysisData);
+                FMeasureAnalysisImage tMeasureAnalysisImage = new FMeasureAnalysisImage();
+                tMeasureAnalysisImage.setAnalysisId(analysisData.getId());
+                boolean save2 = tMeasureAnalysisImageService.save(tMeasureAnalysisImage);
+                if(!(save&&save1&&save2)){
+                    sendAndClose( session, "数据保存失败");
+                    return;
                 }
             }
         }else{
@@ -825,11 +784,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 queryWrapper.eq("analysis_type", "5");
                 queryWrapper.last("limit 1");
                 FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
-                if(analysisData==null){
-                    sendAndClose( session, "数据保存失败");
-                }
                 // 判断数据是否不为空或者不为null
-                if(analysisData.getAnalysisResult()==null){
+                if(analysisData==null||analysisData.getAnalysisResult()==null){
                     success=true;
                     break;
                 }

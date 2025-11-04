@@ -163,8 +163,9 @@ public class ConciseCommonController {
 
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告通用数据接口")
-    public Result obtainReportParameters(@RequestParam String taskId) {
-        return conciseCommonService.obtainReportParameters(taskId);
+    public Result obtainReportParameters(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId) {
+        return conciseCommonService.obtainReportParameters(taskId,sampleId);
     }
 
     @GetMapping("queryReportAllParameters")
@@ -180,8 +181,9 @@ public class ConciseCommonController {
     public Result reportTableDataQuery(@RequestParam String taskId,
                                        @RequestParam(required = false) String sampleId,
                                        @RequestParam(required = false) String analysisId,
-                                       @RequestParam(required = false) Boolean allDisplay){
-        return conciseCommonService.newReportTableDataQuery(taskId, sampleId,analysisId,allDisplay);
+                                       @RequestParam(required = false) Boolean allDisplay,
+                                       @RequestParam(required = false) Integer digit){
+        return conciseCommonService.newReportTableDataQuery(taskId, sampleId,analysisId,allDisplay,digit);
     }
 
     @GetMapping("isAddSample")

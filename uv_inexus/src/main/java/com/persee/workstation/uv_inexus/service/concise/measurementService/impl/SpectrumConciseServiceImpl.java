@@ -660,7 +660,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 }
             }
             boolean update = fMeasureDataService.updateBatchById(measureDataList);
-            if (update) {
+            // 根据taskid查询任务数据
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            task.setEndSaveTime(LocalDateTime.now());
+            task.setIsSave("1");
+            boolean update1 = fMeasureTaskService.updateById(task);
+            if (update&&update1) {
                 return Result.ok();
             } else {
                 return Result.fail("数据保存失败");
@@ -706,6 +711,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 }
             }
             task.setSampleKey(JSON.toJSONString(fTaskSpecimen));
+            task.setEndSaveTime(LocalDateTime.now());
+            task.setIsSave("1");
             boolean update = fMeasureTaskService.updateById(task);
             if ( update) {
                 return Result.ok("删除成功");
@@ -1125,8 +1132,18 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (sample == null) {
                     return Result.fail("样品不存在");
                 }
+                QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", task.getId());
+                queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                queryWrapper.eq("analysis_type", "5");
+                queryWrapper.orderByDesc("analysis_number");
+                if (type == null) {
+                    queryWrapper.eq("is_delete", "0");
+                }
+                queryWrapper.last("limit 1");
+                FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
                 // 如果没有测量数据则设置为无测量数据的参数返回
-                if (taskSpeciman.getIsTested().equals("0")) {
+                if (measureData== null || taskSpeciman.getIsTested().equals("0")&&measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
@@ -1134,20 +1151,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     vo.setAnalysisNumber(1);
                     vo.setColor(null);
                     vo.setData(null);
+                    vo.setIsTested(taskSpeciman.getIsTested());
                 } else {
-                    QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                    queryWrapper.eq("task_id", task.getId());
-                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
-                    queryWrapper.eq("analysis_type", "5");
-                    queryWrapper.orderByDesc("analysis_number");
-                    if (type == null) {
-                        queryWrapper.eq("is_delete", "0");
-                    }
-                    queryWrapper.last("limit 1");
-                    FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
-                    if (measureData == null) {
-                        return Result.fail("无测量数据");
-                    }
                     vo.setTitle(sample.getSampleName());
                     vo.setAnalysisId(measureData.getId());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
@@ -1160,6 +1165,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setData(getSampleData(measureData, digit));
                         vo.setOriginalData(getOriginalSampleData(measureData));
                     }
+                    vo.setIsTested(taskSpeciman.getIsTested());
                 }
                 vo.setType("0");
                 vo.setDeleteType(taskSpeciman.getDeleteType());
@@ -1227,6 +1233,35 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
         return Result.ok(listVos);
     }
+
+    /**
+     * 校验数据完整性
+     * @param dataList
+     * @param parameter
+     * @return
+     */
+    private boolean verifyDataIntegrity(List<String> dataList,SpectrumParameter parameter){
+        // 检查列表是否为空
+        if (dataList == null || dataList.isEmpty()) {
+            return false;  // 如果数据为空，返回 false
+        }
+
+        // 获取第一个和最后一个数据
+        String firstData = dataList.get(0);
+        String lastData = dataList.get(dataList.size() - 1);
+
+        // 使用逗号分割数据
+        String[] firstDataParts = firstData.split(",");
+        String[] lastDataParts = lastData.split(",");
+
+        // 判断第一个和最后一个数据的第一个值是否符合起始波长和终止波长的条件
+        boolean isStartWaveLengthValid = firstDataParts.length > 0 && firstDataParts[0].equals(String.valueOf(parameter.getStartWaveLength()));
+        boolean isEndWaveLengthValid = lastDataParts.length > 0 && lastDataParts[0].equals(String.valueOf(parameter.getEndWaveLength()));
+
+        // 如果第一个值等于起始波长且最后一个值等于终止波长，返回 true
+        return isStartWaveLengthValid && isEndWaveLengthValid;
+    }
+
 
 
 
@@ -2226,7 +2261,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail("任务不存在");
         }
         // 根据任务中的方法key查询方法并且提取方法参数
-        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
             return Result.fail("方法不存在");
         }
@@ -2747,7 +2782,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @return
      */
     @Override
-    public List<Map<String, Object>> queryTableData(String taskId,String methodId,List<String> sampleIds,List<String> analysisIds) {
+    public List<Map<String, Object>> queryTableData(String taskId,
+                                                    String methodId,
+                                                    List<String> sampleIds,
+                                                    List<String> analysisIds,
+                                                    Integer digit) {
         // 校验参数
         if (StringUtils.isEmpty(taskId) || sampleIds == null || sampleIds.isEmpty()) {
             return null;
@@ -2780,8 +2819,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     for (FPeakValleyMarking peak : peaks) {
                         Map<String, Object> map = new HashMap<>();
                         map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), peak.getX());
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), peak.getY());
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
                         map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
                         map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
                         arrayList.add(map);
@@ -2791,8 +2830,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     for (FPeakValleyMarking valley : valleys) {
                         Map<String, Object> map = new HashMap<>();
                         map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), valley.getX());
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), valley.getY());
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(valley.getY(), digit));
                         map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
                         map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
                         arrayList.add(map);
@@ -2802,8 +2841,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     for (FPeakValleyMarking gaugePoint : gaugePoints) {
                         Map<String, Object> map = new HashMap<>();
                         map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), gaugePoint.getX());
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), gaugePoint.getY());
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(formatBigDecimal(gaugePoint.getX(), 1), 1));
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
                         map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
                         map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
                         arrayList.add(map);
@@ -2824,15 +2863,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     return null;
                 }
 
-                List<Integer> list = new ArrayList<>();
+                List<String> list = new ArrayList<>();
                 List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
                 for (String s : result) {
                     String[] split = s.split(",");
-                    double value = Double.parseDouble(split[0]);
-                    list.add((int) value);
+                    String s1 = formatBigDecimal(split[0], 1);
+                    list.add(s1);
                 }
                 int id = 1;
-                for (Integer i : list) {
+                for (String i : list) {
                     Map<String, Object> map = new HashMap<>();
                     Map<String, Object> resultMap = new HashMap<>();
                     resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
@@ -2842,16 +2881,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
                         for (String data : datas) {
                             String[] split = data.split(",");
-                            double value = Double.parseDouble(split[0]);
-                            int value1 = (int) value;
-                            if (value1 == i) {
+                            String s = formatBigDecimal(split[0], 1);
+                            if (Objects.equals(s, i)) {
                                 if (resultMap.get("sampleNumber") == null) {
                                     List<String> y = new ArrayList<>();
-                                    y.add(split[1]);
+                                    y.add(formatBigDecimal(split[1], digit));
                                     resultMap.put("sampleNumber", y);
                                 } else {
                                     List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                    y.add(split[1]);
+                                    y.add(formatBigDecimal(split[1], digit));
                                     resultMap.put("sampleNumber", y);
                                 }
                                 boolean statePeak = false;
@@ -2906,7 +2944,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                             }
                         }
                     }
-                    map.put(String.valueOf(i), resultMap);
+                    map.put(i, resultMap);
                     arrayList.add(map);
                 }
                 return arrayList;
@@ -2928,8 +2966,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     for (FPeakValleyMarking peak : peaks) {
                         Map<String, Object> map = new HashMap<>();
                         map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), peak.getX());
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), peak.getY());
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
                         map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
                         map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
                         arrayList.add(map);
@@ -2939,8 +2977,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     for (FPeakValleyMarking valley : valleys) {
                         Map<String, Object> map = new HashMap<>();
                         map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), valley.getX());
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), valley.getY());
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(valley.getY(), digit));
                         map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
                         map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
                         arrayList.add(map);
@@ -2950,8 +2988,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     for (FPeakValleyMarking gaugePoint : gaugePoints) {
                         Map<String, Object> map = new HashMap<>();
                         map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), gaugePoint.getX());
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), gaugePoint.getY());
+                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(gaugePoint.getX(), 1));
+                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
                         map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
                         map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
                         arrayList.add(map);
@@ -2970,15 +3008,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     return null;
                 }
 
-                List<Integer> list = new ArrayList<>();
+                List<String> list = new ArrayList<>();
                 List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
                 for (String s : result) {
                     String[] split = s.split(",");
-                    double value = Double.parseDouble(split[0]);
-                    list.add((int) value);
+                    list.add(formatBigDecimal(split[0], 1));
                 }
                 int id = 1;
-                for (Integer i : list) {
+                for (String i : list) {
                     Map<String, Object> map = new HashMap<>();
                     Map<String, Object> resultMap = new HashMap<>();
                     resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
@@ -2988,16 +3025,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
                         for (String data : datas) {
                             String[] split = data.split(",");
-                            double value = Double.parseDouble(split[0]);
-                            int value1 = (int) value;
-                            if (value1 == i) {
+                            String s = formatBigDecimal(split[0], 1);
+                            if (Objects.equals(s, i)) {
                                 if (resultMap.get("sampleNumber") == null) {
                                     List<String> y = new ArrayList<>();
-                                    y.add(split[1]);
+                                    y.add(formatBigDecimal(split[1], digit));
                                     resultMap.put("sampleNumber", y);
                                 } else {
                                     List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                    y.add(split[1]);
+                                    y.add(formatBigDecimal(split[1], digit));
                                     resultMap.put("sampleNumber", y);
                                 }
                                 boolean statePeak = false;
@@ -3052,7 +3088,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                             }
                         }
                     }
-                    map.put(String.valueOf(i), resultMap);
+                    map.put(i, resultMap);
                     arrayList.add(map);
                 }
                 return arrayList;
@@ -3882,5 +3918,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 // 可以在这里处理无效的模式
                 System.out.println("无效的光度模式: " + mode);
         }
+    }
+
+    /**
+     * 格式化 BigDecimal，保留指定的小数位数
+     * @param valueStr
+     * @param digit
+     * @return
+     */
+
+    public static String formatBigDecimal(String valueStr, int digit) {
+        // 将字符串转换成 BigDecimal
+        BigDecimal value = new BigDecimal(valueStr);
+        BigDecimal decimal = value.setScale(digit, RoundingMode.HALF_UP);
+        // 设置小数位数并进行舍入
+        return DataCountUtil.addZero(Double.valueOf(decimal.stripTrailingZeros().toPlainString()), digit);
     }
 }

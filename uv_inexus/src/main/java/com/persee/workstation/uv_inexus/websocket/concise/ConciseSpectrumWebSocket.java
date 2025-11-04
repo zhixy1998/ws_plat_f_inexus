@@ -708,10 +708,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("2")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(s, null);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
+                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + s);
                 x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
-                y.add(Double.parseDouble(yy));
+                y.add(Double.parseDouble(s));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
                 String yy = String.valueOf((sData / 8388607) * 100);
@@ -907,7 +906,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             }
         }
 
-        // 更新任务状态
+        /// 更新任务状态
         List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         // 如果不是重复模式的情况直接更新任务状态
         if(spectrumParameter.getRepetitionPattern().equals("不重复")){
@@ -937,11 +936,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 queryWrapper.eq("analysis_type", "5");
                 queryWrapper.last("limit 1");
                 FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
-                if(analysisData==null){
-                    sendAndClose( session, "数据保存失败");
-                }
                 // 判断数据是否不为空或者不为null
-                if(analysisData.getAnalysisResult()==null){
+                if(analysisData==null||analysisData.getAnalysisResult()==null){
                     success=true;
                     break;
                 }

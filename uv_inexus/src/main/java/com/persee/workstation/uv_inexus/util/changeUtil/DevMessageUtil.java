@@ -644,7 +644,8 @@ public class DevMessageUtil {
         String cmdId = cmd.getCmdId();
         //发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(cmd.getParams(), xml.get(cmdId));
-        messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        List<byte[]> bytes1 = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, bytes1, bytes);
         return R.ok();
     }
 

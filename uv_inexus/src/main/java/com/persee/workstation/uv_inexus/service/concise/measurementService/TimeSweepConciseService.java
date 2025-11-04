@@ -130,7 +130,7 @@ public interface TimeSweepConciseService {
     Result<List<FHeadVO>> tableHead(String taskId, String methodId, List< String> sampleIds);
 
     // 查询表格数据接口
-    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds,Integer decimalDigits);
 
     Result uploadImage(SpectrumImageUpload upload);
 }

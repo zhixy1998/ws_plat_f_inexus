@@ -571,11 +571,17 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 }
             }
             boolean update = fMeasureDataService.updateBatchById(measureDataList);
-            if ( update){
+            // 根据taskid查询任务数据
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            task.setEndSaveTime(LocalDateTime.now());
+            task.setIsSave("1");
+            boolean update1 = fMeasureTaskService.updateById(task);
+            if (update&&update1) {
                 return Result.ok();
-            }else{
+            } else {
                 return Result.fail("数据保存失败");
             }
+
         }else{
             // 根据任务id查询测量数据表
             QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
@@ -611,6 +617,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 }
             }
             task.setSampleKey(JSON.toJSONString(fTaskSpecimen));
+            task.setEndSaveTime(LocalDateTime.now());
+            task.setIsSave("1");
             boolean update = fMeasureTaskService.updateById(task);
             if (update) {
                 return Result.ok("删除成功");
@@ -1161,23 +1169,20 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 String xValue = split[0];
                 String yValue = split[1];
 
-                // 转换为 Double
-                double doubleValue = Double.parseDouble(xValue);
-
-                // 强制转换为整数，丢弃小数部分
-                int intValue = (int) doubleValue;  // 结果是 0
-                map.put("x", intValue);  // 将 x 设置为整数值
+                BigDecimal x = new BigDecimal(xValue);
+                x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
+                map.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));  // 格式化为字符串
 
                 // 处理 y 值并根据 digit 进行精度控制
                 if (digit != null) {
                     BigDecimal y = new BigDecimal(yValue);
                     y = y.setScale(digit, RoundingMode.HALF_UP); // 保留 digit 位小数
                     map.put("y", y.stripTrailingZeros().toPlainString());
-                    originalMap.put("x", intValue);
+                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));
                     originalMap.put("y", split[1]);  // 原始数据
                 } else {
                     map.put("y", yValue);
-                    originalMap.put("x", intValue);
+                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));
                     originalMap.put("y", split[1]);  // 原始数据
                 }
 
@@ -1390,6 +1395,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (paramDto.getGaugePoints() == null || paramDto.getGaugePoints().isEmpty()) {
             return Result.fail("请选择标记点");
         }
+
         // 读取原数据
         String gaugePointJson;
         List<String> rawData;
@@ -1400,14 +1406,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         gaugePointJson = analysisData.getGaugePoint();
         rawData = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
 
-        /// 校验
         // 校验：所有传入的标记点是否都存在于原始数据
-        Set<String> rawXSet = rawData.stream()
-                .map(s -> normalizeNumberString(s.split(",")[0]))
+        Set<Integer> rawXSet = rawData.stream()
+                .map(s -> normalizeNumberString(s.split(",")[0]))  // 获取原始数据中的整数部分
                 .collect(Collectors.toSet());
 
         for (String xStr : paramDto.getGaugePoints()) {
-            String normX = normalizeNumberString(xStr);
+            int normX = normalizeNumberString(xStr);  // 获取传入的标记点整数部分
             if (!rawXSet.contains(normX)) {
                 return Result.fail("时间 " + xStr + " 不存在，请重新选择");
             }
@@ -1419,19 +1424,19 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 : JSON.parseArray(gaugePointJson, FPeakValleyMarking.class);
 
         // 先构造原有标记点 Map（X -> 对象）
-        Map<String, FPeakValleyMarking> oldMap = oldList.stream()
+        Map<Integer, FPeakValleyMarking> oldMap = oldList.stream()
                 .collect(Collectors.toMap(
-                        m -> normalizeNumberString(m.getX()),
+                        m -> normalizeNumberString(m.getX()),  // 使用整数部分作为 key
                         m -> m,
                         (a, b) -> a
                 ));
 
         // 构造新的最终集合（保证顺序）
-        Map<String, FPeakValleyMarking> finalMap = new LinkedHashMap<>();
+        Map<Integer, FPeakValleyMarking> finalMap = new LinkedHashMap<>();
 
         // 遍历前端传的 X 值
         for (String xStr : paramDto.getGaugePoints()) {
-            String normX = normalizeNumberString(xStr);
+            int normX = normalizeNumberString(xStr);
             FPeakValleyMarking existing = oldMap.get(normX);
 
             if (existing != null) {
@@ -1441,8 +1446,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 // 新增点时，从原始数据中查找对应 Y
                 for (String s : rawData) {
                     String[] split = s.split(",");
-                    String rawNormX = normalizeNumberString(split[0]);
-                    if (normX.equals(rawNormX)) {
+                    int rawNormX = normalizeNumberString(split[0]);
+                    if (normX == rawNormX) {
                         FPeakValleyMarking newMark = new FPeakValleyMarking();
                         newMark.setX(split[0]);
                         newMark.setY(split[1]);
@@ -1458,7 +1463,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         FMeasureAnalysisData analysisData1 = fMeasureAnalysisDataService.getById(paramDto.getDataId());
         analysisData1.setGaugePoint(updatedJson);
         boolean update = fMeasureAnalysisDataService.updateById(analysisData1);
-        return update?Result.ok(true):Result.fail(false);
+        return update ? Result.ok(true) : Result.fail(false);
     }
 
     /**
@@ -1521,9 +1526,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (dataAll!=null && dataAll.size()!=0){
             if (digit!=null){
                 for (FPeakValleyMarking data : dataAll){
-                    double xValue = Double.parseDouble(data.getX());
-                    int x = (int) xValue;
-                    data.setX(String.valueOf(x));
+                    BigDecimal x = new BigDecimal(data.getX());
+                    x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
+                    data.setX(DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));
                     BigDecimal value = new BigDecimal(data.getY());
                     value = value.setScale(digit, RoundingMode.HALF_UP);
                     data.setY(value.stripTrailingZeros().toPlainString());
@@ -1972,7 +1977,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return Result.fail("任务不存在");
         }
         // 根据任务中的方法key查询方法并且提取方法参数
-        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
             return Result.fail("方法不存在");
         }
@@ -2457,12 +2462,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             }
 
             // 转换为 Double
-            double doubleValue = Double.parseDouble(xValue);
-
-            // 强制转换为整数，丢弃小数部分
-            int intValue = (int) doubleValue;  // 结果是 0
-            // 格式化 x 值为整数
-            map.put("x", intValue);  // 直接将 x 转换为整数
+            BigDecimal x = new BigDecimal(xValue);
+            x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
+            map.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));  // 格式化为字符串
 
             // 标记是否为标定点（gauges）
             map.put("marked", "0");
@@ -2584,13 +2586,17 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
 
 
-    /**
-     * 数字字符串归一化（防止 360 / 360.0 / 3.6E2 比较失败）
-     */
-    private String normalizeNumberString(String numStr) {
-        return new BigDecimal(numStr)
-                .stripTrailingZeros()
-                .toPlainString();
+    public int normalizeNumberString(String value) {
+        try {
+            // 将字符串转换为 double 类型
+            double number = Double.parseDouble(value);
+
+            // 将 double 类型转换为 int 只保留整数部分
+            return (int) number;
+        } catch (NumberFormatException e) {
+            // 如果转换失败，可以返回默认值（如 -1）或抛出异常
+            throw new IllegalArgumentException("无法解析数字: " + value, e);
+        }
     }
 
 
@@ -3225,7 +3231,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         ans.add(new FHeadVO("编号", "id", "system", "编号"));
 
         // 2. 波长
-        ans.add(new FHeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
+        ans.add(new FHeadVO("时长(s)", "waveLength", "measure", "时长(s)"));
 
         // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
         if (sampleIds.size() == 1){
@@ -3234,14 +3240,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
             return Result.ok(ans);
         }else{
-            // 根据样品id查询多个样品的样品信息
-            QueryWrapper<FMeasureSample> qw = new QueryWrapper<>();
-            qw.in("id", sampleIds);
-            List<FMeasureSample> samples = fMeasureSampleService.list(qw);
-            if (samples == null || samples.isEmpty()){
-                return Result.fail("样品信息不存在");
-            }
-            for (FMeasureSample sample : samples) {
+            for (String sampleId : sampleIds) {
+                FMeasureSample sample = fMeasureSampleService.getById(sampleId);
                 ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
                 ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
             }
@@ -3256,7 +3256,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return
      */
     @Override
-    public List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds) {
+    public List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds,Integer digit) {
         // 校验参数
         if (StringUtils.isEmpty(taskId) || sampleIds == null || sampleIds.isEmpty()) {
             return null;
@@ -3284,8 +3284,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 for (FPeakValleyMarking peak : peaks) {
                     Map<String, Object> map = new HashMap<>();
                     map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), peak.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), peak.getY());
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
                     map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
                     map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark()!=null?peak.getRemark():"");
                     arrayList.add(map);
@@ -3295,8 +3295,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 for (FPeakValleyMarking valley : valleys) {
                     Map<String, Object> map = new HashMap<>();
                     map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), valley.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), valley.getY());
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(),formatBigDecimal(valley.getY(), digit));
                     map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
                     map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark()!=null?valley.getRemark():"");
                     arrayList.add(map);
@@ -3306,8 +3306,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 for (FPeakValleyMarking gaugePoint : gaugePoints) {
                     Map<String, Object> map = new HashMap<>();
                     map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), gaugePoint.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), gaugePoint.getY());
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(gaugePoint.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
                     map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
                     map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark()!=null?gaugePoint.getRemark():"");
                     arrayList.add(map);
@@ -3317,26 +3317,29 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return arrayList;
         }else{
             // 多样品表数据
+            List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
             // 根据任务id和样品id查询分析数据
-            QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-            eq.eq("task_id", taskId);
-            eq.eq("analysis_number",1);
-            eq.in("sample_key", sampleIds);
-
-            List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(eq);
+            for (String sampleId : sampleIds) {
+                QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
+                wrapper.eq("task_id", taskId);
+                wrapper.eq("analysis_number",1);
+                wrapper.eq("sample_key", sampleId);
+                wrapper.last("limit 1");
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper);
+                analysisDataList.add(analysisData);
+            }
             if (analysisDataList == null || analysisDataList.isEmpty()) {
                 return null;
             }
 
-            List<Integer> list = new ArrayList<>();
+            List<String> list = new ArrayList<>();
             List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
             for (String s : result) {
                 String[] split = s.split(",");
-                double value = Double.parseDouble(split[0]);
-                list.add((int) value);
+                list.add(formatBigDecimal(split[0], 1));
             }
             int id = 1;
-            for (Integer i : list) {
+            for (String i : list) {
                 Map<String, Object> map = new HashMap<>();
                 Map<String,Object> resultMap = new HashMap<>();
                 resultMap.put(SampleTableEnum.ID.getIdentity(),id++);
@@ -3346,16 +3349,15 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
                     for (String data : datas) {
                         String[] split = data.split(",");
-                        double value = Double.parseDouble(split[0]);
-                        int value1 = (int) value;
-                        if (value1 == i) {
+                        String s = formatBigDecimal(split[0], 1);
+                        if (Objects.equals(s, i)) {
                             if (resultMap.get("sampleNumber") == null){
                                 List<String> y = new ArrayList<>();
-                                y.add(split[1]);
+                                y.add(formatBigDecimal(split[1], digit));
                                 resultMap.put("sampleNumber", y);
                             }else{
                                 List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                y.add(split[1]);
+                                y.add(formatBigDecimal(split[1], digit));
                                 resultMap.put("sampleNumber", y);
                             }
                             boolean statePeak = false;
@@ -3555,6 +3557,22 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 // 可以在这里处理无效的模式
                 System.out.println("无效的光度模式: " + mode);
         }
+    }
+
+
+    /**
+     * 格式化 BigDecimal，保留指定的小数位数
+     * @param valueStr
+     * @param digit
+     * @return
+     */
+
+    public static String formatBigDecimal(String valueStr, int digit) {
+        // 将字符串转换成 BigDecimal
+        BigDecimal value = new BigDecimal(valueStr);
+        BigDecimal decimal = value.setScale(digit, RoundingMode.HALF_UP);
+        // 设置小数位数并进行舍入
+        return DataCountUtil.addZero(Double.valueOf(decimal.stripTrailingZeros().toPlainString()), digit);
     }
 
 }

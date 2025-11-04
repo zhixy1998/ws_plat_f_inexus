@@ -213,6 +213,9 @@ public class MessageUtil {
                             timeoutMs = 1300;
                         }
                     }
+                    if(cmdId.equals("Stop")){
+                        break;
+                    }
 
                 } catch (SocketTimeoutException e) {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
