@@ -441,6 +441,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+
+        String changeLampWaveLength = parameter.getChangeLampWaveLength();
+        Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+        list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
         if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
             list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
             list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
@@ -536,6 +541,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             List<String> waveLengths = parameter.getWaveLength();
 
             list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+
+            String changeLampWaveLength = parameter.getChangeLampWaveLength();
+            Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
             if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
                 list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
                 list.add(new Command("SetGain", new Object[]{parameter.getGain()}));

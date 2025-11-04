@@ -342,7 +342,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         FRationCountDataInfo yAbs = new FRationCountDataInfo();
         yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
         yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-        yAbs.setColValue(0.0);
+        yAbs.setColValue("0.0");
 
         List<FRationCountDataInfo> currentList = new ArrayList<>();
 
@@ -353,13 +353,13 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             double sub = 0.0;
             //计算平均值
             for (FRationCountDataInfo dataInfo : emptyList) {
-                sub += dataInfo.getColValue();
+                sub += Double.parseDouble(dataInfo.getColValue());
             }
             minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
             //添加到空白列表
             currentList.add(ansData);
-            double v = ansData.getColValue() - minuend;
-            yAbs.setColValue(DataCountUtil.formatValue(digit, v));
+            double v = Double.parseDouble(ansData.getColValue()) - minuend;
+            yAbs.setColValue(DataCountUtil.formatValueWithBigDecimal(digit, String.valueOf(v)));
             currentList.add(yAbs);
             dealData.setCountData(currentList);
             emptyDataList.add(dealData);
@@ -371,8 +371,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 for (FRationCountDataInfo dataInfo : list) {
                     if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                         newList.add(dataInfo);
-                        double v1 = dataInfo.getColValue() - minuend;
-                        yAbs.setColValue(DataCountUtil.formatValue(digit, v1));
+                        double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
+                        yAbs.setColValue(String.valueOf(DataCountUtil.formatValue(digit, v1)));
                         newList.add(yAbs);
                     }
                 }
@@ -385,9 +385,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             emptyDataList.clear();
             minuend = 0.0;
             emptyList.add(ansData);
-            minuend = ansData.getColValue();
-            double sumAbs = ansData.getColValue() - minuend;
-            yAbs.setColValue(DataCountUtil.formatValue(digit, sumAbs));
+            minuend = Double.parseDouble(ansData.getColValue());
+            double sumAbs = Double.parseDouble(ansData.getColValue()) - minuend;
+            yAbs.setColValue(String.valueOf(DataCountUtil.formatValue(digit, sumAbs)));
             currentList.add(yAbs);
             currentList.add(ansData);
             dealData.setCountData(currentList);
@@ -708,7 +708,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("sampleId", sample.getId());
             jsonObject.put("key", data.getIdentity());
-            jsonObject.put("value", DataCountUtil.addZero(data.getColValue(), digit));
+            jsonObject.put("value", DataCountUtil.addZero(Double.valueOf(data.getColValue()), digit));
             session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
             jsonObject.put("key", "samplingTime");

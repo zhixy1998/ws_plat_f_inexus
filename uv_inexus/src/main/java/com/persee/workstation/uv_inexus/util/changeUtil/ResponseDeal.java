@@ -238,19 +238,13 @@ public class ResponseDeal {
 
         // 如果通过检查，则进行解析
         int wl = (((lastResponse[4] & 0xFF) << 8) | (lastResponse[5] & 0xFF));
-        double ChangeLampWl = wl / 50.0;
+        double ChangeLampWl = wl;
         String rawchagelampwl = String.valueOf(ChangeLampWl);
 
         System.out.printf("波长原始值=%d, 解析结果=%.2f\n", wl, ChangeLampWl);
 
         MeasureController.addWlData(rawchagelampwl);
-
-        if (DetectionConstants.detectionInfo != null && rawchagelampwl != null) {
-            DetectionConstants.detectionInfo.put("changeLampWl", rawchagelampwl);
-        }
-
-        result = "true";
-        return true;
+        return wl;
     }
 
 

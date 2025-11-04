@@ -801,6 +801,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             list.add(new Command("SetPhotoMode", new Object[]{wave}));
             list.add(new Command("SetResponseTime", new Object[]{responseTime}));
+            String changeLampWaveLength = parameter.getChangeLampWaveLength();
+            Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
             Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
             list.add(new Command("SetWl", new Object[]{step}));
             if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {

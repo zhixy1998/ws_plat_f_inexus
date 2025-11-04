@@ -203,6 +203,9 @@ public class LiveDetectionWebSocket {
                                 vo.setDataList(dataList);
                             } else if (comId.equals(LiveDetectionCmdEnum.GetPhotoMode.getComId())) {
                                 vo.setLuminosity(WaveLengthEnum.getName(DetectionConstants.luminosity));
+                            } else if (comId.equals(LiveDetectionCmdEnum.GetChangeLampWl.getComId())) {
+                                Double v = formulaUtil.calculateWl(Double.parseDouble(parseResult.toString()), deviceSerialNumber);
+                                vo.setChangeLampWl(String.valueOf(v));
                             }
                         }
 
