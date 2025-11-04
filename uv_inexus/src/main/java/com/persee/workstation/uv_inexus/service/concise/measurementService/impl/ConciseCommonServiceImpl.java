@@ -844,9 +844,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             FMeasureData data = null;
             if (sampleIdList.size()==1){
                 // 根据任务id个样品id查询测量信息
-                LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(FMeasureData::getId, taskId)
-                        .eq(FMeasureData::getSampleKey, sampleIdList.get(0));
+                QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+                wrapper.eq("task_id", taskId)
+                        .eq("sample_key", sampleIdList.get(0))
+                        .last("limit 1");
                 data=fMeasureDataService.getOne(wrapper);
             }
             SpectralReportVo vo = new SpectralReportVo();

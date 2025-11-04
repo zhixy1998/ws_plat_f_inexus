@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
@@ -31,6 +32,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,6 +105,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private SystemUserManageDAO systemUserManageDAO;
+
+    @Autowired
+    private FormulaUtil formulaUtil;
 
     /**
      * 当WebSocket连接建立后调用此方法
@@ -319,6 +324,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
         measureStatus = true;
 
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
+
         while (true) {
             if (Thread.currentThread().isInterrupted()) {
                 System.out.println("线程被中断，终止任务");
@@ -329,6 +336,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             while (!Constants.measurd_data.isEmpty()) {
                 ChangeParam changeParam = Constants.measurd_data.remove(0);
                 JSONObject point = new JSONObject();
+
+                Double v = formulaUtil.calculateWavelength(Double.parseDouble(changeParam.getWl()), linearSegment);
+                changeParam.setWl(v.toString());
                 point.put("nm", changeParam.getWl());
 
                 JSONObject payload = new JSONObject();

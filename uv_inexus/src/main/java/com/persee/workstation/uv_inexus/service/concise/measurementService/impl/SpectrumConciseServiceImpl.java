@@ -53,6 +53,7 @@ import com.persee.workstation.uv_inexus.service.guide.systemManageService.System
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -143,6 +144,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Autowired
     private DevMessageUtil devMessageUtil;
 
+    @Autowired
+    private FormulaUtil formulaUtil;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -1922,12 +1925,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 开始波长
         Command com2 = new Command();
         com2.setCmdId(SetParamEnum.SetStartWl.getComId());
-        com2.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
+        double parsed = Double.parseDouble(scanParamInfo.getStartWaveLength());
+        Double v = formulaUtil.calculateStep(parsed, deviceSerialNumber);
+        com2.setParams(new Object[]{v});
         commands.add(com2);
         // 结束波长
         Command com3 = new Command();
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
-        com3.setParams(new Object[]{scanParamInfo.getEndWaveLength()});
+        double parsed2 = Double.parseDouble(scanParamInfo.getEndWaveLength());
+        Double v2 = formulaUtil.calculateStep(parsed2, deviceSerialNumber);
+        com3.setParams(new Object[]{v2});
         commands.add(com3);
         // 扫描间隔
         Command com4 = new Command();
@@ -1947,7 +1954,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 换灯波长
         Command com7 = new Command();
         com7.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
-        com7.setParams(new Object[]{scanParamInfo.getChangeLampWaveLength()});
+        double parsed3 = Double.parseDouble(scanParamInfo.getChangeLampWaveLength());
+        Double v3 = formulaUtil.calculateStep(parsed3, deviceSerialNumber);
+        com7.setParams(new Object[]{v3});
         commands.add(com7);
 
         if (scanParamInfo.getLuminosity().equals("3")||scanParamInfo.getLuminosity().equals("4")) {
@@ -2733,17 +2742,25 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
                 return Result.ok(ans);
             }else{
-                // 根据样品id查询多个样品的样品信息
-                QueryWrapper<FMeasureSample> qw = new QueryWrapper<>();
-                qw.in("id", sampleIds);
-                List<FMeasureSample> samples = fMeasureSampleService.list(qw);
-                if (samples == null || samples.isEmpty()){
-                    return Result.fail("样品信息不存在");
-                }
-                for (FMeasureSample sample : samples) {
+
+                // 遍历样品id进行逐个查询
+                for (String sampleId : sampleIds) {
+                    // 根据单个样品id查询样品信息
+                    QueryWrapper<FMeasureSample> qw = new QueryWrapper<>();
+                    qw.eq("id", sampleId);
+                    FMeasureSample sample = fMeasureSampleService.getOne(qw);
+
+                    // 如果样品信息不存在，则跳过当前id或返回错误
+                    if (sample == null) {
+                        return Result.fail("样品信息不存在: " + sampleId);
+                    }
+
+                    // 按顺序添加到结果列表
                     ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
                     ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
                 }
+
+                // 如果查询到的样品信息都有效，返回成功的结果
                 return Result.ok(ans);
             }
         }else{
@@ -2851,15 +2868,27 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
                 return arrayList;
             } else {
-                // 多样品表数据
-                // 根据任务id和样品id查询分析数据
-                QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-                eq.eq("task_id", taskId);
-                eq.eq("analysis_number", 1);
-                eq.in("sample_key", sampleIds);
+                // 创建一个空列表用于存储查询结果
+                List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
 
-                List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(eq);
-                if (analysisDataList == null || analysisDataList.isEmpty()) {
+                // 遍历样品id进行逐个查询
+                for (String sampleId : sampleIds) {
+                    // 根据任务id和样品id查询分析数据
+                    QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
+                    eq.eq("task_id", taskId);
+                    eq.eq("analysis_number", 1);
+                    eq.eq("sample_key", sampleId); // 修改查询条件，逐个查询
+
+                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(eq);
+
+                    // 如果没有找到该样品的分析数据，则跳过
+                    if (analysisData != null) {
+                        analysisDataList.add(analysisData);
+                    }
+                }
+
+                // 如果分析数据列表为空，返回null
+                if (analysisDataList.isEmpty()) {
                     return null;
                 }
 
@@ -2998,13 +3027,27 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
                 return arrayList;
             } else {
-                // 多样品表数据
-                // 根据任务id和样品id查询分析数据
-                QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-                eq.in("id", analysisIds);
+                // 创建一个空列表用于存储查询结果
+                List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
 
-                List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(eq);
-                if (analysisDataList == null || analysisDataList.isEmpty()) {
+                // 遍历样品id进行逐个查询
+                for (String sampleId : sampleIds) {
+                    // 根据任务id和样品id查询分析数据
+                    QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
+                    eq.eq("task_id", taskId);
+                    eq.eq("analysis_number", 1);
+                    eq.eq("sample_key", sampleId); // 修改查询条件，逐个查询
+
+                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(eq);
+
+                    // 如果没有找到该样品的分析数据，则跳过
+                    if (analysisData != null) {
+                        analysisDataList.add(analysisData);
+                    }
+                }
+
+                // 如果分析数据列表为空，返回null
+                if (analysisDataList.isEmpty()) {
                     return null;
                 }
 

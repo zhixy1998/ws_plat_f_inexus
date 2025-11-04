@@ -44,7 +44,7 @@ public class FormulaUtil {
     }
 
     /**
-     * 根据波长计算波长
+     * 根据步长计算波长
      *
      * @param actualStep
      * @param linearSegments

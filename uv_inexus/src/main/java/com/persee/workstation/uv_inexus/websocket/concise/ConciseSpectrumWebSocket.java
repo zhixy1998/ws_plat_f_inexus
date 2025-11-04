@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
@@ -33,6 +34,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +97,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
+    @Autowired
+    private FormulaUtil formulaUtil;
 
     /**
      * 当WebSocket连接建立后调用此方法
@@ -500,6 +504,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 result = new MeasurementResult(
                         Collections.emptyList(),
                         Collections.emptyList(),
+                        Constants.startTime,
+                        Constants.endTime,
                         new ArrayList<>(Constants.instrumentData),
                         new ArrayList<>(Constants.originalCalculationData)
                 );
@@ -514,7 +520,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         // 出锁后保存
         saveOneMeasurementWithSnapshots(task, taskId, sampleId, deviceSerialNumber,
-                result.x, result.y, session, count,
+                result.x, result.y, session, count,result.startTime,result.endTime,
                 result.instrumentSnapshot, result.originalCalcSnapshot);
     }
 
@@ -550,8 +556,10 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         }
 
 
+
         // 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
+        Constants.startTime = LocalDateTime.now();
         measureStatus=true;
 
         List<ChangeParam> baselineCopy = (task.getZeroParam() != null && !task.getZeroParam().isEmpty())
@@ -592,11 +600,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         // 推送剩余数据
         pushRemainingData(session, x, y, pushCount, count, sampleId, luminosity);
+        Constants.endTime = LocalDateTime.now();
 
         // 返回快照 + x/y
         return new MeasurementResult(
                 x,
                 y,
+                Constants.startTime,
+                Constants.endTime,
                 new ArrayList<>(Constants.instrumentData),
                 new ArrayList<>(Constants.originalCalculationData)
         );
@@ -700,28 +711,37 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Constants.measurd_data.remove(0);
             baselineCopy.remove(0);
         } else {
+            List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("2")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + s);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + s);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(s));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
                 String yy = String.valueOf((sData / 8388607) * 100);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
                 String yy = String.valueOf((rData / 8388607) * 100);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             }
             Constants.measurd_data.remove(0);
@@ -741,6 +761,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                                  List<Double> y,
                                                  WebSocketSession session,
                                                  Integer number,
+                                                 LocalDateTime startTime,
+                                                 LocalDateTime endTime,
                                                  List<String> instrumentSnapshot,
                                                  List<String> originalCalcSnapshot) {
         measureStatus=false;
@@ -812,8 +834,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             measureData.setSampleKey(sampleId);
             measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot)); // 使用快照
             measureData.setOriginalCalculationData(JSON.toJSONString(listData));
-            measureData.setMeasurementStartTime(Constants.startTime);
-            measureData.setMeasurementEndTime(Constants.endTime);
+            measureData.setMeasurementStartTime(startTime);
+            measureData.setMeasurementEndTime(endTime);
             measureData.setIsDelete("0");
             measureData.setIsSave("1");
             traceDataService.save(measureData);
@@ -857,8 +879,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 );
                 measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
                 measureData.setOriginalCalculationData(JSON.toJSONString(listData));
-                measureData.setMeasurementStartTime(Constants.startTime);
-                measureData.setMeasurementEndTime(Constants.endTime);
+                measureData.setMeasurementStartTime(startTime);
+                measureData.setMeasurementEndTime(endTime);
                 measureData.setIsSave("1");
                 traceDataService.updateById(measureData);
 
@@ -878,8 +900,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 measureData.setSampleKey(sampleId);
                 measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
                 measureData.setOriginalCalculationData(JSON.toJSONString(listData));
-                measureData.setMeasurementStartTime(Constants.startTime);
-                measureData.setMeasurementEndTime(Constants.endTime);
+                measureData.setMeasurementStartTime(startTime);
+                measureData.setMeasurementEndTime(endTime);
                 measureData.setIsDelete("0");
                 measureData.setIsSave("1");
                 traceDataService.save(measureData);
@@ -1018,14 +1040,21 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     class MeasurementResult {
         List<Double> x;
         List<Double> y;
+        LocalDateTime startTime;
+        LocalDateTime endTime;
         List<String> instrumentSnapshot;
         List<String> originalCalcSnapshot;
 
-        MeasurementResult(List<Double> x, List<Double> y,
+        MeasurementResult(List<Double> x,
+                          List<Double> y,
+                          LocalDateTime startTime,
+                          LocalDateTime endTime,
                           List<String> instrumentSnapshot,
                           List<String> originalCalcSnapshot) {
             this.x = x;
             this.y = y;
+            this.startTime = Constants.startTime;
+            this.endTime = Constants.endTime;
             this.instrumentSnapshot = instrumentSnapshot;
             this.originalCalcSnapshot = originalCalcSnapshot;
         }
