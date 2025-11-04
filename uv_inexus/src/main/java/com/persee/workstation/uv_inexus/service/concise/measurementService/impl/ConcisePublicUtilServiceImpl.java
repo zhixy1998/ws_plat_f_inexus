@@ -20,6 +20,8 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -33,6 +35,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -148,6 +151,90 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
         }
 
         return R.ok(true);
+    }
+
+
+    @Override
+    public R<Boolean> checkApproximateRange(FRoundingVO vo) {
+        List<FRoundingParamVO> params = vo.getRoundingParams();
+
+        // 1. 检查每个区间内部的合法性
+        for (FRoundingParamVO param : params) {
+            Double lowerLimit = param.getLowerLimit();
+            Double upperLimit = param.getUpperLimit();
+
+            // 只有当下限和上限都不为空时才进行检查
+            if (lowerLimit != null && upperLimit != null) {
+                // 下限值不能大于上限值
+                if (lowerLimit > upperLimit) {
+                    return R.fail("下限值不能大于上限值");
+                }
+                // 如果下限值等于上限值且为有限值，必须同时包含两端点
+                if (lowerLimit.equals(upperLimit)) {
+                    if (!param.getIsLowerLimitIncluded() || !param.getIsUpperLimitIncluded()) {
+                        return R.fail("当上下限值相等且为有限值时，必须同时包含两端点");
+                    }
+                }
+            }
+        }
+
+        // 2. 检查区间之间是否重叠
+        // 过滤掉无效区间（上下限都为null）
+        List<FRoundingParamVO> validParams = params.stream()
+                .filter(p -> p.getLowerLimit() != null || p.getUpperLimit() != null)
+                .collect(Collectors.toList());
+
+        // 按下限值排序，null值（负无穷）排在最前
+        List<FRoundingParamVO> sortedParams = validParams.stream()
+                .sorted((p1, p2) -> {
+                    Double lower1 = p1.getLowerLimit();
+                    Double lower2 = p2.getLowerLimit();
+
+                    // null值处理（视为负无穷）
+                    if (lower1 == null) return -1;
+                    if (lower2 == null) return 1;
+
+                    return lower1.compareTo(lower2);
+                })
+                .collect(Collectors.toList());
+
+        // 检查相邻区间是否有重叠
+        for (int i = 0; i < sortedParams.size() - 1; i++) {
+            if (isOverlapping(sortedParams.get(i), sortedParams.get(i + 1))) {
+                return R.fail("区间之间不能存在重叠");
+            }
+        }
+
+        return R.ok(true);
+    }
+
+    /**
+     * 判断两个区间是否重叠
+     *
+     * @param interval1 第一个区间
+     * @param interval2 第二个区间
+     * @return 如果重叠返回true，否则返回false
+     */
+    private boolean isOverlapping(FRoundingParamVO interval1, FRoundingParamVO interval2) {
+
+        Double upper1 = interval1.getUpperLimit();
+        boolean includeUpper1 = Boolean.TRUE.equals(interval1.getIsUpperLimitIncluded());
+
+        Double lower2 = interval2.getLowerLimit();
+        boolean includeLower2 = Boolean.TRUE.equals(interval2.getIsLowerLimitIncluded());
+
+        // 处理null边界值（null表示无穷）
+        if (upper1 == null || lower2 == null) {
+            return true;
+        }
+
+        if (upper1 > lower2) {
+            return true;
+        } else if (upper1.equals(lower2)) {
+            return includeUpper1 && includeLower2;
+        }
+
+        return false;
     }
 
 }

@@ -12,11 +12,13 @@
 
 package com.persee.workstation.uv_inexus.dao.guide.instrumentDao;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import org.apache.ibatis.annotations.Param;
 
+@DS("guide")
 public interface DeviceInfoDAO extends BaseMapper<DeviceInfoPO> {
 
     String getIp(@Param("device_serial_number") String deviceSerialNumber);
@@ -27,4 +29,8 @@ public interface DeviceInfoDAO extends BaseMapper<DeviceInfoPO> {
     int updateFormula(@Param("deviceSerialNumber") String deviceSerialNumber, @Param("linearSegment") String linearSegment);
     //根据序列号获取计算公式
     String getFormula(@Param("deviceSerialNumber") String deviceSerialNumber);
+
+    Integer queryDeviceActivateStatus(@Param("deviceSerialNumber") String deviceSerialNumber);
+
+    void updateDeviceActivateStatus(@Param("deviceSerialNumber") String deviceSerialNumber, @Param("activateStatus") Integer activateStatus);
 }

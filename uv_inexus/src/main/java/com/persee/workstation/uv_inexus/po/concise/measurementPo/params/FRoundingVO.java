@@ -25,6 +25,9 @@ public class FRoundingVO {
     @ApiModelProperty("修约变量")
     private String resultIdentity;
 
+    @ApiModelProperty("修约名称")
+    private String resultIdentityName;
+
     @ApiModelProperty("修约条件")
     private List<FRoundingParamVO> roundingParams;
 

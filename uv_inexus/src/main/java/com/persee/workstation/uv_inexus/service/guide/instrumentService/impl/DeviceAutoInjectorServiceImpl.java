@@ -41,7 +41,7 @@ public class DeviceAutoInjectorServiceImpl implements DeviceAutoInjectorService 
     @Autowired
     DeviceInfoService infoService;
 
-    @Value("缺少设备序列号！")
+    @Value("请先连接仪器！")
     private String misSerialNumber;
 
     @Override
@@ -142,11 +142,15 @@ public class DeviceAutoInjectorServiceImpl implements DeviceAutoInjectorService 
 
         DeviceAutoInjectorPO injectorPO = dao.selectOne(queryWrapper);
         if (injectorPO == null) {
-            return R.fail("该序列号未查找到进样器");
+            //设置默认值
+            injectorPO = new DeviceAutoInjectorPO();
+            injectorPO.setDeviceSerialNumber(deviceSerialNumber);
+            injectorPO.setCreateBy(deviceSerialNumber);
+
         } else {
             injectorPO.setParamList(selectInjectorTray(deviceSerialNumber));
-            return R.ok(injectorPO);
         }
+        return R.ok(injectorPO);
 
     }
 

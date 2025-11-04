@@ -28,6 +28,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
@@ -70,6 +71,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
     private FMeasureTaskService tMeasureTaskService;
     @Autowired
     private DevMessageUtil devMessageUtil;
+
+    @Autowired
+    FormulaUtil formulaUtil;
 
     @Autowired
     private FMeasureMethodService tMeasureMethodService;
@@ -243,7 +247,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             }
 
             //后续添加仪器状态检测
-            String ip = infoService.getIp(deviceSerialNumber);
+
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 boolean repeat = parameter.getRepeatMode().equals("单池重复");
 
@@ -370,10 +374,10 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                     if (repeat) {
                         //重复测量，单独处理！
-                        r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
+                        r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
 
                     } else {
-                        r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                        r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
                     }
 
                     if (isAutoChangePool) {
@@ -446,11 +450,11 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                             measureAbsDataList.add(sumAbsData);
 
                             sampleSend(session, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
-
+                            sendPoint(session, sample.getNormalConcentration(), sumAbsData.getColValue(), parameter);
                         } else {
                             fitCurveData.add(absData);
+                            sendPoint(session, sample.getNormalConcentration(), absData.getColValue(), parameter);
                         }
-                        sendPoint(session, sample.getNormalConcentration(), absData.getColValue(), parameter);
 
                         data.setCountData(measureAbsDataList);
                         rationService.saveSampleMeasureData(data);
@@ -491,6 +495,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 R<FittingReceiveInfo> infoR = rationService.fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
 
                 if (!infoR.getSuccess()) {
+                    log.info("曲线拟合异常");
                     infoService.releaseDevice(deviceSerialNumber);
                     sendAndClose(session, infoR.getMessage());
                     return;
@@ -620,9 +625,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                     if (repeat) {
                         //重复测量，单独处理！
-                        r = singleSampleRepeatMeasure(sample, parameter, task, ip, session.getId());
+                        r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
                     } else {
-                        r = singleSampleSimpleMeasure(sample, parameter, task, ip, session.getId());
+                        r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber, session.getId());
                     }
                     if (isAutoChangePool) {
                         currentPoolNum = Integer.parseInt(sample.getSampleLocation());
@@ -974,7 +979,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
 
     //单个样品普通不微分测量
-    public R<FRationDataVO> singleSampleSimpleMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String ip, String sessionId) throws IOException {
+    public R<FRationDataVO> singleSampleSimpleMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
 
         WebSocketSession session = sessions.get(sessionId);
 
@@ -985,6 +990,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         FRationDataVO dataInfo = new FRationDataVO();
 
         List<String> waveLengths = parameter.getWaveLength();
+        String ip = infoService.getIp(deviceSerialNumber);
 
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
@@ -996,7 +1002,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         }
         LocalDateTime startTime = LocalDateTime.now();
         for (String waveLength : waveLengths) {
-            list.add(new Command("SetWl", new Object[]{waveLength}));
+            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+            list.add(new Command("SetWl", new Object[]{step}));
             list.add(new Command("Measure", new Object[]{}));
 
             R<ChangeParam> res = null;
@@ -1091,7 +1098,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         return R.ok();
     }
 
-    public R<FRationDataVO> singleSampleRepeatMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String ip, String sessionId) throws IOException {
+    public R<FRationDataVO> singleSampleRepeatMeasure(FMeasureSample sample, FRationParameter parameter, FMeasureTask task, String deviceSerialNumber, String sessionId) throws IOException {
         int repeatCount = Integer.parseInt(parameter.getRepeatCount());
 
         WebSocketSession session = sessions.get(sessionId);
@@ -1103,6 +1110,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         FRationDataVO ans = new FRationDataVO();
 
         List<String> waveLengths = parameter.getWaveLength();
+
+        String ip = infoService.getIp(deviceSerialNumber);
 
         LocalDateTime startTime = LocalDateTime.now();
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
@@ -1116,8 +1125,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
         for (int i = 0; i < repeatCount; i++) {
             for (String waveLength : waveLengths) {
-                list.add(new Command("SetWl", new Object[]{waveLength}));
-               list.add(new Command("Measure", new Object[]{}));
+                Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+                list.add(new Command("SetWl", new Object[]{step}));
+                list.add(new Command("Measure", new Object[]{}));
 
                 R<ChangeParam> res = null;
                 try {
@@ -1162,14 +1172,18 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("sampleId", sample.getId());
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
-                    jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.abs.getCode() + "-" + i);
+                    jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
                     jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getAbsValue()));
                     session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
-                    jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.tPercent.getCode() + "-" + i);
                     jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue()));
                     session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
+                    jsonObject.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
+                    jsonObject.put("value", originDataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+
                 }
 
                 list.clear();

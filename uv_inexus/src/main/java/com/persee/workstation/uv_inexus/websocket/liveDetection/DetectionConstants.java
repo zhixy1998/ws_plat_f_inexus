@@ -23,7 +23,7 @@ public class DetectionConstants {
     /**
      * 校零结果
      */
-    public static volatile LinkedHashMap<String, ChangeParam> zeroResult = new LinkedHashMap<>();
+    public static volatile LinkedHashMap<Double, ChangeParam> zeroResult = new LinkedHashMap<>();
     /**
      * 采集数据间隔,单位ms
      */

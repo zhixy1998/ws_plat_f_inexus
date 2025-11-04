@@ -45,6 +45,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
@@ -56,6 +57,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMetho
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
@@ -106,6 +108,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
     DevMessageUtil devMessageUtil;
+
+    @Autowired
+    FormulaUtil formulaUtil;
 
     @Autowired
     RestUtil restUtil;
@@ -631,22 +636,32 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         // 6.3 修约设置校验（最多10个）
         List<FRoundingVO> approxParams = parameter.getApproxParams();
-        if (approxParams != null && !approxParams.isEmpty() && approxParams.size() > 10) {
-            return R.fail("修约设置最多支持10个规则，当前数量：" + approxParams.size());
+        if (approxParams != null && !approxParams.isEmpty()) {
+
+            if (approxParams.size() > 10) {
+                return R.fail("最多支持修约10个变量" + approxParams.size());
+            }
+            for (FRoundingVO approxParam : approxParams) {
+
+                if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
+                    return R.fail("修约设置" + approxParam.getResultIdentity() + "的修约条件不能为空");
+                }
+                if (approxParam.getRoundingParams().size() > 10) {
+                    return R.fail("修约设置" + approxParam.getResultIdentity() + "的修约条件数量不能超过10个");
+                }
+
+                R<Boolean> r = concisePublicUtilService.checkApproximateRange(approxParam);
+                if (!r.getSuccess()) {
+                    return r;
+                }
+            }
         }
+
 
         // 6.4 质控设置校验（最多10个，类型合法）
         List<FQualityConfVO> qcParams = parameter.getQcParams();
-        if (qcParams != null && !qcParams.isEmpty()) {
-            if (qcParams.size() > 10) {
-                return R.fail("质控设置最多支持10个规则，当前数量：" + qcParams.size());
-            }
-            Set<String> validQcTypes = new HashSet<>(Arrays.asList("Abs", "Blank", "Parallel", "R", "Recovery", "Slope"));
-            for (FQualityConfVO qc : qcParams) {
-                if (qc == null || isBlank(qc.getControlType()) || !validQcTypes.contains(qc.getControlType())) {
-                    return R.fail("质控类型不合法（可选值：" + String.join("、", validQcTypes) + "）");
-                }
-            }
+        if (qcParams != null && !qcParams.isEmpty() && qcParams.size() > 10) {
+            return R.fail("质控设置最多支持10个规则，当前数量：" + qcParams.size());
         }
 
         // 7. 继承参数校验（方法名称等长度限制）
@@ -2472,10 +2487,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    fMeasureTaskAttachmentService.saveOrUpdate(attachment);
                 }
+                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+                fMeasureTaskAttachmentService.saveOrUpdate(attachment);
             }
         }
 
@@ -3266,6 +3280,102 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
+    public List<FRationCountDataInfo> dataRounding(List<FRationCountDataInfo> dataVO, FPhotometricParameter parameter) {
+
+        List<FRoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams == null || approxParams.isEmpty()) {
+            log.info("没有设置修约参数");
+            return dataVO;
+        }
+        List<FPreCountResultParam> resultParams = parameter.getResultParams();
+        if (resultParams == null || resultParams.isEmpty()) {
+            log.info("没有设置待计算结果参数，不做修约处理");
+            return dataVO;
+        }
+
+        if (dataVO == null || dataVO.isEmpty()) {
+            log.info("没有待修约的数据");
+            return dataVO;
+        }
+        Map<String, String> map = new HashMap<>();
+        for (FPreCountResultParam param : resultParams) {
+            map.put(param.getResultIdentity(), param.getResultIdentity() + "-" + param.getFormulaText());
+        }
+
+        map.put(SampleTableEnum.FIT_CONCENTRATION.getIdentity(), SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+        Map<String, List<FRoundingParamVO>> roundingInfo = new HashMap<>();
+
+        for (FRoundingVO param : approxParams) {
+            String identity = param.getResultIdentity();
+            if (map.containsKey(identity)) {
+                String key = map.get(identity);
+                roundingInfo.put(key, param.getRoundingParams());
+            }
+        }
+        for (FRationCountDataInfo count : dataVO) {
+
+            String resultIdentity = count.getIdentity();
+
+            List<FRoundingParamVO> list = roundingInfo.get(resultIdentity);
+            if (roundingInfo.containsKey(resultIdentity) && list != null) {
+                Double s = roundData(count.getColValue(), list);
+                count.setColValue(s);
+            }
+        }
+
+        return dataVO;
+    }
+
+    private Double roundData(Double value, List<FRoundingParamVO> roundingParams) {
+        Double ans = value;
+        for (FRoundingParamVO param : roundingParams) {
+            Double lowerLimit = param.getLowerLimit();
+
+            Double upperLimit = param.getUpperLimit();
+
+            // 检查下限
+            boolean lowerCheck = true;
+            if (lowerLimit != null) {
+                if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+                    // 包含下限
+                    lowerCheck = value >= lowerLimit;
+                } else {
+                    // 不包含下限
+                    lowerCheck = value > lowerLimit;
+                }
+            }
+
+            // 检查上限
+            boolean upperCheck = true;
+            if (upperLimit != null) {
+                if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+                    // 包含上限
+                    upperCheck = value <= upperLimit;
+                } else {
+                    // 不包含上限
+                    upperCheck = value < upperLimit;
+                }
+            }
+
+            if (lowerCheck && upperCheck) {
+                String roundingType = param.getRoundingType();
+
+                if (roundingType == null) {
+                    return value;
+                }
+
+                if (roundingType.equals(RoundingTypeEnums.SIGNIFICANT_FIGURES.getCode())) {
+                    ans = Double.valueOf(DataCountUtil.formatToSignificantDigits(param.getDecimalPlaces(), value));
+                } else {
+                    ans = Double.valueOf(String.valueOf(DataCountUtil.formatValue(param.getDecimalPlaces(), value)));
+                }
+                return ans;
+            }
+        }
+        return value;
+    }
+
+    @Override
     public R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit) {
         if (!StringUtils.hasText(task.getTableInfo())) {
             return R.fail("缺少分析参数，无法计算分析");
@@ -3317,13 +3427,16 @@ public class RationServiceConciseImpl implements RationConciseService {
             Optional<FInputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
                     mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
             if (!mapTableHead.isPresent()) {
-                return R.fail("缺少参数映射：" + inputParam.getParamName());
+                log.info("参数{}未添加映射，跳过", inputParam.getParamName());
+                continue;
             }
-            identity.append(mapTableHead.get().getParamIdentity()).append(",");
+
             String s = allData.getString(mapTableHead.get().getHeadIdentity());
             if (!StringUtils.hasText(s)) {
-                return R.fail("缺少数据！");
+                log.info("变量{}缺少数据！跳过", inputParam.getParamName());
+                continue;
             }
+            identity.append(mapTableHead.get().getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
@@ -3902,8 +4015,9 @@ public class RationServiceConciseImpl implements RationConciseService {
             Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{WaveLengthEnum.abs.getCode()});
             devMessageUtil.wavelengthLocate(command, ip);
 
-            double v = Double.parseDouble(s);
-            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
+            Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
+
+            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
@@ -3917,9 +4031,13 @@ public class RationServiceConciseImpl implements RationConciseService {
                 return Result.fail(zero.getMessage());
             }
             ChangeParam changeParam = zero.getData();
-            changeParam.setWl(s);
+            Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+            changeParam.setWl(String.valueOf(v));
             list.add(changeParam);
             wave = s;
+            if (StringUtils.hasText(changeParam.getWl())) {
+                DetectionConstants.zeroResult.put(Double.valueOf(changeParam.getWl()), changeParam);
+            }
         }
         task.setZeroParam(JSON.toJSONString(list));
 
