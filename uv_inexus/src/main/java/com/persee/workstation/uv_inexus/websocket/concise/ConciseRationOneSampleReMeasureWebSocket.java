@@ -140,9 +140,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         String updateBy = getQueryParam(query, "updateBy");
         int di = Integer.parseInt(getQueryParam(query, "digit"));
-        isAvg = StringUtils.hasText(getQueryParam(query, "avg"));
-        isSd = StringUtils.hasText(getQueryParam(query, "sd"));
-        isRsd = StringUtils.hasText(getQueryParam(query, "rsd"));
+        isAvg = getQueryParam(query, "avg").equals("true");
+        isSd = getQueryParam(query, "sd").equals("true");
+        isRsd = getQueryParam(query, "rsd").equals("true");
 
         if (deviceSerialNumber == null) {
             sendAndClose(session, "未连接仪器");
@@ -486,8 +486,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
             JSONObject currentInfo = new JSONObject();
-            currentInfo.put("waveLength", waveLength);
-            currentInfo.put("currentValue", data);
+            currentInfo.put("waveLength", waveLength + "nm");
+            currentInfo.put("currentValue", data + "Abs");
             session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
             FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
@@ -603,8 +603,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
                 JSONObject currentInfo = new JSONObject();
-                currentInfo.put("waveLength", waveLength);
-                currentInfo.put("currentValue", data);
+                currentInfo.put("waveLength", waveLength + "nm");
+                currentInfo.put("currentValue", data + "Abs");
                 session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();

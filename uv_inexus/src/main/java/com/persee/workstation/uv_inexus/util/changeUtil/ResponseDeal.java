@@ -15,6 +15,7 @@
 * */
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -98,7 +99,7 @@ public class ResponseDeal {
             case "BaseLineFast":
                 return parseBaseLine(responses);
             case "GetWlList":
-                return parseWllist(responses);
+                return parseWlList(responses);
 
 
             case "SetResponseTime":
@@ -283,15 +284,6 @@ public class ResponseDeal {
         float time = (lastResponse[4] & 0xFF) / 100.0f;
         String rawtime = String.valueOf(time);
         MeasureController.addTimeData(rawtime);
-
-        long l = System.currentTimeMillis();
-        if (DetectionConstants.detectionInfo != null && rawtime != null) {
-            DetectionConstants.detectionInfo.put("time", rawtime);
-        }
-
-        long l1 = System.currentTimeMillis() - l;
-        System.out.println("耗时：" + l1);
-
         return isEqual;
     }
 
@@ -406,14 +398,14 @@ private static Object parseLampPos(List<byte[]> responses) {
     return pos;
 }
 
-    private static Object parseWllist(List<byte[]> responses) {
+    private static Object parseWlList(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
             result = "false";
             return false;
         }
 
-        List<Map<String, Object>> resultList = new ArrayList<>();
+        ArrayList<StepPoint> resultList = new ArrayList<>();
 
         try {
             for (byte[] resp : responses) {
@@ -433,12 +425,7 @@ private static Object parseLampPos(List<byte[]> responses) {
 
                     int actualStep = ((resp[10] & 0xFF) << 8) | (resp[9] & 0xFF);
 
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("n", n);
-                    item.put("theoryStep", theoryStep);
-                    item.put("actualStep", actualStep);
-
-                    resultList.add(item);
+                    resultList.add(new StepPoint(actualStep, theoryStep, n));
                 }
             }
 

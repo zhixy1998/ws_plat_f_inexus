@@ -99,18 +99,15 @@ public class LiveDetectionWebSocket {
 
     public R<Boolean> startMeasureLoop(String deviceSerialNumber) {
         String deviceIp = infoService.getIp(deviceSerialNumber);
-        R<DatagramSocket> re = messageUtil.getSocket();
-        if (!re.getSuccess()) {
-            log.print("绑定 socket 失败: {}");
-            return R.fail("绑定 socket 失败，请检查网线接口");
-        }
+//        R<DatagramSocket> re = messageUtil.getSocket();
+//        if (!re.getSuccess()) {
+//            log.print("绑定 socket 失败: {}");
+//            return R.fail("绑定 socket 失败，请检查网线接口");
+//        }
 
         Thread measureThread = new Thread(() -> {
             try {
                 // 获取 socket
-
-                DatagramSocket socket = re.getData();
-
                 // 循环发送
                 while (Constants.Running) {
 
@@ -118,6 +115,13 @@ public class LiveDetectionWebSocket {
                         Thread.sleep(1000);
                     }
                     DetectionConstants.isDeviceIdle = false;
+                    R<DatagramSocket> news = messageUtil.getSocket();
+                    if (!news.getSuccess()) {
+                        log.print("绑定 socket 失败: {}");
+                        messagingTemplate.convertAndSend(measureTopic, "请检查网口连接！");
+                        throw new RuntimeException("绑定 socket 失败，请检查网线接口");
+                    }
+                    DatagramSocket socket = news.getData();
 
                     try {
                         Map<String, Transition> xml = protocolItemUtil.loadFromXml(T600xmlPath);
@@ -202,7 +206,7 @@ public class LiveDetectionWebSocket {
                         Thread.sleep(DetectionConstants.interval);
 
                     } catch (Exception e) {
-                        log.print("Measure/GetChangeLampWl/GetCellPos/GetLampPos 循环异常");
+                        log.print("监测线程异常" + e.getMessage());
                         DetectionConstants.isDeviceIdle = true;
                         try {
                             Thread.sleep(DetectionConstants.interval); // 出错时延时重试

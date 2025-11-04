@@ -273,7 +273,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                                            String deviceSerialNumber) {
 
 
-        int interval = Integer.parseInt(param.getIntervalTime()); // 间隔时间（秒）
+        double interval = Double.parseDouble(param.getIntervalTime()); // 间隔时间（秒）
 
         // 根据总时长和间隔计算总任务次数
         int totalTasks = Integer.parseInt(param.getTotalNumber());  // 执行的总次数
@@ -286,7 +286,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         List<ChangeParam> originalData = new ArrayList<>();
         for (int i = 0; i < totalTasks; i++) {
             // 计算任务执行的时间点
-            final long nextExecutionTime = currentStartTime + (i * interval * 1000L);
+            final long nextExecutionTime = (long) (currentStartTime + (i * interval * 1000L));
 
             int finalI = i;
             scheduler.schedule(() -> {
@@ -382,10 +382,17 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             WebSocketSession session,
             String sampleId) throws IOException {
 
+        // 将总时长转换为bigDecimal类型
+        BigDecimal totalTime = new BigDecimal(param.getScanTime());
+        int compareTo = xValue.compareTo(totalTime);
+        if (compareTo > 0) {
+            xValue = totalTime;
+        }
+
         if (param.getLuminosity().equals("1")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
             String y = DataCountUtil.changeTPercentOrAbs2(null,s);
-            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
+            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
@@ -402,7 +409,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(payload.toJSONString()));
         } else if (param.getLuminosity().equals("2")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
+            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(s));
             JSONObject payload = new JSONObject();
@@ -420,7 +427,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("3")) {
             Double sData = Double.valueOf(changeParam.getS());
             String y = String.valueOf((sData / (4095 * 32)) * 100);
-            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
+            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
@@ -438,7 +445,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("4")) {
             Double rData = Double.valueOf(changeParam.getR());
             String y = String.valueOf((rData / (4095 * 32)) * 100);
-            BigDecimal integerPart = xValue.setScale(0, RoundingMode.DOWN);  // 直接舍弃小数部分
+            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();

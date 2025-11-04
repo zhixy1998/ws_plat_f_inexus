@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 
@@ -30,6 +31,8 @@ public interface ConciseCommonService {
     Result<FMethodListWithPageVO> searchMethodButton(FQueryMethodWithPageDto dto);
     // 查询保存状态
     Result querySaveState(String taskId);
+
+    Result<Integer> queryDeviceStatus(String deviceSerialNumber);
 
     // 保存草稿按钮
     Result saveDraftButton(String taskId);
@@ -56,14 +59,14 @@ public interface ConciseCommonService {
     Result<Boolean> checkFormula(FCheckFormulaDto checkFormulaDto);
 
     // 获取报告参数
-    Result obtainReportParameters(String taskId);
+    Result obtainReportParameters(String taskId,String sampleId);
 
 
     // 获取报告所有参数
     Result queryReportAllParameters(String taskId, String sampleId, String serialNumber);
 
     // 新的报表数据查询
-    Result newReportTableDataQuery(String taskId, String sampleId);
+    Result newReportTableDataQuery(String taskId, String sampleId,String analysisId, Boolean allDisplay,Integer digit);
 
     // 是否添加样品
     Result isAddSample(String taskId,String deviceSerialNumber);
@@ -75,4 +78,10 @@ public interface ConciseCommonService {
     Result delTask(String taskId);
     //另存为方法
     Result<String> copy(CopyParam copyParam);
+
+    /**
+     * 检查修约范围是否合格
+     */
+    Result<Boolean> checkApproximateRange(FRoundingVO vo);
+
 }

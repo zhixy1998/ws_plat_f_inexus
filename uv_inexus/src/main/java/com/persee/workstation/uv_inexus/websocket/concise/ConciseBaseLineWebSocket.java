@@ -154,6 +154,10 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 // 释放线程
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
+            Thread thread = taskThreads.get(session.getId());
+            // 强制停止线程
+            thread.interrupt();
+            taskThreads.remove(session.getId());
             if (measureStatus){
                 // 强制停止基线/测量线程
                 Constants.sendMeasureThread.interrupt();
@@ -168,10 +172,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     throw new RuntimeException(e);
                 }
             }
-            Thread thread = taskThreads.get(session.getId());
-            // 强制停止线程
-            thread.interrupt();
-            taskThreads.remove(session.getId());
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();

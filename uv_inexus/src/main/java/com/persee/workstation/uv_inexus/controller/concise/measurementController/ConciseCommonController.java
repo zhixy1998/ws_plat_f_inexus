@@ -16,6 +16,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
@@ -59,6 +60,12 @@ public class ConciseCommonController {
         return conciseCommonService.querySaveState(taskId);
     }
 
+    @GetMapping("queryDeviceStatus")
+    @ApiOperation("查询设备状态")
+    public Result queryDeviceStatus(@RequestParam String deviceSerialNumber) {
+        return conciseCommonService.queryDeviceStatus(deviceSerialNumber);
+    }
+
 
     @GetMapping("saveDraftButton")
     @ApiOperation("保存草稿按钮接口")
@@ -84,7 +91,7 @@ public class ConciseCommonController {
         return conciseCommonService.updateMethod(updateMethodDto);
     }
 
-    @PostMapping("delMethod")
+    @GetMapping("delMethod")
     @ApiOperation("删除方法")
     public Result<String> delMethod(@RequestParam("methodId") String methodId) {
         return conciseCommonService.delMethod(methodId);
@@ -102,7 +109,7 @@ public class ConciseCommonController {
         return conciseCommonService.updateTask(updateTaskDto);
     }
 
-    @PostMapping("delTask")
+    @GetMapping("delTask")
     @ApiOperation("删除历史文件")
     public Result delTask(@RequestParam("taskId") String taskId) {
         return conciseCommonService.delTask(taskId);
@@ -156,8 +163,9 @@ public class ConciseCommonController {
 
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告通用数据接口")
-    public Result obtainReportParameters(@RequestParam String taskId) {
-        return conciseCommonService.obtainReportParameters(taskId);
+    public Result obtainReportParameters(@RequestParam String taskId,
+                                         @RequestParam(required = false) String sampleId) {
+        return conciseCommonService.obtainReportParameters(taskId,sampleId);
     }
 
     @GetMapping("queryReportAllParameters")
@@ -171,8 +179,11 @@ public class ConciseCommonController {
     @GetMapping("queryReportTableData")
     @ApiOperation("查询报告表格数据")
     public Result reportTableDataQuery(@RequestParam String taskId,
-                                       @RequestParam(required = false) String sampleId){
-        return conciseCommonService.newReportTableDataQuery(taskId, sampleId);
+                                       @RequestParam(required = false) String sampleId,
+                                       @RequestParam(required = false) String analysisId,
+                                       @RequestParam(required = false) Boolean allDisplay,
+                                       @RequestParam(required = false) Integer digit){
+        return conciseCommonService.newReportTableDataQuery(taskId, sampleId,analysisId,allDisplay,digit);
     }
 
     @GetMapping("isAddSample")
@@ -183,7 +194,7 @@ public class ConciseCommonController {
 
     @GetMapping("queryDeviceTypeInfo")
     @ApiOperation("查询设备类型信息")
-    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam String deviceSerialNumber) {
+    public Result<DeviceMeasureVO> queryDeviceTypeInfo(@RequestParam(required = false) String deviceSerialNumber) {
         return conciseCommonService.queryDeviceTypeInfo(deviceSerialNumber);
     }
 
@@ -191,5 +202,12 @@ public class ConciseCommonController {
     @ApiOperation("另存为")
     public Result<String> copyProject(@Valid @RequestBody CopyParam copyParam) {
         return  conciseCommonService.copy(copyParam);
+    }
+
+
+    @PostMapping("checkApproximateRange")
+    @ApiOperation("检查修约区间是否正确")
+    public Result<Boolean> checkApproximateRange(@RequestBody FRoundingVO vo) {
+        return conciseCommonService.checkApproximateRange(vo);
     }
 }

@@ -103,6 +103,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     LaTeXConverter latexConverter;
+    @Autowired
+    RationConciseService rationConciseService;
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -239,6 +241,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         vo.setSaveState(true);
         return Result.ok(vo);
+    }
+
+    @Override
+    public Result<Integer> queryDeviceStatus(String deviceSerialNumber) {
+        R<Integer> r = deviceManageService.queryDeviceStatus(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
     /**
@@ -387,6 +399,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         LambdaQueryWrapper<FMeasureTask> fMeasureTaskLambdaQueryWrapper = new LambdaQueryWrapper<>();
         fMeasureTaskLambdaQueryWrapper.eq(FMeasureTask::getMeasureType, methodType)
                 .eq(FMeasureTask::getUserId, userId)
+                .eq(FMeasureTask::getIsDelete,"0")
                 .orderByDesc(FMeasureTask::getEndSaveTime);
 
         if (selectKey != null) {
@@ -548,8 +561,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
 
+    /**
+     * 获取报告参数
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
     @Override
-    public Result obtainReportParameters(String taskId) {
+    public Result obtainReportParameters(String taskId,String sampleId) {
 
         if ((taskId == null)) {
             return Result.fail("任务id不能为空");
@@ -817,6 +836,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             if (method == null) {
                 return Result.fail("方法不存在");
             }
+            List<String> sampleIdList = new ArrayList<>(Arrays.asList(sampleId.split(",")));
+            FMeasureData data = null;
+            if (sampleIdList.size()==1){
+                // 根据任务id个样品id查询测量信息
+                LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(FMeasureData::getId, taskId)
+                        .eq(FMeasureData::getSampleKey, sampleIdList.get(0));
+                data=fMeasureDataService.getOne(wrapper);
+            }
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
@@ -826,6 +854,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setTimeInterval(param.getTimeInterval());
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setRepetitionPattern(param.getRepetitionPattern().equals("0")?"不重复":"单池重复");
+            if (data!=null){
+                vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+                vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
+            }
             if (param.getRepetitionPattern().equals("1")){
                 vo.setRepetitionTime(param.getRepetitionTime());
             }
@@ -854,6 +886,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             if (method == null) {
                 return Result.fail("方法不存在");
             }
+            List<String> sampleIdList = new ArrayList<>(Arrays.asList(sampleId.split(",")));
+            FMeasureData data = null;
+            if (sampleIdList.size()==1){
+                // 根据任务id个样品id查询测量信息
+                LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(FMeasureData::getId, taskId)
+                        .eq(FMeasureData::getSampleKey, sampleIdList.get(0));
+                data=fMeasureDataService.getOne(wrapper);
+            }
+
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             FTimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
@@ -865,6 +907,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setMultiPoolMode(param.getMultiPoolMode().equals("0") ? "顺序单池连续采样" : "循环多池交替采样");
             ///  仪器
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            if (data!=null){
+                vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+                vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
+            }
             // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
             vo.setLuminosityMode(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":param.getLuminosity().equals("3")?"Es":param.getLuminosity().equals("4")?"Er":"");
             vo.setResponseTime(param.getResponseTime());
@@ -1057,8 +1103,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }}
 
 
+    /**
+     * 新建报告表数据查询
+     * @param taskId
+     * @param sampleId
+     * @return
+     */
     @Override
-    public Result newReportTableDataQuery(String taskId, String sampleId) {
+    public Result newReportTableDataQuery(String taskId, String sampleId,String analysisId, Boolean allDisplay,Integer decimalDigits) {
 
         if (!StringUtils.hasText(taskId)) {
             return Result.fail("请选择任务");
@@ -1067,11 +1119,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (task == null) {
             return Result.fail("任务不存在");
         }
-        if (!StringUtils.hasText(sampleId)){
-            return Result.fail("请选择样品");
+        // 根据任务id查询方法,再从json转换为对象方法参数
+        FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail("方法不存在");
         }
-        // 样品根据逗号进行分割然后存入List中
-        List<String> sampleIdList = Arrays.asList(sampleId.split(","));
 
         Integer digit = Constants.DEFAULT_DECIMAL_NUM;
         FQueryDataDTO dataDTO = new FQueryDataDTO();
@@ -1085,7 +1137,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         switch (task.getMeasureType()) {
             case "光度测量": {
                 FPhotometricReportDataVO vo = new FPhotometricReportDataVO();
-                Result<List<FHeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), true, null);
+                if (allDisplay == null) {
+                    allDisplay = false;
+                }
+
+                Result<List<FHeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
@@ -1131,11 +1187,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "定量测定":  {
                 FRationReportDataVO vo = new FRationReportDataVO();
-                Result<List<FHeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true, null);
+                Result<List<FHeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (standHeads.getCode() == 200) {
                     vo.setStandHeadList(standHeads.getData());
                 }
-                Result<List<FHeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), true, null);
+                Result<List<FHeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
                 if (unknowHeads.getCode() == 200) {
                     vo.setUnknowHeadList(unknowHeads.getData());
                 }
@@ -1180,16 +1236,56 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "光谱扫描":
             {
+                if (!StringUtils.hasText(sampleId)){
+                    return Result.fail("请选择样品");
+                }
+                // 样品根据逗号进行分割然后存入List中
+                // 判断方法参数中的重复模式为true的话就分割分析id
+                List<String> sampleIdList = new ArrayList<>(Arrays.asList(sampleId.split(",")));
+
+                // 创建一个新的列表，用于保存删除后的结果，保持顺序不变
+                List<String> filteredSampleIdList = new ArrayList<>(sampleIdList);
+
+                // 遍历任务中的样品id，删除未测试且在报告中的样品
+                List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
+                    if (taskSpecimen.getIsTested().equals("0")) {
+                        // 如果当前样品未测还在报告中，则将当前样品删除
+                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
+                    }
+                }
+
+                // 继续后续操作，使用 filteredSampleIdList 进行查询
+                FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
+                // 判断方法参数中的重复模式为true的话就分割分析id
+                List<String> analysisIdList = new ArrayList<>();
+                if (param.getRepetitionPattern() != null && param.getRepetitionPattern().equals("单池重复")) {
+                    analysisIdList = Arrays.asList(analysisId.split(","));
+                    // 过滤掉分析结果为null的分析id
+                    analysisIdList = analysisIdList.stream()
+                            .filter(id -> {
+                                // 根据分析ID查询分析数据结果
+                                String analysisResult = getAnalysisResultById(id);
+                                return analysisResult != null; // 只保留分析结果不为null的分析ID
+                            })
+                            .collect(Collectors.toList());
+                }
+
+                // 获取数据
                 FSpectrumReportDataVO vo = new FSpectrumReportDataVO();
-                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList);
+                Result<List<FHeadVO>> result = spectrumConciseService.tableHead(taskId, task.getMethodKey(), filteredSampleIdList, analysisIdList);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
+
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, sampleIdList);
-                if (dataList != null){
+                List<Map<String, Object>> dataList = spectrumConciseService.queryTableData(taskId, task.getMethodKey(), filteredSampleIdList, analysisIdList, decimalDigits);
+                if (dataList != null) {
                     vo.setDataList(dataList);
+                } else {
+                    vo.setDataList(new ArrayList<>());
                 }
 
                 if (StringUtils.hasText(task.getTableInfo())) {
@@ -1217,24 +1313,47 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "时间扫描":
             {
+                if (!StringUtils.hasText(sampleId)){
+                    return Result.fail("请选择样品");
+                }
+                // 样品根据逗号进行分割然后存入List中
+                List<String> sampleIdList = new ArrayList<>(Arrays.asList(sampleId.split(",")));
                 FTimeSweepReportDataVo vo = new FTimeSweepReportDataVo();
-                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), sampleIdList);
+
+                // 创建一个新的列表，用于保存删除后的结果，保持顺序不变
+                List<String> filteredSampleIdList = new ArrayList<>(sampleIdList);
+
+                // 遍历任务中的样品id
+                List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
+                    if (taskSpecimen.getIsTested().equals("0")) {
+                        // 如果当前样品未测且在报告中，则将当前样品删除
+                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
+                    }
+                }
+
+                // 获取表头
+                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), filteredSampleIdList);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
+
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, sampleIdList);
-                if (dataList != null){
+                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, filteredSampleIdList, decimalDigits);
+                if (dataList != null) {
                     vo.setDataList(dataList);
                 }
 
+                // 获取额外的映射关系
                 if (StringUtils.hasText(task.getTableInfo())) {
                     FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
                     if (snapshot != null && snapshot.getMapRelation() != null) {
                         vo.setMapRelation(snapshot.getMapRelation());
                     }
                 }
+
+                // 格式化数据中的 "Abs" 值
                 List<Map<String, Object>> dataList1 = vo.getDataList();
                 for (Map<String, Object> stringObjectMap : dataList1) {
                     for (String key : stringObjectMap.keySet()) {
@@ -1253,6 +1372,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
                 return Result.ok(vo);
             }
+
             default:
                 return Result.fail("类型错误,请重新选择");
         }
@@ -1278,7 +1398,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("任务不存在");
         }
 
-        List<FTaskSpecimen> sampleData = com.alibaba.fastjson2.JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         if (sampleData == null) {
             // 如果没有样品，直接创建第一个样品
             return createSample(task, deviceSerialNumber, 1);
@@ -1318,8 +1438,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private int findNextSampleNumber(List<FMeasureSample> samples) {
         // 获取所有样品编号（假设编号的格式为：默认样品1、默认样品2、默认样品N）
         List<Integer> sampleNumbers = samples.stream()
-                .filter(sample -> sample.getSampleName().startsWith("默认样品"))
-                .map(sample -> Integer.parseInt(sample.getSampleName().replace("默认样品", "")))  // 获取样品编号部分
+                .filter(sample -> sample.getSampleName().startsWith("样品"))
+                .map(sample -> Integer.parseInt(sample.getSampleName().replace("样品", "")))  // 获取样品编号部分
                 .collect(Collectors.toList());
 
         // 获取最大编号并加1作为新编号
@@ -1337,8 +1457,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 创建新的样品
         FMeasureSample sample = new FMeasureSample();
         Random random = new Random();
-        int collect = 100 + random.nextInt(900);
-        sample.setSampleName("默认样品" + newSampleNumber);  // 使用新样品编号创建样品名称
+        sample.setSampleName("样品" + newSampleNumber);  // 使用新样品编号创建样品名称
         sample.setSampleNumber(String.valueOf(newSampleNumber));  // 设置新样品编号
 
         // 设置样品池位置
@@ -1421,16 +1540,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result delTask(String  taskId) {
         boolean b=fMeasureTaskService.delTask(taskId);
-        return Result.ok(true);
+        if (b){
+            return Result.ok(true);
+        }
+        return Result.fail();
     }
 
     @Override
     public Result<String> copy(CopyParam copyParam) {
+
         String taskName = copyParam.getTaskName();
         String taskId = copyParam.getTaskId();
         if (com.baomidou.mybatisplus.core.toolkit.StringUtils.isBlank(taskId)){
             return Result.fail("拷贝失败,传入taskId不能为空！！！");
         }
+        rationConciseService.saveButton(copyParam.getTaskId(),copyParam.getUpdateBy());
         try {
             /*
              * 复制任务
@@ -1471,7 +1595,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                                     m.setTaskId(task.getId());
                                     //数据拿到新的样本ID进行关联
                                     m.setSampleKey(newSample.getId());
-
+                                    m.setIsSave("0");
                                     LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper1 = new LambdaQueryWrapper<>();
                                     queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
                                     queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
@@ -1482,6 +1606,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                                             analysisData.setMeasureDataId(m.getId());
                                             analysisData.setTaskId(task.getId());
                                             analysisData.setSampleKey(newSample.getId());
+                                            analysisData.setIsSave("0");
                                         });
                                         fMeasureAnalysisDataService.saveBatch(fMeasureAnalysisDataList);
                                     }
@@ -1499,6 +1624,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
 //            task.setId(null);
             task.setTaskName(taskName);
+            //另存为之后的设置为保存
+            task.setIsSave("0");
+            task.setCreateTime(LocalDateTime.now());
             fMeasureTaskService.save(task);
             return Result.ok("拷贝成功");
 
@@ -1506,6 +1634,110 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("拷贝失败");
         }
 
+    }
+
+
+    /**
+     * 根据分析ID获取分析结果
+     * @param analysisId
+     * @return
+     */
+    private String getAnalysisResultById(String analysisId) {
+        // 根据分析ID从数据库获取分析结果
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
+        if (analysisData == null) {
+            return null;
+        }
+        if (analysisData.getAnalysisResult()==null|| analysisData.getAnalysisResult().isEmpty()){
+            return null;
+        }
+        return analysisData.getAnalysisResult();
+    }
+
+    @Override
+    public Result<Boolean> checkApproximateRange(FRoundingVO vo) {
+        List<FRoundingParamVO> params = vo.getRoundingParams();
+
+        // 1. 检查每个区间内部的合法性
+        for (FRoundingParamVO param : params) {
+            Double lowerLimit = param.getLowerLimit();
+            Double upperLimit = param.getUpperLimit();
+
+            // 只有当下限和上限都不为空时才进行检查
+            if (lowerLimit != null && upperLimit != null) {
+                // 下限值不能大于上限值
+                if (lowerLimit > upperLimit) {
+                    return Result.fail("下限值不能大于上限值");
+                }
+                // 如果下限值等于上限值且为有限值，必须同时包含两端点
+                if (lowerLimit.equals(upperLimit)) {
+                    if (!param.getIsLowerLimitIncluded() || !param.getIsUpperLimitIncluded()) {
+                        return Result.fail("当上下限值相等且为有限值时，必须同时包含两端点");
+                    }
+                }
+            }
+        }
+
+        // 2. 检查区间之间是否重叠
+        // 过滤掉无效区间（上下限都为null）
+        List<FRoundingParamVO> validParams = params.stream()
+                .filter(p -> p.getLowerLimit() != null || p.getUpperLimit() != null)
+                .collect(Collectors.toList());
+
+        // 按下限值排序，null值（负无穷）排在最前
+        List<FRoundingParamVO> sortedParams = validParams.stream()
+                .sorted((p1, p2) -> {
+                    Double lower1 = p1.getLowerLimit();
+                    Double lower2 = p2.getLowerLimit();
+
+                    // null值处理（视为负无穷）
+                    if (lower1 == null) return -1;
+                    if (lower2 == null) return 1;
+
+                    return lower1.compareTo(lower2);
+                })
+                .collect(Collectors.toList());
+
+        // 检查相邻区间是否有重叠
+        for (int i = 0; i < sortedParams.size() - 1; i++) {
+            if (isOverlapping(sortedParams.get(i), sortedParams.get(i + 1))) {
+                return Result.fail("区间之间不能存在重叠");
+            }
+        }
+
+        return Result.ok(true);
+    }
+
+    /**
+     * 判断两个区间是否重叠
+     *
+     * @param interval1 第一个区间
+     * @param interval2 第二个区间
+     * @return 如果重叠返回true，否则返回false
+     */
+    private boolean isOverlapping(FRoundingParamVO interval1, FRoundingParamVO interval2) {
+        Double lower1 = interval1.getLowerLimit();
+        Double upper1 = interval1.getUpperLimit();
+        boolean includeLower1 = Boolean.TRUE.equals(interval1.getIsLowerLimitIncluded());
+        boolean includeUpper1 = Boolean.TRUE.equals(interval1.getIsUpperLimitIncluded());
+
+        Double lower2 = interval2.getLowerLimit();
+        Double upper2 = interval2.getUpperLimit();
+        boolean includeLower2 = Boolean.TRUE.equals(interval2.getIsLowerLimitIncluded());
+        boolean includeUpper2 = Boolean.TRUE.equals(interval2.getIsUpperLimitIncluded());
+
+        // 处理null边界值（null表示无穷）
+        if (upper1 == null || lower2 == null) {
+            return true;
+        }
+
+        if (upper1 > lower2) {
+            return true;
+        } else if (upper1.equals(lower2)) {
+            return includeUpper1 && includeLower2;
+        }
+
+        return false;
     }
 
 

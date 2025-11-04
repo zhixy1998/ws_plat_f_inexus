@@ -13,6 +13,9 @@
 
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO">
+    <update id="updateFormula">
+        update t800_uv_inexus.t_ins_info_temp set linear_segment=#{linearSegment} where device_serial_number=#{deviceSerialNumber}
+    </update>
 
 
     <select id="getIp" resultType="java.lang.String">
@@ -33,5 +36,8 @@
             b.attachment_type as attachmentKind
         from t800_uv_inexus.t_ins_info_temp a inner join t800_uv_inexus.t_measure_pool b on a.attachment_type = b.attachment_num
         where a.device_serial_number = #{device_serial_number}
+    </select>
+    <select id="getFormula" resultType="java.lang.String">
+        select linear_segment from t800_uv_inexus.t_ins_info_temp where device_serial_number=#{deviceSerialNumber}
     </select>
 </mapper>

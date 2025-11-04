@@ -12,9 +12,11 @@
 
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.util.changeUtil.T800.ProtocolItem;
 import com.persee.workstation.uv_inexus.util.changeUtil.T800.ResponseParser;
 import com.persee.workstation.uv_inexus.util.changeUtil.T800.T800MessageUtil;
@@ -51,6 +53,9 @@ public class DevMessageUtil {
 
     @Autowired
     T800MessageUtil t800MessageUtil;
+
+    @Autowired
+    FormulaUtil formulaUtil;
 
 //    @Autowired
 //    private ExperimentTestService experimentService;
@@ -126,7 +131,8 @@ public class DevMessageUtil {
             return R.fail("T600xml文件加载失败");
         }
         FindDeviceVO findDeviceVO = new FindDeviceVO();
-
+        //获取的波长值临时存储
+        Object temp=new Object();
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
@@ -216,12 +222,15 @@ public class DevMessageUtil {
                 Integer s = (Integer) parse;
                 findDeviceVO.setAttachmentType(s);
             }
+            if (cmdId.equals(FindDevEnum.GetWlList.getComId())) {
+                temp=parse;
+            }
             if (cmdId.equals(FindDevEnum.GetCellPos.getComId())) {
                 Integer s = (Integer) parse;
                 findDeviceVO.setCurrentPoolNum(s);
             }
         }
-
+        findDeviceVO.setLinearSegment(formulaUtil.addFormula(temp,findDeviceVO.getDeviceSerialNumber()));
         byte[] sendBytes = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("Measure"));
 
         return R.ok(findDeviceVO);
@@ -344,6 +353,66 @@ public class DevMessageUtil {
 
         return R.ok();
     }
+
+    /**
+     * 多波长校正，波长实际情况获取，发现设备后执行
+     */
+    public R<String> dealWlList(String deviceSerialNumber, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            return R.fail(ans.getMessage());
+        }
+        DatagramSocket socket = ans.getData();
+        Command command = new Command("GetWlList",  null);
+        if(flag.equals("T600")) {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return R.fail("xml文件加载失败");
+            }
+
+
+            String cmdId = command.getCmdId();
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            String result = String.valueOf(parse);
+            List<StepPoint> linearSegments = JSON.parseArray(parse.toString(), StepPoint.class);
+            if ("false".equals(result)) {
+                return R.fail();
+            }
+//            formulaUtil.addFormula(linearSegments, deviceSerialNumber);
+        }
+        else if(flag == "T800"){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return R.fail("T800xml文件加载失败");
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                return R.fail("T800发送命令失败");
+            }
+//            String result = t800MessageUtil.getResultSingle(cmdId, 3000);
+            String result = ResponseParser.Result;
+
+            if (result != null) {
+                System.out.println("解析结果：" + result);
+            } else {
+                System.out.println("超时未收到解析结果");
+            }
+            if ("false".equals(result)) {
+                return R.fail();
+            }
+
+        }
+
+        return R.ok();
+    }
+
 
     /**
      * 初始化设备，暂放
@@ -575,7 +644,8 @@ public class DevMessageUtil {
         String cmdId = cmd.getCmdId();
         //发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(cmd.getParams(), xml.get(cmdId));
-        messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        List<byte[]> bytes1 = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Object parse = ResponseDeal.parse(cmdId, bytes1, bytes);
         return R.ok();
     }
 

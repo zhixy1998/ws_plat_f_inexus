@@ -45,7 +45,7 @@ public interface SpectrumConciseService {
     Result whetherSaveData(String taskId, Boolean isSave);
 
     // 创建草稿按钮接口
-    Result createDraftButton(String methodId,String updateBy);
+    Result createDraftButton(String methodId,String updateBy,String deviceSerialNumber);
 
     // 查询样品列表按钮
     Result querySampleListButton(String taskId);
@@ -126,10 +126,10 @@ public interface SpectrumConciseService {
     Result luminanceModeConversionPort(FLuminosityConversionDto paramDto);
 
     // 查询表格头
-    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds);
+    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds, List<String> analysisIds);
 
     // 查询表格数据
-    List<Map<String, Object>> queryTableData(String taskId,List<String> sampleIds);
+    List<Map<String, Object>> queryTableData(String taskId,String methodId,List<String> sampleIds,List<String> analysisIds, Integer digit);
 
     /**
      * 导出到word

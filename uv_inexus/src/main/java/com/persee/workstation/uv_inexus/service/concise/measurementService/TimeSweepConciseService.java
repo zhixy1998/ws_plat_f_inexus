@@ -41,7 +41,7 @@ public interface TimeSweepConciseService {
     Result whetherSaveData(String taskId, Boolean isSave);
 
     // 创建草稿接口
-    Result createDraftButton(String methodId, String updateBy);
+    Result createDraftButton(String methodId, String updateBy,String deviceSerialNumber);
 
     // 查询样品列表按钮
     Result querySampleListButton(String taskId);
@@ -130,7 +130,7 @@ public interface TimeSweepConciseService {
     Result<List<FHeadVO>> tableHead(String taskId, String methodId, List< String> sampleIds);
 
     // 查询表格数据接口
-    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds,Integer decimalDigits);
 
     Result uploadImage(SpectrumImageUpload upload);
 }

@@ -23,7 +23,8 @@ public enum FindDevEnum {
     GetSn(4, "GetSn"),//, "获取设备SN"
     GetAccessoryType(5,"GetAccessoryType"), //, "获取设备配件类型"
     GetInitStatus(6, "GetInitStatus"),//, "获取设备初始化状态"
-    GetCellPos(7, "GetCellPos"); /// "获取当前样品池位置"
+    GetCellPos(7, "GetCellPos"),/// "获取当前样品池位置"
+    GetWlList(8, "GetWlList"); /// "获取波长信息"
 
     // 获取comId
     private final String comId;

@@ -50,10 +50,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -143,6 +140,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
         return R.ok(vo);
+    }
+
+    @Override
+    public R<Integer> queryDeviceStatus(String deviceSerialNumber) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null || info.getDeviceCurrentStatus() == null) {
+            log.info("未找到连接仪器信息！");
+            return R.fail("未查找到仪器信息");
+        }
+        log.info("查询仪器状态");
+        return R.ok(info.getDeviceCurrentStatus());
     }
 
     @Override
@@ -330,6 +339,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         list.add(new Command(FindDevEnum.GetAccessoryType.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetInitStatus.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.GetCellPos.getComId(), new Object[]{}));
+        list.add(new Command(FindDevEnum.GetWlList.getComId(), new Object[]{}));
 
         List<FindDeviceVO> devices = new ArrayList<>();
 
@@ -550,16 +560,27 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
         log.info("检测仪器类型");
         String type = "T600"; //暂时默认用T600
+
+        R<DeviceMeasureVO> deviceMeasureVOR = queryDeviceTypeInfo(deviceSerialNumber);
+        if (!deviceMeasureVOR.getSuccess()) {
+            log.info("查询仪器类型失败");
+            return null;
+        }
+        DeviceMeasureVO measureVO = deviceMeasureVOR.getData();
+
+
         List<DeviceCalibrationVO> info = configDAO.getCalibrationInfo(type);
         for (DeviceCalibrationVO vo : info) {
             List<DeviceCalibrationParams> params = configDAO.getCalibrationParams(vo.getCalibrationType());
             for (DeviceCalibrationParams param : params) {
                 List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
                 param.setData(value);
+
                 LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(CalibrationTempPO::getCalibrationType, vo.getCalibrationType())
                         .eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
-                        .eq(CalibrationTempPO::getParam, param.getParam()).orderByDesc(CalibrationTempPO::getId);
+                        .eq(CalibrationTempPO::getParam, param.getParam())
+                        .orderByDesc(CalibrationTempPO::getId);
 
                 CalibrationTempPO tempPO = tempDao.selectOne(queryWrapper);
                 if (tempPO != null) {
@@ -586,6 +607,34 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            DeviceMeasureVO ans = new DeviceMeasureVO();
+            ans.setConnectMode(1);
+            ans.setMinWavelength("190");
+            ans.setMaxWavelength("1100");
+            ans.setBandWidth(Arrays.asList("2"));
+            ans.setGain(Arrays.asList(1, 2, 3, 4));
+            ans.setScanInterval(Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0"));
+            ans.setResponseTime(Arrays.asList("0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2"));
+            List<DeviceConfParam> list = new ArrayList<>();
+            list.add(new DeviceConfParam(WaveLengthEnum.abs.getName(), WaveLengthEnum.abs.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.tPercent.getName(), WaveLengthEnum.tPercent.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.es.getName(), WaveLengthEnum.es.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.er.getName(), WaveLengthEnum.er.getCode()));
+            ans.setLuminosity(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(EnergyLampEnums.Tungsten.getName(), EnergyLampEnums.Tungsten.getIdentity()));
+            list.add(new DeviceConfParam(EnergyLampEnums.Deuterium.getName(), EnergyLampEnums.Deuterium.getIdentity()));
+            ans.setLampType(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(ScanSpeedEnum.SLOW.getName(), ScanSpeedEnum.SLOW.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.MEDIUM.getName(), ScanSpeedEnum.MEDIUM.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.FAST.getName(), ScanSpeedEnum.FAST.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
+            ans.setScanSpeed(list);
+            return R.ok(ans);
+        }
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null) {

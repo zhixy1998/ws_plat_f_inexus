@@ -161,13 +161,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             return;
         }
 
-        R<Boolean> createR = rationService.createSample(taskId, sampleKind, updateBy);
-        if (!createR.getSuccess()) {
-            infoService.releaseDevice(deviceSerialNumber);
-            sendAndClose(session, createR.getMessage());
-            return;
-        }
-        task = tMeasureTaskService.getById(task.getId());
+//        R<Boolean> createR = rationService.createSample(taskId, sampleKind, updateBy, deviceSerialNumber);
+//        if (!createR.getSuccess()) {
+//            infoService.releaseDevice(deviceSerialNumber);
+//            sendAndClose(session, createR.getMessage());
+//            return;
+//        }
+//        task = tMeasureTaskService.getById(task.getId());
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
@@ -505,8 +505,12 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                 if (session.isOpen()) {
                     JSONObject payload = new JSONObject();
-                    payload.put("r2", curveData.getR2());
-                    payload.put("r", curveData.getR());
+                    if (StringUtils.hasText(curveData.getR2())) {
+                        payload.put("r2", curveData.getR2());
+                    }
+                    if (StringUtils.hasText(curveData.getR())) {
+                        payload.put("r", curveData.getR());
+                    }
                     payload.put("dataList", curveData.getDataList());
                     payload.put("curveType", curveData.getCurveType());
                     payload.put("equation", curveData.getEquation());
@@ -1024,7 +1028,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             JSONObject currentInfo = new JSONObject();
 
             currentInfo.put("waveLength", waveLength + "nm");
-            currentInfo.put("currentValue", data + WaveLengthEnum.abs.getName());
+            currentInfo.put("currentValue", DataCountUtil.formatValueWithBigDecimal(digit, data) + WaveLengthEnum.abs.getName());
             session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
             FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
@@ -1141,7 +1145,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
                 JSONObject currentInfo = new JSONObject();
                 currentInfo.put("waveLength", waveLength + "nm");
-                currentInfo.put("currentValue", data + WaveLengthEnum.abs.getName());
+                currentInfo.put("currentValue", DataCountUtil.formatValueWithBigDecimal(digit, data) + WaveLengthEnum.abs.getName());
                 session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();

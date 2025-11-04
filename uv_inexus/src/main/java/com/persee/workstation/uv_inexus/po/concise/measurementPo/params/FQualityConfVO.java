@@ -19,12 +19,21 @@ import lombok.Data;
 @ApiModel("质控设置")
 @Data
 public class FQualityConfVO {
-    @ApiModelProperty("质控范围")
-    private String controlFormula;
 
     @ApiModelProperty("质控类型")
     private String controlType;
 
-    @ApiModelProperty("超限操作")
-    private String overLimitOperation = ""; // 默认空
+    @ApiModelProperty("质控描述")
+    private String controlDesc;
+
+    @ApiModelProperty("质控上限值")
+    private Double upperLimit;
+    @ApiModelProperty("是否包含上限值")
+    private Boolean isUpperLimitIncluded;
+
+    @ApiModelProperty("质控下限值")
+    private Double lowerLimit;
+    @ApiModelProperty("是否包含下限值")
+    private Boolean isLowerLimitIncluded;
+
 }

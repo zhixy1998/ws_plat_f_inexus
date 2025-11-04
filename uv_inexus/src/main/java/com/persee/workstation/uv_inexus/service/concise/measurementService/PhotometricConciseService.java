@@ -23,10 +23,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureSample;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FInputParamMapTableHead;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FMethodParam;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
@@ -86,7 +83,7 @@ public interface PhotometricConciseService {
     /**
      * 创建样品
      */
-    R<Boolean> createSample(String taskId, String updateBy);
+    R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber);
 
     /**
      * 查询样品的表头
@@ -171,5 +168,10 @@ public interface PhotometricConciseService {
      * 导出到word
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, Integer digit);
+
+    /**
+     * 多格式文件导出（集成children和option数据）
+     */
+    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option);
 
 }

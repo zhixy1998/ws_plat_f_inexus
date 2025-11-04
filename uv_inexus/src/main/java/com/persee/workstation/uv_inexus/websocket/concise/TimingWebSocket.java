@@ -673,6 +673,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
                                    boolean ladderCorrection,
                                    String sampleId) {
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+        System.err.println("+++++++++++++++++++++++++++++++++++进入推送存储逻辑");
         Integer threshold = null;
         if (ladderCorrection){
             /// 预留是否打开积分球的门限系数的校验
@@ -706,6 +707,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
      * @return
      */
     private List<Double> callStepEliminationPython(List<Double> x, List<Double> y, Integer threshold) {
+        System.err.println("+++++++++++++++++++++++++++++++++++进入台阶消除逻辑");
         // 这里调用 Python 服务处理数据，消除台阶
         // 假设 Python 服务返回的结果是处理后的 y 数组
         HttpHeaders headers = new HttpHeaders();
@@ -723,7 +725,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
         ResponseEntity<Map> response = restTemplate.postForEntity(PythonPathConstant.REMOVE_STEP_OR_SPIKES, request, Map.class);
 
         // 从响应中获取处理后的 y 值
-        List<Double> processedY = (List<Double>) response.getBody().get("processed_y");
+        List<Double> processedY = (List<Double>) response.getBody().get("smoothed_data");
         return processedY;
     }
 
@@ -739,18 +741,22 @@ public class TimingWebSocket extends TextWebSocketHandler {
                                       List<Double> x,
                                       List<Double> y,
                                       String sampleId) {
+        System.err.println("+++++++++++++++++++++++++++++++++++进入实时保存逻辑");
         // 根据 task 的信息和样品 ID 查找数据库中是否已有数据
         FMeasureData existingData = tMeasureDataService.getOne(new QueryWrapper<FMeasureData>()
                 .eq("task_id", task.getId())
                 .eq("sample_key", sampleId)
                 .orderByDesc("serial_number")
                 .last("LIMIT 1"));
+        List<String> data = new ArrayList<>();
+        for (int i = 0; i < x.size(); i++) {
+            data.add(x.get(i) + "," + y.get(i));
+        }
 
         FMeasureData measureData = new FMeasureData();
         measureData.setTaskId(task.getId());
         measureData.setSampleKey(sampleId);
-        measureData.setInstrumentData(JSON.toJSONString(x));  // 存储 x 数据
-        measureData.setOriginalCalculationData(JSON.toJSONString(y));  // 存储处理后的 y 数据
+        measureData.setOriginalCalculationData(JSON.toJSONString(data));  // 存储处理后的 y 数据
         measureData.setIsDelete("0");
         measureData.setIsSave("1");
 
@@ -787,8 +793,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
         analysisData.setTaskId(task.getId());
         analysisData.setSampleKey(sampleId);
         analysisData.setMeasureDataId(measureData.getId());  // 设置关联的测量数据 ID
-        analysisData.setAnalysisParam(JSON.toJSONString(Constants.instrumentData));
-        analysisData.setAnalysisResult(JSON.toJSONString(measureData.getOriginalCalculationData()));  // 分析结果是处理后的 y 数据
+        analysisData.setAnalysisResult(JSON.toJSONString(data));  // 分析结果是处理后的 y 数据
         analysisData.setColor("#000000"); // 设置颜色
         analysisData.setAnalysisType("5"); // 设置分析类型
         analysisData.setIsDelete("0");
@@ -803,9 +808,14 @@ public class TimingWebSocket extends TextWebSocketHandler {
 
         if (existingAnalysisData != null) {
             // 如果已有分析数据，则进行数据更新
-            existingAnalysisData.setAnalysisResult(JSON.toJSONString(measureData.getOriginalCalculationData()));  // 更新分析结果
+            List<String> list = JSON.parseArray(existingAnalysisData.getAnalysisResult(), String.class);
+            // 将每个 x 和 y 值以逗号为分隔符进行合并，然后进行追加
+            for (int i = 0; i < x.size(); i++) {
+                String combinedData = x.get(i) + "," + y.get(i);
+                list.add(combinedData);
+            }
+            existingAnalysisData.setAnalysisResult(JSON.toJSONString(list));  // 更新分析结果
             tMeasureAnalysisDataService.updateById(existingAnalysisData);  // 更新分析数据
-            analysisId = existingAnalysisData.getId();  // 更新 analysisId
         } else {
             // 如果没有分析数据，则创建新记录
             analysisData.setAnalysisNumber(1);  // 新记录序列号为 1
@@ -1006,7 +1016,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
             if (existingData != null) {
                 // 如果已有数据，则仅更新该数据
                 existingData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
-                existingData.setOriginalCalculationData(JSON.toJSONString(listData));
+//                existingData.setOriginalCalculationData(JSON.toJSONString(listData));
                 existingData.setMeasurementStartTime(Constants.startTime);
                 existingData.setMeasurementEndTime(Constants.endTime);
                 existingData.setIsSave("1");
@@ -1019,7 +1029,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
                         .eq("analysis_number", number));
                 if (existingAnalysisData != null) {
                     existingAnalysisData.setAnalysisParam(JSON.toJSONString(spectrumParameter));
-                    existingAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
+//                    existingAnalysisData.setAnalysisResult(JSON.toJSONString(listData));
                     existingAnalysisData.setPeak(JSON.toJSONString(peakValleys));
                     existingAnalysisData.setGrain(JSON.toJSONString(valleys));
                     tMeasureAnalysisDataService.updateById(existingAnalysisData);
@@ -1084,13 +1094,14 @@ public class TimingWebSocket extends TextWebSocketHandler {
                         .eq("sample_key", sampleId)
                         .eq("serial_number", number));
                 measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
-                measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+//                measureData.setOriginalCalculationData(JSON.toJSONString(listData));
                 measureData.setMeasurementStartTime(Constants.startTime);
                 measureData.setMeasurementEndTime(Constants.endTime);
                 measureData.setIsSave("1");
                 tMeasureDataService.updateById(measureData);
 
-                analysisData.setAnalysisResult(JSON.toJSONString(listData));
+                analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
+//                analysisData.setAnalysisResult(JSON.toJSONString(listData));
                 analysisData.setPeak(JSON.toJSONString(peakValleys));
                 analysisData.setGrain(JSON.toJSONString(valleys));
                 analysisData.setColor("#000000");
@@ -1142,14 +1153,59 @@ public class TimingWebSocket extends TextWebSocketHandler {
         }
 
         // 更新任务状态
-        for (FTaskSpecimen taskSample : sampleData) {
-            if (taskSample.getSpecimenKey().equals(sampleId)) {
-                taskSample.setIsTested("1");
+        List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        // 如果不是重复模式的情况直接更新任务状态
+        if(spectrumParameter.getRepetitionPattern().equals("不重复")){
+            for (FTaskSpecimen taskSample : specimen) {
+                if (taskSample.getSpecimenKey().equals(sampleId)) {
+                    taskSample.setIsTested("1");
+                }
+            }
+            task.setSampleKey(JSON.toJSONString(specimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            boolean update = tMeasureTaskService.updateById(task);
+            if (!update) {
+                sendAndClose(session, "更新任务失败");
+                return;
+            }
+        }else {
+            // 如果是重复模式的情况，需要判断是否全部测完
+            // 根据重复次数遍历
+            boolean success = false;
+            Integer count = Integer.valueOf(spectrumParameter.getRepetitionTime());
+            for (int i = 0; i < count; i++) {
+                // 根据任务id,样品id和编号查询分析数据
+                QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("task_id", taskId);
+                queryWrapper.eq("sample_key", sampleId);
+                queryWrapper.eq("analysis_number", i + 1);
+                queryWrapper.eq("analysis_type", "5");
+                queryWrapper.last("limit 1");
+                FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+                // 判断数据是否不为空或者不为null
+                if (analysisData == null || analysisData.getAnalysisResult() == null) {
+                    success = true;
+                    break;
+                }
+            }
+
+            if (success) {
+                // 不更新任务状态
+            } else {
+                for (FTaskSpecimen taskSample : specimen) {
+                    if (taskSample.getSpecimenKey().equals(sampleId)) {
+                        taskSample.setIsTested("1");
+                    }
+                }
+                task.setSampleKey(JSON.toJSONString(specimen));
+                task.setDeviceSerialNumber(deviceSerialNumber);
+                boolean update = tMeasureTaskService.updateById(task);
+                if (!update) {
+                    sendAndClose(session, "更新任务失败");
+                    return;
+                }
             }
         }
-        task.setSampleKey(JSON.toJSONString(sampleData));
-        task.setDeviceSerialNumber(deviceSerialNumber);
-        tMeasureTaskService.updateById(task);
     }
 
 

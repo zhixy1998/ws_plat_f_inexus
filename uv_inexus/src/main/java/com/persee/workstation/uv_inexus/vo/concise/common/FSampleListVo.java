@@ -39,4 +39,6 @@ public class FSampleListVo {
     private String type;
     // deleteType
     private String deleteType;
+    // 是否已测(0.未测,1.已测)
+    private String isTested;
 }
