@@ -76,10 +76,10 @@ public class InitRecordServiceImpl implements InitRecordService {
 
 
     @Override
-    public List<InitRecordPO> searchInitStatus(String deviceSerialNumber, String deviceIp) {
+    public List<InitRecordPO> searchInitStatus(String deviceSerialNumber, String deviceId) {
         LambdaQueryWrapper<InitRecordPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(InitRecordPO::getDeviceSerialNumber, deviceSerialNumber)
-                .eq(InitRecordPO::getDeviceInfoId, deviceIp)
+                .eq(InitRecordPO::getDeviceInfoId, deviceId)
                 .orderByAsc(InitRecordPO::getInitTaskNum);
 
         return dao.selectList(queryWrapper);

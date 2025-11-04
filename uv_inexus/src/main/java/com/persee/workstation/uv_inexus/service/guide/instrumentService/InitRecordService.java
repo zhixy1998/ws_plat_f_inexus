@@ -23,7 +23,7 @@ public interface InitRecordService {
 
     void initAllTask(String deviceSerialNumber, String deviceInfoId, List<DeviceInitEntryInfo> initEntryList);
 
-    List<InitRecordPO> searchInitStatus(String deviceSerialNumber, String deviceIp);
+    List<InitRecordPO> searchInitStatus(String deviceSerialNumber, String deviceId);
 
     InitRecordPO selectById(String id);
 

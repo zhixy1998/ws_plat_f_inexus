@@ -366,6 +366,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             po.setAttachmentType(deviceVO.getAttachmentType());
             po.setDevicePort(sendPort);
             po.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
+            po.setLinearSegment(deviceVO.getLinearSegment());
 
             //TODO 根据仪器序列号，获取型号信息，还需要调整
             String deviceModel = deviceVO.getDeviceSerialNumber().substring(3, 8);
@@ -388,12 +389,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
 
             //附件处理
-            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceVO.getDeviceSerialNumber());
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(deviceVO.getAttachmentType());
+
             if (attachmentInfo == null) {
                 attachmentInfo = new DeviceAttachmentTypeVO();
                 attachmentInfo.setAttachmentNum(12);
                 attachmentInfo.setAttachmentName("未识别");
             }
+            attachmentInfo.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
             FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
 
             BeanUtils.copyProperties(deviceVO, dto);
@@ -402,14 +405,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             po.setAttachmentName(attachmentInfo.getAttachmentName());
             infoService.saveOrUpdateInfo(po);
+            boolean initRecord = true;
 
-            if (deviceVO.getIsInited() == 0) {
+            List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceVO.getDeviceSerialNumber(), po.getId());
+            if (initList == null || initList.isEmpty()) {
+                initRecord = false;
+            }
 
+            if (deviceVO.getIsInited() == 0 || !initRecord) {
                 if (attachmentInfo.getAttachmentKind().equals(1)){
                     List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
                     initRecordService.initAllTask(deviceVO.getDeviceSerialNumber(), po.getId(), allInitEntry);
                 }
-
                 initRecordService.initAllTask(deviceVO.getDeviceSerialNumber(), po.getId(), initEntry);
             }
 
