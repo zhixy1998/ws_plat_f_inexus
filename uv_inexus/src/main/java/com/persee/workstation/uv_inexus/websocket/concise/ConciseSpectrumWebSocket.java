@@ -383,12 +383,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         if (message.getPayload().equals("close")){
 
             Thread thread = taskThreads.get(session.getId());
-            // 强制停止线程
-            thread.interrupt();
-            taskThreads.remove(session.getId());
             if (measureStatus){
-                // 强制停止基线/测量线程
-                Constants.sendMeasureThread.interrupt();
+
                 try {
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()){
@@ -402,6 +398,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     session.sendMessage(new TextMessage("停止成功"));
                     sessions.remove(session.getId());
                     session.close();
+                    thread.interrupt();
                     deviceInfoService.releaseDevice(deviceSerialNumber);
                 }
             }

@@ -279,8 +279,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             thread.interrupt();
             taskThreads.remove(session.getId());
             if (measureStatus){
-                // 强制停止基线/测量线程
-                Constants.sendMeasureThread.interrupt();
                 try {
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()){

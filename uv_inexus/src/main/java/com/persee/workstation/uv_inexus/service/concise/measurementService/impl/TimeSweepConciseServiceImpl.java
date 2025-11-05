@@ -1840,9 +1840,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                         .orderByDesc("analysis_number")
                         .last("limit 1"));
                 FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-                map.put("measureId", one.getId());
-                map.put("sampleName", byId.getSampleName());
-                list.add(map);
+                if (byId == null){
+                    map.put("measureId", one.getId());
+                    map.put("sampleName", byId.getSampleName());
+                    list.add(map);
+                }
             }
         }
         return Result.ok(list);

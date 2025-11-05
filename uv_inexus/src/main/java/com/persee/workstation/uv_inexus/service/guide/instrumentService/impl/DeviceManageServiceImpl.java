@@ -151,7 +151,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.info("未找到连接仪器信息！");
             return R.fail("未查找到仪器信息");
         }
-        log.info("查询仪器状态");
+//        log.info("查询仪器状态");
         return R.ok(info.getDeviceCurrentStatus());
     }
 
