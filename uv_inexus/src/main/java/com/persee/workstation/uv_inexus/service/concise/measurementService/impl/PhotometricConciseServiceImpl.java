@@ -1232,10 +1232,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(createType)) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
+                if (specimen.getIsTested().equals(noTested)) {
                     hasNoTested = true;
                     break;
                 }
+
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
                     sampleNumList.add(measureSample.getSampleName());

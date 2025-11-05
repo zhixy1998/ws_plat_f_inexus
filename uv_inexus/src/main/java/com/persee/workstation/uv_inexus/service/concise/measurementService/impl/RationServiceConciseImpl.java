@@ -2022,7 +2022,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getSampleKind().equals(sampleKind) && specimen.getDeleteType().equals(createType)) {
+                if (!specimen.getSampleKind().equals(sampleKind) || specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+                if (specimen.getIsTested().equals(noTested)) {
                     hasNoTested = true;
                     break;
                 }
@@ -3000,20 +3003,20 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
 
-
-
         List<String> zeroMethod = parameter.getZeroMethod();
 
         param.setForce_zero(0L);
 
-        for (String zero: zeroMethod) {
-            if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
-                data.add(0.00);
-                inputParam.add("0.0");
-            }
+        if (zeroMethod != null && !zeroMethod.isEmpty()) {
+            for (String zero: zeroMethod) {
+                if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+                    data.add(0.00);
+                    inputParam.add("0.0");
+                }
 
-            if (zero.equals(RationCurveParamEnums.force_zero.getIdentity())) {
-                param.setForce_zero(1L);
+                if (zero.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+                    param.setForce_zero(1L);
+                }
             }
         }
 
@@ -3925,14 +3928,17 @@ public class RationServiceConciseImpl implements RationConciseService {
                  */
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
-                String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
-                ans = fitDataRounding(ans, parameter);
+                if (fitInfo != null && fitInfo.getCoefficients()!= null) {
+                    String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
+                    ans = fitDataRounding(ans, parameter);
 
-                FRationCountDataInfo valueData = new FRationCountDataInfo();
-                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                valueData.setColValue(ans);
-                currentList.add(valueData);
+                    FRationCountDataInfo valueData = new FRationCountDataInfo();
+                    valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                    valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                    valueData.setColValue(ans);
+                    currentList.add(valueData);
+                }
+
 
                 //TODO 公式计算，待做
                 dealData.setCountData(currentList);
