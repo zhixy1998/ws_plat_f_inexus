@@ -33,7 +33,7 @@ public class FormulaUtil {
             if (CollectionUtils.isNotEmpty(linearSegment)) {
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsActualStep(actualStep)) {
-                        return roundToOneDecimal((segment.getK() * actualStep )+ segment.getB() / 50);
+                        return roundToOneDecimal((segment.getK() * actualStep+ segment.getB())/ 50);
                     }
                 }
             }
