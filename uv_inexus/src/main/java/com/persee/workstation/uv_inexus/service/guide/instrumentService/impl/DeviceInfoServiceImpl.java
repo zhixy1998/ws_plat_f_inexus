@@ -107,6 +107,11 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         Integer isInited = info.getIsInited();
 
+        Integer isActivated = info.getIsActivated();
+        if (isActivated == null || isActivated == 0) {
+            return R.fail("请先激活仪器");
+        }
+
         Integer connectStatus = info.getDeviceCurrentStatus();
         if (connectStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
             return R.fail( "设备正在初始化，请等待");
@@ -115,10 +120,13 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return R.fail( "设备正在测量，请等待");
         }
 
-        if (isInited == null || isInited == 0) {
-            log.info("未初始化");
-            return R.fail("未初始化");
+        if (!status.equals(Constants.DEVICE_STATUS_INIT)) {
+            if (isInited == null || isInited == 0) {
+                log.info("未初始化");
+                return R.fail("未初始化");
+            }
         }
+
 
         int count = 0;
         while (count < 40) {
@@ -143,7 +151,20 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     public void releaseDevice(String deviceSerialNumber) {
         DetectionConstants.isDeviceIdle = true;
         updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+    }
 
+    @Override
+    public void activeDevice(String deviceSerialNumber) {
+        dao.updateDeviceActivateStatus(deviceSerialNumber, 1);
+    }
+
+    @Override
+    public Integer queryDeviceActivationStatus(String deviceSerialNumber) {
+        Integer i = dao.queryDeviceActivateStatus(deviceSerialNumber);
+        if (i != null) {
+            return i;
+        }
+        return 0;
     }
 
 

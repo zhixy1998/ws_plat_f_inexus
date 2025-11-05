@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
@@ -33,6 +34,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.websocket.MyWebSocketHandler;
 import org.slf4j.Logger;
@@ -49,6 +51,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,6 +74,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private String deviceSerialNumber;
     private boolean occupancyStatus = false;
     private boolean measureStatus = false;
+    private Integer digit;
 
 
     @Autowired
@@ -98,6 +103,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
+    @Autowired
+    private FormulaUtil formulaUtil;
 
 
     /**
@@ -125,6 +132,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         String analysisNumber = getQueryParam(query, "analysisNumber");
         deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         String updateBy = getQueryParam(query, "updateBy");
+        digit = Integer.parseInt(getQueryParam(query, "digit"));
 
         if (taskId == null) {
             sendClose(session, "缺少 taskId 参数");
@@ -263,16 +271,15 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
+
         if (message.getPayload().equals("close")){
-            // 如果线程正在被使用
-            if (occupancyStatus){
-                // 释放线程
-                deviceInfoService.releaseDevice(deviceSerialNumber);
-            }
+
+            Thread thread = taskThreads.get(session.getId());
+            // 强制停止线程
+            thread.interrupt();
+            taskThreads.remove(session.getId());
             if (measureStatus){
                 try {
-                    // 强制停止基线/测量的线程
-                    Constants.sendMeasureThread.interrupt();
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()){
                         log.info("停止成功");
@@ -281,15 +288,21 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
+                } finally {
+                    session.sendMessage(new TextMessage("停止成功"));
+                    sessions.remove(session.getId());
+                    session.close();
+                    deviceInfoService.releaseDevice(deviceSerialNumber);
                 }
             }
-            Thread thread = taskThreads.get(session.getId());
-            // 强制停止线程
-            thread.interrupt();
-            taskThreads.remove(session.getId());
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
+            // 如果线程正在被使用
+            if (occupancyStatus){
+                // 释放线程
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
         }
     }
 
@@ -329,6 +342,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             handleTransportError(session, e);
             Thread.currentThread().interrupt();
             return;
+        }finally {
+            deviceInfoService.releaseDevice(deviceSerialNumber);
         }
         System.out.println("连接异常: " + exception.getMessage());
     }
@@ -382,6 +397,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
 
         // 1. 发送测量命令
+        Constants.startTime = LocalDateTime.now();
         devMessageUtil.getMeasureData(command, ip);
         measureStatus = true;
 
@@ -426,6 +442,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
         // 3. 推送最后不足10条的数据
         pushRemainingData(session, x, y, pushCount,sampleId,luminosity);
+        Constants.endTime = LocalDateTime.now();
 
         // 4. 保存一次完整测量
         saveOneMeasurement(task, taskId, sampleId, deviceSerialNumber, x, y,session,number);
@@ -449,8 +466,9 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             JSONArray dataArray = new JSONArray();
             for (int i = pushCount * 10; i < x.size(); i++) {
                 JSONObject point = new JSONObject();
+                BigDecimal value = new BigDecimal(y.get(i));
                 point.put("x", x.get(i));
-                point.put("y", y.get(i));
+                point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
                 point.put("xType", "nm");
                 point.put("yType", luminosity);
                 dataArray.add(point);
@@ -474,8 +492,9 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             JSONArray dataArray = new JSONArray();
             for (int i = startIndex; i < x.size(); i++) {
                 JSONObject point = new JSONObject();
+                BigDecimal value = new BigDecimal(y.get(i));
                 point.put("x", x.get(i));
-                point.put("y", y.get(i));
+                point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
                 point.put("xType", "nm");
                 point.put("yType", luminosity);
                 dataArray.add(point);
@@ -501,7 +520,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                               List<ChangeParam> baselineCopy,
                               List<Double> x,
                               List<Double> y) {
-        if (baselineCopy != null && !baselineCopy.isEmpty()){
+        if (baselineCopy != null && !baselineCopy.isEmpty()) {
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
@@ -515,16 +534,14 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 y.add(Double.parseDouble(s));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                System.out.println("sData:"+sData);
-//                String yy = String.valueOf((sData / (4095 * 32)) * 100);
+                System.out.println("----sData:" + sData);
                 String yy = String.valueOf((sData / 8388607) * 100);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                System.out.println("rData:"+rData);
-//                String yy = String.valueOf((rData / (4095 * 32)) * 100);
+                System.out.println("----rData:" + rData);
                 String yy = String.valueOf((rData / 8388607) * 100);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
                 x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
@@ -532,30 +549,38 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             }
             Constants.measurd_data.remove(0);
             baselineCopy.remove(0);
-        }else{
+        } else {
+            List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("2")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(s, null);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
-                y.add(Double.parseDouble(yy));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + s);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(s));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
                 String yy = String.valueOf((sData / 8388607) * 100);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
                 String yy = String.valueOf((rData / 8388607) * 100);
-                Constants.originalCalculationData.add(Constants.measurd_data.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(Constants.measurd_data.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             }
             Constants.measurd_data.remove(0);

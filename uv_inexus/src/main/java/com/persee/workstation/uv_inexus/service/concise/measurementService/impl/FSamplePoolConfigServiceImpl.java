@@ -112,9 +112,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         }
         BeanUtils.copyProperties(dto, po);
 
-        String deviceSerialNumber = dto.getDeviceSerialNumber();
-
-        DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceSerialNumber);
+        DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(dto.getAttachmentType());
         List<FSamplePoolStatus> list = createFSamplePoolStatuses(attachmentInfo.getSamplePoolNum());
         po.setPoolInfo(JSON.toJSONString(list));
         po.setIsAutoChangePool(false);

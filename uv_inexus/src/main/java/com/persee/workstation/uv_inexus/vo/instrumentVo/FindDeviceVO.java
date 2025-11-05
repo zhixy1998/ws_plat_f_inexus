@@ -27,6 +27,9 @@ public class FindDeviceVO {
     @ApiModelProperty(value = "开机状态",example = "0-无响应，1-已开机，2-开机中，3-软关机")
     private Integer isDevOpened;
 
+    @ApiModelProperty("激活状态，0-未激活，1-激活")
+    private Integer isActivated;
+
     @ApiModelProperty("机器ip地址")
     private String ip;
 

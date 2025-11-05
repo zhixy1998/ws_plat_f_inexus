@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
@@ -55,6 +56,9 @@ public class LiveDetectionWebSocket {
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
 
+    @Autowired
+    FormulaUtil formulaUtil;
+
 //    @Autowired
 //    private ExperimentTestService experimentService;
 
@@ -77,11 +81,18 @@ public class LiveDetectionWebSocket {
                     "缺少 deviceSerialNumber 参数");
             return;
         }
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
 
-        String ip = infoService.getIp(deviceSerialNumber);
-        if (ip == null) {
+        if (info == null || info.getIp() == null) {
             messagingTemplate.convertAndSend(measureTopic,
                     "设备未连接: " + deviceSerialNumber);
+            return;
+        }
+        String ip = info.getIp();
+
+        if (info.getIsActivated() == null || info.getIsActivated() == 0) {
+            messagingTemplate.convertAndSend(measureTopic,
+                    "设备未激活: " + deviceSerialNumber);
             return;
         }
 
@@ -157,10 +168,13 @@ public class LiveDetectionWebSocket {
                                 ChangeParam measureParam = (ChangeParam) parseResult;
                                 if (!Objects.isNull(measureParam)) {
                                     String luminosity = DetectionConstants.luminosity;
-                                    vo.setX(measureParam.getWl() + "nm");
+
+                                    Double wl = formulaUtil.calculateWl(Double.parseDouble(measureParam.getWl()), deviceSerialNumber);
+                                    vo.setX(wl + "nm");
+                                    measureParam.setWl(String.valueOf(wl));
 
                                     if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
-                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(measureParam.getWl());
+                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(Double.valueOf(measureParam.getWl()));
                                         String s;
                                         if (!Objects.isNull(zeroParam)) {
                                              s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
@@ -173,7 +187,7 @@ public class LiveDetectionWebSocket {
                                         String s = DataCountUtil.countErOrEs(measureParam, luminosity);
                                         vo.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
                                     } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
-                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(measureParam.getWl());
+                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(Double.valueOf(measureParam.getWl()));
                                         String s;
                                         if (!Objects.isNull(zeroParam)) {
                                             s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
@@ -189,6 +203,9 @@ public class LiveDetectionWebSocket {
                                 vo.setDataList(dataList);
                             } else if (comId.equals(LiveDetectionCmdEnum.GetPhotoMode.getComId())) {
                                 vo.setLuminosity(WaveLengthEnum.getName(DetectionConstants.luminosity));
+                            } else if (comId.equals(LiveDetectionCmdEnum.GetChangeLampWl.getComId())) {
+                                Double v = formulaUtil.calculateWl(Double.parseDouble(parseResult.toString()), deviceSerialNumber);
+                                vo.setChangeLampWl(String.valueOf(v));
                             }
                         }
 

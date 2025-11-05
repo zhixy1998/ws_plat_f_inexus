@@ -34,11 +34,11 @@ public class TokenInterceptor implements HandlerInterceptor{
         response.setCharacterEncoding("utf-8");
 
         String token = request.getHeader("Token");
-        System.out.println("验证token");
+//        System.out.println("验证token");
         if (token != null) {
             boolean result = JWTUtils.verify(token);//验证token
             if (result) {
-                System.out.println("token验证通过");
+//                System.out.println("token验证通过");
                 return true;
             }
         }

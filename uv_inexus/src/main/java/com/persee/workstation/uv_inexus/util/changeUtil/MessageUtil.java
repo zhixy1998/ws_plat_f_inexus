@@ -216,7 +216,6 @@ public class MessageUtil {
                     if(cmdId.equals("Stop")){
                         break;
                     }
-
                 } catch (SocketTimeoutException e) {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
                 }
@@ -694,7 +693,7 @@ public class MessageUtil {
                     int wl = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     int s = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                     changeParam.setS(String.valueOf(s));
-                    changeParam.setWl(String.valueOf(wl / 50.0f));
+                    changeParam.setWl(String.valueOf(wl));
                     System.out.println("s = " + s);
                 } else if (data[3] == 0x02 && changeParam != null) {
                     int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
@@ -750,7 +749,7 @@ public class MessageUtil {
                     int wl = ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);
                     int s = ((data[8] & 0xFF) << 16) | ((data[9] & 0xFF) << 8) | (data[10] & 0xFF);
                     changeParam.setS(String.valueOf(s));
-                    changeParam.setWl(String.valueOf(wl / 50.0f));
+                    changeParam.setWl(String.valueOf(wl));
                     System.out.println("s = " + s);
                 } else if (data[3] == 0x06 && changeParam != null) {
                     int d = ((data[4] & 0xFF) << 16) | ((data[5] & 0xFF) << 8) | (data[6] & 0xFF);

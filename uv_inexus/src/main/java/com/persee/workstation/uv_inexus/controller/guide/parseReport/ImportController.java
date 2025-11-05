@@ -46,7 +46,8 @@ public class ImportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Result.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "文件上传失败：" + e.getMessage()));
         } catch (IllegalArgumentException e) {
             System.err.println("22222222222");
-            return ResponseEntity.badRequest().body(Result.fail(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
+
+            return ResponseEntity.ok((Result<String>)(Result) Result.build(false, HttpStatus.OK.value(), e.getMessage()));
         }
     }
 }

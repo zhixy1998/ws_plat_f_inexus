@@ -30,6 +30,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
@@ -97,6 +98,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
     @Autowired
     DeviceInfoService infoService;
 
+    @Autowired
+    FormulaUtil formulaUtil;
+
     @Value("1")
     private String right;
 
@@ -109,6 +113,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
     private static volatile boolean isAvg = false;
     private static volatile boolean isSd = false;
     private static volatile boolean isRsd = false;
+
+    private String deviceSerialNumber;
 
 
     /**
@@ -132,7 +138,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String sampleId = getQueryParam(query, "sampleId");
-        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
         String di = getQueryParam(query, "digit");
         String updateBy = getQueryParam(query, "updateBy");
         isAvg = getQueryParam(query, "avg").equals("true");
@@ -260,13 +266,13 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             tMeasureTaskService.updateById(task);
 
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-//            R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
-//            if (!formulaCount.getSuccess()) {
-//            infoService.releaseDevice(deviceSerialNumber);
-//                sendAndClose(session, "公式计算失败");
-//                return;
-//            }
-//            data = formulaCount.getData();
+            R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
+            if (!formulaCount.getSuccess()) {
+            infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, "公式计算失败");
+                return;
+            }
+            data = formulaCount.getData();
 
             photometricService.saveCountData(data, dataId);
 
@@ -359,11 +365,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 //公式计算
                 measureCount++;
 
-//                R<FPhotometricSampleAndDataVO> formulaCount = formulaCount(session, data, sample, task, parameter);
-//                if (formulaCount.getSuccess()) {
-//                    data = formulaCount.getData();
-//                    photometricService.saveCountData(data, dataId);
-//                }
+                R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
+                if (formulaCount.getSuccess()) {
+                    data = formulaCount.getData();
+                    photometricService.saveCountData(data, dataId);
+                }
             }
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
@@ -437,6 +443,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+
+        String changeLampWaveLength = parameter.getChangeLampWaveLength();
+        Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+        list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
         if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
             list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
             list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
@@ -454,7 +465,10 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         LocalDateTime startTime = LocalDateTime.now();
         for (String waveLength : waveLengths) {
-            list.add(new Command("SetWl", new Object[]{waveLength}));
+
+            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+
+            list.add(new Command("SetWl", new Object[]{step}));
             list.add(new Command("Measure", new Object[]{}));
 
             String ip = infoService.getIp(deviceSerialNumber);
@@ -529,6 +543,11 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             List<String> waveLengths = parameter.getWaveLength();
 
             list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+
+            String changeLampWaveLength = parameter.getChangeLampWaveLength();
+            Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
             if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
                 list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
                 list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
@@ -559,7 +578,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
                 for (String waveLength : waveLengths) {
-                    list.add(new Command("SetWl", new Object[]{waveLength}));
+                    Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+
+                    list.add(new Command("SetWl", new Object[]{step}));
                     list.add(new Command("Measure", new Object[]{}));
 
                     String ip = infoService.getIp(deviceSerialNumber);
@@ -585,6 +606,12 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                     list.clear();
                     repeatMiddleTime = LocalDateTime.now();
                 }
+                JSONObject object = new JSONObject();
+                object.put("sampleId", sampleKey);
+                object.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
+                object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+                object.put("value", repeatMiddleTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             }
             //循环测完，开始计算平均值
             String name = WaveLengthEnum.getName(parameter.getLuminosity());
@@ -862,17 +889,18 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendAndClose(session, countedData.getMessage());
+            sendAndClose(session, "公式计算出错");
             return R.fail(countedData.getMessage());
         }
         List<FPhotometricCountDataInfo> countDataInfos = countedData.getData();
+        countDataInfos = photometricService.dataRounding(countDataInfos, parameter);
 
         for (FPhotometricCountDataInfo countDataInfo : countDataInfos) {
             if (session.isOpen()) {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("sampleId", sample.getId());
                 jsonObject.put("key", countDataInfo.getResultIdentity() + "-" + countDataInfo.getFormulaText());
-                jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, countDataInfo.getCountValue()));
+                jsonObject.put("value", countDataInfo.getCountValue());
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             }
         }
@@ -929,6 +957,17 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
         status = 0;
+        try {
+            session.close();
+            infoService.releaseDevice(deviceSerialNumber);
+        } catch (IOException e) {
+            handleTransportError(session, e);
+            Thread.currentThread().interrupt();
+            return;
+        }finally {
+            infoService.releaseDevice(deviceSerialNumber);
+        }
+        System.out.println("连接异常: " + exception.getMessage());
         DetectionConstants.isDeviceIdle = true;
         System.out.println("连接异常: " + exception.getMessage());
     }

@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     private String deviceSerialNumber;
     private boolean occupancyStatus = false;
 
+    private Integer digit;
+
 
 
     @Autowired
@@ -90,6 +93,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private FormulaUtil formulaUtil;
+
     // WebSocket 会话对象
     private WebSocketSession currentSession;
 
@@ -109,6 +115,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                 String sampleId = getQueryParam(query, "sampleId");
                 deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
                 String updateBy = getQueryParam(query, "updateBy");
+                digit = Integer.parseInt(getQueryParam(query, "digit"));
                 if (taskId == null) {
                     sendClose(session, "缺少 taskId 参数");
                     return;
@@ -294,6 +301,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                         return;
                     }
 
+                    Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+                    changeParam.setWl(String.valueOf(v));
 
                     originalData.add(changeParam);
 
@@ -378,8 +387,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
+            BigDecimal value = new BigDecimal(y);
             point.put("x", integerPart);
-            point.put("y", y);
+            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "Abs");
@@ -395,8 +405,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
+            BigDecimal value = new BigDecimal(s);
             point.put("x", integerPart);
-            point.put("y", s);
+            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "T%");
@@ -413,8 +424,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
+            BigDecimal value = new BigDecimal(y);
             point.put("x", integerPart);
-            point.put("y", y);
+            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "Es");
@@ -431,8 +443,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
+            BigDecimal value = new BigDecimal(y);
             point.put("x", integerPart);
-            point.put("y", y);
+            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "Er");
@@ -652,13 +665,13 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         log.info("收到客户端消息: " + message.getPayload());
         if (message.getPayload().equals("close")){
             // 如果线程正在被使用
+            session.sendMessage(new TextMessage("停止成功"));
+            sessions.remove(session.getId());
+            session.close();
             if (occupancyStatus){
                 // 释放线程
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
-            session.sendMessage(new TextMessage("停止成功"));
-            sessions.remove(session.getId());
-            session.close();
         }
     }
 

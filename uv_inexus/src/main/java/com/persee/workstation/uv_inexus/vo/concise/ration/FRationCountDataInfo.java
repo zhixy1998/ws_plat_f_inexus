@@ -25,6 +25,6 @@ public class FRationCountDataInfo {
     private String identity;
 
     @ApiModelProperty("值")
-    private Double colValue;
+    private String colValue;
 
 }

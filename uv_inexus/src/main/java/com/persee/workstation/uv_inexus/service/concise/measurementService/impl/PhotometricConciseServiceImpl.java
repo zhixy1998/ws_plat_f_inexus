@@ -42,6 +42,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -51,6 +52,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricRepor
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -64,6 +66,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -109,6 +112,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Autowired
     RestUtil restUtil;
+
+    @Autowired
+    FormulaUtil formulaUtil;
 
     @Value("1")
     String deleteType;
@@ -236,8 +242,26 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         // 10. 校验修约设置（数量限制）
-        if (parameter.getApproxParams() != null && parameter.getApproxParams().size() > 10) {
-            return R.fail("修约设置数量不能超过10个");
+        List<FRoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams != null && !approxParams.isEmpty()) {
+
+            if (approxParams.size() > 10) {
+                return R.fail("最多支持修约10个变量" + approxParams.size());
+            }
+            for (FRoundingVO approxParam : approxParams) {
+
+                if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
+                    return R.fail("修约设置" + approxParam.getResultIdentity() + "的修约条件不能为空");
+                }
+                if (approxParam.getRoundingParams().size() > 10) {
+                    return R.fail("修约设置" + approxParam.getResultIdentity() + "的修约条件数量不能超过10个");
+                }
+
+                R<Boolean> r = concisePublicUtilService.checkApproximateRange(approxParam);
+                if (!r.getSuccess()) {
+                    return r;
+                }
+            }
         }
 
         // 11. 校验质控设置（数量限制）
@@ -611,13 +635,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
                     if (taskSpecimen != null && !taskSpecimen.isEmpty()) {
                         for (FTaskSpecimen specimen : taskSpecimen) {
+                            if (specimen.getIsTested().equals(noTested)) {
+                                continue;
+                            }
 
                             FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
                             FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
-                            Boolean b = dealData(task, specimen.getSpecimenKey(), parameter);
-                            if (!b) {
-                                return Result.fail("重新分析出错");
-                            }
+                            dealData(task, specimen.getSpecimenKey(), parameter);
                         }
                     }
                     ans.setTaskId(task.getId());
@@ -694,7 +718,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     }
 
 
-    private Boolean dealData(FMeasureTask task, String sampleId, FPhotometricParameter parameter) {
+    private R<Boolean> dealData(FMeasureTask task, String sampleId, FPhotometricParameter parameter) {
 
         /*
         分析数据，不保存数据
@@ -709,7 +733,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureData one = fMeasureDataService.getOne(queryWrapper);
         if (one == null || !StringUtils.hasText(one.getOriginalCalculationData())) {
             log.info("没有测量数据");
-            return false;
+            return R.fail("没有测量数据");
         }
 
         int digit = Constants.DEFAULT_DECIMAL_NUM;
@@ -727,19 +751,31 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         R<List<FPhotometricCountDataInfo>> formula = formula(listData, sample, task, parameter, digit);
         if (!formula.getSuccess()) {
-            return false;
+            return R.fail(formula.getMessage());
         }
 
         List<FPhotometricCountDataInfo> data = formula.getData();
+        data = dataRounding(data, parameter);
 
         LambdaQueryWrapper<FMeasureAnalysisData> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+                .eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                .eq(FMeasureAnalysisData::getMeasureDataId, one.getId())
+                .orderByAsc(FMeasureAnalysisData::getDataVersion)
+                .last("limit 1");
 
         FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper);
-        analysisData.setAnalysisResult(JSON.toJSONString(data));
-        analysisData.setIsSave(createType);
-        return fMeasureAnalysisDataService.updateById(analysisData);
+        if (analysisData != null) {
+            analysisData.setAnalysisResult(JSON.toJSONString(data));
+            analysisData.setIsSave(noSave);
+            boolean b = fMeasureAnalysisDataService.updateById(analysisData);
+            if (!b) {
+                log.warn("更新数据失败");
+                return R.fail("更新数据失败");
+            }
+        }
+        return R.ok(true);
+
     }
 
     private void setParamToDevice(String methodId, String deviceSerialNumber) {
@@ -773,7 +809,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             list.add(new Command("SetPhotoMode", new Object[]{wave}));
             list.add(new Command("SetResponseTime", new Object[]{responseTime}));
-            list.add(new Command("SetWl", new Object[]{waveLength}));
+            String changeLampWaveLength = parameter.getChangeLampWaveLength();
+            Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
+            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+            list.add(new Command("SetWl", new Object[]{step}));
             if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
 
                 String lampPos = StringUtils.hasText(parameter.getEnergyLamp()) ? parameter.getEnergyLamp() : "0";
@@ -830,15 +871,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 .orderByDesc(FMeasureMethod::getMethodCreateTime);
         List<FMeasureMethod> list = fMeasureMethodService.list(queryWrapper);
         if (list == null || list.isEmpty()) {
-            LambdaQueryWrapper<FMeasureProject> projectWrapper = new LambdaQueryWrapper<>();
-            projectWrapper.eq(FMeasureProject::getCreatorKey, updateBy)
-                    .orderByDesc(FMeasureProject::getCreateTime);
-            List<FMeasureProject> projectList = fMeasureProjectService.list(projectWrapper);
-            if (projectList == null || projectList.isEmpty()) {
-                return Result.ok(vo);
-            }
-//            vo.setProjectName(projectList.get(0).getProjectName());
-//            vo.setProjectId(projectList.get(0).getId());
+            queryWrapper.clear();
+            queryWrapper.eq(FMeasureMethod::getProjectItemKey, "default")
+                    .eq(FMeasureMethod::getMeasurementType, measureType)
+                    .last("limit 1");
+            FMeasureMethod one = fMeasureMethodService.getOne(queryWrapper);
+            vo.setMethodId(one.getId());
+            vo.setMethodName(one.getMethodName());
 
         } else {
             FMeasureMethod fMeasureMethod = list.get(0);
@@ -849,6 +888,22 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 //            vo.setProjectId(fMeasureProject.getId());
 //            vo.setProjectName(fMeasureProject.getProjectName());
         }
+        FMeasureTask fMeasureTask = new FMeasureTask();
+
+
+        fMeasureTask.setCreateTime(LocalDateTime.now());
+        fMeasureTask.setMethodKey(vo.getMethodId());
+        fMeasureTask.setMeasureType(measureType);
+        fMeasureTask.setEndSaveTime(LocalDateTime.now());
+        fMeasureTask.setIsSave(noSave);
+        fMeasureTask.setIsDelete(createType);
+
+        fMeasureTask.setUserId(id);
+        fMeasureTask.setTaskName(vo.getMethodName()+newTaskName);
+
+        boolean save = fMeasureTaskService.save(fMeasureTask);
+        vo.setTaskId(fMeasureTask.getId());
+        vo.setTaskName(fMeasureTask.getTaskName());
         return Result.ok(vo);
 
     }
@@ -1177,7 +1232,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(createType) && specimen.getIsTested().equals(noTested)) {
+                if (specimen.getDeleteType().equals(createType)) {
                     hasNoTested = true;
                     break;
                 }
@@ -1575,13 +1630,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             Optional<FInputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
                     mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
             if (!mapTableHead.isPresent()) {
-                return R.fail("缺少参数映射：" + inputParam.getParamName());
+                log.info("该参数未添加映射，跳过");
+                continue;
             }
-            identity.append(mapTableHead.get().getParamIdentity()).append(",");
+
             String s = allData.getString(mapTableHead.get().getHeadIdentity());
             if (!StringUtils.hasText(s)) {
-                return R.fail("缺少数据！");
+                return R.fail("变量" + inputParam.getParamName() + "缺少数据！");
             }
+            identity.append(mapTableHead.get().getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
@@ -1878,6 +1935,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 R<List<FPhotometricCountDataInfo>> formula = formula(originDataInfos, sample, task, parameter, digit);
                 if (formula.getSuccess()) {
                     List<FPhotometricCountDataInfo> countDataInfos = formula.getData();
+
+                    countDataInfos = dataRounding(countDataInfos, parameter);
+
                     LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
                     analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
                             .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
@@ -1905,6 +1965,101 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         return R.ok();
     }
 
+    @Override
+    public List<FPhotometricCountDataInfo> dataRounding(List<FPhotometricCountDataInfo> dataVO, FPhotometricParameter parameter) {
+
+        List<FRoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams == null || approxParams.isEmpty()) {
+            log.info("没有设置修约参数");
+            return dataVO;
+        }
+        List<FPreCountResultParam> resultParams = parameter.getResultParams();
+        if (resultParams == null || resultParams.isEmpty()) {
+            log.info("没有设置待计算结果参数，不做修约处理");
+            return dataVO;
+        }
+
+        if (dataVO == null || dataVO.isEmpty()) {
+            log.info("没有待修约的数据");
+            return dataVO;
+        }
+        Map<String, String> map = new HashMap<>();
+        for (FPreCountResultParam param : resultParams) {
+            map.put(param.getResultIdentity(), param.getResultIdentity() + "-" + param.getFormulaText());
+        }
+        Map<String, List<FRoundingParamVO>> roundingInfo = new HashMap<>();
+
+        for (FRoundingVO param : approxParams) {
+            String identity = param.getResultIdentity();
+            if (map.containsKey(identity)) {
+                String key = map.get(identity);
+                roundingInfo.put(key, param.getRoundingParams());
+            }
+        }
+        for (FPhotometricCountDataInfo count : dataVO) {
+
+            String resultIdentity = count.getResultIdentity() + "-" + count.getFormulaText();
+
+            List<FRoundingParamVO> list = roundingInfo.get(resultIdentity);
+            if (roundingInfo.containsKey(resultIdentity) && list != null) {
+                String s = roundData(count.getCountValue(), list);
+                count.setCountValue(s);
+            }
+        }
+
+        return dataVO;
+    }
+
+    private String roundData(String value, List<FRoundingParamVO> roundingParams) {
+        double middle = Double.parseDouble(value);
+        String  ans = value;
+        for (FRoundingParamVO param : roundingParams) {
+            Double lowerLimit = param.getLowerLimit();
+
+            Double upperLimit = param.getUpperLimit();
+
+            // 检查下限
+            boolean lowerCheck = true;
+            if (lowerLimit != null) {
+                if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+                    // 包含下限
+                    lowerCheck = middle >= lowerLimit;
+                } else {
+                    // 不包含下限
+                    lowerCheck = middle > lowerLimit;
+                }
+            }
+
+            // 检查上限
+            boolean upperCheck = true;
+            if (upperLimit != null) {
+                if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+                    // 包含上限
+                    upperCheck = middle <= upperLimit;
+                } else {
+                    // 不包含上限
+                    upperCheck = middle < upperLimit;
+                }
+            }
+
+            if (lowerCheck && upperCheck) {
+                String roundingType = param.getRoundingType();
+
+                if (roundingType == null) {
+                    return value;
+                }
+
+                if (roundingType.equals(RoundingTypeEnums.SIGNIFICANT_FIGURES.getCode())) {
+                    ans = DataCountUtil.formatToSignificantDigits(param.getDecimalPlaces(), BigDecimal.valueOf(middle));
+                } else {
+                    ans = DataCountUtil.addZero(DataCountUtil.formatValue(param.getDecimalPlaces(), middle), param.getDecimalPlaces());
+                }
+                return ans;
+            }
+        }
+        return value;
+    }
+
     public Map<String,String> getCountData(FMeasureTask task, FMeasureSample sample, FPhotometricParameter parameter, Integer digit, List<FPhotometricOriginDataInfo> wlDataList) {
 
         Map<String, String> map = new HashMap<>();
@@ -1912,31 +2067,35 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         R<List<FPhotometricCountDataInfo>> formula = formula(wlDataList, sample, task, parameter, digit);
         if (formula.getSuccess()) {
             List<FPhotometricCountDataInfo> formulaData = formula.getData();
+
+            formulaData = dataRounding(formulaData, parameter);
             for (FPhotometricCountDataInfo count : formulaData) {
-                String s = DataCountUtil.formatValueWithBigDecimal(digit, count.getCountValue());
+                String s = count.getCountValue();
                 map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
             }
-        }
+        } else {
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                    .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
+                    .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
 
-        LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-        analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
-                .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
+            FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            if (one != null) {
+                List<FPhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), FPhotometricCountDataInfo.class);
 
-        FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-        if (one != null) {
-            List<FPhotometricCountDataInfo> countList = JSON.parseArray(one.getAnalysisResult(), FPhotometricCountDataInfo.class);
+                countList = dataRounding(countList, parameter);
 
-            if (map.isEmpty() && countList != null) {
-                for (FPhotometricCountDataInfo count : countList) {
-
-                    if (count.getCountValue() != null) {
-                        String s = DataCountUtil.formatValueWithBigDecimal(digit, count.getCountValue());
-                        map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
+                if (countList != null) {
+                    for (FPhotometricCountDataInfo count : countList) {
+                        if (count.getCountValue() != null) {
+                            String s = count.getCountValue();
+                            map.put(count.getResultIdentity() + "-" + count.getFormulaText(), s);
+                        }
                     }
                 }
             }
         }
+
         return map;
     }
 
@@ -2246,8 +2405,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{photometricParameter.getLuminosity()});
             devMessageUtil.wavelengthLocate(command, ip);
 
-            double v = Double.parseDouble(s);
-            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
+            Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
+
+            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
@@ -2264,6 +2424,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             changeParam.setWl(s);
             list.add(changeParam);
             wave = changeParam.getWl();
+            if (StringUtils.hasText(changeParam.getWl())) {
+                DetectionConstants.zeroResult.put(Double.valueOf(changeParam.getWl()), changeParam);
+            }
         }
         task.setZeroParam(JSON.toJSONString(list));
 

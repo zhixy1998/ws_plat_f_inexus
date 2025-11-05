@@ -53,6 +53,7 @@ import com.persee.workstation.uv_inexus.service.guide.systemManageService.System
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -144,6 +145,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     @Autowired
     private DevMessageUtil devMessageUtil;
+
+    @Autowired
+    private FormulaUtil formulaUtil;
 
 
     @Autowired
@@ -310,7 +314,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
             }
-            vo.setParameter(parameterVo);
+            vo.setMethodParam(parameterVo);
             // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
             String format = method.getMethodCreateTime().format(formatter);
             vo.setMethodCreateTime(format);
@@ -345,7 +349,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
             parameterVo.setEnergyLampName(lamp);
         }
-        vo.setParameter(parameterVo);
+        vo.setMethodParam(parameterVo);
         // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
         String format = method.getMethodCreateTime().format(formatter);
         vo.setMethodCreateTime(format);
@@ -353,6 +357,26 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         vo.setMethodUseTime(format1);
         if (task!=null){
             vo.setTaskId(task.getId());
+        }
+        if (Objects.isNull(task)){
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+            String id = po.getId();
+            FMeasureTask fMeasureTask = new FMeasureTask();
+
+
+            fMeasureTask.setCreateTime(LocalDateTime.now());
+            fMeasureTask.setMethodKey(vo.getMethodId());
+            fMeasureTask.setMeasureType(measureType);
+            fMeasureTask.setEndSaveTime(LocalDateTime.now());
+            fMeasureTask.setIsSave("1");
+            fMeasureTask.setIsDelete(createType);
+
+            fMeasureTask.setUserId(id);
+            fMeasureTask.setTaskName(vo.getMethodName()+"文件数据");
+
+            boolean save = fMeasureTaskService.save(fMeasureTask);
+            vo.setTaskId(fMeasureTask.getId());
+
         }
         vo.setMethodId(method.getId());
         return Result.ok(vo);
@@ -420,7 +444,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
                 parameterVo.setEnergyLampName(lamp);
             }
-            methodVo.setParameter(parameterVo);
+            methodVo.setMethodParam(parameterVo);
             methodVos.add(methodVo);
         }
         vo.setRecords(methodVos);
@@ -1171,18 +1195,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
                 BigDecimal x = new BigDecimal(xValue);
                 x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
-                map.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));  // 格式化为字符串
+                map.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));  // 格式化为字符串
 
                 // 处理 y 值并根据 digit 进行精度控制
                 if (digit != null) {
                     BigDecimal y = new BigDecimal(yValue);
                     y = y.setScale(digit, RoundingMode.HALF_UP); // 保留 digit 位小数
-                    map.put("y", y.stripTrailingZeros().toPlainString());
-                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));
+                    map.put("y", y.toPlainString());
+                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));
                     originalMap.put("y", split[1]);  // 原始数据
                 } else {
                     map.put("y", yValue);
-                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));
+                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));
                     originalMap.put("y", split[1]);  // 原始数据
                 }
 
@@ -1677,12 +1701,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<Command> commands = new ArrayList<>();
         // 设置光度模式
         commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getLuminosity()));
+        Double v2 = formulaUtil.calculateStep(Double.parseDouble(time.getChangeLampWaveLength()), deviceSerialNumber);
         // 设置换灯波长
-        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
+        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, v2));
         // 设置响应时间
         commands.add(buildCommand(SetParamEnum.SetResponseTime, time.getResponseTime()));
+        Double v = formulaUtil.calculateStep(Double.parseDouble(time.getWaveLength()), deviceSerialNumber);
         // 设置波长
-        commands.add(buildCommand(SetParamEnum.SetWl, time.getWaveLength()));
+        commands.add(buildCommand(SetParamEnum.SetWl,v ));
         // 设置光谱带宽
         commands.add(buildCommand(SetParamEnum.SetSlit1, time.getSpectralBandwidth()));
 
@@ -1814,9 +1840,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                         .orderByDesc("analysis_number")
                         .last("limit 1"));
                 FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-                map.put("measureId", one.getId());
-                map.put("sampleName", byId.getSampleName());
-                list.add(map);
+                if (byId == null){
+                    map.put("measureId", one.getId());
+                    map.put("sampleName", byId.getSampleName());
+                    list.add(map);
+                }
             }
         }
         return Result.ok(list);

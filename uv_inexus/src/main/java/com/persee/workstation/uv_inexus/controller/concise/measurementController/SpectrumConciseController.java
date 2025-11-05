@@ -63,9 +63,11 @@ public class SpectrumConciseController {
 
     @GetMapping("searchMethodButton")
     @ApiOperation("查找方法按钮")
-    public Result searchMethodButton(@RequestParam Integer pageNum,
-                                     @RequestParam Integer pageSize, @RequestParam String updateBy,
-                                     @RequestParam String measureType, @RequestParam(required = false) String methodName) {
+    public Result searchMethodButton(@RequestParam(required = false) Integer pageNum,
+                                     @RequestParam(required = false) Integer pageSize,
+                                     @RequestParam String updateBy,
+                                     @RequestParam String measureType,
+                                     @RequestParam(required = false) String methodName) {
         return spectrumConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
     }
 

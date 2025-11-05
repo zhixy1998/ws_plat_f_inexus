@@ -26,10 +26,12 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
@@ -99,12 +101,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private FSamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
+    ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
     DeviceManageService deviceManageService;
 
     @Autowired
     LaTeXConverter latexConverter;
     @Autowired
     RationConciseService rationConciseService;
+
+    @Autowired
+    DeviceInfoService deviceInfoService;
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -548,6 +556,19 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         for (FInputParam param : inputParamList) {
             paramList.add(param.getResultIdentity());
         }
+//        if (checkFormulaDto.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
+//            paramList.add("Abs");
+//            paramList.add("ΔAbs");
+//            paramList.add("k0");
+//            paramList.add("k1");
+//            paramList.add("k2");
+//            paramList.add("k3");
+//            paramList.add("k4");
+//        }
+//
+//        /**
+//         * 如果定量，将公式中Abs或ΔAbs替换为：
+//         */
 
         List<String> formulaList = new ArrayList<>();
         formulaList.add(newFormula.getFormulaText());
@@ -633,12 +654,28 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
 
-            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            DeviceInfoPO info = null;
+            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
+                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+
+            if (info !=null && StringUtils.hasText(info.getDeviceModelName())){
+
+                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
+                vo.setInstrumentModel(info.getDeviceModelName());
+            } else {
+                vo.setInstrumentName("紫外可见分光光度计");
+                vo.setInstrumentModel("T600");
+            }
+
+
             vo.setLuminosityMode(WaveLengthEnum.getName(methodparam.getLuminosity()));
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
 
-            vo.setInstrumentName("紫外可见分光光度计");
-            vo.setInstrumentModel("T600");
+
+
+
 
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
@@ -760,15 +797,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             if (StringUtils.hasText(task.getFittingParam())){
                 FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                 StringBuilder param = new StringBuilder();
-                for (Double coefficient : fittingReceiveInfo.getCoefficients()) {
-                    param.append(coefficient).append(",");
+                if (fittingReceiveInfo != null) {
+
+                    if (fittingReceiveInfo.getCoefficients() != null) {
+                        for (Double coefficient : fittingReceiveInfo.getCoefficients()) {
+                            param.append(coefficient).append(",");
+                        }
+                        param.deleteCharAt(param.length() - 1);
+                        vo.setCurveParams(param.toString());
+                    }
+                    vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
+                    vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
+                    vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());
+                    vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree() == null ? "" : fittingReceiveInfo.getDegree()));
+
                 }
-                param.deleteCharAt(param.length() - 1);
-                vo.setCurveParams(param.toString());
-                vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
-                vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
-                vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());
-                vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree() == null ? "" : fittingReceiveInfo.getDegree()));
             }
 
             StringBuilder wave = new StringBuilder();
@@ -841,9 +884,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             FMeasureData data = null;
             if (sampleIdList.size()==1){
                 // 根据任务id个样品id查询测量信息
-                LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(FMeasureData::getId, taskId)
-                        .eq(FMeasureData::getSampleKey, sampleIdList.get(0));
+                QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
+                wrapper.eq("task_id", taskId)
+                        .eq("sample_key", sampleIdList.get(0))
+                        .last("limit 1");
                 data=fMeasureDataService.getOne(wrapper);
             }
             SpectralReportVo vo = new SpectralReportVo();
@@ -1250,12 +1294,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
                 // 遍历任务中的样品id，删除未测试且在报告中的样品
                 List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
-                    if (taskSpecimen.getIsTested().equals("0")) {
-                        // 如果当前样品未测还在报告中，则将当前样品删除
-                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
-                    }
-                }
+//                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
+//                    if (taskSpecimen.getIsTested().equals("0")) {
+//                        // 如果当前样品未测还在报告中，则将当前样品删除
+//                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
+//                    }
+//                }
 
                 // 继续后续操作，使用 filteredSampleIdList 进行查询
                 FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
@@ -1296,21 +1340,24 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         vo.setMapRelation(snapshot.getMapRelation());
                     }
                 }
-                List<Map<String, Object>> dataList1 = vo.getDataList();
-                for (Map<String, Object> stringObjectMap : dataList1) {
-                    for (String key : stringObjectMap.keySet()) {
-                        if(key.equals("Abs")){
-                            Object value = stringObjectMap.get(key);
-                            if (value != null) {
-                                Object o = convertSciToDecimal(value);
-                                String strValue = o.toString();
-                                if (strValue.length() >= 6) {
-                                    stringObjectMap.put(key, strValue.substring(0, 6));
+                if ( vo.getDataList() != null){
+                    List<Map<String, Object>> dataList1 = vo.getDataList();
+                    for (Map<String, Object> stringObjectMap : dataList1) {
+                        for (String key : stringObjectMap.keySet()) {
+                            if(key.equals("Abs")){
+                                Object value = stringObjectMap.get(key);
+                                if (value != null) {
+                                    Object o = convertSciToDecimal(value);
+                                    String strValue = o.toString();
+                                    if (strValue.length() >= 6) {
+                                        stringObjectMap.put(key, strValue.substring(0, 6));
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
                 return Result.ok(vo);
             }
             case "时间扫描":
@@ -1325,14 +1372,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 // 创建一个新的列表，用于保存删除后的结果，保持顺序不变
                 List<String> filteredSampleIdList = new ArrayList<>(sampleIdList);
 
-                // 遍历任务中的样品id
-                List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
-                    if (taskSpecimen.getIsTested().equals("0")) {
-                        // 如果当前样品未测且在报告中，则将当前样品删除
-                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
-                    }
-                }
+//                // 遍历任务中的样品id
+//                List<FTaskSpecimen> fTaskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+//                for (FTaskSpecimen taskSpecimen : fTaskSpecimen) {
+//                    if (taskSpecimen.getIsTested().equals("0")) {
+//                        // 如果当前样品未测且在报告中，则将当前样品删除
+//                        filteredSampleIdList.removeIf(s -> s.equals(taskSpecimen.getSpecimenKey()));
+//                    }
+//                }
 
                 // 获取表头
                 Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), filteredSampleIdList);
@@ -1355,22 +1402,24 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     }
                 }
 
-                // 格式化数据中的 "Abs" 值
-                List<Map<String, Object>> dataList1 = vo.getDataList();
-                for (Map<String, Object> stringObjectMap : dataList1) {
-                    for (String key : stringObjectMap.keySet()) {
-                        if(key.equals("Abs")){
-                            Object value = stringObjectMap.get(key);
-                            if (value != null) {
-                                Object o = convertSciToDecimal(value);
-                                String strValue = o.toString();
-                                if (strValue.length() >= 6) {
-                                    stringObjectMap.put(key, strValue.substring(0, 6));
-                                }
-                            }
-                        }
-                    }
-                }
+             if ( vo.getDataList() != null){
+                 // 格式化数据中的 "Abs" 值
+                 List<Map<String, Object>> dataList1 = vo.getDataList();
+                 for (Map<String, Object> stringObjectMap : dataList1) {
+                     for (String key : stringObjectMap.keySet()) {
+                         if(key.equals("Abs")){
+                             Object value = stringObjectMap.get(key);
+                             if (value != null) {
+                                 Object o = convertSciToDecimal(value);
+                                 String strValue = o.toString();
+                                 if (strValue.length() >= 6) {
+                                     stringObjectMap.put(key, strValue.substring(0, 6));
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
 
                 return Result.ok(vo);
             }
@@ -1658,89 +1707,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Override
     public Result<Boolean> checkApproximateRange(FRoundingVO vo) {
-        List<FRoundingParamVO> params = vo.getRoundingParams();
-
-        // 1. 检查每个区间内部的合法性
-        for (FRoundingParamVO param : params) {
-            Double lowerLimit = param.getLowerLimit();
-            Double upperLimit = param.getUpperLimit();
-
-            // 只有当下限和上限都不为空时才进行检查
-            if (lowerLimit != null && upperLimit != null) {
-                // 下限值不能大于上限值
-                if (lowerLimit > upperLimit) {
-                    return Result.fail("下限值不能大于上限值");
-                }
-                // 如果下限值等于上限值且为有限值，必须同时包含两端点
-                if (lowerLimit.equals(upperLimit)) {
-                    if (!param.getIsLowerLimitIncluded() || !param.getIsUpperLimitIncluded()) {
-                        return Result.fail("当上下限值相等且为有限值时，必须同时包含两端点");
-                    }
-                }
-            }
+        R<Boolean> r = concisePublicUtilService.checkApproximateRange(vo);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
         }
-
-        // 2. 检查区间之间是否重叠
-        // 过滤掉无效区间（上下限都为null）
-        List<FRoundingParamVO> validParams = params.stream()
-                .filter(p -> p.getLowerLimit() != null || p.getUpperLimit() != null)
-                .collect(Collectors.toList());
-
-        // 按下限值排序，null值（负无穷）排在最前
-        List<FRoundingParamVO> sortedParams = validParams.stream()
-                .sorted((p1, p2) -> {
-                    Double lower1 = p1.getLowerLimit();
-                    Double lower2 = p2.getLowerLimit();
-
-                    // null值处理（视为负无穷）
-                    if (lower1 == null) return -1;
-                    if (lower2 == null) return 1;
-
-                    return lower1.compareTo(lower2);
-                })
-                .collect(Collectors.toList());
-
-        // 检查相邻区间是否有重叠
-        for (int i = 0; i < sortedParams.size() - 1; i++) {
-            if (isOverlapping(sortedParams.get(i), sortedParams.get(i + 1))) {
-                return Result.fail("区间之间不能存在重叠");
-            }
-        }
-
-        return Result.ok(true);
     }
-
-    /**
-     * 判断两个区间是否重叠
-     *
-     * @param interval1 第一个区间
-     * @param interval2 第二个区间
-     * @return 如果重叠返回true，否则返回false
-     */
-    private boolean isOverlapping(FRoundingParamVO interval1, FRoundingParamVO interval2) {
-        Double lower1 = interval1.getLowerLimit();
-        Double upper1 = interval1.getUpperLimit();
-        boolean includeLower1 = Boolean.TRUE.equals(interval1.getIsLowerLimitIncluded());
-        boolean includeUpper1 = Boolean.TRUE.equals(interval1.getIsUpperLimitIncluded());
-
-        Double lower2 = interval2.getLowerLimit();
-        Double upper2 = interval2.getUpperLimit();
-        boolean includeLower2 = Boolean.TRUE.equals(interval2.getIsLowerLimitIncluded());
-        boolean includeUpper2 = Boolean.TRUE.equals(interval2.getIsUpperLimitIncluded());
-
-        // 处理null边界值（null表示无穷）
-        if (upper1 == null || lower2 == null) {
-            return true;
-        }
-
-        if (upper1 > lower2) {
-            return true;
-        } else if (upper1.equals(lower2)) {
-            return includeUpper1 && includeLower2;
-        }
-
-        return false;
-    }
-
-
 }

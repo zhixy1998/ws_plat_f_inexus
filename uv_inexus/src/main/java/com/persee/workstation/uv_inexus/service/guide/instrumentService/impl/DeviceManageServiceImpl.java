@@ -119,6 +119,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         vo.setIsDevOpened(deviceInfoPO.getIsDevOpened());
         vo.setDeviceSerialNumber(deviceSerialNumber);
         vo.setDeviceName(deviceInfoPO.getDeviceName());
+        vo.setIsActivated(deviceInfoPO.getIsActivated() == null ? 0 : deviceInfoPO.getIsActivated());
 
         String connect = DeviceConnectMessageEnum.getName(deviceInfoPO.getConnectStatus()) + " IP="
                 + deviceInfoPO.getIp() + " port=" + sendPort;
@@ -150,7 +151,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.info("未找到连接仪器信息！");
             return R.fail("未查找到仪器信息");
         }
-        log.info("查询仪器状态");
+//        log.info("查询仪器状态");
         return R.ok(info.getDeviceCurrentStatus());
     }
 
@@ -167,6 +168,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail("未查找到仪器信息");
         }
         log.info("调用机器初始化接口");
+
+        R<Boolean> r = infoService.useDevice(initDTO.getDeviceSerialNumber(), Constants.DEVICE_STATUS_INIT);
+        if (!r.getSuccess()) {
+            log.info(r.getMessage());
+            return R.fail(r.getMessage());
+        }
 
         LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DeviceModelInfoPO::getDevModel, infoPO.getDeviceModel());
@@ -187,15 +194,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         infoPO.setIsInited(Constants.INIT_STATUS_RUNNING);
         infoService.saveOrUpdateInfo(infoPO);
 
-//        new Thread(() -> {
-//            startInit(infoPO);
-//        }).start();
-
-        R<Boolean> r = infoService.useDevice(initDTO.getDeviceSerialNumber(), Constants.DEVICE_STATUS_INIT);
-        if (!r.getSuccess()) {
-            log.info(r.getMessage());
-            return R.fail(r.getMessage());
-        }
 
         new Thread(() -> {
             try {
@@ -368,6 +366,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             po.setAttachmentType(deviceVO.getAttachmentType());
             po.setDevicePort(sendPort);
             po.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
+            po.setLinearSegment(deviceVO.getLinearSegment());
 
             //TODO 根据仪器序列号，获取型号信息，还需要调整
             String deviceModel = deviceVO.getDeviceSerialNumber().substring(3, 8);
@@ -384,10 +383,20 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 deviceVO.setDeviceName(po.getDeviceName());
             }
 
+            Integer i = infoService.queryDeviceActivationStatus(deviceVO.getDeviceSerialNumber());
+            po.setIsActivated(i);
+
             List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
 
             //附件处理
-            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceVO.getDeviceSerialNumber());
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(deviceVO.getAttachmentType());
+
+            if (attachmentInfo == null) {
+                attachmentInfo = new DeviceAttachmentTypeVO();
+                attachmentInfo.setAttachmentNum(12);
+                attachmentInfo.setAttachmentName("未识别");
+            }
+            attachmentInfo.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
             FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
 
             BeanUtils.copyProperties(deviceVO, dto);
@@ -396,14 +405,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             po.setAttachmentName(attachmentInfo.getAttachmentName());
             infoService.saveOrUpdateInfo(po);
+            boolean initRecord = true;
 
-            if (deviceVO.getIsInited() == 0) {
+            List<InitRecordPO> initList = initRecordService.searchInitStatus(deviceVO.getDeviceSerialNumber(), po.getId());
+            if (initList == null || initList.isEmpty()) {
+                initRecord = false;
+            }
 
+            if (deviceVO.getIsInited() == 0 || !initRecord) {
                 if (attachmentInfo.getAttachmentKind().equals(1)){
                     List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
                     initRecordService.initAllTask(deviceVO.getDeviceSerialNumber(), po.getId(), allInitEntry);
                 }
-
                 initRecordService.initAllTask(deviceVO.getDeviceSerialNumber(), po.getId(), initEntry);
             }
 
@@ -450,22 +463,36 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         query.eq(InsConfigPO::getDeviceSerialNumber, deviceSerialNumber);
         InsConfigPO po = configDAO.selectOne(query);
         if (po == null) {
-            log.info("查询仪器配置--未找到配置");
-            return R.fail("未找到配置");
+            log.info("查询仪器配置--未找到配置，给默认值");
+            vo.setMessagePort(1);
+            vo.setAnnexSetting(1);
+            vo.setBandWidth(2.0);
+        } else{
+            vo.setMessagePort(po.getMessagePort());
+            vo.setAnnexSetting(po.getAnnexSetting());
+            vo.setBandWidth(po.getBandWidth());
         }
-        vo.setMessagePort(po.getMessagePort());
-        vo.setAnnexSetting(po.getAnnexSetting());
-        vo.setBandWidth(po.getBandWidth());
+
         return R.ok(vo);
     }
 
     @Override
-    public List<Double> getBandWidth() {
+    public List<Double> getBandWidth(String deviceSerialNumber) {
         List<Double> result = new ArrayList<>();
-        result.add(0.2);
-        result.add(0.5);
-        result.add(1.0);
-        result.add(2.0);
+        R<DeviceMeasureVO> r = queryDeviceTypeInfo(deviceSerialNumber);
+        if (!r.getSuccess()) {
+            result.add(2.0);
+            return result;
+        }
+        DeviceMeasureVO vo = r.getData();
+        if (vo == null || vo.getBandWidth() == null || vo.getBandWidth().isEmpty()) {
+            result.add(2.0);
+            return result;
+        }
+        List<String> bandWidth = vo.getBandWidth();
+        for (String s : bandWidth) {
+            result.add(Double.parseDouble(s));
+        }
         return result;
     }
 
@@ -567,14 +594,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return null;
         }
         DeviceMeasureVO measureVO = deviceMeasureVOR.getData();
+        List<String> bandWidth = measureVO.getBandWidth();
+        List<DataNameValue> band = new ArrayList<>();
+        for (String s : bandWidth) {
+            band.add(new DataNameValue("", s));
+        }
 
 
         List<DeviceCalibrationVO> info = configDAO.getCalibrationInfo(type);
         for (DeviceCalibrationVO vo : info) {
             List<DeviceCalibrationParams> params = configDAO.getCalibrationParams(vo.getCalibrationType());
             for (DeviceCalibrationParams param : params) {
-                List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
-                param.setData(value);
+
+                if (param.getParamName().equals("光谱带宽")) {
+                    param.setData(band);
+                } else {
+                    List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
+                    param.setData(value);
+                }
 
                 LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(CalibrationTempPO::getCalibrationType, vo.getCalibrationType())

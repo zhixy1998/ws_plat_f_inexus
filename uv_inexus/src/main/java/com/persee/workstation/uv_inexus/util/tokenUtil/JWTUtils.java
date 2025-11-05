@@ -12,14 +12,14 @@
 
 package com.persee.workstation.uv_inexus.util.tokenUtil;
 
-import java.util.Date;
-
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
+
+import java.util.Date;
 
 public class JWTUtils {
     private static final String KEY = "px_iNexus";
@@ -43,10 +43,10 @@ public class JWTUtils {
         try {
             JWTVerifier verifier = JWT.require(Algorithm.HMAC256(KEY)).withIssuer("auth0").build();
             DecodedJWT jwt = verifier.verify(token);
-            System.out.println("认证通过：");
-            System.out.println("issuer: " + jwt.getIssuer());
-            System.out.println("username: " + jwt.getClaim("userName").asString());
-            System.out.println("过期时间：      " + jwt.getExpiresAt());
+//            System.out.println("认证通过：");
+//            System.out.println("issuer: " + jwt.getIssuer());
+//            System.out.println("username: " + jwt.getClaim("userName").asString());
+//            System.out.println("过期时间：      " + jwt.getExpiresAt());
             // 存储到UserContext（供日志切面使用）
             String userName = jwt.getClaim("userName").asString();
             LoginUserInfoVO userVO = new LoginUserInfoVO();

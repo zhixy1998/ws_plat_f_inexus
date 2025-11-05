@@ -36,7 +36,7 @@ public class SpectrumNearestMethodVo {
     private String measurementType;
 
     // 测量参数信息
-    private FSpectrumParameterVo parameter;
+    private FSpectrumParameterVo methodParam;
 
     // 是否共享方法(0.否 1.是)
     private String isSharingMethod;

@@ -45,6 +45,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
@@ -56,6 +57,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMetho
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
@@ -106,6 +108,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
     DevMessageUtil devMessageUtil;
+
+    @Autowired
+    FormulaUtil formulaUtil;
 
     @Autowired
     RestUtil restUtil;
@@ -631,22 +636,32 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         // 6.3 修约设置校验（最多10个）
         List<FRoundingVO> approxParams = parameter.getApproxParams();
-        if (approxParams != null && !approxParams.isEmpty() && approxParams.size() > 10) {
-            return R.fail("修约设置最多支持10个规则，当前数量：" + approxParams.size());
+        if (approxParams != null && !approxParams.isEmpty()) {
+
+            if (approxParams.size() > 10) {
+                return R.fail("最多支持修约10个变量" + approxParams.size());
+            }
+            for (FRoundingVO approxParam : approxParams) {
+
+                if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
+                    return R.fail("修约设置" + approxParam.getResultIdentity() + "的修约条件不能为空");
+                }
+                if (approxParam.getRoundingParams().size() > 10) {
+                    return R.fail("修约设置" + approxParam.getResultIdentity() + "的修约条件数量不能超过10个");
+                }
+
+                R<Boolean> r = concisePublicUtilService.checkApproximateRange(approxParam);
+                if (!r.getSuccess()) {
+                    return r;
+                }
+            }
         }
+
 
         // 6.4 质控设置校验（最多10个，类型合法）
         List<FQualityConfVO> qcParams = parameter.getQcParams();
-        if (qcParams != null && !qcParams.isEmpty()) {
-            if (qcParams.size() > 10) {
-                return R.fail("质控设置最多支持10个规则，当前数量：" + qcParams.size());
-            }
-            Set<String> validQcTypes = new HashSet<>(Arrays.asList("Abs", "Blank", "Parallel", "R", "Recovery", "Slope"));
-            for (FQualityConfVO qc : qcParams) {
-                if (qc == null || isBlank(qc.getControlType()) || !validQcTypes.contains(qc.getControlType())) {
-                    return R.fail("质控类型不合法（可选值：" + String.join("、", validQcTypes) + "）");
-                }
-            }
+        if (qcParams != null && !qcParams.isEmpty() && qcParams.size() > 10) {
+            return R.fail("质控设置最多支持10个规则，当前数量：" + qcParams.size());
         }
 
         // 7. 继承参数校验（方法名称等长度限制）
@@ -861,6 +876,19 @@ public class RationServiceConciseImpl implements RationConciseService {
                     task.setMethodKey(methodId);
                     fMeasureTaskService.updateById(task);
 
+                    int digit = Constants.DEFAULT_DECIMAL_NUM;
+                    R<FMeasureTaskAttachment> attachmentR = fMeasureTaskAttachmentService.queryByTaskId(task.getId());
+                    if (attachmentR.getSuccess()) {
+                        FMeasureTaskAttachment attachment = attachmentR.getData();
+                        if (StringUtils.hasText(attachment.getDataParam())) {
+                            FQueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+                            if (queryDataDTO.getDigit() != null) {
+                                digit = queryDataDTO.getDigit();
+                            }
+                        }
+                    }
+                    changeStandSampleDataDigit(task.getId(), digit);
+                    changeUnknowSampleDigit(task.getId(), digit);
                     //TODO 公式重算
 
                     ans.setTaskId(task.getId());
@@ -927,6 +955,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             List<Command> list = new ArrayList<>();
             list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
 
+            String changeLampWaveLength = parameter.getChangeLampWaveLength();
+            Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
             String responseTime = StringUtils.hasText(parameter.getResponseTime()) ? parameter.getResponseTime() : "0.5";
             list.add(new Command("SetResponseTime", new Object[]{responseTime}));
 
@@ -934,7 +966,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()){
                 waveLength = parameter.getWaveLength().get(parameter.getWaveLength().size() - 1);
             }
-            list.add(new Command("SetWl", new Object[]{waveLength}));
+
+            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+
+            list.add(new Command("SetWl", new Object[]{step}));
 
             try {
                 deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
@@ -1066,13 +1101,14 @@ public class RationServiceConciseImpl implements RationConciseService {
                 .orderByDesc(FMeasureMethod::getMethodCreateTime);
         List<FMeasureMethod> list = fMeasureMethodService.list(queryWrapper);
         if (list == null|| list.isEmpty()){
-            LambdaQueryWrapper<FMeasureProject> projectWrapper = new LambdaQueryWrapper<>();
-            projectWrapper.eq(FMeasureProject::getCreatorKey, updateBy)
-                    .orderByDesc(FMeasureProject::getCreateTime);
-            List<FMeasureProject> projectList = fMeasureProjectService.list(projectWrapper);
-            if (projectList == null || projectList.isEmpty()){
-                return Result.ok(vo);
-            }
+            queryWrapper.clear();
+            queryWrapper.eq(FMeasureMethod::getProjectItemKey, "default")
+                    .eq(FMeasureMethod::getMeasurementType, measureType)
+                    .last("limit 1");
+            FMeasureMethod one = fMeasureMethodService.getOne(queryWrapper);
+            vo.setMethodId(one.getId());
+            vo.setMethodName(one.getMethodName());
+
 
         } else {
             FMeasureMethod fMeasureMethod = list.get(0);
@@ -1080,6 +1116,22 @@ public class RationServiceConciseImpl implements RationConciseService {
             vo.setMethodId(fMeasureMethod.getId());
             vo.setMethodName(fMeasureMethod.getMethodName());
         }
+        FMeasureTask fMeasureTask = new FMeasureTask();
+
+
+        fMeasureTask.setCreateTime(LocalDateTime.now());
+        fMeasureTask.setMethodKey(vo.getMethodId());
+        fMeasureTask.setMeasureType(measureType);
+        fMeasureTask.setEndSaveTime(LocalDateTime.now());
+        fMeasureTask.setIsSave(noSave);
+        fMeasureTask.setIsDelete(createType);
+
+        fMeasureTask.setUserId(id);
+        fMeasureTask.setTaskName(vo.getMethodName()+newTaskName);
+
+        boolean save = fMeasureTaskService.save(fMeasureTask);
+        vo.setTaskId(fMeasureTask.getId());
+        vo.setTaskName(fMeasureTask.getTaskName());
         return Result.ok(vo);
     }
 
@@ -1970,7 +2022,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getSampleKind().equals(sampleKind) && specimen.getDeleteType().equals(createType) && specimen.getIsTested().equals(noTested)) {
+                if (specimen.getSampleKind().equals(sampleKind) && specimen.getDeleteType().equals(createType)) {
                     hasNoTested = true;
                     break;
                 }
@@ -2252,7 +2304,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             ans += value;
         }
         FRationCountDataInfo countDataInfo = new FRationCountDataInfo();
-        countDataInfo.setColValue(DataCountUtil.formatValue(digit, ans));
+        countDataInfo.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, ans), digit));
         countDataInfo.setIdentity(SampleTableEnum.Abs.getIdentity());
         countDataInfo.setHeadName(SampleTableEnum.Abs.getName());
 
@@ -2284,7 +2336,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             ans += value;
         }
         FRationCountDataInfo countDataInfo = new FRationCountDataInfo();
-        countDataInfo.setColValue(ans);
+        countDataInfo.setColValue(String.valueOf(ans));
         countDataInfo.setIdentity(SampleTableEnum.Abs.getIdentity());
         countDataInfo.setHeadName(SampleTableEnum.Abs.getName());
 
@@ -2472,10 +2524,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
                     recount = true;
-
-                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
-                    fMeasureTaskAttachmentService.saveOrUpdate(attachment);
                 }
+                attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+                fMeasureTaskAttachmentService.saveOrUpdate(attachment);
             }
         }
 
@@ -2665,7 +2716,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
                     for (FRationCountDataInfo countData : countDataList) {
                         if (countData.getColValue() != null) {
-                            map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                            map.put(countData.getIdentity(), countData.getColValue());
                         }
 
                     }
@@ -2731,6 +2782,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                             String[] split = dataInfo.getIdentity().split("-");
                             String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
                             children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + split[split.length - 1]);
+                            String time = dataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                            children.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), time);
                             childrenList.computeIfAbsent(dataInfo.getIdentity(), k -> new HashMap<>()).putAll(children);
                         }
                     }
@@ -2750,7 +2803,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
                     for (FRationCountDataInfo countData : countDataList) {
                         if (countData.getColValue() !=null) {
-                            map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                            map.put(countData.getIdentity(), countData.getColValue());
                         }
                     }
                 }
@@ -2935,14 +2988,14 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (empty) {
             for (FRationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
-                    data.add(dataInfo.getColValue());
+                    data.add(Double.parseDouble(dataInfo.getColValue()));
 
                 }
             }
         } else {
             for (FRationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                    data.add(dataInfo.getColValue());
+                    data.add(Double.parseDouble(dataInfo.getColValue()));
                 }
             }
         }
@@ -3241,7 +3294,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             JSONObject jsonObject = JSON.parseObject(s);
 
             String mid = jsonObject.get("value").toString();
-            ans = DataCountUtil.formatValueWithBigDecimal(digit, mid);
+            ans = mid;
         }
         return ans;
     }
@@ -3263,6 +3316,135 @@ public class RationServiceConciseImpl implements RationConciseService {
             ans = jsonObject.get("value").toString();
         }
         return ans;
+    }
+
+    @Override
+    public List<FRationCountDataInfo> dataRounding(List<FRationCountDataInfo> dataVO, FRationParameter parameter) {
+
+        List<FRoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams == null || approxParams.isEmpty()) {
+            log.info("没有设置修约参数");
+            return dataVO;
+        }
+        List<FPreCountResultParam> resultParams = parameter.getResultParams();
+        if (resultParams == null || resultParams.isEmpty()) {
+            log.info("没有设置待计算结果参数，不做修约处理");
+            return dataVO;
+        }
+
+        if (dataVO == null || dataVO.isEmpty()) {
+            log.info("没有待修约的数据");
+            return dataVO;
+        }
+        Map<String, String> map = new HashMap<>();
+        for (FPreCountResultParam param : resultParams) {
+            map.put(param.getResultIdentity(), param.getResultIdentity() + "-" + param.getFormulaText());
+        }
+
+        map.put(SampleTableEnum.FIT_CONCENTRATION.getIdentity(), SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+        Map<String, List<FRoundingParamVO>> roundingInfo = new HashMap<>();
+
+        for (FRoundingVO param : approxParams) {
+            String identity = param.getResultIdentity();
+            if (map.containsKey(identity)) {
+                String key = map.get(identity);
+                roundingInfo.put(key, param.getRoundingParams());
+            }
+        }
+        for (FRationCountDataInfo count : dataVO) {
+
+            String resultIdentity = count.getIdentity();
+
+            List<FRoundingParamVO> list = roundingInfo.get(resultIdentity);
+            if (roundingInfo.containsKey(resultIdentity) && list != null) {
+                String s = roundData(count.getColValue(), list);
+                count.setColValue(s);
+            }
+        }
+
+        return dataVO;
+    }
+
+    @Override
+    public String fitDataRounding(String fitConcentration, FRationParameter parameter) {
+
+        List<FRoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams == null || approxParams.isEmpty()) {
+            log.info("无需修约");
+            return fitConcentration;
+        }
+
+        if (!StringUtils.hasText(fitConcentration)) {
+            log.info("数据为空");
+            return fitConcentration;
+        }
+
+        List<FRoundingParamVO> roundingInfo = new ArrayList<>();
+
+        for (FRoundingVO param : approxParams) {
+            String identity = param.getResultIdentity();
+            if (SampleTableEnum.FIT_CONCENTRATION.getIdentity().equals(identity)) {
+                roundingInfo = param.getRoundingParams();
+            }
+        }
+
+        if (roundingInfo.isEmpty()) {
+            log.info("没有设置修约规则，无需修约");
+            return fitConcentration;
+        }
+
+        return roundData(fitConcentration, roundingInfo);
+    }
+
+    private String roundData(String value, List<FRoundingParamVO> roundingParams) {
+        double middle = Double.parseDouble(value);
+        String  ans = value;
+        for (FRoundingParamVO param : roundingParams) {
+            Double lowerLimit = param.getLowerLimit();
+
+            Double upperLimit = param.getUpperLimit();
+
+            // 检查下限
+            boolean lowerCheck = true;
+            if (lowerLimit != null) {
+                if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+                    // 包含下限
+                    lowerCheck = middle >= lowerLimit;
+                } else {
+                    // 不包含下限
+                    lowerCheck = middle > lowerLimit;
+                }
+            }
+
+            // 检查上限
+            boolean upperCheck = true;
+            if (upperLimit != null) {
+                if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+                    // 包含上限
+                    upperCheck = middle <= upperLimit;
+                } else {
+                    // 不包含上限
+                    upperCheck = middle < upperLimit;
+                }
+            }
+
+            if (lowerCheck && upperCheck) {
+                String roundingType = param.getRoundingType();
+
+                if (roundingType == null) {
+                    return value;
+                }
+
+                if (roundingType.equals(RoundingTypeEnums.SIGNIFICANT_FIGURES.getCode())) {
+                    ans = DataCountUtil.formatToSignificantDigits(param.getDecimalPlaces(), BigDecimal.valueOf(middle));
+                } else {
+                    ans = DataCountUtil.addZero(DataCountUtil.formatValue(param.getDecimalPlaces(), middle), param.getDecimalPlaces());
+                }
+
+                return ans;
+            }
+        }
+        return value;
     }
 
     @Override
@@ -3317,13 +3499,16 @@ public class RationServiceConciseImpl implements RationConciseService {
             Optional<FInputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
                     mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
             if (!mapTableHead.isPresent()) {
-                return R.fail("缺少参数映射：" + inputParam.getParamName());
+                log.info("参数{}未添加映射，跳过", inputParam.getParamName());
+                continue;
             }
-            identity.append(mapTableHead.get().getParamIdentity()).append(",");
+
             String s = allData.getString(mapTableHead.get().getHeadIdentity());
             if (!StringUtils.hasText(s)) {
-                return R.fail("缺少数据！");
+                log.info("变量{}缺少数据！跳过", inputParam.getParamName());
+                continue;
             }
+            identity.append(mapTableHead.get().getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
         }
@@ -3342,7 +3527,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
                 return R.fail("公式计算出错！" + resultJson.get("message"));
             }
-            countDataInfo.setColValue((Double) resultJson.get("result"));
+            countDataInfo.setColValue(String.valueOf(resultJson.get("result")));
             countList.add(countDataInfo);
         }
 
@@ -3478,7 +3663,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FRationCountDataInfo yAbs = new FRationCountDataInfo();
                 yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
                 yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                yAbs.setColValue(0.0);
+                yAbs.setColValue("0.0");
 
                 List<FRationCountDataInfo> currentList = new ArrayList<>();
 
@@ -3488,13 +3673,13 @@ public class RationServiceConciseImpl implements RationConciseService {
                     double sub = 0.0;
                     //计算平均值
                     for (FRationCountDataInfo dataInfo : emptyList) {
-                        sub += dataInfo.getColValue();
+                        sub += Double.parseDouble(dataInfo.getColValue());
                     }
                     minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
                     //添加到空白列表
                     currentList.add(ansData);
-                    double v = ansData.getColValue() - minuend;
-                    yAbs.setColValue(DataCountUtil.formatValue(digit, v));
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
@@ -3506,8 +3691,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         for (FRationCountDataInfo dataInfo : emList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
-                                double v1 = dataInfo.getColValue() - minuend;
-                                yAbs.setColValue(DataCountUtil.formatValue(digit, v1));
+                                double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
+                                yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v1), digit));
                                 newList.add(yAbs);
                             }
                         }
@@ -3517,9 +3702,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                     emptyList.clear();
                     emptyDataList.clear();
                     emptyList.add(ansData);
-                    minuend = ansData.getColValue();
-                    double v = ansData.getColValue() - minuend;
-                    yAbs.setColValue(DataCountUtil.formatValue(digit, v));
+                    minuend = Double.parseDouble(ansData.getColValue());
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(yAbs);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -3540,8 +3725,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
                     sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                     sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                    double v = ansData.getColValue() - minuend;
-                    sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(sumAbsData);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -3662,7 +3847,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FRationCountDataInfo yAbs = new FRationCountDataInfo();
                 yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
                 yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                yAbs.setColValue(0.0);
+                yAbs.setColValue("0.0");
 
                 List<FRationCountDataInfo> currentList = new ArrayList<>();
 
@@ -3672,12 +3857,13 @@ public class RationServiceConciseImpl implements RationConciseService {
                     double sub = 0.0;
                     //计算平均值
                     for (FRationCountDataInfo dataInfo : emptyList) {
-                        sub += dataInfo.getColValue();
+                        sub += Double.parseDouble(dataInfo.getColValue());
                     }
                     minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
                     //添加到空白列表
                     currentList.add(ansData);
-                    yAbs.setColValue(DataCountUtil.formatValue(digit,ansData.getColValue() - minuend));
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v),digit));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
@@ -3689,7 +3875,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                         for (FRationCountDataInfo dataInfo : emList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
-                                yAbs.setColValue(DataCountUtil.formatValue(digit,dataInfo.getColValue() - minuend));
+                                double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
+                                yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
                                 newList.add(yAbs);
                             }
                         }
@@ -3699,9 +3886,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                     emptyList.clear();
                     emptyDataList.clear();
                     emptyList.add(ansData);
-                    minuend = ansData.getColValue();
-                    double v = ansData.getColValue() - minuend;
-                    yAbs.setColValue(DataCountUtil.formatValue(digit, v));
+                    minuend = Double.parseDouble(ansData.getColValue());
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(yAbs);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -3725,12 +3912,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                     FRationCountDataInfo sumAbsData = new FRationCountDataInfo();
                     sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                     sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                    double v = ansData.getColValue() - minuend;
-                    sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
-                    toCountData = sumAbsData.getColValue();
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
+                    toCountData = Double.parseDouble(sumAbsData.getColValue());
                     currentList.add(sumAbsData);
                 } else {
-                    toCountData = ansData.getColValue();
+                    toCountData = Double.parseDouble(ansData.getColValue());
                 }
                 currentList.add(ansData);
                 /*
@@ -3739,10 +3926,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
                 String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
+                ans = fitDataRounding(ans, parameter);
+
                 FRationCountDataInfo valueData = new FRationCountDataInfo();
                 valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
                 valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                valueData.setColValue(ans==null? null : Double.valueOf(ans));
+                valueData.setColValue(ans);
                 currentList.add(valueData);
 
                 //TODO 公式计算，待做
@@ -3902,8 +4091,9 @@ public class RationServiceConciseImpl implements RationConciseService {
             Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{WaveLengthEnum.abs.getCode()});
             devMessageUtil.wavelengthLocate(command, ip);
 
-            double v = Double.parseDouble(s);
-            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
+            Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
+
+            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
@@ -3919,7 +4109,10 @@ public class RationServiceConciseImpl implements RationConciseService {
             ChangeParam changeParam = zero.getData();
             changeParam.setWl(s);
             list.add(changeParam);
-            wave = s;
+            wave = changeParam.getWl();
+            if (StringUtils.hasText(changeParam.getWl())) {
+                DetectionConstants.zeroResult.put(Double.valueOf(changeParam.getWl()), changeParam);
+            }
         }
         task.setZeroParam(JSON.toJSONString(list));
 

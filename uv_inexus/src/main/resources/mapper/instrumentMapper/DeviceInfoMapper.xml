@@ -16,6 +16,9 @@
     <update id="updateFormula">
         update t800_uv_inexus.t_ins_info_temp set linear_segment=#{linearSegment} where device_serial_number=#{deviceSerialNumber}
     </update>
+    <update id="updateDeviceActivateStatus">
+        update t800_uv_inexus.t_ins_info_temp set is_activated =#{activateStatus} where device_serial_number= #{deviceSerialNumber}
+    </update>
 
 
     <select id="getIp" resultType="java.lang.String">
@@ -39,5 +42,17 @@
     </select>
     <select id="getFormula" resultType="java.lang.String">
         select linear_segment from t800_uv_inexus.t_ins_info_temp where device_serial_number=#{deviceSerialNumber}
+    </select>
+    <select id="queryDeviceActivateStatus" resultType="java.lang.Integer">
+        select activation_status from t_software_activation where device_number = #{deviceSerialNumber}
+    </select>
+    <select id="getAttachmentInfoByAttachmentNum"
+            resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO">
+        select attachment_name as attachmentName,
+        attachment_num as attachmentNum,
+        sample_pool_num as samplePoolNum,
+        attachment_type as attachmentKind
+        from  t800_uv_inexus.t_measure_pool
+        where attachment_num = #{attachment_num}
     </select>
 </mapper>

@@ -30,6 +30,9 @@ public class RoundingParamVO {
     @ApiModelProperty("修约方式")
     private String roundingType;
 
+    @ApiModelProperty("前端用")
+    private String id;
+
     @ApiModelProperty("位数")
     private Integer decimalPlaces;
 

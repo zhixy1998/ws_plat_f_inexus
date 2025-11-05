@@ -148,6 +148,16 @@ public interface RationConciseService {
     //暂不用
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
 
+    /**
+     * 公式修约
+     */
+    List<FRationCountDataInfo> dataRounding(List<FRationCountDataInfo> dataVO, FRationParameter parameter);
+    /**
+     * 拟合浓度修约
+     */
+    String fitDataRounding(String fitConcentration, FRationParameter parameter);
+
+
     R<List<FRationCountDataInfo>> formula(String analysisDataId, List<FRationWavelengthDataInfo> vo, FMeasureSample sample, FMeasureTask task, FRationParameter parameter, Integer digit);
 
     R<Boolean> changeStandSampleDataDigit(String taskId, Integer digit);

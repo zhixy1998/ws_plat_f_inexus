@@ -11,6 +11,8 @@ import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @Component
@@ -31,7 +33,7 @@ public class FormulaUtil {
             if (CollectionUtils.isNotEmpty(linearSegment)) {
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsActualStep(actualStep)) {
-                        return (segment.getK() * actualStep + segment.getB()) / 50;
+                        return roundToOneDecimal((segment.getK() * actualStep+ segment.getB())/ 50);
                     }
                 }
             }
@@ -41,6 +43,42 @@ public class FormulaUtil {
         return actualStep / 50;
     }
 
+    /**
+     * 根据步长计算波长
+     *
+     * @param actualStep
+     * @param linearSegments
+     * @return
+     */
+    public Double calculateWavelength(double actualStep, List<LinearSegment> linearSegments) {
+        try {
+            if (CollectionUtils.isNotEmpty(linearSegments)) {
+                for (LinearSegment segment : linearSegments) {
+                    if (segment.containsActualStep(actualStep)) {
+                        return roundToOneDecimal((segment.getK() * actualStep + segment.getB()) / 50);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return actualStep / 50;
+        }
+        return actualStep / 50;
+    }
+
+    private Double roundToOneDecimal(Double value) {
+        if (value == null) {
+            return null;
+        }
+        BigDecimal bd = new BigDecimal(value.toString());
+        bd = bd.setScale(1, RoundingMode.HALF_UP);
+        return bd.doubleValue();
+    }
+
+    /**
+     * 获取公式
+     * @param deviceSerialNumber
+     * @return
+     */
     public List<LinearSegment> getLinearSegment(String deviceSerialNumber) {
         String formula = deviceInfoDAO.getFormula(deviceSerialNumber);
         return JSONArray.parseArray(formula, LinearSegment.class);
@@ -55,7 +93,29 @@ public class FormulaUtil {
             if (CollectionUtils.isNotEmpty(linearSegment)) {
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsWl(wl)) {
-                        return (wl * 50 - segment.getB()) / segment.getK();
+                        return roundToOneDecimal((wl * 50 - segment.getB()) / segment.getK());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return wl * 50;
+        }
+        return wl * 50;
+    }
+
+    /**
+     * 根据波长计算步数
+     *
+     * @param wl
+     * @param list
+     * @return
+     */
+    public Double calculateStepByWavelength(double wl, List<LinearSegment> list) {
+        try {
+            if (CollectionUtils.isNotEmpty(list)) {
+                for (LinearSegment segment : list) {
+                    if (segment.containsWl(wl)) {
+                        return roundToOneDecimal((wl * 50 - segment.getB() )/ segment.getK());
                     }
                 }
             }
