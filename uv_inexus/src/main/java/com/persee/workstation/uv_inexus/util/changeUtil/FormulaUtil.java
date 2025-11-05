@@ -33,7 +33,7 @@ public class FormulaUtil {
             if (CollectionUtils.isNotEmpty(linearSegment)) {
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsActualStep(actualStep)) {
-                        return (segment.getK() * actualStep + segment.getB()) / 50;
+                        return roundToOneDecimal(segment.getK() * actualStep + segment.getB() / 50);
                     }
                 }
             }
@@ -93,7 +93,7 @@ public class FormulaUtil {
             if (CollectionUtils.isNotEmpty(linearSegment)) {
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsWl(wl)) {
-                        return (wl * 50 - segment.getB()) / segment.getK();
+                        return roundToOneDecimal(wl * 50 - segment.getB() / segment.getK());
                     }
                 }
             }
