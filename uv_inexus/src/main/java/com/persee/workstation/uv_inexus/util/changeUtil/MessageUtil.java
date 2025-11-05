@@ -181,7 +181,7 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("CheckWl")
                     || cmdId.equalsIgnoreCase("BaseLineFast");
 
-            int timeoutMs = isSlowCommand ? 40000 : 4500;
+            int timeoutMs = isSlowCommand ? 18000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
 
             long lastReceiveTime = System.currentTimeMillis();
@@ -216,7 +216,6 @@ public class MessageUtil {
                     if(cmdId.equals("Stop")){
                         break;
                     }
-
                 } catch (SocketTimeoutException e) {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
                 }

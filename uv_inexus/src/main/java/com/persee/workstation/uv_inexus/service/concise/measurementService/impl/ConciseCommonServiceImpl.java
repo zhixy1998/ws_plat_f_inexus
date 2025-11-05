@@ -797,15 +797,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             if (StringUtils.hasText(task.getFittingParam())){
                 FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                 StringBuilder param = new StringBuilder();
-                for (Double coefficient : fittingReceiveInfo.getCoefficients()) {
-                    param.append(coefficient).append(",");
+                if (fittingReceiveInfo != null) {
+
+                    if (fittingReceiveInfo.getCoefficients() != null) {
+                        for (Double coefficient : fittingReceiveInfo.getCoefficients()) {
+                            param.append(coefficient).append(",");
+                        }
+                        param.deleteCharAt(param.length() - 1);
+                        vo.setCurveParams(param.toString());
+                    }
+                    vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
+                    vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
+                    vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());
+                    vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree() == null ? "" : fittingReceiveInfo.getDegree()));
+
                 }
-                param.deleteCharAt(param.length() - 1);
-                vo.setCurveParams(param.toString());
-                vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
-                vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
-                vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());
-                vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree() == null ? "" : fittingReceiveInfo.getDegree()));
             }
 
             StringBuilder wave = new StringBuilder();

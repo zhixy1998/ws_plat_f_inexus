@@ -433,11 +433,21 @@ public class DevMessageUtil {
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+
+            if ("InitLampMotor".equals(cmdId) || "InitWlMotor".equals(cmdId)) {
+
+                if (responses.size() == 1) {
+                    System.out.println(cmdId + " 仅收到1条回应，重发一次");
+                    responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+                }
+            }
+
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             String result = parse.toString();
             if ("false".equals(result)) {
                 return R.fail();
             }
+
         } else if(flag == "T800"){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
