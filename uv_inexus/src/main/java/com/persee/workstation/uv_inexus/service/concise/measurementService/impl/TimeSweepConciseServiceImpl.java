@@ -2669,6 +2669,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         FTimeSweepParamter parameter = new FTimeSweepParamter();
         // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto.getParameter(), parameter);
+        if (paramDto.getType().equals("0")){
+            parameter.setEnergyLampName(paramDto.getEnergyLamp().equals("0")?"钨灯": paramDto.getEnergyLamp().equals("1")?"氘灯":"汞灯");
+        }
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());

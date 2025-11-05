@@ -3332,6 +3332,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         FSpectrumParameter parameter = new FSpectrumParameter();
         // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto.getParameter(), parameter);
+        if (paramDto.getType().equals("0")){
+            if (paramDto.getParameter().getScanSpeed()==null){
+                parameter.setScanSpeed("3");
+            }
+            if (paramDto.getType().equals("0")){
+                parameter.setEnergyLampName(paramDto.getParameter().getEnergyLamp().equals("0")?"钨灯": paramDto.getParameter().getEnergyLamp().equals("1")?"氘灯":"汞灯");
+            }
+        }
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());

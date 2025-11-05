@@ -301,7 +301,7 @@ public class DevMessageUtil {
     /**
      * 仪器校正
      */
-    public R<String> deviceCalibration(Command command, String deviceIp) {
+    public R<String> deviceCalibration(Command command, String deviceIp) throws InterruptedException {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             return R.fail(ans.getMessage());
@@ -419,22 +419,37 @@ public class DevMessageUtil {
      * @return
      */
     public R<String> initDevice(Command  command, String deviceIp) throws Exception {
+//        R<DatagramSocket> ans = messageUtil.getSocket();
+//        if (!ans.getSuccess()) {
+//            return R.fail(ans.getMessage());
+//        }
+//        DatagramSocket socket = ans.getData();
+//        if(flag.equals("T600")) {
+//            Boolean b = changeXml(T600xmlPath);
+//            if (!b) {
+//                return R.fail("xml文件加载失败");
+//            }
+//            String cmdId = command.getCmdId();
+//            //发送报文组
+//            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
+//            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+//            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+//            String result = parse.toString();
+//            if ("false".equals(result)) {
+//                return R.fail();
+//            }
         R<DatagramSocket> ans = messageUtil.getSocket();
-        if (!ans.getSuccess()) {
-            return R.fail(ans.getMessage());
-        }
         DatagramSocket socket = ans.getData();
-        if(flag.equals("T600")) {
+        if ("T600".equals(flag)) {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
                 return R.fail("xml文件加载失败");
             }
             String cmdId = command.getCmdId();
-            //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
 
-            if ("InitLampMotor".equals(cmdId) || "InitWlMotor".equals(cmdId)) {
+            if ("InitLampMotor".equals(cmdId) || "InitSlit1Motor".equals(cmdId) || "InitWlMotor".equals(cmdId)) {
 
                 if (responses.size() == 1) {
                     System.out.println(cmdId + " 仅收到1条回应，重发一次");

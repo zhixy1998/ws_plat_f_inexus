@@ -545,11 +545,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (dto.getCalibrationType() == 1) {
             //波长校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
-            devMessageUtil.deviceCalibration(command, ip);
+            try {
+                devMessageUtil.deviceCalibration(command, ip);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         } else if (dto.getCalibrationType() == 2) {
             //暗电流校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
-            devMessageUtil.deviceCalibration(command, ip);
+            try {
+                devMessageUtil.deviceCalibration(command, ip);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
