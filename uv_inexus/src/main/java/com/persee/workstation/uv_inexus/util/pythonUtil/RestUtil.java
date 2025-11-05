@@ -46,9 +46,17 @@ public class RestUtil {
 
         HttpEntity<String> entity = new HttpEntity<>(jsonObject.toJSONString(), headers);
 
-        ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            return response.getBody();
+        } catch (Exception e) {
+            log.info("计算和异常：{}", e.getMessage());
+            JSONObject error = new JSONObject();
+            error.put("code", "404");
 
-        return response.getBody();
+            return error.toJSONString();
+        }
+
     }
 
     public String dataFit(FittingParam param) {
@@ -62,8 +70,16 @@ public class RestUtil {
 
         HttpEntity<String> entity = new HttpEntity<>(jsonString, headers);
 
-        ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-        return response.getBody();
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            return response.getBody();
+        } catch (Exception e) {
+            log.info("曲线拟合：{}", e.getMessage());
+            JSONObject error = new JSONObject();
+            error.put("code", "404");
+
+            return error.toJSONString();
+        }
 
     }
 
