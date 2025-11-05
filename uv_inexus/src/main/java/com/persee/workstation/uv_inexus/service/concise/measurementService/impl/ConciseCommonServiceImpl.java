@@ -1651,6 +1651,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                                     queryWrapper1.eq(FMeasureAnalysisData::getTaskId, taskId);
                                     queryWrapper1.eq(FMeasureAnalysisData::getSampleKey, specimenKey);
                                     List<FMeasureAnalysisData> fMeasureAnalysisDataList = fMeasureAnalysisDataService.list(queryWrapper1);
+                                     LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper3 = new LambdaQueryWrapper<>();
+                                     queryWrapper3.eq(FMeasureAnalysisData::getTaskId, taskId)
+                                             .notIn(FMeasureAnalysisData::getAnalysisType, "5");
+                                    List<FMeasureAnalysisData> list = fMeasureAnalysisDataService.list(queryWrapper3);
+                                    fMeasureAnalysisDataList.addAll(list);
                                     if (!CollectionUtils.isEmpty(fMeasureAnalysisDataList)) {
                                         fMeasureAnalysisDataList.forEach(analysisData -> {
                                             analysisData.setId(null);
