@@ -740,14 +740,17 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
             vo.setForceZeroPoint("否");
             vo.setInsertZeroPoint("否");
-            for (String s : parameter.getZeroMethod()) {
-                if (s.equals(RationCurveParamEnums.force_zero.getIdentity())) {
-                    vo.setForceZeroPoint("是");
-                }
-                if (s.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
-                    vo.setInsertZeroPoint("是");
+            if (parameter.getZeroMethod()!=null && !parameter.getZeroMethod().isEmpty()) {
+                for (String s : parameter.getZeroMethod()) {
+                    if (s.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+                        vo.setForceZeroPoint("是");
+                    }
+                    if (s.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+                        vo.setInsertZeroPoint("是");
+                    }
                 }
             }
+
             vo.setAutoChangeSamplePool("否");
 
             R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(task.getDeviceSerialNumber());

@@ -489,7 +489,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         break;
                 }
 
-                if (parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
+                if (parameter.getZeroMethod() != null && parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
                     minPointNum = minPointNum - 1;
                 }
 
@@ -723,7 +723,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         if (StringUtils.hasText(task.getFittingParam())) {
                             fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                         }
-                        if (fittingInfo != null) {
+                        if (fittingInfo != null && fittingInfo.getCoefficients() != null) {
                             String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType(), digit);
 
                             ans = rationService.fitDataRounding(ans, parameter);
