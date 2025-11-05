@@ -155,7 +155,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         // 设置查询条件
         QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
-        wrapper.eq("method_creator", dto.getUpdateBy());
+//        wrapper.eq("method_creator", dto.getUpdateBy());
         wrapper.eq("measurement_type", dto.getMeasureType());
         if (StringUtils.hasText(dto.getMethodName())) {
             wrapper.like("method_name", dto.getMethodName());
