@@ -268,8 +268,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
             R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
             if (!formulaCount.getSuccess()) {
-            infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "公式计算失败");
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, "公式计算出错，请检查公式配置！");
                 return;
             }
             data = formulaCount.getData();
@@ -889,7 +889,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendAndClose(session, "公式计算出错");
+            sendAndClose(session, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
         List<FPhotometricCountDataInfo> countDataInfos = countedData.getData();
