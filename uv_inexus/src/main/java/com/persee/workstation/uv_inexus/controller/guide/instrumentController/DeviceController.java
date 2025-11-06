@@ -13,6 +13,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.instrumentController;
 
 
+import com.persee.workstation.uv_inexus.config.LogPoint;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -50,6 +51,7 @@ public class DeviceController {
 
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
+    @LogPoint(value = "查找仪器", module = "设备管理", recordParams = true,recordResult = true)
     public Result<List<FindDeviceVO>> findDevice() throws Exception {
         List<FindDeviceVO> device = deviceManageService.findDevice();
         if (device == null) {
