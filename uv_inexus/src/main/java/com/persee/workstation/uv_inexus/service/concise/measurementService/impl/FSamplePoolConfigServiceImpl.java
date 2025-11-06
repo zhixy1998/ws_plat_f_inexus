@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FSamplePoolConfigDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
@@ -26,6 +27,7 @@ import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
@@ -51,6 +53,9 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
 
     @Autowired
     DevMessageUtil devMessageUtil;
+
+    @Autowired
+    DeviceInfoService deviceInfoService;
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
@@ -252,12 +257,18 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         }
 
         String ip = deviceInfoDAO.getIp(deviceSerialNumber);
+        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+        if (!r.getSuccess()) {
+            log.info("设备被占用");
+            return R.fail(r.getMessage());
+        }
         R<String> stringR = devMessageUtil.setCurrentCellPos(poolNum, ip);
         if (!stringR.getSuccess()) {
             log.info("设置出错");
+            deviceInfoService.releaseDevice(deviceSerialNumber);
             return R.fail("设置出错");
         }
-
+        deviceInfoService.releaseDevice(deviceSerialNumber);
         po.setCurrentPoolNum(poolNum);
         po.setUpdateBy(updateBy);
         boolean b = dao.updateById(po) > 0;
