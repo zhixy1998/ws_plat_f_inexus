@@ -545,6 +545,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result use(FUseMethodDto paramDto) {
+        if (paramDto.getParameter().getLuminosity().equals("3")||paramDto.getParameter().getLuminosity().equals("4")) {
+            paramDto.getParameter().setLadderCorrection(false);
+        }
         Map<String, Object> map = new HashMap<>();
         if (paramDto.getMethodId2() != null) {
             FMeasureMethod method2 = fMeasureMethodService.getById(paramDto.getMethodId2());
@@ -2795,10 +2798,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (analysisIds== null|| analysisIds.isEmpty()){
                     return Result.ok(null);
                 }
-                // 根据分析id查询多个分析id的信息
-                QueryWrapper<FMeasureAnalysisData> qw = new QueryWrapper<>();
-                qw.in("id", analysisIds);
-                List<FMeasureAnalysisData> analysiss = fMeasureAnalysisDataService.list(qw);
+                List<FMeasureAnalysisData> analysiss = new ArrayList<>();
+                for (String analysisId : analysisIds) {
+                    FMeasureAnalysisData byId = fMeasureAnalysisDataService.getById(analysisId);
+                    analysiss.add(byId);
+                }
+
                 if (analysiss == null || analysiss.isEmpty()){
                     return Result.fail("样品信息不存在");
                 }
