@@ -29,27 +29,49 @@ public class DataCountUtil {
 
     public static String changeTPercentOrAbs(String abs, String tPercent) {
 
-        if (abs != null) {
-            double i = Double.parseDouble(abs);
-            log.info("吸光度不为空，计算透光率");
-            double v = Math.pow(10, -i) * 100;
-            System.out.println("透光率:" + v);
-            BigDecimal bd = new BigDecimal(v);
-            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
 
-            return String.valueOf(bd);
+        if (abs != null) {
+            try {
+                BigDecimal absorbance = new BigDecimal(abs);
+                log.info("吸光度不为空，计算透光率");
+                double powerValue = Math.pow(10, absorbance.negate().doubleValue());
+                BigDecimal result = BigDecimal.valueOf(powerValue)
+                        .multiply(new BigDecimal("100"))
+                        .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+
+                log.info("透光率:{}", result);
+                return result.toString();
+            } catch (Exception e) {
+                log.error("透光率计算出错：{}", e.getMessage());
+                return "0";
+            }
         }
         if (tPercent != null) {
-            double d = Double.parseDouble(tPercent);
-            log.info("透光率不为空，计算吸光度");
-            double re = -Math.log10(d / 100.0);
-            System.out.println("吸光度:" + re);
-            BigDecimal bd = new BigDecimal(re);
-            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+            try {
+                log.info("透光率不为空，计算吸光度");
+                BigDecimal d = new BigDecimal(tPercent);
 
-            return String.valueOf(bd);
+                BigDecimal min = new BigDecimal("1.0e-10");
+                if (d.compareTo(min) < 0) {
+                    d = min;
+                }
+
+                BigDecimal de = new BigDecimal("100"); // 使用字符串构造避免精度问题
+                // 将BigDecimal转换为double进行对数计算
+                double ratio = d.divide(de, MathContext.DECIMAL128).doubleValue();
+                double logValue = -Math.log10(ratio);
+                BigDecimal re = BigDecimal.valueOf(logValue)
+                        .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+
+                log.info("吸光度:{}", re);
+                return re.toString();
+            } catch (Exception e) {
+                log.error("吸光度计算出错：{}", e.getMessage());
+                return "-10";
+            }
         }
         return null;
+
     }
 
 

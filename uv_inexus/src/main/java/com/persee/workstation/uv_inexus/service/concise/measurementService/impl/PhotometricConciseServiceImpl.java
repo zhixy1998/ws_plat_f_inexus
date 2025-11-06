@@ -1243,7 +1243,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
-                    sampleNumList.add(measureSample.getSampleName());
+                    sampleNumList.add(measureSample.getSampleNumber());
                 }
             }
             if (hasNoTested) {
@@ -1253,14 +1253,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureSample newSample = new FMeasureSample();
 
             Integer maxSampleId = sampleNumList.stream()
-                    .filter(sample -> sample.startsWith("默认样品"))
-                    .map(sample -> Integer.parseInt(sample.replace("默认样品", "")))  // 获取样品编号部分
+                    .filter(sample -> sample.startsWith("default-"))
+                    .map(sample -> Integer.parseInt(sample.replace("default-", "")))  // 获取样品编号部分
                     .max(Integer::compareTo)
                     .orElse(0);
 
             int number = maxSampleId + 1;
 
-            newSample.setSampleNumber(String.valueOf(number));
+            newSample.setSampleNumber("default-"+ number);
             newSample.setSampleName("默认样品" + number);
 
 

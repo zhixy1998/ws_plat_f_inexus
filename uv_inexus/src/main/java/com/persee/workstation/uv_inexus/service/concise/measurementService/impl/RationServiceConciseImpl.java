@@ -2031,7 +2031,6 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())){
-                    sampleNumList.add(measureSample.getSampleName());
                     sampleNumList.add(measureSample.getSampleNumber());
                 }
             }
@@ -2042,12 +2041,13 @@ public class RationServiceConciseImpl implements RationConciseService {
             FMeasureSample newSample = new FMeasureSample();
 
             Integer maxSampleId = sampleNumList.stream()
-                    .map(sample -> Integer.parseInt(sample.replace("默认样品", "")))  // 获取样品编号部分
+                    .filter(sample -> sample.startsWith("default-"))
+                    .map(sample -> Integer.parseInt(sample.replace("default-", "")))  // 获取样品编号部分
                     .max(Integer::compareTo)
                     .orElse(0);
 
             int num = maxSampleId + 1;
-            newSample.setSampleNumber(String.valueOf(num));
+            newSample.setSampleNumber("default-" + num);
             newSample.setSampleName("默认样品" + num);
 
 
@@ -3268,8 +3268,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         vo.setDataList(dataList);
         vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
-        vo.setR(DataCountUtil.addZero(Double.valueOf(info.getR()), dataDigit));
-        vo.setR2(DataCountUtil.addZero(Double.valueOf(info.getR2()), dataDigit));
+        if (vo.getR()!= null) {
+            vo.setR(DataCountUtil.addZero(Double.valueOf(info.getR()), dataDigit));
+        }
+        if (vo.getR2()!= null) {
+            vo.setR2(DataCountUtil.addZero(Double.valueOf(info.getR2()), dataDigit));
+        }
+
         return vo;
     }
 
