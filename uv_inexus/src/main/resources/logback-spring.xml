@@ -3,7 +3,9 @@
     <!-- 控制台输出的日志 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [operation:%X{operation}] [module:%X{module}]
+                [method:%X{method}] [user:%X{user}] [clientIP:%X{clientIP}] %logger{36} - %msg%n
+            </pattern>
         </encoder>
     </appender>
 
