@@ -257,7 +257,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             String dataId = measureData.getData();
             if (!StringUtils.hasText(dataId)) {
                 infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "数据保存异常！");
+                sendAndClose(session, "数据保存异常！"); 
                 return;
             }
             specimen.setIsTested(right);
@@ -266,15 +266,19 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             tMeasureTaskService.updateById(task);
 
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-            R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
-            if (!formulaCount.getSuccess()) {
-                infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "公式计算出错，请检查公式配置！");
-                return;
-            }
-            data = formulaCount.getData();
 
-            photometricService.saveCountData(data, dataId);
+            if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
+                if (!formulaCount.getSuccess()) {
+                    infoService.releaseDevice(deviceSerialNumber);
+                    sendAndClose(session, "公式计算出错，请检查公式配置！");
+                    return;
+                }
+                data = formulaCount.getData();
+
+                photometricService.saveCountData(data, dataId);
+            }
+
 
         } else {
 
@@ -364,11 +368,12 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 tMeasureTaskService.updateById(task);
                 //公式计算
                 measureCount++;
-
-                R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
-                if (formulaCount.getSuccess()) {
-                    data = formulaCount.getData();
-                    photometricService.saveCountData(data, dataId);
+                if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                    R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
+                    if (formulaCount.getSuccess()) {
+                        data = formulaCount.getData();
+                        photometricService.saveCountData(data, dataId);
+                    }
                 }
             }
         }
