@@ -387,9 +387,11 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            BigDecimal value = new BigDecimal(y);
             point.put("x", integerPart);
-            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+            Double decimalY = new Double(y);
+            Double value = DataCountUtil.formatValue(digit, decimalY);
+            String valueY = DataCountUtil.addZero(value, digit);
+            point.put("y", valueY);
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "Abs");
@@ -405,9 +407,11 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            BigDecimal value = new BigDecimal(s);
             point.put("x", integerPart);
-            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+            Double decimalY = new Double(s);
+            Double value = DataCountUtil.formatValue(digit, decimalY);
+            String valueY = DataCountUtil.addZero(value, digit);
+            point.put("y", valueY);
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "T%");
@@ -424,9 +428,11 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            BigDecimal value = new BigDecimal(y);
             point.put("x", integerPart);
-            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+            Double decimalY = new Double(y);
+            Double value = DataCountUtil.formatValue(digit, decimalY);
+            String valueY = DataCountUtil.addZero(value, digit);
+            point.put("y", valueY);
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "Es");
@@ -443,9 +449,11 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            BigDecimal value = new BigDecimal(y);
             point.put("x", integerPart);
-            point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+            Double decimalY = new Double(y);
+            Double value = DataCountUtil.formatValue(digit, decimalY);
+            String valueY = DataCountUtil.addZero(value, digit);
+            point.put("y", valueY);
             point.put("nm", param.getWaveLength()+"nm");
             point.put("xType", "s");
             point.put("yType", "Er");
@@ -457,6 +465,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "光度模式错误");
             session.close();
         }
+        System.err.println("Current JVM Timezone: " + TimeZone.getDefault().getID());
     }
 
 

@@ -1187,9 +1187,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     vo.setColor(measureData.getColor());
                     if (measureData.getAnalysisResult() == null) {
                         vo.setData(null);
+                        vo.setOriginalData(null);
                     } else {
                         vo.setData(getSampleData(measureData, digit));
-                        vo.setOriginalData(getOriginalSampleData(measureData));
+                        vo.setOriginalData(getOriginalSampleData(measureData,digit));
                     }
                     vo.setIsTested(taskSpeciman.getIsTested());
                 }
@@ -1244,9 +1245,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setColor(measureData.getColor());
                         if (measureData.getAnalysisResult() == null) {
                             vo.setData(null);
+                            vo.setOriginalData(null);
                         } else {
                             vo.setData(getSampleData(measureData, digit));
-                            vo.setOriginalData(getOriginalSampleData(measureData));
+                            vo.setOriginalData(getOriginalSampleData(measureData,digit));
                         }
                         vo.setDeleteType(measureData.getIsDelete());
                     }
@@ -1410,86 +1412,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             vo.setTitle(fMeasureAnalysisData.getAnalysisName());
             vo.setColor(fMeasureAnalysisData.getColor());
             vo.setDeleteType(fMeasureAnalysisData.getIsDelete());
-
-            // 解析分析结果
-            List<String> results = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-            List<FPeakValleyMarking> gauges = JSON.parseArray(fMeasureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> grades = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-
-            // 存储数据的列表
-            List<Map<String, Object>> resultList = new ArrayList<>();
-            List<Map<String, Object>> originalResultList = new ArrayList<>();
-
-            for (String s : results) {
-                String[] split = s.split(",");
-                Map<String, Object> map = new HashMap<>();
-                Map<String, Object> originalMap = new HashMap<>();
-
-                // 处理数据和原始数据
-                if (digit != null) {
-                    BigDecimal value = new BigDecimal(split[1]);
-                    map.put("x", split[0]);
-                    map.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
-                    originalMap.put("x", split[0]);
-                    originalMap.put("y", split[1]);  // 无小数位数限制，原始数据
-                } else {
-                    map.put("x", split[0]);
-                    map.put("y", split[1]);
-                    originalMap.put("x", split[0]);
-                    originalMap.put("y", split[1]);  // 原始数据
-                }
-
-                // 处理标记点数据
-                if (gauges != null) {
-                    for (FPeakValleyMarking gauge : gauges) {
-                        if (split[0].equals(gauge.getX())) {
-                            map.put("marked", "1");
-                            break;
-                        } else {
-                            map.put("marked", "0");
-                        }
-                    }
-                } else {
-                    map.put("marked", "0");
-                }
-
-                // 处理峰数据
-                if (peaks != null) {
-                    for (FPeakValleyMarking peak : peaks) {
-                        if (split[0].equals(peak.getX())) {
-                            map.put("feng", "1");
-                            break;
-                        } else {
-                            map.put("feng", "0");
-                        }
-                    }
-                } else {
-                    map.put("feng", "0");
-                }
-
-                // 处理谷数据
-                if (grades != null) {
-                    for (FPeakValleyMarking grade : grades) {
-                        if (split[0].equals(grade.getX())) {
-                            map.put("gu", "1");
-                            break;
-                        } else {
-                            map.put("gu", "0");
-                        }
-                    }
-                } else {
-                    map.put("gu", "0");
-                }
-
-                // 将处理好的数据添加到结果列表中
-                resultList.add(map);
-                originalResultList.add(originalMap);
+            if (fMeasureAnalysisData.getAnalysisResult()==null){
+                vo.setData(null);
+                vo.setOriginalData(null);
+            }else{
+                vo.setData(getSampleData(fMeasureAnalysisData, digit));
+                vo.setOriginalData(getOriginalSampleData(fMeasureAnalysisData, digit));
             }
-
-            // 设置数据
-            vo.setData(resultList);
-            vo.setOriginalData(originalResultList);  // 设置原始数据
             vo.setType("1");
             listVos.add(vo);
         }
@@ -3190,9 +3119,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             String[] split = s.split(",");
             Map<String, Object> map = new HashMap<>();
             if (digit != null) {
-                BigDecimal value = new BigDecimal(split[1]);
+                Double y = new Double(split[1]);
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
                 map.put("x", split[0]);
-                map.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+                map.put("y", valueY);
             } else {
                 map.put("x", split[0]);
                 map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
@@ -3245,7 +3176,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @param measureData
      * @return
      */
-    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData) {
+    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData,
+                                                           int digit) {
         // 解析分析结果、峰、谷、标记点
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
@@ -3263,6 +3195,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             // 处理原始数据，直接使用原始的值
             map.put("x", split[0]);
             map.put("y", split[1]);  // 无小数位限制，直接使用原始值
+            Double y = new Double(split[1]);
+            Double value = DataCountUtil.formatValue(digit,y);
+            String valueY = DataCountUtil.addZero(value, digit);
+            map.put("astrictY", valueY);
 
             // 标记点数据处理
             if (gauges != null && !gauges.isEmpty()) {

@@ -53,8 +53,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -483,12 +481,15 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             }
             JSONArray dataArray = new JSONArray();
             for (int i = pushCount * 10; i < x.size(); i++) {
-                BigDecimal value = new BigDecimal(y.get(i));
                 JSONObject point = new JSONObject();
                 point.put("x", x.get(i));
-                point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+                Double value = DataCountUtil.formatValue(digit, y.get(i));
+                String valueY = DataCountUtil.addZero(value, digit);
+                point.put("y", valueY);
                 point.put("xType", "nm");
-                point.put("yType", luminosity);
+                // 光度模式是1.Abs 2.T% 3.Es 4.Er
+                String luminosityType = luminosity.equals("1")?"Abs":luminosity.equals("2")?"T%":luminosity.equals("3")?"Es":"Er";
+                point.put("yType", luminosityType);
                 dataArray.add(point);
             }
             JSONObject payload = new JSONObject();
@@ -530,12 +531,15 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 }
             }
             for (int i = 0; i < surplusLength; i++) {
-                BigDecimal value = new BigDecimal(y_data.get(i));
                 JSONObject point = new JSONObject();
-                point.put("x", x_data.get(i));
-                point.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+                point.put("x", x.get(i));
+                Double value = DataCountUtil.formatValue(digit, y.get(i));
+                String valueY = DataCountUtil.addZero(value, digit);
+                point.put("y", valueY);
                 point.put("xType", "nm");
-                point.put("yType", luminosity);
+                // 光度模式是1.Abs 2.T% 3.Es 4.Er
+                String luminosityType = luminosity.equals("1")?"Abs":luminosity.equals("2")?"T%":luminosity.equals("3")?"Es":"Er";
+                point.put("yType", luminosityType);
                 dataArray.add(point);
             }
             JSONObject payload = new JSONObject();

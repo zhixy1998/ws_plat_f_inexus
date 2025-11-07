@@ -1076,7 +1076,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
                     vo.setData(getSampleData(measureData, digit));
-                    vo.setOriginalData(getOriginalSampleData(measureData));
+                    vo.setOriginalData(getOriginalSampleData(measureData, digit));
                     vo.setDeleteType(measureData.getIsDelete());
                 }
                 vo.setType("0");
@@ -2464,74 +2464,62 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return
      */
     public List<Map<String, Object>> getSampleData(FMeasureAnalysisData measureData, Integer digit) {
-        // 解析 JSON 数据
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
         List<FPeakValleyMarking> peaks = JSON.parseArray(measureData.getPeak(), FPeakValleyMarking.class);
         List<FPeakValleyMarking> grades = JSON.parseArray(measureData.getGrain(), FPeakValleyMarking.class);
-
         List<Map<String, Object>> resultList = new ArrayList<>();
-
-        // 遍历分析结果
         for (String s : list) {
             String[] split = s.split(",");
             Map<String, Object> map = new HashMap<>();
-
-            // 格式化 x 和 y 值
-            String xValue = split[0];
-            String yValue = split[1];
-
-            // 格式化 y 值
-            BigDecimal y = new BigDecimal(yValue);
             if (digit != null) {
-                y = y.setScale(digit, RoundingMode.HALF_UP); // 保留 digit 位小数
-                map.put("y", DataCountUtil.addZero(Double.valueOf(y.stripTrailingZeros().toPlainString()), digit));  // 格式化为字符串
+                Double y = new Double(split[1]);
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                map.put("x", split[0]);
+                map.put("y", valueY);
             } else {
-                map.put("y", DataCountUtil.addZero(Double.valueOf(yValue), 8)); // 默认保留8位小数
+                map.put("x", split[0]);
+                map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
             }
-
-            // 转换为 Double
-            BigDecimal x = new BigDecimal(xValue);
-            x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
-            map.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));  // 格式化为字符串
-
-            // 标记是否为标定点（gauges）
-            map.put("marked", "0");
-            if (gauges != null) {
+            if (gauges != null && peaks.size() != 0) {
                 for (FPeakValleyMarking gauge : gauges) {
-                    if (xValue.equals(gauge.getX())) {
+                    if (split[0].equals(gauge.getX())) {
                         map.put("marked", "1");
                         break;
+                    } else {
+                        map.put("marked", "0");
                     }
                 }
+            } else {
+                map.put("marked", "0");
             }
-
-            // 峰值处理
-            map.put("feng", "0");
-            if (peaks != null) {
+            if (peaks != null && peaks.size() != 0) {
                 for (FPeakValleyMarking peak : peaks) {
-                    if (xValue.equals(peak.getX())) {
+                    if (split[0].equals(peak.getX())) {
                         map.put("feng", "1");
                         break;
+                    } else {
+                        map.put("feng", "0");
                     }
                 }
+            } else {
+                map.put("feng", "0");
             }
-
-            // 谷值处理
-            map.put("gu", "0");
-            if (grades != null) {
+            if (grades != null && peaks.size() != 0) {
                 for (FPeakValleyMarking grade : grades) {
-                    if (xValue.equals(grade.getX())) {
+                    if (split[0].equals(grade.getX())) {
                         map.put("gu", "1");
                         break;
+                    } else {
+                        map.put("gu", "0");
                     }
                 }
+            } else {
+                map.put("gu", "0");
             }
-
-            // 将结果添加到列表
             resultList.add(map);
         }
-
         return resultList;
     }
 
@@ -2543,7 +2531,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param measureData
      * @return
      */
-    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData) {
+    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData,
+                                                           int digit) {
         // 解析分析结果、峰、谷、标记点
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
@@ -2558,12 +2547,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             String[] split = s.split(","); // 以逗号分割
             Map<String, Object> map = new HashMap<>();
 
-            double doubleValue = Double.parseDouble(split[0]);
-            // 强制转换为整数，丢弃小数部分
-            int intValue = (int) doubleValue ;  // 结果是 0
             // 处理原始数据，直接使用原始的值
-            map.put("x", intValue);
+            map.put("x", split[0]);
             map.put("y", split[1]);  // 无小数位限制，直接使用原始值
+            Double y = new Double(split[1]);
+            Double value = DataCountUtil.formatValue(digit,y);
+            String valueY = DataCountUtil.addZero(value, digit);
+            map.put("astrictY", valueY);
 
             // 标记点数据处理
             if (gauges != null && !gauges.isEmpty()) {

@@ -35,7 +35,9 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamp
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FindDevEnum;
@@ -746,24 +748,28 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public void test() {
-        List<DeviceTypeInfoPO> deviceTypeInfoPOS = deviceTypeInfoDAO.selectList(null);
-        for (DeviceTypeInfoPO po : deviceTypeInfoPOS) {
-            log.info("{}", po);
+//        List<DeviceTypeInfoPO> deviceTypeInfoPOS = deviceTypeInfoDAO.selectList(null);
+//        for (DeviceTypeInfoPO po : deviceTypeInfoPOS) {
+//            log.info("{}", po);
+//
+//            LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+//            query.eq(DeviceModelInfoPO::getDevTypeId, po.getId());
+//            List<DeviceModelInfoPO> modelInfoPOS = deviceModelInfoDAO.selectList(query);
+//            for (DeviceModelInfoPO modelInfoPO : modelInfoPOS) {
+//                log.info("{}", modelInfoPO);
+//            }
+//
+//        }
+//
+//        try {
+//            devMessageUtil.zero(new Command("GetWlList", null), "169.254.180.253");
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
 
-            LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
-            query.eq(DeviceModelInfoPO::getDevTypeId, po.getId());
-            List<DeviceModelInfoPO> modelInfoPOS = deviceModelInfoDAO.selectList(query);
-            for (DeviceModelInfoPO modelInfoPO : modelInfoPOS) {
-                log.info("{}", modelInfoPO);
-            }
-
-        }
-
-        try {
-            devMessageUtil.zero(new Command("GetWlList", null), "169.254.180.253");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        ChangeParam changeParam = new ChangeParam("0", "1955898", "19558", "1955898");
+        String s = DataCountUtil.countTPercent(null, changeParam, 1.0);
+        System.out.println(s);
 
     }
 
