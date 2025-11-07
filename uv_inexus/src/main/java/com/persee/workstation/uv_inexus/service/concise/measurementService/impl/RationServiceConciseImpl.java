@@ -1524,6 +1524,12 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
 
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        boolean b = fMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail("删除失败");
+        }
+
         FMeasureSample measureSample = fMeasureSampleService.getById(sampleId);
 
         Integer i = fMeasureTaskAttachmentService.queryLastDigit(taskId);
@@ -1535,9 +1541,6 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             changeUnknowSampleDigit(taskId, digit);
         }
-
-        task.setSampleKey(JSON.toJSONString(taskSpecimen));
-        boolean b = fMeasureTaskService.updateById(task);
         return Result.ok(true);
     }
 

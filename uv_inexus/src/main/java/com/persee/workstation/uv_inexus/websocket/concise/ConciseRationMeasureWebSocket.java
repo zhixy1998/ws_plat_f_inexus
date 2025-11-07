@@ -496,7 +496,14 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 if (fitCurveData.size() < minPointNum) {
                     infoService.releaseDevice(deviceSerialNumber);
                     log.info("数据点数不足，不进行曲线拟合");
-                    sendAndClose(session, "已测样品数不足，不进行曲线拟合");
+                    JSONObject message = new JSONObject();
+                    message.put("success", "测量完成");
+                    session.sendMessage(new TextMessage(message.toJSONString()));
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("result", "finish");
+                    session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                    status = 0;
+                    session.close();
                     return;
                 }
 
@@ -1142,6 +1149,14 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         }
 
         for (int i = 0; i < repeatCount; i++) {
+
+            JSONObject object = new JSONObject();
+            object.put("sampleId", sample.getId());
+            object.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
+            object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+            object.put("value", sample.getSampleNumber() + "-" + (i + 1));
+            session.sendMessage(new TextMessage(object.toJSONString()));
+
             for (String waveLength : waveLengths) {
                 Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
                 list.add(new Command("SetWl", new Object[]{step}));
@@ -1177,7 +1192,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 session.sendMessage(new TextMessage(currentInfo.toJSONString()));
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
-                originDataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + i);
+                originDataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
                 originDataInfo.setWavelength(waveLength);
 
                 originDataInfo.setAbsValue(data);
@@ -1309,7 +1324,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
-//        repetitionTime = repetitionTime + 1;
+        repetitionTime = repetitionTime + 1;
 
         if (isAvg) {
             jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());

@@ -606,7 +606,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
                     FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), response, params, DataIdentityEnums.middle.getIdentity() + "-" + i, sample.getSampleNumber() + "-" + i);
                     dataInfo.setMeasureTime(time);
-                    dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + i);
+                    dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
                     originDataList.add(dataInfo);
                     list.clear();
                     repeatMiddleTime = LocalDateTime.now();
@@ -614,7 +614,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 JSONObject object = new JSONObject();
                 object.put("sampleId", sampleKey);
                 object.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
-                object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+                object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
                 object.put("value", repeatMiddleTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             }
@@ -746,6 +746,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
 
+        repetitionTime = repetitionTime + 1;
         if (isAvg) {
             jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
             jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + repetitionTime);
