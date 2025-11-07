@@ -767,9 +767,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 //            throw new RuntimeException(e);
 //        }
 
-        ChangeParam changeParam = new ChangeParam("0", "1955898", "19558", "1955898");
-        String s = DataCountUtil.countTPercent(null, changeParam, 1.0);
-        System.out.println(s);
+//        ChangeParam(wl=500.0, r=491765, s=402424, d=1716)
+
+
+//        ChangeParam(wl=500, r=128337, s=103479, d=128337)
+        ChangeParam or = new ChangeParam("500", "128337", "103479", "128337");
+        ChangeParam cu = new ChangeParam("500", "491765", "402424", "1716");
+
+//        ChangeParam changeParam = new ChangeParam("0.01", "123456", "9852", "123456");
+        String s = DataCountUtil.countTPercent(or, cu, 1.0);
+        String s1 = DataCountUtil.changeTPercentOrAbs(null, s);
+        System.out.println("+++" + s + "+++" + s1);
+
 
     }
 
