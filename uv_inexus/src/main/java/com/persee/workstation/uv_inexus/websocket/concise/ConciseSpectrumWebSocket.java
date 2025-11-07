@@ -102,7 +102,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
     @Autowired
     private FormulaUtil formulaUtil;
-
     /**
      * 当WebSocket连接建立后调用此方法
      *
@@ -896,14 +895,17 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             return;
         }
 
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+
         // 1. 处理峰谷数据（假设你原来调用了 Python 接口）
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
         body.put("x_data", x);
         body.put("y_data", y);
-        body.put("height", 0.5);
-        body.put("distance", 1);
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body.put("height", height);
+        body.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();

@@ -127,10 +127,10 @@ public interface TimeSweepConciseService {
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
 
     // 表格头接口
-    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List< String> sampleIds);
+    Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList);
 
     // 查询表格数据接口
-    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds,Integer decimalDigits);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits);
 
     Result uploadImage(SpectrumImageUpload upload);
 }

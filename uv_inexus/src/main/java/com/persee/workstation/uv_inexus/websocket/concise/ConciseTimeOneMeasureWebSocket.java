@@ -15,12 +15,14 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpe
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,6 +85,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
 
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
+    private SystemAlgorithmConfService systemAlgorithmConfService;
 
     @Autowired
     private FMeasureSampleService tMeasureSampleService;
@@ -488,14 +493,16 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                           FMeasureTask task,
                           String deviceSerialNumber) {
         boolean dataStatus = false;
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         // 先对数据进行寻峰寻谷
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
         body.put("x_data", x_data);
         body.put("y_data", y_data);
-        body.put("height", 0.5);
-        body.put("distance", 1);
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body.put("height", height);
+        body.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
