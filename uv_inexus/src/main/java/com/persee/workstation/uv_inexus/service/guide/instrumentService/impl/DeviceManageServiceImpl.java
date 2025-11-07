@@ -35,7 +35,9 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamp
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FindDevEnum;
@@ -545,11 +547,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (dto.getCalibrationType() == 1) {
             //波长校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
-            devMessageUtil.deviceCalibration(command, ip);
+            try {
+                devMessageUtil.deviceCalibration(command, ip);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         } else if (dto.getCalibrationType() == 2) {
             //暗电流校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
-            devMessageUtil.deviceCalibration(command, ip);
+            try {
+                devMessageUtil.deviceCalibration(command, ip);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
@@ -738,24 +748,37 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public void test() {
-        List<DeviceTypeInfoPO> deviceTypeInfoPOS = deviceTypeInfoDAO.selectList(null);
-        for (DeviceTypeInfoPO po : deviceTypeInfoPOS) {
-            log.info("{}", po);
+//        List<DeviceTypeInfoPO> deviceTypeInfoPOS = deviceTypeInfoDAO.selectList(null);
+//        for (DeviceTypeInfoPO po : deviceTypeInfoPOS) {
+//            log.info("{}", po);
+//
+//            LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+//            query.eq(DeviceModelInfoPO::getDevTypeId, po.getId());
+//            List<DeviceModelInfoPO> modelInfoPOS = deviceModelInfoDAO.selectList(query);
+//            for (DeviceModelInfoPO modelInfoPO : modelInfoPOS) {
+//                log.info("{}", modelInfoPO);
+//            }
+//
+//        }
+//
+//        try {
+//            devMessageUtil.zero(new Command("GetWlList", null), "169.254.180.253");
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
 
-            LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
-            query.eq(DeviceModelInfoPO::getDevTypeId, po.getId());
-            List<DeviceModelInfoPO> modelInfoPOS = deviceModelInfoDAO.selectList(query);
-            for (DeviceModelInfoPO modelInfoPO : modelInfoPOS) {
-                log.info("{}", modelInfoPO);
-            }
+//        ChangeParam(wl=500.0, r=491765, s=402424, d=1716)
 
-        }
 
-        try {
-            devMessageUtil.zero(new Command("GetWlList", null), "169.254.180.253");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+//        ChangeParam(wl=500, r=128337, s=103479, d=128337)
+        ChangeParam or = new ChangeParam("500", "128337", "103479", "128337");
+        ChangeParam cu = new ChangeParam("500", "491765", "402424", "1716");
+
+//        ChangeParam changeParam = new ChangeParam("0.01", "123456", "9852", "123456");
+        String s = DataCountUtil.countTPercent(or, cu, 1.0);
+        String s1 = DataCountUtil.changeTPercentOrAbs(null, s);
+        System.out.println("+++" + s + "+++" + s1);
+
 
     }
 

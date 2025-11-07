@@ -29,27 +29,49 @@ public class DataCountUtil {
 
     public static String changeTPercentOrAbs(String abs, String tPercent) {
 
-        if (abs != null) {
-            double i = Double.parseDouble(abs);
-            log.info("吸光度不为空，计算透光率");
-            double v = Math.pow(10, -i) * 100;
-            System.out.println("透光率:" + v);
-            BigDecimal bd = new BigDecimal(v);
-            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
 
-            return String.valueOf(bd);
+        if (abs != null) {
+            try {
+                BigDecimal absorbance = new BigDecimal(abs);
+                log.info("吸光度不为空，计算透光率");
+                double powerValue = Math.pow(10, absorbance.negate().doubleValue());
+                BigDecimal result = BigDecimal.valueOf(powerValue)
+                        .multiply(new BigDecimal("100"))
+                        .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+
+                log.info("透光率:{}", result);
+                return result.toString();
+            } catch (Exception e) {
+                log.error("透光率计算出错：{}", e.getMessage());
+                return "0";
+            }
         }
         if (tPercent != null) {
-            double d = Double.parseDouble(tPercent);
-            log.info("透光率不为空，计算吸光度");
-            double re = - Math.log10(d / 100.0);
-            System.out.println("吸光度:" + re);
-            BigDecimal bd = new BigDecimal(re);
-            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+            try {
+                log.info("透光率不为空，计算吸光度");
+                BigDecimal d = new BigDecimal(tPercent);
 
-            return String.valueOf(bd);
+                BigDecimal min = new BigDecimal("1.0e-10");
+                if (d.compareTo(min) < 0) {
+                    d = min;
+                }
+
+                BigDecimal de = new BigDecimal("100"); // 使用字符串构造避免精度问题
+                // 将BigDecimal转换为double进行对数计算
+                double ratio = d.divide(de, MathContext.DECIMAL128).doubleValue();
+                double logValue = -Math.log10(ratio);
+                BigDecimal re = BigDecimal.valueOf(logValue)
+                        .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+
+                log.info("吸光度:{}", re);
+                return re.toString();
+            } catch (Exception e) {
+                log.error("吸光度计算出错：{}", e.getMessage());
+                return "-10";
+            }
         }
         return null;
+
     }
 
 
@@ -77,8 +99,8 @@ public class DataCountUtil {
             BigDecimal ratio = t.divide(new BigDecimal("100"), MathContext.DECIMAL128);
 
             double v = ratio.doubleValue();
-            if(v<0) {
-                v=-v;
+            if (v < 0) {
+                v = -v;
             }
 
             // -log10(ratio)
@@ -93,48 +115,53 @@ public class DataCountUtil {
         return null;
     }
 
-    public static String countTPercent(ChangeParam origin, ChangeParam real, Double z){
+    public static String countTPercent(ChangeParam origin, ChangeParam real, Double z) {
 
-        double d1 = Double.parseDouble(real.getD());
-        double r1 = Double.parseDouble(real.getR());
-        double s1 = Double.parseDouble(real.getS());
-        double a1;
-        if (origin == null || origin.isEmpty()){
-            a1 = 1;
-            System.out.println("a1:" + a1);
-        }else{
-            double r0 = Double.parseDouble(origin.getR());
-            double s0 = Double.parseDouble(origin.getS());
-            double d0 = Double.parseDouble(origin.getD());
+        try {
 
-            double v0 = z * d0;
-            double m1 = r0- v0;
-            double m2 = s0- v0;
-            a1 = m2/m1;
-            System.out.println("a1:" + a1);
+            double d1 = Double.parseDouble(real.getD());
+            double r1 = Double.parseDouble(real.getR());
+            double s1 = Double.parseDouble(real.getS());
+            double a1;
+            if (origin == null || origin.isEmpty()) {
+                a1 = 1;
+                System.out.println("a1:" + a1);
+            } else {
+                double r0 = Double.parseDouble(origin.getR());
+                double s0 = Double.parseDouble(origin.getS());
+                double d0 = Double.parseDouble(origin.getD());
+
+                double v0 = z * d0;
+                double m1 = r0 - v0;
+                double m2 = s0 - v0;
+                a1 = m2 / m1;
+                System.out.println("a1:" + a1);
+            }
+
+            double v1 = z * d1;
+            double m3 = r1 - v1;
+            double m4 = s1 - v1;
+            double a2 = m4 / m3;
+            System.out.println("a2:" + a2);
+
+            double ans = a2 / a1 * 100;
+            System.out.println("ans:" + ans);
+            BigDecimal bd = new BigDecimal(ans);
+            bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
+            return String.valueOf(bd);
+        } catch (Exception e) {
+            return "0";
         }
-
-        double v1 = z * d1;
-        double m3 = r1- v1;
-        double m4 = s1- v1;
-        double a2 = m4/m3;
-        System.out.println("a2:" + a2);
-
-        double ans = a2/a1 * 100;
-        System.out.println("ans:" + ans);
-        BigDecimal bd = new BigDecimal(ans);
-        bd = bd.setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
-        return String.valueOf(bd);
     }
 
-    public static String countErOrEs(ChangeParam real, String identity){
+    public static String countErOrEs(ChangeParam real, String identity) {
 
         String value = null;
-        if(identity.equals(WaveLengthEnum.es.getCode())){
+        if (identity.equals(WaveLengthEnum.es.getCode())) {
             double s = Double.parseDouble(real.getS());
             value = String.valueOf((s / 8388607) * 100);
         }
-        if(identity.equals(WaveLengthEnum.er.getCode())){
+        if (identity.equals(WaveLengthEnum.er.getCode())) {
             double r = Double.parseDouble(real.getR());
             value = String.valueOf((r / 8388607) * 100);
         }
@@ -208,6 +235,7 @@ public class DataCountUtil {
 
     /**
      * 使用BigDecimal格式化数字到指定小数位数
+     *
      * @param value 需要格式化的值
      * @return 格式化后的字符串
      */
@@ -218,7 +246,7 @@ public class DataCountUtil {
             boolean isNegative = bd.compareTo(BigDecimal.ZERO) < 0;
             bd = bd.abs();
 
-            if (digit >=0) {
+            if (digit >= 0) {
                 bd = roundToDecimalPlaces(bd, digit);
             } else {
                 bd = roundToIntegerPlace(bd, -digit);
@@ -236,7 +264,7 @@ public class DataCountUtil {
     }
 
 
-//    public static Double formatValue(Integer digit, Double value) {
+    //    public static Double formatValue(Integer digit, Double value) {
 //        try {
 //            BigDecimal bd = new BigDecimal(value);
 //            bd = bd.setScale(digit, RoundingMode.HALF_UP);
@@ -245,49 +273,50 @@ public class DataCountUtil {
 //            return value; // 如果转换失败，返回原始值
 //        }
 //    }
-public static Double formatValue(Integer digit, Double value) {
-    if (value == null || digit == null) {
-        return value;
+    public static Double formatValue(Integer digit, Double value) {
+        if (value == null || digit == null) {
+            return value;
+        }
+
+        if (value.isInfinite() || value.isNaN()) {
+            return value;
+        }
+
+        if (value == 0.0) {
+            return 0.0;
+        }
+
+        // 处理负值（规则3.2.5）
+        boolean isNegative = value < 0;
+        double tValue = Math.abs(value);
+
+        BigDecimal absValue = BigDecimal.valueOf(tValue);
+
+        BigDecimal resultValue;
+
+        if (digit >= 0) {
+            // 修约到小数位
+            resultValue = roundToDecimalPlaces(absValue, digit);
+        } else {
+            // 修约到整数位
+            resultValue = roundToIntegerPlace(absValue, -digit);
+        }
+        resultValue = resultValue.setScale(digit, RoundingMode.HALF_UP);
+
+
+        return isNegative ? -resultValue.doubleValue() : resultValue.doubleValue();
     }
-
-    if (value.isInfinite() || value.isNaN()) {
-        return value;
-    }
-
-    if (value == 0.0) {
-        return 0.0;
-    }
-
-    // 处理负值（规则3.2.5）
-    boolean isNegative = value < 0;
-    double tValue = Math.abs(value);
-
-    BigDecimal absValue = BigDecimal.valueOf(tValue);
-
-    BigDecimal resultValue;
-
-    if (digit >= 0) {
-        // 修约到小数位
-        resultValue = roundToDecimalPlaces(absValue, digit);
-    } else {
-        // 修约到整数位
-        resultValue = roundToIntegerPlace(absValue, -digit);
-    }
-    resultValue = resultValue.setScale(digit, RoundingMode.HALF_UP);
-
-
-    return isNegative ? -resultValue.doubleValue() : resultValue.doubleValue();
-}
 
 //    public static BigDecimal formatValue(Integer digit, BigDecimal value) {
 //        if (value == null || digit == null) {
 //            return value;
 //        }
 //
-////        if (value.isInfinite() || value.isNaN()) {
-////            return value;
-////        }
-////
+
+    /// /        if (value.isInfinite() || value.isNaN()) {
+    /// /            return value;
+    /// /        }
+    /// /
 //        // 处理0值情况
 //        if (value.compareTo(BigDecimal.ZERO) == 0) {
 //            return BigDecimal.ZERO;
@@ -318,10 +347,10 @@ public static Double formatValue(Integer digit, Double value) {
         String[] split = s.toString().split("\\.");
         int length = split[1].length();
         if (length < digit) {
-            for (int i = 0; i < digit - length; i++){
+            for (int i = 0; i < digit - length; i++) {
                 s.append("0");
             }
-            ans =  s.toString();
+            ans = s.toString();
         }
         return ans;
     }
@@ -344,7 +373,8 @@ public static Double formatValue(Integer digit, Double value) {
         } else {
             // 不含e/E，直接返回原字符串（封装为Object）
             return str;
-        }}
+        }
+    }
 
 
     /**
@@ -463,7 +493,7 @@ public static Double formatValue(Integer digit, Double value) {
     /**
      * 计算数组的平均值
      */
-    public static double calculateMean(List<Double> data, Integer  digit) {
+    public static double calculateMean(List<Double> data, Integer digit) {
         if (data == null || data.isEmpty()) {
             throw new IllegalArgumentException("数据不能为空");
         }
@@ -476,6 +506,7 @@ public static Double formatValue(Integer digit, Double value) {
         double ans = sum / data.size();
         return formatValue(digit, ans);
     }
+
     /**
      * 计算样本标准差 (Sample Standard Deviation)
      */

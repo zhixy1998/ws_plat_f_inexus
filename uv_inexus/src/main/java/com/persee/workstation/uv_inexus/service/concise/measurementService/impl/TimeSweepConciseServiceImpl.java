@@ -1076,7 +1076,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setAnalysisNumber(measureData.getAnalysisNumber());
                     vo.setColor(measureData.getColor());
                     vo.setData(getSampleData(measureData, digit));
-                    vo.setOriginalData(getOriginalSampleData(measureData));
+                    vo.setOriginalData(getOriginalSampleData(measureData, digit));
                     vo.setDeleteType(measureData.getIsDelete());
                 }
                 vo.setType("0");
@@ -1143,123 +1143,40 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return Result.fail("方法id不能为空");
         }
 
-        // 查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             return Result.fail("该方法下没有草稿,请新建草稿");
         }
 
-        // 根据任务查询方法
+        // 根据方法id查询方法
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
             return Result.fail("方法不存在");
         }
 
-        // 查询分析数据
+        // 根据任务id去查询分析数据
         QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("task_id", task.getId());
-        queryWrapper.ne("analysis_type", "5"); // 过滤掉分析类型为 5 的数据
+        queryWrapper.ne("analysis_type", "5");
         if (type == null || type.isEmpty()) {
             queryWrapper.eq("is_delete", "0");
         }
         List<FMeasureAnalysisData> list = fMeasureAnalysisDataService.list(queryWrapper);
         List<FSampleListVo> listVos = new ArrayList<>();
 
-        // 遍历每个分析数据
-        for (FMeasureAnalysisData tMeasureAnalysisData : list) {
+        for (FMeasureAnalysisData fMeasureAnalysisData : list) {
             FSampleListVo vo = new FSampleListVo();
-            vo.setAnalysisId(tMeasureAnalysisData.getId());
-            vo.setTitle(tMeasureAnalysisData.getAnalysisName());
-            vo.setColor(tMeasureAnalysisData.getColor());
-            vo.setDeleteType(tMeasureAnalysisData.getIsDelete());
-
-            // 解析分析结果
-            List<String> results = JSON.parseArray(tMeasureAnalysisData.getAnalysisResult(), String.class);
-            List<FPeakValleyMarking> gauges = JSON.parseArray(tMeasureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> peaks = JSON.parseArray(tMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> grades = JSON.parseArray(tMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-
-            // 存储结果列表
-            List<Map<String, Object>> resultList = new ArrayList<>();
-            List<Map<String, Object>> originalResultList = new ArrayList<>();
-
-            // 遍历分析结果
-            for (String s : results) {
-                String[] split = s.split(",");
-                Map<String, Object> map = new HashMap<>();
-                Map<String, Object> originalMap = new HashMap<>();
-
-                // 处理 x 和 y 值
-                String xValue = split[0];
-                String yValue = split[1];
-
-                BigDecimal x = new BigDecimal(xValue);
-                x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
-                map.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));  // 格式化为字符串
-
-                // 处理 y 值并根据 digit 进行精度控制
-                if (digit != null) {
-                    BigDecimal y = new BigDecimal(yValue);
-                    y = y.setScale(digit, RoundingMode.HALF_UP); // 保留 digit 位小数
-                    map.put("y", y.toPlainString());
-                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));
-                    originalMap.put("y", split[1]);  // 原始数据
-                } else {
-                    map.put("y", yValue);
-                    originalMap.put("x", DataCountUtil.addZero(Double.valueOf(x.toPlainString()), 1));
-                    originalMap.put("y", split[1]);  // 原始数据
-                }
-
-                // 标记点处理
-                if (gauges != null) {
-                    for (FPeakValleyMarking gauge : gauges) {
-                        if (xValue.equals(gauge.getX())) {
-                            map.put("marked", "1");
-                            break;
-                        } else {
-                            map.put("marked", "0");
-                        }
-                    }
-                } else {
-                    map.put("marked", "0");
-                }
-
-                // 峰值处理
-                if (peaks != null) {
-                    for (FPeakValleyMarking peak : peaks) {
-                        if (xValue.equals(peak.getX())) {
-                            map.put("feng", "1");
-                            break;
-                        } else {
-                            map.put("feng", "0");
-                        }
-                    }
-                } else {
-                    map.put("feng", "0");
-                }
-
-                // 谷值处理
-                if (grades != null) {
-                    for (FPeakValleyMarking grade : grades) {
-                        if (xValue.equals(grade.getX())) {
-                            map.put("gu", "1");
-                            break;
-                        } else {
-                            map.put("gu", "0");
-                        }
-                    }
-                } else {
-                    map.put("gu", "0");
-                }
-
-                // 将处理后的数据添加到结果列表
-                resultList.add(map);
-                originalResultList.add(originalMap);
+            vo.setAnalysisId(fMeasureAnalysisData.getId());
+            vo.setTitle(fMeasureAnalysisData.getAnalysisName());
+            vo.setColor(fMeasureAnalysisData.getColor());
+            vo.setDeleteType(fMeasureAnalysisData.getIsDelete());
+            if (fMeasureAnalysisData.getAnalysisResult() == null) {
+                vo.setData(null);
+                vo.setOriginalData(null);
+            } else {
+                vo.setData(getSampleData(fMeasureAnalysisData, digit));
+                vo.setOriginalData(getOriginalSampleData(fMeasureAnalysisData, digit));
             }
-
-            // 设置数据和原始数据
-            vo.setData(resultList);
-            vo.setOriginalData(originalResultList);  // 设置原始数据
             vo.setType("1");
             listVos.add(vo);
         }
@@ -1570,13 +1487,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
-        if (paramDto.getDataId() == null||paramDto.getDataId().equals("")) {
+        if (paramDto.getDataId() == null|| paramDto.getDataId().isEmpty()) {
             return Result.fail("数据ID不能为空");
         }
-        if (paramDto.getHeight() == null||paramDto.getHeight().equals("")) {
-            paramDto.setHeight(Double.valueOf(Integer.valueOf(confVO.getPeakInterval())));
+        if (paramDto.getHeight() == null) {
+            paramDto.setHeight((double) Integer.parseInt(confVO.getPeakValleyDiff()));
         }
-        if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
+        if (paramDto.getDistance() == null|| paramDto.getDistance().isEmpty()){
             paramDto.setDistance(confVO.getPeakValleyDiff());
         }
         double value = Double.parseDouble(paramDto.getDistance());
@@ -1841,10 +1758,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                         .last("limit 1"));
                 FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                 if (byId == null){
-                    map.put("measureId", one.getId());
-                    map.put("sampleName", byId.getSampleName());
-                    list.add(map);
+                    return Result.ok(new ArrayList<>());
                 }
+                map.put("measureId", one.getId());
+                map.put("sampleName", byId.getSampleName());
+                list.add(map);
             }
         }
         return Result.ok(list);
@@ -1926,11 +1844,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 对结果进行寻峰计算
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
         List<Double> y_data = (List<Double>) resultMap.get("y_data");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", x_data);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
@@ -2050,11 +1970,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
         body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height",height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
@@ -2162,10 +2084,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
         Map<String, Object> body1 =  new HashMap<>();
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         body1.put("x_data", xList);
         body1.put("y_data", smoothedY);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height",height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
@@ -2271,11 +2195,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.DIFFERENTIATED, request, Map.class).getBody();
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 =  new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", differentiatedY);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height",height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
@@ -2398,11 +2324,13 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height",height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
@@ -2463,74 +2391,65 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return
      */
     public List<Map<String, Object>> getSampleData(FMeasureAnalysisData measureData, Integer digit) {
-        // 解析 JSON 数据
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
         List<FPeakValleyMarking> peaks = JSON.parseArray(measureData.getPeak(), FPeakValleyMarking.class);
         List<FPeakValleyMarking> grades = JSON.parseArray(measureData.getGrain(), FPeakValleyMarking.class);
-
         List<Map<String, Object>> resultList = new ArrayList<>();
-
-        // 遍历分析结果
         for (String s : list) {
             String[] split = s.split(",");
             Map<String, Object> map = new HashMap<>();
-
-            // 格式化 x 和 y 值
-            String xValue = split[0];
-            String yValue = split[1];
-
-            // 格式化 y 值
-            BigDecimal y = new BigDecimal(yValue);
+            Double x = new Double(split[0]);
+            Double y = new Double(split[1]);
+            Double valueX = DataCountUtil.formatValue(1, x);
+            String zeroX = DataCountUtil.addZero(valueX, 1);
             if (digit != null) {
-                y = y.setScale(digit, RoundingMode.HALF_UP); // 保留 digit 位小数
-                map.put("y", DataCountUtil.addZero(Double.valueOf(y.stripTrailingZeros().toPlainString()), digit));  // 格式化为字符串
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                map.put("x", zeroX);
+                map.put("y", valueY);
             } else {
-                map.put("y", DataCountUtil.addZero(Double.valueOf(yValue), 8)); // 默认保留8位小数
+                map.put("x", valueX);
+                map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
             }
-
-            // 转换为 Double
-            BigDecimal x = new BigDecimal(xValue);
-            x = x.setScale(1, RoundingMode.HALF_UP); // 保留 digit 位小数
-            map.put("x", DataCountUtil.addZero(Double.valueOf(x.stripTrailingZeros().toPlainString()), 1));  // 格式化为字符串
-
-            // 标记是否为标定点（gauges）
-            map.put("marked", "0");
-            if (gauges != null) {
+            if (gauges != null && peaks.size() != 0) {
                 for (FPeakValleyMarking gauge : gauges) {
-                    if (xValue.equals(gauge.getX())) {
+                    if (split[0].equals(gauge.getX())) {
                         map.put("marked", "1");
                         break;
+                    } else {
+                        map.put("marked", "0");
                     }
                 }
+            } else {
+                map.put("marked", "0");
             }
-
-            // 峰值处理
-            map.put("feng", "0");
-            if (peaks != null) {
+            if (peaks != null && peaks.size() != 0) {
                 for (FPeakValleyMarking peak : peaks) {
-                    if (xValue.equals(peak.getX())) {
+                    if (split[0].equals(peak.getX())) {
                         map.put("feng", "1");
                         break;
+                    } else {
+                        map.put("feng", "0");
                     }
                 }
+            } else {
+                map.put("feng", "0");
             }
-
-            // 谷值处理
-            map.put("gu", "0");
-            if (grades != null) {
+            if (grades != null && peaks.size() != 0) {
                 for (FPeakValleyMarking grade : grades) {
-                    if (xValue.equals(grade.getX())) {
+                    if (split[0].equals(grade.getX())) {
                         map.put("gu", "1");
                         break;
+                    } else {
+                        map.put("gu", "0");
                     }
                 }
+            } else {
+                map.put("gu", "0");
             }
-
-            // 将结果添加到列表
             resultList.add(map);
         }
-
         return resultList;
     }
 
@@ -2542,7 +2461,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @param measureData
      * @return
      */
-    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData) {
+    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData,
+                                                           Integer digit) {
         // 解析分析结果、峰、谷、标记点
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
@@ -2556,13 +2476,22 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         for (String s : list) {
             String[] split = s.split(","); // 以逗号分割
             Map<String, Object> map = new HashMap<>();
-
-            double doubleValue = Double.parseDouble(split[0]);
-            // 强制转换为整数，丢弃小数部分
-            int intValue = (int) doubleValue ;  // 结果是 0
-            // 处理原始数据，直接使用原始的值
-            map.put("x", intValue);
-            map.put("y", split[1]);  // 无小数位限制，直接使用原始值
+            Double x = new Double(split[0]);
+            Double y = new Double(split[1]);
+            Double valueX = DataCountUtil.formatValue(1, x);
+            String zeroX = DataCountUtil.addZero(valueX, 1);
+            if (digit != null) {
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                map.put("x", zeroX);
+                map.put("y", valueY);
+            } else {
+                map.put("x", valueX);
+                map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
+            }
+            Double value = DataCountUtil.formatValue(digit,y);
+            String valueY = DataCountUtil.addZero(value, digit);
+            map.put("astrictY", valueY);
 
             // 标记点数据处理
             if (gauges != null && !gauges.isEmpty()) {
@@ -2669,6 +2598,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         FTimeSweepParamter parameter = new FTimeSweepParamter();
         // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto.getParameter(), parameter);
+        if (paramDto.getType().equals("0")){
+            parameter.setEnergyLampName(paramDto.getEnergyLamp().equals("0")?"钨灯": paramDto.getEnergyLamp().equals("1")?"氘灯":"汞灯");
+        }
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());
@@ -3245,11 +3177,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * 表格头
      * @param taskId
      * @param methodId
-     * @param sampleIds
+     * @param analysisIdList
      * @return
      */
     @Override
-    public Result<List<FHeadVO>> tableHead(String taskId, String methodId,List<String> sampleIds) {
+    public Result<List<FHeadVO>> tableHead(String taskId, String methodId,List<String> analysisIdList) {
         // 根据方法id查找方法
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
@@ -3262,15 +3194,15 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         ans.add(new FHeadVO("时长(s)", "waveLength", "measure", "时长(s)"));
 
         // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
-        if (sampleIds.size() == 1){
+        if (analysisIdList.size() == 1){
             addLuminosityMode(ans,parameter.getLuminosity());
             ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
             ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
             return Result.ok(ans);
         }else{
-            for (String sampleId : sampleIds) {
-                FMeasureSample sample = fMeasureSampleService.getById(sampleId);
-                ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
+            for (String analysisId : analysisIdList) {
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
+                ans.add(new FHeadVO(analysisData.getAnalysisName(), "sampleNumber", "name", "样品名称"));
                 ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
             }
             return Result.ok(ans);
@@ -3280,27 +3212,21 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     /**
      * 表格数据
      * @param taskId
-     * @param sampleIds
+     * @param analysisIds
      * @return
      */
     @Override
-    public List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds,Integer digit) {
+    public List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIds,Integer digit) {
         // 校验参数
-        if (StringUtils.isEmpty(taskId) || sampleIds == null || sampleIds.isEmpty()) {
+        if (StringUtils.isEmpty(taskId) || analysisIds == null || analysisIds.isEmpty()) {
             return null;
         }
         List<Map<String, Object>> arrayList = new ArrayList<>();
 
 
         // 判断样品长度是否为1
-        if (sampleIds.size() == 1) {
-            // 单样品表数据
-            QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id", taskId);
-            wrapper.eq("analysis_number",1);
-            wrapper.eq("sample_key", sampleIds.get(0));
-            wrapper.last("limit 1");
-            FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getOne(wrapper);
+        if (analysisIds.size() == 1) {
+            FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getById(analysisIds.get(0));
             if (measureAnalysisData == null) {
                 return null;
             }
@@ -3347,13 +3273,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             // 多样品表数据
             List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
             // 根据任务id和样品id查询分析数据
-            for (String sampleId : sampleIds) {
-                QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
-                wrapper.eq("task_id", taskId);
-                wrapper.eq("analysis_number",1);
-                wrapper.eq("sample_key", sampleId);
-                wrapper.last("limit 1");
-                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(wrapper);
+            for (String analysisId : analysisIds) {
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
                 analysisDataList.add(analysisData);
             }
             if (analysisDataList == null || analysisDataList.isEmpty()) {

@@ -90,6 +90,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.lang.Double.valueOf;
+
 /**
  * 简洁模式: 光谱扫描服务业务层实现
  */
@@ -281,7 +283,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
 
 
-
         // 所有校验通过
         return R.ok(true);
     }
@@ -390,7 +391,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (task != null) {
             vo.setTaskId(task.getId());
         }
-        if (Objects.isNull(task)){
+        if (Objects.isNull(task)) {
             SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
             String id = po.getId();
             FMeasureTask fMeasureTask = new FMeasureTask();
@@ -404,7 +405,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             fMeasureTask.setIsDelete(createType);
 
             fMeasureTask.setUserId(id);
-            fMeasureTask.setTaskName(vo.getMethodName()+"文件数据");
+            fMeasureTask.setTaskName(vo.getMethodName() + "文件数据");
 
             boolean save = fMeasureTaskService.save(fMeasureTask);
             vo.setTaskId(fMeasureTask.getId());
@@ -540,11 +541,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 应用接口
+     *
      * @param paramDto
      * @return
      */
     @Override
     public Result use(FUseMethodDto paramDto) {
+        if (paramDto.getParameter().getLuminosity().equals("3") || paramDto.getParameter().getLuminosity().equals("4")) {
+            paramDto.getParameter().setLadderCorrection(false);
+        }
         Map<String, Object> map = new HashMap<>();
         if (paramDto.getMethodId2() != null) {
             FMeasureMethod method2 = fMeasureMethodService.getById(paramDto.getMethodId2());
@@ -569,7 +574,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (!update) {
                 return Result.fail("应用失败");
             }
-            Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(method2.getId(), paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -598,7 +603,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -613,7 +618,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -626,7 +631,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("请勿重复使用");
             } else {
                 map.put("method", method);
-                Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
+                Result draftButton = createDraftButton(method.getId(), paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
                 }
@@ -638,7 +643,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(),paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
@@ -649,6 +654,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 保存数据接口
+     *
      * @param taskId
      * @param isSave
      * @return
@@ -688,7 +694,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             task.setEndSaveTime(LocalDateTime.now());
             task.setIsSave("1");
             boolean update1 = fMeasureTaskService.updateById(task);
-            if (update&&update1) {
+            if (update && update1) {
                 return Result.ok();
             } else {
                 return Result.fail("数据保存失败");
@@ -711,11 +717,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 QueryWrapper<FMeasureAnalysisData> wrapper1 = new QueryWrapper<>();
                 wrapper1.eq("task_id", taskId);
                 wrapper1.eq("measure_data_id", measureData.getId());
-                wrapper1.eq("is_save","1");
+                wrapper1.eq("is_save", "1");
                 wrapper1.last("limit 1");
                 List<FMeasureAnalysisData> measureAnalysisList = fMeasureAnalysisDataService.list(wrapper1);
                 boolean remove = false;
-                if (measureAnalysisList!=null) {
+                if (measureAnalysisList != null) {
                     for (FMeasureAnalysisData measureAnalysis : measureAnalysisList) {
                         for (FTaskSpecimen fTaskSpeciman : fTaskSpecimen) {
                             if (fTaskSpeciman.getSpecimenKey().equals(measureAnalysis.getSampleKey())) {
@@ -729,7 +735,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
                 // 删除当前测量数据
                 boolean remove1 = fMeasureDataService.removeById(measureData.getId());
-                if (!remove&&!remove1) {
+                if (!remove && !remove1) {
                     return Result.fail("删除失败");
                 }
             }
@@ -737,7 +743,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             task.setEndSaveTime(LocalDateTime.now());
             task.setIsSave("1");
             boolean update = fMeasureTaskService.updateById(task);
-            if ( update) {
+            if (update) {
                 return Result.ok("删除成功");
             } else {
                 return Result.fail("删除失败");
@@ -747,11 +753,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 创建草稿接口
+     *
      * @param methodId
      * @return
      */
     @Override
-    public Result createDraftButton(String methodId,String updateBy,String deviceSerialNumber) {
+    public Result createDraftButton(String methodId, String updateBy, String deviceSerialNumber) {
         if (methodId == null) {
             return Result.fail("请先创建方法或者选择方法");
         }
@@ -763,14 +770,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         FMeasureTask task = fMeasureTaskService.getOne(wrapper);
         FMeasureTask fMeasureTask = new FMeasureTask();
         SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
-        if (sysUserPO == null){
+        if (sysUserPO == null) {
             return Result.fail("用户不存在");
         }
         String userId = sysUserPO.getId();
         if (task == null) {
             // 根据方法id查询方法名称,将名称+草稿赋值到任务名称
             FMeasureMethod method = fMeasureMethodService.getById(methodId);
-            if (method==null){
+            if (method == null) {
                 return Result.fail("请先创建方法");
             }
             fMeasureTask.setTaskName(method.getMethodName() + "草稿");
@@ -790,6 +797,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 查询样品列表按钮
+     *
      * @param taskId
      * @return
      */
@@ -831,6 +839,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 查询样品表头
+     *
      * @param taskId
      * @return
      */
@@ -863,6 +872,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 检测任务状态
+     *
      * @param taskId
      * @return
      */
@@ -880,6 +890,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 保存草稿按钮
+     *
      * @param taskId
      * @return
      */
@@ -890,7 +901,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
-        if (taskName != null){
+        if (taskName != null) {
             task.setTaskName(taskName);
         }
         // 根据任务id和is_save字段为1的条件查询
@@ -901,7 +912,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             for (FMeasureData measureData : measureDataList) {
                 measureData.setIsSave("0");
                 boolean update1 = fMeasureDataService.updateById(measureData);
-                if(!(update1)){
+                if (!(update1)) {
                     return Result.fail("保存草稿失败");
                 }
             }
@@ -914,22 +925,23 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
                 fMeasureAnalysisData.setIsSave("0");
                 boolean update = fMeasureAnalysisDataService.updateById(fMeasureAnalysisData);
-                if(!(update)){
+                if (!(update)) {
                     return Result.fail("保存草稿失败");
                 }
             }
         }
         task.setEndSaveTime(LocalDateTime.now());
         boolean update = fMeasureTaskService.updateById(task);
-        if ( update){
+        if (update) {
             return Result.ok();
-        }else {
+        } else {
             return Result.fail("保存草稿失败");
         }
     }
 
     /**
      * 添加或删除样品接口
+     *
      * @param dto
      * @return
      */
@@ -1025,10 +1037,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail("样品编号重复");
         }
 
-        if(taskSpecimen == null){
+        if (taskSpecimen == null) {
             taskSpecimen = new ArrayList<>();
         }
-        if (taskSpecimen != null){
+        if (taskSpecimen != null) {
             for (FTaskSpecimen specimen : taskSpecimen) {
                 if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                     specimen.setDeleteType(deleteType);
@@ -1081,7 +1093,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             }
 
             if (StringUtils.hasText(newSample.getId())) {
-                if (newSample.getSampleNumber() == null){
+                if (newSample.getSampleNumber() == null) {
                     return Result.fail("样品编号不能为空");
                 }
                 fMeasureSampleService.updateById(newSample);
@@ -1146,7 +1158,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if ("不重复".equals(parameter.getRepetitionPattern())) {
             // 不重复模式
             for (FTaskSpecimen taskSpeciman : taskSpecimen) {
-                if (taskSpeciman.getDeleteType().equals("1")&&type==null){
+                if (taskSpeciman.getDeleteType().equals("1") && type == null) {
                     continue;
                 }
                 FSampleListVo vo = new FSampleListVo();
@@ -1166,7 +1178,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 queryWrapper.last("limit 1");
                 FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
                 // 如果没有测量数据则设置为无测量数据的参数返回
-                if (measureData== null || taskSpeciman.getIsTested().equals("0")&&measureData.getAnalysisResult() == null) {
+                if (measureData == null || taskSpeciman.getIsTested().equals("0") && measureData.getAnalysisResult() == null) {
                     vo.setTitle(sample.getSampleName());
                     vo.setSampleId(taskSpeciman.getSpecimenKey());
                     vo.setAnalysisId(null);
@@ -1184,9 +1196,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     vo.setColor(measureData.getColor());
                     if (measureData.getAnalysisResult() == null) {
                         vo.setData(null);
+                        vo.setOriginalData(null);
                     } else {
                         vo.setData(getSampleData(measureData, digit));
-                        vo.setOriginalData(getOriginalSampleData(measureData));
+                        vo.setOriginalData(getOriginalSampleData(measureData, digit));
                     }
                     vo.setIsTested(taskSpeciman.getIsTested());
                 }
@@ -1241,9 +1254,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setColor(measureData.getColor());
                         if (measureData.getAnalysisResult() == null) {
                             vo.setData(null);
+                            vo.setOriginalData(null);
                         } else {
                             vo.setData(getSampleData(measureData, digit));
-                            vo.setOriginalData(getOriginalSampleData(measureData));
+                            vo.setOriginalData(getOriginalSampleData(measureData, digit));
                         }
                         vo.setDeleteType(measureData.getIsDelete());
                     }
@@ -1259,11 +1273,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 校验数据完整性
+     *
      * @param dataList
      * @param parameter
      * @return
      */
-    private boolean verifyDataIntegrity(List<String> dataList,SpectrumParameter parameter){
+    private boolean verifyDataIntegrity(List<String> dataList, SpectrumParameter parameter) {
         // 检查列表是否为空
         if (dataList == null || dataList.isEmpty()) {
             return false;  // 如果数据为空，返回 false
@@ -1284,8 +1299,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 如果第一个值等于起始波长且最后一个值等于终止波长，返回 true
         return isStartWaveLengthValid && isEndWaveLengthValid;
     }
-
-
 
 
     /**
@@ -1407,86 +1420,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             vo.setTitle(fMeasureAnalysisData.getAnalysisName());
             vo.setColor(fMeasureAnalysisData.getColor());
             vo.setDeleteType(fMeasureAnalysisData.getIsDelete());
-
-            // 解析分析结果
-            List<String> results = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-            List<FPeakValleyMarking> gauges = JSON.parseArray(fMeasureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> grades = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-
-            // 存储数据的列表
-            List<Map<String, Object>> resultList = new ArrayList<>();
-            List<Map<String, Object>> originalResultList = new ArrayList<>();
-
-            for (String s : results) {
-                String[] split = s.split(",");
-                Map<String, Object> map = new HashMap<>();
-                Map<String, Object> originalMap = new HashMap<>();
-
-                // 处理数据和原始数据
-                if (digit != null) {
-                    BigDecimal value = new BigDecimal(split[1]);
-                    map.put("x", split[0]);
-                    map.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
-                    originalMap.put("x", split[0]);
-                    originalMap.put("y", split[1]);  // 无小数位数限制，原始数据
-                } else {
-                    map.put("x", split[0]);
-                    map.put("y", split[1]);
-                    originalMap.put("x", split[0]);
-                    originalMap.put("y", split[1]);  // 原始数据
-                }
-
-                // 处理标记点数据
-                if (gauges != null) {
-                    for (FPeakValleyMarking gauge : gauges) {
-                        if (split[0].equals(gauge.getX())) {
-                            map.put("marked", "1");
-                            break;
-                        } else {
-                            map.put("marked", "0");
-                        }
-                    }
-                } else {
-                    map.put("marked", "0");
-                }
-
-                // 处理峰数据
-                if (peaks != null) {
-                    for (FPeakValleyMarking peak : peaks) {
-                        if (split[0].equals(peak.getX())) {
-                            map.put("feng", "1");
-                            break;
-                        } else {
-                            map.put("feng", "0");
-                        }
-                    }
-                } else {
-                    map.put("feng", "0");
-                }
-
-                // 处理谷数据
-                if (grades != null) {
-                    for (FPeakValleyMarking grade : grades) {
-                        if (split[0].equals(grade.getX())) {
-                            map.put("gu", "1");
-                            break;
-                        } else {
-                            map.put("gu", "0");
-                        }
-                    }
-                } else {
-                    map.put("gu", "0");
-                }
-
-                // 将处理好的数据添加到结果列表中
-                resultList.add(map);
-                originalResultList.add(originalMap);
+            if (fMeasureAnalysisData.getAnalysisResult() == null) {
+                vo.setData(null);
+                vo.setOriginalData(null);
+            } else {
+                vo.setData(getSampleData(fMeasureAnalysisData, digit));
+                vo.setOriginalData(getOriginalSampleData(fMeasureAnalysisData, digit));
             }
-
-            // 设置数据
-            vo.setData(resultList);
-            vo.setOriginalData(originalResultList);  // 设置原始数据
             vo.setType("1");
             listVos.add(vo);
         }
@@ -1802,18 +1742,18 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
-        if (paramDto.getDataId() == null||paramDto.getDataId().equals("")) {
+        if (paramDto.getDataId() == null || paramDto.getDataId().equals("")) {
             return Result.fail("数据ID不能为空");
         }
-        if (paramDto.getHeight() == null||paramDto.getHeight().equals("")) {
-            paramDto.setHeight(Double.valueOf(Integer.valueOf(confVO.getPeakInterval())));
+        if (paramDto.getHeight() == null) {
+            paramDto.setHeight((double) Integer.parseInt(confVO.getPeakValleyDiff()));
         }
-        if (paramDto.getDistance() == null||paramDto.getDistance().equals("")){
-            paramDto.setDistance(confVO.getPeakValleyDiff());
+        if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
+            paramDto.setDistance(confVO.getPeakInterval());
         }
-        double distance =Double.parseDouble(paramDto.getDistance());
+        double distance = Double.parseDouble(paramDto.getDistance());
         int i1 = (int) distance;
-        if (i1<1){
+        if (i1 < 1) {
             return Result.fail("峰谷间距不可以小于1");
         }
         paramDto.setHeight(paramDto.getHeight() / 100);
@@ -1979,7 +1919,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         com7.setParams(new Object[]{v3});
         commands.add(com7);
 
-        if (scanParamInfo.getLuminosity().equals("3")||scanParamInfo.getLuminosity().equals("4")) {
+        if (scanParamInfo.getLuminosity().equals("3") || scanParamInfo.getLuminosity().equals("4")) {
             // 能量灯
             Command com8 = new Command();
             com8.setCmdId(SetParamEnum.SetLampPos.getComId());
@@ -2029,7 +1969,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             queryWrapper.like("method_name", methodName);
         }
         Page<FMeasureMethod> methodPage = fMeasureMethodService.page(page, queryWrapper);
-        if (methodPage.getTotal() == 0){
+        if (methodPage.getTotal() == 0) {
             return Result.fail("没有查询到数据");
         }
 
@@ -2038,6 +1978,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 查询历史任务接口
+     *
      * @param pageNum
      * @param pageSize
      * @param updateBy
@@ -2068,6 +2009,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 查询算术源数据接口
+     *
      * @param taskId
      * @return
      */
@@ -2077,18 +2019,18 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (task == null) {
             return Result.ok(new ArrayList<>());
         }
-        if (task.getSampleKey()==null||task.getSampleKey().equals("[]")){
+        if (task.getSampleKey() == null || task.getSampleKey().equals("[]")) {
             return Result.ok(new ArrayList<>());
         }
         // 根据任务的方法key查询方法参数
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-        List<Map<String,String>> list = new ArrayList<>();
+        List<Map<String, String>> list = new ArrayList<>();
         // 判断是否是重复模式
-        if ("不重复".equals(spectrumParameter.getRepetitionPattern())){
+        if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
             for (FTaskSpecimen taskSpeciman : taskSpecimen) {
-                if(taskSpeciman.getIsTested().equals("1")&&taskSpeciman.getDeleteType().equals("0")){
+                if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
                     FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(new QueryWrapper<FMeasureAnalysisData>()
                             .eq("task_id", taskId)
                             .eq("sample_key", taskSpeciman.getSpecimenKey())
@@ -2100,7 +2042,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     if (one == null) {
                         one = new FMeasureAnalysisData();
                     }
-                    if (one.getAnalysisResult()!=null){
+                    if (one.getAnalysisResult() != null) {
                         Map<String, String> map = new HashMap<>();
                         map.put("measureId", one.getId());
                         map.put("sampleName", byId.getSampleName());
@@ -2108,19 +2050,19 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     }
                 }
             }
-        }else{
+        } else {
             for (FTaskSpecimen taskSpeciman : taskSpecimen) {
-                if(taskSpeciman.getIsTested().equals("1")&&taskSpeciman.getDeleteType().equals("0")){
+                if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
                     List<FMeasureAnalysisData> measureDataList = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>()
                             .eq("task_id", taskId)
                             .eq("sample_key", taskSpeciman.getSpecimenKey())
                             .orderByAsc("analysis_number"));
                     FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
                     for (FMeasureAnalysisData tMeasureData : measureDataList) {
-                        if (tMeasureData.getAnalysisResult()!=null){
+                        if (tMeasureData.getAnalysisResult() != null) {
                             Map<String, String> map = new HashMap<>();
                             map.put("measureId", tMeasureData.getId());
-                            map.put("sampleName", byId.getSampleName()+"-"+tMeasureData.getAnalysisNumber());
+                            map.put("sampleName", byId.getSampleName() + "-" + tMeasureData.getAnalysisNumber());
                             list.add(map);
                         }
                     }
@@ -2133,38 +2075,39 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 四元组运算接口
+     *
      * @param paramDto
      * @return
      */
     @Override
     public Result fourOperationsPort(FFourOperationsParamDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             return Result.fail("请输入变换名称");
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             return Result.fail("变换名称重复");
         }
         // 对所有传过来的对象数据进行校验,判断是否为null或""
-        if (paramDto.getMeasureDataId1()==null||paramDto.getMeasureDataId1().equals("")){
+        if (paramDto.getMeasureDataId1() == null || paramDto.getMeasureDataId1().equals("")) {
             return Result.fail("请选择测量数据1");
         }
-        if (paramDto.getMeasureDataId2()==null||paramDto.getMeasureDataId2().equals("")){
+        if (paramDto.getMeasureDataId2() == null || paramDto.getMeasureDataId2().equals("")) {
             return Result.fail("请选择测量数据2");
         }
-        if (paramDto.getArithmeticOperators()==null||paramDto.getArithmeticOperators().equals("")){
+        if (paramDto.getArithmeticOperators() == null || paramDto.getArithmeticOperators().equals("")) {
             return Result.fail("请选择运算符");
         }
-        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")){
+        if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             return Result.fail("请选择数据类型");
         }
         // 根据测量数据id查询测量数据
         FMeasureAnalysisData measureData1 = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId1());
-        List<String> list ;
+        List<String> list;
         List<String> list2;
         List<String> xList = new ArrayList<>();
         List<String> yList1 = new ArrayList<>();
@@ -2175,11 +2118,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             xList.add(split[0]);
             yList1.add(split[1]);
         }
-        if(paramDto.getDataType().equals("0")){
+        if (paramDto.getDataType().equals("0")) {
             for (int i = 0; i < yList1.size(); i++) {
                 yList2.add(String.valueOf(paramDto.getMeasureDataId2()));
             }
-        }else if (paramDto.getDataType().equals("1")){
+        } else if (paramDto.getDataType().equals("1")) {
             FMeasureAnalysisData measureData2 = fMeasureAnalysisDataService.getById(paramDto.getMeasureDataId2());
             if (measureData2 == null) {
                 return Result.fail("请选择源2");
@@ -2201,22 +2144,24 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body.put("x_data", xList);
         body.put("y1_data", yList1);
         body.put("y2_data", yList2);
-        body.put("operation",paramDto.getArithmeticOperators());
+        body.put("operation", paramDto.getArithmeticOperators());
         // 创建请求对象
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         // 将请求结果转换成对象
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_FOUR_OPERATION, request, Map.class).getBody();
-        if (resultMap == null){
+        if (resultMap == null) {
             return Result.fail("python接口调用失败");
         }
         // 对结果进行寻峰计算
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
         List<Double> y_data = (List<Double>) resultMap.get("y_data");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", x_data);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
@@ -2258,14 +2203,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             return Result.fail("保存失败");
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < x_data.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",x_data.get(i));
-            map.put("y",y_data.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", x_data.get(i));
+            map.put("y", y_data.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -2273,15 +2218,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 高级运算
+     *
      * @param paramDto
      * @return
      */
     @Override
     public Result advancedOperationsPort(FAdvancedOperationsDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             return Result.fail("请输入变换名称");
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
         }
         // 根据任务id查询任务数据
@@ -2300,19 +2246,19 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail("方法参数错误");
         }
         // 判断光度模式是否是1
-        if (spectrumParameter.getLuminosity().equals("1")){
+        if (spectrumParameter.getLuminosity().equals("1")) {
             return Result.fail("Abs光度模式不可使用高级运算");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             return Result.fail("变换名称重复");
         }
         // 将所有传过来的数据校验是否为空是否是""
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
             return Result.fail("请选择测量数据");
         }
-        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")){
+        if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             return Result.fail("请选择变换类型");
         }
         // 根据测量数据id查询测量数据
@@ -2334,11 +2280,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
         body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
@@ -2380,14 +2328,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             return Result.fail("数据保存失败");
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",y_data.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", y_data.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -2395,33 +2343,34 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 平滑接口
+     *
      * @param paramDto
      * @return
      */
     @Override
     public Result smoothnessPort(FSmoothnessDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             return Result.fail("请输入变换名称");
         }
         // 将所有参数校验是否为空或""
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
             return Result.fail("请选择测量数据");
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")){
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
         }
-        if (paramDto.getCoefficient()==null||paramDto.getCoefficient().equals("")){
+        if (paramDto.getCoefficient() == null || paramDto.getCoefficient().equals("")) {
             return Result.fail("请输入系数");
         }
-        if (paramDto.getPointNum()==null||paramDto.getPointNum().equals("")){
+        if (paramDto.getPointNum() == null || paramDto.getPointNum().equals("")) {
             return Result.fail("请输入点数");
         }
-        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+        if (valueOf(paramDto.getCoefficient()) > valueOf(paramDto.getPointNum())) {
             return Result.fail("系数不能大于点数");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
@@ -2430,7 +2379,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
-        for (String s : list){
+        for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
             yList.add(split[1]);
@@ -2445,11 +2394,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SMOOTHED, request, Map.class).getBody();
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
-        Map<String, Object> body1 =  new HashMap<>();
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+        Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", smoothedY);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
@@ -2489,14 +2440,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             return Result.fail("数据保存失败");
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",smoothedY.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", smoothedY.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -2504,33 +2455,34 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 微分
+     *
      * @param paramDto
      * @return
      */
     @Override
     public Result differentialPort(FDifferentialDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             return Result.fail("请输入变换名称");
         }
         // 将所有参数校验是否为空或""
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
             return Result.fail("请选择测量数据");
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")){
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
         }
-        if (paramDto.getCoefficient()==null||paramDto.getCoefficient().equals("")){
+        if (paramDto.getCoefficient() == null || paramDto.getCoefficient().equals("")) {
             return Result.fail("请输入系数");
         }
-        if (paramDto.getPointNum()==null||paramDto.getPointNum().equals("")){
+        if (paramDto.getPointNum() == null || paramDto.getPointNum().equals("")) {
             return Result.fail("请输入点数");
         }
-        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+        if (valueOf(paramDto.getCoefficient()) > valueOf(paramDto.getPointNum())) {
             return Result.fail("系数不能大于点数");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             return Result.fail("变换名称重复");
         }
         // 根据测量数据的id查询出测量数据
@@ -2539,7 +2491,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
-        for (String s : list){
+        for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
             yList.add(split[1]);
@@ -2555,11 +2507,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.DIFFERENTIATED, request, Map.class).getBody();
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
-        Map<String, Object> body1 =  new HashMap<>();
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+        Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", differentiatedY);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
@@ -2599,14 +2553,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             return Result.fail("数据保存失败");
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",differentiatedY.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", differentiatedY.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -2614,29 +2568,30 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 光度转换
+     *
      * @param paramDto
      * @return
      */
     @Override
     public Result luminanceModeConversionPort(FLuminosityConversionDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             return Result.fail("请输入变换名称");
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             return Result.fail("缺少参数");
         }
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")) {
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
             return Result.fail("请选择测量数据");
         }
-        if (paramDto.getMethodId()==null||paramDto.getMethodId().equals("")) {
+        if (paramDto.getMethodId() == null || paramDto.getMethodId().equals("")) {
             return Result.fail("缺少参数");
         }
-        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")) {
+        if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             return Result.fail("变换类型错误");
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<FMeasureAnalysisData> analysisData = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             return Result.fail("变换名称重复");
         }
         // 根据方法id查询方法表的数据
@@ -2645,23 +2600,23 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         String measurementParamInfo = method.getMeasurementParamInfo();
         FSpectrumParameter spectrumParameter = JSON.parseObject(measurementParamInfo, FSpectrumParameter.class);
         Integer type = null;
-        if(paramDto.getDataType().equals("1")){
-            if (spectrumParameter.getLuminosity().equals("1")){
+        if (paramDto.getDataType().equals("1")) {
+            if (spectrumParameter.getLuminosity().equals("1")) {
                 type = 0;
-            }else if (spectrumParameter.getLuminosity().equals("2")){
+            } else if (spectrumParameter.getLuminosity().equals("2")) {
                 type = 1;
-            }else {
+            } else {
                 return Result.fail("您当前的光度模式不支持进行转换");
             }
-        }else if (paramDto.getDataType().equals("2")){
-            if (spectrumParameter.getLuminosity().equals("1")){
+        } else if (paramDto.getDataType().equals("2")) {
+            if (spectrumParameter.getLuminosity().equals("1")) {
                 type = 2;
-            }else if (spectrumParameter.getLuminosity().equals("3")){
+            } else if (spectrumParameter.getLuminosity().equals("3")) {
                 type = 3;
-            }else {
+            } else {
                 return Result.fail("您当前的光度模式不支持进行转换");
             }
-        }else{
+        } else {
             return Result.fail("您当前的光度模式不支持进行转换!");
         }
         // 根据测量数据id查询测量数据
@@ -2678,15 +2633,17 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
-        body.put("transform_type",type);
+        body.put("transform_type", type);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
         Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
@@ -2726,22 +2683,30 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             return Result.fail("数据保存失败");
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",y_data.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", y_data.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
     }
 
 
+    /**
+     * 查询表格头数据
+     *
+     * @param taskId
+     * @param methodId
+     * @param analysisIds
+     * @return
+     */
     @Override
-    public Result<List<FHeadVO>> tableHead(String taskId, String methodId,List<String> sampleIds,List<String> analysisIds) {
+    public Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds) {
         // 根据方法id查找方法
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
@@ -2752,411 +2717,224 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
         // 2. 波长
         ans.add(new FHeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
-        // 判断是否是重复模式
-        if (parameter.getRepetitionPattern().equals("不重复")){
-            /// 非重复模式
-            // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
-            if (sampleIds.size() == 1){
-                addLuminosityMode(ans,parameter.getLuminosity());
-                ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
-                ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
-                return Result.ok(ans);
-            }else{
+        // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
+        if (analysisIds.size() == 1) {
+            addLuminosityMode(ans, parameter.getLuminosity());
+            ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
+            ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
+            return Result.ok(ans);
+        } else {
 
-                // 遍历样品id进行逐个查询
-                for (String sampleId : sampleIds) {
-                    // 根据单个样品id查询样品信息
-                    QueryWrapper<FMeasureSample> qw = new QueryWrapper<>();
-                    qw.eq("id", sampleId);
-                    FMeasureSample sample = fMeasureSampleService.getOne(qw);
-
-                    // 如果样品信息不存在，则跳过当前id或返回错误
-                    if (sample == null) {
-                        return Result.fail("样品信息不存在: " + sampleId);
-                    }
-
-                    // 按顺序添加到结果列表
-                    ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
-                    ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
-                }
-
-                // 如果查询到的样品信息都有效，返回成功的结果
-                return Result.ok(ans);
-            }
-        }else{
-            /// 重复模式
-            // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
-            if (sampleIds.size() == 1 && analysisIds.size() == 1){
-                addLuminosityMode(ans,parameter.getLuminosity());
-                ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
-                ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
-                return Result.ok(ans);
-            }else{
-                if (analysisIds== null|| analysisIds.isEmpty()){
-                    return Result.ok(null);
-                }
-                // 根据分析id查询多个分析id的信息
+            // 遍历样品id进行逐个查询
+            for (String analysisId : analysisIds) {
+                // 根据单个样品id查询样品信息
                 QueryWrapper<FMeasureAnalysisData> qw = new QueryWrapper<>();
-                qw.in("id", analysisIds);
-                List<FMeasureAnalysisData> analysiss = fMeasureAnalysisDataService.list(qw);
-                if (analysiss == null || analysiss.isEmpty()){
-                    return Result.fail("样品信息不存在");
+                qw.eq("id", analysisId);
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(qw);
+
+                // 如果样品信息不存在，则跳过当前id或返回错误
+                if (analysisData == null) {
+                    return Result.fail("样品信息不存在: " + analysisId);
                 }
-                for (FMeasureAnalysisData analysis : analysiss) {
-                    ans.add(new FHeadVO(analysis.getAnalysisName(), "sampleNumber", "name", "样品名称"));
+                if (analysisData.getSampleKey()!=null){
+                    // 根据样品id查询样品
+                    FMeasureSample sample = fMeasureSampleService.getById(analysisData.getSampleKey());
+                    if (parameter.getRepetitionPattern().equals("不重复")){
+                        ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
+                        ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
+                    }else{
+                        ans.add(new FHeadVO(sample.getSampleName()+"-"+analysisData.getAnalysisNumber(), "sampleNumber", "name", "样品名称"));
+                        ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
+                    }
+                }else{
+                    // 按顺序添加到结果列表
+                    ans.add(new FHeadVO(analysisData.getAnalysisName(), "sampleNumber", "name", "样品名称"));
                     ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
                 }
-                return Result.ok(ans);
             }
-        }
 
+            // 如果查询到的样品信息都有效，返回成功的结果
+            return Result.ok(ans);
+        }
     }
 
     /**
      * 查询表格数据
+     *
      * @param taskId
-     * @param sampleIds
+     * @param analysisIds
+     * @param digit
      * @return
      */
     @Override
     public List<Map<String, Object>> queryTableData(String taskId,
-                                                    String methodId,
-                                                    List<String> sampleIds,
                                                     List<String> analysisIds,
                                                     Integer digit) {
         // 校验参数
-        if (StringUtils.isEmpty(taskId) || sampleIds == null || sampleIds.isEmpty()) {
+        if (StringUtils.isEmpty(taskId) || analysisIds == null || analysisIds.isEmpty()) {
             return null;
         }
         List<Map<String, Object>> arrayList = new ArrayList<>();
 
-        // 根据方法id查找方法
-        FMeasureMethod method = fMeasureMethodService.getById(methodId);
-        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-        // 判断是否是重复模式
-        if (parameter.getRepetitionPattern().equals("不重复")) {
-            // 非重复模式
-            // 判断样品长度是否为1
-            if (sampleIds.size() == 1) {
-                // 单样品表数据
-                QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
-                wrapper.eq("task_id", taskId);
-                wrapper.eq("analysis_number", 1);
-                wrapper.eq("sample_key", sampleIds.get(0));
-                wrapper.last("limit 1");
-                FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getOne(wrapper);
-                if (measureAnalysisData == null) {
-                    return null;
-                }
-                int id = 1;
-                List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
-                List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
-                if (peaks != null && !peaks.isEmpty()) {
-                    for (FPeakValleyMarking peak : peaks) {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
-                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
-                        map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
-                        arrayList.add(map);
-                    }
-                }
-                if (valleys != null && !valleys.isEmpty()) {
-                    for (FPeakValleyMarking valley : valleys) {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(valley.getY(), digit));
-                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
-                        map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
-                        arrayList.add(map);
-                    }
-                }
-                if (gaugePoints != null && !gaugePoints.isEmpty()) {
-                    for (FPeakValleyMarking gaugePoint : gaugePoints) {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(formatBigDecimal(gaugePoint.getX(), 1), 1));
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
-                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
-                        map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
-                        arrayList.add(map);
-                    }
-                }
-
-                return arrayList;
-            } else {
-                // 创建一个空列表用于存储查询结果
-                List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
-
-                // 遍历样品id进行逐个查询
-                for (String sampleId : sampleIds) {
-                    // 根据任务id和样品id查询分析数据
-                    QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-                    eq.eq("task_id", taskId);
-                    eq.eq("analysis_number", 1);
-                    eq.eq("sample_key", sampleId); // 修改查询条件，逐个查询
-
-                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(eq);
-
-                    // 如果没有找到该样品的分析数据，则跳过
-                    if (analysisData != null) {
-                        analysisDataList.add(analysisData);
-                    }
-                }
-
-                // 如果分析数据列表为空，返回null
-                if (analysisDataList.isEmpty()) {
-                    return null;
-                }
-
-                List<String> list = new ArrayList<>();
-                List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
-                for (String s : result) {
-                    String[] split = s.split(",");
-                    String s1 = formatBigDecimal(split[0], 1);
-                    list.add(s1);
-                }
-                int id = 1;
-                for (String i : list) {
+        // 非重复模式
+        // 判断样品长度是否为1
+        if (analysisIds.size() == 1) {
+            // 单样品表数据
+            FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getById(analysisIds.get(0));
+            if (measureAnalysisData == null) {
+                return null;
+            }
+            int id = 1;
+            List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
+            List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
+            List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
+            if (peaks != null && !peaks.isEmpty()) {
+                for (FPeakValleyMarking peak : peaks) {
                     Map<String, Object> map = new HashMap<>();
-                    Map<String, Object> resultMap = new HashMap<>();
-                    resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
-                    for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
-                        List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-                        List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                        List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-                        for (String data : datas) {
-                            String[] split = data.split(",");
-                            String s = formatBigDecimal(split[0], 1);
-                            if (Objects.equals(s, i)) {
-                                if (resultMap.get("sampleNumber") == null) {
-                                    List<String> y = new ArrayList<>();
-                                    y.add(formatBigDecimal(split[1], digit));
-                                    resultMap.put("sampleNumber", y);
-                                } else {
-                                    List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                    y.add(formatBigDecimal(split[1], digit));
-                                    resultMap.put("sampleNumber", y);
-                                }
-                                boolean statePeak = false;
-                                boolean stateValley = false;
-                                if (peaks != null) {
-                                    for (FPeakValleyMarking peak : peaks) {
-                                        if (peak.getX().equals(split[0])) {
-                                            if (resultMap.get("peakValley") == null) {
-                                                List<String> peakList = new ArrayList<>();
-                                                peakList.add("峰");
-                                                resultMap.put("peakValley", peakList);
-                                            } else {
-                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                                peakList.add("峰");
-                                                resultMap.put("peakValley", peakList);
-                                            }
-                                            statePeak = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (valleys != null) {
-                                    for (FPeakValleyMarking valley : valleys) {
-                                        if (valley.getX().equals(split[0])) {
-                                            if (resultMap.get("peakValley") == null) {
-                                                List<String> peakList = new ArrayList<>();
-                                                peakList.add("谷");
-                                                resultMap.put("peakValley", peakList);
-                                            } else {
-                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                                peakList.add("谷");
-                                                resultMap.put("peakValley", peakList);
-                                            }
-                                            stateValley = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
-                                if (!statePeak && !stateValley) {
-                                    if (resultMap.get("peakValley") == null) {
-                                        List<String> peakList = new ArrayList<>();
-                                        peakList.add("");
-                                        resultMap.put("peakValley", peakList);
-                                    } else {
-                                        List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                        peakList.add("");
-                                        resultMap.put("peakValley", peakList);
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-                    map.put(i, resultMap);
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
+                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
+                    map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
                     arrayList.add(map);
                 }
-                return arrayList;
             }
+            if (valleys != null && !valleys.isEmpty()) {
+                for (FPeakValleyMarking valley : valleys) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(valley.getY(), digit));
+                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
+                    map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
+                    arrayList.add(map);
+                }
+            }
+            if (gaugePoints != null && !gaugePoints.isEmpty()) {
+                for (FPeakValleyMarking gaugePoint : gaugePoints) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(formatBigDecimal(gaugePoint.getX(), 1), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
+                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
+                    map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
+                    arrayList.add(map);
+                }
+            }
+
+            return arrayList;
         } else {
-            // 重复模式
-            // 判断样品长度是否为1
-            if (sampleIds.size() == 1&& analysisIds.size() == 1) {
-                // 单样品表数据
-                FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getById(analysisIds.get(0));
-                if (measureAnalysisData == null) {
-                    return null;
-                }
-                int id = 1;
-                List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
-                List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
-                if (peaks != null && !peaks.isEmpty()) {
-                    for (FPeakValleyMarking peak : peaks) {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
-                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
-                        map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
-                        arrayList.add(map);
-                    }
-                }
-                if (valleys != null && !valleys.isEmpty()) {
-                    for (FPeakValleyMarking valley : valleys) {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(valley.getY(), digit));
-                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
-                        map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
-                        arrayList.add(map);
-                    }
-                }
-                if (gaugePoints != null && !gaugePoints.isEmpty()) {
-                    for (FPeakValleyMarking gaugePoint : gaugePoints) {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put(SampleTableEnum.ID.getIdentity(), id++);
-                        map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(gaugePoint.getX(), 1));
-                        map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
-                        map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
-                        map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
-                        arrayList.add(map);
-                    }
-                }
+            // 创建一个空列表用于存储查询结果
+            List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
 
-                return arrayList;
-            } else {
-                // 创建一个空列表用于存储查询结果
-                List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
+            // 遍历样品id进行逐个查询
+            for (String analysisId : analysisIds) {
 
-                // 遍历样品id进行逐个查询
-                for (String analysisId : analysisIds) {
-                    FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
+                FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
 
-                    // 如果没有找到该样品的分析数据，则跳过
-                    if (analysisData != null) {
-                        analysisDataList.add(analysisData);
-                    }
+                // 如果没有找到该样品的分析数据，则跳过
+                if (analysisData != null) {
+                    analysisDataList.add(analysisData);
                 }
-
-                // 如果分析数据列表为空，返回null
-                if (analysisDataList.isEmpty()) {
-                    return null;
-                }
-
-                List<String> list = new ArrayList<>();
-                List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
-                for (String s : result) {
-                    String[] split = s.split(",");
-                    list.add(formatBigDecimal(split[0], 1));
-                }
-                int id = 1;
-                for (String i : list) {
-                    Map<String, Object> map = new HashMap<>();
-                    Map<String, Object> resultMap = new HashMap<>();
-                    resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
-                    for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
-                        List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-                        List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                        List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-                        for (String data : datas) {
-                            String[] split = data.split(",");
-                            String s = formatBigDecimal(split[0], 1);
-                            if (Objects.equals(s, i)) {
-                                if (resultMap.get("sampleNumber") == null) {
-                                    List<String> y = new ArrayList<>();
-                                    y.add(formatBigDecimal(split[1], digit));
-                                    resultMap.put("sampleNumber", y);
-                                } else {
-                                    List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                    y.add(formatBigDecimal(split[1], digit));
-                                    resultMap.put("sampleNumber", y);
-                                }
-                                boolean statePeak = false;
-                                boolean stateValley = false;
-                                if (peaks != null) {
-                                    for (FPeakValleyMarking peak : peaks) {
-                                        if (peak.getX().equals(split[0])) {
-                                            if (resultMap.get("peakValley") == null) {
-                                                List<String> peakList = new ArrayList<>();
-                                                peakList.add("峰");
-                                                resultMap.put("peakValley", peakList);
-                                            } else {
-                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                                peakList.add("峰");
-                                                resultMap.put("peakValley", peakList);
-                                            }
-                                            statePeak = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (valleys != null) {
-                                    for (FPeakValleyMarking valley : valleys) {
-                                        if (valley.getX().equals(split[0])) {
-                                            if (resultMap.get("peakValley") == null) {
-                                                List<String> peakList = new ArrayList<>();
-                                                peakList.add("谷");
-                                                resultMap.put("peakValley", peakList);
-                                            } else {
-                                                List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                                peakList.add("谷");
-                                                resultMap.put("peakValley", peakList);
-                                            }
-                                            stateValley = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
-                                if (!statePeak && !stateValley) {
-                                    if (resultMap.get("peakValley") == null) {
-                                        List<String> peakList = new ArrayList<>();
-                                        peakList.add("");
-                                        resultMap.put("peakValley", peakList);
-                                    } else {
-                                        List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                        peakList.add("");
-                                        resultMap.put("peakValley", peakList);
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-                    map.put(i, resultMap);
-                    arrayList.add(map);
-                }
-                return arrayList;
             }
 
+            // 如果分析数据列表为空，返回null
+            if (analysisDataList.isEmpty()) {
+                return null;
+            }
+
+            List<String> list = new ArrayList<>();
+            List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
+            for (String s : result) {
+                String[] split = s.split(",");
+                String s1 = formatBigDecimal(split[0], 1);
+                list.add(s1);
+            }
+            int id = 1;
+            for (String i : list) {
+                Map<String, Object> map = new HashMap<>();
+                Map<String, Object> resultMap = new HashMap<>();
+                resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
+                for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
+                    List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
+                    List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
+                    List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
+                    for (String data : datas) {
+                        String[] split = data.split(",");
+                        String s = formatBigDecimal(split[0], 1);
+                        if (Objects.equals(s, i)) {
+                            if (resultMap.get("sampleNumber") == null) {
+                                List<String> y = new ArrayList<>();
+                                y.add(formatBigDecimal(split[1], digit));
+                                resultMap.put("sampleNumber", y);
+                            } else {
+                                List<String> y = (List<String>) resultMap.get("sampleNumber");
+                                y.add(formatBigDecimal(split[1], digit));
+                                resultMap.put("sampleNumber", y);
+                            }
+                            boolean statePeak = false;
+                            boolean stateValley = false;
+                            if (peaks != null) {
+                                for (FPeakValleyMarking peak : peaks) {
+                                    if (peak.getX().equals(split[0])) {
+                                        if (resultMap.get("peakValley") == null) {
+                                            List<String> peakList = new ArrayList<>();
+                                            peakList.add("峰");
+                                            resultMap.put("peakValley", peakList);
+                                        } else {
+                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                            peakList.add("峰");
+                                            resultMap.put("peakValley", peakList);
+                                        }
+                                        statePeak = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (valleys != null) {
+                                for (FPeakValleyMarking valley : valleys) {
+                                    if (valley.getX().equals(split[0])) {
+                                        if (resultMap.get("peakValley") == null) {
+                                            List<String> peakList = new ArrayList<>();
+                                            peakList.add("谷");
+                                            resultMap.put("peakValley", peakList);
+                                        } else {
+                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                            peakList.add("谷");
+                                            resultMap.put("peakValley", peakList);
+                                        }
+                                        stateValley = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
+                            if (!statePeak && !stateValley) {
+                                if (resultMap.get("peakValley") == null) {
+                                    List<String> peakList = new ArrayList<>();
+                                    peakList.add("");
+                                    resultMap.put("peakValley", peakList);
+                                } else {
+                                    List<String> peakList = (List<String>) resultMap.get("peakValley");
+                                    peakList.add("");
+                                    resultMap.put("peakValley", peakList);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                map.put(i, resultMap);
+                arrayList.add(map);
+            }
+            return arrayList;
         }
     }
 
 
     /**
      * 比较参数
+     *
      * @param method
      * @param newParam
      * @return
@@ -3185,12 +2963,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             String[] split = s.split(",");
             Map<String, Object> map = new HashMap<>();
             if (digit != null) {
-                BigDecimal value = new BigDecimal(split[1]);
+                Double y = new Double(split[1]);
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
                 map.put("x", split[0]);
-                map.put("y", value.setScale(digit, RoundingMode.HALF_UP).toPlainString());
+                map.put("y", valueY);
             } else {
                 map.put("x", split[0]);
-                map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
+                map.put("y", DataCountUtil.addZero(valueOf(split[1]), 8));
             }
             if (gauges != null && peaks.size() != 0) {
                 for (FPeakValleyMarking gauge : gauges) {
@@ -3240,7 +3020,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * @param measureData
      * @return
      */
-    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData) {
+    public List<Map<String, Object>> getOriginalSampleData(FMeasureAnalysisData measureData,
+                                                           int digit) {
         // 解析分析结果、峰、谷、标记点
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
         List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
@@ -3258,6 +3039,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             // 处理原始数据，直接使用原始的值
             map.put("x", split[0]);
             map.put("y", split[1]);  // 无小数位限制，直接使用原始值
+            Double y = new Double(split[1]);
+            Double value = DataCountUtil.formatValue(digit, y);
+            String valueY = DataCountUtil.addZero(value, digit);
+            map.put("astrictY", valueY);
 
             // 标记点数据处理
             if (gauges != null && !gauges.isEmpty()) {
@@ -3320,18 +3105,26 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     /**
      * 创建新的方法
      */
-    private FMeasureMethod createNewMethod(FUseMethodDto paramDto){
+    private FMeasureMethod createNewMethod(FUseMethodDto paramDto) {
         FMeasureMethod fMeasureMethod = new FMeasureMethod();
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         String collect = new Random().ints(8, 0, chars.length())
                 .mapToObj(i -> String.valueOf(chars.charAt(i)))
                 .collect(Collectors.joining());
 
-        fMeasureMethod.setMethodName(paramDto.getMeasureType()  + collect);
+        fMeasureMethod.setMethodName(paramDto.getMeasureType() + collect);
 
         FSpectrumParameter parameter = new FSpectrumParameter();
         // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto.getParameter(), parameter);
+        if (paramDto.getType().equals("0")) {
+            if (paramDto.getParameter().getScanSpeed() == null) {
+                parameter.setScanSpeed("3");
+            }
+            if (paramDto.getType().equals("0")) {
+                parameter.setEnergyLampName(paramDto.getParameter().getEnergyLamp().equals("0") ? "钨灯" : paramDto.getParameter().getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+            }
+        }
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());
@@ -3347,9 +3140,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 多格式文件导出（支持word/txt/xlsx）
-     * @param taskId 任务ID
+     *
+     * @param taskId     任务ID
      * @param allDisplay 是否显示全部数据
-     * @param fileType 导出格式（word/txt/xlsx）
+     * @param fileType   导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
     public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit) {
@@ -3398,7 +3192,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         List<FSampleListVo> allSamples = new ArrayList<>();
 
         // 处理sampleListPort数据
-        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null,digit);
+        Result<List<FSampleListVo>> sampleListResult = querySampleDataList(taskId, null, digit);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -3668,7 +3462,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     }
 
 
-
     // 保留原有的downloadWord方法，并适配新参数
     public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit) {
         return downloadFile(taskId, allDisplay, "word", analysisIds, digit);
@@ -3678,7 +3471,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      * 生成Word文件（修复原逻辑的表格列错位问题）
      */
     private void generateWordFile(File file, FMeasureTask task, FMeasureMethod method,
-                                 List<FHeadVO> heads, List<Map<String, Object>> data, int vosSize) throws Exception {
+                                  List<FHeadVO> heads, List<Map<String, Object>> data, int vosSize) throws Exception {
         XWPFDocument doc = new XWPFDocument();
         CTDocument1 document = doc.getDocument();
         CTBody body = document.getBody();
@@ -3942,6 +3735,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
 
     // ---------------------- 工具方法 ----------------------
+
     /**
      * 获取文件后缀（Java 8兼容）
      */
@@ -3979,6 +3773,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 格式化 BigDecimal，保留指定的小数位数
+     *
      * @param valueStr
      * @param digit
      * @return
@@ -3989,6 +3784,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         BigDecimal value = new BigDecimal(valueStr);
         BigDecimal decimal = value.setScale(digit, RoundingMode.HALF_UP);
         // 设置小数位数并进行舍入
-        return DataCountUtil.addZero(Double.valueOf(decimal.stripTrailingZeros().toPlainString()), digit);
+        return DataCountUtil.addZero(valueOf(decimal.stripTrailingZeros().toPlainString()), digit);
     }
 }

@@ -623,7 +623,8 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("CheckDLamp")
                     || cmdId.equalsIgnoreCase("CheckWl")
                     || cmdId.equalsIgnoreCase("SetWl")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
+                    || cmdId.equalsIgnoreCase("BaseLineFast")
+                    || cmdId.equalsIgnoreCase("SearchAround");
             int timeoutMs = isSlowCommand ? 15000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
 

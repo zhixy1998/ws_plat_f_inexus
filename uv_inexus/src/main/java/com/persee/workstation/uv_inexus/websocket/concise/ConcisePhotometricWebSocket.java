@@ -257,7 +257,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             String dataId = measureData.getData();
             if (!StringUtils.hasText(dataId)) {
                 infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "数据保存异常！");
+                sendAndClose(session, "数据保存异常！"); 
                 return;
             }
             specimen.setIsTested(right);
@@ -266,15 +266,19 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             tMeasureTaskService.updateById(task);
 
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-            R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
-            if (!formulaCount.getSuccess()) {
-            infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "公式计算失败");
-                return;
-            }
-            data = formulaCount.getData();
 
-            photometricService.saveCountData(data, dataId);
+            if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
+                if (!formulaCount.getSuccess()) {
+                    infoService.releaseDevice(deviceSerialNumber);
+                    sendAndClose(session, "公式计算出错，请检查公式配置！");
+                    return;
+                }
+                data = formulaCount.getData();
+
+                photometricService.saveCountData(data, dataId);
+            }
+
 
         } else {
 
@@ -364,11 +368,12 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 tMeasureTaskService.updateById(task);
                 //公式计算
                 measureCount++;
-
-                R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
-                if (formulaCount.getSuccess()) {
-                    data = formulaCount.getData();
-                    photometricService.saveCountData(data, dataId);
+                if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                    R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
+                    if (formulaCount.getSuccess()) {
+                        data = formulaCount.getData();
+                        photometricService.saveCountData(data, dataId);
+                    }
                 }
             }
         }
@@ -601,7 +606,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
                     FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), response, params, DataIdentityEnums.middle.getIdentity() + "-" + i, sample.getSampleNumber() + "-" + i);
                     dataInfo.setMeasureTime(time);
-                    dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + i);
+                    dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
                     originDataList.add(dataInfo);
                     list.clear();
                     repeatMiddleTime = LocalDateTime.now();
@@ -609,7 +614,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 JSONObject object = new JSONObject();
                 object.put("sampleId", sampleKey);
                 object.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
-                object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+                object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
                 object.put("value", repeatMiddleTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             }
@@ -741,6 +746,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
 
+        repetitionTime = repetitionTime + 1;
         if (isAvg) {
             jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
             jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + repetitionTime);
@@ -889,7 +895,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         if (!countedData.getSuccess()) {
             log.info(countedData.getMessage());
-            sendAndClose(session, "公式计算出错");
+            sendAndClose(session, "请检查公式配置");
             return R.fail(countedData.getMessage());
         }
         List<FPhotometricCountDataInfo> countDataInfos = countedData.getData();

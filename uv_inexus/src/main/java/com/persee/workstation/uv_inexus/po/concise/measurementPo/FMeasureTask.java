@@ -54,6 +54,10 @@ public class FMeasureTask{
     @TableField("sample_key")
     private String sampleKey;
 
+    // 样品自动编号
+    @TableField("sample_auto_num")
+    private Integer sampleAutoNum;
+
     // 测量类型
     @TableField("measure_type")
     private String measureType;

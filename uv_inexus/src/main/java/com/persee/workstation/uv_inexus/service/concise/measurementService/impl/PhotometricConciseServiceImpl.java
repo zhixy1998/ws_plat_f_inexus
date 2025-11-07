@@ -1194,6 +1194,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return R.fail("任务不存在");
         }
 
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
+        }
+
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         if (taskSpecimen == null) {
             taskSpecimen = new ArrayList<>();
@@ -1215,6 +1220,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (taskSpecimen.isEmpty()) {
             FMeasureSample newSample = new FMeasureSample();
 
+            sampleAutoNum = 1;
             newSample.setSampleName("默认样品" + 1);
             newSample.setSampleNumber("1");
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -1232,13 +1238,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(createType)) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
+                if (specimen.getIsTested().equals(noTested)) {
                     hasNoTested = true;
                     break;
                 }
+
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
-                    sampleNumList.add(measureSample.getSampleName());
+                    sampleNumList.add(measureSample.getSampleNumber());
                 }
             }
             if (hasNoTested) {
@@ -1247,17 +1258,15 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             FMeasureSample newSample = new FMeasureSample();
 
-            Integer maxSampleId = sampleNumList.stream()
-                    .filter(sample -> sample.startsWith("默认样品"))
-                    .map(sample -> Integer.parseInt(sample.replace("默认样品", "")))  // 获取样品编号部分
-                    .max(Integer::compareTo)
-                    .orElse(0);
+            sampleAutoNum = sampleAutoNum + 1;
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                sampleAutoNum += 1;
+            }
 
-            int number = maxSampleId + 1;
+            int number = sampleAutoNum;
 
-            newSample.setSampleNumber(String.valueOf(number));
+            newSample.setSampleNumber("default-"+ number);
             newSample.setSampleName("默认样品" + number);
-
 
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
             if (!dynamicHeads.isEmpty()) {
@@ -1272,6 +1281,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setSampleAutoNum(sampleAutoNum);
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
             return R.fail("更新失败");

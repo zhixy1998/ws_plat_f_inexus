@@ -721,7 +721,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         ans.setMethodId(methodId);
 
         FittingReceiveInfo curveInfo = createFittingInfo(methodId);
-        String  fittingInfo = JSONObject.toJSONString(curveInfo);
+        String fittingInfo = JSONObject.toJSONString(curveInfo);
 
         FMeasureTask task = new FMeasureTask();
         if (!StringUtils.hasText(methodDTO.getCurrentTaskId())) {
@@ -1524,6 +1524,12 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
 
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        boolean b = fMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail("删除失败");
+        }
+
         FMeasureSample measureSample = fMeasureSampleService.getById(sampleId);
 
         Integer i = fMeasureTaskAttachmentService.queryLastDigit(taskId);
@@ -1535,9 +1541,6 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             changeUnknowSampleDigit(taskId, digit);
         }
-
-        task.setSampleKey(JSON.toJSONString(taskSpecimen));
-        boolean b = fMeasureTaskService.updateById(task);
         return Result.ok(true);
     }
 
@@ -1969,11 +1972,15 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public R<Boolean> createSample(String taskId, String sampleKind, Double normalConcentration, String updateBy, String deviceSerialNumber) {
+    public R<Boolean> createSample(String taskId, String sampleKind, String normalConcentration, String updateBy, String deviceSerialNumber) {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
 
         if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity()) && normalConcentration == null) {
             return R.fail("请设置标准浓度");
+        }
+
+        if (task == null) {
+            return R.fail("任务不存在");
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -1983,6 +1990,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         Result<List<FHeadVO>> listResult = querySampleHeads(taskId, sampleKind);
         if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
             return R.fail(listResult.getMessage());
+        }
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
         }
 
         List<FHeadVO> heads = listResult.getData();
@@ -1997,6 +2008,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (taskSpecimen.isEmpty()) {
             FMeasureSample newSample = new FMeasureSample();
 
+            sampleAutoNum = 1;
             newSample.setSampleName("默认样品" + 1);
             newSample.setSampleNumber("1");
 
@@ -2022,13 +2034,15 @@ public class RationServiceConciseImpl implements RationConciseService {
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getSampleKind().equals(sampleKind) && specimen.getDeleteType().equals(createType)) {
+                if (!specimen.getSampleKind().equals(sampleKind) || specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+                if (specimen.getIsTested().equals(noTested)) {
                     hasNoTested = true;
                     break;
                 }
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())){
-                    sampleNumList.add(measureSample.getSampleName());
                     sampleNumList.add(measureSample.getSampleNumber());
                 }
             }
@@ -2038,15 +2052,15 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             FMeasureSample newSample = new FMeasureSample();
 
-            Integer maxSampleId = sampleNumList.stream()
-                    .map(sample -> Integer.parseInt(sample.replace("默认样品", "")))  // 获取样品编号部分
-                    .max(Integer::compareTo)
-                    .orElse(0);
+            sampleAutoNum = sampleAutoNum + 1;
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                sampleAutoNum += 1;
+            }
 
-            int num = maxSampleId + 1;
-            newSample.setSampleNumber(String.valueOf(num));
+
+            int num = sampleAutoNum;
+            newSample.setSampleNumber("default-" + num);
             newSample.setSampleName("默认样品" + num);
-
 
             if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -2065,7 +2079,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
         }
-
+        task.setSampleAutoNum(sampleAutoNum);
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
@@ -3000,20 +3014,20 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
 
-
-
         List<String> zeroMethod = parameter.getZeroMethod();
 
         param.setForce_zero(0L);
 
-        for (String zero: zeroMethod) {
-            if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
-                data.add(0.00);
-                inputParam.add("0.0");
-            }
+        if (zeroMethod != null && !zeroMethod.isEmpty()) {
+            for (String zero: zeroMethod) {
+                if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+                    data.add(0.00);
+                    inputParam.add("0.0");
+                }
 
-            if (zero.equals(RationCurveParamEnums.force_zero.getIdentity())) {
-                param.setForce_zero(1L);
+                if (zero.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+                    param.setForce_zero(1L);
+                }
             }
         }
 
@@ -3265,8 +3279,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         vo.setDataList(dataList);
         vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
-        vo.setR(DataCountUtil.addZero(Double.valueOf(info.getR()), dataDigit));
-        vo.setR2(DataCountUtil.addZero(Double.valueOf(info.getR2()), dataDigit));
+        if (vo.getR()!= null) {
+            vo.setR(DataCountUtil.addZero(Double.valueOf(info.getR()), dataDigit));
+        }
+        if (vo.getR2()!= null) {
+            vo.setR2(DataCountUtil.addZero(Double.valueOf(info.getR2()), dataDigit));
+        }
+
         return vo;
     }
 
@@ -3925,14 +3944,17 @@ public class RationServiceConciseImpl implements RationConciseService {
                  */
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
-                String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
-                ans = fitDataRounding(ans, parameter);
+                if (fitInfo != null && fitInfo.getCoefficients()!= null) {
+                    String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
+                    ans = fitDataRounding(ans, parameter);
 
-                FRationCountDataInfo valueData = new FRationCountDataInfo();
-                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                valueData.setColValue(ans);
-                currentList.add(valueData);
+                    FRationCountDataInfo valueData = new FRationCountDataInfo();
+                    valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                    valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                    valueData.setColValue(ans);
+                    currentList.add(valueData);
+                }
+
 
                 //TODO 公式计算，待做
                 dealData.setCountData(currentList);

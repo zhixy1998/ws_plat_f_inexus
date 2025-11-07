@@ -16,10 +16,12 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 @SpringBootApplication
 @ComponentScan("com.persee.workstation.uv_inexus")
 @MapperScan("com.persee.workstation.uv_inexus.dao")
+@EnableAspectJAutoProxy(proxyTargetClass = true)
 public class Application {
 
     public static void main(String[] args) {
