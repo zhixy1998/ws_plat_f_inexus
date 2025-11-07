@@ -3,9 +3,7 @@
     <!-- 控制台输出的日志 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [operation:%X{operation}] [module:%X{module}]
-                [method:%X{method}] [user:%X{user}] [clientIP:%X{clientIP}] %logger{36} - %msg%n
-            </pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -18,7 +16,7 @@
 单个日志文件最大为 10MB
 最多保留 30 天的日志文件
 所有日志文件总大小不超过 1GB-->
-            <fileNamePattern>logs/buried-points.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>./logs/buried-points.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -31,12 +29,19 @@
     </appender>
 
     <!-- 埋点专用 logger 配置 -->
-    <logger name="BURIED_POINT_LOGGER" level="INFO" additivity="false">
+    <logger name="com.persee.workstation.uv_inexus.config.LogPointAspect" level="INFO" additivity="false">
         <appender-ref ref="BURIED_POINT_FILE"/>
+        <appender-ref ref="CONSOLE"/>
     </logger>
+
+    <!-- 确保 Spring AOP 和切面相关的日志级别 -->
+    <logger name="org.springframework.web.filter.CommonsRequestLoggingFilter" level="DEBUG"/>
+    <logger name="org.springframework.aop" level="DEBUG"/>
+    <logger name="org.aspectj" level="DEBUG"/>
 
     <!-- 根日志配置-->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
+
 </configuration>

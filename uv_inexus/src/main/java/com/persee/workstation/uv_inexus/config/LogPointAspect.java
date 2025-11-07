@@ -19,7 +19,7 @@ import java.lang.reflect.Method;
 @Component
 public class LogPointAspect {
     // 埋点的日志记录器
-    private static final Logger MdLogger = LoggerFactory.getLogger("埋点日志记录器");
+    private static final Logger MdLogger = LoggerFactory.getLogger(LogPointAspect.class);
 
     @Around("@annotation(logPointAnnotation)")
     public Object handleLogPoint(ProceedingJoinPoint joinPoint, LogPoint logPointAnnotation) throws Throwable {
@@ -42,8 +42,14 @@ public class LogPointAspect {
         MDC.put("operation", logPointAnnotation.value());
         MDC.put("module", logPointAnnotation.module());
         MDC.put("method", fullMethodName);
-        MDC.put("user", currentUser);
-        MDC.put("clientIP", clientIP);
+        
+        // 根据注解配置决定是否记录用户信息和客户端IP
+        if (logPointAnnotation.recordUser()) {
+            MDC.put("user", currentUser);
+        }
+        if (logPointAnnotation.recordClientIP()) {
+            MDC.put("clientIP", clientIP);
+        }
 
         long startTime = System.currentTimeMillis();
         Object result = null;
@@ -75,23 +81,25 @@ public class LogPointAspect {
             exception = e;
             throw e;
         } finally {
-            long duration = System.currentTimeMillis() - startTime;
+            try {
+                long duration = System.currentTimeMillis() - startTime;
 
-            // 记录方法执行完成
-            if (exception != null) {
-                MdLogger.error("方法执行异常，耗时: {}ms, 异常: {}", duration, exception.getMessage());
-            } else {
-                if (logPointAnnotation.recordResult()) {
-                    // 记录返回结果
-                    MdLogger.info("方法执行完成，耗时: {}ms, 返回结果: {}", duration, serializeObject(result));
+                // 记录方法执行完成（在MDC清理前完成所有日志记录）
+                if (exception != null) {
+                    MdLogger.error("方法执行异常，耗时: {}ms, 异常: {}", duration, exception.getMessage());
                 } else {
-                    MdLogger.info("方法执行完成，耗时: {}ms", duration);
+                    if (logPointAnnotation.recordResult()) {
+                        MdLogger.info("方法执行完成，耗时: {}ms, 返回结果: {}", duration, serializeObject(result));
+                    } else {
+                        MdLogger.info("方法执行完成，耗时: {}ms", duration);
+                    }
                 }
+            } finally {
+                // 确保MDC被清理
+                MDC.clear();
             }
-
-            // 清理MDC
-            MDC.clear();
         }
+
     }
     
     /**
