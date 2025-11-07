@@ -166,7 +166,7 @@ public class RationConciseController {
     @ApiOperation("创建样品接口")
     public Result createSample(@RequestParam String taskId,
                                @RequestParam String sampleKind,
-                               @RequestParam(required = false) Double normalConcentration,
+                               @RequestParam(required = false) String normalConcentration,
                                @RequestParam String updateBy,
                                @RequestParam String deviceSerialNumber) {
         R<Boolean> r = rationService.createSample(taskId, sampleKind, normalConcentration, updateBy, deviceSerialNumber);

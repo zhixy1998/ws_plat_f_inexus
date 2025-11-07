@@ -721,7 +721,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         ans.setMethodId(methodId);
 
         FittingReceiveInfo curveInfo = createFittingInfo(methodId);
-        String  fittingInfo = JSONObject.toJSONString(curveInfo);
+        String fittingInfo = JSONObject.toJSONString(curveInfo);
 
         FMeasureTask task = new FMeasureTask();
         if (!StringUtils.hasText(methodDTO.getCurrentTaskId())) {
@@ -1972,11 +1972,15 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public R<Boolean> createSample(String taskId, String sampleKind, Double normalConcentration, String updateBy, String deviceSerialNumber) {
+    public R<Boolean> createSample(String taskId, String sampleKind, String normalConcentration, String updateBy, String deviceSerialNumber) {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
 
         if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity()) && normalConcentration == null) {
             return R.fail("请设置标准浓度");
+        }
+
+        if (task == null) {
+            return R.fail("任务不存在");
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -1986,6 +1990,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         Result<List<FHeadVO>> listResult = querySampleHeads(taskId, sampleKind);
         if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
             return R.fail(listResult.getMessage());
+        }
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
         }
 
         List<FHeadVO> heads = listResult.getData();
@@ -2000,6 +2008,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (taskSpecimen.isEmpty()) {
             FMeasureSample newSample = new FMeasureSample();
 
+            sampleAutoNum = 1;
             newSample.setSampleName("默认样品" + 1);
             newSample.setSampleNumber("1");
 
@@ -2043,16 +2052,15 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             FMeasureSample newSample = new FMeasureSample();
 
-            Integer maxSampleId = sampleNumList.stream()
-                    .filter(sample -> sample.startsWith("default-"))
-                    .map(sample -> Integer.parseInt(sample.replace("default-", "")))  // 获取样品编号部分
-                    .max(Integer::compareTo)
-                    .orElse(0);
+            sampleAutoNum = sampleAutoNum + 1;
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                sampleAutoNum += 1;
+            }
 
-            int num = maxSampleId + 1;
+
+            int num = sampleAutoNum;
             newSample.setSampleNumber("default-" + num);
             newSample.setSampleName("默认样品" + num);
-
 
             if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -2071,7 +2079,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
         }
-
+        task.setSampleAutoNum(sampleAutoNum);
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {

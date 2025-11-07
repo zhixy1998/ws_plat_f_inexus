@@ -104,7 +104,7 @@ public interface RationConciseService {
 
     R<Boolean> checkAllSampleTest(String taskId);
 
-    R<Boolean> createSample(String taskId, String sampleKind, Double normalConcentration, String updateBy, String deviceSerialNumber);
+    R<Boolean> createSample(String taskId, String sampleKind, String normalConcentration, String updateBy, String deviceSerialNumber);
 
     R<String> saveRationSampleMeasureData(FRationDataVO dataInfo);
     R<FRationSaveCountDataInfo> saveSampleMeasureData(FRationDataVO dataInfo);
