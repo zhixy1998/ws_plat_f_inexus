@@ -135,6 +135,18 @@ public class DevMessageUtil {
         Object temp=new Object();
         for (Command command : list) {
             String cmdId = command.getCmdId();
+            if (cmdId.equals(FindDevEnum.FindDevice.getComId())){
+                Object[] param = new Object[]{181,254,241,3,1,0,0,0,0,0,0};
+                String macAddress = NetworkUtils.getEthernetMacAddress();
+                if (macAddress != null) {
+                    String[] macParts = macAddress.split(":");
+                    // 将上位机的前 6 个 MAC 地址部分插入到 param 数组的前 6 个位置
+                    for (int i = 0; i < 6; i++) {
+                        param[i + 5] = Integer.parseInt(macParts[i], 16);  // 将每一部分从十六进制转换为十进制
+                    }
+                }
+            }
+
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
                 Object[] param = new Object[]{0, 0, 0, 0, 0, 0, 52, 218, 166, 101, 144, 86, 169, 254, 136, 253};
 //                Object[] param = new Object[]{64, 194, 186, 169, 8, 100, 52, 221, 166, 101, 166, 103, 169, 254, 136, 253};
