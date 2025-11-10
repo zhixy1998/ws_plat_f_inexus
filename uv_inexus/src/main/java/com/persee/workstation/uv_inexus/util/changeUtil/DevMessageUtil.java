@@ -145,6 +145,7 @@ public class DevMessageUtil {
                         param[i + 5] = Integer.parseInt(macParts[i], 16);  // 将每一部分从十六进制转换为十进制
                     }
                 }
+                command.setParams(param);
             }
 
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
