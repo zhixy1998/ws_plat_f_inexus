@@ -77,39 +77,49 @@ public class DataCountUtil {
 
     public static String changeTPercentOrAbs2(String abs, String tPercent) {
         if (abs != null) {
-            // 吸光度 -> 透光率
-            BigDecimal absorbance = new BigDecimal(abs);
-            log.info("吸光度不为空，计算透光率");
+            try {
+                // 吸光度 -> 透光率
+                BigDecimal absorbance = new BigDecimal(abs);
+                log.info("吸光度不为空，计算透光率");
 
-            // v = 10^(-abs) * 100
-            double powerValue = Math.pow(10, absorbance.negate().doubleValue());
-            BigDecimal result = BigDecimal.valueOf(powerValue)
-                    .multiply(new BigDecimal("100"))
-                    .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
-            DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
-            String formatted = df.format(result);
-            return formatted;
+                // v = 10^(-abs) * 100
+                double powerValue = Math.pow(10, absorbance.negate().doubleValue());
+                BigDecimal result = BigDecimal.valueOf(powerValue)
+                        .multiply(new BigDecimal("100"))
+                        .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
+                DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
+                String formatted = df.format(result);
+                return formatted;
+            } catch (Exception e) {
+            log.error("透光率计算出错：{}", e.getMessage());
+            return "0";
+            }
         }
 
         if (tPercent != null) {
-            // 透光率 -> 吸光度
-            BigDecimal t = new BigDecimal(tPercent);
-            log.info("透光率不为空，计算吸光度");
+           try{
+               // 透光率 -> 吸光度
+               BigDecimal t = new BigDecimal(tPercent);
+               log.info("透光率不为空，计算吸光度");
 
-            BigDecimal ratio = t.divide(new BigDecimal("100"), MathContext.DECIMAL128);
+               BigDecimal ratio = t.divide(new BigDecimal("100"), MathContext.DECIMAL128);
 
-            double v = ratio.doubleValue();
-            if (v < 0) {
-                v = -v;
-            }
+               double v = ratio.doubleValue();
+               if (v < 0) {
+                   v = -v;
+               }
 
-            // -log10(ratio)
-            double logValue = Math.log10(v);
-            BigDecimal absorbance = BigDecimal.valueOf(-logValue)
-                    .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
-            DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
-            String formatted = df.format(absorbance);
-            return formatted;
+               // -log10(ratio)
+               double logValue = Math.log10(v);
+               BigDecimal absorbance = BigDecimal.valueOf(-logValue)
+                       .setScale(10, RoundingMode.HALF_UP); // 保留小数点后10位
+               DecimalFormat df = new DecimalFormat("0.0000000000"); // 固定小数点后10位
+               String formatted = df.format(absorbance);
+               return formatted;
+           } catch (Exception e) {
+               log.error("吸光度计算出错：{}", e.getMessage());
+               return "-10";
+           }
         }
 
         return null;

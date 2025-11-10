@@ -21,7 +21,6 @@ import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.po.guide.softwareActivation.SoftwareActivationPO;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceDiscoveryService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ResponseDeal;
-import com.persee.workstation.uv_inexus.util.changeUtil.T800.ResponseParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -62,21 +61,15 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
 
         String sn = ResponseDeal.Sn;
-        String sn1 = ResponseParser.Sn;
 
         if (sn == null || sn.isEmpty()) {
             sn = "UNKNOWN-SN";
         }
 
-        if (sn1 == null || sn1.isEmpty()) {
-            sn1 = "UNKNOWN-SN";
-        }
 
         sn = sn.substring(0, 16);
-        sn1 = sn1.substring(0, 16);
         // 使用解析好的序列号替代
         mockData.add(buildDeviceInfo(sn, currentTime));
-        mockData.add(buildDeviceInfo(sn1, currentTime));
 
         return mockData;
     }
