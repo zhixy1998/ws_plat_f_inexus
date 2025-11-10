@@ -150,6 +150,18 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             return R.fail("未找到该仪器附件配置");
         }
 
+        if (!po.getIsAutoChangePool() && changeDto.getIsAutoChangePool() != null && changeDto.getIsAutoChangePool()) {
+            if (StringUtils.hasText(po.getPoolInfo())) {
+                List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
+                if (list != null && !list.isEmpty()) {
+                    for (FSamplePoolStatus status : list) {
+                        status.setPoolStatus(true);
+                    }
+                    po.setPoolInfo(JSON.toJSONString(list));
+                }
+            }
+        }
+
         po.setUpdateBy(changeDto.getUpdateBy());
         if (changeDto.getIsAutoChangePool() != null) {
             if (StringUtils.hasText(po.getPoolInfo())) {

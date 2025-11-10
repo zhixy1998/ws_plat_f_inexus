@@ -222,9 +222,9 @@ public class DevMessageUtil {
                 Integer s = (Integer) parse;
                 findDeviceVO.setAttachmentType(s);
             }
-//            if (cmdId.equals(FindDevEnum.GetWlList.getComId())) {
-//                temp=parse;
-//            }
+            if (cmdId.equals(FindDevEnum.GetWlList.getComId())) {
+                temp=parse;
+            }
             if (cmdId.equals(FindDevEnum.GetCellPos.getComId())) {
                 Integer s = (Integer) parse;
                 findDeviceVO.setCurrentPoolNum(s);
