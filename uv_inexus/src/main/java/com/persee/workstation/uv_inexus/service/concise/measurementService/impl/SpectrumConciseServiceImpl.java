@@ -839,31 +839,45 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 查询样品表头
+     * 该方法根据任务ID查询样品表头信息，如果任务ID为空或任务不存在或任务的表信息为空，
+     * <p>
+     * 则返回默认的光谱扫描类型的预定义表头
      *
-     * @param taskId
-     * @return
+     * @param taskId 任务ID，用于标识特定的测量任务
+     * @return 返回一个Result对象，其中包含样品表头列表(FHeadVO)，
+     * 如果任务不存在则返回错误信息
      */
     @Override
     public Result<List<FHeadVO>> querySampleHeads(String taskId) {
 
+        // 检查任务ID是否为空
         if (!StringUtils.hasText(taskId)) {
+            // 如果任务ID为空，获取光谱扫描类型的预定义表头并返回
             List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
             return Result.ok(preHead);
         }
 
+        // 根据任务ID获取任务信息
         FMeasureTask task = fMeasureTaskService.getById(taskId);
+        // 检查任务是否存在
         if (task == null) {
             return Result.fail("任务不存在");
         }
 
+        // 检查任务的表信息是否为空
         if (!StringUtils.hasText(task.getTableInfo())) {
+            // 如果表信息为空，获取光谱扫描类型的预定义表头并返回
             List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
             return Result.ok(preHead);
         } else {
+            // 如果表信息不为空，解析表信息为快照对象
             FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+            // 检查快照中的样品表头是否存在且不为空
             if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                // 如果样品表头存在且不为空，直接返回
                 return Result.ok(snapshot.getSampleHeads());
             } else {
+                // 如果样品表头为空，获取光谱扫描类型的预定义表头并返回
                 List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
                 return Result.ok(preHead);
             }
@@ -942,22 +956,29 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     /**
      * 添加或删除样品接口
      *
-     * @param dto
-     * @return
+
+ * 该方法用于处理样品的添加或删除操作，包括创建新任务、验证样品信息、更新样品数据等功能。
+ *
+     * @param dto 包含样品操作相关数据传输对象，包括方法ID、表头信息、样品列表等
+     * @return 返回操作结果，成功返回Result.ok()，失败返回Result.fail()并附带错误信息
      */
     @Override
     public Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO dto) {
 
+    // 验证方法ID是否存在
         if (!StringUtils.hasText(dto.getMethodId())) {
             return Result.fail("请先创建方法");
         }
+    // 验证表头信息是否存在且不为空
         if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
             return Result.fail("至少需要一个表头");
         }
 
+    // 验证表格新增列数是否超过限制
         if (dto.getHeads() != null && dto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
+    // 如果没有任务ID，则创建新任务
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             FMeasureTask newTask = new FMeasureTask();
@@ -2736,17 +2757,17 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (analysisData == null) {
                     return Result.fail("样品信息不存在: " + analysisId);
                 }
-                if (analysisData.getSampleKey()!=null){
+                if (analysisData.getSampleKey() != null) {
                     // 根据样品id查询样品
                     FMeasureSample sample = fMeasureSampleService.getById(analysisData.getSampleKey());
-                    if (parameter.getRepetitionPattern().equals("不重复")){
+                    if (parameter.getRepetitionPattern().equals("不重复")) {
                         ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
                         ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
-                    }else{
-                        ans.add(new FHeadVO(sample.getSampleName()+"-"+analysisData.getAnalysisNumber(), "sampleNumber", "name", "样品名称"));
+                    } else {
+                        ans.add(new FHeadVO(sample.getSampleName() + "-" + analysisData.getAnalysisNumber(), "sampleNumber", "name", "样品名称"));
                         ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
                     }
-                }else{
+                } else {
                     // 按顺序添加到结果列表
                     ans.add(new FHeadVO(analysisData.getAnalysisName(), "sampleNumber", "name", "样品名称"));
                     ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));

@@ -18,12 +18,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -51,6 +53,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepRepo
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -101,6 +104,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private FSamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
+    private FMeasureTaskMapper fMeasureTaskMapper;
+
+    @Autowired
     ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
@@ -115,6 +121,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     DeviceInfoService deviceInfoService;
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @Value("1")
+    String deleteType;
+
+    @Value("0")
+    String createType;
+
+    @Value("1")
+    String noSave;
+
+    @Value("0")
+    String saved;
+
+    @Value("0")
+    String noTested;
 
     /**
      * 查询默认参数
@@ -1413,53 +1434,204 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
      */
     @Override
     public Result isAddSample(String taskId, String deviceSerialNumber) {
-        if (StringUtils.isEmpty(taskId)) {
-            return Result.fail("任务id不能为空");
+//        if (StringUtils.isEmpty(taskId)) {
+//            return Result.fail("任务id不能为空");
+//        }
+//        if (StringUtils.isEmpty(deviceSerialNumber)) {
+//            return Result.fail("设备编号不能为空");
+//        }
+//
+//        // 根据任务id查询任务信息
+//        FMeasureTask task = fMeasureTaskService.getById(taskId);
+//        if (task == null) {
+//            return Result.fail("任务不存在");
+//        }
+//
+//        List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+//        if (sampleData == null) {
+//            // 如果没有样品，直接创建第一个样品
+//            return createSample(task, deviceSerialNumber, 1);
+//        }
+//
+//        // 1. 查询任务中的所有样品编号，查找最大编号并递增
+//        boolean status = true;
+//        for (FTaskSpecimen fTaskSpecimen : sampleData) {
+//            if (fTaskSpecimen.getIsTested().equals("0") && fTaskSpecimen.getDeleteType().equals("0")) {
+//                status = false;
+//                break;
+//            }
+//        }
+//
+//        if (status) {
+//            // 2. 查询现有的样品编号
+//            List<String> sampleIds = sampleData.stream()
+//                    .map(FTaskSpecimen::getSpecimenKey)
+//                    .collect(Collectors.toList());
+//
+//            // 3. 查询样品表获取当前样品
+//            List<FMeasureSample> samples = fMeasureSampleService.list(new QueryWrapper<FMeasureSample>().in("id", sampleIds));
+//
+//            // 4. 找到当前所有“默认样品”编号，并递增查找下一个可用的编号
+//            int newSampleNumber = findNextSampleNumber(samples);
+//
+//            // 5. 创建新样品
+//            return createSample(task, deviceSerialNumber, newSampleNumber);
+//        }
+//
+//        return Result.ok(false);
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            return Result.fail("任务不存在");
         }
-        if (StringUtils.isEmpty(deviceSerialNumber)) {
-            return Result.fail("设备编号不能为空");
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
+        }
+        String description = null;
+        if (task.getMeasureType().equals("光谱扫描")) {
+            description=MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
+        }else if (task.getMeasureType().equals("时间扫描")) {
+            description=MeasureTypeEnum.TIME_SCAN.getDescription();
+        } else if (task.getMeasureType().equals("定量测定")) {
+            description=MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
+        } else if (task.getMeasureType().equals("光度测量")) {
+            description=MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
         }
 
-        // 根据任务id查询任务信息
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+
+        Result<List<FHeadVO>> listResult = querySampleHeads(taskId,description);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+            return Result.fail(listResult.getMessage());
+        }
+        List<FHeadVO> heads = listResult.getData();
+        //动态表头
+        List<FHeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+                dynamicHeads.add(head);
+            }
+        });
+
+        if (taskSpecimen.isEmpty()) {
+            FMeasureSample newSample = new FMeasureSample();
+
+            sampleAutoNum = 1;
+            newSample.setSampleName("默认样品" + 1);
+            newSample.setSampleNumber("default-" + 1);
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                return Result.fail("保存失败");
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+
+        } else {
+            boolean hasNoTested = false;
+            List<String> sampleNumList = new ArrayList<>();
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
+                if (specimen.getIsTested().equals(noTested)) {
+                    hasNoTested = true;
+                    break;
+                }
+
+                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                    sampleNumList.add(measureSample.getSampleNumber());
+                }
+            }
+            if (hasNoTested) {
+                return Result.ok(true);
+            }
+
+            FMeasureSample newSample = new FMeasureSample();
+
+            sampleAutoNum = sampleAutoNum + 1;
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                sampleAutoNum += 1;
+            }
+
+            int number = sampleAutoNum;
+
+            newSample.setSampleNumber("default-"+ number);
+            newSample.setSampleName("默认样品" + number);
+
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                return Result.fail("保存失败");
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+        }
+
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setSampleAutoNum(sampleAutoNum);
+        boolean update = fMeasureTaskService.updateById(task);
+        if (!update) {
+            return Result.fail("更新失败");
+        }
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
+        }
+        return Result.ok(true);
+    }
+
+    /**
+     * 查询样品表头
+     * @param taskId
+     * @param measureType
+     * @return
+     */
+    public Result<List<FHeadVO>> querySampleHeads(String taskId, String measureType) {
+
+        if (!StringUtils.hasText(taskId)) {
+            // 如果任务ID为空，直接返回预定义的表头
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(measureType, null);
+            return Result.ok(preHead);
+        }
+
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             return Result.fail("任务不存在");
         }
 
-        List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-        if (sampleData == null) {
-            // 如果没有样品，直接创建第一个样品
-            return createSample(task, deviceSerialNumber, 1);
-        }
-
-        // 1. 查询任务中的所有样品编号，查找最大编号并递增
-        boolean status = true;
-        for (FTaskSpecimen fTaskSpecimen : sampleData) {
-            if (fTaskSpecimen.getIsTested().equals("0") && fTaskSpecimen.getDeleteType().equals("0")) {
-                status = false;
-                break;
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            // 如果任务的表头信息为空，返回预定义的表头
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(measureType, null);
+            return Result.ok(preHead);
+        } else {
+            // 如果任务的表头信息不为空，解析任务中的表头数据
+            FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                // 如果解析的样品表头为空，返回预定义的表头
+                List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(measureType, null);
+                return Result.ok(preHead);
             }
         }
-
-        if (status) {
-            // 2. 查询现有的样品编号
-            List<String> sampleIds = sampleData.stream()
-                    .map(FTaskSpecimen::getSpecimenKey)
-                    .collect(Collectors.toList());
-
-            // 3. 查询样品表获取当前样品
-            List<FMeasureSample> samples = fMeasureSampleService.list(new QueryWrapper<FMeasureSample>().in("id", sampleIds));
-
-            // 4. 找到当前所有“默认样品”编号，并递增查找下一个可用的编号
-            int newSampleNumber = findNextSampleNumber(samples);
-
-            // 5. 创建新样品
-            return createSample(task, deviceSerialNumber, newSampleNumber);
-        }
-
-        return Result.ok(false);
     }
-
     /**
      * 根据现有样品查找下一个可用的样品编号
      */

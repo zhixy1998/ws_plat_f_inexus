@@ -42,6 +42,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Component
@@ -50,14 +51,13 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(TimingWebSocket.class);
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-    private ScheduledExecutorService scheduler;
+    // 使用多线程调度器避免阻塞
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private Future<?> future;
     private String ip;
     private String deviceSerialNumber;
     private boolean occupancyStatus = false;
     private Integer digit;
-
 
 
     @Autowired
@@ -106,7 +106,8 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         occupancyStatus = false;
-
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+        session.getAttributes().put("scheduler", scheduler);
         // 将耗时逻辑提交到线程池
         future = executor.submit(() -> {
             try {
@@ -142,7 +143,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                     sendClose(session, message.getMessage());
                     return;
                 }
-                occupancyStatus=true;
+                occupancyStatus = true;
 
                 /// 设置参数
                 Result result = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
@@ -161,9 +162,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 FTimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
 
 
-                startTimedTask(session, timeSweepParameter, deviceSerialNumber, task,updateBy);
+                startTimedTask(session, timeSweepParameter, deviceSerialNumber, task, updateBy);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("连接建立逻辑异常", e);
                 sendAndClose(session, "执行异常: " + e.getMessage());
             }
         });
@@ -171,7 +172,8 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
 
     // 开始定时任务
-    private void startTimedTask(WebSocketSession session, FTimeSweepParamter param, String deviceSerialNumber, FMeasureTask task,String updateBy) {
+    private void startTimedTask(WebSocketSession session, FTimeSweepParamter param, String deviceSerialNumber, FMeasureTask task, String updateBy) {
+        ScheduledExecutorService scheduler = (ScheduledExecutorService) session.getAttributes().get("scheduler");
         // 获取任务的校零参数
         final ChangeParam baselineData = (task.getZeroParam() != null && !task.getZeroParam().equals(""))
                 ? JSON.parseObject(task.getZeroParam(), ChangeParam.class)
@@ -188,7 +190,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         }
 
 
-
         ip = deviceInfoService.getIp(deviceSerialNumber);
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
@@ -198,7 +199,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             sendAndClose(session, "没有找到对应的附件配置信息");
         }
         String maxLocation = "";
-        if (configPO.getIsAutoChangePool()){
+        if (configPO.getIsAutoChangePool()) {
             List<String> sampleIds = newSampleData.stream().map(obj -> obj.getSpecimenKey()).collect(Collectors.toCollection(ArrayList::new));
             QueryWrapper<FMeasureSample> eq = new QueryWrapper<>();
             eq.in("id", sampleIds);
@@ -206,14 +207,12 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             maxLocation = list.stream().map(FMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
         }
 
-        scheduler = Executors.newSingleThreadScheduledExecutor();
-
 
         boolean poolStatus = false;
-        if (configPO.getIsAutoChangePool()){
+        if (configPO.getIsAutoChangePool()) {
             List<FSamplePoolStatus> poolStatuses = JSON.parseArray(configPO.getPoolInfo(), FSamplePoolStatus.class);
             for (FSamplePoolStatus status : poolStatuses) {
-                if (status.getPoolStatus()){
+                if (status.getPoolStatus()) {
                     poolStatus = true;
                     break;
                 }
@@ -225,13 +224,13 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         for (FTaskSpecimen newSampleDatum : newSampleData) {
             ///  设置样品池位置
             FMeasureSample sample = tMeasureSampleService.getById(newSampleDatum.getSpecimenKey());
-            if (configPO.getIsAutoChangePool()){
-                if (sample == null){
+            if (configPO.getIsAutoChangePool()) {
+                if (sample == null) {
                     sendAndClose(session, "请先创建样品");
                     return;
                 }
 
-                if (poolStatus){
+                if (poolStatus) {
                     R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
                     if (!stringR.getSuccess()) {
                         sendAndClose(session, "设置出错");
@@ -239,7 +238,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                     }
                     fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
                     JSONObject object = new JSONObject();
-                    object.put("currentPoolNum",sample.getSampleLocation());
+                    object.put("currentPoolNum", sample.getSampleLocation());
                     try {
                         session.sendMessage(new TextMessage(object.toJSONString()));
                     } catch (IOException e) {
@@ -252,15 +251,22 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             int totalTasks = Integer.parseInt(param.getTotalNumber());  // 执行的总次数
             CountDownLatch latch = new CountDownLatch(totalTasks);  // 每个样品的定时任务数作为latch的计数
 
-            executeTimedTaskForSample(session, param, baselineData, newSampleDatum, ip, latch,task,deviceSerialNumber);
+            // 执行测量任务（现在使用固定速率调度）
+            executeTimedTaskForSample(session, param, baselineData, newSampleDatum, ip, task, deviceSerialNumber,scheduler,latch);
 
+            // 新增：等待当前样品的所有任务完成
             try {
-                latch.await();  // 等待当前样品的所有任务完成
+                long timeout = (long) (totalTasks * Double.parseDouble(param.getIntervalTime()) * 1000 + 10000); // 总时间 + 10s 缓冲
+                if (!latch.await(timeout, TimeUnit.MILLISECONDS)) {
+                    log.warn("样品任务等待超时，强制停止。Specimen: {}", newSampleDatum.getSpecimenKey());
+                }
             } catch (InterruptedException e) {
+                log.error("等待样品任务中断", e);
                 Thread.currentThread().interrupt();
+                return;
             }
 
-            if (sample.getSampleLocation()==null||sample.getSampleLocation().equals("")||sample.getSampleLocation().equals(maxLocation)||!configPO.getIsAutoChangePool()) {
+            if (sample.getSampleLocation() == null || sample.getSampleLocation().equals("") || sample.getSampleLocation().equals(maxLocation) || !configPO.getIsAutoChangePool()) {
                 break;
             }
 
@@ -279,80 +285,79 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                                            ChangeParam baselineData,
                                            FTaskSpecimen newSampleDatum,
                                            String ip,
-                                           CountDownLatch latch,
                                            FMeasureTask task,
-                                           String deviceSerialNumber) {
-
+                                           String deviceSerialNumber,
+                                           ScheduledExecutorService scheduler,
+                                           CountDownLatch latch) {
 
         double interval = Double.parseDouble(param.getIntervalTime()); // 间隔时间（秒）
-
-        // 根据总时长和间隔计算总任务次数
         int totalTasks = Integer.parseInt(param.getTotalNumber());  // 执行的总次数
-
-        long currentStartTime = System.currentTimeMillis();  // 当前任务开始时间
 
         // 记录数据
         List<BigDecimal> x_data = new ArrayList<>();
         List<BigDecimal> y_data = new ArrayList<>();
         List<ChangeParam> originalData = new ArrayList<>();
-        for (int i = 0; i < totalTasks; i++) {
-            // 计算任务执行的时间点
-            final long nextExecutionTime = (long) (currentStartTime + (i * interval * 1000L));
 
-            int finalI = i;
-            scheduler.schedule(() -> {
-                try {
-                    if (Thread.currentThread().isInterrupted()) {
-                        return;  // 如果线程被中断，直接退出
-                    }
-                    // 计算延迟时间，确保任务精确执行
-                    long delay = nextExecutionTime - System.currentTimeMillis();
-                    if (delay > 0) {
-                        Thread.sleep(delay);  // 等待下一个执行时间点
-                    }
+        AtomicInteger counter = new AtomicInteger(0); // 跟踪执行计数
+        long startTime = System.currentTimeMillis(); // 仅用于日志实际时间
 
-                    // 执行测量任务
-                    BigDecimal xValue = BigDecimal.valueOf((System.currentTimeMillis() - currentStartTime) / 1000.0);
-                    Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
-                    ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
-
-                    if (changeParam == null) {
-                        // 使用shutdown()方法结束任务
-                        scheduler.shutdown();
-                        // 发送错误信息并关闭会话
-                        sendAndClose(session, "扫描失败");
-                        latch.countDown(); // 完成当前任务
-                        return;
-                    }
-
-                    Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
-                    changeParam.setWl(String.valueOf(v));
-
-                    // 记录原始数据
-                    originalData.add(changeParam);
-
-                    // 计算并推送 Y 值（光度模式等相关计算）
-                    calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session, newSampleDatum.getSpecimenKey());
-
-                    if (finalI == totalTasks - 1) {
-                        // 最后一次测量完成，结束任务
-                        Constants.endTime = LocalDateTime.now();
-                        saveData(session, originalData, x_data, y_data, newSampleDatum.getSpecimenKey(), task, deviceSerialNumber); // 保存数据
-                    }
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Thread.currentThread().interrupt();
-                    sendAndClose(session, "任务执行出现错误");
-                } finally {
-                    latch.countDown(); // 每个定时任务完成后，计数器减一
+        // 固定速率调度：初始延迟 0，然后每 interval 秒执行一次
+        ScheduledFuture<?> scheduledFuture = scheduler.scheduleAtFixedRate(() -> {
+            try {
+                // 新增：检查线程中断和 session 状态，如果已关闭或中断，立即退出
+                if (Thread.currentThread().isInterrupted() || !session.isOpen()) {
+                    log.warn("任务中断或 session 已关闭，跳过执行。Specimen: {}", newSampleDatum.getSpecimenKey());
+                    return;
                 }
-            }, nextExecutionTime - System.currentTimeMillis(), TimeUnit.MILLISECONDS);  // 精确调度任务到指定时间
-        }
+
+                int i = counter.getAndIncrement();
+                if (i >= totalTasks) {
+                    return; // 如果达到总任务数，停止
+                }
+
+                long expectedTime = startTime + (long) (i * interval * 1000L);
+                long actualTime = System.currentTimeMillis();
+                log.info("任务 {}: 预期时间 {}, 实际时间 {}, 漂移: {}ms", i, expectedTime, actualTime, actualTime - expectedTime);
+
+                // 使用理想时间计算 x（基于计数器，而非墙钟）
+                BigDecimal xValue = BigDecimal.valueOf(i * interval).setScale(1, RoundingMode.DOWN);
+
+                Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
+                ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
+
+                if (changeParam == null) {
+                    sendAndClose(session, "扫描失败");
+                    return;
+                }
+
+                Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+                changeParam.setWl(String.valueOf(v));
+
+                // 记录原始数据
+                originalData.add(changeParam);
+
+                // 计算并推送 Y 值
+                calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session, newSampleDatum.getSpecimenKey());
+
+                if (i == totalTasks - 1) {
+                    Constants.endTime = LocalDateTime.now();
+                    saveData(session, originalData, x_data, y_data, newSampleDatum.getSpecimenKey(), task, deviceSerialNumber);
+                }
+
+            } catch (Exception e) {
+                log.warn("任务被中断", e);
+                sendAndClose(session, "任务执行出现错误");
+            } finally {
+                latch.countDown(); // 始终 countDown
+            }
+        }, 0, (long) (interval * 1000), TimeUnit.MILLISECONDS); // 以毫秒为单位的固定速率
+
+        // 等待完成（非阻塞；在总时间 + 缓冲后取消）
+        scheduler.schedule(() -> {
+            scheduledFuture.cancel(false); // 温和取消，不中断
+            log.info("样品任务完成: {}", newSampleDatum.getSpecimenKey());
+        }, (long) (totalTasks * interval * 1000 + 5000), TimeUnit.MILLISECONDS); // 缓冲超支
     }
-
-
-
 
 
     /**
@@ -370,7 +375,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         }
         return null;
     }
-
 
 
     /**
@@ -396,28 +400,22 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             WebSocketSession session,
             String sampleId) throws IOException {
 
-        // 将总时长转换为bigDecimal类型
-        BigDecimal totalTime = new BigDecimal(param.getScanTime());
-        int compareTo = xValue.compareTo(totalTime);
-        if (compareTo > 0) {
-            xValue = totalTime;
-        }
+
 
         if (param.getLuminosity().equals("1")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-            String y = DataCountUtil.changeTPercentOrAbs2(null,s);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
+            String y = DataCountUtil.changeTPercentOrAbs2(null, s);
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Abs");
             points.add(point);
@@ -426,18 +424,17 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(payload.toJSONString()));
         } else if (param.getLuminosity().equals("2")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(s));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(s);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "T%");
             points.add(point);
@@ -447,18 +444,17 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("3")) {
             Double sData = Double.valueOf(changeParam.getS());
             String y = String.valueOf((sData / (4095 * 32)) * 100);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Es");
             points.add(point);
@@ -468,18 +464,17 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("4")) {
             Double rData = Double.valueOf(changeParam.getR());
             String y = String.valueOf((rData / (4095 * 32)) * 100);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Er");
             points.add(point);
@@ -496,6 +491,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     /**
      * 存储数据
+     *
      * @param session
      * @param originalData
      * @param x_data
@@ -583,7 +579,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         analysisData.setAnalysisNumber(analysisDataLast != null ? analysisDataLast.getAnalysisNumber() + 1 : 1);
         // 根据样品id查询样品数据
         FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-        analysisData.setAnalysisName(sample.getSampleName()+"("+analysisData.getAnalysisNumber()+")");
+        analysisData.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
         analysisData.setTaskId(task.getId());
         analysisData.setSampleKey(sampleId);
         analysisData.setMeasureDataId(tMeasureData.getId());
@@ -641,42 +637,56 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 处理客户端发来的消息
         log.info("收到客户端消息: " + message.getPayload());
-        if (message.getPayload().equals("close")){
+        if (message.getPayload().equals("close")) {
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
             // 如果线程正在被使用
-            if (occupancyStatus){
+            if (occupancyStatus) {
                 // 释放线程
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
         }
     }
 
-    // 当WebSocket连接关闭时，会调用此方法
+    // afterConnectionClosed (优化日志，合并重复)
+
+    /**
+     * 连接关闭时触发
+     * @param session
+     * @param status
+     * @throws Exception
+     */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         super.afterConnectionClosed(session, status);
         log.info("WebSocket连接已关闭: " + session.getId());
-        this.currentSession = null;  // 清理会话
+        this.currentSession = null;
 
+        ScheduledExecutorService scheduler = (ScheduledExecutorService) session.getAttributes().get("scheduler");
         if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdownNow();  // 强制停止所有任务
-            log.info("定时任务已强制停止");
+            scheduler.shutdown();  // 修改为 shutdown()，允许任务完成
+            try {
+                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    log.warn("Scheduler 未在超时内终止，强制忽略剩余任务");
+                }
+            } catch (InterruptedException e) {
+                log.warn("awaitTermination 被中断，可能是正常关闭行为", e);
+                Thread.currentThread().interrupt();  // 恢复中断标志
+            }
+            log.info("所有定时任务已强制停止");
         }
 
         exceptionHandling();
 
-        // 取消正在执行的任务
         if (future != null && !future.isDone()) {
             future.cancel(true);
-            log.info("定时任务已强制停止");
         }
-
     }
 
     /**
      * 连接异常时触发
+     *
      * @param session
      * @param exception
      */
@@ -697,6 +707,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     /**
      * 发送消息并关闭连接
+     *
      * @param session
      * @param msg
      */
@@ -714,6 +725,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     /**
      * 关闭连接
+     *
      * @param session
      */
     private void close(WebSocketSession session) {
@@ -748,6 +760,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     /**
      * 构建命令
+     *
      * @param cmdEnum
      * @param value
      * @return

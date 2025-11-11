@@ -2010,7 +2010,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             sampleAutoNum = 1;
             newSample.setSampleName("默认样品" + 1);
-            newSample.setSampleNumber("1");
+            newSample.setSampleNumber("default-" + 1);
 
             if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());

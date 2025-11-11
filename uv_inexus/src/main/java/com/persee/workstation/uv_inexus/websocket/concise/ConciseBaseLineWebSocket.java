@@ -175,6 +175,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
+            log.error("---停止成功-释放线程" );
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
@@ -196,12 +197,12 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         sessions.remove(session.getId());
         try {
             session.close();
-            deviceInfoService.releaseDevice(deviceSerialNumber);
         } catch (IOException e) {
             handleTransportError(session, e);
             Thread.currentThread().interrupt();
             return;
         } finally {
+            log.error("!!!连接异常-释放线程" );
             deviceInfoService.releaseDevice(deviceSerialNumber);
         }
         System.out.println("连接异常: " + exception.getMessage());
@@ -313,35 +314,31 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
 
         Constants.instrumentData.clear();
-
         List<ChangeParam> dataList = new ArrayList<>();
-
         checkInterrupted(session);
         ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
         measureStatus = true;
-
         List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
+
+        // 新增日志：开始收集数据
+        log.info("开始基线数据收集, deviceSerialNumber: {}", deviceSerialNumber);
 
         while (true) {
             if (Thread.currentThread().isInterrupted()) {
-                System.out.println("线程被中断，终止任务");
+                log.warn("线程被中断，终止基线任务");
                 return;
             }
-
             // 先推实时数据
             while (!Constants.measurd_data.isEmpty()) {
                 ChangeParam changeParam = Constants.measurd_data.remove(0);
                 JSONObject point = new JSONObject();
-
                 Double v = formulaUtil.calculateWavelength(Double.parseDouble(changeParam.getWl()), linearSegment);
                 changeParam.setWl(v.toString());
                 point.put("nm", changeParam.getWl());
-
                 JSONObject payload = new JSONObject();
                 payload.put("data", point);
-
                 if (session.isOpen()) {
                     try {
                         session.sendMessage(new TextMessage(payload.toJSONString()));
@@ -349,16 +346,16 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                         throw new RuntimeException(e);
                     }
                 }
-
                 dataList.add(changeParam);
             }
-
             // 检查是否结束
             List<String> snapshot = new ArrayList<>(Constants.instrumentData);
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
                 measureStatus = false;
                 break;
             }
+            // 新增日志：循环迭代，检查数据大小
+            log.debug("当前 instrumentData 大小: {}", Constants.instrumentData.size());
 
             try {
                 Thread.sleep(10);
@@ -367,6 +364,15 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 return;
             }
         }
+
+        // 新增：检查数据是否为空
+        if (dataList.isEmpty()) {
+            log.error("基线数据为空，失败");
+            sendAndClose(session, "基线数据为空，失败");
+            return;
+        }
+
+        log.info("基线数据收集完成, dataList 大小: {}", dataList.size());
 
 
         checkInterrupted(session);

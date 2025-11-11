@@ -685,37 +685,46 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                    boolean ladderCorrection) throws IOException {
         int startIndex = pushCount * 10;
         int surplusLength = x.size() - startIndex;
+
         if (startIndex < x.size()) {
             JSONArray dataArray = new JSONArray();
             List<Double> x_data = new ArrayList<>();
             List<Double> y_data = new ArrayList<>();
+
+            // 收集需要处理的数据段
             for (int i = startIndex; i < x.size(); i++) {
                 x_data.add(x.get(i));
                 y_data.add(y.get(i));
             }
-            if (ladderCorrection){
+
+            // 如果需要台阶校正
+            if (ladderCorrection) {
                 List<Double> doubles = processAndSaveData(task, x_data, y_data, luminosity, ladderCorrection, sampleId);
-                for (int i = pushCount * 10; i < x.size(); i++) {
-                    y.set(i, doubles.get(0));
-                    doubles.remove(0);
+                // 更新y值
+                for (int i = 0; i < doubles.size(); i++) {
+                    y.set(startIndex + i, doubles.get(i));
                 }
             }
+
+            // 构建推送数据
             for (int i = 0; i < surplusLength; i++) {
                 JSONObject point = new JSONObject();
-                point.put("x", x.get(i));
-                Double value = DataCountUtil.formatValue(digit, y.get(i));
+                point.put("x", x.get(startIndex + i));  // 修正：使用正确的索引
+                Double value = DataCountUtil.formatValue(digit, y.get(startIndex + i));  // 修正：使用正确的索引
                 String valueY = DataCountUtil.addZero(value, digit);
                 point.put("y", valueY);
                 point.put("xType", "nm");
                 // 光度模式是1.Abs 2.T% 3.Es 4.Er
-                String luminosityType = luminosity.equals("1")?"Abs":luminosity.equals("2")?"T%":luminosity.equals("3")?"Es":"Er";
+                String luminosityType = luminosity.equals("1") ? "Abs" : luminosity.equals("2") ? "T%" : luminosity.equals("3") ? "Es" : "Er";
                 point.put("yType", luminosityType);
                 dataArray.add(point);
             }
+
             JSONObject payload = new JSONObject();
             payload.put("data", dataArray);
             payload.put("sampleId", sampleId);
             payload.put("count", count);
+
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(payload.toJSONString()));
             }
@@ -932,6 +941,10 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             marking.setType("波谷");
             markings.add(marking);
         }
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < x.size(); i++) {
+            result.add(x.get(i) + "," + y.get(i));
+        }
 
         // 2. 保存测量数据
         List<String> listData = new ArrayList<>(originalCalcSnapshot); // 使用快照
@@ -960,7 +973,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             measureData.setTaskId(taskId);
             measureData.setSampleKey(sampleId);
             measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot)); // 使用快照
-            measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+            measureData.setOriginalCalculationData(JSON.toJSONString(result));
             measureData.setMeasurementStartTime(startTime);
             measureData.setMeasurementEndTime(endTime);
             measureData.setIsDelete("0");
@@ -974,7 +987,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             analysisData.setSampleKey(sampleId);
             analysisData.setMeasureDataId(measureData.getId());
             analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
-            analysisData.setAnalysisResult(JSON.toJSONString(listData));
+            analysisData.setAnalysisResult(JSON.toJSONString(result));
             analysisData.setAnalysisType("5");
             analysisData.setPeak(JSON.toJSONString(peakValleys));
             analysisData.setGrain(JSON.toJSONString(markings));
@@ -1005,14 +1018,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                 .eq("serial_number", number)
                 );
                 measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
-                measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+                measureData.setOriginalCalculationData(JSON.toJSONString(result));
                 measureData.setMeasurementStartTime(startTime);
                 measureData.setMeasurementEndTime(endTime);
                 measureData.setIsSave("1");
                 traceDataService.updateById(measureData);
 
                 analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
-                analysisData.setAnalysisResult(JSON.toJSONString(listData));
+                analysisData.setAnalysisResult(JSON.toJSONString(result));
                 analysisData.setPeak(JSON.toJSONString(peakValleys));
                 analysisData.setGrain(JSON.toJSONString(markings));
                 analysisData.setColor("#000000");
@@ -1026,7 +1039,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 measureData.setTaskId(taskId);
                 measureData.setSampleKey(sampleId);
                 measureData.setInstrumentData(JSON.toJSONString(instrumentSnapshot));
-                measureData.setOriginalCalculationData(JSON.toJSONString(listData));
+                measureData.setOriginalCalculationData(JSON.toJSONString(result));
                 measureData.setMeasurementStartTime(startTime);
                 measureData.setMeasurementEndTime(endTime);
                 measureData.setIsDelete("0");
@@ -1040,7 +1053,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 analysis.setSampleKey(sampleId);
                 analysis.setMeasureDataId(measureData.getId());
                 analysis.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
-                analysis.setAnalysisResult(JSON.toJSONString(listData));
+                analysis.setAnalysisResult(JSON.toJSONString(result));
                 analysis.setAnalysisType("5");
                 analysis.setPeak(JSON.toJSONString(peakValleys));
                 analysis.setGrain(JSON.toJSONString(markings));
