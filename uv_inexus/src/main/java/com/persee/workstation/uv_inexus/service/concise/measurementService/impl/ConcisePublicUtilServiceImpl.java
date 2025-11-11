@@ -158,11 +158,25 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
     public R<Boolean> checkApproximateRange(FRoundingVO vo) {
         List<FRoundingParamVO> params = vo.getRoundingParams();
 
+        int size =  params.size();
+        double min = Double.MAX_VALUE;
+        double max = Double.MIN_VALUE;
+
         // 1. 检查每个区间内部的合法性
         for (FRoundingParamVO param : params) {
             Double lowerLimit = param.getLowerLimit();
             Double upperLimit = param.getUpperLimit();
 
+            if (lowerLimit == null) {
+                min = Double.MIN_VALUE;
+            }
+            if (upperLimit == null) {
+                max = Double.MAX_VALUE;
+            }
+
+            if (lowerLimit == null && upperLimit == null && size != 1) {
+                return R.fail("区间重叠，请检查！");
+            }
             // 只有当下限和上限都不为空时才进行检查
             if (lowerLimit != null && upperLimit != null) {
                 // 下限值不能大于上限值
@@ -176,6 +190,16 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
                     }
                 }
             }
+            if (lowerLimit != null && lowerLimit < min) {
+                min = lowerLimit;
+            }
+            if (upperLimit != null && upperLimit > max) {
+                max = upperLimit;
+            }
+        }
+
+        if (min != Double.MIN_VALUE && max != Double.MAX_VALUE) {
+            return R.fail("修约范围未覆盖所有区间！");
         }
 
         // 2. 检查区间之间是否重叠
@@ -201,7 +225,7 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
         // 检查相邻区间是否有重叠
         for (int i = 0; i < sortedParams.size() - 1; i++) {
             if (isOverlapping(sortedParams.get(i), sortedParams.get(i + 1))) {
-                return R.fail("区间之间不能存在重叠");
+                return R.fail("区间重叠，请检查！");
             }
         }
 

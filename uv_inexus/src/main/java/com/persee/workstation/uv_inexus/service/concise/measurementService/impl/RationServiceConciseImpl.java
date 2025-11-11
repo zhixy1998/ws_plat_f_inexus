@@ -252,6 +252,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         if (oldTask != null && StringUtils.hasText(oldTask.getTableInfo())) {
             task.setTableInfo(oldTask.getTableInfo());
+            if (StringUtils.hasText(oldTask.getZeroParam())){
+                task.setZeroParam(oldTask.getZeroParam());
+            }
         } else {
             List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
             List<FHeadVO> unknownHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());

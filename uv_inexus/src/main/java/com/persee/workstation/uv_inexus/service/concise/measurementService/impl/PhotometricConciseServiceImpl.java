@@ -336,6 +336,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setSampleKey(JSON.toJSONString(samples));
         if (oldTask != null && StringUtils.hasText(oldTask.getTableInfo())) {
             task.setTableInfo(oldTask.getTableInfo());
+            if (StringUtils.hasText(oldTask.getZeroParam())) {
+                task.setZeroParam(oldTask.getZeroParam());
+            }
         } else {
             List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
             FTaskHeadSnapshot snapshot = new FTaskHeadSnapshot();

@@ -27,7 +27,7 @@ public class DetectionConstants {
     /**
      * 采集数据间隔,单位ms
      */
-    public static final Integer interval = 3500;
+    public static final Integer interval = 2000;
 
     public static volatile ConcurrentHashMap<String, Object> detectionInfo = new ConcurrentHashMap<>();
 
