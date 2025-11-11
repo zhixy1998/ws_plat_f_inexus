@@ -1760,6 +1760,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
              * 复制任务
              */
             FMeasureTask task = fMeasureTaskService.getById(taskId);
+
+            LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(FMeasureTask::getTaskName, taskName)
+                            .eq(FMeasureTask::getMeasureType, task.getMeasureType());
+            if (fMeasureTaskService.count(wrapper) > 0) {
+                return Result.fail("任务名称已存在！！！");
+            }
             if (ObjectUtils.isEmpty(task)) {
                 return Result.fail("未找到任务！！！");
             }
