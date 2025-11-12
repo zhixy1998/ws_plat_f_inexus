@@ -233,15 +233,18 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
 
 
-        Command command = new Command();
-        command.setCmdId(SetParamEnum.Scan.getComId());
-        command.setParams(new Object[]{});
+        Command command = buildCommand(SetParamEnum.Scan, new Object[]{});
+        if (spectrumParameter.getScanSpeed().equals("3")){
+            command = buildCommand(SetParamEnum.ScanFast, new Object[]{});
+        }
+
         // 往前端推送数据的线程
+        Command finalCommand = command;
         Thread taskThread = new Thread(() -> {
 
             try {
                 Integer number = Integer.valueOf(analysisNumber);
-                doOneMeasurement(session, command, spectrumParameter, task, taskId, sampleId, deviceSerialNumber, ip, number);
+                doOneMeasurement(session, finalCommand, spectrumParameter, task, taskId, sampleId, deviceSerialNumber, ip, number);
                 // 全部完成后再告诉前端 finish
                 JSONObject payload = new JSONObject();
                 payload.put("result", "finish");
@@ -643,37 +646,46 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                               List<ChangeParam> baselineCopy,
                               List<Double> x,
                               List<Double> y) {
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
         if (baselineCopy != null && !baselineCopy.isEmpty()) {
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("2")) {
                 String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + s);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + s);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(s));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
                 System.out.println("----sData:" + sData);
                 String yy = String.valueOf((sData / 8388607) * 100);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
                 System.out.println("----rData:" + rData);
                 String yy = String.valueOf((rData / 8388607) * 100);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             }
             Constants.measurd_data.remove(0);
             baselineCopy.remove(0);
         } else {
-            List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(null, s);

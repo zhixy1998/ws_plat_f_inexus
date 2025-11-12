@@ -252,18 +252,23 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             CountDownLatch latch = new CountDownLatch(totalTasks);  // 每个样品的定时任务数作为latch的计数
 
             // 执行测量任务（现在使用固定速率调度）
-            executeTimedTaskForSample(session, param, baselineData, newSampleDatum, ip, task, deviceSerialNumber,scheduler,latch);
+            executeTimedTaskForSample(session, param, baselineData, newSampleDatum, ip, task, deviceSerialNumber, scheduler, latch);
 
             // 新增：等待当前样品的所有任务完成
             try {
-                long timeout = (long) (totalTasks * Double.parseDouble(param.getIntervalTime()) * 1000 + 10000); // 总时间 + 10s 缓冲
-                if (!latch.await(timeout, TimeUnit.MILLISECONDS)) {
-                    log.warn("样品任务等待超时，强制停止。Specimen: {}", newSampleDatum.getSpecimenKey());
+                // 理论总时长 * 2 + 30 秒缓冲（足够应对 GC、网络抖动等）
+                long maxWaitMs = (long) (totalTasks * Double.parseDouble(param.getIntervalTime()) * 1000 * 2) + 30_000;
+                log.info("开始等待样品任务完成，最大等待时间: {}ms (≈{}秒)", maxWaitMs, maxWaitMs / 1000);
+
+                if (!latch.await(maxWaitMs, TimeUnit.MILLISECONDS)) {
+                    log.error("样品任务严重超时！已等待 {}ms，仍未完成。Specimen: {}", maxWaitMs, newSampleDatum.getSpecimenKey());
+                    // 这里可以选择继续强制关闭，或者直接返回让上层处理
+                } else {
+                    log.info("样品任务正常完成！Specimen: {}", newSampleDatum.getSpecimenKey());
                 }
             } catch (InterruptedException e) {
-                log.error("等待样品任务中断", e);
+                log.error("等待样品任务被中断", e);
                 Thread.currentThread().interrupt();
-                return;
             }
 
             if (sample.getSampleLocation() == null || sample.getSampleLocation().equals("") || sample.getSampleLocation().equals(maxLocation) || !configPO.getIsAutoChangePool()) {
@@ -303,28 +308,32 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
         // 固定速率调度：初始延迟 0，然后每 interval 秒执行一次
         ScheduledFuture<?> scheduledFuture = scheduler.scheduleAtFixedRate(() -> {
+            int currentIndex = counter.getAndIncrement();
+
+            // 超出任务总数时也要 countDown，防止 latch 永远等不到 0
+            if (currentIndex >= totalTasks) {
+                latch.countDown();
+                return;
+            }
+
             try {
-                // 新增：检查线程中断和 session 状态，如果已关闭或中断，立即退出
+                // session 已关闭或线程被中断 → 直接结束当前任务
                 if (Thread.currentThread().isInterrupted() || !session.isOpen()) {
-                    log.warn("任务中断或 session 已关闭，跳过执行。Specimen: {}", newSampleDatum.getSpecimenKey());
+                    latch.countDown();
                     return;
                 }
 
-                int i = counter.getAndIncrement();
-                if (i >= totalTasks) {
-                    return; // 如果达到总任务数，停止
-                }
-
-                long expectedTime = startTime + (long) (i * interval * 1000L);
+                // ------------------- 正常业务逻辑 -------------------
+                long expectedTime = startTime + (long) (currentIndex * interval * 1000L);
                 long actualTime = System.currentTimeMillis();
-                log.info("任务 {}: 预期时间 {}, 实际时间 {}, 漂移: {}ms", i, expectedTime, actualTime, actualTime - expectedTime);
+                log.debug("任务 {}: 预期 {}ms, 实际 {}ms, 漂移 {}ms",
+                        currentIndex, expectedTime, actualTime, actualTime - expectedTime);
 
-                // 使用理想时间计算 x（基于计数器，而非墙钟）
-                BigDecimal xValue = BigDecimal.valueOf(i * interval).setScale(1, RoundingMode.DOWN);
+                BigDecimal xValue = BigDecimal.valueOf(currentIndex * interval)
+                        .setScale(1, RoundingMode.DOWN);
 
                 Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
                 ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
-
                 if (changeParam == null) {
                     sendAndClose(session, "扫描失败");
                     return;
@@ -332,31 +341,25 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
                 Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
                 changeParam.setWl(String.valueOf(v));
-
-                // 记录原始数据
                 originalData.add(changeParam);
 
-                // 计算并推送 Y 值
-                calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session, newSampleDatum.getSpecimenKey());
+                calculateAndPushYValue(param, baselineData, changeParam, xValue,
+                        x_data, y_data, session, newSampleDatum.getSpecimenKey());
 
-                if (i == totalTasks - 1) {
+                if (currentIndex == totalTasks - 1) {
                     Constants.endTime = LocalDateTime.now();
-                    saveData(session, originalData, x_data, y_data, newSampleDatum.getSpecimenKey(), task, deviceSerialNumber);
+                    saveData(session, originalData, x_data, y_data,
+                            newSampleDatum.getSpecimenKey(), task, deviceSerialNumber);
                 }
-
+                // ----------------------------------------------------
             } catch (Exception e) {
-                log.warn("任务被中断", e);
-                sendAndClose(session, "任务执行出现错误");
+                log.error("定时任务执行异常，Index: {}", currentIndex, e);
+                sendAndClose(session, "任务执行错误");
             } finally {
-                latch.countDown(); // 始终 countDown
+                // 关键：每执行一次（无论成功/失败）都必须 countDown
+                latch.countDown();
             }
-        }, 0, (long) (interval * 1000), TimeUnit.MILLISECONDS); // 以毫秒为单位的固定速率
-
-        // 等待完成（非阻塞；在总时间 + 缓冲后取消）
-        scheduler.schedule(() -> {
-            scheduledFuture.cancel(false); // 温和取消，不中断
-            log.info("样品任务完成: {}", newSampleDatum.getSpecimenKey());
-        }, (long) (totalTasks * interval * 1000 + 5000), TimeUnit.MILLISECONDS); // 缓冲超支
+        }, 0, (long) (interval * 1000), TimeUnit.MILLISECONDS);
     }
 
 
@@ -399,7 +402,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             List<BigDecimal> y_data,
             WebSocketSession session,
             String sampleId) throws IOException {
-
 
 
         if (param.getLuminosity().equals("1")) {
@@ -653,6 +655,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     /**
      * 连接关闭时触发
+     *
      * @param session
      * @param status
      * @throws Exception
@@ -660,27 +663,31 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         super.afterConnectionClosed(session, status);
-        log.info("WebSocket连接已关闭: " + session.getId());
+        log.info("WebSocket连接关闭: {}，原因: {}", session.getId(), status);
+
         this.currentSession = null;
 
         ScheduledExecutorService scheduler = (ScheduledExecutorService) session.getAttributes().get("scheduler");
         if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdown();  // 修改为 shutdown()，允许任务完成
+            scheduler.shutdown();
             try {
-                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                    log.warn("Scheduler 未在超时内终止，强制忽略剩余任务");
+                if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+                    log.warn("Scheduler 30秒内未完全终止，剩余任务被丢弃");
                 }
             } catch (InterruptedException e) {
-                log.warn("awaitTermination 被中断，可能是正常关闭行为", e);
-                Thread.currentThread().interrupt();  // 恢复中断标志
+                Thread.currentThread().interrupt();
             }
-            log.info("所有定时任务已强制停止");
         }
-
-        exceptionHandling();
 
         if (future != null && !future.isDone()) {
             future.cancel(true);
+        }
+
+        exceptionHandling();
+        sessions.remove(session.getId());
+
+        if (occupancyStatus && deviceSerialNumber != null) {
+            deviceInfoService.releaseDevice(deviceSerialNumber);
         }
     }
 

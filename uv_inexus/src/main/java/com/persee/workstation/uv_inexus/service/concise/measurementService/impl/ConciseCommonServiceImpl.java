@@ -916,8 +916,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-            vo.setStartWaveLength(param.getStartWaveLength());
-            vo.setEndWaveLength(param.getEndWaveLength());
+            vo.setStartWaveLength(param.getStartWaveLength()+"nm");
+            vo.setEndWaveLength(param.getEndWaveLength()+"nm");
             vo.setScanSpeed(param.getScanSpeed());
             vo.setTimeInterval(param.getTimeInterval());
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");

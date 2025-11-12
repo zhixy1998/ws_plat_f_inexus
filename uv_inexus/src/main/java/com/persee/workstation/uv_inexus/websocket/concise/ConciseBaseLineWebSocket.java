@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
@@ -313,11 +314,22 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             return;
         }
 
+        // 根据方法id查询方法参数
+        FMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            sendAndClose(session, "方法不存在");
+        }
+        // 将方法参数从JSON转换为FSpectrumParameter对象
+        FSpectrumParameter param = JSONObject.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
         Constants.instrumentData.clear();
         List<ChangeParam> dataList = new ArrayList<>();
         checkInterrupted(session);
         ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
+        if (param.getScanSpeed().equals("3")){
+            command = buildCommand(SetParamEnum.BaseLineFast, new Object[]{});
+        }
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
         measureStatus = true;
         List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
@@ -381,7 +393,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             task = tMeasureTaskService.getById(taskId);
         } else {
             task = new FMeasureTask();
-            FMeasureMethod method = tMeasureMethodService.getById(methodId);
             SystemUserManagePO user = systemUserManageDAO
                     .selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
             task.setUserId(user.getId());

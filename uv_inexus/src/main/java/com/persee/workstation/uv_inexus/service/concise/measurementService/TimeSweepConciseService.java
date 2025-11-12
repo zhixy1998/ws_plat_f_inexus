@@ -41,7 +41,7 @@ public interface TimeSweepConciseService {
     Result whetherSaveData(String taskId, Boolean isSave);
 
     // 创建草稿接口
-    Result createDraftButton(String methodId, String updateBy,String deviceSerialNumber);
+    Result createDraftButton(String methodId,String taskId, String updateBy,String deviceSerialNumber);
 
     // 查询样品列表按钮
     Result querySampleListButton(String taskId);

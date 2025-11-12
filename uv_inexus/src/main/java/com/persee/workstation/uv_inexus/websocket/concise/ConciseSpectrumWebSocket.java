@@ -217,11 +217,15 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         boolean repeatMode = "单池重复".equalsIgnoreCase(spectrumParameter.getRepetitionPattern());
         ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = new Command();
-        command.setCmdId(SetParamEnum.Scan.getComId());
-        command.setParams(new Object[]{});
+        if (spectrumParameter.getScanSpeed().equals("3")){
+            command = buildCommand(SetParamEnum.ScanFast,new Object[]{});
+        }else{
+            command = buildCommand(SetParamEnum.Scan,new Object[]{});
+        }
         // 往前端推送数据的线程
         String finalMaxLocation = maxLocation;
         boolean finalPoolStatus = poolStatus;
+        Command finalCommand = command;
         Thread taskThread = new Thread(() -> {
 
             try {
@@ -254,7 +258,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                             }
                         }
 
-                        doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, 1);
+                        doOneMeasurementSerial(session, finalCommand, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, 1);
                         newSampleData.get(i).setIsTested("1");
                         if (configPO.getIsAutoChangePool().equals(true)){
                             if ((i + 1) != newSampleData.size()&&!sample.getSampleLocation().equals(finalMaxLocation)) {
@@ -341,7 +345,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                             if (measureData != null && measureData.getIsDelete().equals("1")) {
                                 continue;
                             }
-                            doOneMeasurementSerial(session, command, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, r + 1);
+                            doOneMeasurementSerial(session, finalCommand, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, r + 1);
 
                         }
                         if (!configPO.getIsAutoChangePool().equals(true)||sample.getSampleLocation().equals(finalMaxLocation)){
@@ -814,37 +818,46 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                               List<ChangeParam> baselineCopy,
                               List<Double> x,
                               List<Double> y) {
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
         if (baselineCopy != null && !baselineCopy.isEmpty()) {
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
                 Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("2")) {
                 String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + s);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + s);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(s));
             } else if (spectrumParameter.getLuminosity().equals("3")) {
                 Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
                 System.out.println("----sData:" + sData);
                 String yy = String.valueOf((sData / 8388607) * 100);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             } else if (spectrumParameter.getLuminosity().equals("4")) {
                 Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
                 System.out.println("----rData:" + rData);
                 String yy = String.valueOf((rData / 8388607) * 100);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                x.add(Double.parseDouble(baselineCopy.get(0).getWl()));
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             }
             Constants.measurd_data.remove(0);
             baselineCopy.remove(0);
         } else {
-            List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
             if (spectrumParameter.getLuminosity().equals("1")) {
                 String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
                 String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
