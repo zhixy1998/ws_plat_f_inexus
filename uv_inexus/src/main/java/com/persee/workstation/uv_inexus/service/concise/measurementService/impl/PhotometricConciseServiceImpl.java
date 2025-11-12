@@ -970,6 +970,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             taskSpecimen = new ArrayList<>();
         }
 
+        Map<String, FTaskSpecimen> oldMap = new HashMap<>();
+
         for (FTaskSpecimen specimen : taskSpecimen) {
             if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);
@@ -984,6 +986,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     fMeasureDataService.updateById(one);
                 }
             }
+            oldMap.putIfAbsent(specimen.getSpecimenKey(), specimen);
         }
 
         FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
@@ -1022,6 +1025,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             if (StringUtils.hasText(newSample.getId())) {
                 fMeasureSampleService.updateById(newSample);
+                FTaskSpecimen specimen = oldMap.get(newSample.getId());
+                specimen.setSampleType(newSample.getSampleType());
+                oldMap.put(newSample.getId(), specimen);
             } else {
                 FTaskSpecimen specimen = new FTaskSpecimen();
                 specimen.setDeleteType(createType);
@@ -1030,10 +1036,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 log.info("新增的样品：{}", newSample);
                 fMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
+                oldMap.put(newSample.getId(), specimen);
                 taskSpecimen.add(specimen);
             }
         }
 
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            specimen = oldMap.get(specimen.getSpecimenKey()) == null ? specimen : oldMap.get(specimen.getSpecimenKey());
+        }
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
         boolean b = fMeasureTaskService.updateById(task);
@@ -1486,6 +1496,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         Map<String, FHeadVO> analyzeMap = new HashMap<>();
 
         for (FHeadVO head : heads) {
+            if (head.getIdentity().equals("remark")) {
+                head.setLocate(TableHeadILocateEnums.remark.getIdentity());
+            }
+
             headsMap.computeIfAbsent(head.getLocate(), k -> new ArrayList<>()).add(head);
             if (head.getLocate().equals(TableHeadILocateEnums.measure.getIdentity())) {
                 map.put(head.getIdentity(), head);
@@ -1590,12 +1604,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
             FHeadVO samplingTimeHead = new FHeadVO(SampleTableEnum.SAMPLING_TIME.getName(), SampleTableEnum.SAMPLING_TIME.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.SAMPLING_TIME.getName());
-            FHeadVO remark = new FHeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.data.getIdentity(), SampleTableEnum.REMARK.getName());
             other.add(samplingTimeHead);
-            other.add(remark);
         }
-
         ans.addAll(other);
+        List<FHeadVO> remarks = headsMap.get(TableHeadILocateEnums.remark.getIdentity());
+        if (remarks == null || remarks.isEmpty()) {
+            remarks = new ArrayList<>();
+            FHeadVO remark = new FHeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.remark.getIdentity(), SampleTableEnum.REMARK.getName());
+            remarks.add(remark);
+        }
+        ans.addAll(remarks);
 
         return ans;
     }
@@ -1878,6 +1896,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     }
                     map.put("remark", data.getRemark());
                 }
+
 
                 LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
                 analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())

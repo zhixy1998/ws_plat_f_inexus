@@ -53,13 +53,25 @@ public class DeviceController {
     @ApiOperation("查找仪器的接口")
     @LogPoint(value = "查找仪器", module = "设备管理", recordParams = true,recordResult = true)
     public Result<List<FindDeviceVO>> findDevice() throws Exception {
-        List<FindDeviceVO> device = deviceManageService.findDevice();
-        if (device == null) {
-            return Result.fail("查找设备异常");
+        R<List<FindDeviceVO>> device = deviceManageService.findDevice();
+        if (!device.getSuccess()) {
+            return Result.fail(device.getMessage());
         } else {
-            return Result.ok(device);
+            return Result.ok(device.getData());
         }
 
+    }
+
+    @GetMapping("/disConnect")
+    @ApiOperation("断开连接")
+    @LogPoint(value = "断开连接", module = "设备管理", recordParams = true,recordResult = true)
+    public Result<Boolean> disConnect(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        Boolean r = deviceManageService.disConnect(deviceSerialNumber, updateBy);
+        if (r) {
+            return Result.ok(true);
+        } else {
+            return Result.fail(false);
+        }
     }
 
     @GetMapping("/query")
@@ -214,7 +226,7 @@ public class DeviceController {
 
     @GetMapping("/getCalibrationInfo")
     @ApiOperation("查询仪器校准信息")
-    public Result<List<DeviceCalibrationVO>> getCalibrationInfo(@RequestParam String deviceSerialNumber) {
+    public Result<List<DeviceCalibrationVO>> getCalibrationInfo(@RequestParam(required = false) String deviceSerialNumber) {
         List<DeviceCalibrationVO> list = deviceManageService.queryCalibrationInfo(deviceSerialNumber);
         return Result.ok(list);
 

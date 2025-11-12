@@ -354,7 +354,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                                     sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                                     sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                                     double v = Double.parseDouble(ansData.getColValue()) - minuend;
-                                    sumAbsData.setColValue(String.valueOf(DataCountUtil.formatValue(digit, v)));
+                                    sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                                     fitCurveData.add(sumAbsData);
                                 } else {
                                     fitCurveData.add(ansData);
@@ -447,11 +447,11 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                             sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                             sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                             double v = Double.parseDouble(absData.getColValue()) - minuend;
-                            sumAbsData.setColValue(String.valueOf(DataCountUtil.formatValue(digit, v)));
+                            sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                             fitCurveData.add(sumAbsData);
                             measureAbsDataList.add(sumAbsData);
 
-                            sampleSend(session, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
+                            sampleSend(session, sample.getId(), sumAbsData.getIdentity(), null, sumAbsData.getColValue());
                             sendPoint(session, sample.getNormalConcentration(), sumAbsData.getColValue(), parameter);
                         } else {
                             fitCurveData.add(absData);
@@ -717,7 +717,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                             sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
                             double v = Double.parseDouble(absData.getColValue()) - minuend;
                             Double value = DataCountUtil.formatValue(digit, v);
-                            sumAbsData.setColValue(String.valueOf(value));
+                            sumAbsData.setColValue(DataCountUtil.addZero(value, digit));
                             countValue = value;
                             measureAbsDataList.add(sumAbsData);
                             saveDataInfo.setCountData(measureAbsDataList);
@@ -907,7 +907,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         FRationCountDataInfo yAbs = new FRationCountDataInfo();
         yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
         yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-        yAbs.setColValue("0.0");
+        yAbs.setColValue(DataCountUtil.addZero(0.0, digit));
 
         List<FRationCountDataInfo> currentList = new ArrayList<>();
 
@@ -924,7 +924,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             //添加到空白列表
             currentList.add(ansData);
             double v = Double.parseDouble(ansData.getColValue()) - minuend;
-            yAbs.setColValue(String.valueOf(DataCountUtil.formatValue(digit, v)));
+            yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v),digit));
             currentList.add(yAbs);
             dealData.setCountData(currentList);
             emptyDataList.add(dealData);
@@ -937,7 +937,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                         newList.add(dataInfo);
                         double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
-                        yAbs.setColValue(String.valueOf(DataCountUtil.formatValue(digit, v1)));
+                        yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v1), digit));
                         newList.add(yAbs);
                     }
                 }
@@ -952,7 +952,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             emptyList.add(ansData);
             minuend = Double.parseDouble(ansData.getColValue());
             double sumAbs = Double.parseDouble(ansData.getColValue()) - minuend;
-            yAbs.setColValue(String.valueOf(DataCountUtil.formatValue(digit, sumAbs)));
+            yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, sumAbs), digit));
             currentList.add(yAbs);
             currentList.add(ansData);
             dealData.setCountData(currentList);

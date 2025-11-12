@@ -252,7 +252,6 @@ public class MessageUtil {
         try {
 
             List<byte[]> responses = new ArrayList<>();
-
             // 发送命令
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName(sendIp), remotePort);
@@ -262,12 +261,12 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            int timeoutMs = 18000;
+            int timeoutMs = 15000;
             currentSocket.setSoTimeout(timeoutMs);
 
             int count = 0;
 
-            while (Constants.isRunning && count < responseNum) {
+            while (count < responseNum) {
                 try {
                     DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                     currentSocket.receive(receivePacket);

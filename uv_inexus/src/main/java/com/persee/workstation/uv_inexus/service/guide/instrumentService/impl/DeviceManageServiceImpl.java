@@ -37,14 +37,12 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMa
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
-import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.FindDevEnum;
+import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,6 +78,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     DevMessageUtil devMessageUtil;
 
     @Autowired
+    FormulaUtil formulaUtil;
+
+    @Autowired
     FSamplePoolConfigService samplePoolConfigService;
 
     @Autowired
@@ -87,6 +88,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DeviceTypeInfoDAO deviceTypeInfoDAO;
+
+    @Autowired
+    LiveDetectionWebSocket liveDetectionWebSocket;
 
     @Value("${device.default.sendPort}")
     Integer sendPort;
@@ -261,9 +265,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         infoPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
         infoService.saveOrUpdateInfo(infoPO);
 
+        Command mode = new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()});
+        devMessageUtil.wavelengthLocate(mode, ip);
+
+        Double step = formulaUtil.calculateStep(660.0, infoPO.getDeviceSerialNumber());
+        Command command = new Command("SetWl", new Object[]{step});
+        devMessageUtil.wavelengthLocate(command, ip);
+
         devMessageUtil.setDeviceInitStatus(ip, 1);
 
         infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+
+        Constants.devConnectInfo.put(infoPO.getDeviceSerialNumber(), true);
+        liveDetectionWebSocket.startMeasure(infoPO.getDeviceSerialNumber());
 
     }
 
@@ -329,8 +343,20 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public Boolean disConnect(String deviceSerialNumber, String updateBy) {
+        DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
+        Constants.devConnectInfo.remove(deviceSerialNumber);
+        devMessageUtil.disConnect(infoPO.getIp());
+
+        infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+        infoService.saveOrUpdateInfo(infoPO);
+
+        return true;
+    }
+
+    @Override
     @DS("guide")
-    public List<FindDeviceVO> findDevice() throws Exception {
+    public R<List<FindDeviceVO>> findDevice() throws Exception {
         List<Command> list = new ArrayList<>();
         list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
@@ -360,6 +386,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (po.getIsInited() == null) {
                 po.setIsInited(Constants.INIT_STATUS_NO);
             }
+            if (po.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                Constants.devConnectInfo.put(deviceVO.getDeviceSerialNumber(), true);
+                liveDetectionWebSocket.startMeasure(deviceVO.getDeviceSerialNumber());
+            }
 
             po.setIp(deviceVO.getIp());
             po.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
@@ -383,6 +413,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             if (StringUtils.hasText(po.getDeviceName())) {
                 deviceVO.setDeviceName(po.getDeviceName());
+            } else {
+                deviceVO.setDeviceName(modelInfoPO.getDevName());
+                po.setDeviceName(modelInfoPO.getDevName());
             }
 
             Integer i = infoService.queryDeviceActivationStatus(deviceVO.getDeviceSerialNumber());
@@ -426,9 +459,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             deviceVO.setAttachmentKind(attachmentInfo.getAttachmentKind());
             devices.add(deviceVO);
 
-            return devices;
+            return R.ok(devices);
         }
-        return null;
+        return R.fail(connected.getMessage());
     }
 
     public List<DeviceInitEntryInfo> addInitEntry(List<DeviceInitEntryInfo> initEntry) {
@@ -593,10 +626,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber) {
+        String type = "T600/T700";
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
+            log.info("检测仪器类型");
+            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+            if (info != null) {
+                LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+                query.eq(DeviceModelInfoPO::getDevModel, info.getDeviceModel());
 
-        //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
-        log.info("检测仪器类型");
-        String type = "T600"; //暂时默认用T600
+                DeviceModelInfoPO deviceModelInfoPO = deviceModelInfoDAO.selectOne(query);
+                if (deviceModelInfoPO != null) {
+                    DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(deviceModelInfoPO.getDevTypeId());
+                    if (deviceTypeInfoPO != null && StringUtils.hasText(deviceTypeInfoPO.getDevType())) {
+                        type = deviceTypeInfoPO.getDevType();
+                    }
+                }
+            }
+        }
 
         R<DeviceMeasureVO> deviceMeasureVOR = queryDeviceTypeInfo(deviceSerialNumber);
         if (!deviceMeasureVOR.getSuccess()) {
@@ -618,9 +665,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
                 if (param.getParamName().equals("光谱带宽")) {
                     param.setData(band);
+                    param.setLastValue("2.0");
                 } else {
                     List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
                     param.setData(value);
+                }
+
+                if (param.getParamName().equals("扫描速度")) {
+                    param.setLastValue("1");
                 }
 
                 LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
@@ -633,6 +685,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 if (tempPO != null) {
                     param.setLastValue(tempPO.getParamValue());
                 }
+
+
             }
             vo.setParams(params);
         }

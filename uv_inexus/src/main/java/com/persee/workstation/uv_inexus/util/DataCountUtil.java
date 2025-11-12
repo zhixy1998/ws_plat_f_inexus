@@ -40,7 +40,7 @@ public class DataCountUtil {
                         .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
 
                 log.info("透光率:{}", result);
-                return result.toString();
+                return result.toPlainString();
             } catch (Exception e) {
                 log.error("透光率计算出错：{}", e.getMessage());
                 return "0";
@@ -64,7 +64,7 @@ public class DataCountUtil {
                         .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP);
 
                 log.info("吸光度:{}", re);
-                return re.toString();
+                return re.toPlainString();
             } catch (Exception e) {
                 log.error("吸光度计算出错：{}", e.getMessage());
                 return "-10";
@@ -267,7 +267,7 @@ public class DataCountUtil {
                 bd = bd.negate();
             }
 
-            return bd.toString();
+            return bd.toPlainString();
         } catch (NumberFormatException e) {
             return value; // 如果转换失败，返回原始值
         }
@@ -351,16 +351,28 @@ public class DataCountUtil {
     public static String addZero(Double value, int digit) {
         BigDecimal decimal = BigDecimal.valueOf(value);
         decimal = decimal.setScale(digit, RoundingMode.HALF_UP);
-        String ans = String.valueOf(decimal);
+        String ans = decimal.toPlainString(); // 使用toPlainString避免科学计数法
 
-        StringBuilder s = new StringBuilder(ans);
-        String[] split = s.toString().split("\\.");
-        int length = split[1].length();
-        if (length < digit) {
-            for (int i = 0; i < digit - length; i++) {
-                s.append("0");
+        // 检查是否包含小数点
+        int dotIndex = ans.indexOf('.');
+        if (dotIndex == -1) {
+            // 如果没有小数点，添加小数点和相应数量的0
+            StringBuilder sb = new StringBuilder(ans);
+            sb.append(".");
+            for (int i = 0; i < digit; i++) {
+                sb.append("0");
             }
-            ans = s.toString();
+            return sb.toString();
+        } else {
+            // 如果有小数点，检查小数位数是否足够
+            int decimalLength = ans.length() - dotIndex - 1;
+            if (decimalLength < digit) {
+                StringBuilder sb = new StringBuilder(ans);
+                for (int i = 0; i < digit - decimalLength; i++) {
+                    sb.append("0");
+                }
+                return sb.toString();
+            }
         }
         return ans;
     }
@@ -480,6 +492,7 @@ public class DataCountUtil {
     public static void main(String[] args) {
         System.out.println("=== 重点测试12.0000055 ===");
         System.out.println("12.35 修约到3位小数: " + formatValue(-3, 12.35000)); // 应得12.000006
+        System.out.println("0.0补到7位：" + addZero(0.0, 7));
 //        System.out.println("12.0055000 修约到5位小数: " + formatValue(3, -12.0055000)); // 应得12.00001
 //        System.out.println("12.0000055 修约到4位小数: " + formatValue(4, 12.0000055)); // 应得12.0000
 //        Double v = formatValue(4, 12.0000055);

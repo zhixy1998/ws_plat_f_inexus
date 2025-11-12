@@ -23,22 +23,27 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
+import org.springframework.web.socket.messaging.SessionConnectedEvent;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
+import org.springframework.web.socket.messaging.SessionSubscribeEvent;
+import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 import java.net.DatagramSocket;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static jdk.nashorn.internal.runtime.regexp.joni.Config.log;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Controller
+@Slf4j
 public class LiveDetectionWebSocket {
 
     @Autowired
@@ -59,6 +64,9 @@ public class LiveDetectionWebSocket {
     @Autowired
     FormulaUtil formulaUtil;
 
+    @Autowired
+    DevMessageUtil devMessageUtil;
+
 //    @Autowired
 //    private ExperimentTestService experimentService;
 
@@ -73,6 +81,12 @@ public class LiveDetectionWebSocket {
 
     private static volatile boolean status = true;
 
+    private static volatile String serialNumber = null;
+
+    // 用于跟踪活跃的订阅者数量
+    private final AtomicInteger activeSubscribers = new AtomicInteger(0);
+    // 添加会话和订阅映射
+    private final Map<String, Set<String>> sessionSubscriptions = new ConcurrentHashMap<>();
 
     @MessageMapping("/detection/start")
     public void startMeasure(String deviceSerialNumber) {
@@ -83,7 +97,7 @@ public class LiveDetectionWebSocket {
         }
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
 
-        if (info == null || info.getIp() == null) {
+        if (info == null || info.getIp() == null || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
             messagingTemplate.convertAndSend(measureTopic,
                     "设备未连接: " + deviceSerialNumber);
             return;
@@ -98,6 +112,7 @@ public class LiveDetectionWebSocket {
 
         if (status) {
             // 启动发送接收线程
+            serialNumber = deviceSerialNumber;
             this.startMeasureLoop(deviceSerialNumber);
             status = false;
         }
@@ -110,26 +125,62 @@ public class LiveDetectionWebSocket {
 
     public R<Boolean> startMeasureLoop(String deviceSerialNumber) {
         String deviceIp = infoService.getIp(deviceSerialNumber);
+        DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
+        if (po != null && po.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+            Constants.devConnectInfo.put(deviceSerialNumber, true);
+        }
 //        R<DatagramSocket> re = messageUtil.getSocket();
 //        if (!re.getSuccess()) {
 //            log.print("绑定 socket 失败: {}");
 //            return R.fail("绑定 socket 失败，请检查网线接口");
 //        }
+        R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_ECHO);
+        if (!r.getSuccess()) {
+            log.info(r.getMessage());
+            stopAllMeasurements();
+            return R.fail(r.getMessage());
+        }
+        DetectionConstants.isDeviceIdle = true;
 
         Thread measureThread = new Thread(() -> {
             try {
                 // 获取 socket
                 // 循环发送
-                while (Constants.Running) {
+                int error = 0;
+
+                while (Constants.devConnectInfo.get(deviceSerialNumber) != null && Constants.devConnectInfo.get(deviceSerialNumber)) {
 
                     while (!DetectionConstants.isDeviceIdle) {
                         Thread.sleep(1000);
+                        JSONObject ignore = new JSONObject();
+                        ignore.put("ignore", "设备在执行其他操作，等待空闲！");
+                        messagingTemplate.convertAndSend(measureTopic, ignore.toJSONString());
                     }
+                    int timeout = 0;
+
+                    while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
+                         Thread.sleep(1000);
+                         timeout++;
+
+                         if (timeout > 20) {
+                             log.info("没有订阅者，断开仪器连接！");
+                             devMessageUtil.disConnect(deviceIp);
+                             stopAllMeasurements();
+                             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                             info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+                             infoService.saveOrUpdateInfo(info);
+                             return;
+                         }
+                    }
+
                     DetectionConstants.isDeviceIdle = false;
                     R<DatagramSocket> news = messageUtil.getSocket();
                     if (!news.getSuccess()) {
-                        log.print("绑定 socket 失败: {}");
-                        messagingTemplate.convertAndSend(measureTopic, "请检查网口连接！");
+                        log.info("绑定 socket 失败: {}");
+
+                        JSONObject errorMsg = new JSONObject();
+                        errorMsg.put("error", "请检查网口连接！");
+                        messagingTemplate.convertAndSend(measureTopic, errorMsg);
                         throw new RuntimeException("绑定 socket 失败，请检查网线接口");
                     }
                     DatagramSocket socket = news.getData();
@@ -143,8 +194,13 @@ public class LiveDetectionWebSocket {
                         vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
                         vo.setTotalPoolNum(attachmentInfo.getSamplePoolNum());
 
-                        for (int i = 1; i <= LiveDetectionCmdEnum.getLength(); i++) {
-                            LiveDetectionCmdEnum anEnum = LiveDetectionCmdEnum.getEnum(i);
+                        int sum = 1;
+                        while (sum <= LiveDetectionCmdEnum.getLength()) {
+                            if (Constants.devConnectInfo.get(deviceSerialNumber) == null || !Constants.devConnectInfo.get(deviceSerialNumber)) {
+                                break;
+                            }
+
+                            LiveDetectionCmdEnum anEnum = LiveDetectionCmdEnum.getEnum(sum);
 
                             String comId = anEnum.getComId();
 
@@ -155,6 +211,11 @@ public class LiveDetectionWebSocket {
                             byte[] sendBytes = protocolItemUtil.calcSendBytes(objects, xml.get(comId));
 
                             List<byte[]> responses = messageUtil.detectionSendAndReceive(socket, deviceIp, comId, sendBytes, count);
+                            if (responses == null || responses.isEmpty()) {
+                                log.info("仪器无响应");
+                                error ++;
+                                throw new RuntimeException("仪器无响应");
+                            }
                             Object parseResult = ResponseDeal.parse(comId, responses, sendBytes);
                             if (comId.equals(LiveDetectionCmdEnum.Connect.getComId())) {
                                 String ans = parseResult.toString();
@@ -207,9 +268,14 @@ public class LiveDetectionWebSocket {
                                 Double v = formulaUtil.calculateWl(Double.parseDouble(parseResult.toString()), deviceSerialNumber);
                                 vo.setChangeLampWl(String.valueOf(v));
                             }
+
+                            sum ++ ;
                         }
 
                         vo.setY(vo.getY() + WaveLengthEnum.getName(DetectionConstants.luminosity));
+                        if (!StringUtils.hasText(vo.getBandwidth())) {
+                            vo.setBandwidth("2.0");
+                        }
                         Map<String, Object> map = vo.toMap();
                         ConcurrentHashMap<String, Object> detectionInfo = DetectionConstants.detectionInfo;
                         JSONObject jsonObject = new JSONObject();
@@ -217,13 +283,28 @@ public class LiveDetectionWebSocket {
                         jsonObject.putAll(detectionInfo);
 
                         messagingTemplate.convertAndSend(measureTopic, jsonObject);
+                        error = 0;
                         DetectionConstants.isDeviceIdle = true;
 
                         // 休眠2秒
                         Thread.sleep(DetectionConstants.interval);
 
                     } catch (Exception e) {
-                        log.print("监测线程异常" + e.getMessage());
+                        log.info("监测线程异常: {}", e.getMessage());
+
+                        if (error > 3) {
+                            stopAllMeasurements();
+                            if (e.getMessage().equals("仪器无响应")) {
+                                DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
+                                infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+                                infoService.saveOrUpdateInfo(infoPO);
+
+                                JSONObject errorMsg = new JSONObject();
+                                errorMsg.put("error", "仪器无响应！");
+                                messagingTemplate.convertAndSend(measureTopic, errorMsg);
+
+                            }
+                        }
                         DetectionConstants.isDeviceIdle = true;
                         try {
                             Thread.sleep(DetectionConstants.interval); // 出错时延时重试
@@ -232,9 +313,14 @@ public class LiveDetectionWebSocket {
                         }
                     }
                 }
+                status = true;
+                DetectionConstants.isDeviceIdle = true;
 
             } catch (Exception e) {
-                log.print("Measure/GetChangeLampWl/GetCellPos/GetLampPos 循环线程启动失败");
+                log.info("监测线程启动出错：{}", e.getMessage());
+                JSONObject errorMsg = new JSONObject();
+                errorMsg.put("error", "监测线程启动失败！");
+                messagingTemplate.convertAndSend(measureTopic, errorMsg);
                 DetectionConstants.isDeviceIdle = true;
             }  finally {
                 status = true;
@@ -244,7 +330,7 @@ public class LiveDetectionWebSocket {
 
         // 添加线程结束监听器
         measureThread.setUncaughtExceptionHandler((thread, exception) -> {
-            log.print("测量线程异常终止: " + exception.getMessage());
+            log.info("测量线程异常终止: {}", exception.getMessage());
             status = true;
             DetectionConstants.isDeviceIdle = true;
         });
@@ -256,9 +342,135 @@ public class LiveDetectionWebSocket {
 
     @MessageMapping("/detection/stop")
     public void stopMeasure() {
+        // 减少活跃订阅者计数
+        activeSubscribers.decrementAndGet();
         Constants.Running = false;
         status = true;
         messagingTemplate.convertAndSend(measureTopic, "停止测量");
+    }
+
+    @EventListener
+    public void handleWebSocketConnectListener(SessionConnectedEvent event) {
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        String sessionId = headerAccessor.getSessionId();
+
+
+        log.info("WebSocket连接建立: {}", sessionId);
+
+
+        // 从嵌套消息中提取 deviceSerialNumber
+        String deviceSerialNumber = extractDeviceSerialNumber(headerAccessor);
+
+        if (StringUtils.hasText(deviceSerialNumber) && status && Constants.devConnectInfo.containsKey(deviceSerialNumber)) {
+            // 启动发送接收线程
+            serialNumber = deviceSerialNumber;
+            Constants.devConnectInfo.put(deviceSerialNumber, true);
+            startMeasureLoop(deviceSerialNumber);
+            status = false;
+        }
+    }
+
+    private String extractDeviceSerialNumber(StompHeaderAccessor headerAccessor) {
+        // 获取 simpConnectMessage 对象
+        Object simpConnectMessage = headerAccessor.getHeader("simpConnectMessage");
+
+        if (simpConnectMessage instanceof org.springframework.messaging.Message) {
+            org.springframework.messaging.Message<?> connectMessage = (org.springframework.messaging.Message<?>) simpConnectMessage;
+
+            // 从 connectMessage 的 nativeHeaders 中获取 deviceSerialNumber
+            Object nativeHeadersObj = connectMessage.getHeaders().get("nativeHeaders");
+
+            if (nativeHeadersObj instanceof Map) {
+                Map<String, Object> nativeHeaders = (Map<String, Object>) nativeHeadersObj;
+                Object deviceSerialNumberObj = nativeHeaders.get("deviceSerialNumber");
+
+                if (deviceSerialNumberObj instanceof List) {
+                    List<?> deviceSerialNumbers = (List<?>) deviceSerialNumberObj;
+                    if (!deviceSerialNumbers.isEmpty()) {
+                        return deviceSerialNumbers.get(0).toString();
+                    }
+                }
+            }
+        }
+
+        return "";
+    }
+
+    // 监听STOMP订阅事件
+    @EventListener
+    public void handleStompSubscribeEvent(SessionSubscribeEvent event) {
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        String sessionId = headerAccessor.getSessionId();
+        String destination = headerAccessor.getDestination();
+
+        log.info("WebSocket订阅: {}", sessionId);
+
+
+        if (measureTopic.equals(destination)) {
+            // 使用 Set 避免同一会话重复订阅同一主题
+            sessionSubscriptions.computeIfAbsent(sessionId, k -> {
+                activeSubscribers.incrementAndGet();
+                log.info("会话 {} 首次订阅主题: {}", sessionId, destination);
+                return ConcurrentHashMap.newKeySet();
+            });
+
+            if (sessionSubscriptions.get(sessionId).add(destination)) {
+                log.info("会话 {} 订阅了主题: {}", sessionId, destination);
+            }
+        }
+    }
+
+    @EventListener
+    public void handleStompUnsubscribeEvent(SessionUnsubscribeEvent event) {
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        String sessionId = headerAccessor.getSessionId();
+
+
+        log.info("WebSocket取消订阅: {}", sessionId);
+
+
+        if (sessionSubscriptions.containsKey(sessionId)) {
+            Set<String> subscriptions = sessionSubscriptions.get(sessionId);
+            if (subscriptions.remove(measureTopic) && subscriptions.isEmpty()) {
+                sessionSubscriptions.remove(sessionId);
+                activeSubscribers.decrementAndGet();
+                log.info("会话 {} 完全取消订阅", sessionId);
+            }
+        }
+
+        if (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()) {
+            status = true;
+            DetectionConstants.isDeviceIdle = true;
+        }
+    }
+
+    // 监听WebSocket断开事件
+    @EventListener
+    public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        String sessionId = headerAccessor.getSessionId();
+        // 获取客户端IP地址
+        log.info("WebSocket连接断开: {}", sessionId);
+
+
+        // 清理该会话的所有订阅
+        Set<String> subscriptions = sessionSubscriptions.remove(sessionId);
+        if (subscriptions != null && !subscriptions.isEmpty()) {
+            activeSubscribers.decrementAndGet();
+            log.info("清理会话 {} 的所有订阅", sessionId);
+        }
+        if (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()) {
+            status = true;
+            DetectionConstants.isDeviceIdle = true;
+        }
+
+    }
+
+    private void stopAllMeasurements() {
+
+        Constants.devConnectInfo.clear();
+        status = true;
+        DetectionConstants.isDeviceIdle = true;
     }
 
     private static List<DetectionLampStatus> getDetectionLampStatuses(int parseResult) {

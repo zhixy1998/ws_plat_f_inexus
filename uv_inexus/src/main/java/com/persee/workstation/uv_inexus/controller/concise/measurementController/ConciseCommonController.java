@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamp
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -201,6 +202,12 @@ public class ConciseCommonController {
     @ApiOperation("另存为")
     public Result<String> copyProject(@Valid @RequestBody CopyParam copyParam) {
         return  conciseCommonService.copy(copyParam);
+    }
+
+    @PostMapping("saveDataInfo")
+    @ApiOperation("保存数据接口，用户自定义数据")
+    public Result saveData(@RequestBody FSaveDataVO vo) {
+        return conciseCommonService.saveDataInfo(vo);
     }
 
 

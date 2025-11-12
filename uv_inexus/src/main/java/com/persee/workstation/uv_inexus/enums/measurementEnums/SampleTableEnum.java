@@ -28,7 +28,7 @@ public enum SampleTableEnum {
     FIT_CONCENTRATION("fitConcentration", "拟合浓度"),
     SAMPLE_LOCATION("sampleLocation", "样品位置"),
     Abs("Abs", "Abs"),
-    SUM_Abs("sumAbs", "▲Abs"),
+    SUM_Abs("sumAbs", "ΔAbs"),
     REMARK("remark", "备注"),
     SAMPLING_TIME("samplingTime", "采样时间"),
     ID("id","编号"),

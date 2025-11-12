@@ -17,7 +17,9 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -56,12 +58,13 @@ public class Constants {
     public final static Integer DEVICE_IS_OPEN = 1;
     public final static Integer DEVICE_IS_SOFT_CLOSE = 2;
     /**
-     * 联机状态：0-未连接，1-联机中，2-联机成功，3-联机失败
+     * 联机状态：0-未连接，1-联机中，2-联机成功，3-联机失败, 4-已断开
      */
     public final static Integer CONNECT_DEVICE_NO = 0;
     public final static Integer CONNECT_DEVICE_ING = 1;
     public final static Integer CONNECT_DEVICE_SUCCESS = 2;
     public final static Integer CONNECT_DEVICE_FALSE = 3;
+    public final static Integer CONNECT_DEVICE_STOP = 4;
 
     /**
      * 仪器当前状态 0-空闲，1-初始化中，2-测量中，3-回显线程占用中，4其他指令-占用
@@ -148,6 +151,11 @@ public class Constants {
 
     //全局变量用来判断前端是否请求结束
     public static volatile boolean Running = true;
+
+    /**
+     * 仪器连接状态，<ip:boolean>, ip为仪器ip，boolean为连接状态-true为连接，false为断开连接
+     */
+    public static volatile Map<String, Boolean> devConnectInfo = new HashMap<>();
 
     /*
     * 样品输入参数正则

@@ -41,8 +41,13 @@ public interface DeviceManageService {
 
     Boolean softClose(DeviceSoftCloseDTO closeDTO);
 
+    /**
+     * 断开连接
+     */
+    Boolean disConnect(String deviceSerialNumber, String updateBy);
 
-    List<FindDeviceVO> findDevice() throws Exception;
+
+    R<List<FindDeviceVO>> findDevice() throws Exception;
 
     /**
      * 仪器激活接口
