@@ -99,7 +99,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         SysUserPO userPO = new SysUserPO();
         BeanUtils.copyProperties(saveDTO, userPO);
         // 密码加密
-        userPO.setPassword(PasswordUtils.encode(saveDTO.getPassword()));
+//        userPO.setPassword(MD5Util.md5(saveDTO.getPassword()));
         userPO.setCreateBy("admin");
         userPO.setCreated(LocalDateTime.now());
         baseMapper.insert(userPO);  // 保存用户，生成用户ID

@@ -23,18 +23,28 @@ spring:
         guide:
           url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
           username: root
-          password: px123456
+          password: PERSEE@[WRJjgqp9um5akQ3dYOQ53g==]
           driver-class-name: com.mysql.cj.jdbc.Driver
         concise:
           url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
           username: root
-          password: px123456
+          password: PERSEE@[WRJjgqp9um5akQ3dYOQ53g==]
           driver-class-name: com.mysql.cj.jdbc.Driver
         factory_inspection:
           url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
           username: root
-          password: px123456
+          password: PERSEE@[WRJjgqp9um5akQ3dYOQ53g==]
           driver-class-name: com.mysql.cj.jdbc.Driver
+# 配置 SM4 密钥（直接存储）
+sm4:
+  key: "86C63180C2806ED1" # 密钥
+# 指向自定义加密器
+jasypt:
+  encryptor:
+    bean: customSm4Encryptor # 使用自定义 Bean
+    property:
+      prefix: "PERSEE@["   # 自定义前缀（避免与默认 ENC 冲突）
+      suffix: "]"
 #服务器
 #  datasource:
 #    dynamic:

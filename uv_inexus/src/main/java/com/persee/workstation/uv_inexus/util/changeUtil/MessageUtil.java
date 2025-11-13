@@ -365,7 +365,9 @@ public class MessageUtil {
                             timeoutMs = 1300;
                         }
                     }
-
+                    if (count == 3){
+                        break;
+                    }
                 } catch (SocketTimeoutException e) {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
                 }

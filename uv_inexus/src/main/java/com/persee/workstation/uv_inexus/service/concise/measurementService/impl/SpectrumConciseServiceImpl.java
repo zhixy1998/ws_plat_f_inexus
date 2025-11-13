@@ -23,6 +23,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -329,32 +330,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (method == null) {
                 return Result.fail("没有默认方法");
             }
-            BeanUtils.copyProperties(method, vo);
-            FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
-            FSpectrumParameterVo parameterVo = new FSpectrumParameterVo();
-            String s = "1".equals(parameter.getLuminosity()) ? "Abs" : "2".equals(parameter.getLuminosity()) ? "T%" : "3".equals(parameter.getLuminosity()) ? "Es" : "Er";
-            BeanUtils.copyProperties(parameter, parameterVo);
-            parameterVo.setLuminosityName(s);
-            if (parameter.getLadderCorrection() != null) {
-                parameterVo.setLadderCorrectionName(parameter.getLadderCorrection() ? "启用" : "不启用");
-            }
-            if (parameter.getScanSpeed() != null) {
-                String s1 = "0".equals(parameter.getScanSpeed()) ? "慢速" : "1".equals(parameter.getScanSpeed()) ? "中速" : "2".equals(parameter.getScanSpeed()) ? "快速" : "极快";
-                parameterVo.setScanSpeedName(s1);
-            }
-            if (parameter.getEnergyLamp() != null) {
-                // 0.钨灯,1.氘灯,2.汞灯
-                String lamp = parameter.getEnergyLamp().equals("0") ? "钨灯" : parameter.getEnergyLamp().equals("1") ? "氘灯" : "汞灯";
-                parameterVo.setEnergyLampName(lamp);
-            }
-            vo.setMethodParam(parameterVo);
-            // 将创建时间从LocalDateTime转换成String并且将里面的T 去掉
-            String format = method.getMethodCreateTime().format(formatter);
-            vo.setMethodCreateTime(format);
-            String format1 = method.getMethodUseTime().format(formatter);
-            vo.setMethodUseTime(format1);
-            vo.setMethodId(method.getId());
-            return Result.ok(vo);
         }
 
         // 根据方法id查询出最近创建的任务
@@ -388,6 +363,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         vo.setMethodCreateTime(format);
         String format1 = method.getMethodUseTime().format(formatter);
         vo.setMethodUseTime(format1);
+        vo.setMethodId(method.getId());
         if (task != null) {
             vo.setTaskId(task.getId());
         }
@@ -411,7 +387,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             vo.setTaskId(fMeasureTask.getId());
 
         }
-        vo.setMethodId(method.getId());
+
         return Result.ok(vo);
     }
 
@@ -580,11 +556,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (!update) {
                 return Result.fail("应用失败");
             }
-            Result draftButton = createDraftButton(method2.getId(),null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(method2.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
             map.put("method", method2);
+            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+            if (!(boolean) result.getData()) {
+                return Result.fail("设置参数失败");
+            }
             return Result.ok(map);
         }
 
@@ -609,11 +589,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(),null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
-
+            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+            if (!(boolean) result.getData()) {
+                return Result.fail("设置参数失败");
+            }
             return Result.ok(map);
         }
 
@@ -624,11 +607,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(), null,paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
-
+            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+            if (!(boolean) result.getData()) {
+                return Result.fail("设置参数失败");
+            }
             return Result.ok(map);
         }
 
@@ -637,9 +623,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("请勿重复使用");
             } else {
                 map.put("method", method);
-                Result draftButton = createDraftButton(method.getId(),null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
+                }
+                Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+                if (!(boolean) result.getData()) {
+                    return Result.fail("设置参数失败");
                 }
                 return Result.ok(map);
             }
@@ -649,11 +639,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return Result.fail("新建方法失败");
             }
             map.put("method", newMethod);
-            Result draftButton = createDraftButton(newMethod.getId(),null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+            Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
-
+            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+            if (!(boolean) result.getData()) {
+                return Result.fail("设置参数失败");
+            }
             return Result.ok(map);
         }
     }
@@ -800,7 +793,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         fMeasureTask.setIsSave("0");
         fMeasureTask.setIsDelete(createType);
         fMeasureTask.setDeviceSerialNumber(deviceSerialNumber);
-        if (taskId!=null){
+        if (taskId != null) {
             // 根据taskId查询上一个草稿数据
             FMeasureTask task1 = fMeasureTaskService.getById(taskId);
             // 判断上一套草稿是否有校零参数
@@ -811,7 +804,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         boolean save = fMeasureTaskService.save(fMeasureTask);
         return save ? Result.ok(fMeasureTask.getId()) : Result.fail();
     }
-
 
 
     /**
@@ -974,30 +966,30 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 添加或删除样品接口
+     * <p>
+     * <p>
+     * 该方法用于处理样品的添加或删除操作，包括创建新任务、验证样品信息、更新样品数据等功能。
      *
-
- * 该方法用于处理样品的添加或删除操作，包括创建新任务、验证样品信息、更新样品数据等功能。
- *
      * @param dto 包含样品操作相关数据传输对象，包括方法ID、表头信息、样品列表等
      * @return 返回操作结果，成功返回Result.ok()，失败返回Result.fail()并附带错误信息
      */
     @Override
     public Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO dto) {
 
-    // 验证方法ID是否存在
+        // 验证方法ID是否存在
         if (!StringUtils.hasText(dto.getMethodId())) {
             return Result.fail("请先创建方法");
         }
-    // 验证表头信息是否存在且不为空
+        // 验证表头信息是否存在且不为空
         if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
             return Result.fail("至少需要一个表头");
         }
 
-    // 验证表格新增列数是否超过限制
+        // 验证表格新增列数是否超过限制
         if (dto.getHeads() != null && dto.getHeads().size() > 10) {
             return Result.fail("表格新增列数不能超过10列");
         }
-    // 如果没有任务ID，则创建新任务
+        // 如果没有任务ID，则创建新任务
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             FMeasureTask newTask = new FMeasureTask();
@@ -1979,7 +1971,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return Result.ok(stringR.getData());
+        if (stringR.getData().equals("true")) {
+            return Result.ok(true);
+        } else {
+            return Result.fail(false);
+        }
     }
 
     /**
@@ -2892,6 +2888,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 list.add(s1);
             }
             int id = 1;
+            boolean flag = false;
             for (String i : list) {
                 Map<String, Object> map = new HashMap<>();
                 Map<String, Object> resultMap = new HashMap<>();
@@ -2904,6 +2901,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         String[] split = data.split(",");
                         String s = formatBigDecimal(split[0], 1);
                         if (Objects.equals(s, i)) {
+                            if (!flag) {
+                                flag = true;
+                            }
                             if (resultMap.get("sampleNumber") == null) {
                                 List<String> y = new ArrayList<>();
                                 y.add(formatBigDecimal(split[1], digit));
@@ -2963,6 +2963,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                             }
                             break;
                         }
+                    }
+                    if (flag) {
+                        resultMap.put("sampleNumber", "");
+                        resultMap.put("peakValley", "");
+                        flag = false;
                     }
                 }
                 map.put(i, resultMap);
@@ -3827,4 +3832,52 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 设置小数位数并进行舍入
         return DataCountUtil.addZero(valueOf(decimal.stripTrailingZeros().toPlainString()), digit);
     }
+
+    /**
+     * 下发波长光度模式
+     *
+     * @param parameter
+     * @param deviceSerialNumber
+     * @return
+     */
+    public Result sendWavelengthLuminosityMode(FSpectrumParameterVo parameter, String deviceSerialNumber) {
+        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        String startWaveLength = parameter.getStartWaveLength();
+        double parsed = Double.parseDouble(startWaveLength);
+        Double value = formulaUtil.calculateStep(parsed, deviceSerialNumber);
+        List<Command> commands = new ArrayList<>();
+        commands.add(buildCommand(SetParamEnum.SetWl, value));
+        commands.add(buildCommand(SetParamEnum.SetPhotoMode, parameter.getLuminosity()));
+        try {
+            R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+            if (!message.getSuccess()) {
+                return Result.fail(false);
+            }
+            R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
+            if (stringR.getData().equals("true")) {
+                return Result.ok(true);
+            } else {
+                return Result.fail(false);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+        }
+    }
+
+    /**
+     * 构建命令
+     *
+     * @param cmdEnum
+     * @param value
+     * @return
+     */
+    private Command buildCommand(SetParamEnum cmdEnum, Object value) {
+        Command cmd = new Command();
+        cmd.setCmdId(cmdEnum.getComId());
+        cmd.setParams(new Object[]{value});
+        return cmd;
+    }
+
 }

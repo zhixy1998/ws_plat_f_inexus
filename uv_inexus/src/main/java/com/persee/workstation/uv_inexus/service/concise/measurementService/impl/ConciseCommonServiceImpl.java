@@ -1014,7 +1014,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             FTimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
-            vo.setInstrumentWavelength(param.getWaveLength());
+            vo.setInstrumentWavelength(param.getWaveLength()+"nm");
             vo.setScanTime(param.getScanTime());
             vo.setTimeUnit(param.getScanUnit().equals("0") ? "分" : "秒");
             vo.setTimeInterval(param.getIntervalTime());
