@@ -158,8 +158,8 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
         if (!StringUtils.hasText(methodDto.getMethodId())){
-            //方法id不能为空
-            return Result.failCode("00000021");
+            //请先创建方法或者选择方法
+            return Result.failCode("0010000B");
         }
 
         // 根据方法id查询当前方法
@@ -1725,8 +1725,8 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public Result<FRationMethodParam> queryMethodParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
-            //方法ID不能为空
-            return Result.failCode("00000021");
+            //请先创建方法或者选择方法
+            return Result.failCode("0010000B");
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
@@ -3813,7 +3813,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     log.info("计算abs失败");
                     FRationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
                     if (value == null) {
-                        return R.fail("数据处理出错且没有找到旧数据，处理失败");
+                        //数据处理出错且没有找到旧数据，处理失败
+                        return R.failCode("00303011");
                     }
                     fitCurveData.add(value);
                     fitCurveParams.add(sample.getNormalConcentration());
@@ -3829,7 +3830,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                     log.info("重新计算abs失败");
                     FRationCountDataInfo value = getAbsValue(taskId, sample.getId(), data.getId(), empty);
                     if (value == null) {
-                        return R.fail("数据处理出错且没有找到旧数据，处理失败");
+                        //数据处理出错且没有找到旧数据，处理失败
+                        return R.failCode("00303011");
                     }
                     fitCurveData.add(value);
                     fitCurveParams.add(sample.getNormalConcentration());
@@ -3942,7 +3944,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (!StringUtils.hasText(task.getSampleKey())) {
             log.info("没有样品");
-            return R.fail("没有样品");
+            //没有样品
+            return R.failCode("00303010");
         }
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
@@ -4218,12 +4221,14 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy) {
         if (!StringUtils.hasText(deviceSerialNumber)) {
-            return Result.fail("未连接仪器");
+            //未连接仪器
+            return Result.failCode("0000001D");
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该任务
+            return Result.failCode("00000004");
         }
 
         if (!StringUtils.hasText(taskId)){
@@ -4253,7 +4258,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
             if (!save) {
-                return Result.fail("系统出错");
+                //系统出错
+                return Result.failCode("00000014");
             }
             taskId = newTask.getId();
         }
@@ -4261,7 +4267,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
         if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
-            return Result.fail("缺少波长");
+            //缺少波长
+            return Result.failCode("0000001E");
         }
         List<String> waveLength = parameter.getWaveLength();
         // 通过序列号获取ip
@@ -4313,12 +4320,14 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy) {
         if (!StringUtils.hasText(deviceSerialNumber)) {
-            return Result.fail("未连接仪器");
+            //未连接仪器
+            return Result.failCode("0000001D");
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.failCode("00000009");
         }
 
         if (!StringUtils.hasText(taskId)){
@@ -4348,7 +4357,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
             if (!save) {
-                return Result.fail("系统出错");
+                //系统出错
+                return Result.failCode("00000014");
             }
             taskId = newTask.getId();
         }
@@ -4356,7 +4366,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
         if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
-            return Result.fail("缺少波长");
+            //缺少波长
+            return Result.failCode("0000001E");
         }
         List<String> waveLength = parameter.getWaveLength();
         // 通过序列号获取ip
@@ -4420,11 +4431,13 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public R<List<FInputParam>> queryInputParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
-            return R.fail("未选择方法");
+            //未选择方法
+            return R.failCode("00000008");
         }
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
-            return R.fail("方法不存在");
+            //没有找到该方法
+            return R.failCode("00000009");
         }
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
         List<FInputParam> inputParams = parameter.getSampleInputParams();
@@ -4436,15 +4449,18 @@ public class RationServiceConciseImpl implements RationConciseService {
     public R<List<FInputParamMapTableHead>> queryInputParamMapTableHead(String taskId, String sampleKind) {
 
         if (!StringUtils.hasText(taskId)) {
-            return R.fail("未选择任务");
+            //未选择任务
+            return R.failCode("00000008");
         }
         if (!StringUtils.hasText(sampleKind)) {
-            return R.fail("未选择样品种类");
+            //未选择样品种类
+            return R.failCode("00303012");
         }
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.failCode("00000004");
         }
         List<FInputParamMapTableHead> ans = new ArrayList<>();
         if (!StringUtils.hasText(task.getTableInfo())) {
@@ -4467,15 +4483,18 @@ public class RationServiceConciseImpl implements RationConciseService {
     public R<Boolean> saveInputParamMapTableHead(FTaskHeadSnapshotDTO snapshotDTO) {
 
         if (!StringUtils.hasText(snapshotDTO.getTaskId())) {
-            return R.fail("未选择任务");
+            //未选择任务
+            return R.failCode("0000001B");
         }
         if (!StringUtils.hasText(snapshotDTO.getSampleKind())) {
-            return R.fail("未选择样品种类");
+            //未选择样品种类
+            return R.failCode("00303012");
         }
 
         FMeasureTask task = fMeasureTaskService.getById(snapshotDTO.getTaskId());
         if (task == null) {
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.failCode("00000004");
         }
         FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
         List<FHeadVO> taskHeads = new ArrayList<>();
@@ -4498,12 +4517,14 @@ public class RationServiceConciseImpl implements RationConciseService {
             shot.setUnknownHead(taskHeadSnapshot);
         } else {
             log.info("样品种类有误");
-            return R.fail("样品种类有误");
+            //样品种类有误
+            return R.failCode("00303013");
         }
 
         task.setTableInfo(JSON.toJSONString(shot));
 
-        return fMeasureTaskService.updateById(task) ? R.ok(true) : R.fail("保存失败");
+        //保存失败
+        return fMeasureTaskService.updateById(task) ? R.ok(true) : R.failCode("00300008");
     }
 
     /**
@@ -4517,11 +4538,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         log.info("开始导出11111111，taskId: {}, fileType: {}, allDisplay: {}, digit: {}", taskId, fileType, allDisplay, digit);
         // 1. 基础参数校验（复用原逻辑，无修改）
         if (!StringUtils.hasText(taskId)) {
-            return R.fail("缺少任务id");
+            //缺少任务id
+            return R.failCode("00000019");
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.failCode("00000004");
         }
         if (!StringUtils.hasText(fileType)) {
             fileType = "word";
@@ -4529,7 +4552,8 @@ public class RationServiceConciseImpl implements RationConciseService {
             fileType = fileType.toLowerCase();
         }
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
-            return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
+            //不支持的导出格式，仅支持word/txt/xlsx
+            return R.failCode("00300001");
         }
         if (allDisplay == null) {
             allDisplay = true;
@@ -4539,20 +4563,23 @@ public class RationServiceConciseImpl implements RationConciseService {
         String methodId = task.getMethodKey();
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
-            return R.fail("测量方法不存在");
+            //测量方法不存在
+            return R.failCode("00300009");
         }
 
         // 2.1 获取标准样品表头
         Result<List<FHeadVO>> standHeadResult = getStandSampleTableHead(taskId, methodId, allDisplay, null);
         if (!standHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
-            return R.fail("获取标准样品表头失败：" + standHeadResult.getMessage());
+            //获取标准样品表头失败：standHeadResult.getMessage()
+            return R.failCode("00102027",standHeadResult.getMessage());
         }
         List<FHeadVO> standHeads = standHeadResult.getData();
 
         // 2.2 获取未知样品表头
         Result<List<FHeadVO>> unknownHeadResult = getUnknownSampleTableHead(taskId, methodId, allDisplay, null);
         if (!unknownHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
-            return R.fail("获取未知样品表头失败：" + unknownHeadResult.getMessage());
+            //"获取未知样品表头失败：" + unknownHeadResult.getMessage()
+            return R.failCode("00102028：" ,unknownHeadResult.getMessage());
         }
         List<FHeadVO> unknownHeads = unknownHeadResult.getData();
         // 补充未知样品固定列（序号+样品类型）
@@ -4571,11 +4598,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         queryDataDTO.setDigit(digit);
         Result<FRationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
         if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
-            return R.fail("查询样品数据失败：" + sampleDataResult.getMessage());
+            //"查询样品数据失败：" + sampleDataResult.getMessage()
+            return R.failCode("00303014：",sampleDataResult.getMessage());
         }
         FRationSampleDataVO dataVO = sampleDataResult.getData();
         if (dataVO == null) {
-            return R.fail("样品数据为空");
+            //样品数据为空
+            return R.failCode("00303015");
         }
 
         // 4. 数据处理（仅加类型标识）
@@ -4595,7 +4624,8 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
         }
         if (allData.isEmpty()) {
-            return R.fail("没有可导出的样品数据");
+            //没有可导出的样品数据
+            return R.failCode("00102029");
         }
 
         // 5. 生成文件（关键：传递独立表头）
@@ -4618,7 +4648,8 @@ public class RationServiceConciseImpl implements RationConciseService {
         } catch (Exception e) {
             log.error("文件生成失败！taskId={}, fileType={}", taskId, fileType, e);
             if (file.exists()) file.delete();
-            return R.fail("文件生成失败：" + e.getMessage());
+            //"文件生成失败：" + e.getMessage()
+            return R.failCode("00302006",e.getMessage());
         }
     }
 
@@ -4634,12 +4665,14 @@ public class RationServiceConciseImpl implements RationConciseService {
         
         // 1. 基础参数校验
         if (!StringUtils.hasText(taskId)) {
-            return R.fail("缺少任务id");
+            //缺少任务id
+            return R.failCode("00000019");
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             log.error("导出失败：任务不存在，taskId: {}", taskId);
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.failCode("00000004");
         }
         
         // 处理fileType默认值和合法性
@@ -4649,7 +4682,8 @@ public class RationServiceConciseImpl implements RationConciseService {
             fileType = fileType.toLowerCase();
         }
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
-            return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
+            //不支持的导出格式，仅支持word/txt/xlsx
+            return R.failCode("00300001");
         }
         if (allDisplay == null) {
             allDisplay = true;
@@ -4659,20 +4693,23 @@ public class RationServiceConciseImpl implements RationConciseService {
         String methodId = task.getMethodKey();
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
-            return R.fail("测量方法不存在");
+            //测量方法不存在
+            return R.failCode("00300009");
         }
 
         // 2.1 获取标准样品表头
         Result<List<FHeadVO>> standHeadResult = getStandSampleTableHead(taskId, methodId, allDisplay, null);
         if (!standHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
-            return R.fail("获取标准样品表头失败：" + standHeadResult.getMessage());
+            //"获取标准样品表头失败：" + standHeadResult.getMessage()
+            return R.failCode("00102027",standHeadResult.getMessage());
         }
         List<FHeadVO> standHeads = standHeadResult.getData();
 
         // 2.2 获取未知样品表头
         Result<List<FHeadVO>> unknownHeadResult = getUnknownSampleTableHead(taskId, methodId, allDisplay, null);
         if (!unknownHeadResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
-            return R.fail("获取未知样品表头失败：" + unknownHeadResult.getMessage());
+            //"获取未知样品表头失败：" + unknownHeadResult.getMessage()
+            return R.failCode("00102028",unknownHeadResult.getMessage());
         }
         List<FHeadVO> unknownHeads = unknownHeadResult.getData();
         // 补充未知样品固定列（序号+样品类型）
@@ -4691,11 +4728,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         queryDataDTO.setDigit(digit);
         Result<FRationSampleDataVO> sampleDataResult = querySampleData(queryDataDTO);
         if (!sampleDataResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
-            return R.fail("查询样品数据失败：" + sampleDataResult.getMessage());
+            //"查询样品数据失败：" + sampleDataResult.getMessage()
+            return R.failCode("00303014" ,sampleDataResult.getMessage());
         }
         FRationSampleDataVO dataVO = sampleDataResult.getData();
         if (dataVO == null) {
-            return R.fail("样品数据为空");
+            //样品数据为空
+            return R.failCode("00303015");
         }
 
         // 4. 处理children数据（展开children到主数据中）
@@ -4790,7 +4829,8 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (file.exists()) {
                 file.delete();
             }
-            return R.fail("文件生成失败：" + e.getMessage());
+            //"文件生成失败：" + e.getMessage()
+            return R.failCode("00302006", e.getMessage());
         }
     }
 
