@@ -199,7 +199,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         try {
             session.close();
         } catch (IOException e) {
-            handleTransportError(session, e);
             Thread.currentThread().interrupt();
             return;
         } finally {

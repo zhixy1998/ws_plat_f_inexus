@@ -938,11 +938,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result useThisMethodPort(String methodId) {
         // 使用StringUtils 判断参数是否为空
         if (!StringUtils.hasText(methodId)){
-            return Result.fail("缺少参数");
+//            return Result.fail("缺少参数");
+            return Result.failCode("00000007");
         }
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null){
             return Result.fail("没有找到该方法");
+//            return Result.failCode("00301012");
         }
 
         // 根据方法的测量类型和方法id去查询最近时间的任务
