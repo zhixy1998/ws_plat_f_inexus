@@ -48,7 +48,7 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
             log.info("触发快捷登录，使用默认用户");
             // 建议在Constants类中定义默认值，避免硬编码（示例：Constants.DEFAULT_USERNAME）
             loginDTO.setUserName("kh-admin");
-            loginDTO.setPassword("123456");
+            loginDTO.setPassword("40f1afacc21c54105f7f8dbfd20104c5");
         }
 
         // 2. 基础参数校验：用户名/密码不能为空
