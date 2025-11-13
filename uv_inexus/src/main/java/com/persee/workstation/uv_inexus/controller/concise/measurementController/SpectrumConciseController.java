@@ -103,9 +103,10 @@ public class SpectrumConciseController {
     @GetMapping("createDraftButton")
     @ApiOperation("创建草稿按钮接口")
     public Result createDraftButton(@RequestParam String methodId,
+                                    @RequestParam(required = false) String taskId,
                                     @RequestParam String updateBy,
                                     @RequestParam String deviceSerialNumber) {
-        return spectrumConciseService.createDraftButton(methodId,updateBy,deviceSerialNumber);
+        return spectrumConciseService.createDraftButton(methodId,taskId,updateBy,deviceSerialNumber);
     }
 
 

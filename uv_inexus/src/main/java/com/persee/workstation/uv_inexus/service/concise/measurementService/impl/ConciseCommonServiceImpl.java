@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService.impl
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -41,6 +42,7 @@ import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.*;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSaveDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationFitCurveVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationReportDataVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationSampleDataVO;
@@ -569,6 +571,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("请输入公式！");
         }
 
+        if (!StringUtils.hasText(newFormula.getResultName())) {
+            return Result.fail("请输入显示标题！");
+        }
+        if (!StringUtils.hasText(newFormula.getResultIdentity()) ){
+            return Result.fail("请输入结果标识！");
+        }
+        if (!StringUtils.hasText(newFormula.getUnit())) {
+            return Result.fail("请输入结果单位！");
+        }
         List<FInputParam> inputParamList = checkFormulaDto.getInputParamList();
         if (inputParamList == null || inputParamList.isEmpty()) {
             return Result.fail("请先设置输入参数！");
@@ -666,7 +677,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             StringBuilder wave = new StringBuilder();
             if (methodparam.getWaveLength() != null && !methodparam.getWaveLength().isEmpty()) {
                 for (String s : methodparam.getWaveLength()) {
-                    wave.append(s).append(",");
+                    wave.append(s).append("nm").append(",");
                 }
             }
             if (wave.length() > 0) {
@@ -839,7 +850,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             StringBuilder wave = new StringBuilder();
             if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()) {
                 for (String s : parameter.getWaveLength()) {
-                    wave.append(s).append(",");
+                    wave.append(s).append("nm").append(",");
                 }
             }
             if (wave.length() > 0) {
@@ -916,8 +927,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-            vo.setStartWaveLength(param.getStartWaveLength());
-            vo.setEndWaveLength(param.getEndWaveLength());
+            vo.setStartWaveLength(param.getStartWaveLength()+"nm");
+            vo.setEndWaveLength(param.getEndWaveLength()+"nm");
             vo.setScanSpeed(param.getScanSpeed());
             vo.setTimeInterval(param.getTimeInterval());
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
@@ -1855,6 +1866,49 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.fail("拷贝失败");
         }
 
+    }
+
+    @Override
+    public Result saveDataInfo(FSaveDataVO vo) {
+        if (!StringUtils.hasText(vo.getTaskId())) {
+            return Result.fail("请创建任务");
+        }
+
+        if (!StringUtils.hasText(vo.getSampleId())) {
+            return Result.fail("缺少样品id");
+        }
+
+        if (vo.getData() == null || vo.getData().isEmpty()) {
+            return Result.ok();
+        }
+        String taskId = vo.getTaskId();
+        String sampleId = vo.getSampleId();
+        LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                .eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
+
+        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
+        if (analysisData != null) {
+            Map<String, String> jsonObject;
+            if (StringUtils.hasText(analysisData.getAnalysisParam())) {
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+            } else {
+                jsonObject = vo.getData();
+            }
+            analysisData.setAnalysisParam(JSON.toJSONString(jsonObject));
+            fMeasureAnalysisDataService.updateById(analysisData);
+        } else {
+            analysisData = new FMeasureAnalysisData();
+            analysisData.setTaskId(taskId);
+            analysisData.setSampleKey(sampleId);
+            analysisData.setAnalysisParam(JSON.toJSONString(vo.getData()));
+            analysisData.setDataVersion(0);
+            analysisData.setIsDelete(createType);
+            fMeasureAnalysisDataService.save(analysisData);
+        }
+
+        return Result.ok(true);
     }
 
 

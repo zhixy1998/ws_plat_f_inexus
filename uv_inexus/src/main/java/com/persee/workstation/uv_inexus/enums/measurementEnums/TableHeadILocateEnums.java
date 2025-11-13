@@ -22,6 +22,7 @@ public enum TableHeadILocateEnums {
     data("data","测量页用户新增表头"),
     measure("measure", "后端添加测量表头"),
     other("other", "其他表头,如采样时间，备注等"),
+    remark("remark", "备注"),
     analyze("analyze", "方法来的分析表头");
 
     private final String identity;

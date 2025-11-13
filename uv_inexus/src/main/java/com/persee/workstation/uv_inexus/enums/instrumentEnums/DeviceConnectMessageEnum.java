@@ -24,9 +24,8 @@ public enum DeviceConnectMessageEnum {
     CONNECT_NO(0,"未联机"),
     CONNECT_ING(1, "联机中"),
     CONNECT_SUCCESS(2,"联机成功"),
-    CONNECT_FALSE(3,"联机失败");
-
-
+    CONNECT_FALSE(3,"联机失败"),
+    CONNECT_STOP(4,"联机断开");
 
     private final Integer code;
 
@@ -40,7 +39,7 @@ public enum DeviceConnectMessageEnum {
         }
     }
 
-    private DeviceConnectMessageEnum(Integer code, String name){
+    DeviceConnectMessageEnum(Integer code, String name){
         this.code = code;
         this.name = name;
     }

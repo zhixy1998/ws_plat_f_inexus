@@ -107,6 +107,10 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         Integer isInited = info.getIsInited();
 
+        if (info.getConnectStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
+            return R.fail("仪器已断开！");
+        }
+
         Integer isActivated = info.getIsActivated();
         if (isActivated == null || isActivated == 0) {
             return R.fail("请先激活仪器");
@@ -152,6 +156,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DetectionConstants.isDeviceIdle = true;
         updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
     }
+
+
 
     @Override
     public void activeDevice(String deviceSerialNumber) {

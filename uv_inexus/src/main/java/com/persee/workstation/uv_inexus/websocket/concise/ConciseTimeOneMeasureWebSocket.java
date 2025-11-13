@@ -42,6 +42,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
@@ -49,55 +50,37 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(TimingWebSocket.class);
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-    private ScheduledExecutorService scheduler;
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private Future<?> future;
-
     private String ip;
-
     private String deviceSerialNumber;
     private boolean occupancyStatus = false;
-
     private Integer digit;
-
-
 
     @Autowired
     private TimeSweepConciseService timeSweepConciseService;
-
     @Autowired
     private FMeasureTaskService tMeasureTaskService;
-
     @Autowired
     private FMeasureMethodService tMeasureMethodService;
-
     @Autowired
     private DeviceInfoService deviceInfoService;
-
     @Autowired
     private FMeasureDataService tMeasureDataService;
-
     @Autowired
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
-
     @Autowired
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
-
     @Autowired
     private FSamplePoolConfigService fSamplePoolConfigService;
-
     @Autowired
     private SystemAlgorithmConfService systemAlgorithmConfService;
-
     @Autowired
     private FMeasureSampleService tMeasureSampleService;
-
     @Autowired
     private DevMessageUtil devMessageUtil;
-
     @Autowired
     private RestTemplate restTemplate;
-
     @Autowired
     private FormulaUtil formulaUtil;
 
@@ -107,8 +90,15 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     // 当WebSocket连接建立成功时，会调用此方法
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-
         occupancyStatus = false;
+
+        // 为每个会话创建独立的调度器
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2, r -> {
+            Thread t = new Thread(r, "TimeOneMeasure-Scheduler-" + session.getId());
+            t.setDaemon(true);
+            return t;
+        });
+        session.getAttributes().put("scheduler", scheduler);
 
         // 将耗时逻辑提交到线程池
         future = executor.submit(() -> {
@@ -121,6 +111,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                 deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
                 String updateBy = getQueryParam(query, "updateBy");
                 digit = Integer.parseInt(getQueryParam(query, "digit"));
+
                 if (taskId == null) {
                     sendClose(session, "缺少 taskId 参数");
                     return;
@@ -137,6 +128,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                     sendClose(session, "缺少 updateBy 参数");
                     return;
                 }
+
                 // 根据任务id查询任务数据
                 FMeasureTask task = tMeasureTaskService.getById(taskId);
                 if (task == null) {
@@ -156,6 +148,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                 /// 设置参数
                 Result result = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
                 if (result.getCode() != 200) {
+                    sendAndClose(session, "设置参数失败");
                     return;
                 }
 
@@ -169,14 +162,13 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                 // 将方法参数提取出来
                 FTimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
 
-                startTimedTask(session, timeSweepParameter, deviceSerialNumber, task,sampleId,updateBy);
+                startTimedTask(session, timeSweepParameter, deviceSerialNumber, task, sampleId, updateBy);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("连接建立逻辑异常", e);
                 sendAndClose(session, "执行异常: " + e.getMessage());
             }
         });
     }
-
 
     // 开始定时任务
     private void startTimedTask(WebSocketSession session,
@@ -185,23 +177,23 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                                 FMeasureTask task,
                                 String sampleId,
                                 String updateBy) {
+        ScheduledExecutorService scheduler = (ScheduledExecutorService) session.getAttributes().get("scheduler");
+
         // 获取任务的校零参数
         final ChangeParam baselineData = (task.getZeroParam() != null && !task.getZeroParam().equals(""))
                 ? JSON.parseObject(task.getZeroParam(), ChangeParam.class)
                 : null;
 
-
         ip = deviceInfoService.getIp(deviceSerialNumber);
+
         // 根据序列号查询对应的附件配置表信息
         QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
         FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
         if (configPO == null) {
             sendAndClose(session, "没有找到对应的附件配置信息");
+            return;
         }
-
-        scheduler = Executors.newSingleThreadScheduledExecutor();
-
 
         boolean poolStatus = false;
         if (configPO.getIsAutoChangePool()){
@@ -214,8 +206,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             }
         }
 
-
-        ///  设置样品池位置
+        /// 设置样品池位置
         FMeasureSample sample = tMeasureSampleService.getById(sampleId);
         if (configPO.getIsAutoChangePool()){
             if (sample == null){
@@ -231,116 +222,123 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                 }
                 fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
                 JSONObject object = new JSONObject();
-                object.put("currentPoolNum",sample.getSampleLocation());
+                object.put("currentPoolNum", sample.getSampleLocation());
                 try {
                     session.sendMessage(new TextMessage(object.toJSONString()));
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    log.error("发送样品池位置信息失败", e);
                 }
             }
         }
 
         // 计算并执行定时任务
-        int totalTasks = Integer.parseInt(param.getTotalNumber());  // 执行的总次数
-        CountDownLatch latch = new CountDownLatch(totalTasks);  // 每个样品的定时任务数作为latch的计数
+        int totalTasks = Integer.parseInt(param.getTotalNumber());
+        CountDownLatch latch = new CountDownLatch(totalTasks);
 
-        executeTimedTaskForSample(session, param, baselineData, sampleId, ip, latch,task,deviceSerialNumber);
+        executeTimedTaskForSample(session, param, baselineData, sampleId, ip, task, deviceSerialNumber, scheduler, latch);
 
         try {
-            latch.await();  // 等待当前样品的所有任务完成
+            // 理论总时长 * 2 + 30 秒缓冲
+            long maxWaitMs = (long) (totalTasks * Double.parseDouble(param.getIntervalTime()) * 1000 * 2) + 30_000;
+            log.info("开始等待样品任务完成，最大等待时间: {}ms (≈{}秒)", maxWaitMs, maxWaitMs / 1000);
+
+            if (!latch.await(maxWaitMs, TimeUnit.MILLISECONDS)) {
+                log.error("样品任务严重超时！已等待 {}ms，仍未完成。Specimen: {}", maxWaitMs, sampleId);
+            } else {
+                log.info("样品任务正常完成！Specimen: {}", sampleId);
+                // 发送完成消息
+                JSONObject payload = new JSONObject();
+                payload.put("result", "finish");
+                sendAndClose(session, payload.toJSONString());
+            }
         } catch (InterruptedException e) {
+            log.error("等待样品任务被中断", e);
             Thread.currentThread().interrupt();
         }
-
-        sendAndClose(session, "样品任务执行完毕");
-
     }
 
-    // 执行单个样品的定时任务
+    // 执行单个样品的定时任务（使用固定速率调度）
     private void executeTimedTaskForSample(WebSocketSession session,
                                            FTimeSweepParamter param,
                                            ChangeParam baselineData,
                                            String sampleId,
                                            String ip,
-                                           CountDownLatch latch,
                                            FMeasureTask task,
-                                           String deviceSerialNumber) {
-        double interval = Double.parseDouble(param.getIntervalTime()); // 间隔时间（秒）
+                                           String deviceSerialNumber,
+                                           ScheduledExecutorService scheduler,
+                                           CountDownLatch latch) {
 
-        // 根据总时长和间隔计算总任务次数
-        int totalTasks = Integer.parseInt(param.getTotalNumber());  // 执行的总次数
-
-        long currentStartTime = System.currentTimeMillis();  // 当前任务开始时间
+        double interval = Double.parseDouble(param.getIntervalTime());
+        int totalTasks = Integer.parseInt(param.getTotalNumber());
 
         // 记录数据
         List<BigDecimal> x_data = new ArrayList<>();
         List<BigDecimal> y_data = new ArrayList<>();
         List<ChangeParam> originalData = new ArrayList<>();
-        for (int i = 0; i < totalTasks; i++) {
-            // 计算任务执行的时间点
-            final long nextExecutionTime = (long) (currentStartTime + (i * interval * 1000L));
 
-            int finalI = i;
-            scheduler.schedule(() -> {
-                try {
-                    if (Thread.currentThread().isInterrupted()) {
-                        return;  // 如果线程被中断，直接退出
-                    }
-                    // 计算延迟时间，确保任务精确执行
-                    long delay = nextExecutionTime - System.currentTimeMillis();
-                    if (delay > 0) {
-                        Thread.sleep(delay);  // 等待下一个执行时间点
-                    }
+        AtomicInteger counter = new AtomicInteger(0);
+        long startTime = System.currentTimeMillis();
 
-                    // 执行测量任务
-                    BigDecimal xValue = BigDecimal.valueOf((System.currentTimeMillis() - currentStartTime) / 1000.0);
-                    Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
-                    ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
+        // 固定速率调度
+        ScheduledFuture<?> scheduledFuture = scheduler.scheduleAtFixedRate(() -> {
+            int currentIndex = counter.getAndIncrement();
 
-                    if (changeParam == null) {
-                        // 使用shutdown()方法结束任务
-                        scheduler.shutdown();
-                        // 发送错误信息并关闭会话
-                        sendAndClose(session, "扫描失败");
-                        latch.countDown(); // 完成当前任务
-                        return;
-                    }
+            // 超出任务总数时也要 countDown
+            if (currentIndex >= totalTasks) {
+                latch.countDown();
+                return;
+            }
 
-                    Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
-                    changeParam.setWl(String.valueOf(v));
-
-                    originalData.add(changeParam);
-
-                    // 计算并推送 Y 值（光度模式等相关计算）
-                    calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session, sampleId);
-
-                    if (finalI == totalTasks - 1) {
-                        // 最后一次测量完成，结束任务
-                        Constants.endTime = LocalDateTime.now();
-                        saveData(session, originalData, x_data, y_data, sampleId, task, deviceSerialNumber); // 保存数据
-                    }
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Thread.currentThread().interrupt();
-                    sendAndClose(session, "任务执行出现错误");
-                } finally {
-                    latch.countDown(); // 每个定时任务完成后，计数器减一
+            try {
+                // 检查会话状态
+                if (Thread.currentThread().isInterrupted() || !session.isOpen()) {
+                    latch.countDown();
+                    return;
                 }
-            }, nextExecutionTime - System.currentTimeMillis(), TimeUnit.MILLISECONDS);  // 精确调度任务到指定时间
-        }
+
+                // 计算预期执行时间
+                long expectedTime = startTime + (long) (currentIndex * interval * 1000L);
+                long actualTime = System.currentTimeMillis();
+                log.debug("任务 {}: 预期 {}ms, 实际 {}ms, 漂移 {}ms",
+                        currentIndex, expectedTime, actualTime, actualTime - expectedTime);
+
+                // 使用理想时间计算 x
+                BigDecimal xValue = BigDecimal.valueOf(currentIndex * interval)
+                        .setScale(1, RoundingMode.DOWN);
+
+                Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
+                ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
+
+                if (changeParam == null) {
+                    sendAndClose(session, "扫描失败");
+                    return;
+                }
+
+                Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+                changeParam.setWl(String.valueOf(v));
+                originalData.add(changeParam);
+
+                // 计算并推送 Y 值
+                calculateAndPushYValue(param, baselineData, changeParam, xValue, x_data, y_data, session, sampleId);
+
+                // 最后一次测量保存数据
+                if (currentIndex == totalTasks - 1) {
+                    Constants.endTime = LocalDateTime.now();
+                    saveData(session, originalData, x_data, y_data, sampleId, task, deviceSerialNumber);
+                }
+
+            } catch (Exception e) {
+                log.error("定时任务执行异常，Index: {}", currentIndex, e);
+                sendAndClose(session, "任务执行错误");
+            } finally {
+                // 关键：每执行一次都必须 countDown
+                latch.countDown();
+            }
+        }, 0, (long) (interval * 1000), TimeUnit.MILLISECONDS);
     }
-
-
-
-
 
     /**
      * 获取查询参数
-     *
-     * @param query
-     * @param key
-     * @return
      */
     private String getQueryParam(String query, String key) {
         if (query == null) return null;
@@ -351,20 +349,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         return null;
     }
 
-
-
     /**
      * 计算并推送 Y 值（光度模式等相关计算）
-     *
-     * @param param
-     * @param baselineData
-     * @param changeParam
-     * @param xValue
-     * @param x_data
-     * @param y_data
-     * @param session
-     * @param sampleId
-     * @throws IOException
      */
     private void calculateAndPushYValue(
             FTimeSweepParamter param,
@@ -385,19 +371,18 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
 
         if (param.getLuminosity().equals("1")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-            String y = DataCountUtil.changeTPercentOrAbs2(null,s);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
+            String y = DataCountUtil.changeTPercentOrAbs2(null, s);
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Abs");
             points.add(point);
@@ -406,18 +391,17 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(payload.toJSONString()));
         } else if (param.getLuminosity().equals("2")) {
             String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(s));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(s);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "T%");
             points.add(point);
@@ -427,18 +411,17 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("3")) {
             Double sData = Double.valueOf(changeParam.getS());
             String y = String.valueOf((sData / (4095 * 32)) * 100);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Es");
             points.add(point);
@@ -448,18 +431,17 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         } else if (param.getLuminosity().equals("4")) {
             Double rData = Double.valueOf(changeParam.getR());
             String y = String.valueOf((rData / (4095 * 32)) * 100);
-            BigDecimal integerPart = xValue.setScale(1, RoundingMode.DOWN);  // 直接舍弃小数部分
             x_data.add(xValue);
             y_data.add(new BigDecimal(y));
             JSONObject payload = new JSONObject();
             JSONArray points = new JSONArray();
             JSONObject point = new JSONObject();
-            point.put("x", integerPart);
+            point.put("x", xValue);
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
             point.put("y", valueY);
-            point.put("nm", param.getWaveLength()+"nm");
+            point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Er");
             points.add(point);
@@ -468,22 +450,11 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(payload.toJSONString()));
         } else {
             sendAndClose(session, "光度模式错误");
-            session.close();
         }
-        System.err.println("Current JVM Timezone: " + TimeZone.getDefault().getID());
     }
-
 
     /**
      * 存储数据
-     *
-     * @param session
-     * @param originalData
-     * @param x_data
-     * @param y_data
-     * @param sampleId
-     * @param task
-     * @throws IOException
      */
     private void saveData(WebSocketSession session,
                           List<ChangeParam> originalData,
@@ -494,6 +465,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
                           String deviceSerialNumber) {
         boolean dataStatus = false;
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+
         // 先对数据进行寻峰寻谷
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -504,8 +476,10 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         body.put("height", height);
         body.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
         Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
         Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+
         List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
         List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
         List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
@@ -528,6 +502,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             marking.setType("波谷");
             markings.add(marking);
         }
+
         // 查询是否已存在此样品的测量数据
         FMeasureData tMeasureData = tMeasureDataService.getOne(
                 new QueryWrapper<FMeasureData>()
@@ -541,12 +516,12 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         for (int i = 0; i < x_data.size(); i++) {
             listData.add(x_data.get(i) + "," + y_data.get(i));
         }
+
         // 如果数据存在，则更新数据
         if (tMeasureData == null) {
             // 如果数据不存在，则设置为新数据
             tMeasureData = new FMeasureData();
             tMeasureData.setSerialNumber(1);
-            // 设置测量数据
             tMeasureData.setTaskId(task.getId());
             tMeasureData.setSampleKey(sampleId);
             tMeasureData.setInstrumentData(JSON.toJSONString(originalData));
@@ -555,18 +530,13 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             tMeasureData.setMeasurementEndTime(Constants.endTime);
             tMeasureData.setIsSave("1");
             tMeasureData.setIsDelete("0");
-        }else{
+        } else {
             dataStatus = true;
             tMeasureData.setInstrumentData(JSON.toJSONString(originalData));
             tMeasureData.setOriginalCalculationData(JSON.toJSONString(listData));
             tMeasureData.setMeasurementStartTime(Constants.startTime);
             tMeasureData.setMeasurementEndTime(Constants.endTime);
         }
-
-
-
-
-
 
         // 保存或更新测量数据
         boolean save = tMeasureDataService.saveOrUpdate(tMeasureData);
@@ -575,10 +545,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             return;
         }
 
-
         // 如果数据存在，则更新分析数据
         if (dataStatus) {
-            // 根据测量id和任务id查询分析数据
             QueryWrapper<FMeasureAnalysisData> wrapper = new QueryWrapper<>();
             wrapper.eq("measure_data_id", tMeasureData.getId());
             wrapper.eq("task_id", task.getId());
@@ -593,7 +561,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             analysisData.setAnalysisResult(JSON.toJSONString(listData));
             analysisData.setPeak(JSON.toJSONString(peakValleys));
             analysisData.setGrain(JSON.toJSONString(markings));
-            // 保存或更新分析数据
+
             boolean save1 = tMeasureAnalysisDataService.saveOrUpdate(analysisData);
             if (!save1) {
                 sendAndClose(session, "保存分析数据失败");
@@ -601,9 +569,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             }
         } else {
             FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
-            // 如果数据不存在，则设置为新分析
             analysisData.setAnalysisNumber(1);
-            // 根据样品id查询样品数据
             FMeasureSample sample = tMeasureSampleService.getById(sampleId);
             analysisData.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
             analysisData.setTaskId(task.getId());
@@ -617,7 +583,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             analysisData.setColor("#000000");
             analysisData.setIsSave("1");
             analysisData.setIsDelete("0");
-            // 保存或更新分析数据
+
             boolean save1 = tMeasureAnalysisDataService.saveOrUpdate(analysisData);
             if (!save1) {
                 sendAndClose(session, "保存分析数据失败");
@@ -632,11 +598,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             }
         }
 
-
-
-
-
-// 更新样品的测试状态
+        // 更新样品的测试状态
         List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         for (FTaskSpecimen taskSpecimen : specimen) {
             if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
@@ -645,7 +607,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             }
         }
 
-// 更新任务数据
+        // 更新任务数据
         task.setSampleKey(JSON.toJSONString(specimen));
         task.setDeviceSerialNumber(deviceSerialNumber);
         boolean update = tMeasureTaskService.updateById(task);
@@ -654,14 +616,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             return;
         }
 
-        System.err.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-
         Constants.measureStatus = true;
-        JSONObject payload = new JSONObject();
-        payload.put("result", "finish");
-
-// 将公共的变量中的数据清除
-        sendAndClose(session, String.valueOf(payload));
+        log.info("数据保存完成，样品: {}", sampleId);
     }
 
     /**
@@ -673,19 +629,15 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         Constants.measureStatus = false;
     }
 
-
     // 当WebSocket接收到消息时，会调用此方法
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        // 处理客户端发来的消息
         log.info("收到客户端消息: " + message.getPayload());
-        if (message.getPayload().equals("close")){
-            // 如果线程正在被使用
+        if (message.getPayload().equals("close")) {
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
-            if (occupancyStatus){
-                // 释放线程
+            if (occupancyStatus) {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
         }
@@ -695,64 +647,68 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         super.afterConnectionClosed(session, status);
-        log.info("WebSocket连接已关闭: " + session.getId());
-        this.currentSession = null;  // 清理会话
+        log.info("WebSocket连接关闭: {}，原因: {}", session.getId(), status);
 
+        this.currentSession = null;
+
+        ScheduledExecutorService scheduler = (ScheduledExecutorService) session.getAttributes().get("scheduler");
         if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdownNow();  // 强制停止所有任务
-            log.info("定时任务已强制停止");
+            scheduler.shutdown();
+            try {
+                if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+                    log.warn("Scheduler 30秒内未完全终止，剩余任务被丢弃");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
-        // 取消正在执行的任务
+
         if (future != null && !future.isDone()) {
             future.cancel(true);
-            log.info("定时任务已强制停止");
         }
-        exceptionHandling();
 
+        exceptionHandling();
+        sessions.remove(session.getId());
+
+        if (occupancyStatus && deviceSerialNumber != null) {
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+        }
     }
 
     /**
      * 连接异常时触发
-     * @param session
-     * @param exception
      */
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
         try {
             session.close();
-            deviceInfoService.releaseDevice(deviceSerialNumber);
+            if (deviceSerialNumber != null) {
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
         } catch (IOException e) {
-            handleTransportError(session, e);
-            Thread.currentThread().interrupt();
-            return;
+            log.error("处理传输错误时发生异常", e);
         }
-        System.out.println("连接异常: " + exception.getMessage());
+        log.error("连接异常: " + exception.getMessage());
     }
-
 
     /**
      * 发送消息并关闭连接
-     * @param session
-     * @param msg
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
-            // 释放设备
-            deviceInfoService.releaseDevice(deviceSerialNumber);
+            if (deviceSerialNumber != null) {
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+            }
             session.sendMessage(new TextMessage(msg));
             session.close();
         } catch (IOException e) {
-            Thread.currentThread().interrupt();
-            return;
+            log.error("发送消息并关闭连接时发生异常", e);
         }
     }
 
     /**
      * 发送消息并关闭连接2
-     *
-     * @param session
-     * @param msg
      */
     private void sendClose(WebSocketSession session, String msg) {
         try {
@@ -760,17 +716,12 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             sessions.remove(session.getId());
             session.close();
         } catch (IOException e) {
-            handleTransportError(session, e);
-            Thread.currentThread().interrupt();
-            return;
+            log.error("发送关闭消息时发生异常", e);
         }
     }
 
     /**
      * 构建命令
-     * @param cmdEnum
-     * @param value
-     * @return
      */
     private Command buildCommand(SetParamEnum cmdEnum, Object value) {
         Command cmd = new Command();

@@ -343,7 +343,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         FRationCountDataInfo yAbs = new FRationCountDataInfo();
         yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
         yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-        yAbs.setColValue("0.0");
+        yAbs.setColValue(DataCountUtil.addZero(0.0, digit));
 
         List<FRationCountDataInfo> currentList = new ArrayList<>();
 

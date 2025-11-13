@@ -14,7 +14,9 @@ package com.persee.workstation.uv_inexus.websocket.liveDetection;
 
 import lombok.Getter;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -27,7 +29,6 @@ public enum LiveDetectionCmdEnum {
     GetChangeLampWl(5, "GetChangeLampWl", null, 2),
     GetCellPos(6, "GetCellPos", null, 2),
     GetLampPos(7, "GetLampPos", null, 2);
-    ;
 //    GetAccessoryType(6, "GetAccessoryType", null, 2);
 
     // 顺序
@@ -68,6 +69,10 @@ public enum LiveDetectionCmdEnum {
 
     public static LiveDetectionCmdEnum getEnum(Integer num) {
         return enums.get(num);
+    }
+
+    public static List<LiveDetectionCmdEnum> getAll(){
+        return  Arrays.asList(values());
     }
 
     public static Integer getLength(){
