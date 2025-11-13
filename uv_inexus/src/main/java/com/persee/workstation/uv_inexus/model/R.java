@@ -22,6 +22,12 @@ public class R<T> {
     //返回消息
     private String message;
 
+    // 消息码（用于统一的消息解析）
+    private String messageCode;
+
+    // 占位符参数（用于 MessageFormat 格式化）
+    private Object[] obj;
+
     //返回数据
     private T data;
 
@@ -39,6 +45,17 @@ public class R<T> {
         R<T> R = new R<T>();
         R.setSuccess(success);
         R.setMessage(message);
+        return R;
+    }
+
+    // 通过消息码与参数构建（消息解析交由 ResponseBodyAdvice 处理）
+    private static <T> R<T> build(Boolean success, String messageCode, Object... obj) {
+        R<T> R = new R<T>();
+        R.setSuccess(success);
+        R.setMessageCode(messageCode);
+        R.setObj(obj);
+        // 暂存 messageCode 到 message，实际解析在响应拦截器中完成
+        R.setMessage(messageCode);
         return R;
     }
 
@@ -70,6 +87,21 @@ public class R<T> {
         return build(data, true);
     }
 
+    // 操作成功（通过消息码与占位参数）
+    public static<T> R<T> okCode(String messageCode, Object... obj){
+        return build(true, messageCode, obj);
+    }
+
+    // 操作成功（携带数据 + 消息码与占位参数）
+    public static<T> R<T> okCode(T data, String messageCode, Object... obj){
+        R<T> R = build(data);
+        R.setSuccess(true);
+        R.setMessageCode(messageCode);
+        R.setObj(obj);
+        R.setMessage(messageCode);
+        return R;
+    }
+
     public static<T> R<T> fail(){
         return R.fail(null);
     }
@@ -90,6 +122,16 @@ public class R<T> {
         return R;
     }
 
+    // 操作失败（通过消息码与占位参数）
+    public static<T> R<T> fail(String messageCode, Object... obj){
+        return build(false, messageCode, obj);
+    }
+
+    // 失败别名，统一调用风格
+    public static<T> R<T> failCode(String messageCode, Object... obj){
+        return fail(messageCode, obj);
+    }
+
     public static<T> R<T> fail(Boolean success, String message) {
         R<T> R = build(success,message);
         return R;
@@ -104,6 +146,16 @@ public class R<T> {
 
     public R<T> success(Boolean success){
         this.setSuccess(success);
+        return this;
+    }
+
+    public R<T> messageCode(String messageCode){
+        this.setMessageCode(messageCode);
+        return this;
+    }
+
+    public R<T> obj(Object... obj){
+        this.setObj(obj);
         return this;
     }
 }

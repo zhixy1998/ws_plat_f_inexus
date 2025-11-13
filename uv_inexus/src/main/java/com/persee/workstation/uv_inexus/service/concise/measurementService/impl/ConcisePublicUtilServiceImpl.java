@@ -79,25 +79,29 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
     @Override
     public R<Boolean> changeSampleLocation(String taskId, List<Integer> usefulLocation) {
         if (!StringUtils.hasText(taskId)) {
-            return R.fail("请创建任务");
+            //请创建任务
+            return R.failCode("00100016");
         }
 
         if (CollectionUtils.isEmpty(usefulLocation)) {
             log.info("没有可用的位置");
-            return R.fail("没有可用的位置");
+            //没有可用的位置
+            return R.failCode("00100017");
         }
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null || !StringUtils.hasText(task.getSampleKey())) {
             log.info("没有样品,不需要处理");
-            return R.fail("没有样品,不需要处理");
+            //没有样品,不需要处理
+            return R.failCode("00100018");
         }
         List<FTaskSpecimen> taskSpecimen;
         try {
             taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         } catch (Exception e) {
             log.error("样品信息解析失败，任务ID: {}", taskId, e);
-            return R.fail("样品信息解析失败");
+            //样品信息解析失败
+            return R.failCode("00100019");
         }
         if (task.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
 
@@ -175,18 +179,19 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
             }
 
             if (lowerLimit == null && upperLimit == null && size != 1) {
-                return R.fail("区间重叠，请检查！");
+                //区间重叠，请检查！
+                return R.failCode("00100023");
             }
             // 只有当下限和上限都不为空时才进行检查
             if (lowerLimit != null && upperLimit != null) {
                 // 下限值不能大于上限值
                 if (lowerLimit > upperLimit) {
-                    return R.fail("下限值不能大于上限值");
+                    return R.failCode("00100020");
                 }
                 // 如果下限值等于上限值且为有限值，必须同时包含两端点
                 if (lowerLimit.equals(upperLimit)) {
                     if (!param.getIsLowerLimitIncluded() || !param.getIsUpperLimitIncluded()) {
-                        return R.fail("当上下限值相等且为有限值时，必须同时包含两端点");
+                        return R.failCode("00100021");
                     }
                 }
             }
@@ -199,7 +204,8 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
         }
 
         if (min != Double.MIN_VALUE && max != Double.MAX_VALUE) {
-            return R.fail("修约范围未覆盖所有区间！");
+            //修约范围未覆盖所有区间！
+            return R.failCode("00100024");
         }
 
         // 2. 检查区间之间是否重叠
@@ -225,7 +231,8 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
         // 检查相邻区间是否有重叠
         for (int i = 0; i < sortedParams.size() - 1; i++) {
             if (isOverlapping(sortedParams.get(i), sortedParams.get(i + 1))) {
-                return R.fail("区间重叠，请检查！");
+                //区间重叠，请检查！
+                return R.failCode("00100023");
             }
         }
 

@@ -152,7 +152,10 @@ public class RationServiceImpl implements RationService {
                 return Result.fail("波长个数需在1-3之间");
             }
             for (String wl : methodDto.getWaveLength()) {
-                try { double v = Double.parseDouble(wl); if (v < 190.0 || v > 900.0) return Result.fail("波长超出范围(190-900)"); String s = String.format(java.util.Locale.ROOT, "%.1f", v); if (!s.equals(String.valueOf(v)) && !String.valueOf(v).matches("^\\d+\\.\\d$")) return Result.fail("波长需保留1位小数"); } catch (Exception e) { return Result.fail("波长格式错误"); }
+                try { double v = Double.parseDouble(wl); if (v < 190.0 || v > 900.0) return Result.fail("波长超出范围(190-900)");
+                    String s = String.format(java.util.Locale.ROOT, "%.1f", v);
+                    if (!s.equals(String.valueOf(v)) && !String.valueOf(v).matches("^\\d+\\.\\d$")) return Result.fail("波长需保留1位小数");
+                } catch (Exception e) { return Result.fail("波长格式错误"); }
             }
         }
         // 波长系数：1-3个成员
@@ -163,7 +166,8 @@ public class RationServiceImpl implements RationService {
         }
         // 曲线次数：1-4
         if (org.springframework.util.StringUtils.hasText(methodDto.getCurveType())) {
-            try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail("曲线次数范围应为1-4"); } catch (Exception ignored) {}
+            try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail("曲线次数范围应为1-4");
+            } catch (Exception ignored) {}
         }
         // 方程类型：枚举
 //        if (StringUtils.hasText(methodDto.getEquationType())) {

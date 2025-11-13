@@ -153,7 +153,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         wrapper.eq("measurement_type", measureType);
         FMeasureMethod one = fMeasureMethodService.getOne(wrapper);
         if (one == null) {
-            return Result.fail(measureType + "没有默认方法");
+            //measureType+没有默认方法
+            return Result.failCode("00101001",measureType);
         }
         return Result.ok(one);
 
@@ -164,10 +165,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result<FMethodListWithPageVO> searchMethodButton(FQueryMethodWithPageDto dto) {
         // 对传入的参数进行校验
         if (!StringUtils.hasText(dto.getUpdateBy())) {
-            return Result.fail("用户不能为空");
+            //用户不能为空
+            return Result.failCode("00101002");
         }
         if (!StringUtils.hasText(dto.getMeasureType())) {
-            return Result.fail("方法类型不能为空");
+            //方法类型不能为空
+            return Result.failCode("00100006");
         }
 
         if (dto.getPageNum() == null || dto.getPageNum() < 1) {
@@ -235,7 +238,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             ans.setRecords(infoVOList);
         } else {
-            return Result.fail("该类型暂未开发");
+            //该类型暂未开发
+            return Result.failCode("00101003");
         }
         return Result.ok(ans);
     }
@@ -250,18 +254,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result querySaveState(String taskId) {
         if (taskId == null) {
-            return Result.fail("任务id不能为空");
+            //任务id不能为空
+            return Result.failCode("00000003");
         }
         SaveStateVo vo = new SaveStateVo();
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("草稿不存在");
+            //草稿不存在
+            return Result.failCode("00101004");
         }
         // 根据任务中的方法key查询方法
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.failCode("00000009");
         }
         vo.setTaskName(task.getTaskName());
         vo.setMethodName(method.getMethodName());
@@ -295,7 +302,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result saveDraftButton(String taskId) {
         if (!StringUtils.hasText(taskId)) {
-            return Result.fail("请先创建任务");
+            //请先创建任务
+            return Result.failCode("00101006");
         }
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
@@ -308,7 +316,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 measureData.setIsSave("0");
                 boolean update1 = fMeasureDataService.updateById(measureData);
                 if (!(update1)) {
-                    return Result.fail("保存草稿失败");
+                    //保存草稿失败
+                    return Result.failCode("00100005");
                 }
             }
         }
@@ -321,7 +330,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 fMeasureAnalysisData.setIsSave("0");
                 boolean update = fMeasureAnalysisDataService.updateById(fMeasureAnalysisData);
                 if (!(update)) {
-                    return Result.fail("保存草稿失败");
+                    //保存草稿失败
+                    return Result.fail("00100005");
                 }
             }
         }
@@ -330,7 +340,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (update) {
             return Result.ok();
         } else {
-            return Result.fail("保存草稿失败");
+            //保存草稿失败
+            return Result.fail("00100005");
         }
     }
 
@@ -385,10 +396,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
 
         if (method == null) {
-            return Result.fail("方法不存在");
+                //没有找到该方法
+            return Result.failCode("00000009");
         }
         if (method.getMeasurementType().isEmpty()) {
-            return Result.fail("方法类型不存在");
+            //方法类型不存在
+            return Result.failCode("00101005");
         }
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(method.getMeasurementType());
         if (measureTypeEnum == null) {
@@ -408,7 +421,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 return Result.ok(parameter);
             }
             default:
-                return Result.fail("暂不支持");
+                    //暂不支持
+                return Result.failCode("0000002B");
         }
 
     }
@@ -424,7 +438,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
         SysUserPO sysUserPO = userMapper.selectByUsername(userName);
         if (sysUserPO == null) {
-            return Result.fail("用户不存在");
+            //用户不存在
+            return Result.failCode("00000001");
         }
 
         String userId = sysUserPO.getId();
@@ -493,14 +508,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result<String> updateMethod(UpdateMethodDto updateMethodDto) {
         if (updateMethodDto == null) {
-            return Result.fail("参数不能为空");
+            //参数不能为空
+            return Result.failCode("00000045");
         }
         String methodName = updateMethodDto.getMethodName();
         List<FMeasureMethod> methods = fMeasureMethodService.list();
         for (FMeasureMethod fMeasureMethod : methods) {
             String everyMethodName = fMeasureMethod.getMethodName();
             if (everyMethodName.equals(methodName)) {
-                return Result.fail("方法名已存在");
+                //方法名称重复
+                return Result.failCode("00301002");
             }
         }
         String methodId = updateMethodDto.getMethodId();
@@ -509,25 +526,30 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod method = fMeasureMethodService.getOne(eq);
         BeanUtils.copyProperties(updateMethodDto, method);
         fMeasureMethodService.updateById(method);
-        return Result.ok("修改成功");
+                //修改成功
+        return Result.okCode("00101010");
     }
 
     @Override
     public Result updateTask(UpdateTaskDto updateTaskDto) {
         if (updateTaskDto == null) {
-            return Result.fail("参数不能为空");
+            //参数不能为空
+            return Result.failCode("00306003");
         }
         String taskId = updateTaskDto.getTaskId();
         FMeasureTask byId = fMeasureTaskService.getById(taskId);
         if (byId == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.failCode("00000004");
         }
         byId.setTaskName(updateTaskDto.getTaskName());
         boolean update = fMeasureTaskService.updateById(byId);
         if (update) {
-            return Result.ok("修改成功");
+            //修改成功
+            return Result.okCode("00101010");
         } else {
-            return Result.fail("修改失败");
+            //修改失败
+            return Result.failCode("00101008");
         }
 
     }
@@ -537,23 +559,27 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
         FInputParam newInputParam = dto.getNewInputParam();
         if (newInputParam == null || !StringUtils.hasText(newInputParam.getResultIdentity())) {
-            return Result.fail("请输入参数！");
+            //请输入参数！
+            return Result.failCode("00101009");
         }
 
         if (newInputParam.getParamName().length() >= 256) {
-            return Result.fail("名称格式错误");
+            //名称格式错误
+            return Result.failCode("00000020");
         }
 
         String methodMark = newInputParam.getResultIdentity();
         if (!Constants.PARAM_PATTERN.matcher(methodMark).matches()) {
-            return Result.fail("标识格式错误：必须以大写字母开头，后跟1-10位数字");
+            //标识格式错误：必须以大写字母开头，后跟1-10位数字
+            return Result.failCode("0010100A");
         }
 
         if (dto.getInputParamList() != null && !dto.getInputParamList().isEmpty()) {
 
             for (FInputParam param : dto.getInputParamList()) {
                 if (param.getResultIdentity().equals(newInputParam.getResultIdentity())) {
-                    return Result.fail("标识已存在");
+                    //标识已存在
+                    return Result.failCode("0010100B");
                 }
             }
         }
@@ -568,7 +594,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FPreCountResultParam newFormula = checkFormulaDto.getNewFormula();
 
         if (newFormula == null || !StringUtils.hasText(newFormula.getFormulaText())) {
-            return Result.fail("请输入公式！");
+            //请输入公式！
+            return Result.failCode("0010100C");
         }
 
         if (!StringUtils.hasText(newFormula.getResultName())) {
@@ -582,7 +609,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         List<FInputParam> inputParamList = checkFormulaDto.getInputParamList();
         if (inputParamList == null || inputParamList.isEmpty()) {
-            return Result.fail("请先设置输入参数！");
+            //请先设置输入参数！
+            return Result.failCode("0010100D");
         }
 
         List<String> paramList = new ArrayList<>();
@@ -626,12 +654,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result obtainReportParameters(String taskId, String analysisId) {
 
         if ((taskId == null)) {
-            return Result.fail("任务id不能为空");
+            //任务id不能为空
+            return Result.failCode("00000003");
         }
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.failCode("00000004");
         }
 
         if (task.getMeasureType().equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())) {
@@ -911,7 +941,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             // 根据任务中的方法key查询方法
             FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
-                return Result.fail("方法不存在");
+                //没有找到该方法
+                return Result.failCode("00000009");
             }
             List<String> analysisIdList = new ArrayList<>(Arrays.asList(analysisId.split(",")));
             FMeasureData data = null;
@@ -919,7 +950,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 // 根据分析iD查询分析数据
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisIdList.get(0));
                 if (analysisData == null) {
-                    return Result.fail("分析数据不存在");
+                    //没有找到该分析数据
+                    return Result.failCode("0000003D");
                 }
                 if (analysisData.getMeasureDataId() != null)
                     data = fMeasureDataService.getById(analysisData.getMeasureDataId());
@@ -963,7 +995,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             // 根据任务中的方法key查询方法
             FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
-                return Result.fail("方法不存在");
+                //没有找到该方法
+                return Result.failCode("0000004D");
             }
             List<String> analysisIdList = new ArrayList<>(Arrays.asList(analysisId.split(",")));
             FMeasureData data = null;
@@ -971,7 +1004,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 // 根据分析iD查询分析数据
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisIdList.get(0));
                 if (analysisData == null) {
-                    return Result.fail("分析数据不存在");
+                    //没有找到该分析数据
+                    return Result.failCode("0000003D");
                 }
                 if (analysisData.getMeasureDataId() != null)
                     data = fMeasureDataService.getById(analysisData.getMeasureDataId());
@@ -1025,16 +1059,19 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result queryReportAllParameters(String taskId, String sampleId, String serialNumber) {
         // 校验任务id
         if (StringUtils.isEmpty(taskId)) {
-            return Result.fail("请选择任务");
+            //请选择任务
+            return Result.failCode("00000006");
         }
         // 校验样品id
         if (StringUtils.isEmpty(sampleId)) {
-            return Result.fail("请选择样品");
+            //请选择样品
+            return Result.failCode("0000000A");
         }
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.failCode("00000004");
         }
         // 根据任务中的所属项目的Key查询项目
 //        FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
@@ -1044,12 +1081,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 根据任务中的方法key查询方法
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.failCode("00000009");
         }
         // 根据样品id查询样品数据
         FMeasureSample sample = fMeasureSampleService.getById(sampleId);
         if (sample == null) {
-            return Result.fail("样品不存在");
+            //样品不存在
+            return Result.failCode("0000000B");
         }
         // 编写查询测量的条件
         QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
@@ -1062,7 +1101,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         wrapper.last("limit 1");
         FMeasureData measureData = fMeasureDataService.getOne(wrapper);
         if (measureData == null) {
-            return Result.fail("未找到该测量数据");
+            //未找到该测量数据
+            return Result.failCode("00301013");
         }
         // 编写分析的查询条件
         QueryWrapper<FMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
@@ -1074,7 +1114,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         analysisWrapper.last("limit 1");
         FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(analysisWrapper);
         if (analysisData == null) {
-            return Result.fail("没有找到该分析数据");
+            //没有找到该分析数据
+            return Result.failCode("00301013");
         }
         // 根据分析id查询分析图片数据
         QueryWrapper<FMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
@@ -1082,7 +1123,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         attachmentWrapper.last("limit 1");
         FMeasureAnalysisImage attachment = fMeasureAnalysisImageService.getOne(attachmentWrapper);
         if (attachment == null) {
-            return Result.fail("没有找到对应的图片数据");
+            //没有找到对应的图片数据
+            return Result.failCode("0000000C");
         }
         // 根据任务中测量类型返回对应的参数信息
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(task.getMeasureType());
@@ -1160,7 +1202,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 return Result.ok(vo);
             }
             default: {
-                return Result.fail("未知的测量类型");
+                //未知的测量类型
+                return Result.failCode("0000000D");
             }
         }
     }
@@ -1200,16 +1243,19 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits) {
 
         if (!StringUtils.hasText(taskId)) {
-            return Result.fail("请选择任务");
+            //请选择任务
+            return Result.failCode("00000006");
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.failCode("00000004");
         }
         // 根据任务id查询方法,再从json转换为对象方法参数
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.failCode("00000009");
         }
 
         Integer digit = Constants.DEFAULT_DECIMAL_NUM;
@@ -1433,7 +1479,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
 
             default:
-                return Result.fail("类型错误,请重新选择");
+                //类型错误,请重新选择
+                return Result.failCode("00000005");
         }
     }
 
@@ -1492,7 +1539,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 //        return Result.ok(false);
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.failCode("00000004");
         }
         Integer sampleAutoNum = task.getSampleAutoNum();
         if (sampleAutoNum == null) {
@@ -1539,7 +1587,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             boolean save = fMeasureSampleService.save(newSample);
             if (!save) {
-                return Result.fail("保存失败");
+                //保存失败
+                return Result.failCode("00300008");
             }
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
@@ -1584,7 +1633,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             boolean save = fMeasureSampleService.save(newSample);
             if (!save) {
-                return Result.fail("保存失败");
+                //保存失败
+                return Result.failCode("00300008");
             }
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
@@ -1594,7 +1644,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         task.setSampleAutoNum(sampleAutoNum);
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
-            return Result.fail("更新失败");
+            //更新失败
+            return Result.failCode("00000048");
         }
         R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
         if (poolInfo.getSuccess()) {
@@ -1624,7 +1675,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.failCode("00000004");
         }
 
         if (!StringUtils.hasText(task.getTableInfo())) {
@@ -1676,7 +1728,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
         FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
         if (configPO == null) {
-            return Result.fail("未找到样品池信息");
+            //未找到样品池信息
+            return Result.failCode("00101011");
         }
 
         if (configPO.getIsAutoChangePool()) {
@@ -1686,7 +1739,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 保存新样品
         boolean save = fMeasureSampleService.save(sample);
         if (!save) {
-            return Result.fail("创建样品失败");
+            //创建样品失败
+            return Result.failCode("00101012");
         }
 
         // 将新样品加入任务样品列表
@@ -1710,7 +1764,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 更新任务
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
-            return Result.fail("更新任务失败");
+            //更新任务失败
+            return Result.failCode("0010100F");
         }
 
         return Result.ok(true);
@@ -1731,7 +1786,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Override
     public Result delMethod(String methodId) {
         if (!StringUtils.hasText(methodId)) {
-            return Result.fail("参数不能为空");
+            //参数不能为空
+            return Result.failCode("00000045");
         }
         QueryWrapper<FMeasureTask> wrapper = new QueryWrapper<>();
         wrapper.eq("method_key", methodId);
@@ -1739,11 +1795,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         wrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(wrapper, false);
         if (!ObjectUtils.isEmpty(task)) {
-            return Result.fail("存在与该历史方法相关联的历史文件，请删除关联历史文件之后进行方法删除！！！");
+            //存在与该历史方法相关联的历史文件，请删除关联历史文件之后进行方法删除！！！
+            return Result.failCode("0010100E");
         }
         boolean b = fMeasureMethodService.removeById(methodId);
         if (!b) {
-            return Result.fail("更新任务失败");
+            //更新任务失败
+            return Result.failCode("0010100F");
         }
         return Result.ok(true);
     }
@@ -1763,7 +1821,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         String taskName = copyParam.getTaskName();
         String taskId = copyParam.getTaskId();
         if (com.baomidou.mybatisplus.core.toolkit.StringUtils.isBlank(taskId)) {
-            return Result.fail("拷贝失败,传入taskId不能为空！！！");
+            //拷贝失败,传入taskId不能为空！！！
+            return Result.failCode("00101013");
         }
         rationConciseService.saveButton(copyParam.getTaskId(), copyParam.getUpdateBy());
         try {
@@ -1776,10 +1835,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             wrapper.eq(FMeasureTask::getTaskName, taskName)
                             .eq(FMeasureTask::getMeasureType, task.getMeasureType());
             if (fMeasureTaskService.count(wrapper) > 0) {
-                return Result.fail("任务名称已存在！！！");
+                //任务名称重复
+                return Result.failCode("0000004D");
             }
             if (ObjectUtils.isEmpty(task)) {
-                return Result.fail("未找到任务！！！");
+                //没有找到该任务
+                return Result.failCode("00000004");
             }
             //自定义任务的ID
             String uuid = UUID.randomUUID().toString().replace("-", "");
@@ -1860,10 +1921,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             task.setIsSave("0");
             task.setCreateTime(LocalDateTime.now());
             fMeasureTaskService.save(task);
-            return Result.ok("拷贝成功");
+            //拷贝成功
+            return Result.okCode("00101014");
 
         } catch (Exception e) {
-            return Result.fail("拷贝失败");
+            //拷贝失败
+            return Result.failCode("00101015");
         }
 
     }

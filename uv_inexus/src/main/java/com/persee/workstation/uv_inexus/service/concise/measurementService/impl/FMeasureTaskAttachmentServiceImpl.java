@@ -38,7 +38,8 @@ public class FMeasureTaskAttachmentServiceImpl extends ServiceImpl<FMeasureTaskA
         if (attachment != null) {
             return R.ok(attachment);
         }
-        return R.fail("未找到记录");
+        //未找到记录
+        return R.fail("00100025");
     }
 
     @Override

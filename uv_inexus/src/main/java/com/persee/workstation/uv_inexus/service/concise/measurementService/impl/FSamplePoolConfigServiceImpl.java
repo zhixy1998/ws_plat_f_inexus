@@ -135,19 +135,22 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
     public R<Boolean> updateSamplePoolInfo(FSamplePoolInfoChangeDto changeDto) {
         if (!StringUtils.hasText(changeDto.getDeviceSerialNumber())) {
             log.info("未连接仪器");
-            return R.fail("未连接仪器");
+            //未连接仪器
+            return R.failCode("0000001D");
         }
 
         if (!StringUtils.hasText(changeDto.getUpdateBy())) {
             log.info("缺少更新人信息");
-            return R.fail("未登录");
+            //请登录后操作！
+            return R.failCode("00307004");
         }
 
         LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, changeDto.getDeviceSerialNumber());
         FSamplePoolConfigPO po = dao.selectOne(query);
         if (po == null) {
-            return R.fail("未找到该仪器附件配置");
+            //未找到该仪器附件配置
+            return R.failCode("00106001");
         }
 
         if (!po.getIsAutoChangePool() && changeDto.getIsAutoChangePool() != null && changeDto.getIsAutoChangePool()) {
@@ -167,7 +170,8 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             if (StringUtils.hasText(po.getPoolInfo())) {
                 List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
                 if (list == null || list.size() <= 1) {
-                    return R.fail("没有切换的样品池");
+                    //没有切换的样品池
+                    return R.failCode("00106002");
                 }
             }
 
@@ -190,12 +194,14 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             po.setPoolInfo(JSON.toJSONString(list));
         } else {
             if (changeDto.getPoolStatus() != null || changeDto.getPoolPurpose() != null) {
-                return R.fail("请选择要操作的样品池");
+                //请选择要操作的样品池
+                return R.failCode("00106003");
             }
         }
         boolean b = dao.updateById(po) > 0;
         if (!b) {
-            return R.fail("更新失败");
+            //更新失败
+            return R.failCode("00000048");
         }
         if (StringUtils.hasText(changeDto.getTaskId()) && po.getIsAutoChangePool()) {
             List<Integer> usefulLocation = getUsefulLocation(changeDto.getDeviceSerialNumber());
@@ -212,7 +218,8 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
         FSamplePoolConfigPO po = dao.selectOne(query);
         if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
-            return R.fail("未找到该仪器附件配置");
+            //未找到该仪器附件配置
+            return R.fail("00106001");
         }
 
         FSamplePoolInfoVO vo = new FSamplePoolInfoVO();
@@ -249,11 +256,13 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
     public R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy) {
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("未连接仪器");
-            return R.fail("未连接仪器");
+            //未连接仪器
+            return R.failCode("0000001D");
         }
         if (!StringUtils.hasText(updateBy)) {
             log.info("缺少更新人信息");
-            return R.fail("未登录");
+            //请登录后操作
+            return R.fail("00307004");
         }
         LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
@@ -278,7 +287,8 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         if (!stringR.getSuccess()) {
             log.info("设置出错");
             deviceInfoService.releaseDevice(deviceSerialNumber);
-            return R.fail("设置出错");
+            //设置出错
+            return R.failCode("00106004");
         }
         deviceInfoService.releaseDevice(deviceSerialNumber);
         po.setCurrentPoolNum(poolNum);
@@ -287,7 +297,8 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         if (b) {
             return R.ok(true);
         } else {
-            return R.fail("更新失败");
+            //更新失败
+            return R.failCode("00000048");
         }
     }
 

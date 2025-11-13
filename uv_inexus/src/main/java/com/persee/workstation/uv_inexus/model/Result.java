@@ -16,7 +16,6 @@ import lombok.Data;
 
 /**
  * 全局统一返回结果类
- *
  */
 @Data
 public class Result<T> {
@@ -26,6 +25,12 @@ public class Result<T> {
 
     //返回消息
     private String message;
+
+    // 消息码（来自 YAML，例如 '00104004'）
+    private String messageCode;
+
+    // 占位符参数（用于 MessageFormat 格式化）
+    private Object[] obj;
 
     //返回数据
     private T data;
@@ -44,6 +49,17 @@ public class Result<T> {
         Result<T> result = new Result<T>();
         result.setCode(code);
         result.setMessage(message);
+        return result;
+    }
+
+    // 通过消息码与参数构建
+    private static <T> Result<T> build(Integer code, String messageCode, Object... obj) {
+        Result<T> result = new Result<T>();
+        result.setCode(code);
+        result.setMessageCode(messageCode);
+        result.setObj(obj);
+        // 消息的解析与格式化完全交由 ResultMessageAdvice 处理
+        result.setMessage(messageCode);
         return result;
     }
 
@@ -76,12 +92,37 @@ public class Result<T> {
         return build(data, ResultCodeEnum.SUCCESS);
     }
 
+    // 避免与 ok(T data) 发生重载冲突的便捷别名（直接通过 YAML 解析构建）
+    public static<T> Result<T> okCode(String messageCode, Object... obj){
+        return build(ResultCodeEnum.SUCCESS.getCode(), messageCode, obj);
+    }
+
+    public static<T> Result<T> okCode(T data, String messageCode, Object... obj){
+        Result<T> result = build(data);
+        result.setCode(ResultCodeEnum.SUCCESS.getCode());
+        result.setMessageCode(messageCode);
+        result.setObj(obj);
+        // 消息的解析与格式化完全交由 ResultMessageAdvice 处理
+        result.setMessage(messageCode);
+        return result;
+    }
+
     public static<T> Result<T> fail(){
         return Result.fail(null);
     }
 
     public static<T> Result<T> fail(String message){
         return Result.fail(ResultCodeEnum.FAIL.getCode(), message);
+    }
+
+    // 操作失败（通过消息码与参数）
+    public static<T> Result<T> fail(String messageCode, Object... obj){
+        return build(ResultCodeEnum.FAIL.getCode(), messageCode, obj);
+    }
+
+    // 失败便捷别名，统一调用风格
+    public static<T> Result<T> failCode(String messageCode, Object... obj){
+        return fail(messageCode, obj);
     }
 
     /**
@@ -109,6 +150,16 @@ public class Result<T> {
 
     public Result<T> code(Integer code){
         this.setCode(code);
+        return this;
+    }
+
+    public Result<T> messageCode(String messageCode){
+        this.setMessageCode(messageCode);
+        return this;
+    }
+
+    public Result<T> obj(Object... obj){
+        this.setObj(obj);
         return this;
     }
 }

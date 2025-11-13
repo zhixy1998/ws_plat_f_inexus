@@ -1650,6 +1650,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         for (String xStr : paramDto.getGaugePoints()) {
             String normX = normalizeNumberString(xStr);
             if (!rawXSet.contains(normX)) {
+                //("xxxxxxxx",xStr)
                 return Result.fail("波长 " + xStr + " 不存在，请重新选择");
             }
         }
