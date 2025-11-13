@@ -18,11 +18,13 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserLoginService;
 import com.persee.workstation.uv_inexus.util.tokenUtil.JWTUtils;
+import com.persee.workstation.uv_inexus.utils.AESencryption.AESEncryptionUtil;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
 import com.persee.workstation.uv_inexus.utils.PasswordUtils.PasswordUtils;
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.util.StringUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -66,8 +68,9 @@ public class SysUserLoginServiceImpl implements SysUserLoginService {
 
         // 4. 密码校验：用PasswordUtils匹配（明文 vs BCrypt加密密码）→ 核心修复！
         String encodedPassword = userPO.getPassword(); // 数据库中存储的BCrypt加密密码
-        boolean isPasswordMatch = PasswordUtils.matches(rawPassword, encodedPassword);
-        if (!isPasswordMatch) {
+        boolean b = org.apache.commons.codec.binary.StringUtils.equals(encodedPassword, rawPassword);
+//        boolean isPasswordMatch = PasswordUtils.matches(rawPassword, encodedPassword);
+        if (!b) {
             log.warn("登录失败：密码错误，username={}", username);
             return R.fail("密码错误");
         }
