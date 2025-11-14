@@ -41,8 +41,6 @@ public interface DeviceManageService {
 
     Boolean softClose(DeviceSoftCloseDTO closeDTO);
 
-    R<Boolean> closeOrOpenLamp(String lampType, Integer status);
-
     /**
      * 断开连接
      */
