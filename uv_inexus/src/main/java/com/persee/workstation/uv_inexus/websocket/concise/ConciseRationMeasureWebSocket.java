@@ -733,22 +733,25 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         if (fittingInfo != null && fittingInfo.getCoefficients() != null) {
                             String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType(), digit);
 
-                            ans = rationService.fitDataRounding(ans, parameter);
-                            FRationCountDataInfo valueData = new FRationCountDataInfo();
-                            valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-                            valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                            valueData.setColValue(ans);
-                            measureAbsDataList.add(valueData);
+                            if (ans != null) {
+                                ans = rationService.fitDataRounding(ans, parameter);
+                                FRationCountDataInfo valueData = new FRationCountDataInfo();
+                                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                                valueData.setColValue(ans);
+                                measureAbsDataList.add(valueData);
 
-                            measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
+                                measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
 
-                            JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("sampleId", specimen.getSpecimenKey());
-                            jsonObject.put("key", valueData.getIdentity());
-                            jsonObject.put("value", valueData.getColValue());
-                            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                                JSONObject jsonObject = new JSONObject();
+                                jsonObject.put("sampleId", specimen.getSpecimenKey());
+                                jsonObject.put("key", valueData.getIdentity());
+                                jsonObject.put("value", valueData.getColValue());
+                                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
-                            sendPoint(session, DataCountUtil.addZero(Double.valueOf(valueData.getColValue()), digit), String.valueOf(countValue), parameter);
+                                sendPoint(session, DataCountUtil.addZero(Double.valueOf(valueData.getColValue()), digit), String.valueOf(countValue), parameter);
+
+                            }
 
                         }
                         saveDataInfo.setCountData(measureAbsDataList);
@@ -849,19 +852,22 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             }
             //拟合浓度计算
             String valued = rationService.valueCalculate(curveData, Double.valueOf(toCountData.getColValue()), parameter.getEquationType(), digit);
-            valued = rationService.fitDataRounding(valued, parameter);
 
-            FRationCountDataInfo valueData = new FRationCountDataInfo();
-            valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-            valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-            valueData.setColValue(valued);
-            newData.add(valueData);
+            if (valued != null) {
+                valued = rationService.fitDataRounding(valued, parameter);
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("sampleId", specimen.getSpecimenKey());
-            jsonObject.put("key", valueData.getIdentity());
-            jsonObject.put("value", valueData.getColValue());
-            session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+                FRationCountDataInfo valueData = new FRationCountDataInfo();
+                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                valueData.setColValue(valued);
+                newData.add(valueData);
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", specimen.getSpecimenKey());
+                jsonObject.put("key", valueData.getIdentity());
+                jsonObject.put("value", valueData.getColValue());
+                session.sendMessage(new TextMessage(jsonObject.toJSONString()));
+            }
 
             //公式计算---待定
             //TODO 公式计算
