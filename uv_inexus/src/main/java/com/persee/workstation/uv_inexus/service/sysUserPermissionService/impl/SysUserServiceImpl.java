@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.persee.workstation.uv_inexus.utils.AESencryption.HmacMD5Util;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -85,6 +86,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
             return Result.fail("用户名已存在");
         }
 
+        saveDTO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
         // 2. 校验小组是否存在
         String groupId = saveDTO.getGroupId();
         if (groupId == null || groupId.isEmpty()) {
