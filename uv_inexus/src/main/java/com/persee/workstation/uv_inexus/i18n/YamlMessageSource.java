@@ -29,6 +29,7 @@ public class YamlMessageSource {
 
     private static final String PATH_ZH_CN = "i18n/messages_zh_CN.yaml";
     private static final Locale LOCALE_ZH_CN = Locale.SIMPLIFIED_CHINESE;
+    private static volatile Map<String, String> STATIC_MESSAGES;
 
     private Map<String, String> messages;
 
@@ -64,6 +65,31 @@ public class YamlMessageSource {
     /** 便捷重载：不提供默认消息时，未命中则返回 code。 */
     public String getMessage(String code, Object... args) {
         return getMessage(code, args, null);
+    }
+
+    public static String getMessageStatic(String code, Object[] args, String defaultMessage) {
+        Map<String, String> m = STATIC_MESSAGES;
+        if (m == null) {
+            synchronized (YamlMessageSource.class) {
+                if (STATIC_MESSAGES == null) {
+                    STATIC_MESSAGES = loadMessagesStatic(PATH_ZH_CN);
+                }
+                m = STATIC_MESSAGES;
+            }
+        }
+        String pattern = (m != null) ? m.get(code) : null;
+        if (pattern == null) {
+            return defaultMessage != null ? defaultMessage : code;
+        }
+        if (args == null || args.length == 0) {
+            return pattern;
+        }
+        MessageFormat mf = new MessageFormat(pattern, LOCALE_ZH_CN);
+        return mf.format(args);
+    }
+
+    public static String getMessageStatic(String code, Object... args) {
+        return getMessageStatic(code, args, null);
     }
 
     /** 暴露原始消息（不可变），仅来自 zh_CN 包。 */
@@ -105,6 +131,36 @@ public class YamlMessageSource {
             System.out.println("DEBUG: Exception while loading YAML: " + ex.getMessage());
             ex.printStackTrace();
             // 解析异常时返回空映射，避免影响主流程
+            return Collections.emptyMap();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, String> loadMessagesStatic(String classpathLocation) {
+        try (InputStream is = Thread.currentThread().getContextClassLoader()
+                .getResourceAsStream(classpathLocation)) {
+            if (is == null) {
+                return Collections.emptyMap();
+            }
+            Yaml yaml = new Yaml();
+            Object rootObj = yaml.load(is);
+            if (!(rootObj instanceof Map)) {
+                return Collections.emptyMap();
+            }
+            Map<String, Object> root = (Map<String, Object>) rootObj;
+            Object messagesObj = root.get("messages");
+            if (!(messagesObj instanceof Map)) {
+                return Collections.emptyMap();
+            }
+            Map<String, Object> raw = (Map<String, Object>) messagesObj;
+            Map<String, String> out = new LinkedHashMap<>(raw.size());
+            for (Map.Entry<String, Object> e : raw.entrySet()) {
+                String k = String.valueOf(e.getKey());
+                String v = String.valueOf(e.getValue());
+                out.put(k, v);
+            }
+            return Collections.unmodifiableMap(out);
+        } catch (Exception ex) {
             return Collections.emptyMap();
         }
     }
