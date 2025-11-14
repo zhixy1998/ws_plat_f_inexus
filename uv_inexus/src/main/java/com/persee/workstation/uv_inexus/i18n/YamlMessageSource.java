@@ -38,12 +38,7 @@ public class YamlMessageSource {
         this.messages = loadMessages(PATH_ZH_CN);
         // 调试信息：输出加载的消息数量
         System.out.println("DEBUG: YamlMessageSource initialized with " + (messages != null ? messages.size() : 0) + " messages");
-        // 检查特定消息代码是否存在
-        if (messages != null && messages.containsKey("00307005")) {
-            System.out.println("DEBUG: Message code 00307005 found: " + messages.get("00307005"));
-        } else {
-            System.out.println("DEBUG: Message code 00307005 NOT found in YAML");
-        }
+
     }
 
     /**
