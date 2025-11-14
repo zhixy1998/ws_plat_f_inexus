@@ -60,7 +60,7 @@ import java.util.stream.Collectors;
 @Component
 public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     // 创建日志记录器，用于记录类中的日志信息
-    private static final Logger log = LoggerFactory.getLogger(TimingWebSocket.class);
+    private static final Logger log = LoggerFactory.getLogger(ConciseBaseLineWebSocket.class);
 
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
@@ -74,7 +74,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
 
     private String ip;
-
     private String deviceSerialNumber;
 
     // 设备占用状态
@@ -83,6 +82,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     // 测量状态
     private boolean measureStatus = false;
 
+    // 用于存储极快扫描模式下的波长映射
+    private Map<String, Set<Double>> processedWavelengths = new ConcurrentHashMap<>();
 
     @Autowired
     private SpectrumConciseService spectrumService;
@@ -120,7 +121,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
         // 测量状态
         measureStatus = false;
-        System.out.println("客户端进入: " + session.getId() + " 时间: " + LocalDateTime.now());
+        log.info("客户端进入: " + session.getId() + " 时间: " + LocalDateTime.now());
         sessions.put(session.getId(), session);
 
         // 往前端推送数据的线程
@@ -129,17 +130,16 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 runBusinessLogic(session);
             } catch (InterruptedException e) {
                 // 线程被中断，立即停止
-                System.out.println("任务被中断: " + session.getId());
+                log.info("任务被中断: " + session.getId());
                 sendAndClose(session, "操作已取消，连接关闭");
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("基线任务执行异常", e);
                 sendAndClose(session, "执行异常: " + e.getMessage());
             }
         });
 
         taskThreads.put(session.getId(), taskThread);
         taskThread.start();
-
     }
 
     /**
@@ -152,40 +152,40 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
-        System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
+        log.info("收到消息: " + session.getId() + " -> " + message.getPayload());
 
         try {
             if (message.getPayload().equals("close")) {
-
                 Thread thread = taskThreads.get(session.getId());
                 // 强制停止线程
-                thread.interrupt();
-                taskThreads.remove(session.getId());
+                if (thread != null) {
+                    thread.interrupt();
+                    taskThreads.remove(session.getId());
+                }
                 if (measureStatus) {
-
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()) {
                         log.info("停止成功");
                     } else {
                         log.info("停止失败");
                     }
-
                 }
-
             }
         } catch (Exception e) {
+            log.error("处理停止消息异常", e);
             throw new RuntimeException(e);
         } finally {
-            log.error("---停止成功-释放线程" );
+            log.info("停止成功-释放资源");
             session.sendMessage(new TextMessage("停止成功"));
             sessions.remove(session.getId());
             session.close();
             if (occupancyStatus) {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
+            // 清理极快扫描模式的数据
+            processedWavelengths.remove(session.getId());
         }
     }
-
 
     /**
      * 连接异常时触发
@@ -199,15 +199,17 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         try {
             session.close();
         } catch (IOException e) {
+            log.error("关闭会话异常", e);
             Thread.currentThread().interrupt();
             return;
         } finally {
-            log.error("!!!连接异常-释放线程" );
+            log.error("连接异常-释放资源");
             deviceInfoService.releaseDevice(deviceSerialNumber);
+            // 清理极快扫描模式的数据
+            processedWavelengths.remove(session.getId());
         }
-        System.out.println("连接异常: " + exception.getMessage());
+        log.error("连接异常: " + exception.getMessage());
     }
-
 
     /**
      * 重写afterConnectionClosed方法，用于处理WebSocket连接关闭后的操作
@@ -217,26 +219,35 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
+        log.info("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
         sessions.remove(session.getId());
+
         if (Constants.sendMeasureThread != null) {
             Constants.sendMeasureThread.interrupt();
         }
+
         // 中断正在执行的任务
         Future<?> future = runningTasks.remove(session.getId());
         if (future != null) {
             future.cancel(true);
         }
+
+        Thread taskThread = taskThreads.remove(session.getId());
+        if (taskThread != null) {
+            taskThread.interrupt();
+        }
+
         exceptionHandling();
 
+        // 清理极快扫描模式的数据
+        processedWavelengths.remove(session.getId());
 
         try {
             session.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("关闭会话异常", e);
         }
     }
-
 
     /**
      * 发送消息并关闭连接
@@ -253,10 +264,11 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
             session.close();
+            // 清理极快扫描模式的数据
+            processedWavelengths.remove(session.getId());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("发送消息并关闭连接异常", e);
         }
-
     }
 
     /**
@@ -270,13 +282,12 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
             session.close();
+            // 清理极快扫描模式的数据
+            processedWavelengths.remove(session.getId());
         } catch (IOException e) {
-            handleTransportError(session, e);
-            Thread.currentThread().interrupt();
-            return;
+            log.error("发送关闭消息异常", e);
         }
     }
-
 
     private void runBusinessLogic(WebSocketSession session) throws InterruptedException {
         // 检查线程中断
@@ -317,56 +328,70 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         FMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             sendAndClose(session, "方法不存在");
+            return;
         }
         // 将方法参数从JSON转换为FSpectrumParameter对象
         FSpectrumParameter param = JSONObject.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
 
         Constants.instrumentData.clear();
+        Constants.measurd_data.clear();
         List<ChangeParam> dataList = new ArrayList<>();
+
         checkInterrupted(session);
         ip = deviceInfoService.getIp(deviceSerialNumber);
         Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
-        if (param.getScanSpeed().equals("3")){
+
+        // 判断是否为极快扫描模式
+        boolean isFastScan = "3".equals(param.getScanSpeed());
+        if (isFastScan) {
             command = buildCommand(SetParamEnum.BaseLineFast, new Object[]{});
+            // 初始化极快扫描模式的数据结构
+            processedWavelengths.put(session.getId(), new HashSet<>());
         }
+
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
         measureStatus = true;
         List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
 
         // 新增日志：开始收集数据
-        log.info("开始基线数据收集, deviceSerialNumber: {}", deviceSerialNumber);
+        log.info("开始基线数据收集, deviceSerialNumber: {}, 模式: {}", deviceSerialNumber, isFastScan ? "极快扫描" : "普通扫描");
+
+        // 获取波长间隔参数
+        double wavelengthInterval = Double.parseDouble(param.getWaveLengthInterval());
+        double startWl = Double.parseDouble(param.getStartWaveLength());
+        double endWl = Double.parseDouble(param.getEndWaveLength());
+        boolean isDescending = startWl > endWl;
 
         while (true) {
             if (Thread.currentThread().isInterrupted()) {
                 log.warn("线程被中断，终止基线任务");
                 return;
             }
-            // 先推实时数据
+
+            // 处理测量数据
             while (!Constants.measurd_data.isEmpty()) {
                 ChangeParam changeParam = Constants.measurd_data.remove(0);
-                JSONObject point = new JSONObject();
-                Double v = formulaUtil.calculateWavelength(Double.parseDouble(changeParam.getWl()), linearSegment);
-                changeParam.setWl(v.toString());
-                point.put("nm", changeParam.getWl());
-                JSONObject payload = new JSONObject();
-                payload.put("data", point);
-                if (session.isOpen()) {
-                    try {
-                        session.sendMessage(new TextMessage(payload.toJSONString()));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                Double originalWavelength = Double.parseDouble(changeParam.getWl());
+                Double correctedWavelength = formulaUtil.calculateWavelength(originalWavelength, linearSegment);
+                changeParam.setWl(correctedWavelength.toString());
+
+                if (isFastScan) {
+                    // 极快扫描模式：进行波长规整化处理
+                    processAndPushFastScanData(session, correctedWavelength, changeParam, wavelengthInterval,
+                            startWl, endWl, isDescending, dataList);
+                } else {
+                    // 普通扫描模式：直接推送原始数据
+                    pushBaselineDataPoint(session, correctedWavelength);
+                    dataList.add(changeParam);
                 }
-                dataList.add(changeParam);
             }
+
             // 检查是否结束
             List<String> snapshot = new ArrayList<>(Constants.instrumentData);
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
                 measureStatus = false;
                 break;
             }
-            // 新增日志：循环迭代，检查数据大小
-            log.debug("当前 instrumentData 大小: {}", Constants.instrumentData.size());
 
             try {
                 Thread.sleep(10);
@@ -384,7 +409,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
 
         log.info("基线数据收集完成, dataList 大小: {}", dataList.size());
-
 
         checkInterrupted(session);
         FMeasureTask task;
@@ -433,7 +457,79 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
         Constants.measureStatus = true;
         sendAndClose(session, "基线成功");
+    }
 
+    /**
+     * 处理极快扫描模式的基线数据
+     */
+    private void processAndPushFastScanData(WebSocketSession session, Double wavelength,
+                                            ChangeParam changeParam, double interval,
+                                            double startWl, double endWl, boolean isDescending,
+                                            List<ChangeParam> dataList) {
+        // 规整化波长
+        Double roundedWavelength = roundToInterval(wavelength, interval);
+
+        // 检查波长是否在有效范围内
+        if (!isInWavelengthRange(roundedWavelength, startWl, endWl, isDescending)) {
+            return;
+        }
+
+        // 检查该波长是否已经处理过（去重）
+        Set<Double> sessionProcessedWavelengths = processedWavelengths.get(session.getId());
+        if (sessionProcessedWavelengths.contains(roundedWavelength)) {
+            return;
+        }
+
+        // 标记该波长已处理
+        sessionProcessedWavelengths.add(roundedWavelength);
+
+        // 推送规整化后的数据
+        pushBaselineDataPoint(session, roundedWavelength);
+
+        // 存储原始数据（使用规整化后的波长）
+        ChangeParam processedParam = new ChangeParam();
+        processedParam.setWl(roundedWavelength.toString());
+        processedParam.setS(changeParam.getS());
+        processedParam.setR(changeParam.getR());
+        dataList.add(processedParam);
+
+        log.debug("极快扫描基线数据 - 原始波长: {}, 规整后波长: {}", wavelength, roundedWavelength);
+    }
+
+    /**
+     * 推送基线数据点
+     */
+    private void pushBaselineDataPoint(WebSocketSession session, Double wavelength) {
+        JSONObject point = new JSONObject();
+        point.put("nm", wavelength);
+        JSONObject payload = new JSONObject();
+        payload.put("data", point);
+        if (session.isOpen()) {
+            try {
+                session.sendMessage(new TextMessage(payload.toJSONString()));
+            } catch (IOException e) {
+                log.error("推送基线数据异常", e);
+            }
+        }
+    }
+
+    /**
+     * 将波长规整化到最近的间隔点
+     */
+    private Double roundToInterval(Double wavelength, double interval) {
+        if (interval == 0) return wavelength;
+        return Math.round(wavelength / interval) * interval;
+    }
+
+    /**
+     * 检查波长是否在有效范围内
+     */
+    private boolean isInWavelengthRange(Double wavelength, double startWl, double endWl, boolean isDescending) {
+        if (isDescending) {
+            return wavelength <= startWl && wavelength >= endWl;
+        } else {
+            return wavelength >= startWl && wavelength <= endWl;
+        }
     }
 
     // 中断检测
@@ -442,7 +538,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             throw new InterruptedException("任务被中断或连接关闭");
         }
     }
-
 
     /**
      * 获取查询参数

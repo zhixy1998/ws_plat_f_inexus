@@ -988,8 +988,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
-            // 仪器型号
-            vo.setInstrumentModel("T600");
+            DeviceInfoPO info = null;
+            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
+                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+
+            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+
+                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
+                vo.setInstrumentModel(info.getDeviceModelName());
+            } else {
+                vo.setInstrumentName("紫外可见分光光度计");
+                vo.setInstrumentModel("T600");
+            }
+
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
             // 根据任务中的方法key查询方法
@@ -1040,7 +1053,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setTaskName(task.getTaskName());
 
             // 仪器型号
-            vo.setInstrumentModel("T600");
+            DeviceInfoPO info = null;
+            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
+                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+
+            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+
+                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
+                vo.setInstrumentModel(info.getDeviceModelName());
+            } else {
+                vo.setInstrumentName("紫外可见分光光度计");
+                vo.setInstrumentModel("T600");
+            }
+
             return Result.ok(vo);
         } else {
             return Result.ok();
