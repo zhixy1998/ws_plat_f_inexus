@@ -23,6 +23,9 @@ public class DetectionResponseInfoVO {
     @ApiModelProperty("连接状态")
     private String connectStatus;
 
+    @ApiModelProperty("仪器当前状态")
+    private String devCurrentStatus;
+
     @ApiModelProperty("灯状态")
     private List<DetectionLampStatus> dataList;
 
@@ -71,6 +74,7 @@ public class DetectionResponseInfoVO {
         if (attachmentKind != null) map.put("attachmentKind", attachmentKind);
         if (totalPoolNum != null) map.put("totalPoolNum", totalPoolNum);
         if (luminosity != null) map.put("luminosity", luminosity);
+        if (devCurrentStatus != null) map.put("devCurrentStatus", devCurrentStatus);
 
         return Collections.unmodifiableMap(map);
     }

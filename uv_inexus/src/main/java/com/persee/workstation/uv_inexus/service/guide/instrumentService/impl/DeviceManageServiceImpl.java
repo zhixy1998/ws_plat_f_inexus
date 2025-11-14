@@ -343,6 +343,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public R<Boolean> closeOrOpenLamp(String lampType, Integer status) {
+        return null;
+    }
+
+    @Override
     public Boolean disConnect(String deviceSerialNumber, String updateBy) {
         DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
         Constants.devConnectInfo.remove(deviceSerialNumber);
