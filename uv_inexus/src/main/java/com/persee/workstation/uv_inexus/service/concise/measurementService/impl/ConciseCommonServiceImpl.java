@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -154,7 +155,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod one = fMeasureMethodService.getOne(wrapper);
         if (one == null) {
             //measureType+没有默认方法
-            return Result.failCode("00101001", measureType);
+            return Result.fail(YamlMessageSource.getMessageStatic("00101001",measureType));
         }
         return Result.ok(one);
 
@@ -166,11 +167,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 对传入的参数进行校验
         if (!StringUtils.hasText(dto.getUpdateBy())) {
             //用户不能为空
-            return Result.failCode("00101002");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101002"));
         }
         if (!StringUtils.hasText(dto.getMeasureType())) {
             //方法类型不能为空
-            return Result.failCode("00100006");
+            return Result.fail(YamlMessageSource.getMessageStatic("00100006"));
         }
 
         if (dto.getPageNum() == null || dto.getPageNum() < 1) {
@@ -239,7 +240,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             ans.setRecords(infoVOList);
         } else {
             //该类型暂未开发
-            return Result.failCode("00101003");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101003"));
         }
         return Result.ok(ans);
     }
@@ -255,20 +256,20 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result querySaveState(String taskId) {
         if (taskId == null) {
             //任务id不能为空
-            return Result.failCode("00000003");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
         }
         SaveStateVo vo = new SaveStateVo();
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //草稿不存在
-            return Result.failCode("00101004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101004"));
         }
         // 根据任务中的方法key查询方法
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
             //没有找到该方法
-            return Result.failCode("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         vo.setTaskName(task.getTaskName());
         vo.setMethodName(method.getMethodName());
@@ -303,7 +304,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result saveDraftButton(String taskId) {
         if (!StringUtils.hasText(taskId)) {
             //请先创建任务
-            return Result.failCode("00101006");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
         }
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
@@ -317,7 +318,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 boolean update1 = fMeasureDataService.updateById(measureData);
                 if (!(update1)) {
                     //保存草稿失败
-                    return Result.failCode("00100005");
+                    return Result.fail(YamlMessageSource.getMessageStatic("00100005"));
                 }
             }
         }
@@ -396,12 +397,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
 
         if (method == null) {
-            //没有找到该方法
-            return Result.failCode("00000009");
+                //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         if (method.getMeasurementType().isEmpty()) {
             //方法类型不存在
-            return Result.failCode("00101005");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101005"));
         }
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(method.getMeasurementType());
         if (measureTypeEnum == null) {
@@ -421,8 +422,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 return Result.ok(parameter);
             }
             default:
-                //暂不支持
-                return Result.failCode("0000002B");
+                    //暂不支持
+                return Result.fail(YamlMessageSource.getMessageStatic("0000002B"));
         }
 
     }
@@ -439,7 +440,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         SysUserPO sysUserPO = userMapper.selectByUsername(userName);
         if (sysUserPO == null) {
             //用户不存在
-            return Result.failCode("00000001");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
 
         String userId = sysUserPO.getId();
@@ -509,63 +510,47 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result<String> updateMethod(UpdateMethodDto updateMethodDto) {
         if (updateMethodDto == null) {
             //参数不能为空
-            return Result.failCode("00000045");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
         }
-        LambdaQueryWrapper<FMeasureMethod> wrapper = new LambdaQueryWrapper<>();
-        wrapper.notIn(FMeasureMethod::getId, updateMethodDto.getMethodId())
-                .eq(FMeasureMethod::getMethodName, updateMethodDto.getMethodName());
-        long count = fMeasureMethodService.count(wrapper);
-        if (count > 0) {
-            //方法名称重复
-            return Result.failCode("00301002");
+        String methodName = updateMethodDto.getMethodName();
+        List<FMeasureMethod> methods = fMeasureMethodService.list();
+        for (FMeasureMethod fMeasureMethod : methods) {
+            String everyMethodName = fMeasureMethod.getMethodName();
+            if (everyMethodName.equals(methodName)) {
+                //方法名称重复
+                return Result.fail(YamlMessageSource.getMessageStatic("00301002"));
+            }
         }
-//        String methodName = updateMethodDto.getMethodName();
-//        List<FMeasureMethod> methods = fMeasureMethodService.list();
-//        for (FMeasureMethod fMeasureMethod : methods) {
-//            String everyMethodName = fMeasureMethod.getMethodName();
-//            if (everyMethodName.equals(methodName)) {
-//                //方法名称重复
-//                return Result.failCode("00301002");
-//            }
-//        }
         String methodId = updateMethodDto.getMethodId();
         LambdaQueryWrapper<FMeasureMethod> fMeasureMethodLambdaQueryWrapper = new LambdaQueryWrapper<>();
         LambdaQueryWrapper<FMeasureMethod> eq = fMeasureMethodLambdaQueryWrapper.eq(FMeasureMethod::getId, methodId);
         FMeasureMethod method = fMeasureMethodService.getOne(eq);
         BeanUtils.copyProperties(updateMethodDto, method);
         fMeasureMethodService.updateById(method);
-        //修改成功
+                //修改成功
         return Result.okCode("00101010");
     }
 
     @Override
     public Result updateTask(UpdateTaskDto updateTaskDto) {
-        LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<FMeasureTask>()
-                .eq(FMeasureTask::getTaskName, updateTaskDto.getTaskName())
-                .notIn(FMeasureTask::getId, updateTaskDto.getTaskId());
-        long count = fMeasureTaskService.count(wrapper);
-        if (count > 0) {
-            //任务名称重复
-            return Result.failCode("00301002");
-        }
         if (updateTaskDto == null) {
             //参数不能为空
-            return Result.failCode("00306003");
+            return Result.fail(YamlMessageSource.getMessageStatic("00306003"));
         }
         String taskId = updateTaskDto.getTaskId();
         FMeasureTask byId = fMeasureTaskService.getById(taskId);
         if (byId == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         byId.setTaskName(updateTaskDto.getTaskName());
         boolean update = fMeasureTaskService.updateById(byId);
         if (update) {
             //修改成功
-            return Result.okCode("00101010");
+            return Result.ok(YamlMessageSource.getMessageStatic("00101010"));
         } else {
             //修改失败
-            return Result.failCode("00101008");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101008"));
         }
 
     }
@@ -576,18 +561,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FInputParam newInputParam = dto.getNewInputParam();
         if (newInputParam == null || !StringUtils.hasText(newInputParam.getResultIdentity())) {
             //请输入参数！
-            return Result.failCode("00101009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101009"));
         }
 
         if (newInputParam.getParamName().length() >= 256) {
             //名称格式错误
-            return Result.failCode("00000020");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000020"));
         }
 
         String methodMark = newInputParam.getResultIdentity();
         if (!Constants.PARAM_PATTERN.matcher(methodMark).matches()) {
             //标识格式错误：必须以大写字母开头，后跟1-10位数字
-            return Result.failCode("0010100A");
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100A"));
         }
 
         if (dto.getInputParamList() != null && !dto.getInputParamList().isEmpty()) {
@@ -595,7 +580,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             for (FInputParam param : dto.getInputParamList()) {
                 if (param.getResultIdentity().equals(newInputParam.getResultIdentity())) {
                     //标识已存在
-                    return Result.failCode("0010100B");
+                    return Result.fail(YamlMessageSource.getMessageStatic("0010100B"));
                 }
             }
         }
@@ -611,22 +596,25 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
         if (newFormula == null || !StringUtils.hasText(newFormula.getFormulaText())) {
             //请输入公式！
-            return Result.failCode("0010100C");
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100C"));
         }
 
         if (!StringUtils.hasText(newFormula.getResultName())) {
-            return Result.fail("请输入显示标题！");
+            //请输入显示标题!
+            return Result.fail(YamlMessageSource.getMessageStatic("00101016"));
         }
-        if (!StringUtils.hasText(newFormula.getResultIdentity())) {
-            return Result.fail("请输入结果标识！");
+        if (!StringUtils.hasText(newFormula.getResultIdentity()) ){
+            //请输入结果标识！
+            return Result.fail(YamlMessageSource.getMessageStatic("00101017"));
         }
         if (!StringUtils.hasText(newFormula.getUnit())) {
-            return Result.fail("请输入结果单位！");
+            //请输入结果单位！
+            return Result.fail(YamlMessageSource.getMessageStatic("00101018"));
         }
         List<FInputParam> inputParamList = checkFormulaDto.getInputParamList();
         if (inputParamList == null || inputParamList.isEmpty()) {
             //请先设置输入参数！
-            return Result.failCode("0010100D");
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100D"));
         }
 
         List<String> paramList = new ArrayList<>();
@@ -671,13 +659,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
         if ((taskId == null)) {
             //任务id不能为空
-            return Result.failCode("00000003");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
         }
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         if (task.getMeasureType().equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())) {
@@ -958,7 +946,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
                 //没有找到该方法
-                return Result.failCode("00000009");
+                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
             }
             List<String> analysisIdList = new ArrayList<>(Arrays.asList(analysisId.split(",")));
             FMeasureData data = null;
@@ -967,7 +955,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisIdList.get(0));
                 if (analysisData == null) {
                     //没有找到该分析数据
-                    return Result.failCode("0000003D");
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
                 }
                 if (analysisData.getMeasureDataId() != null)
                     data = fMeasureDataService.getById(analysisData.getMeasureDataId());
@@ -975,8 +963,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-            vo.setStartWaveLength(param.getStartWaveLength() + "nm");
-            vo.setEndWaveLength(param.getEndWaveLength() + "nm");
+            vo.setStartWaveLength(param.getStartWaveLength()+"nm");
+            vo.setEndWaveLength(param.getEndWaveLength()+"nm");
             vo.setScanSpeed(param.getScanSpeed());
             vo.setTimeInterval(param.getTimeInterval());
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
@@ -1004,28 +992,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
-            DeviceInfoPO info = null;
-            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
-                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
-            }
-
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
-
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
-            }
-
+            // 仪器型号
+            vo.setInstrumentModel("T600");
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
             // 根据任务中的方法key查询方法
             FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
                 //没有找到该方法
-                return Result.failCode("0000004D");
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
             }
             List<String> analysisIdList = new ArrayList<>(Arrays.asList(analysisId.split(",")));
             FMeasureData data = null;
@@ -1034,7 +1009,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisIdList.get(0));
                 if (analysisData == null) {
                     //没有找到该分析数据
-                    return Result.failCode("0000003D");
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
                 }
                 if (analysisData.getMeasureDataId() != null)
                     data = fMeasureDataService.getById(analysisData.getMeasureDataId());
@@ -1043,7 +1018,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             FTimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
-            vo.setInstrumentWavelength(param.getWaveLength() + "nm");
+            vo.setInstrumentWavelength(param.getWaveLength()+"nm");
             vo.setScanTime(param.getScanTime());
             vo.setTimeUnit(param.getScanUnit().equals("0") ? "分" : "秒");
             vo.setTimeInterval(param.getIntervalTime());
@@ -1069,21 +1044,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setTaskName(task.getTaskName());
 
             // 仪器型号
-            DeviceInfoPO info = null;
-            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
-                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
-            }
-
-            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
-
-                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
-                vo.setInstrumentModel(info.getDeviceModelName());
-            } else {
-                vo.setInstrumentName("紫外可见分光光度计");
-                vo.setInstrumentModel("T600");
-            }
-
+            vo.setInstrumentModel("T600");
             return Result.ok(vo);
         } else {
             return Result.ok();
@@ -1103,18 +1064,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         // 校验任务id
         if (StringUtils.isEmpty(taskId)) {
             //请选择任务
-            return Result.failCode("00000006");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
         }
         // 校验样品id
         if (StringUtils.isEmpty(sampleId)) {
             //请选择样品
-            return Result.failCode("0000000A");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000000A"));
         }
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         // 根据任务中的所属项目的Key查询项目
 //        FMeasureProject project =fMeasureProjectService.getById(task.getProjectItemKey());
@@ -1125,13 +1086,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
             //没有找到该方法
-            return Result.failCode("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         // 根据样品id查询样品数据
         FMeasureSample sample = fMeasureSampleService.getById(sampleId);
         if (sample == null) {
             //样品不存在
-            return Result.failCode("0000000B");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
         }
         // 编写查询测量的条件
         QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
@@ -1145,7 +1106,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureData measureData = fMeasureDataService.getOne(wrapper);
         if (measureData == null) {
             //未找到该测量数据
-            return Result.failCode("00301013");
+            return Result.fail(YamlMessageSource.getMessageStatic("00301013"));
         }
         // 编写分析的查询条件
         QueryWrapper<FMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
@@ -1158,7 +1119,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(analysisWrapper);
         if (analysisData == null) {
             //没有找到该分析数据
-            return Result.failCode("00301013");
+            return Result.fail(YamlMessageSource.getMessageStatic("00301013"));
         }
         // 根据分析id查询分析图片数据
         QueryWrapper<FMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
@@ -1167,7 +1128,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureAnalysisImage attachment = fMeasureAnalysisImageService.getOne(attachmentWrapper);
         if (attachment == null) {
             //没有找到对应的图片数据
-            return Result.failCode("0000000C");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000000C"));
         }
         // 根据任务中测量类型返回对应的参数信息
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(task.getMeasureType());
@@ -1246,7 +1207,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             default: {
                 //未知的测量类型
-                return Result.failCode("0000000D");
+                return Result.fail(YamlMessageSource.getMessageStatic("0000000D"));
             }
         }
     }
@@ -1287,18 +1248,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
-            return Result.failCode("00000006");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         // 根据任务id查询方法,再从json转换为对象方法参数
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
             //没有找到该方法
-            return Result.failCode("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
         Integer digit = Constants.DEFAULT_DECIMAL_NUM;
@@ -1479,14 +1440,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         .collect(Collectors.toList());
 
                 // 获取表头
-                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), analysisIdList);
+                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(),analysisIdList);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId,analysisIdList, decimalDigits);
                 if (dataList != null) {
                     vo.setDataList(dataList);
                 }
@@ -1523,7 +1484,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
             default:
                 //类型错误,请重新选择
-                return Result.failCode("00000005");
+                return Result.fail(YamlMessageSource.getMessageStatic("00000005"));
         }
     }
 
@@ -1583,7 +1544,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         Integer sampleAutoNum = task.getSampleAutoNum();
         if (sampleAutoNum == null) {
@@ -1591,13 +1552,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         String description = null;
         if (task.getMeasureType().equals("光谱扫描")) {
-            description = MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
-        } else if (task.getMeasureType().equals("时间扫描")) {
-            description = MeasureTypeEnum.TIME_SCAN.getDescription();
+            description=MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
+        }else if (task.getMeasureType().equals("时间扫描")) {
+            description=MeasureTypeEnum.TIME_SCAN.getDescription();
         } else if (task.getMeasureType().equals("定量测定")) {
-            description = MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
+            description=MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
         } else if (task.getMeasureType().equals("光度测量")) {
-            description = MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
+            description=MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -1605,15 +1566,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             taskSpecimen = new ArrayList<>();
         }
 
-        Result<List<FHeadVO>> listResult = querySampleHeads(taskId, description);
-        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+        Result<List<FHeadVO>> listResult = querySampleHeads(taskId,description);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
             return Result.fail(listResult.getMessage());
         }
         List<FHeadVO> heads = listResult.getData();
         //动态表头
         List<FHeadVO> dynamicHeads = new ArrayList<>();
         heads.forEach(head -> {
-            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())) {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
                 dynamicHeads.add(head);
             }
         });
@@ -1631,7 +1592,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             boolean save = fMeasureSampleService.save(newSample);
             if (!save) {
                 //保存失败
-                return Result.failCode("00300008");
+                return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
@@ -1650,7 +1611,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 }
 
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())) {
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
                     sampleNumList.add(measureSample.getSampleNumber());
                 }
             }
@@ -1661,13 +1622,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             FMeasureSample newSample = new FMeasureSample();
 
             sampleAutoNum = sampleAutoNum + 1;
-            while (sampleNumList.contains("default-" + sampleAutoNum)) {
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
                 sampleAutoNum += 1;
             }
 
             int number = sampleAutoNum;
 
-            newSample.setSampleNumber("default-" + number);
+            newSample.setSampleNumber("default-"+ number);
             newSample.setSampleName("默认样品" + number);
 
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -1677,7 +1638,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             boolean save = fMeasureSampleService.save(newSample);
             if (!save) {
                 //保存失败
-                return Result.failCode("00300008");
+                return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
@@ -1688,7 +1649,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
             //更新失败
-            return Result.failCode("00000048");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
         R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
         if (poolInfo.getSuccess()) {
@@ -1704,7 +1665,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     /**
      * 查询样品表头
-     *
      * @param taskId
      * @param measureType
      * @return
@@ -1720,7 +1680,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         if (!StringUtils.hasText(task.getTableInfo())) {
@@ -1739,7 +1699,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
         }
     }
-
     /**
      * 根据现有样品查找下一个可用的样品编号
      */
@@ -1774,7 +1733,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
         if (configPO == null) {
             //未找到样品池信息
-            return Result.failCode("00101011");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101011"));
         }
 
         if (configPO.getIsAutoChangePool()) {
@@ -1785,7 +1744,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         boolean save = fMeasureSampleService.save(sample);
         if (!save) {
             //创建样品失败
-            return Result.failCode("00101012");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101012"));
         }
 
         // 将新样品加入任务样品列表
@@ -1810,7 +1769,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
             //更新任务失败
-            return Result.failCode("0010100F");
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100F"));
         }
 
         return Result.ok(true);
@@ -1832,7 +1791,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     public Result delMethod(String methodId) {
         if (!StringUtils.hasText(methodId)) {
             //参数不能为空
-            return Result.failCode("00000045");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
         }
         QueryWrapper<FMeasureTask> wrapper = new QueryWrapper<>();
         wrapper.eq("method_key", methodId);
@@ -1841,12 +1800,12 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureTask task = fMeasureTaskService.getOne(wrapper, false);
         if (!ObjectUtils.isEmpty(task)) {
             //存在与该历史方法相关联的历史文件，请删除关联历史文件之后进行方法删除！！！
-            return Result.failCode("0010100E");
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100E"));
         }
         boolean b = fMeasureMethodService.removeById(methodId);
         if (!b) {
             //更新任务失败
-            return Result.failCode("0010100F");
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100F"));
         }
         return Result.ok(true);
     }
@@ -1867,7 +1826,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         String taskId = copyParam.getTaskId();
         if (com.baomidou.mybatisplus.core.toolkit.StringUtils.isBlank(taskId)) {
             //拷贝失败,传入taskId不能为空！！！
-            return Result.failCode("00101013");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101013"));
         }
         rationConciseService.saveButton(copyParam.getTaskId(), copyParam.getUpdateBy());
         try {
@@ -1878,14 +1837,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
             LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(FMeasureTask::getTaskName, taskName)
-                    .eq(FMeasureTask::getMeasureType, task.getMeasureType());
+                            .eq(FMeasureTask::getMeasureType, task.getMeasureType());
             if (fMeasureTaskService.count(wrapper) > 0) {
                 //任务名称重复
-                return Result.failCode("0000004D");
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
             }
             if (ObjectUtils.isEmpty(task)) {
                 //没有找到该任务
-                return Result.failCode("00000004");
+                return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
             }
             //自定义任务的ID
             String uuid = UUID.randomUUID().toString().replace("-", "");
@@ -1967,11 +1926,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             task.setCreateTime(LocalDateTime.now());
             fMeasureTaskService.save(task);
             //拷贝成功
-            return Result.okCode("00101014");
+            return Result.ok(YamlMessageSource.getMessageStatic("00101014"));
 
         } catch (Exception e) {
             //拷贝失败
-            return Result.failCode("00101015");
+            return Result.fail(YamlMessageSource.getMessageStatic("00101015"));
         }
 
     }
@@ -2000,8 +1959,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (analysisData != null) {
             Map<String, String> jsonObject;
             if (StringUtils.hasText(analysisData.getAnalysisParam())) {
-                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>() {
-                });
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
             } else {
                 jsonObject = vo.getData();
             }

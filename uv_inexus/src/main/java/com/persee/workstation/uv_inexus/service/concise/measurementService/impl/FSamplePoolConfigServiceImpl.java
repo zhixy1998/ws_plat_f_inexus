@@ -22,6 +22,7 @@ import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceSamplePoolPurpose;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
@@ -136,13 +137,13 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         if (!StringUtils.hasText(changeDto.getDeviceSerialNumber())) {
             log.info("未连接仪器");
             //未连接仪器
-            return R.failCode("0000001D");
+            return R.fail(YamlMessageSource.getMessageStatic("0000001D"));
         }
 
         if (!StringUtils.hasText(changeDto.getUpdateBy())) {
             log.info("缺少更新人信息");
             //请登录后操作！
-            return R.failCode("00307004");
+            return R.fail(YamlMessageSource.getMessageStatic("00307004"));
         }
 
         LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
@@ -150,7 +151,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         FSamplePoolConfigPO po = dao.selectOne(query);
         if (po == null) {
             //未找到该仪器附件配置
-            return R.failCode("00106001");
+            return R.fail(YamlMessageSource.getMessageStatic("00106001"));
         }
 
         if (!po.getIsAutoChangePool() && changeDto.getIsAutoChangePool() != null && changeDto.getIsAutoChangePool()) {
@@ -171,7 +172,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
                 List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
                 if (list == null || list.size() <= 1) {
                     //没有切换的样品池
-                    return R.failCode("00106002");
+                    return R.fail(YamlMessageSource.getMessageStatic("00106002"));
                 }
             }
 
@@ -195,13 +196,13 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         } else {
             if (changeDto.getPoolStatus() != null || changeDto.getPoolPurpose() != null) {
                 //请选择要操作的样品池
-                return R.failCode("00106003");
+                return R.fail(YamlMessageSource.getMessageStatic("00106003"));
             }
         }
         boolean b = dao.updateById(po) > 0;
         if (!b) {
             //更新失败
-            return R.failCode("00000048");
+            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
         if (StringUtils.hasText(changeDto.getTaskId()) && po.getIsAutoChangePool()) {
             List<Integer> usefulLocation = getUsefulLocation(changeDto.getDeviceSerialNumber());
@@ -257,7 +258,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("未连接仪器");
             //未连接仪器
-            return R.failCode("0000001D");
+            return R.fail(YamlMessageSource.getMessageStatic("0000001D"));
         }
         if (!StringUtils.hasText(updateBy)) {
             log.info("缺少更新人信息");
@@ -288,7 +289,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             log.info("设置出错");
             deviceInfoService.releaseDevice(deviceSerialNumber);
             //设置出错
-            return R.failCode("00106004");
+            return R.fail(YamlMessageSource.getMessageStatic("00106004"));
         }
         deviceInfoService.releaseDevice(deviceSerialNumber);
         po.setCurrentPoolNum(poolNum);
@@ -298,7 +299,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             return R.ok(true);
         } else {
             //更新失败
-            return R.failCode("00000048");
+            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
     }
 

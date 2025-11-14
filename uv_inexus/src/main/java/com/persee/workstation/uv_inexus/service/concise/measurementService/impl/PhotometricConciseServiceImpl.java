@@ -30,6 +30,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
@@ -144,7 +145,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         // 1. 校验光度模式
         if (parameter.getLuminosity() == null || parameter.getLuminosity().trim().isEmpty()) {
             //光度模式不能为空
-            return R.failCode("00105001");
+            return R.fail(YamlMessageSource.getMessageStatic("00105001"));
         }
 
         if (parameter.getLuminosity().equals(WaveLengthEnum.es.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())) {
@@ -152,77 +153,77 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             Integer gain = parameter.getGain();
             if (!StringUtils.hasText(energyLamp)) {
                 //WaveLengthEnum.getName(parameter.getLuminosity())+模式下请选择能量灯并设置增益
-                return R.failCode("00103002",WaveLengthEnum.getName(parameter.getLuminosity()) );
+                return R.fail(YamlMessageSource.getMessageStatic("00103002",WaveLengthEnum.getName(parameter.getLuminosity())));
             }
             if (gain == null) {
                 //WaveLengthEnum.getName(parameter.getLuminosity()) + 模式下请设置增益
-                return R.failCode("00103003",WaveLengthEnum.getName(parameter.getLuminosity()));
+                return R.fail(YamlMessageSource.getMessageStatic("00103003",WaveLengthEnum.getName(parameter.getLuminosity())));
             }
         }
 
         if (WaveLengthEnum.getName(parameter.getLuminosity()) == null) {
             //光度模式选择出错
-            return R.failCode("00103004");
+            return R.fail(YamlMessageSource.getMessageStatic("00103004"));
         }
         // 2. 校验波长值
         if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
             //波长值不能为空
-            return R.failCode("00105003");
+            return R.fail(YamlMessageSource.getMessageStatic("00105003"));
         }
         if (parameter.getWaveLength().size() > 26) {
             //波长值数量必须在1-26个范围内
-            return R.failCode("00103005");
+            return R.fail(YamlMessageSource.getMessageStatic("00103005"));
         }
         for (String waveStr : parameter.getWaveLength()) {
             if (waveStr == null || waveStr.trim().isEmpty()) {
                 //波长值不能包含空值
-                return R.failCode("00103006");
+                return R.fail(YamlMessageSource.getMessageStatic("00103006"));
             }
             try {
                 double waveLength = Double.parseDouble(waveStr);
                 if (waveLength <= 190 || waveLength >= 900) {
                     //"波长值" + waveStr + "必须在190-900范围内"
-                    return R.failCode("00105004",waveStr);
+                    return R.fail(YamlMessageSource.getMessageStatic("00105004",waveStr));
                 }
                 // 校验小数点后最多1位
                 String[] parts = waveStr.split("\\.");
                 if (parts.length > 1 && parts[1].length() > 1) {
                     //"波长值" + waveStr + "小数点后最多保留1位"
-                    return R.failCode("00105005",waveStr);
+                    return R.fail(YamlMessageSource.getMessageStatic("00105005",waveStr));
                 }
             } catch (NumberFormatException e) {
                 //"波长值" + waveStr + "必须为有效的数字"
-                return R.failCode("00105006",waveStr);
+                return R.fail(YamlMessageSource.getMessageStatic("00105006",waveStr));
             }
         }
 
         // 3. 校验重复模式
         if (parameter.getRepetitionPattern() == null || parameter.getRepetitionPattern().trim().isEmpty()) {
             //重复模式不能为空
-            return R.failCode("00103007");
+            return R.fail(YamlMessageSource.getMessageStatic("00103007"));
         }
 
 
         if (!Arrays.asList("单池重复", "不重复").contains(parameter.getRepetitionPattern())) {
             //重复模式只能是rmNone(不重复)、rmCR(单池重复)
-            return R.failCode("00103008");
+            return R.fail(YamlMessageSource.getMessageStatic("00103008"));
         }
 
         // 4. 校验重复次数（单池重复模式下必校验）
         if ("单池重复".equals(parameter.getRepetitionPattern())) {
             if (parameter.getRepetitionTime() == null || parameter.getRepetitionTime().trim().isEmpty()) {
                 //单池重复模式下重复次数不能为空
-                return R.failCode("00103009");
+                return R.fail(YamlMessageSource.getMessageStatic("00103009"));
             }
             try {
                 int repetitionTime = Integer.parseInt(parameter.getRepetitionTime());
                 if (repetitionTime < 2 || repetitionTime > 10) {
                     //重复次数必须在2-10范围内
-                    return R.failCode("0010300A");
+                    return R.fail(YamlMessageSource.getMessageStatic("0010300A"));
                 }
             } catch (NumberFormatException e) {
                 //重复次数必须为有效的整数
-                return R.failCode("0010300B");
+                return R.fail(YamlMessageSource.getMessageStatic("0010300B"));
             }
         }
 
@@ -230,36 +231,36 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if ("单池重复".equals(parameter.getRepetitionPattern())) {
             if (parameter.getTimeInterval() == null || parameter.getTimeInterval().trim().isEmpty()) {
                 //单池重复模式下时间间隔不能为空
-                return R.failCode("0010300C");
+                return R.fail(YamlMessageSource.getMessageStatic("0010300C"));
             }
             try {
                 double timeInterval = Double.parseDouble(parameter.getTimeInterval());
                 if (timeInterval < 0 || timeInterval > 60) {
                     //时间间隔必须在0-60范围内（单位：秒）
-                    return R.failCode("0010300D");
+                    return R.fail(YamlMessageSource.getMessageStatic("0010300D"));
                 }
                 // 校验小数点后最多1位
                 String[] parts = parameter.getTimeInterval().split("\\.");
                 if (parts.length > 1 && parts[1].length() > 1) {
                     //时间间隔小数点后最多保留1位
-                    return R.failCode("0010500F");
+                    return R.fail(YamlMessageSource.getMessageStatic("0010500F"));
                 }
             } catch (NumberFormatException e) {
                 //时间间隔必须为有效的数字
-                return R.failCode("00105010");
+                return R.fail(YamlMessageSource.getMessageStatic("00105010"));
             }
         }
 
         // 8. 校验输入参数（数量限制）
         if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 10) {
             //输入参数数量不能超过10个
-            return R.failCode("0010300E");
+            return R.fail(YamlMessageSource.getMessageStatic("0010300E"));
         }
 
         // 9. 校验待计算结果（数量限制）
         if (parameter.getResultParams() != null && parameter.getResultParams().size() > 5) {
             //待计算结果数量不能超过5个
-            return R.failCode("0010300F");
+            return R.fail(YamlMessageSource.getMessageStatic("0010300F"));
         }
 
         // 10. 校验修约设置（数量限制）
@@ -268,17 +269,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             if (approxParams.size() > 10) {
                 //"最多支持修约10个变量" + approxParams.size()
-                return R.failCode("00103010" ,approxParams.size());
+                return R.fail(YamlMessageSource.getMessageStatic("00103010" ,approxParams.size()));
             }
             for (FRoundingVO approxParam : approxParams) {
 
                 if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
                     //"修约设置" + approxParam.getResultIdentity() + "的修约条件不能为空"
-                    return R.failCode("00103011",approxParam.getResultIdentity());
+                    return R.fail(YamlMessageSource.getMessageStatic("00103011",approxParam.getResultIdentity()));
                 }
                 if (approxParam.getRoundingParams().size() > 10) {
                     //"修约设置" + approxParam.getResultIdentity() + "的修约条件数量不能超过10个"
-                    return R.failCode("00103012",approxParam.getResultIdentity());
+                    return R.fail(YamlMessageSource.getMessageStatic("00103012",approxParam.getResultIdentity()));
                 }
 
                 R<Boolean> r = concisePublicUtilService.checkApproximateRange(approxParam);
@@ -291,7 +292,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         // 11. 校验质控设置（数量限制）
         if (parameter.getQcParams() != null && parameter.getQcParams().size() > 10) {
             //质控设置数量不能超过10个
-            return R.failCode("00103013");
+            return R.fail(YamlMessageSource.getMessageStatic("00103013"));
         }
 
         // 所有校验通过
@@ -303,7 +304,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
             //请填写波长值
-            return Result.failCode("0000000E");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000000E"));
         }
 
         // 创建测量方法表
@@ -318,9 +319,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         boolean save = fMeasureMethodService.save(fMeasureMethod);
         if (save) {
             //创建成功
-            return Result.okCode("0000000F");
+            return Result.ok(YamlMessageSource.getMessageStatic("0000000F"));
         } else {
-            return Result.failCode("00000010");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
         }
     }
 
@@ -334,7 +335,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(methodId)) {
             //请选择方法
-            return Result.failCode("00000002");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
         }
         FMeasureTask oldTask = null;
         if (StringUtils.hasText(taskId)) {
@@ -347,7 +348,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.failCode("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
         SysUserPO sysUserPO = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
@@ -363,11 +364,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setCreateTime(LocalDateTime.now());
         List<FTaskSpecimen> samples = new ArrayList<>();
         task.setSampleKey(JSON.toJSONString(samples));
-        if (oldTask != null) {
-
-            if (StringUtils.hasText(oldTask.getTableInfo())) {
-                task.setTableInfo(oldTask.getTableInfo());
-            }
+        if (oldTask != null && StringUtils.hasText(oldTask.getTableInfo())) {
+            task.setTableInfo(oldTask.getTableInfo());
             if (StringUtils.hasText(oldTask.getZeroParam())) {
                 task.setZeroParam(oldTask.getZeroParam());
             }
@@ -393,7 +391,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             return Result.ok(vo);
         } else {
             //新建失败
-            return Result.failCode("00100001");
+            return Result.fail(YamlMessageSource.getMessageStatic("00100001"));
         }
     }
 
@@ -402,7 +400,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
             //没有可应用的方法参数
-            return Result.failCode("00103014");
+            return Result.fail(YamlMessageSource.getMessageStatic("00103014"));
         }
 
         if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
@@ -516,7 +514,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewPhotometricMethodParamCheckDTO methodDTO) {
 
         if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
-            return Result.failCode("00103015");
+            return Result.fail(YamlMessageSource.getMessageStatic("00103015"));
         }
         if (!StringUtils.hasText(methodDTO.getMeasureType())) {
             methodDTO.setMeasureType(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription());
@@ -526,7 +524,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureMethod method = fMeasureMethodService.getById(methodId);
             if (method == null) {
                 //没有找到该方法
-                return Result.failCode("00000009");
+                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
             }
         }
 
@@ -553,7 +551,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
             if (!save) {
                 //应用失败
-                return Result.failCode("00100002");
+                return Result.fail(YamlMessageSource.getMessageStatic("00100002"));
             }
             methodId = method.getId();
             ans.setMethodName(method.getMethodName());
@@ -585,12 +583,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureMethod method = fMeasureMethodService.getById(methodId);
             method.setMethodUseTime(LocalDateTime.now());
             fMeasureMethodService.updateById(method);
-            R<Boolean> r = setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
-            if (!r.getSuccess()) {
-                return Result.ok(ans);
-            } else {
-                return Result.ok(ans);
-            }
+            setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
+            return Result.ok(ans);
 
         } else {
             task = fMeasureTaskService.getById(methodDTO.getCurrentTaskId());
@@ -652,9 +646,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     newTask.setUserId(userId);
                     newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
-                    if (StringUtils.hasText(task.getTableInfo())) {
-                        newTask.setTableInfo(task.getTableInfo());
-                    }
+                    newTask.setTableInfo(task.getTableInfo());
 
                     newTask.setId(null);
                     newTask.setMethodKey(methodId);
@@ -716,9 +708,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 newTask.setUserId(userId);
                 newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
-                if (StringUtils.hasText(task.getTableInfo())) {
-                    newTask.setTableInfo(task.getTableInfo());
-                }
+                newTask.setTableInfo(task.getTableInfo());
 
                 newTask.setId(null);
                 newTask.setMethodKey(methodId);
@@ -781,7 +771,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (one == null || !StringUtils.hasText(one.getOriginalCalculationData())) {
             log.info("没有测量数据");
             //没有测量数据
-            return R.failCode("00103016");
+            return R.fail(YamlMessageSource.getMessageStatic("00103016"));
         }
 
         int digit = Constants.DEFAULT_DECIMAL_NUM;
@@ -820,30 +810,30 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (!b) {
                 log.warn("更新数据失败");
                 //更新数据失败
-                return R.failCode("00103017");
+                return R.fail(YamlMessageSource.getMessageStatic("00103017"));
             }
         }
         return R.ok(true);
 
     }
 
-    private R<Boolean> setParamToDevice(String methodId, String deviceSerialNumber) {
+    private void setParamToDevice(String methodId, String deviceSerialNumber) {
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("设备未连接,无需下发参数");
-            return R.fail("设备未连接,无需下发参数");
+            return;
         }
 
         FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
         if (fMeasureMethod == null) {
             log.warn("找不到对应的测量方法: methodId={}", methodId);
-            return R.fail("找不到对应的测量方法");
+            return;
         }
 
         FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
         if (parameter == null) {
             log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
-            return R.fail("解析测量参数失败");
+            return;
         }
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         if (StringUtils.hasText(ip)) {
@@ -873,23 +863,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 list.add(new Command("SetGain", new Object[]{gain}));
             }
             try {
-                R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-                if (!r.getSuccess()) {
-                    log.info("设置参数，仪器抢占失败");
-                    return R.fail(r.getMessage());
-                }
-                R<ChangeParam> changeParamR = devMessageUtil.photometricAndRationMeasurement(list, ip);
-                if (!changeParamR.getSuccess()) {
-                    log.info("设置参数失败");
-                    return R.fail("设置参数失败");
-                }
+                deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+                devMessageUtil.photometricAndRationMeasurement(list, ip);
             } catch (Exception e) {
                 log.info("参数设置异常");
             } finally {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
         }
-        return R.ok(true);
 
     }
 
@@ -971,16 +952,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(dto.getMethodId())) {
             //请先创建方法
-            return Result.failCode("00000011");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
         }
         if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
             //至少需要一个表头
-            return Result.failCode("00000012");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
 
         if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
-            return Result.failCode("00000013");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
@@ -1009,7 +990,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
             if (!save) {
                 //系统出错
-                return Result.failCode("00000014");
+                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
             }
             dto.setTaskId(newTask.getId());
         }
@@ -1018,7 +999,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureTask task = fMeasureTaskService.getById(dto.getTaskId());
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -1108,7 +1089,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setSampleKey(jsonString);
         boolean b = fMeasureTaskService.updateById(task);
         if (!b) {
-            return Result.failCode("00100003");
+            return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
         }
 
         if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
@@ -1131,16 +1112,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(sampleId)) {
             //请选择需要删除的任务和样品
-            return Result.failCode("00000015");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000015"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         if (!StringUtils.hasText(task.getSampleKey())) {
             //任务无样品
-            return Result.failCode("00000016");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000016"));
         }
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         for (FTaskSpecimen specimen : taskSpecimen) {
@@ -1177,7 +1158,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         Boolean b = revokeDelSampleNumRepeat(taskSpecimen, newSample);
         if (!b) {
             //要恢复的样品编号重复，请处理重复编号后再恢复！
-            return Result.failCode("00100004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00100004"));
         }
 
         for (FTaskSpecimen specimen : taskSpecimen) {
@@ -1237,7 +1218,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         if (StringUtils.hasText(task.getSampleKey())) {
@@ -1270,7 +1251,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         Integer sampleAutoNum = task.getSampleAutoNum();
@@ -1309,7 +1290,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean save = fMeasureSampleService.save(newSample);
             if (!save) {
                 //保存失败
-                return R.failCode("00300008");
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
@@ -1355,7 +1336,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             boolean save = fMeasureSampleService.save(newSample);
             if (!save) {
                 //保存失败
-                return R.failCode("00300008");
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
@@ -1366,7 +1347,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         boolean update = fMeasureTaskService.updateById(task);
         if (!update) {
             //更新失败
-            return R.failCode("00000048");
+            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
         R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
         if (poolInfo.getSuccess()) {
@@ -1391,7 +1372,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         if (!StringUtils.hasText(task.getTableInfo())) {
@@ -1414,12 +1395,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.failCode("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
         if (!StringUtils.hasText(method.getMeasurementParamInfo())) {
             //未查询到该方法参数
-            return Result.failCode("00000017");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000017"));
         }
         FPhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
 
@@ -1439,20 +1420,20 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(taskId)) {
             //缺少任务id
-            return R.failCode("00000019");
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
 
         if (parameter.getResultParams() == null || parameter.getResultParams().isEmpty()) {
             //缺少结果参数
-            return R.failCode("00302002");
+            return R.fail(YamlMessageSource.getMessageStatic("00302002"));
         }
 
         List<FHeadVO> heads = new ArrayList<>();
@@ -1505,17 +1486,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public Result<List<FHeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber) {
         if (!StringUtils.hasText(taskId) ) {
             //请选择任务
-            return Result.failCode("00000006");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
         }
         if (!StringUtils.hasText(methodId)){
             //请选择方法
-            return Result.failCode("00000002");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.failCode("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
         LinkedHashSet<FHeadVO> ans = new LinkedHashSet<>();
@@ -1704,12 +1685,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(task.getTableInfo())) {
             //缺少分析参数，无法计算分析
-            return R.failCode("00300003");
+            return R.fail(YamlMessageSource.getMessageStatic("00300003"));
         }
         FTaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
         if (snapshot.getMapRelation() == null || snapshot.getMapRelation().isEmpty()) {
             //缺少映射关系，无法计算分析
-            return R.failCode("00300004");
+            return R.fail(YamlMessageSource.getMessageStatic("00300004"));
         }
         String jsonString = JSON.toJSONString(sample);
         JSONObject allData = JSON.parseObject(jsonString);
@@ -1751,7 +1732,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             String s = allData.getString(mapTableHead.get().getHeadIdentity());
             if (!StringUtils.hasText(s)) {
                 //"变量" + inputParam.getParamName() + "缺少数据！"
-                return R.failCode("00302007",inputParam.getParamName());
+                return R.fail(YamlMessageSource.getMessageStatic("00302007",inputParam.getParamName()));
             }
             identity.append(mapTableHead.get().getParamIdentity()).append(",");
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
@@ -1770,7 +1751,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             JSONObject resultJson = JSONObject.parseObject(result);
 
             if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
-                return R.failCode("00300007",resultJson.get("message"));
+                return R.fail(YamlMessageSource.getMessageStatic("00300007",resultJson.get("message")));
             }
             countDataInfo.setCountValue(resultJson.get("result").toString());
             countList.add(countDataInfo);
@@ -1788,7 +1769,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
             //未选择任务
-            return Result.failCode("0000001B");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001B"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         List<Map<String, Object>> ans = new ArrayList<>();
@@ -2009,32 +1990,32 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         if (!StringUtils.hasText(task.getMethodKey())) {
             //请先选择方法
-            return R.failCode("00103018");
+            return R.fail(YamlMessageSource.getMessageStatic("00103018"));
         }
         FMeasureMethod method = fMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
             //没有找到该方法
-            return R.failCode("00000009");
+            return R.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         if (!StringUtils.hasText(method.getMeasurementParamInfo())){
             //未查询到该方法参数
-            return R.failCode("00000017");
+            return R.fail(YamlMessageSource.getMessageStatic("00000017"));
         }
 
         FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
         if (parameter.getResultParams() == null || parameter.getResultParams().isEmpty()) {
             //该方法没有用于分析的公式
-            return R.failCode("00103019");
+            return R.fail(YamlMessageSource.getMessageStatic("00103019"));
         }
 
         if (!StringUtils.hasText(task.getSampleKey())) {
             //没有样品
-            return R.failCode("00303010");
+            return R.fail(YamlMessageSource.getMessageStatic("00303010"));
         }
 
         Integer digit = fMeasureTaskAttachmentService.queryLastDigit(taskId);
@@ -2386,7 +2367,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (countData.getCountData() == null || countData.getCountData().isEmpty()) {
             //没有要保存的数据
-            return R.failCode("00302003");
+            return R.fail(YamlMessageSource.getMessageStatic("00302003"));
         }
         String taskId = countData.getTaskId();
         String sampleId = countData.getSampleId();
@@ -2423,12 +2404,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public Result saveDataInfo(FSaveDataVO vo) {
         if (!StringUtils.hasText(vo.getTaskId())) {
             //请创建任务
-            return Result.failCode("00100016");
+            return Result.fail(YamlMessageSource.getMessageStatic("00100016"));
         }
 
         if (!StringUtils.hasText(vo.getSampleId())) {
             //缺少样品id
-            return Result.failCode("0000001C");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001C"));
         }
 
         if (vo.getData() == null || vo.getData().isEmpty()) {
@@ -2475,13 +2456,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             //未连接仪器
-            return Result.failCode("0000001D");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
         }
 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.failCode("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
         if (!StringUtils.hasText(taskId)){
@@ -2511,7 +2492,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
             if (!save) {
                 //系统出错
-                return Result.failCode("00000014");
+                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
             }
             taskId = newTask.getId();
         }
@@ -2520,7 +2501,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FPhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
         if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
             //缺少波长
-            return Result.failCode("0000001E");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001E"));
         }
         List<String> waveLength = photometricParameter.getWaveLength();
         // 通过序列号获取ip
@@ -2571,12 +2552,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public Result<Boolean> saveButton(String taskId, String updateBy) {
         if (!StringUtils.hasText(taskId)) {
             //未创建任务，无法保存
-            return Result.failCode("0000001F");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001F"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return Result.failCode("00000004");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
@@ -2591,7 +2572,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public Result<FMeasurementCurrentInfoVO> getInfoByTaskId(String taskId) {
         if (!StringUtils.hasText(taskId)){
             //缺少任务id
-            return Result.failCode("00000019");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         FMeasurementCurrentInfoVO measurementCurrentInfoVO = new FMeasurementCurrentInfoVO();
@@ -2611,12 +2592,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public R<File> downloadWord(String taskId, Boolean allDisplay, Integer digit) {
         if (!StringUtils.hasText(taskId)) {
             //缺少任务id
-            return R.failCode("00000019");
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         String fileName = task.getTaskName() + ".docx";
@@ -2727,12 +2708,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     public R<List<FInputParam>> queryInputParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
             //未选择方法
-            return R.failCode("00000008");
+            return R.fail(YamlMessageSource.getMessageStatic("00000008"));
         }
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return R.failCode("00000009");
+            return R.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         FPhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
         List<FInputParam> inputParams = parameter.getSampleInputParams();
@@ -2745,13 +2726,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(taskId)) {
             //未选择任务
-            return R.failCode("0000001B");
+            return R.fail(YamlMessageSource.getMessageStatic("0000001B"));
         }
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         List<FInputParamMapTableHead> ans = new ArrayList<>();
         if (task.getTableInfo() != null) {
@@ -2767,13 +2748,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         if (!StringUtils.hasText(snapshotDTO.getTaskId())) {
             //未选择任务
-            return R.failCode("0000001B");
+            return R.fail(YamlMessageSource.getMessageStatic("0000001B"));
         }
 
         FMeasureTask task = fMeasureTaskService.getById(snapshotDTO.getTaskId());
         if (task == null) {
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
@@ -2792,7 +2773,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
         //保存失败
-        return fMeasureTaskService.updateById(task) ? R.ok(true) : R.failCode("00300008");
+        return fMeasureTaskService.updateById(task) ? R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00300008"));
     }
 
     /**
@@ -2807,13 +2788,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         // 1. 基础参数校验（复用原逻辑，无修改）
         if (!StringUtils.hasText(taskId)) {
             //缺少任务id
-            return R.failCode("00000019");
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             log.error("导出失败：任务不存在，taskId: {}", taskId);
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         // 处理fileType默认值和合法性（复用原逻辑）
         if (!StringUtils.hasText(fileType)) {
@@ -2823,7 +2804,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
             //不支持的导出格式，仅支持word/txt/xlsx
-            return R.failCode("00300001");
+            return R.fail(YamlMessageSource.getMessageStatic("00300001"));
         }
         if (allDisplay == null) {
             allDisplay = true;
@@ -2834,7 +2815,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             //测量方法不存在
-            return R.failCode("00300009");
+            return R.fail(YamlMessageSource.getMessageStatic("00300009"));
         }
 
         // 构建表头（与原逻辑一致，先加动态表头，再在第0位加序号列）
@@ -2894,7 +2875,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 file.delete();
             }
             //文件生成失败：e.getMessage()
-            return R.failCode("00302006：", e.getMessage());
+            return R.fail(YamlMessageSource.getMessageStatic("00302006：", e.getMessage()));
         }
     }
 
@@ -2914,13 +2895,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         // 1. 基础参数校验
         if (!StringUtils.hasText(taskId)) {
             //缺少任务id
-            return R.failCode("00000019");
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             log.error("导出失败：任务不存在，taskId: {}", taskId);
             //没有找到该任务
-            return R.failCode("00000004");
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         
         // 处理fileType默认值和合法性
@@ -2931,7 +2912,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
             //不支持的导出格式，仅支持word/txt/xlsx
-            return R.failCode("00300001");
+            return R.fail(YamlMessageSource.getMessageStatic("00300001"));
         }
         if (allDisplay == null) {
             allDisplay = true;
@@ -2942,7 +2923,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         if (method == null) {
             //测量方法不存在
-            return R.failCode("00300009");
+            return R.fail(YamlMessageSource.getMessageStatic("00300009"));
         }
 
         // 构建表头
@@ -3022,7 +3003,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 file.delete();
             }
             //文件生成失败：e.getMessage()
-            return R.failCode("00302006",e.getMessage());
+            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
         }
     }
 

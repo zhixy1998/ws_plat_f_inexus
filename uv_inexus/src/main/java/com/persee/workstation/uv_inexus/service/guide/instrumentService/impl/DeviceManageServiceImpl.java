@@ -29,6 +29,7 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreComma
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
@@ -155,7 +156,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null || info.getDeviceCurrentStatus() == null) {
             log.info("未找到连接仪器信息！");
-            return R.fail("未查找到仪器信息");
+            //未查找到仪器信息
+            return R.fail(YamlMessageSource.getMessageStatic("00203001"));
         }
 //        log.info("查询仪器状态");
         return R.ok(info.getDeviceCurrentStatus());
@@ -339,11 +341,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public Boolean softClose(DeviceSoftCloseDTO closeDTO) {
-        return null;
-    }
-
-    @Override
-    public R<Boolean> closeOrOpenLamp(String lampType, Integer status) {
         return null;
     }
 

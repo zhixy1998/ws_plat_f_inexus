@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMap
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
@@ -939,7 +940,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 使用StringUtils 判断参数是否为空
         if (!StringUtils.hasText(methodId)){
 //            return Result.fail("缺少参数");
-            return Result.failCode("00000007");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null){

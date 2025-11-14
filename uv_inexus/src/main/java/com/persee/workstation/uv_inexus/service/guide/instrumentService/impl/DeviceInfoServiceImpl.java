@@ -103,6 +103,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
     @Override
     public R<Boolean> useDevice(String deviceSerialNumber, Integer status) {
+        //
 
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         Integer isInited = info.getIsInited();
