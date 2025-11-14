@@ -103,6 +103,9 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
     @Override
     public R<Boolean> useDevice(String deviceSerialNumber, Integer status) {
+        if (!StringUtils.hasText(deviceSerialNumber)){
+            return R.fail("仪器未连接");
+        }
         //
 
         DeviceInfoPO info = getInfo(deviceSerialNumber);
@@ -155,7 +158,9 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     @Override
     public void releaseDevice(String deviceSerialNumber) {
         DetectionConstants.isDeviceIdle = true;
-        updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+        if (StringUtils.hasText(deviceSerialNumber)){
+            updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+        }
     }
 
 
