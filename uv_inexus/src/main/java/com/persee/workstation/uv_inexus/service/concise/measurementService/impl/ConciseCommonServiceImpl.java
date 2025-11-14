@@ -155,7 +155,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod one = fMeasureMethodService.getOne(wrapper);
         if (one == null) {
             //measureType+没有默认方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00101001",measureType));
+            return Result.fail(YamlMessageSource.getMessageStatic("00101001", measureType));
         }
         return Result.ok(one);
 
@@ -397,7 +397,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
 
         if (method == null) {
-                //没有找到该方法
+            //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         if (method.getMeasurementType().isEmpty()) {
@@ -422,7 +422,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 return Result.ok(parameter);
             }
             default:
-                    //暂不支持
+                //暂不支持
                 return Result.fail(YamlMessageSource.getMessageStatic("0000002B"));
         }
 
@@ -512,14 +512,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             //参数不能为空
             return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
         }
-        String methodName = updateMethodDto.getMethodName();
-        List<FMeasureMethod> methods = fMeasureMethodService.list();
-        for (FMeasureMethod fMeasureMethod : methods) {
-            String everyMethodName = fMeasureMethod.getMethodName();
-            if (everyMethodName.equals(methodName)) {
-                //方法名称重复
-                return Result.fail(YamlMessageSource.getMessageStatic("00301002"));
-            }
+        LambdaQueryWrapper<FMeasureMethod> wrapper = new LambdaQueryWrapper<>();
+        wrapper.notIn(FMeasureMethod::getId, updateMethodDto.getMethodId())
+                .eq(FMeasureMethod::getMethodName, updateMethodDto.getMethodName());
+        long count = fMeasureMethodService.count(wrapper);
+        if (count > 0) {
+            //方法名称重复
+            return Result.fail(YamlMessageSource.getMessageStatic("00301002"));
         }
         String methodId = updateMethodDto.getMethodId();
         LambdaQueryWrapper<FMeasureMethod> fMeasureMethodLambdaQueryWrapper = new LambdaQueryWrapper<>();
@@ -527,7 +526,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureMethod method = fMeasureMethodService.getOne(eq);
         BeanUtils.copyProperties(updateMethodDto, method);
         fMeasureMethodService.updateById(method);
-                //修改成功
+        //修改成功
         return Result.okCode("00101010");
     }
 
@@ -536,6 +535,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (updateTaskDto == null) {
             //参数不能为空
             return Result.fail(YamlMessageSource.getMessageStatic("00306003"));
+        }
+        LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<FMeasureTask>()
+                .eq(FMeasureTask::getTaskName, updateTaskDto.getTaskName())
+                .notIn(FMeasureTask::getId, updateTaskDto.getTaskId());
+        long count = fMeasureTaskService.count(wrapper);
+        if (count > 0) {
+            //任务名称重复
+            return Result.fail(YamlMessageSource.getMessageStatic("00301002"));
         }
         String taskId = updateTaskDto.getTaskId();
         FMeasureTask byId = fMeasureTaskService.getById(taskId);
@@ -603,7 +610,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             //请输入显示标题!
             return Result.fail(YamlMessageSource.getMessageStatic("00101016"));
         }
-        if (!StringUtils.hasText(newFormula.getResultIdentity()) ){
+        if (!StringUtils.hasText(newFormula.getResultIdentity())) {
             //请输入结果标识！
             return Result.fail(YamlMessageSource.getMessageStatic("00101017"));
         }
@@ -963,8 +970,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-            vo.setStartWaveLength(param.getStartWaveLength()+"nm");
-            vo.setEndWaveLength(param.getEndWaveLength()+"nm");
+            vo.setStartWaveLength(param.getStartWaveLength() + "nm");
+            vo.setEndWaveLength(param.getEndWaveLength() + "nm");
             vo.setScanSpeed(param.getScanSpeed());
             vo.setTimeInterval(param.getTimeInterval());
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
@@ -1018,7 +1025,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             FTimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
-            vo.setInstrumentWavelength(param.getWaveLength()+"nm");
+            vo.setInstrumentWavelength(param.getWaveLength() + "nm");
             vo.setScanTime(param.getScanTime());
             vo.setTimeUnit(param.getScanUnit().equals("0") ? "分" : "秒");
             vo.setTimeInterval(param.getIntervalTime());
@@ -1440,14 +1447,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         .collect(Collectors.toList());
 
                 // 获取表头
-                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(),analysisIdList);
+                Result<List<FHeadVO>> result = timeSweepConciseService.tableHead(taskId, task.getMethodKey(), analysisIdList);
                 if (result.getCode() == 200) {
                     List<FHeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
 
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId,analysisIdList, decimalDigits);
+                List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, analysisIdList, decimalDigits);
                 if (dataList != null) {
                     vo.setDataList(dataList);
                 }
@@ -1552,13 +1559,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         String description = null;
         if (task.getMeasureType().equals("光谱扫描")) {
-            description=MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
-        }else if (task.getMeasureType().equals("时间扫描")) {
-            description=MeasureTypeEnum.TIME_SCAN.getDescription();
+            description = MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
+        } else if (task.getMeasureType().equals("时间扫描")) {
+            description = MeasureTypeEnum.TIME_SCAN.getDescription();
         } else if (task.getMeasureType().equals("定量测定")) {
-            description=MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
+            description = MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
         } else if (task.getMeasureType().equals("光度测量")) {
-            description=MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
+            description = MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
         }
 
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
@@ -1566,15 +1573,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             taskSpecimen = new ArrayList<>();
         }
 
-        Result<List<FHeadVO>> listResult = querySampleHeads(taskId,description);
-        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+        Result<List<FHeadVO>> listResult = querySampleHeads(taskId, description);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
             return Result.fail(listResult.getMessage());
         }
         List<FHeadVO> heads = listResult.getData();
         //动态表头
         List<FHeadVO> dynamicHeads = new ArrayList<>();
         heads.forEach(head -> {
-            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())) {
                 dynamicHeads.add(head);
             }
         });
@@ -1611,7 +1618,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 }
 
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())) {
                     sampleNumList.add(measureSample.getSampleNumber());
                 }
             }
@@ -1622,13 +1629,13 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             FMeasureSample newSample = new FMeasureSample();
 
             sampleAutoNum = sampleAutoNum + 1;
-            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+            while (sampleNumList.contains("default-" + sampleAutoNum)) {
                 sampleAutoNum += 1;
             }
 
             int number = sampleAutoNum;
 
-            newSample.setSampleNumber("default-"+ number);
+            newSample.setSampleNumber("default-" + number);
             newSample.setSampleName("默认样品" + number);
 
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -1665,6 +1672,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     /**
      * 查询样品表头
+     *
      * @param taskId
      * @param measureType
      * @return
@@ -1699,6 +1707,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
         }
     }
+
     /**
      * 根据现有样品查找下一个可用的样品编号
      */
@@ -1837,7 +1846,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
             LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(FMeasureTask::getTaskName, taskName)
-                            .eq(FMeasureTask::getMeasureType, task.getMeasureType());
+                    .eq(FMeasureTask::getMeasureType, task.getMeasureType());
             if (fMeasureTaskService.count(wrapper) > 0) {
                 //任务名称重复
                 return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
@@ -1959,7 +1968,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (analysisData != null) {
             Map<String, String> jsonObject;
             if (StringUtils.hasText(analysisData.getAnalysisParam())) {
-                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>() {
+                });
             } else {
                 jsonObject = vo.getData();
             }
