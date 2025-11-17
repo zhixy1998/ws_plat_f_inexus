@@ -526,7 +526,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (paramDto.getParameter().getLuminosity().equals("3") || paramDto.getParameter().getLuminosity().equals("4")) {
             paramDto.getParameter().setLadderCorrection(false);
         }
-        boolean update1 = Double.parseDouble(paramDto.getParameter().getTimeInterval()) < 1;
+        boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
         if (paramDto.getParameter().getScanSpeed().equals("3")&&update1){
             return Result.fail("极快扫描速度时,时间间隔不能小于1秒");
         }

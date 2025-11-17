@@ -67,6 +67,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     // 存储任务线程
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
 
+
+
     private String ip;
     private String deviceSerialNumber;
     private boolean occupancyStatus = false;
@@ -339,6 +341,12 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         List<Double> y = new ArrayList<>();
         int pushCount = 0;
 
+        // 获取波长参数用于约束
+        double startWl = Double.parseDouble(spectrumParameter.getStartWaveLength());
+        double endWl = Double.parseDouble(spectrumParameter.getEndWaveLength());
+        double interval = Double.parseDouble(spectrumParameter.getWaveLengthInterval());
+        boolean isDescending = startWl > endWl;
+
         // 判断是否为极快扫描模式
         boolean isFastScan = "3".equals(spectrumParameter.getScanSpeed());
 
@@ -351,6 +359,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             y = processedData.y;
         } else {
             // 普通扫描模式：保持原来的逐点推送逻辑
+            int currentIndex = 0; // 用于强制修约的索引
             while (true) {
                 if (Thread.currentThread().isInterrupted() || !session.isOpen()) return null;
 
@@ -360,14 +369,16 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         break;
                     }
                     while (!Constants.measurd_data.isEmpty()) {
-                        calcOnePoint(spectrumParameter, baselineCopy, x, y);
+                        calcOnePoint(spectrumParameter, baselineCopy, x, y, currentIndex, startWl, endWl, interval, isDescending);
+                        currentIndex++;
                         pushCount = pushDataIfNeeded(session, x, y, pushCount, number, task, sampleId,
                                 spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection());
                     }
                     break;
                 }
                 while (!Constants.measurd_data.isEmpty()) {
-                    calcOnePoint(spectrumParameter, baselineCopy, x, y);
+                    calcOnePoint(spectrumParameter, baselineCopy, x, y, currentIndex, startWl, endWl, interval, isDescending);
+                    currentIndex++;
                     pushCount = pushDataIfNeeded(session, x, y, pushCount, number, task, sampleId,
                             spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection());
                 }
@@ -427,16 +438,19 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 ? JSON.parseArray(task.getZeroParam(), ChangeParam.class)
                 : null;
 
+        int currentIndex = 0; // 用于强制修约的索引
         while (!Constants.measurd_data.isEmpty()) {
-            calcOnePoint(spectrumParameter, baselineCopy, x, y);
+            calcOnePointForFastScan(spectrumParameter, baselineCopy, x, y, currentIndex);
+            currentIndex++;
         }
 
         // 获取起始和结束波长
         double startWl = Double.parseDouble(spectrumParameter.getStartWaveLength());
         double endWl = Double.parseDouble(spectrumParameter.getEndWaveLength());
+        double interval = Double.parseDouble(spectrumParameter.getWaveLengthInterval());
 
         // 处理数据：按照严格间隔修正波长
-        ProcessedData processedData = processFastScanWavelengthData(x, y, startWl, endWl, spectrumParameter);
+        ProcessedData processedData = processFastScanWavelengthDataWithConstraint(x, y, startWl, endWl, interval);
 
         List<Double> processedX = processedData.x;
         List<Double> processedY = processedData.y;
@@ -459,23 +473,212 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     }
 
     /**
-     * 处理极快扫描的波长数据 - 严格按照设定的间隔生成规整的波长序列
+     * 为极快扫描模式计算数据点（带强制修约）
      */
-    private ProcessedData processFastScanWavelengthData(List<Double> originalX,
-                                                        List<Double> originalY,
-                                                        double startWl, double endWl,
-                                                        FSpectrumParameter spectrumParameter) {
+    private void calcOnePointForFastScan(FSpectrumParameter spectrumParameter,
+                                         List<ChangeParam> baselineCopy,
+                                         List<Double> x, List<Double> y,
+                                         int currentIndex) {
+        if (Constants.measurd_data.isEmpty()) return;
+
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
+        ChangeParam currentData = Constants.measurd_data.get(0);
+
+        // 获取波长参数用于约束
+        double startWl = Double.parseDouble(spectrumParameter.getStartWaveLength());
+        double endWl = Double.parseDouble(spectrumParameter.getEndWaveLength());
+        double interval = Double.parseDouble(spectrumParameter.getWaveLengthInterval());
+        boolean isDescending = startWl > endWl;
+
+        try {
+            if (baselineCopy != null && !baselineCopy.isEmpty()) {
+                // 有基线校正的情况
+                ChangeParam baselineData = baselineCopy.get(0);
+
+                switch (spectrumParameter.getLuminosity()) {
+                    case "1": // Abs
+                        String s = DataCountUtil.countTPercent(baselineData, currentData, 1.0);
+                        String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
+                        double parsedWl = Double.parseDouble(currentData.getWl());
+                        Double correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(yy));
+                        break;
+                    case "2": // T%
+                        s = DataCountUtil.countTPercent(baselineData, currentData, 1.0);
+                        parsedWl = Double.parseDouble(currentData.getWl());
+                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(s));
+                        break;
+                    case "3": // Es
+                        Double sData = Double.valueOf(currentData.getS());
+                        String esValue = String.valueOf((sData / 8388607) * 100);
+                        parsedWl = Double.parseDouble(currentData.getWl());
+                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(esValue));
+                        break;
+                    case "4": // Er
+                        Double rData = Double.valueOf(currentData.getR());
+                        String erValue = String.valueOf((rData / 8388607) * 100);
+                        parsedWl = Double.parseDouble(currentData.getWl());
+                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(erValue));
+                        break;
+                }
+                baselineCopy.remove(0);
+            } else {
+                // 无基线校正的情况
+                switch (spectrumParameter.getLuminosity()) {
+                    case "1": // Abs
+                        String s = DataCountUtil.countTPercent(null, currentData, 1.0);
+                        String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
+                        double parsedWl = Double.parseDouble(currentData.getWl());
+                        Double correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(yy));
+                        break;
+                    case "2": // T%
+                        s = DataCountUtil.countTPercent(null, currentData, 1.0);
+                        parsedWl = Double.parseDouble(currentData.getWl());
+                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(s));
+                        break;
+                    case "3": // Es
+                        Double sData = Double.valueOf(currentData.getS());
+                        String esValue = String.valueOf((sData / 8388607) * 100);
+                        parsedWl = Double.parseDouble(currentData.getWl());
+                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(esValue));
+                        break;
+                    case "4": // Er
+                        Double rData = Double.valueOf(currentData.getR());
+                        String erValue = String.valueOf((rData / 8388607) * 100);
+                        parsedWl = Double.parseDouble(currentData.getWl());
+                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+
+                        // 添加波长约束 - 强制修约
+                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, currentIndex);
+
+                        x.add(correctedWl);
+                        y.add(Double.parseDouble(erValue));
+                        break;
+                }
+            }
+
+            Constants.measurd_data.remove(0);
+        } catch (Exception e) {
+            log.error("计算数据点时发生异常: " + e.getMessage(), e);
+            Constants.measurd_data.remove(0); // 即使出错也移除数据，避免死循环
+        }
+    }
+
+    /**
+     * 强制约束波长值，确保符合设定的波长间隔和范围
+     * 无论原始波长是多少，都强制使用期望的波长值
+     */
+    private Double forceConstrainWavelength(Double originalWl, double startWl, double endWl,
+                                            double interval, boolean isDescending, int currentIndex) {
+        if (originalWl == null) {
+            return null;
+        }
+
+        // 计算期望的波长值 - 强制使用期望值
+        double expectedWl;
+        if (isDescending) {
+            // 递减扫描
+            expectedWl = startWl - (currentIndex * interval);
+        } else {
+            // 递增扫描
+            expectedWl = startWl + (currentIndex * interval);
+        }
+
+        // 强制修约到1位小数（如果间隔是整数）或根据间隔的小数位数修约
+        int decimalPlaces = getDecimalPlaces(interval);
+        double constrainedWl = roundToPrecision(expectedWl, decimalPlaces);
+
+        // 确保波长在合理范围内
+        if (isDescending) {
+            if (constrainedWl > startWl) constrainedWl = startWl;
+            if (constrainedWl < endWl) constrainedWl = endWl;
+        } else {
+            if (constrainedWl < startWl) constrainedWl = startWl;
+            if (constrainedWl > endWl) constrainedWl = endWl;
+        }
+
+        // 记录修约信息（如果原始值与修约值不同）
+        if (Math.abs(originalWl - constrainedWl) > 0.001) {
+            log.debug("波长强制修约: 原始值=" + originalWl + ", 修约值=" + constrainedWl +
+                    ", 期望值=" + expectedWl + ", 索引=" + currentIndex);
+        }
+
+        return constrainedWl;
+    }
+
+    /**
+     * 根据间隔值确定需要保留的小数位数
+     */
+    private int getDecimalPlaces(double interval) {
+        if (interval == Math.floor(interval)) {
+            // 整数间隔，保留0位小数
+            return 0;
+        } else {
+            // 小数间隔，根据间隔的小数位数确定
+            String intervalStr = String.valueOf(interval);
+            if (intervalStr.contains(".")) {
+                return intervalStr.length() - intervalStr.indexOf(".") - 1;
+            }
+            return 1; // 默认保留1位小数
+        }
+    }
+
+    /**
+     * 处理极快扫描的波长数据 - 严格按照设定的间隔生成规整的波长序列（增强约束版本）
+     */
+    private ProcessedData processFastScanWavelengthDataWithConstraint(List<Double> originalX,
+                                                                      List<Double> originalY,
+                                                                      double startWl, double endWl,
+                                                                      double interval) {
         List<Double> processedX = new ArrayList<>();
         List<Double> processedY = new ArrayList<>();
-
-        // 获取波长间隔参数
-        double wavelengthInterval = Double.parseDouble(spectrumParameter.getWaveLengthInterval());
 
         // 确定波长顺序（从大到小还是从小到大）
         boolean isDescending = startWl > endWl;
 
         // 生成严格的预期波长序列
-        List<Double> expectedWavelengths = generateStrictExpectedWavelengths(startWl, endWl, wavelengthInterval, isDescending);
+        List<Double> expectedWavelengths = generateStrictExpectedWavelengths(startWl, endWl, interval, isDescending);
 
         // 创建映射：实际波长 -> Y值列表
         Map<Double, List<Double>> actualWavelengthMap = new HashMap<>();
@@ -491,7 +694,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         // 为每个预期波长找到最匹配的实际数据
         for (Double expectedWavelength : expectedWavelengths) {
             Double bestMatchWavelength = findBestMatchingWavelength(expectedWavelength,
-                    actualWavelengthMap.keySet(), wavelengthInterval);
+                    actualWavelengthMap.keySet(), interval);
 
             if (bestMatchWavelength != null) {
                 List<Double> yValues = actualWavelengthMap.get(bestMatchWavelength);
@@ -516,42 +719,21 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                                                            double interval, boolean isDescending) {
         List<Double> expectedWavelengths = new ArrayList<>();
 
-        // 确保起始和结束波长符合间隔要求
-        double adjustedStartWl = adjustToInterval(startWl, interval, true);
-        double adjustedEndWl = adjustToInterval(endWl, interval, false);
+        int decimalPlaces = getDecimalPlaces(interval);
 
         if (isDescending) {
             // 从大到小
-            for (double wl = adjustedStartWl; wl >= adjustedEndWl; wl -= interval) {
-                expectedWavelengths.add(roundToPrecision(wl, 2));
+            for (double wl = startWl; wl >= endWl; wl -= interval) {
+                expectedWavelengths.add(roundToPrecision(wl, decimalPlaces));
             }
         } else {
             // 从小到大
-            for (double wl = adjustedStartWl; wl <= adjustedEndWl; wl += interval) {
-                expectedWavelengths.add(roundToPrecision(wl, 2));
+            for (double wl = startWl; wl <= endWl; wl += interval) {
+                expectedWavelengths.add(roundToPrecision(wl, decimalPlaces));
             }
         }
 
         return expectedWavelengths;
-    }
-
-    /**
-     * 调整波长到最近的间隔点
-     */
-    private double adjustToInterval(double wavelength, double interval, boolean isStart) {
-        if (interval == 0) return wavelength;
-
-        // 找到最近的间隔倍数
-        double base = Math.floor(wavelength / interval) * interval;
-        double remainder = wavelength - base;
-
-        if (isStart) {
-            // 对于起始波长，向上取整到间隔
-            return remainder > interval / 2 ? base + interval : base;
-        } else {
-            // 对于结束波长，向下取整到间隔
-            return remainder < interval / 2 ? base : base + interval;
-        }
     }
 
     /**
@@ -586,6 +768,131 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     }
 
     /**
+     * 计算光度模式的Abs/T%（带强制修约）
+     */
+    private void calcOnePoint(FSpectrumParameter spectrumParameter,
+                              List<ChangeParam> baselineCopy,
+                              List<Double> x,
+                              List<Double> y,
+                              int currentIndex,
+                              double startWl,
+                              double endWl,
+                              double interval,
+                              boolean isDescending) {
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
+
+        if (baselineCopy != null && !baselineCopy.isEmpty()) {
+            if (spectrumParameter.getLuminosity().equals("1")) {
+                String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
+                String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
+                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(yy));
+            } else if (spectrumParameter.getLuminosity().equals("2")) {
+                String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + s);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(s));
+            } else if (spectrumParameter.getLuminosity().equals("3")) {
+                Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
+                String yy = String.valueOf((sData / 8388607) * 100);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(yy));
+            } else if (spectrumParameter.getLuminosity().equals("4")) {
+                Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
+                String yy = String.valueOf((rData / 8388607) * 100);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(yy));
+            }
+            Constants.measurd_data.remove(0);
+            baselineCopy.remove(0);
+        } else {
+            if (spectrumParameter.getLuminosity().equals("1")) {
+                String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
+                String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(yy));
+            } else if (spectrumParameter.getLuminosity().equals("2")) {
+                String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + s);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(s));
+            } else if (spectrumParameter.getLuminosity().equals("3")) {
+                Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
+                String yy = String.valueOf((sData / 8388607) * 100);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(yy));
+            } else if (spectrumParameter.getLuminosity().equals("4")) {
+                Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
+                String yy = String.valueOf((rData / 8388607) * 100);
+                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
+                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+                // 添加波长约束 - 强制修约
+                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+
+                Constants.originalCalculationData.add(v + "," + yy);
+                x.add(Double.parseDouble(v.toString()));
+                y.add(Double.parseDouble(yy));
+            }
+            Constants.measurd_data.remove(0);
+        }
+    }
+
+    // 以下方法保持不变...
+    // pushAllDataAtOnce, pushDataIfNeeded, pushRemainingData, processAndSaveData,
+    // callStepEliminationPython, saveOneMeasurementWithSnapshots, getLuminosityType,
+    // handleTextMessage, afterConnectionClosed, handleTransportError, getQueryParam,
+    // sendAndClose, sendClose, buildCommand, exceptionHandling 等方法保持不变
+
+    /**
      * 一次性推送所有数据
      */
     private void pushAllDataAtOnce(WebSocketSession session,
@@ -601,7 +908,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             // 推送时：根据指定位数格式化Y值
             Double value = DataCountUtil.formatValue(digit, y.get(i));
             String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", valueY);
+            point.put("y", y.get(i));
+            point.put("roundOffY",valueY);
 
             point.put("xType", "nm");
             String luminosityType = getLuminosityType(luminosity);
@@ -672,7 +980,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 // 推送时：根据指定位数格式化Y值
                 Double value = DataCountUtil.formatValue(digit, y.get(i));
                 String valueY = DataCountUtil.addZero(value, digit);
-                point.put("y", valueY);
+                point.put("y", y.get(i));
+                point.put("roundOffY",valueY);
 
                 point.put("xType", "nm");
                 String luminosityType = getLuminosityType(luminosity);
@@ -746,7 +1055,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 // 推送时：根据指定位数格式化Y值
                 Double value = DataCountUtil.formatValue(digit, y.get(startIndex + i));
                 String valueY = DataCountUtil.addZero(value, digit);
-                point.put("y", valueY);
+                point.put("y", y.get(i));
+                point.put("roundOffY",valueY);
 
                 point.put("xType", "nm");
                 String luminosityType = getLuminosityType(luminosity);
@@ -864,87 +1174,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             log.error("调用Python台阶消除服务失败，返回原始数据", e);
             // 如果调用失败，返回原始数据
             return y;
-        }
-    }
-
-    /**
-     * 计算光度模式的Abs/T%
-     */
-    private void calcOnePoint(FSpectrumParameter spectrumParameter,
-                              List<ChangeParam> baselineCopy,
-                              List<Double> x,
-                              List<Double> y) {
-        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
-        if (baselineCopy != null && !baselineCopy.isEmpty()) {
-            if (spectrumParameter.getLuminosity().equals("1")) {
-                String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("2")) {
-                String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + s);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(s));
-            } else if (spectrumParameter.getLuminosity().equals("3")) {
-                Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                String yy = String.valueOf((sData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("4")) {
-                Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                String yy = String.valueOf((rData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            }
-            Constants.measurd_data.remove(0);
-            baselineCopy.remove(0);
-        } else {
-            if (spectrumParameter.getLuminosity().equals("1")) {
-                String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("2")) {
-                String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + s);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(s));
-            } else if (spectrumParameter.getLuminosity().equals("3")) {
-                Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                String yy = String.valueOf((sData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("4")) {
-                Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                String yy = String.valueOf((rData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            }
-            Constants.measurd_data.remove(0);
         }
     }
 
