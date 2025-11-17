@@ -1763,27 +1763,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
-        // 参数校验
-        if (paramDto.getHeight() != null) {
-            if (paramDto.getHeight() < 0) {
-                return Result.fail("峰谷差阈值不能为负数");
-            }
-            if (paramDto.getHeight() > 100) {
-                return Result.fail("峰谷差阈值不可超过100");
-            }
-        }
-
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         if (paramDto.getDataId() == null || paramDto.getDataId().equals("")) {
             return Result.fail("数据ID不能为空");
         }
         if (paramDto.getHeight() == null) {
-            // 设置默认值前也要检查默认值是否合法
-            double defaultHeight = Double.parseDouble(confVO.getPeakValleyDiff());
-            if (defaultHeight < 0 || defaultHeight > 100) {
-                return Result.fail("系统默认峰谷差阈值配置不合法，请检查系统配置");
-            }
-            paramDto.setHeight(defaultHeight);
+            paramDto.setHeight((double) Integer.parseInt(confVO.getPeakValleyDiff()));
         }
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakInterval());
@@ -1794,8 +1779,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail("峰谷间距不可以小于1");
         }
         paramDto.setHeight(paramDto.getHeight() / 100);
-
-        // 原有业务逻辑保持不变...
         FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (fMeasureAnalysisData == null) {
             return Result.fail("测量数据不存在");
@@ -2816,7 +2799,49 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
         // 非重复模式 - 单样品
         if (analysisIds.size() == 1) {
-            // ... 单样品逻辑保持不变 ...
+            // 单样品表数据
+            FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getById(analysisIds.get(0));
+            if (measureAnalysisData == null) {
+                return null;
+            }
+            int id = 1;
+            List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
+            List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
+            List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
+            if (peaks != null && !peaks.isEmpty()) {
+                for (FPeakValleyMarking peak : peaks) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
+                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
+                    map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
+                    arrayList.add(map);
+                }
+            }
+            if (valleys != null && !valleys.isEmpty()) {
+                for (FPeakValleyMarking valley : valleys) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(valley.getY(), digit));
+                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
+                    map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
+                    arrayList.add(map);
+                }
+            }
+            if (gaugePoints != null && !gaugePoints.isEmpty()) {
+                for (FPeakValleyMarking gaugePoint : gaugePoints) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(formatBigDecimal(gaugePoint.getX(), 1), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
+                    map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
+                    map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
+                    arrayList.add(map);
+                }
+            }
+
             return arrayList;
         } else {
             // 多样品逻辑

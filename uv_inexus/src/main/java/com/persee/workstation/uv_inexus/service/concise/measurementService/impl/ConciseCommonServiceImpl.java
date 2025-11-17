@@ -1407,6 +1407,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             }
             case "光谱扫描": {
 
+//                if (analysisId.isEmpty()){
+//                    return Result.ok(new FSpectrumReportDataVO());
+//                }
+
                 // 判断方法参数中的重复模式为true的话就分割分析id
                 List<String> analysisIdList = Arrays.asList(analysisId.split(","));
                 // 过滤掉分析结果为null的分析id
@@ -1461,6 +1465,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 return Result.ok(vo);
             }
             case "时间扫描": {
+
+
                 FTimeSweepReportDataVo vo = new FTimeSweepReportDataVo();
                 // 判断方法参数中的重复模式为true的话就分割分析id
                 List<String> analysisIdList = Arrays.asList(analysisId.split(","));
