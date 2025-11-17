@@ -28,7 +28,9 @@ public enum LiveDetectionCmdEnum {
     Measure(4, "Measure", null, 3),
     GetChangeLampWl(5, "GetChangeLampWl", null, 2),
     GetCellPos(6, "GetCellPos", null, 2),
-    GetLampPos(7, "GetLampPos", null, 2);
+    GetLampPos(7, "GetLampPos", null, 2),
+    GetWLampStatus(8, "GetWLampStatus", null, 2),
+    GetDLampStatus(9, "GetDLampStatus", null, 2);
 //    GetAccessoryType(6, "GetAccessoryType", null, 2);
 
     // 顺序

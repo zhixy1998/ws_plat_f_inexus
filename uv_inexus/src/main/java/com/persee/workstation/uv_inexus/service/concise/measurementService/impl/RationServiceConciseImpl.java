@@ -2939,24 +2939,30 @@ public class RationServiceConciseImpl implements RationConciseService {
                     resultChildrenList.forEach((key, value) -> middle.add(value));
                     map.put("children", middle);
                 }
+            }
 
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                    .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+            if (data != null) {
+                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getMeasureDataId, data.getId());
+            }
+            analysisDataQueryWrapper.orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
 
-                LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
-                        .eq(FMeasureAnalysisData::getSampleKey, sampleId)
-                        .eq(FMeasureAnalysisData::getMeasureDataId, data.getId())
-                        .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
-
-                FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-                if (one != null && one.getAnalysisResult() != null) {
-                    List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
-                    for (FRationCountDataInfo countData : countDataList) {
-                        if (countData.getColValue() !=null) {
-                            map.put(countData.getIdentity(), countData.getColValue());
-                        }
+            FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            if (one != null && one.getAnalysisResult() != null) {
+                List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
+                for (FRationCountDataInfo countData : countDataList) {
+                    if (countData.getColValue() !=null) {
+                        map.put(countData.getIdentity(), countData.getColValue());
                     }
                 }
+            }
+            if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
+                Map<String, String> jsonObject;
+                jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
 
+                map.putAll(jsonObject);
             }
         }
         return map;

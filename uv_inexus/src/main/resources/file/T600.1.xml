@@ -2338,4 +2338,40 @@
         <string>254:181:5:11:0:0:0:0:0:0:0:Check</string>
         </ReadBytes>
         </ProtocolItem>
+        <ProtocolItem>
+            <ID>GetWLampStatus</ID>
+            <Describe>读取钨灯状态</Describe>
+            <Timeout>3000</Timeout>
+            <ACK>Y</ACK>
+            <InputString>
+                <string>灯状态(开1关0):I2:0</string>
+            </InputString>
+            <OutputString>
+                <string>灯状态(开1关0):AJ2:4</string>
+            </OutputString>
+            <SendBytes>
+                <string>181:254:1:8:I2:0:0:0:0:0:0:Check</string>
+            </SendBytes>
+            <ReadBytes>
+                <string>254:181:1:8:AJ2:0:0:0:0:0:0:Check</string>
+            </ReadBytes>
+        </ProtocolItem>
+    <ProtocolItem>
+        <ID>GetDLampStatus</ID>
+        <Describe>获取氘灯状态</Describe>
+        <Timeout>3000</Timeout>
+        <ACK>Y</ACK>
+        <InputString>
+            <string>灯状态(开1关0):I3:0</string>
+        </InputString>
+        <OutputString>
+            <string>灯状态(开1关1):AJ3:4</string>
+        </OutputString>
+        <SendBytes>
+            <string>181:254:1:7:I3:0:0:0:0:0:0:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <string>254:181:1:7:AJ3:0:0:0:0:0:0:Check</string>
+        </ReadBytes>
+    </ProtocolItem>
 </Protocols>

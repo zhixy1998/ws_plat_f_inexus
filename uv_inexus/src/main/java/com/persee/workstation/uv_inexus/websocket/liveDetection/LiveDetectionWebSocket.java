@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -266,13 +267,35 @@ public class LiveDetectionWebSocket {
                                 }
 
                             } else if (comId.equals(LiveDetectionCmdEnum.GetLampPos.getComId())) {
-                                List<DetectionLampStatus> dataList = getDetectionLampStatuses((int) parseResult);
-                                vo.setDataList(dataList);
+                                String result = parseResult.toString();
+                                vo.setLampPos(EnergyLampEnums.getName(result));
+
                             } else if (comId.equals(LiveDetectionCmdEnum.GetPhotoMode.getComId())) {
                                 vo.setLuminosity(WaveLengthEnum.getName(DetectionConstants.luminosity));
                             } else if (comId.equals(LiveDetectionCmdEnum.GetChangeLampWl.getComId())) {
                                 Double v = formulaUtil.calculateWl(Double.parseDouble(parseResult.toString()), deviceSerialNumber);
                                 vo.setChangeLampWl(String.valueOf(v));
+                            } else if (comId.equals(LiveDetectionCmdEnum.GetDLampStatus.getComId())) {
+                                if (vo.getDataList() == null) {
+                                    vo.setDataList(new ArrayList<>());
+                                }
+                                Boolean result = (Boolean) parseResult;
+
+                                DetectionLampStatus status = new DetectionLampStatus();
+                                status.setLabel("氘灯");
+                                status.setValue(result ? "亮" : "不亮");
+
+                                vo.getDataList().add(status);
+                            } else if (comId.equals(LiveDetectionCmdEnum.GetWLampStatus.getComId())) {
+                                if (vo.getDataList() == null) {
+                                    vo.setDataList(new ArrayList<>());
+                                }
+                                Boolean result = (Boolean) parseResult;
+                                DetectionLampStatus status = new DetectionLampStatus();
+                                status.setLabel("钨灯");
+                                status.setValue(result ? "亮" : "不亮");
+
+                                vo.getDataList().add(status);
                             }
 
                             sum ++ ;
@@ -542,16 +565,17 @@ public class LiveDetectionWebSocket {
         DetectionConstants.isDeviceIdle = true;
     }
 
-    private static List<DetectionLampStatus> getDetectionLampStatuses(int parseResult) {
+    private static List<DetectionLampStatus> getDetectionLampStatuses(boolean parseResult, String comId) {
         List<DetectionLampStatus> dataList = new ArrayList<>();
         DetectionLampStatus status = new DetectionLampStatus();
+
         status.setLabel("氘灯");
-        status.setValue(parseResult == 1 ? "亮" : "不亮");
+        status.setValue(parseResult ? "亮" : "不亮");
         dataList.add(status);
 
         DetectionLampStatus status1 = new DetectionLampStatus();
         status1.setLabel("钨灯");
-        status1.setValue(parseResult == 0 ? "亮" : "不亮");
+        status1.setValue(parseResult ? "亮" : "不亮");
         dataList.add(status1);
         return dataList;
     }

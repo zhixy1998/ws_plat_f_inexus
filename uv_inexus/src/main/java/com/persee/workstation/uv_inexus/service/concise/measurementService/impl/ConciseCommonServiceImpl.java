@@ -1986,17 +1986,29 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         String taskId = vo.getTaskId();
         String sampleId = vo.getSampleId();
+
+        LambdaQueryWrapper<FMeasureData> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FMeasureData::getTaskId, taskId)
+                .eq(FMeasureData::getSampleKey, sampleId)
+                .orderByDesc(FMeasureData::getSerialNumber).last("limit 1");
+        FMeasureData data = fMeasureDataService.getOne(wrapper);
+
+
         LambdaQueryWrapper<FMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
-                .eq(FMeasureAnalysisData::getSampleKey, sampleId)
-                .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
+                .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+
+        if (data != null) {
+            queryWrapper.eq(FMeasureAnalysisData::getMeasureDataId, data.getId());
+        }
+        queryWrapper.orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
 
         FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
         if (analysisData != null) {
             Map<String, String> jsonObject;
             if (StringUtils.hasText(analysisData.getAnalysisParam())) {
-                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>() {
-                });
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+                jsonObject.putAll(vo.getData());
             } else {
                 jsonObject = vo.getData();
             }
