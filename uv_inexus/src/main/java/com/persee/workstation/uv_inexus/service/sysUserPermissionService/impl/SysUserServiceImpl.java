@@ -143,7 +143,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         BeanUtils.copyProperties(saveDTO, userPO, "password");  // 排除密码
         // 密码更新（若有新密码）
         if (saveDTO.getPassword() != null && !saveDTO.getPassword().isEmpty()) {
-            userPO.setPassword(PasswordUtils.encode(saveDTO.getPassword()));
+            userPO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
         }
         userPO.setUpdateBy("admin");
         userPO.setUpdated(LocalDateTime.now());
