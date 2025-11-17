@@ -2052,7 +2052,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
             //没有找到该方法
-            return Result.fail("00000009");
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
         // 1. 判断是否有任务在使用该方法
