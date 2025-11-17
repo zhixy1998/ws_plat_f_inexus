@@ -2871,6 +2871,29 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
 
             }
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                    .eq(FMeasureAnalysisData::getSampleKey, sampleId);
+            if (data != null) {
+                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getMeasureDataId, data.getId());
+            }
+            analysisDataQueryWrapper.orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
+
+            FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            if (one != null && one.getAnalysisResult() != null) {
+                List<FRationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), FRationCountDataInfo.class);
+                for (FRationCountDataInfo countData : countDataList) {
+                    if (countData.getColValue() !=null) {
+                        map.put(countData.getIdentity(), countData.getColValue());
+                    }
+                }
+            }
+            if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
+                Map<String, String> jsonObject;
+                jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+
+                map.putAll(jsonObject);
+            }
         } else {
             //重复模式，获取数据方式待定----暂时先以不重复做回显
             if (data != null) {
