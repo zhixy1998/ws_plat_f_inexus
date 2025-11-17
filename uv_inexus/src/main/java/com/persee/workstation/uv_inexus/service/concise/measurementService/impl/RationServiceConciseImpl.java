@@ -3263,15 +3263,29 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         }
 
-
         if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")) {
             FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
             resultVo = curveData(fittingParam);
             if (StringUtils.hasText(fittingParam.getR())) {
-                resultVo.setR(DataCountUtil.addZero(Double.valueOf(fittingParam.getR()), digit));
+                Double r = null;
+                try  {
+                     r = Double.valueOf(fittingParam.getR());
+                } catch (Exception ignored) {
+                }
+                if (r != null) {
+                    resultVo.setR(DataCountUtil.addZero(r, digit));
+                }
             }
             if (StringUtils.hasText(fittingParam.getR2())) {
-                resultVo.setR2(DataCountUtil.addZero(Double.valueOf(fittingParam.getR2()), digit));
+
+                Double r2 = null;
+                try  {
+                    r2 = Double.valueOf(fittingParam.getR2());
+                } catch (Exception ignored) {
+                }
+                if (r2 != null) {
+                    resultVo.setR2(DataCountUtil.addZero(r2, digit));
+                }
             }
 
          }
@@ -3349,13 +3363,23 @@ public class RationServiceConciseImpl implements RationConciseService {
                         if (parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
                             point.put("y", countValue);
                             point.put("x", measureValue);
+
+                            if (fitData != null) {
+                                point.put("xValue", measureValue);
+                                point.put("yValue", countValue);
+                                point.put("y", fitData);
+                            }
                         } else {
                             point.put("y", measureValue);
                             point.put("x", countValue);
+
+                            if (fitData != null) {
+                                point.put("xValue", countValue);
+                                point.put("yValue", measureValue);
+                                point.put("x", fitData);
+                            }
                         }
-                        if (fitData != null) {
-                            point.put("value", fitData);
-                        }
+
                         if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
                             standPoints.add(point);
                         } else {
@@ -3387,23 +3411,25 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         List<JSONObject> dataList = new ArrayList<>();
 
-        double k0 = info.getK0() == null ? 0 : (double) Math.round(info.getK0() * 1000) / 1000;
-        double k1 = info.getK1() == null ? 0 : (double) Math.round(info.getK1() * 1000) / 1000;
-        double k2 = info.getK2() == null ? 0 : (double) Math.round(info.getK2() * 1000) / 1000;
-        double k3 = info.getK3() == null ? 0 : (double) Math.round(info.getK3() * 1000) / 1000;
-        double k4 = info.getK4() == null ? 0 : (double) Math.round(info.getK4() * 1000) / 1000;
+        double k0 = info.getK0() == null ? 0 : info.getK0();
+        double k1 = info.getK1() == null ? 0 : info.getK1();
+        double k2 = info.getK2() == null ? 0 : info.getK2();
+        double k3 = info.getK3() == null ? 0 : info.getK3();
+        double k4 = info.getK4() == null ? 0 : info.getK4();
 
         double step = 0.01;
         int dataDigit = 8;
         //采用3位小数来计算
-        double minX = info.getMinX() == null ? -1 : (double) Math.round(info.getMinX() * 1000) / 1000;
-        double maxX = info.getMaxX() == null ? 1 : (double) Math.round(info.getMaxX() * 1000) / 1000;
+        double minX = info.getMinX() == null ? -1 : info.getMinX();
+        double maxX = info.getMaxX() == null ? 1 : info.getMaxX();
 
         step = (maxX - minX)/100;
 
+        double st = step * 3;
+
         switch (info.getDegree()) {
             case 1:
-                for (double i = minX; i < maxX; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i;
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
@@ -3412,7 +3438,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
                 break;
             case 2:
-                for (double i = minX - 1; i < maxX + 1; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i + k2 * i * i;
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
@@ -3421,7 +3447,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
                 break;
             case 3:
-                for (double i = minX - 1; i < maxX + 1; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i;
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
@@ -3431,7 +3457,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 break;
 
             case 4:
-                for (double i = minX - 1; i < maxX + 1; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i + k4 * i * i * i * i;
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
@@ -3448,11 +3474,26 @@ public class RationServiceConciseImpl implements RationConciseService {
         vo.setDataList(dataList);
         vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
-        if (vo.getR()!= null) {
-            vo.setR(DataCountUtil.addZero(Double.valueOf(info.getR()), dataDigit));
+        if (StringUtils.hasText(info.getR())) {
+            Double r = null;
+            try  {
+                r = Double.valueOf(info.getR());
+            } catch (Exception ignored) {
+            }
+            if (r != null) {
+                vo.setR(DataCountUtil.addZero(r, dataDigit));
+            }
         }
-        if (vo.getR2()!= null) {
-            vo.setR2(DataCountUtil.addZero(Double.valueOf(info.getR2()), dataDigit));
+        if (StringUtils.hasText(info.getR2())) {
+
+            Double r2 = null;
+            try  {
+                r2 = Double.valueOf(info.getR2());
+            } catch (Exception ignored) {
+            }
+            if (r2 != null) {
+                vo.setR2(DataCountUtil.addZero(r2, dataDigit));
+            }
         }
 
         return vo;

@@ -604,11 +604,13 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 response.setWl(waveLength + "-" + i);
                 machineData.add(response);
                 ChangeParam originRsd = new ChangeParam();
-                List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                for (ChangeParam param : params) {
-                    if (param.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
+                if (StringUtils.hasText(task.getZeroParam())) {
+                    List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+                    for (ChangeParam param : params) {
+                        if (param.getWl().equals(waveLength)) {
+                            BeanUtils.copyProperties(param, originRsd);
+                            break;
+                        }
                     }
                 }
                 String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);

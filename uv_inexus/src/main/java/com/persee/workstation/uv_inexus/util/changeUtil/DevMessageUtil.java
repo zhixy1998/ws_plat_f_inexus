@@ -431,6 +431,50 @@ public class DevMessageUtil {
     }
 
     /**
+     * 改变灯状态或切换灯
+     */
+    public Boolean changeLamp(Command command, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            log.info("绑定socket失败");
+            return false;
+        }
+        DatagramSocket socket = ans.getData();
+        if(flag.equals("T600")) {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return false;
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            return !parse.equals("false");
+        }
+        else if(flag.equals("T800")){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return false;
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            String result = ResponseParser.Result;
+
+            return !result.equals("false");
+        }
+        return true;
+    }
+
+    /**
      * 多波长校正，波长实际情况获取，发现设备后执行
      */
     public R<String> dealWlList(String deviceSerialNumber, String deviceIp) {

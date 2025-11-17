@@ -160,13 +160,14 @@ public class LiveDetectionWebSocket {
                         ignore.put("ignore", "设备在执行其他操作，等待空闲！");
                         messagingTemplate.convertAndSend(measureTopic, ignore.toJSONString());
                     }
+                    DetectionConstants.isDeviceIdle = false;
                     int timeout = 0;
 
                     while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
                          Thread.sleep(1000);
                          timeout++;
 
-                         if (timeout > 20) {
+                         if (timeout > 200) {
                              log.info("没有订阅者，断开仪器连接！");
                              devMessageUtil.disConnect(deviceIp);
                              stopAllMeasurements();
@@ -177,7 +178,6 @@ public class LiveDetectionWebSocket {
                          }
                     }
 
-                    DetectionConstants.isDeviceIdle = false;
                     R<DatagramSocket> news = messageUtil.getSocket();
                     if (!news.getSuccess()) {
                         log.info("绑定 socket 失败: {}");
@@ -351,40 +351,54 @@ public class LiveDetectionWebSocket {
         return R.ok();
     }
 
-    public R<Boolean> getDeviceStatus(String deviceSerialNumber) {
+    private volatile Thread statusThread;
 
+    public R<Boolean> getDeviceStatus(String deviceSerialNumber) {
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
         if (info == null) {
             log.info("实时监测：未找到该设备");
             return R.fail("请先连接仪器");
         }
 
-        new Thread(() -> {
+        // 只有当线程尚未启动或者已经终止时才重新启动
+        if (statusThread == null || !statusThread.isAlive()) {
+            synchronized (this) {
+                if (statusThread == null || !statusThread.isAlive()) {
+                    statusThread = new Thread(() -> {
+                        int connectStatus = info.getConnectStatus() == null ?
+                                Constants.CONNECT_DEVICE_NO : info.getConnectStatus();
+                        while (connectStatus == Constants.CONNECT_DEVICE_SUCCESS &&
+                                Constants.devConnectInfo.get(deviceSerialNumber) != null &&
+                                Constants.devConnectInfo.get(deviceSerialNumber)) {
+                            try {
+                                Thread.sleep(1000);
 
-            int connectStatus = info.getConnectStatus() == null? Constants.CONNECT_DEVICE_NO : info.getConnectStatus();
-            while (connectStatus == Constants.CONNECT_DEVICE_SUCCESS && Constants.devConnectInfo.get(deviceSerialNumber) != null
-                    && Constants.devConnectInfo.get(deviceSerialNumber)) {
-                try {
-                    Thread.sleep(1000);
+                                DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
+                                if (infoPO != null && infoPO.getDeviceCurrentStatus() != null) {
+                                    JSONObject status = new JSONObject();
+                                    status.put("devCurrentStatus", infoPO.getDeviceCurrentStatus());
+                                    messagingTemplate.convertAndSend(deviceStatusTopic, status);
+                                }
 
-                    DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
-                    if (infoPO != null && infoPO.getDeviceCurrentStatus() != null) {
-                        JSONObject status = new JSONObject();
-                        status.put("devCurrentStatus", infoPO.getDeviceCurrentStatus());
-                        messagingTemplate.convertAndSend(deviceStatusTopic, status);
+                                if (infoPO == null) {
+                                    connectStatus = Constants.CONNECT_DEVICE_NO;
+                                } else {
+                                    connectStatus = infoPO.getConnectStatus() == null ?
+                                            Constants.CONNECT_DEVICE_NO : infoPO.getConnectStatus();
+                                }
 
-                    }
-                    if (infoPO == null) {
-                        connectStatus = Constants.CONNECT_DEVICE_NO;
-                    } else {
-                        connectStatus = infoPO.getConnectStatus() == null? Constants.CONNECT_DEVICE_NO : info.getConnectStatus();
-                    }
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt(); // 恢复中断状态
+                                break;
+                            }
+                        }
+                    }, "StatusThread");
 
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    statusThread.start();
                 }
             }
-        }).start();
+        }
+
         return R.ok();
     }
 
@@ -469,7 +483,7 @@ public class LiveDetectionWebSocket {
         }
 
 
-        if (deviceStatusTopic.equals(destination) && StringUtils.hasText(serialNumber)){
+        if (deviceStatusTopic.equals(destination) && StringUtils.hasText(serialNumber)&& status ){
             getDeviceStatus(serialNumber);
         }
 

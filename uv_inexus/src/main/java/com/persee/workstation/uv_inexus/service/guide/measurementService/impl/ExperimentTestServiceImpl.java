@@ -644,7 +644,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             heads.addAll(vos);
 
             heads.add(new HeadVO("备注", "remark"));
-            heads.add(new HeadVO("采样时间", "samplingTime"));
+            heads.add(new HeadVO("采集时间", "samplingTime"));
             vo.setHeadList(heads);
 
             QueryDataDTO queryDataDTO = new QueryDataDTO();
