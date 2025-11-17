@@ -751,7 +751,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                                 jsonObject.put("value", valueData.getColValue());
                                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
-                                sendPoint(session, DataCountUtil.addZero(Double.valueOf(valueData.getColValue()), digit), String.valueOf(countValue), parameter);
+                                sendUnknowPoint(session, valueData, String.valueOf(countValue), parameter);
 
                             }
 
@@ -902,6 +902,37 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             point.put("x", param);
             point.put("y", absValue);
         }
+        if (session.isOpen()) {
+            JSONObject payload = new JSONObject();
+            payload.put("point", point);
+            payload.put("equationType", RationCurveParamEnums.getName(parameter.getEquationType()));
+            session.sendMessage(new TextMessage(payload.toJSONString()));
+        }
+    }
+
+    public void sendUnknowPoint(WebSocketSession session, FRationCountDataInfo param, String absValue, FRationParameter parameter) throws IOException {
+        JSONObject point = new JSONObject();
+        if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+            point.put("x", absValue);
+
+            if (param.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                point.put("y", DataCountUtil.addZero(Double.valueOf(param.getOriginalValue()), digit));
+                point.put("yValue", param.getColValue());
+                point.put("xValue", absValue);
+            } else {
+                point.put("y", DataCountUtil.addZero(Double.valueOf(param.getColValue()), digit));
+            }
+        } else {
+            point.put("y", absValue);
+            if (param.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                point.put("x", DataCountUtil.addZero(Double.valueOf(param.getOriginalValue()), digit));
+                point.put("xValue", param.getColValue());
+                point.put("yValue", absValue);
+            } else {
+                point.put("x", DataCountUtil.addZero(Double.valueOf(param.getColValue()), digit));
+            }
+        }
+
         if (session.isOpen()) {
             JSONObject payload = new JSONObject();
             payload.put("point", point);
