@@ -1763,12 +1763,27 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result peakSearchingPort(FSeekingPeaksValleysDto paramDto) {
+        // 参数校验
+        if (paramDto.getHeight() != null) {
+            if (paramDto.getHeight() < 0) {
+                return Result.fail("峰谷差阈值不能为负数");
+            }
+            if (paramDto.getHeight() > 100) {
+                return Result.fail("峰谷差阈值不可超过100");
+            }
+        }
+
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         if (paramDto.getDataId() == null || paramDto.getDataId().equals("")) {
             return Result.fail("数据ID不能为空");
         }
         if (paramDto.getHeight() == null) {
-            paramDto.setHeight((double) Integer.parseInt(confVO.getPeakValleyDiff()));
+            // 设置默认值前也要检查默认值是否合法
+            double defaultHeight = Double.parseDouble(confVO.getPeakValleyDiff());
+            if (defaultHeight < 0 || defaultHeight > 100) {
+                return Result.fail("系统默认峰谷差阈值配置不合法，请检查系统配置");
+            }
+            paramDto.setHeight(defaultHeight);
         }
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakInterval());
@@ -1779,6 +1794,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail("峰谷间距不可以小于1");
         }
         paramDto.setHeight(paramDto.getHeight() / 100);
+
+        // 原有业务逻辑保持不变...
         FMeasureAnalysisData fMeasureAnalysisData = fMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (fMeasureAnalysisData == null) {
             return Result.fail("测量数据不存在");
