@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceAutoInjectorDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.InjectorTrayParamDAO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
@@ -75,15 +76,16 @@ public class DeviceAutoInjectorServiceImpl implements DeviceAutoInjectorService 
                 }
             }
         }
-
-        return R.fail("仪器设置成功，数据库保存失败，请检查数据库设置");
+        //仪器设置成功，数据库保存失败，请检查数据库设置
+        return R.fail(YamlMessageSource.getMessageStatic("00201002"));
     }
 
     @Override
     public R<Boolean> setInjectorTray(List<InjectionTrayParamPO> poList) {
         String deviceSerialNumber = null;
         if (poList.isEmpty()) {
-            return R.fail("没有数据");
+            //没有数据
+            return R.fail(YamlMessageSource.getMessageStatic("0000002A"));
         }
         for (InjectionTrayParamPO paramPO : poList) {
             if(StringUtils.hasText(paramPO.getDeviceSerialNumber())) {

@@ -121,6 +121,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, PhotometricParameter photometricParameter) {
 
         if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
+            //请填写波长值
             return Result.fail("请填写波长值");
         }
 

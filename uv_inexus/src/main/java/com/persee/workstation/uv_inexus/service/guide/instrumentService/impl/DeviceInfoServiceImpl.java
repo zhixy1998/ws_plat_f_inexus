@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -109,26 +110,31 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         Integer isInited = info.getIsInited();
 
         if (info.getConnectStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
-            return R.fail("仪器已断开！");
+            //仪器已断开！
+            return R.fail(YamlMessageSource.getMessageStatic("00202007"));
         }
 
         Integer isActivated = info.getIsActivated();
         if (isActivated == null || isActivated == 0) {
-            return R.fail("请先激活仪器");
+            //请先激活仪器
+            return R.fail(YamlMessageSource.getMessageStatic("00202001"));
         }
 
         Integer connectStatus = info.getDeviceCurrentStatus();
         if (connectStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
-            return R.fail( "设备正在初始化，请等待");
+            //设备正在初始化，请等待
+            return R.fail(YamlMessageSource.getMessageStatic("00202002"));
         }
         if (connectStatus.equals(Constants.DEVICE_STATUS_MEASURE) && !DetectionConstants.isDeviceIdle){
-            return R.fail( "设备正在测量，请等待");
+            //设备正在测量，请等待
+            return R.fail(YamlMessageSource.getMessageStatic("00202003"));
         }
 
         if (!status.equals(Constants.DEVICE_STATUS_INIT)) {
             if (isInited == null || isInited == 0) {
                 log.info("未初始化");
-                return R.fail("未初始化");
+                //未初始化
+                return R.fail(YamlMessageSource.getMessageStatic("00202004"));
             }
         }
 
@@ -145,11 +151,12 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
                 count ++;
             } catch (InterruptedException e) {
                 log.error(e.getMessage());
-                return R.fail("系统异常");
+                //系统异常
+                return R.fail(YamlMessageSource.getMessageStatic("00202005"));
             }
         }
-
-        return R.fail("设备正在使用中，请等待");
+        //设备正在使用中，请等待
+        return R.fail(YamlMessageSource.getMessageStatic("00202006"));
     }
 
     @Override
