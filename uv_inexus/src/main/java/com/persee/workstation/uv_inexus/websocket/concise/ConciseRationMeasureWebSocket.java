@@ -734,11 +734,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                             String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType(), digit);
 
                             if (ans != null) {
-                                ans = rationService.fitDataRounding(ans, parameter);
                                 FRationCountDataInfo valueData = new FRationCountDataInfo();
+                                valueData.setOriginalValue(ans);
+                                String s = rationService.fitDataRounding(ans, parameter);
+
                                 valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
                                 valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                                valueData.setColValue(ans);
+                                valueData.setColValue(s);
                                 measureAbsDataList.add(valueData);
 
                                 measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
@@ -854,12 +856,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             String valued = rationService.valueCalculate(curveData, Double.valueOf(toCountData.getColValue()), parameter.getEquationType(), digit);
 
             if (valued != null) {
-                valued = rationService.fitDataRounding(valued, parameter);
-
                 FRationCountDataInfo valueData = new FRationCountDataInfo();
+                valueData.setOriginalValue(valued);
+                String s = rationService.fitDataRounding(valued, parameter);
+
                 valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
                 valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                valueData.setColValue(valued);
+                valueData.setColValue(s);
                 newData.add(valueData);
 
                 JSONObject jsonObject = new JSONObject();

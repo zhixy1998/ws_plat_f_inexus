@@ -57,7 +57,6 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasu
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -405,10 +404,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
                 oldParam.getTimeInterval().equals(newParam.getTimeInterval()) && 
                 oldParam.getRepeatMode().equals(newParam.getRepeatMode()) &&
-                oldParam.getRepeatCount().equals(newParam.getRepeatCount()) &&
-                oldParam.getResponseTime().equals(newParam.getResponseTime()) &&
-                oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
-                oldParam.getSpectralBandwidth().equals(newParam.getSpectralBandwidth());
+                oldParam.getRepeatCount().equals(newParam.getRepeatCount());
     }
 
     //检查参数是否改变，true--未改变，false--改变了
@@ -416,6 +412,8 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         return Objects.equals(oldParam.getSampleInputParams(),newParam.getSampleInputParams()) &&
                 Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
+                Objects.equals(oldParam.getCurveCoefficient(), newParam.getCurveCoefficient()) &&
+                Objects.equals(oldParam.getUnit(), newParam.getUnit()) &&
                 Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
                 Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
 
@@ -886,7 +884,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                     newTask.setUserId(userId);
                     newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
-                    newTask.setTableInfo(task.getTableInfo());
+
+                    if (StringUtils.hasText(task.getTableInfo())) {
+                        newTask.setTableInfo(task.getTableInfo());
+                    }
 
                     newTask.setId(null);
                     newTask.setMethodKey(methodId);
@@ -971,7 +972,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                 newTask.setProjectItemKey(defaultProjectId);
                 newTask.setUserId(userId);
                 newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-                newTask.setTableInfo(task.getTableInfo());
+                if (StringUtils.hasText(task.getTableInfo())) {
+                    newTask.setTableInfo(task.getTableInfo());
+                }
+
                 newTask.setCreateTime(LocalDateTime.now());
                 newTask.setEndSaveTime(LocalDateTime.now());
                 newTask.setId(null);
@@ -2175,7 +2179,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             FMeasureSample newSample = new FMeasureSample();
 
-            sampleAutoNum = sampleAutoNum + 1;
+            sampleAutoNum = 1;
             while (sampleNumList.contains("default-"+ sampleAutoNum)) {
                 sampleAutoNum += 1;
             }
@@ -3126,6 +3130,11 @@ public class RationServiceConciseImpl implements RationConciseService {
                 minPointNum = 5;
                 break;
         }
+
+        if (parameter.getZeroMethod() != null && parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
+            minPointNum = minPointNum - 1;
+        }
+
         if (inputParam.size() < minPointNum) {
             log.info("数据点数不足，不进行曲线拟合");
             //数据点数不足，不进行曲线拟合
@@ -3308,17 +3317,21 @@ public class RationServiceConciseImpl implements RationConciseService {
                     if (analysisData == null) {
                         analysisData = new FMeasureAnalysisData();
                     }
+
+                    String fitData = null;
+
                     if (StringUtils.hasText(analysisData.getAnalysisResult())) {
-                        List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
-                        for (RationCountDataInfo dataInfo : countDataInfoList) {
+                        List<FRationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), FRationCountDataInfo.class);
+                        for (FRationCountDataInfo dataInfo : countDataInfoList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                                abs = DataCountUtil.addZero(dataInfo.getColValue(), digit);
+                                abs = DataCountUtil.addZero(Double.valueOf(dataInfo.getColValue()), digit);
                             }
                             if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
-                                sumAbs = DataCountUtil.addZero(dataInfo.getColValue(), digit);
+                                sumAbs = DataCountUtil.addZero(Double.valueOf(dataInfo.getColValue()), digit);
                             }
                             if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
-                                countValue = dataInfo.getColValue()==null?null:DataCountUtil.addZero(dataInfo.getColValue(), digit);
+                                countValue = dataInfo.getColValue()==null?null:dataInfo.getColValue();
+                                fitData = dataInfo.getOriginalValue()==null?null:dataInfo.getOriginalValue();
                             }
                         }
                     }
@@ -3333,13 +3346,15 @@ public class RationServiceConciseImpl implements RationConciseService {
                         measureValue = abs;
                     }
                     if (countValue != null && measureValue != null) {
-                        if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                        if (parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
                             point.put("y", countValue);
                             point.put("x", measureValue);
-
                         } else {
                             point.put("y", measureValue);
                             point.put("x", countValue);
+                        }
+                        if (fitData != null) {
+                            point.put("value", fitData);
                         }
                         if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
                             standPoints.add(point);
@@ -3457,19 +3472,24 @@ public class RationServiceConciseImpl implements RationConciseService {
         String s = "";
         String ans = null;
 
+        try {
+            if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
+            } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
+                s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+            }
+            if (StringUtils.hasText(s)) {
+                JSONObject jsonObject = JSON.parseObject(s);
 
-        if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
-        } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+                ans = jsonObject.get("value").toString();
+            }
+            return ans;
+        } catch (Exception e) {
+            log.error("数据计算异常", e);
+            return null;
         }
-        if (StringUtils.hasText(s)) {
-            JSONObject jsonObject = JSON.parseObject(s);
 
-            String mid = jsonObject.get("value").toString();
-            ans = mid;
-        }
-        return ans;
+
     }
 
     @Override
@@ -4115,15 +4135,18 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 if (fitInfo != null && fitInfo.getCoefficients()!= null) {
                     String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
-                    ans = fitDataRounding(ans, parameter);
 
-                    FRationCountDataInfo valueData = new FRationCountDataInfo();
-                    valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-                    valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                    valueData.setColValue(ans);
-                    currentList.add(valueData);
+                    if (ans != null) {
+                        FRationCountDataInfo valueData = new FRationCountDataInfo();
+                        valueData.setOriginalValue(ans);
+                        String s = fitDataRounding(ans, parameter);
+
+                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                        valueData.setColValue(s);
+                        currentList.add(valueData);
+                    }
                 }
-
 
                 //TODO 公式计算，待做
                 dealData.setCountData(currentList);

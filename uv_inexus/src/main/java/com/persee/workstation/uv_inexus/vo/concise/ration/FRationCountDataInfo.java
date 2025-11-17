@@ -27,4 +27,7 @@ public class FRationCountDataInfo {
     @ApiModelProperty("值")
     private String colValue;
 
+    @ApiModelProperty("修约后原始数据，仅针对需要修约的数")
+    private String originalValue;
+
 }

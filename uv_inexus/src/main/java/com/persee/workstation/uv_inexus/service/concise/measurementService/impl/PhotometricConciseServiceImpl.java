@@ -364,8 +364,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         task.setCreateTime(LocalDateTime.now());
         List<FTaskSpecimen> samples = new ArrayList<>();
         task.setSampleKey(JSON.toJSONString(samples));
-        if (oldTask != null && StringUtils.hasText(oldTask.getTableInfo())) {
-            task.setTableInfo(oldTask.getTableInfo());
+        if (oldTask != null) {
+
+            if (StringUtils.hasText(oldTask.getTableInfo())) {
+                task.setTableInfo(oldTask.getTableInfo());
+            }
             if (StringUtils.hasText(oldTask.getZeroParam())) {
                 task.setZeroParam(oldTask.getZeroParam());
             }
@@ -583,8 +586,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureMethod method = fMeasureMethodService.getById(methodId);
             method.setMethodUseTime(LocalDateTime.now());
             fMeasureMethodService.updateById(method);
-            setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
-            return Result.ok(ans);
+            R<Boolean> r = setParamToDevice(methodId, methodDTO.getDeviceSerialNumber());
+            if (!r.getSuccess()) {
+                return Result.ok(ans);
+            } else {
+                return Result.ok(ans);
+            }
 
         } else {
             task = fMeasureTaskService.getById(methodDTO.getCurrentTaskId());
@@ -646,7 +653,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     newTask.setUserId(userId);
                     newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
-                    newTask.setTableInfo(task.getTableInfo());
+                    if (StringUtils.hasText(task.getTableInfo())) {
+                        newTask.setTableInfo(task.getTableInfo());
+                    }
 
                     newTask.setId(null);
                     newTask.setMethodKey(methodId);
@@ -708,7 +717,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 newTask.setUserId(userId);
                 newTask.setTaskName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
 
-                newTask.setTableInfo(task.getTableInfo());
+                if (StringUtils.hasText(task.getTableInfo())) {
+                    newTask.setTableInfo(task.getTableInfo());
+                }
 
                 newTask.setId(null);
                 newTask.setMethodKey(methodId);
@@ -817,23 +828,23 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     }
 
-    private void setParamToDevice(String methodId, String deviceSerialNumber) {
+    private R<Boolean> setParamToDevice(String methodId, String deviceSerialNumber) {
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("设备未连接,无需下发参数");
-            return;
+            return R.fail("设备未连接,无需下发参数");
         }
 
         FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
         if (fMeasureMethod == null) {
             log.warn("找不到对应的测量方法: methodId={}", methodId);
-            return;
+            return R.fail("找不到对应的测量方法");
         }
 
         FPhotometricParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
         if (parameter == null) {
             log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
-            return;
+            return R.fail("解析测量参数失败");
         }
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         if (StringUtils.hasText(ip)) {
@@ -863,14 +874,23 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 list.add(new Command("SetGain", new Object[]{gain}));
             }
             try {
-                deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-                devMessageUtil.photometricAndRationMeasurement(list, ip);
+                R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+                if (!r.getSuccess()) {
+                    log.info("设置参数，仪器抢占失败");
+                    return R.fail(r.getMessage());
+                }
+                R<ChangeParam> changeParamR = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                if (!changeParamR.getSuccess()) {
+                    log.info("设置参数失败");
+                    return R.fail("设置参数失败");
+                }
             } catch (Exception e) {
                 log.info("参数设置异常");
             } finally {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
         }
+        return R.ok(true);
 
     }
 

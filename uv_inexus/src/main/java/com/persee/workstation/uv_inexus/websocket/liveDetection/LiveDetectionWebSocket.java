@@ -79,6 +79,9 @@ public class LiveDetectionWebSocket {
     @Value("/topic/detection")
     String measureTopic;
 
+    @Value("/topic/deviceStatus")
+    String deviceStatusTopic;
+
     private static volatile boolean status = true;
 
     private static volatile String serialNumber = null;
@@ -114,6 +117,7 @@ public class LiveDetectionWebSocket {
             // 启动发送接收线程
             serialNumber = deviceSerialNumber;
             this.startMeasureLoop(deviceSerialNumber);
+            this.getDeviceStatus(deviceSerialNumber);
             status = false;
         }
 
@@ -195,8 +199,10 @@ public class LiveDetectionWebSocket {
                         vo.setTotalPoolNum(attachmentInfo.getSamplePoolNum());
 
                         int sum = 1;
+                        boolean isConnect = true;
                         while (sum <= LiveDetectionCmdEnum.getLength()) {
                             if (Constants.devConnectInfo.get(deviceSerialNumber) == null || !Constants.devConnectInfo.get(deviceSerialNumber)) {
+                                isConnect = false;
                                 break;
                             }
 
@@ -272,6 +278,11 @@ public class LiveDetectionWebSocket {
                             sum ++ ;
                         }
 
+                        if (!isConnect) {
+                            status = true;
+                            return;
+                        }
+
                         vo.setY(vo.getY() + WaveLengthEnum.getName(DetectionConstants.luminosity));
                         if (!StringUtils.hasText(vo.getBandwidth())) {
                             vo.setBandwidth("2.0");
@@ -340,6 +351,43 @@ public class LiveDetectionWebSocket {
         return R.ok();
     }
 
+    public R<Boolean> getDeviceStatus(String deviceSerialNumber) {
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null) {
+            log.info("实时监测：未找到该设备");
+            return R.fail("请先连接仪器");
+        }
+
+        new Thread(() -> {
+
+            int connectStatus = info.getConnectStatus() == null? Constants.CONNECT_DEVICE_NO : info.getConnectStatus();
+            while (connectStatus == Constants.CONNECT_DEVICE_SUCCESS && Constants.devConnectInfo.get(deviceSerialNumber) != null
+                    && Constants.devConnectInfo.get(deviceSerialNumber)) {
+                try {
+                    Thread.sleep(1000);
+
+                    DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
+                    if (infoPO != null && infoPO.getDeviceCurrentStatus() != null) {
+                        JSONObject status = new JSONObject();
+                        status.put("devCurrentStatus", infoPO.getDeviceCurrentStatus());
+                        messagingTemplate.convertAndSend(deviceStatusTopic, status);
+
+                    }
+                    if (infoPO == null) {
+                        connectStatus = Constants.CONNECT_DEVICE_NO;
+                    } else {
+                        connectStatus = infoPO.getConnectStatus() == null? Constants.CONNECT_DEVICE_NO : info.getConnectStatus();
+                    }
+
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }).start();
+        return R.ok();
+    }
+
     @MessageMapping("/detection/stop")
     public void stopMeasure() {
         // 减少活跃订阅者计数
@@ -353,7 +401,7 @@ public class LiveDetectionWebSocket {
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
-
+        String destination = headerAccessor.getDestination();
 
         log.info("WebSocket连接建立: {}", sessionId);
 
@@ -368,6 +416,7 @@ public class LiveDetectionWebSocket {
             startMeasureLoop(deviceSerialNumber);
             status = false;
         }
+
     }
 
     private String extractDeviceSerialNumber(StompHeaderAccessor headerAccessor) {
@@ -418,6 +467,12 @@ public class LiveDetectionWebSocket {
                 log.info("会话 {} 订阅了主题: {}", sessionId, destination);
             }
         }
+
+
+        if (deviceStatusTopic.equals(destination) && StringUtils.hasText(serialNumber)){
+            getDeviceStatus(serialNumber);
+        }
+
     }
 
     @EventListener

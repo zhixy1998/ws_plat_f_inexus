@@ -91,6 +91,7 @@ public class DevMessageUtil {
         while (!DetectionConstants.isDeviceIdle) {
             Thread.sleep(100);
         }
+        Constants.devConnectInfo.clear();
         DetectionConstants.isDeviceIdle = false;
 
         R<DatagramSocket> ans = messageUtil.getSocket();
@@ -390,6 +391,9 @@ public class DevMessageUtil {
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            if (responses.size() < 2) {
+                return R.fail("校正失败");
+            }
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             String result = parse.toString();
             if ("false".equals(result)) {

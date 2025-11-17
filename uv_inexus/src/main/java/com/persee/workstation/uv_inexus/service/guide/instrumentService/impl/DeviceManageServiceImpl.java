@@ -345,6 +345,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public R<Boolean> closeOrOpenLamp(String lampType, Integer status) {
+        return null;
+    }
+
+    @Override
     public Boolean disConnect(String deviceSerialNumber, String updateBy) {
         DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
         Constants.devConnectInfo.remove(deviceSerialNumber);
@@ -359,6 +364,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     @DS("guide")
     public R<List<FindDeviceVO>> findDevice() throws Exception {
+
+
         List<Command> list = new ArrayList<>();
         list.add(new Command(FindDevEnum.FindDevice.getComId(), new Object[]{}));
         list.add(new Command(FindDevEnum.NewIP.getComId(), new Object[]{}));
@@ -459,6 +466,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             BeanUtils.copyProperties(po, deviceVO);
             deviceVO.setAttachmentKind(attachmentInfo.getAttachmentKind());
+            deviceVO.setLinearSegment(null);
             devices.add(deviceVO);
 
             return R.ok(devices);
@@ -579,6 +587,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         String ip = infoService.getIp(dto.getDeviceSerialNumber());
         log.info("调用校准");
 
+        R<Boolean> r = infoService.useDevice(dto.getDeviceSerialNumber(), Constants.DEVICE_STATUS_OTHER);
+        if (!r.getSuccess()) {
+            log.info("设备被占用");
+            return R.fail(r.getMessage());
+        }
+
         if (dto.getCalibrationType() == 1) {
             //波长校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
@@ -586,14 +600,21 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 devMessageUtil.deviceCalibration(command, ip);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
+            }finally {
+                infoService.releaseDevice(dto.getDeviceSerialNumber());
             }
         } else if (dto.getCalibrationType() == 2) {
             //暗电流校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
             try {
-                devMessageUtil.deviceCalibration(command, ip);
+                R<String> stringR = devMessageUtil.deviceCalibration(command, ip);
+                if (!stringR.getSuccess()) {
+                    return R.fail("暗电流校正失败，请检查仪器!");
+                }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
+            } finally {
+                infoService.releaseDevice(dto.getDeviceSerialNumber());
             }
         }
 
