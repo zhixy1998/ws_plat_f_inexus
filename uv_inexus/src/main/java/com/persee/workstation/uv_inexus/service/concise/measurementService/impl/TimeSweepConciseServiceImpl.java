@@ -437,6 +437,11 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     @Override
     public Result use (TimeUseMethodDto paramDto) {
+        double response = Double.parseDouble(paramDto.getParameter().getResponseTime());
+        double interval = Double.parseDouble(paramDto.getParameter().getIntervalTime());
+        if (response> interval){
+            return Result.fail("响应时间不能大于时间间隔");
+        }
         Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
         if (result.getCode()!=200) {
             return result;

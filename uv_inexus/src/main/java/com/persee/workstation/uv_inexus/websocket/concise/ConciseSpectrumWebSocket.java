@@ -10,6 +10,7 @@
  * *************************************************************************************
  */
 package com.persee.workstation.uv_inexus.websocket.concise;
+
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
@@ -47,10 +48,14 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 @Component
 public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
@@ -59,6 +64,10 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     // 存储任务线程
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
+
+    // 存储状态跟踪
+    private static final Map<String, AtomicInteger> pendingStorages = new ConcurrentHashMap<>();
+    private static final Map<String, CountDownLatch> storageLatches = new ConcurrentHashMap<>();
     private String ip;
     private String deviceSerialNumber;
     private boolean occupancyStatus = false;
@@ -495,13 +504,30 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         // 异步保存数据，不阻塞测量流程
         MeasurementResult finalResult = result;
-        new Thread(() -> {
-            saveOneMeasurementWithSnapshots(task, taskId, sampleId, deviceSerialNumber,
-                    finalResult.x, finalResult.y, session, count, finalResult.startTime, finalResult.endTime,
-                    finalResult.instrumentSnapshot, finalResult.originalCalcSnapshot);
-        }).start();
+        // 同步保存数据，等待保存完成
+        String storageKey = session.getId() + "_" + sampleId + "_" + count;
+        CountDownLatch latch = new CountDownLatch(1);
+        storageLatches.put(storageKey, latch);
 
-        // 立即通知前端测量完成
+        // 保存数据
+        saveOneMeasurementWithSnapshots(task, taskId, sampleId, deviceSerialNumber,
+                finalResult.x, finalResult.y, session, count, finalResult.startTime, finalResult.endTime,
+                finalResult.instrumentSnapshot, finalResult.originalCalcSnapshot, latch);
+
+        // 等待存储完成
+        try {
+            boolean stored = latch.await(30, TimeUnit.SECONDS); // 最多等待30秒
+            if (!stored) {
+                log.warn("数据存储超时，sampleId: {}, count: {}", sampleId, count);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("等待数据存储时被中断", e);
+        } finally {
+            storageLatches.remove(storageKey);
+        }
+
+        // 存储完成后才通知前端
         JSONObject finishMessage = new JSONObject();
         finishMessage.put("result", "measurement_complete");
         finishMessage.put("sampleId", sampleId);
@@ -1174,8 +1200,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             // 推送时：根据指定位数格式化Y值
             Double value = DataCountUtil.formatValue(digit, y.get(i));
             String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", valueY);
-
+            point.put("y", y.get(i));
+            point.put("roundOffY",valueY);
             point.put("xType", "nm");
 
             // 光度模式 - 修复：根据实际的光度模式设置单位
@@ -1280,7 +1306,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 // 推送时：根据指定位数格式化Y值
                 Double value = DataCountUtil.formatValue(digit, y.get(i));
                 String valueY = DataCountUtil.addZero(value, digit);
-                point.put("y", valueY);
+                point.put("y", y.get(i));
+                point.put("roundOffY",valueY);
 
                 point.put("xType", "nm");
                 // 光度模式是1.Abs 2.T% 3.Es 4.Er
@@ -1355,7 +1382,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 // 推送时：根据指定位数格式化Y值
                 Double value = DataCountUtil.formatValue(digit, y.get(startIndex + i));
                 String valueY = DataCountUtil.addZero(value, digit);
-                point.put("y", valueY);
+                point.put("y", y.get(i));
+                point.put("roundOffY",valueY);
 
                 point.put("xType", "nm");
                 // 光度模式是1.Abs 2.T% 3.Es 4.Er
@@ -1631,10 +1659,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                                  LocalDateTime startTime,
                                                  LocalDateTime endTime,
                                                  List<String> instrumentSnapshot,
-                                                 List<String> originalCalcSnapshot) {
-        measureStatus=false;
+                                                 List<String> originalCalcSnapshot,
+                                                 CountDownLatch latch) {
+        measureStatus = false;
         if (instrumentSnapshot == null || originalCalcSnapshot == null) {
             log.warn("测量数据为空，无法保存");
+            if (latch != null) {
+                latch.countDown();
+            }
             return;
         }
 
@@ -1860,6 +1892,11 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             // 清理存储的原始Y值
             String key = session.getId() + "_" + sampleId + "_" + number;
             originalYValues.remove(key);
+
+            // 通知存储完成
+            if (latch != null) {
+                latch.countDown();
+            }
         }
     }
     /**
