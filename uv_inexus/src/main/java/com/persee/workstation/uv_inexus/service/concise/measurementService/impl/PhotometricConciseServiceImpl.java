@@ -2636,7 +2636,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<FHeadVO> vos = tableHead(taskId, methodId, allDisplay, null).getData();
         heads.addAll(vos);
         heads.add(new FHeadVO("备注", "remark"));
-        heads.add(new FHeadVO("采样时间", "samplingTime"));
+        heads.add(new FHeadVO("采集时间", "samplingTime"));
 
         FQueryDataDTO queryDataDTO = new FQueryDataDTO();
         queryDataDTO.setOption(new ArrayList<>());

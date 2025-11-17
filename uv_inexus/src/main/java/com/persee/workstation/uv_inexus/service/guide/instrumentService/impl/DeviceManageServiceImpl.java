@@ -345,8 +345,61 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<Boolean> closeOrOpenLamp(String lampType, Integer status) {
-        return null;
+    public R<Boolean> closeOrOpenLamp(String lampType, Integer status, String deviceSerialNumber) {
+
+//        SetWLampStatus  （设置钨灯开关：1开0关）
+//        SetDLampStatus  （设置氘灯开关：1开0关）
+//        SetLampPos （设置灯位置：0钨灯1氘灯）
+        Command command = new Command();
+        if (lampType.equals(EnergyLampEnums.Tungsten.getIdentity())) {
+            command = new Command("SetWLampStatus", new Object[]{status});
+        }
+        if (lampType.equals(EnergyLampEnums.Deuterium.getIdentity())) {
+            command = new Command("SetDLampStatus", new Object[]{status});
+        }
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null || !StringUtils.hasText(info.getIp()) || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+            return R.fail("设备未连接");
+        }
+        String ip = info.getIp();
+        R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+        if (!r.getSuccess()) {
+            return R.fail(r.getMessage());
+        }
+        Boolean b = devMessageUtil.changeLamp(command, ip);
+        infoService.releaseDevice(deviceSerialNumber);
+        if (!b) {
+            return R.fail("操作失败");
+        }
+
+        return R.ok(true);
+    }
+
+    @Override
+    public R<Boolean> changeLamp(String currentLampType, String deviceSerialNumber) {
+        Command command = new Command();
+        if (currentLampType.equals(EnergyLampEnums.Tungsten.getIdentity())) {
+            command = new Command("SetLampPos", new Object[]{1});
+        } else if (currentLampType.equals(EnergyLampEnums.Deuterium.getIdentity())) {
+            command = new Command("SetLampPos", new Object[]{0});
+        }
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null || !StringUtils.hasText(info.getIp()) || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+            return R.fail("设备未连接");
+        }
+        String ip = info.getIp();
+        R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+        if (!r.getSuccess()) {
+            return R.fail(r.getMessage());
+        }
+        Boolean b = devMessageUtil.changeLamp(command, ip);
+        infoService.releaseDevice(deviceSerialNumber);
+        if (!b) {
+            return R.fail("操作失败");
+        }
+
+        return R.ok(true);
     }
 
     @Override
@@ -737,7 +790,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             ans.setConnectMode(1);
             ans.setMinWavelength("190");
             ans.setMaxWavelength("1100");
-            ans.setBandWidth(Arrays.asList("2"));
+            ans.setBandWidth(Collections.singletonList("2"));
             ans.setGain(Arrays.asList(1, 2, 3, 4));
             ans.setScanInterval(Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0"));
             ans.setResponseTime(Arrays.asList("0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2"));

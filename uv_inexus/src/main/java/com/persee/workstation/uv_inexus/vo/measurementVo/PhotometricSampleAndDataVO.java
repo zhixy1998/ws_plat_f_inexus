@@ -39,7 +39,7 @@ public class PhotometricSampleAndDataVO {
     @ApiModelProperty("备注")
     private String remark;
 
-    @ApiModelProperty("采样时间")
+    @ApiModelProperty("采集时间")
     private String sampleTime;
 
     @ApiModelProperty("仪器原始数据，保存使用，不展示给前端")
