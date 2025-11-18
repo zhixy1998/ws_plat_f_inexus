@@ -1998,6 +1998,23 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     }
                 }
             }
+
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                    .eq(FMeasureAnalysisData::getSampleKey, sample.getId());
+            if (data != null) {
+                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getMeasureDataId, data.getId());
+            }
+            analysisDataQueryWrapper.orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
+
+            FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            if (one != null) {
+                if (StringUtils.hasText(one.getAnalysisParam())) {
+                    Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {});
+                    map.putAll(jsonObject);
+                }
+            }
+
             ans.add(map);
         }
 
