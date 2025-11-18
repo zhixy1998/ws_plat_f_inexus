@@ -48,9 +48,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -59,31 +57,19 @@ import java.util.stream.Collectors;
  */
 @Component
 public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
-    // 创建日志记录器，用于记录类中的日志信息
     private static final Logger log = LoggerFactory.getLogger(ConciseBaseLineWebSocket.class);
 
     // 所有设备连接 <sessionId, session>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
-    // 存储正在执行的任务
-    private final Map<String, Future<?>> runningTasks = new ConcurrentHashMap<>();
-
-    private final ExecutorService executor = Executors.newCachedThreadPool();
-
     // 存储任务线程
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
 
-    private String ip;
-    private String deviceSerialNumber;
-
-    // 设备占用状态
-    private boolean occupancyStatus = false;
-
-    // 测量状态
-    private boolean measureStatus = false;
-
     // 用于存储数据点索引（适用于所有扫描模式）
-    private Map<String, Integer> dataPointIndexMap = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> dataPointIndexMap = new ConcurrentHashMap<>();
+
+    // 会话状态管理
+    private static final Map<String, SessionState> sessionStates = new ConcurrentHashMap<>();
 
     @Autowired
     private SpectrumConciseService spectrumService;
@@ -110,31 +96,59 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     private FormulaUtil formulaUtil;
 
     /**
+     * 自定义异常类，用于区分用户主动停止和其他异常
+     */
+    private static class UserInterruptedException extends RuntimeException {
+        public UserInterruptedException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * 会话状态管理类
+     */
+    private static class SessionState {
+        private final AtomicBoolean deviceOccupied = new AtomicBoolean(false);
+        private final AtomicBoolean measurementStarted = new AtomicBoolean(false);
+        private final AtomicBoolean stopCommandSent = new AtomicBoolean(false);
+        private final AtomicBoolean stopSuccessSent = new AtomicBoolean(false);
+        private String deviceSerialNumber;
+        private String ip;
+
+        public void reset() {
+            deviceOccupied.set(false);
+            measurementStarted.set(false);
+            stopCommandSent.set(false);
+            stopSuccessSent.set(false);
+            deviceSerialNumber = null;
+            ip = null;
+        }
+    }
+
+    /**
      * 当WebSocket连接建立后调用此方法
-     *
-     * @param session 当前WebSocket会话，包含连接信息
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        // 设备占用状态
-        occupancyStatus = false;
-
-        // 测量状态
-        measureStatus = false;
-        log.info("客户端进入: " + session.getId() + " 时间: " + LocalDateTime.now());
+        log.info("客户端进入: {} 时间: {}", session.getId(), LocalDateTime.now());
         sessions.put(session.getId(), session);
+
+        // 初始化会话状态
+        SessionState state = new SessionState();
+        sessionStates.put(session.getId(), state);
 
         // 往前端推送数据的线程
         Thread taskThread = new Thread(() -> {
             try {
                 runBusinessLogic(session);
-            } catch (InterruptedException e) {
-                // 线程被中断，立即停止
-                log.info("任务被中断: " + session.getId());
-                sendAndClose(session, "操作已取消，连接关闭");
+            } catch (UserInterruptedException e) {
+                log.info("用户主动停止任务: {}", session.getId());
+                // 不在这里发送停止成功，由 handleStopRequest 统一发送
             } catch (Exception e) {
                 log.error("基线任务执行异常", e);
-                sendAndClose(session, "执行异常: " + e.getMessage());
+                sendMessage(session, "执行异常: " + e.getMessage());
+            } finally {
+                cleanupResources(session);
             }
         });
 
@@ -144,353 +158,478 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     /**
      * 处理接收到的文本消息
-     *
-     * @param session 当前WebSocket会话
-     * @param message 接收到的文本消息对象
-     * @throws Exception 可能抛出的异常
      */
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        // 打印接收到的消息内容，包括发送方会话ID和消息内容
-        log.info("收到消息: " + session.getId() + " -> " + message.getPayload());
+        log.info("收到消息: {} -> {}", session.getId(), message.getPayload());
+
+        if ("close".equals(message.getPayload())) {
+            handleStopRequest(session);
+        }
+    }
+
+    /**
+     * 处理停止请求
+     */
+    private void handleStopRequest(WebSocketSession session) {
+        SessionState state = sessionStates.get(session.getId());
+        if (state == null) {
+            return;
+        }
 
         try {
-            if (message.getPayload().equals("close")) {
-                Thread thread = taskThreads.get(session.getId());
-                // 强制停止线程
-                if (thread != null) {
-                    thread.interrupt();
-                    taskThreads.remove(session.getId());
-                }
-                if (measureStatus) {
-                    R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
-                    if (stop.getSuccess()) {
-                        log.info("停止成功");
-                    } else {
-                        log.info("停止失败");
-                    }
-                }
+            // 中断任务线程
+            Thread thread = taskThreads.get(session.getId());
+            if (thread != null && thread.isAlive()) {
+                thread.interrupt();
             }
+
+            // 发送停止命令
+            sendStopCommandIfNeeded(session);
+
+            // 立即响应停止请求 - 确保只发送一次
+            if (!state.stopSuccessSent.getAndSet(true)) {
+                sendMessageSafe(session, "停止成功");
+            }
+
         } catch (Exception e) {
-            log.error("处理停止消息异常", e);
-            throw new RuntimeException(e);
-        } finally {
-            log.info("停止成功-释放资源");
-            session.sendMessage(new TextMessage("停止成功"));
-            sessions.remove(session.getId());
-            session.close();
-            if (occupancyStatus) {
-                deviceInfoService.releaseDevice(deviceSerialNumber);
+            log.error("处理停止消息异常, session: {}", session.getId(), e);
+            // 即使有异常也要确保发送停止成功
+            if (state != null && !state.stopSuccessSent.getAndSet(true)) {
+                sendMessageSafe(session, "停止成功");
             }
-            // 清理数据
-            dataPointIndexMap.remove(session.getId());
+        }
+    }
+
+    /**
+     * 如果需要，发送停止命令
+     */
+    private void sendStopCommandIfNeeded(WebSocketSession session) {
+        SessionState state = sessionStates.get(session.getId());
+        if (state == null) {
+            return;
+        }
+
+        // 只有在测量已开始且停止命令未发送过的情况下才发送停止命令
+        if (state.measurementStarted.get() && !state.stopCommandSent.getAndSet(true)) {
+            if (state.ip != null) {
+                try {
+                    R<String> stopResult = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), state.ip);
+                    if (stopResult.getSuccess()) {
+                        log.info("设备停止命令发送成功, session: {}", session.getId());
+                    } else {
+                        log.error("设备停止命令发送失败, session: {}", session.getId());
+                    }
+                } catch (Exception e) {
+                    log.error("发送停止命令异常, session: {}", session.getId(), e);
+                }
+            }
         }
     }
 
     /**
      * 连接异常时触发
-     *
-     * @param session
-     * @param exception
      */
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
+        log.error("连接异常, session: {}, 异常: {}", session.getId(), exception.getMessage(), exception);
+        // 发送停止命令（如果测量已开始）
+        sendStopCommandIfNeeded(session);
+        cleanupResources(session);
         sessions.remove(session.getId());
+
         try {
-            session.close();
+            if (session.isOpen()) {
+                session.close();
+            }
         } catch (IOException e) {
-            log.error("关闭会话异常", e);
-            Thread.currentThread().interrupt();
-            return;
-        } finally {
-            log.error("连接异常-释放资源");
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-            // 清理数据
-            dataPointIndexMap.remove(session.getId());
+            log.debug("关闭会话异常（连接可能已关闭）, session: {}", session.getId());
         }
-        log.error("连接异常: " + exception.getMessage());
     }
 
     /**
      * 重写afterConnectionClosed方法，用于处理WebSocket连接关闭后的操作
-     *
-     * @param session WebSocket会话对象，包含连接的相关信息
-     * @param status  关闭状态，包含连接关闭的原因和代码
      */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        log.info("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
-        sessions.remove(session.getId());
+        log.info("客户端退出: {} 时间: {} 原因: {}", session.getId(), LocalDateTime.now(), status);
 
-        if (Constants.sendMeasureThread != null) {
-            Constants.sendMeasureThread.interrupt();
-        }
+        // 发送停止命令（如果测量已开始）
+        sendStopCommandIfNeeded(session);
 
-        // 中断正在执行的任务
-        Future<?> future = runningTasks.remove(session.getId());
-        if (future != null) {
-            future.cancel(true);
-        }
-
+        // 中断任务线程
         Thread taskThread = taskThreads.remove(session.getId());
-        if (taskThread != null) {
+        if (taskThread != null && taskThread.isAlive()) {
             taskThread.interrupt();
         }
 
+        sessions.remove(session.getId());
+        cleanupResources(session);
         exceptionHandling();
 
-        // 清理数据
-        dataPointIndexMap.remove(session.getId());
-
         try {
-            session.close();
-        } catch (IOException e) {
-            log.error("关闭会话异常", e);
-        }
-    }
-
-    /**
-     * 发送消息并关闭连接
-     *
-     * @param session
-     * @param msg
-     */
-    private void sendAndClose(WebSocketSession session, String msg) {
-        try {
-            if (occupancyStatus) {
-                // 释放线程
-                deviceInfoService.releaseDevice(deviceSerialNumber);
+            if (session.isOpen()) {
+                session.close();
             }
-            session.sendMessage(new TextMessage(msg));
-            sessions.remove(session.getId());
-            session.close();
-            // 清理数据
-            dataPointIndexMap.remove(session.getId());
         } catch (IOException e) {
-            log.error("发送消息并关闭连接异常", e);
+            log.debug("关闭会话异常（连接可能已关闭）, session: {}", session.getId());
         }
     }
 
     /**
-     * 发送消息并关闭连接2
-     *
-     * @param session
-     * @param msg
+     * 主要的业务逻辑
      */
-    private void sendClose(WebSocketSession session, String msg) {
-        try {
-            session.sendMessage(new TextMessage(msg));
-            sessions.remove(session.getId());
-            session.close();
-            // 清理数据
-            dataPointIndexMap.remove(session.getId());
-        } catch (IOException e) {
-            log.error("发送关闭消息异常", e);
-        }
-    }
-
-    private void runBusinessLogic(WebSocketSession session) throws InterruptedException {
-        // 检查线程中断
-        checkInterrupted(session);
-
+    private void runBusinessLogic(WebSocketSession session) {
+        // 获取参数
         String query = Objects.requireNonNull(session.getUri()).getQuery();
         String taskId = getQueryParam(query, "taskId");
         String methodId = getQueryParam(query, "methodId");
-        deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
 
-        if (methodId == null || methodId.equals("")) {
+        // 参数验证
+        if (!validateParameters(session, methodId, deviceSerialNumber)) {
+            return;
+        }
+
+        // 占用设备
+        if (!occupyDevice(session, deviceSerialNumber)) {
+            return;
+        }
+
+        try {
+            // 设置参数
+            if (!setupParameters(session, methodId, deviceSerialNumber)) {
+                return;
+            }
+
+            // 获取方法参数
+            FMeasureMethod method = tMeasureMethodService.getById(methodId);
+            if (method == null) {
+                sendAndClose(session, "方法不存在");
+                return;
+            }
+
+            // 开始测量
+            if (!startMeasurement(session, method, deviceSerialNumber)) {
+                return;
+            }
+
+            // 收集数据
+            List<ChangeParam> dataList = collectBaselineData(session, method, deviceSerialNumber);
+            if (dataList == null) {
+                return; // 数据收集被中断或失败
+            }
+
+            // 保存任务结果
+            if (!saveTaskResult(session, taskId, methodId, deviceSerialNumber, method, dataList)) {
+                return;
+            }
+
+            sendAndClose(session, "基线成功");
+
+        } catch (UserInterruptedException e) {
+            // 用户主动停止，不处理，由 handleStopRequest 统一发送停止成功
+            log.info("用户主动停止任务, session: {}", session.getId());
+        } catch (Exception e) {
+            log.error("基线任务执行异常, session: {}", session.getId(), e);
+            sendAndClose(session, "基线任务执行异常: " + e.getMessage());
+        } finally {
+            // 标记测量结束
+            SessionState state = sessionStates.get(session.getId());
+            if (state != null) {
+                state.measurementStarted.set(false);
+            }
+        }
+    }
+
+    /**
+     * 参数验证
+     */
+    private boolean validateParameters(WebSocketSession session, String methodId, String deviceSerialNumber) {
+        if (methodId == null || methodId.trim().isEmpty()) {
             sendClose(session, "方法编号不能为空");
-            return;
+            return false;
         }
-        if (deviceSerialNumber == null || deviceSerialNumber.equals("")) {
+        if (deviceSerialNumber == null || deviceSerialNumber.trim().isEmpty()) {
             sendClose(session, "设备编号不能为空");
-            return;
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 占用设备
+     */
+    private boolean occupyDevice(WebSocketSession session, String deviceSerialNumber) {
+        SessionState state = sessionStates.get(session.getId());
+        if (state == null) {
+            sendClose(session, "会话状态异常");
+            return false;
         }
 
-        //占用仪器
-        R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
-        if (!message.getSuccess()) {
-            sendClose(session, message.getMessage());
-            return;
+        if (state.deviceOccupied.get()) {
+            log.warn("设备已被占用，重复占用请求, session: {}", session.getId());
+            return true;
         }
 
-        occupancyStatus = true;
-
-        checkInterrupted(session);
-        /// 设置参数
-        Result result = spectrumService.setUpParametersPort(methodId, deviceSerialNumber);
-        if (result.getCode() != 200) {
-            sendAndClose(session, "设置参数失败");
-            return;
+        R<Boolean> occupyResult = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        if (!occupyResult.getSuccess()) {
+            sendClose(session, occupyResult.getMessage());
+            return false;
         }
 
-        // 根据方法id查询方法参数
-        FMeasureMethod method = tMeasureMethodService.getById(methodId);
-        if (method == null) {
-            sendAndClose(session, "方法不存在");
-            return;
+        state.deviceOccupied.set(true);
+        state.deviceSerialNumber = deviceSerialNumber;
+        log.info("设备占用成功: {}, session: {}", deviceSerialNumber, session.getId());
+        return true;
+    }
+
+    /**
+     * 设置参数
+     */
+    private boolean setupParameters(WebSocketSession session, String methodId, String deviceSerialNumber) {
+        try {
+            checkInterrupted(session);
+
+            Result result = spectrumService.setUpParametersPort(methodId, deviceSerialNumber);
+            if (result.getCode() != 200) {
+                sendAndClose(session, "设置参数失败");
+                return false;
+            }
+            return true;
+        } catch (InterruptedException e) {
+            log.info("设置参数被中断, session: {}", session.getId());
+            throw new UserInterruptedException("用户主动停止");
         }
-        // 将方法参数从JSON转换为FSpectrumParameter对象
-        FSpectrumParameter param = JSONObject.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+    }
 
-        Constants.instrumentData.clear();
-        Constants.measurd_data.clear();
-        List<ChangeParam> dataList = new ArrayList<>();
+    /**
+     * 开始测量
+     */
+    private boolean startMeasurement(WebSocketSession session, FMeasureMethod method, String deviceSerialNumber) {
+        try {
+            checkInterrupted(session);
 
-        checkInterrupted(session);
-        ip = deviceInfoService.getIp(deviceSerialNumber);
-        Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
-
-        // 判断是否为极快扫描模式
-        boolean isFastScan = "3".equals(param.getScanSpeed());
-        if (isFastScan) {
-            command = buildCommand(SetParamEnum.BaseLineFast, new Object[]{});
-        }
-
-        // 初始化数据点索引（适用于所有模式）
-        dataPointIndexMap.put(session.getId(), 0);
-
-        devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
-        measureStatus = true;
-        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
-
-        // 新增日志：开始收集数据
-        log.info("开始基线数据收集, deviceSerialNumber: {}, 模式: {}", deviceSerialNumber, isFastScan ? "极快扫描" : "普通扫描");
-
-        // 获取波长间隔参数
-        double wavelengthInterval = Double.parseDouble(param.getWaveLengthInterval());
-        double startWl = Double.parseDouble(param.getStartWaveLength());
-        double endWl = Double.parseDouble(param.getEndWaveLength());
-        boolean isDescending = startWl > endWl;
-
-        // 计算期望的数据点数
-        int expectedPoints = calculateExpectedDataPoints(startWl, endWl, wavelengthInterval);
-        log.info("期望数据点数: {}, 波长范围: {} - {}, 间隔: {}", expectedPoints, startWl, endWl, wavelengthInterval);
-
-        while (true) {
-            if (Thread.currentThread().isInterrupted()) {
-                log.warn("线程被中断，终止基线任务");
-                return;
+            SessionState state = sessionStates.get(session.getId());
+            if (state == null) {
+                sendAndClose(session, "会话状态异常");
+                return false;
             }
 
-            // 处理测量数据 - 逐点处理
-            while (!Constants.measurd_data.isEmpty()) {
-                ChangeParam changeParam = Constants.measurd_data.remove(0);
-                Double originalWavelength = Double.parseDouble(changeParam.getWl());
-                Double correctedWavelength = formulaUtil.calculateWavelength(originalWavelength, linearSegment);
+            String ip = deviceInfoService.getIp(deviceSerialNumber);
+            if (ip == null) {
+                sendAndClose(session, "获取设备IP失败");
+                return false;
+            }
 
-                // 对所有模式都进行强制修约
-                Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
-                        wavelengthInterval, isDescending, session.getId());
+            state.ip = ip;
 
-                if (constrainedWavelength != null) {
-                    // 立即推送修约后的波长（逐点推送）
-                    pushBaselineDataPoint(session, constrainedWavelength);
+            FSpectrumParameter param = JSONObject.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+            Constants.instrumentData.clear();
+            Constants.measurd_data.clear();
 
-                    // 存储修约后的数据
-                    ChangeParam processedParam = new ChangeParam();
-                    processedParam.setWl(constrainedWavelength.toString());
-                    processedParam.setS(changeParam.getS());
-                    processedParam.setR(changeParam.getR());
-                    processedParam.setD(changeParam.getD());
-                    dataList.add(processedParam);
+            // 发送基线命令
+            Command command = buildCommand(SetParamEnum.BaseLine, new Object[]{});
+            boolean isFastScan = "3".equals(param.getScanSpeed());
+            if (isFastScan) {
+                command = buildCommand(SetParamEnum.BaseLineFast, new Object[]{});
+            }
 
-                    log.debug("基线数据 - 原始波长: {}, 修约后波长: {}", correctedWavelength, constrainedWavelength);
+            dataPointIndexMap.put(session.getId(), 0);
+            devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
+
+            // 标记测量已开始
+            state.measurementStarted.set(true);
+            log.info("基线测量开始, 设备: {}, 模式: {}, session: {}",
+                    deviceSerialNumber, isFastScan ? "极快扫描" : "普通扫描", session.getId());
+
+            return true;
+        } catch (InterruptedException e) {
+            log.info("开始测量被中断, session: {}", session.getId());
+            throw new UserInterruptedException("用户主动停止");
+        }
+    }
+
+    /**
+     * 收集基线数据
+     */
+    private List<ChangeParam> collectBaselineData(WebSocketSession session, FMeasureMethod method, String deviceSerialNumber) {
+        try {
+            List<ChangeParam> dataList = new ArrayList<>();
+            FSpectrumParameter param = JSONObject.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+            List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
+
+            double wavelengthInterval = Double.parseDouble(param.getWaveLengthInterval());
+            double startWl = Double.parseDouble(param.getStartWaveLength());
+            double endWl = Double.parseDouble(param.getEndWaveLength());
+            boolean isDescending = startWl > endWl;
+
+            int expectedPoints = calculateExpectedDataPoints(startWl, endWl, wavelengthInterval);
+            log.info("期望数据点数: {}, 波长范围: {} - {}, 间隔: {}, session: {}",
+                    expectedPoints, startWl, endWl, wavelengthInterval, session.getId());
+
+            while (true) {
+                checkInterrupted(session);
+
+                // 处理测量数据
+                while (!Constants.measurd_data.isEmpty()) {
+                    ChangeParam changeParam = Constants.measurd_data.remove(0);
+                    Double originalWavelength = Double.parseDouble(changeParam.getWl());
+                    Double correctedWavelength = formulaUtil.calculateWavelength(originalWavelength, linearSegment);
+
+                    Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                            wavelengthInterval, isDescending, session.getId());
+
+                    if (constrainedWavelength != null) {
+                        pushBaselineDataPoint(session, constrainedWavelength);
+
+                        ChangeParam processedParam = new ChangeParam();
+                        processedParam.setWl(constrainedWavelength.toString());
+                        processedParam.setS(changeParam.getS());
+                        processedParam.setR(changeParam.getR());
+                        processedParam.setD(changeParam.getD());
+                        dataList.add(processedParam);
+
+                        log.debug("基线数据 - 原始波长: {}, 修约后波长: {}, session: {}",
+                                correctedWavelength, constrainedWavelength, session.getId());
+                    }
+                }
+
+                // 检查测量是否结束
+                if (isMeasurementComplete()) {
+                    SessionState state = sessionStates.get(session.getId());
+                    if (state != null) {
+                        state.measurementStarted.set(false);
+                    }
+
+                    int actualPoints = dataPointIndexMap.get(session.getId());
+                    log.info("基线数据收集完成，实际数据点数: {}, 期望数据点数: {}, session: {}",
+                            actualPoints, expectedPoints, session.getId());
+
+                    if (actualPoints < expectedPoints * 0.8) {
+                        log.warn("基线数据点数不足，可能采集不完整, session: {}", session.getId());
+                    }
+                    break;
+                }
+
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    log.info("数据收集被中断, session: {}", session.getId());
+                    throw new UserInterruptedException("用户主动停止");
                 }
             }
 
-            // 检查是否结束
-            List<String> snapshot = new ArrayList<>(Constants.instrumentData);
-            if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
-                measureStatus = false;
+            if (dataList.isEmpty()) {
+                log.error("基线数据为空，失败, session: {}", session.getId());
+                sendAndClose(session, "基线数据为空，失败");
+                return null;
+            }
 
-                // 检查数据完整性
-                int actualPoints = dataPointIndexMap.get(session.getId());
-                log.info("基线数据收集完成，实际数据点数: {}, 期望数据点数: {}", actualPoints, expectedPoints);
+            log.info("基线数据收集完成, dataList 大小: {}, session: {}", dataList.size(), session.getId());
+            return dataList;
+        } catch (InterruptedException e) {
+            log.info("数据收集被中断, session: {}", session.getId());
+            throw new UserInterruptedException("用户主动停止");
+        }
+    }
 
-                if (actualPoints < expectedPoints * 0.8) {
-                    log.warn("基线数据点数不足，可能采集不完整");
+    /**
+     * 保存任务结果
+     */
+    private boolean saveTaskResult(WebSocketSession session, String taskId, String methodId,
+                                   String deviceSerialNumber, FMeasureMethod method, List<ChangeParam> dataList) {
+        try {
+            checkInterrupted(session);
+
+            FMeasureTask task;
+            if (taskId != null && !taskId.trim().isEmpty()) {
+                task = tMeasureTaskService.getById(taskId);
+                if (task == null) {
+                    sendAndClose(session, "任务不存在");
+                    return false;
+                }
+            } else {
+                task = new FMeasureTask();
+                SystemUserManagePO user = systemUserManageDAO
+                        .selectOne(new QueryWrapper<SystemUserManagePO>().eq("user_name", method.getMethodCreator()));
+                if (user != null) {
+                    task.setUserId(user.getId());
                 }
 
-                break;
+                String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                String collect = new Random().ints(8, 0, chars.length())
+                        .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                        .collect(Collectors.joining());
+
+                task.setTaskName(method.getMeasurementType() + "task_" + collect);
+                task.setCreateTime(LocalDateTime.now());
+                task.setMethodKey(methodId);
+                task.setMeasureType(method.getMeasurementType());
+                task.setProjectItemKey(method.getProjectItemKey());
+                task.setDeviceSerialNumber(deviceSerialNumber);
+
+                boolean save1 = tMeasureTaskService.save(task);
+                if (!save1) {
+                    sendAndClose(session, "保存任务失败");
+                    return false;
+                }
+
+                FMeasureTaskAttachment taskAttachment = new FMeasureTaskAttachment();
+                taskAttachment.setTaskId(task.getId());
+                boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
+                if (!save) {
+                    sendAndClose(session, "保存任务附件失败");
+                    return false;
+                }
             }
 
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
+            checkInterrupted(session);
+            task.setZeroParam(JSON.toJSONString(dataList));
+            boolean update = tMeasureTaskService.updateById(task);
+            if (!update) {
+                sendAndClose(session, "更新任务失败");
+                return false;
+            }
+
+            Constants.measureStatus = true;
+            return true;
+        } catch (InterruptedException e) {
+            log.info("保存任务结果被中断, session: {}", session.getId());
+            throw new UserInterruptedException("用户主动停止");
+        }
+    }
+
+    /**
+     * 清理资源
+     */
+    private void cleanupResources(WebSocketSession session) {
+        String sessionId = session.getId();
+        SessionState state = sessionStates.remove(sessionId);
+
+        if (state != null) {
+            // 只在设备被占用的情况下释放
+            if (state.deviceOccupied.compareAndSet(true, false)) {
+                if (state.deviceSerialNumber != null) {
+                    try {
+                        deviceInfoService.releaseDevice(state.deviceSerialNumber);
+                        log.info("设备释放成功: {}, session: {}", state.deviceSerialNumber, sessionId);
+                    } catch (Exception e) {
+                        log.error("释放设备异常, session: {}", sessionId, e);
+                    }
+                }
             }
         }
 
-        // 检查数据是否为空
-        if (dataList.isEmpty()) {
-            log.error("基线数据为空，失败");
-            sendAndClose(session, "基线数据为空，失败");
-            return;
-        }
+        // 清理数据点索引
+        dataPointIndexMap.remove(sessionId);
 
-        log.info("基线数据收集完成, dataList 大小: {}", dataList.size());
-
-        checkInterrupted(session);
-        FMeasureTask task;
-        if (taskId != null && !taskId.equals("")) {
-            task = tMeasureTaskService.getById(taskId);
-        } else {
-            task = new FMeasureTask();
-            SystemUserManagePO user = systemUserManageDAO
-                    .selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
-            task.setUserId(user.getId());
-
-            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            String collect = new Random().ints(8, 0, chars.length())
-                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
-                    .collect(Collectors.joining());
-
-            task.setTaskName(method.getMeasurementType() + "task_" + collect);
-            task.setCreateTime(LocalDateTime.now());
-            task.setMethodKey(methodId);
-            task.setMeasureType(method.getMeasurementType());
-            task.setProjectItemKey(method.getProjectItemKey());
-
-            task.setDeviceSerialNumber(deviceSerialNumber);
-            boolean save1 = tMeasureTaskService.save(task);
-            if (!save1) {
-                sendAndClose(session, "基线失败");
-                return;
-            }
-
-            FMeasureTaskAttachment taskAttachment = new FMeasureTaskAttachment();
-            taskAttachment.setTaskId(task.getId());
-            boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
-            if (!save) {
-                sendAndClose(session, "基线失败");
-                return;
-            }
-        }
-
-        checkInterrupted(session);
-        task.setZeroParam(JSON.toJSONString(dataList));
-        boolean update = tMeasureTaskService.updateById(task);
-        if (!update) {
-            sendAndClose(session, "基线失败");
-            return;
-        }
-
-        Constants.measureStatus = true;
-        sendAndClose(session, "基线成功");
+        // 清理线程引用
+        taskThreads.remove(sessionId);
     }
 
     /**
      * 强制约束波长值，确保符合设定的波长间隔和范围
-     * 无论原始波长是多少，都强制使用期望的波长值
-     * @param originalWl 原始波长值
-     * @param startWl 起始波长
-     * @param endWl 结束波长
-     * @param interval 波长间隔
-     * @param isDescending 是否递减扫描
-     * @param sessionId 会话ID
-     * @return 修正后的波长值
      */
     private Double forceConstrainWavelength(Double originalWl, double startWl, double endWl,
                                             double interval, boolean isDescending, String sessionId) {
@@ -537,8 +676,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
         // 记录修约信息（如果原始值与修约值不同）
         if (Math.abs(originalWl - constrainedWl) > 0.001) {
-            log.debug("基线波长强制修约: 原始值={}, 修约值={}, 期望值={}, 索引={}",
-                    originalWl, constrainedWl, expectedWl, currentIndex);
+            log.debug("基线波长强制修约: 原始值={}, 修约值={}, 期望值={}, 索引={}, session: {}",
+                    originalWl, constrainedWl, expectedWl, currentIndex, sessionId);
         }
 
         // 更新索引
@@ -556,7 +695,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
 
         int points = (int) Math.abs((startWl - endWl) / interval) + 1;
-        log.info("计算期望数据点数: 范围={}-{}, 间隔={}, 点数={}", startWl, endWl, interval, points);
+        log.debug("计算期望数据点数: 范围={}-{}, 间隔={}, 点数={}", startWl, endWl, interval, points);
         return Math.max(points, 100); // 至少100个点
     }
 
@@ -593,16 +732,20 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         point.put("nm", wavelength);
         JSONObject payload = new JSONObject();
         payload.put("data", point);
-        if (session.isOpen()) {
-            try {
-                session.sendMessage(new TextMessage(payload.toJSONString()));
-            } catch (IOException e) {
-                log.error("推送基线数据异常", e);
-            }
-        }
+        sendMessageSafe(session, payload.toJSONString());
     }
 
-    // 中断检测
+    /**
+     * 检查测量是否完成
+     */
+    private boolean isMeasurementComplete() {
+        List<String> snapshot = new ArrayList<>(Constants.instrumentData);
+        return !snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData);
+    }
+
+    /**
+     * 中断检测
+     */
     private void checkInterrupted(WebSocketSession session) throws InterruptedException {
         if (Thread.currentThread().isInterrupted() || !session.isOpen()) {
             throw new InterruptedException("任务被中断或连接关闭");
@@ -610,11 +753,62 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     }
 
     /**
+     * 发送消息（安全的，不会抛出异常）
+     */
+    private void sendMessageSafe(WebSocketSession session, String message) {
+        if (session.isOpen()) {
+            try {
+                session.sendMessage(new TextMessage(message));
+            } catch (IOException e) {
+                log.debug("发送消息失败，连接可能已关闭, session: {}, 消息: {}", session.getId(), message);
+                // 忽略异常，连接可能已关闭
+            }
+        }
+    }
+
+    /**
+     * 发送消息
+     */
+    private void sendMessage(WebSocketSession session, String message) {
+        sendMessageSafe(session, message);
+    }
+
+    /**
+     * 发送消息并关闭连接
+     */
+    private void sendAndClose(WebSocketSession session, String msg) {
+        try {
+            sendMessageSafe(session, msg);
+            sessions.remove(session.getId());
+            if (session.isOpen()) {
+                session.close();
+            }
+        } catch (IOException e) {
+            log.debug("发送消息并关闭连接异常（连接可能已关闭）, session: {}", session.getId());
+        } finally {
+            cleanupResources(session);
+        }
+    }
+
+    /**
+     * 发送消息并关闭连接2
+     */
+    private void sendClose(WebSocketSession session, String msg) {
+        try {
+            sendMessageSafe(session, msg);
+            sessions.remove(session.getId());
+            if (session.isOpen()) {
+                session.close();
+            }
+        } catch (IOException e) {
+            log.debug("发送关闭消息异常（连接可能已关闭）, session: {}", session.getId());
+        } finally {
+            cleanupResources(session);
+        }
+    }
+
+    /**
      * 获取查询参数
-     *
-     * @param query
-     * @param key
-     * @return
      */
     private String getQueryParam(String query, String key) {
         if (query == null) return null;
@@ -627,10 +821,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     /**
      * 构建命令
-     *
-     * @param cmdEnum
-     * @param value
-     * @return
      */
     private Command buildCommand(SetParamEnum cmdEnum, Object value) {
         Command cmd = new Command();

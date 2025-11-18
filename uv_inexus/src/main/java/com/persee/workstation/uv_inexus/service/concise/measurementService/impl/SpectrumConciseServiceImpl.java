@@ -563,7 +563,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
         if (paramDto.getParameter().getScanSpeed().equals("3")&&update1){
-            return Result.fail("极快扫描速度时,时间间隔不能小于1秒");
+            return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
         // 下发参数
         Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());

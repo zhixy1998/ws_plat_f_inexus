@@ -14,6 +14,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 public class DetectionConstants {
 
     /**

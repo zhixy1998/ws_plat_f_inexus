@@ -162,6 +162,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
         //占用仪器
         R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        log.error("占用成功!!!");
         if (!message.getSuccess()) {
             sendClose(session, message.getMessage());
             return;
@@ -1452,9 +1453,9 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 try {
                     R<String> stop = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), ip);
                     if (stop.getSuccess()) {
-                        log.info("停止成功");
+                        log.error("停止成功");
                     } else {
-                        log.info("停止失败");
+                        log.error("停止失败");
                     }
                 } catch (Exception e) {
                     log.error("停止测量异常", e);
@@ -1465,6 +1466,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     if (thread != null) {
                         thread.interrupt();
                     }
+                    log.error("释放资源成功!!!");
                     deviceInfoService.releaseDevice(deviceSerialNumber);
                 }
             } else {
@@ -1475,6 +1477,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     thread.interrupt();
                 }
                 if (occupancyStatus) {
+                    log.error("释放资源成功!!!");
                     deviceInfoService.releaseDevice(deviceSerialNumber);
                 }
             }
@@ -1536,6 +1539,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         try {
             // 释放设备
             deviceInfoService.releaseDevice(deviceSerialNumber);
+            log.error("释放资源成功!!!");
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
             session.close();
