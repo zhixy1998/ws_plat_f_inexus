@@ -203,19 +203,12 @@ public class ExperimentTestController {
         if (methods.isEmpty()) {
             throw new RuntimeException("方法不存在");
         }
-
-        String json;
-        if (methods.size() == 1) {
-            json = JSON.toJSONString(methods.get(0), true); // 单个
-        } else {
-            json = JSON.toJSONString(methods, true); // 多个
-        }
-
+        // 导出为Excel格式
+        byte[] excelBytes = experimentTestService.exportMethodToExcel(methods);
         // 转换成字节数组资源
-        ByteArrayResource resource = new ByteArrayResource(json.getBytes(StandardCharsets.UTF_8));
-
+        ByteArrayResource resource = new ByteArrayResource(excelBytes);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=methods.json")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=methods.xlsx")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(resource.contentLength())
                 .body(resource);
@@ -224,7 +217,7 @@ public class ExperimentTestController {
     @PostMapping("methodImport")
     @ApiOperation("导入方法")
     public Result importMethod(@RequestParam("file") MultipartFile file) {
-        return experimentTestService.importMethod(file);
+        return experimentTestService.importMethodFromExcel(file);
     }
 
 

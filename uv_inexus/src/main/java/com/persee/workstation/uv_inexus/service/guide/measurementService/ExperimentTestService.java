@@ -80,9 +80,15 @@ public interface ExperimentTestService {
 
     // 导出方法
     List<TMeasureMethod> exportMethod(List<String> ids);
+    
+    // 导出方法到Excel
+    byte[] exportMethodToExcel(List<TMeasureMethod> methods);
 
     // 导入方法
     Result importMethod(MultipartFile file);
+    
+    // 从Excel导入方法
+    Result importMethodFromExcel(MultipartFile file);
 
     // 清除项目
     Result clearProject(String projectId);

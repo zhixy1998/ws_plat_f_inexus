@@ -52,6 +52,8 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectrumReport
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReport;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -59,10 +61,19 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -1907,6 +1918,179 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     /**
+     * 导出方法到Excel
+     * @param methods 方法列表
+     * @return Excel字节数组
+     */
+    @Override
+    public byte[] exportMethodToExcel(List<TMeasureMethod> methods) {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("测量方法");
+
+            // 创建表头
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {
+                    "方法ID", "前处理Key", "多个计算公式Key", "所属项目Key", "方法名称",
+                    "测量类型", "测量参数信息", "是否共享方法", "方法创建时间", "方法创建人",
+                    "预留字段2", "预留字段3", "预留字段4", "预留字段5"
+            };
+
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                // 设置表头样式
+                CellStyle headerStyle = workbook.createCellStyle();
+                Font font = workbook.createFont();
+                font.setBold(true);
+                headerStyle.setFont(font);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // 填充数据
+            for (int i = 0; i < methods.size(); i++) {
+                Row row = sheet.createRow(i + 1);
+                TMeasureMethod method = methods.get(i);
+
+                row.createCell(0).setCellValue(method.getId());
+                row.createCell(1).setCellValue(method.getPreprocessKey());
+                row.createCell(2).setCellValue(method.getMultipleCalculationFormulaKey());
+                row.createCell(3).setCellValue(method.getProjectItemKey());
+                row.createCell(4).setCellValue(method.getMethodName());
+                row.createCell(5).setCellValue(method.getMeasurementType());
+                row.createCell(6).setCellValue(method.getMeasurementParamInfo());
+                row.createCell(7).setCellValue(method.getIsSharingMethod());
+                row.createCell(8).setCellValue(method.getMethodCreateTime() != null ?
+                        method.getMethodCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
+                row.createCell(9).setCellValue(method.getMethodCreator());
+                row.createCell(10).setCellValue(method.getField2());
+                row.createCell(11).setCellValue(method.getField3());
+                row.createCell(12).setCellValue(method.getField4());
+                row.createCell(13).setCellValue(method.getField5());
+            }
+
+            // 自动调整列宽
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // 将工作簿写入字节数组
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("导出Excel失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从Excel导入方法
+     * @param file Excel文件
+     * @return 导入结果
+     */
+    @Override
+    public Result importMethodFromExcel(MultipartFile file) {
+        try {
+            List<TMeasureMethod> methodList = new ArrayList<>();
+
+            // 解析Excel文件
+            try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+                Sheet sheet = workbook.getSheetAt(0);
+
+                // 从第二行开始读取数据（跳过表头）
+                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                    Row row = sheet.getRow(i);
+                    if (row == null) continue;
+
+                    TMeasureMethod method = new TMeasureMethod();
+
+                    // 读取各列数据
+                    method.setId(getCellValueAsString(row.getCell(0)));
+                    method.setPreprocessKey(getCellValueAsString(row.getCell(1)));
+                    method.setMultipleCalculationFormulaKey(getCellValueAsString(row.getCell(2)));
+                    method.setProjectItemKey(getCellValueAsString(row.getCell(3)));
+                    method.setMethodName(getCellValueAsString(row.getCell(4)));
+                    method.setMeasurementType(getCellValueAsString(row.getCell(5)));
+                    method.setMeasurementParamInfo(getCellValueAsString(row.getCell(6)));
+                    method.setIsSharingMethod(getCellValueAsString(row.getCell(7)));
+
+                    // 处理时间字段
+                    String createTimeStr = getCellValueAsString(row.getCell(8));
+                    if (createTimeStr != null && !createTimeStr.isEmpty()) {
+                        try {
+                            LocalDateTime createTime = LocalDateTime.parse(createTimeStr,
+                                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                            method.setMethodCreateTime(createTime);
+                        } catch (Exception e) {
+                            // 时间格式不正确，跳过设置
+                        }
+                    }
+
+                    method.setMethodCreator(getCellValueAsString(row.getCell(9)));
+                    method.setField2(getCellValueAsString(row.getCell(10)));
+                    method.setField3(getCellValueAsString(row.getCell(11)));
+                    method.setField4(getCellValueAsString(row.getCell(12)));
+                    method.setField5(getCellValueAsString(row.getCell(13)));
+
+                    methodList.add(method);
+                }
+            }
+
+            // 保存到数据库
+            if (!CollectionUtils.isEmpty(methodList)) {
+                for (TMeasureMethod method : methodList) {
+                    // 判断是否存在
+                    TMeasureMethod exist = tMeasureMethodService.getById(method.getId());
+                    if (exist == null) {
+                        // 新建
+                        if (method.getId() == null || method.getId().isEmpty()) {
+                            method.setId(UUID.randomUUID().toString());
+                        }
+                        tMeasureMethodService.save(method);
+                    } else {
+                        // 更新
+                        tMeasureMethodService.updateById(method);
+                    }
+                }
+            }
+
+            return Result.ok("成功导入 " + methodList.size() + " 个方法");
+        } catch (Exception e) {
+            return Result.fail("导入方法失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取单元格的字符串值
+     * @param cell 单元格
+     * @return 字符串值
+     */
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) {
+            return null;
+        }
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue().toString();
+                } else {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            case BLANK:
+                return "";
+            default:
+                return "";
+        }
+    }
+
+
+    /**
      * 导入方法
      * @param file
      * @return
@@ -1945,6 +2129,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         return Result.ok("成功导入 " + methodList.size() + " 个方法");
     }
+
+
 
     /**
      * 清空项目
