@@ -54,6 +54,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReport
 import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReportParametersVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReport;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
+import io.netty.util.internal.StringUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -431,36 +432,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Override
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(SelectTaskDto selectTaskDto) {
-        String selectKey = selectTaskDto.getSelectKey();
-        String methodType = selectTaskDto.getMethodType();
-        String userName = selectTaskDto.getUpdateBy();
-        Integer pageNum = selectTaskDto.getPageNum();
-        Integer pageSize = selectTaskDto.getPageSize();
 
+        String userName = selectTaskDto.getUpdateBy();
         SysUserPO sysUserPO = userMapper.selectByUsername(userName);
         if (sysUserPO == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-
         String userId = sysUserPO.getId();
-        LambdaQueryWrapper<FMeasureTask> fMeasureTaskLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        fMeasureTaskLambdaQueryWrapper.eq(FMeasureTask::getMeasureType, methodType)
-                .eq(FMeasureTask::getUserId, userId)
-                .eq(FMeasureTask::getIsDelete, "0")
-                .orderByDesc(FMeasureTask::getEndSaveTime);
-
-        if (selectKey != null) {
-            fMeasureTaskLambdaQueryWrapper.like(FMeasureTask::getTaskName, selectKey);
-        }
-
-        Page<FMeasureTask> page = new Page<>(pageNum, pageSize);
-        Page<FMeasureTask> fMeasureTaskPage = fMeasureTaskService.page(page, fMeasureTaskLambdaQueryWrapper);
-
-        // 手动转换分页数据
-        Page<FMeasureTaskDTO> fMeasureTaskDTOPage = convertToDtoPage(fMeasureTaskPage);
-
-        return Result.ok(fMeasureTaskDTOPage);
+        selectTaskDto.setUpdateBy(userId);
+        return fMeasureTaskService.querybyName(selectTaskDto);
     }
 
     /**
@@ -1842,7 +1823,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureTask task = fMeasureTaskService.getOne(wrapper, false);
         if (!ObjectUtils.isEmpty(task)) {
             //存在与该历史方法相关联的历史文件，请删除关联历史文件之后进行方法删除！！！
-            return Result.fail(YamlMessageSource.getMessageStatic("0010100E"));
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100E") + "任务名称：" + task.getTaskName());
         }
         boolean b = fMeasureMethodService.removeById(methodId);
         if (!b) {
@@ -2013,7 +1994,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         if (analysisData != null) {
             Map<String, String> jsonObject;
             if (StringUtils.hasText(analysisData.getAnalysisParam())) {
-                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>() {
+                });
                 jsonObject.putAll(vo.getData());
             } else {
                 jsonObject = vo.getData();
