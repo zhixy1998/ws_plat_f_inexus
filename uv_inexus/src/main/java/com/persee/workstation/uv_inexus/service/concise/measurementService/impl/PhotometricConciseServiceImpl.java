@@ -1523,7 +1523,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
             ans.addAll(preHead);
             return Result.ok(new ArrayList<>(ans));
         }
@@ -1539,7 +1539,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 }
             }
         } else {
-            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
             ans.addAll(preHead);
         }
 
