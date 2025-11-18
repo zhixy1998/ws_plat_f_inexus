@@ -91,6 +91,7 @@ public class DevMessageUtil {
         while (!DetectionConstants.isDeviceIdle) {
             Thread.sleep(100);
         }
+        Constants.devConnectInfo.clear();
         DetectionConstants.isDeviceIdle = false;
 
         R<DatagramSocket> ans = messageUtil.getSocket();
@@ -390,6 +391,9 @@ public class DevMessageUtil {
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            if (responses.size() < 2) {
+                return R.fail("校正失败");
+            }
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             String result = parse.toString();
             if ("false".equals(result)) {
@@ -424,6 +428,50 @@ public class DevMessageUtil {
         }
 
         return R.ok();
+    }
+
+    /**
+     * 改变灯状态或切换灯
+     */
+    public Boolean changeLamp(Command command, String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            log.info("绑定socket失败");
+            return false;
+        }
+        DatagramSocket socket = ans.getData();
+        if(flag.equals("T600")) {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return false;
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            return !parse.equals("false");
+        }
+        else if(flag.equals("T800")){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return false;
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            String result = ResponseParser.Result;
+
+            return !result.equals("false");
+        }
+        return true;
     }
 
     /**

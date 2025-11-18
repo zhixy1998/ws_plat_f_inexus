@@ -462,7 +462,16 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return
      */
     @Override
-    public Result use(TimeUseMethodDto paramDto) {
+    public Result use (TimeUseMethodDto paramDto) {
+        double response = Double.parseDouble(paramDto.getParameter().getResponseTime());
+        double interval = Double.parseDouble(paramDto.getParameter().getIntervalTime());
+        if (response> interval){
+            return Result.fail("响应时间不能大于时间间隔");
+        }
+        Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+        if (result.getCode()!=200) {
+            return result;
+        }
         Map<String, Object> map = new HashMap<>();
         if (paramDto.getMethodId2() != null) {
             FMeasureMethod method2 = fMeasureMethodService.getById(paramDto.getMethodId2());
@@ -495,11 +504,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 map.put("taskId", draftButton.getData());
             }
             map.put("method", method2);
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-            }
             return Result.ok(map);
         }
         FMeasureMethod method = fMeasureMethodService.getById(paramDto.getMethodId());
@@ -529,11 +533,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-            }
             return Result.ok(map);
         }
 
@@ -550,12 +549,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 map.put("taskId", draftButton.getData());
             }
 
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-            }
-
             return Result.ok(map);
         }
 
@@ -568,11 +561,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 Result draftButton = createDraftButton(method.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
-                }
-                Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-                if (!(boolean) result.getData()) {
-                    //设置参数失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
                 }
                 return Result.ok(map);
             }
@@ -587,12 +575,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-            }
-
             return Result.ok(map);
         }
     }
@@ -1539,7 +1521,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FPeakValleyMarking> list = JSON.parseArray(tMeasureData.getGaugePoint(), FPeakValleyMarking.class);
         // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
         for (FPeakValleyMarking marking : list) {
-            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+            if (marking.getX().equals(paramDto.getX())) {
                 marking.setRemark(paramDto.getRemark());
                 break;
             }
@@ -1709,7 +1691,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         // 根据传过来的x和y进行比较,如果比较成功的话就将备注存入数据库
         for (FPeakValleyMarking marking : list) {
-            if (marking.getX().equals(paramDto.getX()) && marking.getY().equals(paramDto.getY())) {
+            if (marking.getX().equals(paramDto.getX())) {
                 marking.setRemark(paramDto.getRemark());
                 break;
             }
@@ -2662,18 +2644,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             Double y = new Double(split[1]);
             Double valueX = DataCountUtil.formatValue(1, x);
             String zeroX = DataCountUtil.addZero(valueX, 1);
+            map.put("x", valueX);
             if (digit != null) {
                 Double value = DataCountUtil.formatValue(digit, y);
                 String valueY = DataCountUtil.addZero(value, digit);
-                map.put("x", zeroX);
-                map.put("y", valueY);
+                map.put("astrictY", valueY);
             } else {
-                map.put("x", valueX);
-                map.put("y", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
+                map.put("astrictY", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
             }
+            map.put("y", y);
             Double value = DataCountUtil.formatValue(digit, y);
             String valueY = DataCountUtil.addZero(value, digit);
-            map.put("astrictY", valueY);
+
 
             // 标记点数据处理
             if (gauges != null && !gauges.isEmpty()) {
@@ -2756,16 +2738,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
             if (!message.getSuccess()) {
-                return Result.fail(false);
+                // 返回具体的错误信息
+                return Result.fail("仪器占用失败: " + (message.getMessage() != null ? message.getMessage() : "未知原因"));
             }
             R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
             if (stringR.getData().equals("true")) {
                 return Result.ok(true);
             } else {
-                return Result.fail(false);
+                // 返回具体的下发错误信息
+                return Result.fail("参数下发失败: " + (stringR.getMessage() != null ? stringR.getMessage() : "未知原因"));
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            return Result.fail("参数下发异常: " + e.getMessage());
         } finally {
             deviceInfoService.releaseDevice(deviceSerialNumber);
         }
@@ -3422,7 +3406,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (analysisIdList.size() == 1) {
             addLuminosityMode(ans, parameter.getLuminosity());
             ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
-            ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
+            ans.add(new FHeadVO("备注", "remark", "analysis", "备注"));
             return Result.ok(ans);
         } else {
             for (String analysisId : analysisIdList) {

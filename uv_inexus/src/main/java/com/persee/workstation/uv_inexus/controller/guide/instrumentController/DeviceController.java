@@ -120,6 +120,30 @@ public class DeviceController {
         }
     }
 
+    @GetMapping("/changeLamp")
+    @ApiOperation("切换灯接口,currentLampType: 当前灯类型， 0-钨灯，1-氘灯")
+    public Result<Boolean> changeLamp(@RequestParam String currentLampType, @RequestParam String deviceSerialNumber) {
+        R<Boolean> r = deviceManageService.changeLamp(currentLampType, deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/closeOrOpenLamp")
+    @ApiOperation("仪器开关灯接口,lampType 灯类型 0-钨灯，1-氘灯;  status 状态：1-开，0-关")
+    public Result<Boolean> closeOrOpenLamp(@RequestParam String lampType,
+                                           @RequestParam Integer status,
+                                           @RequestParam String deviceSerialNumber) {
+        R<Boolean> r = deviceManageService.closeOrOpenLamp(lampType, status, deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
 
     @PostMapping("/start")
     @ApiOperation("仪器开机接口")

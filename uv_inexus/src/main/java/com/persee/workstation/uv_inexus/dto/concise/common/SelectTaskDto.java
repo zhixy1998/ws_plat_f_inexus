@@ -14,11 +14,14 @@ package com.persee.workstation.uv_inexus.dto.concise.common;
 
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import org.springframework.validation.annotation.Validated;
 
 @Data
 public class SelectTaskDto {
-    @ApiModelProperty("模糊查询关键字")
-    private String selectKey;
+    @ApiModelProperty("模糊查询任务名")
+    private String taskName;
+    @ApiModelProperty("模糊查询方法名")
+    private String methodName;
     @ApiModelProperty("页数")
     private Integer pageNum;
     @ApiModelProperty("每页展示数")

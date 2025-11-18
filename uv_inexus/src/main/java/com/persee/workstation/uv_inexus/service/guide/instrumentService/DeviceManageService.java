@@ -42,6 +42,19 @@ public interface DeviceManageService {
     Boolean softClose(DeviceSoftCloseDTO closeDTO);
 
     /**
+     * 开关灯
+     * @param lampType 灯类型 0-钨灯，1-氘灯
+     * @param status 状态：1-开，0-关
+     */
+    R<Boolean> closeOrOpenLamp(String lampType, Integer status, String deviceSerialNumber);
+
+    /**
+     * 切换灯
+     * @param currentLampType 当前灯类型， 0-钨灯，1-氘灯
+     */
+    R<Boolean> changeLamp(String currentLampType, String deviceSerialNumber);
+
+    /**
      * 断开连接
      */
     Boolean disConnect(String deviceSerialNumber, String updateBy);

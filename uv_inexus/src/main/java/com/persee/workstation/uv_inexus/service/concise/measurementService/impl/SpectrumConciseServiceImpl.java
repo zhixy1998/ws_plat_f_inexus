@@ -561,6 +561,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (paramDto.getParameter().getLuminosity().equals("3") || paramDto.getParameter().getLuminosity().equals("4")) {
             paramDto.getParameter().setLadderCorrection(false);
         }
+        boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
+        if (paramDto.getParameter().getScanSpeed().equals("3")&&update1){
+            return Result.fail("极快扫描速度时,时间间隔不能小于1秒");
+        }
+        // 下发参数
+        Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+        if (result.getCode()!=200) {
+            return result;
+        }
         double start = Double.parseDouble(paramDto.getParameter().getStartWaveLength());
         double end = Double.parseDouble(paramDto.getParameter().getEndWaveLength());
         // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
@@ -600,11 +609,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 map.put("taskId", draftButton.getData());
             }
             map.put("method", method2);
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-            }
             return Result.ok(map);
         }
 
@@ -635,11 +639,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-            }
             return Result.ok(map);
         }
 
@@ -655,11 +654,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
             }
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-            }
             return Result.ok(map);
         }
 
@@ -673,11 +667,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 if (draftButton.getCode() == 200) {
                     map.put("taskId", draftButton.getData());
                 }
-                Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-                if (!(boolean) result.getData()) {
-                    //设置参数失败
-                    return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
-                }
                 return Result.ok(map);
             }
         } else {
@@ -690,11 +679,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             Result draftButton = createDraftButton(newMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
             if (draftButton.getCode() == 200) {
                 map.put("taskId", draftButton.getData());
-            }
-            Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-            if (!(boolean) result.getData()) {
-                //设置参数失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00304009"));
             }
             return Result.ok(map);
         }
@@ -2924,7 +2908,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (analysisIds.size() == 1) {
             addLuminosityMode(ans, parameter.getLuminosity());
             ans.add(new FHeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
-            ans.add(new FHeadVO("备注", "Remark", "analysis", "备注"));
+            ans.add(new FHeadVO("备注", "remark", "analysis", "备注"));
             return Result.ok(ans);
         } else {
 
@@ -2963,11 +2947,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     /**
      * 查询表格数据
-     *
-     * @param taskId
-     * @param analysisIds
-     * @param digit
-     * @return
      */
     @Override
     public List<Map<String, Object>> queryTableData(String taskId,
@@ -2979,8 +2958,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         List<Map<String, Object>> arrayList = new ArrayList<>();
 
-        // 非重复模式
-        // 判断样品长度是否为1
+        // 非重复模式 - 单样品
         if (analysisIds.size() == 1) {
             // 单样品表数据
             FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getById(analysisIds.get(0));
@@ -3027,25 +3005,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
             return arrayList;
         } else {
-            // 创建一个空列表用于存储查询结果
+            // 多样品逻辑
             List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
-
-            // 遍历样品id进行逐个查询
             for (String analysisId : analysisIds) {
-
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
-
-                // 如果没有找到该样品的分析数据，则跳过
                 if (analysisData != null) {
                     analysisDataList.add(analysisData);
                 }
             }
 
-            // 如果分析数据列表为空，返回null
             if (analysisDataList.isEmpty()) {
                 return null;
             }
 
+            // 获取第一个样品的波长列表作为基准
             List<String> list = new ArrayList<>();
             List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
             for (String s : result) {
@@ -3053,90 +3026,67 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 String s1 = formatBigDecimal(split[0], 1);
                 list.add(s1);
             }
+
             int id = 1;
-            boolean flag = false;
-            for (String i : list) {
-                Map<String, Object> map = new HashMap<>();
+            for (String wavelength : list) {
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
-                for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
-                    List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-                    List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                    List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
+
+                // 为每个样品初始化列表
+                List<String> sampleNumbers = new ArrayList<>();
+                List<String> peakValleys = new ArrayList<>();
+
+                for (FMeasureAnalysisData analysisData : analysisDataList) {
+                    List<String> datas = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+                    List<FPeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), FPeakValleyMarking.class);
+                    List<FPeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), FPeakValleyMarking.class);
+
+                    boolean found = false;
                     for (String data : datas) {
                         String[] split = data.split(",");
-                        String s = formatBigDecimal(split[0], 1);
-                        if (Objects.equals(s, i)) {
-                            if (!flag) {
-                                flag = true;
-                            }
-                            if (resultMap.get("sampleNumber") == null) {
-                                List<String> y = new ArrayList<>();
-                                y.add(formatBigDecimal(split[1], digit));
-                                resultMap.put("sampleNumber", y);
-                            } else {
-                                List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                y.add(formatBigDecimal(split[1], digit));
-                                resultMap.put("sampleNumber", y);
-                            }
-                            boolean statePeak = false;
-                            boolean stateValley = false;
+                        String currentWavelength = formatBigDecimal(split[0], 1);
+                        if (Objects.equals(currentWavelength, wavelength)) {
+                            // 找到对应波长的数据
+                            sampleNumbers.add(formatBigDecimal(split[1], digit));
+
+                            // 检查是峰还是谷
+                            String peakValleyType = "";
                             if (peaks != null) {
                                 for (FPeakValleyMarking peak : peaks) {
-                                    if (peak.getX().equals(split[0])) {
-                                        if (resultMap.get("peakValley") == null) {
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("峰");
-                                            resultMap.put("peakValley", peakList);
-                                        } else {
-                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                            peakList.add("峰");
-                                            resultMap.put("peakValley", peakList);
-                                        }
-                                        statePeak = true;
+                                    if (Objects.equals(formatBigDecimal(peak.getX(), 1), wavelength)) {
+                                        peakValleyType = "峰";
                                         break;
                                     }
                                 }
                             }
-                            if (valleys != null) {
+                            if (valleys != null && peakValleyType.isEmpty()) {
                                 for (FPeakValleyMarking valley : valleys) {
-                                    if (valley.getX().equals(split[0])) {
-                                        if (resultMap.get("peakValley") == null) {
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("谷");
-                                            resultMap.put("peakValley", peakList);
-                                        } else {
-                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                            peakList.add("谷");
-                                            resultMap.put("peakValley", peakList);
-                                        }
-                                        stateValley = true;
+                                    if (Objects.equals(formatBigDecimal(valley.getX(), 1), wavelength)) {
+                                        peakValleyType = "谷";
                                         break;
                                     }
                                 }
                             }
-                            /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
-                            if (!statePeak && !stateValley) {
-                                if (resultMap.get("peakValley") == null) {
-                                    List<String> peakList = new ArrayList<>();
-                                    peakList.add("");
-                                    resultMap.put("peakValley", peakList);
-                                } else {
-                                    List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                    peakList.add("");
-                                    resultMap.put("peakValley", peakList);
-                                }
-                            }
+                            peakValleys.add(peakValleyType);
+                            found = true;
                             break;
                         }
                     }
-                    if (flag) {
-                        resultMap.put("sampleNumber", "");
-                        resultMap.put("peakValley", "");
-                        flag = false;
+
+                    // 如果没找到对应波长的数据，添加空值
+                    if (!found) {
+                        sampleNumbers.add("");
+                        peakValleys.add("");
                     }
                 }
-                map.put(i, resultMap);
+
+                // 将列表放入resultMap
+                resultMap.put("sampleNumber", sampleNumbers);
+                resultMap.put("peakValley", peakValleys);
+                resultMap.put(SampleTableEnum.WAVELENGTH.getIdentity(), wavelength);
+
+                Map<String, Object> map = new HashMap<>();
+                map.put(wavelength, resultMap);
                 arrayList.add(map);
             }
             return arrayList;
@@ -4024,16 +3974,18 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         try {
             R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
             if (!message.getSuccess()) {
-                return Result.fail(false);
+                // 返回具体的错误信息
+                return Result.fail("仪器占用失败: " + (message.getMessage() != null ? message.getMessage() : "未知原因"));
             }
             R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
             if (stringR.getData().equals("true")) {
                 return Result.ok(true);
             } else {
-                return Result.fail(false);
+                // 返回具体的下发错误信息
+                return Result.fail("参数下发失败: " + (stringR.getMessage() != null ? stringR.getMessage() : "未知原因"));
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            return Result.fail("参数下发异常: " + e.getMessage());
         } finally {
             deviceInfoService.releaseDevice(deviceSerialNumber);
         }

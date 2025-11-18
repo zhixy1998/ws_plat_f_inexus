@@ -115,6 +115,9 @@ public class ResponseDeal {
 
            case "GetCellPos":
                return parseCellPos(responses, sendBytes);
+            case "GetWLampStatus":
+            case "GetDLampStatus":
+                return getLampStatus(responses);
 
             case "GetInitStatus":
                 return getInitStatus(responses);
@@ -460,6 +463,15 @@ private static Object parseLampPos(List<byte[]> responses) {
         boolean success = last.length >= 5 && (last[4] & 0xFF) == 1;
         result = success ? "true" : "false"; // 根据结果更新 result
         return success;
+    }
+
+    private static Boolean getLampStatus(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            return false;
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        return last.length >= 5 && (last[4] & 0xFF) == 1;
     }
 
     private static Boolean parseSetCellPos(List<byte[]> responses, byte[] sendBytes) {

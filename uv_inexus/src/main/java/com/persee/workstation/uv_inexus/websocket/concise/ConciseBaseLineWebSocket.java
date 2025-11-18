@@ -82,8 +82,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     // 测量状态
     private boolean measureStatus = false;
 
-    // 用于存储极快扫描模式下的波长映射
-    private Map<String, Set<Double>> processedWavelengths = new ConcurrentHashMap<>();
+    // 用于存储数据点索引（适用于所有扫描模式）
+    private Map<String, Integer> dataPointIndexMap = new ConcurrentHashMap<>();
 
     @Autowired
     private SpectrumConciseService spectrumService;
@@ -182,8 +182,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             if (occupancyStatus) {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
-            // 清理极快扫描模式的数据
-            processedWavelengths.remove(session.getId());
+            // 清理数据
+            dataPointIndexMap.remove(session.getId());
         }
     }
 
@@ -205,8 +205,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         } finally {
             log.error("连接异常-释放资源");
             deviceInfoService.releaseDevice(deviceSerialNumber);
-            // 清理极快扫描模式的数据
-            processedWavelengths.remove(session.getId());
+            // 清理数据
+            dataPointIndexMap.remove(session.getId());
         }
         log.error("连接异常: " + exception.getMessage());
     }
@@ -239,8 +239,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
         exceptionHandling();
 
-        // 清理极快扫描模式的数据
-        processedWavelengths.remove(session.getId());
+        // 清理数据
+        dataPointIndexMap.remove(session.getId());
 
         try {
             session.close();
@@ -264,8 +264,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
             session.close();
-            // 清理极快扫描模式的数据
-            processedWavelengths.remove(session.getId());
+            // 清理数据
+            dataPointIndexMap.remove(session.getId());
         } catch (IOException e) {
             log.error("发送消息并关闭连接异常", e);
         }
@@ -282,8 +282,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
             session.close();
-            // 清理极快扫描模式的数据
-            processedWavelengths.remove(session.getId());
+            // 清理数据
+            dataPointIndexMap.remove(session.getId());
         } catch (IOException e) {
             log.error("发送关闭消息异常", e);
         }
@@ -345,9 +345,10 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         boolean isFastScan = "3".equals(param.getScanSpeed());
         if (isFastScan) {
             command = buildCommand(SetParamEnum.BaseLineFast, new Object[]{});
-            // 初始化极快扫描模式的数据结构
-            processedWavelengths.put(session.getId(), new HashSet<>());
         }
+
+        // 初始化数据点索引（适用于所有模式）
+        dataPointIndexMap.put(session.getId(), 0);
 
         devMessageUtil.spectrumScanGetBaselineRealTime(command, ip);
         measureStatus = true;
@@ -362,27 +363,39 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         double endWl = Double.parseDouble(param.getEndWaveLength());
         boolean isDescending = startWl > endWl;
 
+        // 计算期望的数据点数
+        int expectedPoints = calculateExpectedDataPoints(startWl, endWl, wavelengthInterval);
+        log.info("期望数据点数: {}, 波长范围: {} - {}, 间隔: {}", expectedPoints, startWl, endWl, wavelengthInterval);
+
         while (true) {
             if (Thread.currentThread().isInterrupted()) {
                 log.warn("线程被中断，终止基线任务");
                 return;
             }
 
-            // 处理测量数据
+            // 处理测量数据 - 逐点处理
             while (!Constants.measurd_data.isEmpty()) {
                 ChangeParam changeParam = Constants.measurd_data.remove(0);
                 Double originalWavelength = Double.parseDouble(changeParam.getWl());
                 Double correctedWavelength = formulaUtil.calculateWavelength(originalWavelength, linearSegment);
-                changeParam.setWl(correctedWavelength.toString());
 
-                if (isFastScan) {
-                    // 极快扫描模式：进行波长规整化处理
-                    processAndPushFastScanData(session, correctedWavelength, changeParam, wavelengthInterval,
-                            startWl, endWl, isDescending, dataList);
-                } else {
-                    // 普通扫描模式：直接推送原始数据
-                    pushBaselineDataPoint(session, correctedWavelength);
-                    dataList.add(changeParam);
+                // 对所有模式都进行强制修约
+                Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                        wavelengthInterval, isDescending, session.getId());
+
+                if (constrainedWavelength != null) {
+                    // 立即推送修约后的波长（逐点推送）
+                    pushBaselineDataPoint(session, constrainedWavelength);
+
+                    // 存储修约后的数据
+                    ChangeParam processedParam = new ChangeParam();
+                    processedParam.setWl(constrainedWavelength.toString());
+                    processedParam.setS(changeParam.getS());
+                    processedParam.setR(changeParam.getR());
+                    processedParam.setD(changeParam.getD());
+                    dataList.add(processedParam);
+
+                    log.debug("基线数据 - 原始波长: {}, 修约后波长: {}", correctedWavelength, constrainedWavelength);
                 }
             }
 
@@ -390,6 +403,15 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             List<String> snapshot = new ArrayList<>(Constants.instrumentData);
             if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
                 measureStatus = false;
+
+                // 检查数据完整性
+                int actualPoints = dataPointIndexMap.get(session.getId());
+                log.info("基线数据收集完成，实际数据点数: {}, 期望数据点数: {}", actualPoints, expectedPoints);
+
+                if (actualPoints < expectedPoints * 0.8) {
+                    log.warn("基线数据点数不足，可能采集不完整");
+                }
+
                 break;
             }
 
@@ -401,7 +423,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             }
         }
 
-        // 新增：检查数据是否为空
+        // 检查数据是否为空
         if (dataList.isEmpty()) {
             log.error("基线数据为空，失败");
             sendAndClose(session, "基线数据为空，失败");
@@ -460,44 +482,111 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     }
 
     /**
-     * 处理极快扫描模式的基线数据
+     * 强制约束波长值，确保符合设定的波长间隔和范围
+     * 无论原始波长是多少，都强制使用期望的波长值
+     * @param originalWl 原始波长值
+     * @param startWl 起始波长
+     * @param endWl 结束波长
+     * @param interval 波长间隔
+     * @param isDescending 是否递减扫描
+     * @param sessionId 会话ID
+     * @return 修正后的波长值
      */
-    private void processAndPushFastScanData(WebSocketSession session, Double wavelength,
-                                            ChangeParam changeParam, double interval,
-                                            double startWl, double endWl, boolean isDescending,
-                                            List<ChangeParam> dataList) {
-        // 规整化波长
-        Double roundedWavelength = roundToInterval(wavelength, interval);
-
-        // 检查波长是否在有效范围内
-        if (!isInWavelengthRange(roundedWavelength, startWl, endWl, isDescending)) {
-            return;
+    private Double forceConstrainWavelength(Double originalWl, double startWl, double endWl,
+                                            double interval, boolean isDescending, String sessionId) {
+        if (originalWl == null) {
+            return null;
         }
 
-        // 检查该波长是否已经处理过（去重）
-        Set<Double> sessionProcessedWavelengths = processedWavelengths.get(session.getId());
-        if (sessionProcessedWavelengths.contains(roundedWavelength)) {
-            return;
+        // 获取当前数据点索引
+        Integer currentIndex = dataPointIndexMap.get(sessionId);
+        if (currentIndex == null) {
+            currentIndex = 0;
         }
 
-        // 标记该波长已处理
-        sessionProcessedWavelengths.add(roundedWavelength);
+        // 计算期望的波长值 - 强制使用期望值
+        double expectedWl;
+        if (isDescending) {
+            // 递减扫描
+            expectedWl = startWl - (currentIndex * interval);
+            // 确保不超过结束波长
+            if (expectedWl < endWl) {
+                expectedWl = endWl;
+            }
+        } else {
+            // 递增扫描
+            expectedWl = startWl + (currentIndex * interval);
+            // 确保不超过结束波长
+            if (expectedWl > endWl) {
+                expectedWl = endWl;
+            }
+        }
 
-        // 推送规整化后的数据
-        pushBaselineDataPoint(session, roundedWavelength);
+        // 强制修约到合适的小数位数
+        int decimalPlaces = getDecimalPlaces(interval);
+        double constrainedWl = roundToPrecision(expectedWl, decimalPlaces);
 
-        // 存储原始数据（使用规整化后的波长）
-        ChangeParam processedParam = new ChangeParam();
-        processedParam.setWl(roundedWavelength.toString());
-        processedParam.setS(changeParam.getS());
-        processedParam.setR(changeParam.getR());
-        dataList.add(processedParam);
+        // 确保波长在合理范围内
+        if (isDescending) {
+            if (constrainedWl > startWl) constrainedWl = startWl;
+            if (constrainedWl < endWl) constrainedWl = endWl;
+        } else {
+            if (constrainedWl < startWl) constrainedWl = startWl;
+            if (constrainedWl > endWl) constrainedWl = endWl;
+        }
 
-        log.debug("极快扫描基线数据 - 原始波长: {}, 规整后波长: {}", wavelength, roundedWavelength);
+        // 记录修约信息（如果原始值与修约值不同）
+        if (Math.abs(originalWl - constrainedWl) > 0.001) {
+            log.debug("基线波长强制修约: 原始值={}, 修约值={}, 期望值={}, 索引={}",
+                    originalWl, constrainedWl, expectedWl, currentIndex);
+        }
+
+        // 更新索引
+        dataPointIndexMap.put(sessionId, currentIndex + 1);
+
+        return constrainedWl;
     }
 
     /**
-     * 推送基线数据点
+     * 计算期望的数据点数
+     */
+    private int calculateExpectedDataPoints(double startWl, double endWl, double interval) {
+        if (interval <= 0) {
+            return 1000; // 默认值
+        }
+
+        int points = (int) Math.abs((startWl - endWl) / interval) + 1;
+        log.info("计算期望数据点数: 范围={}-{}, 间隔={}, 点数={}", startWl, endWl, interval, points);
+        return Math.max(points, 100); // 至少100个点
+    }
+
+    /**
+     * 根据间隔值确定需要保留的小数位数
+     */
+    private int getDecimalPlaces(double interval) {
+        if (interval == Math.floor(interval)) {
+            // 整数间隔，保留0位小数
+            return 0;
+        } else {
+            // 小数间隔，根据间隔的小数位数确定
+            String intervalStr = String.valueOf(interval);
+            if (intervalStr.contains(".")) {
+                return intervalStr.length() - intervalStr.indexOf(".") - 1;
+            }
+            return 1; // 默认保留1位小数
+        }
+    }
+
+    /**
+     * 精确舍入到指定小数位
+     */
+    private double roundToPrecision(double value, int decimalPlaces) {
+        double scale = Math.pow(10, decimalPlaces);
+        return Math.round(value * scale) / scale;
+    }
+
+    /**
+     * 推送基线数据点 - 逐点推送
      */
     private void pushBaselineDataPoint(WebSocketSession session, Double wavelength) {
         JSONObject point = new JSONObject();
@@ -510,25 +599,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             } catch (IOException e) {
                 log.error("推送基线数据异常", e);
             }
-        }
-    }
-
-    /**
-     * 将波长规整化到最近的间隔点
-     */
-    private Double roundToInterval(Double wavelength, double interval) {
-        if (interval == 0) return wavelength;
-        return Math.round(wavelength / interval) * interval;
-    }
-
-    /**
-     * 检查波长是否在有效范围内
-     */
-    private boolean isInWavelengthRange(Double wavelength, double startWl, double endWl, boolean isDescending) {
-        if (isDescending) {
-            return wavelength <= startWl && wavelength >= endWl;
-        } else {
-            return wavelength >= startWl && wavelength <= endWl;
         }
     }
 

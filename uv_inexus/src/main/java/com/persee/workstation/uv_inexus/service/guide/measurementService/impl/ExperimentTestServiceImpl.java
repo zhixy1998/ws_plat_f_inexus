@@ -55,6 +55,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepRepo
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -665,7 +666,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             heads.addAll(vos);
 
             heads.add(new HeadVO("备注", "remark"));
-            heads.add(new HeadVO("采样时间", "samplingTime"));
+            heads.add(new HeadVO("采集时间", "samplingTime"));
             vo.setHeadList(heads);
 
             QueryDataDTO queryDataDTO = new QueryDataDTO();
@@ -1079,7 +1080,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     })
                     .collect(Collectors.toList());
         } else {
-            List<TMeasureMethod> methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodName, methodName));  // 根据方法名查询
+            List<TMeasureMethod> methods = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).like(TMeasureMethod::getMethodName, methodName));  // 根据方法名查询
             methodVo = methods.stream()
                     .map(method -> {
                         // 将TMeasureMethod拷贝到MethodBaseVo
@@ -1928,17 +1929,20 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             TMeasureMethod method = JSON.parseObject(json, TMeasureMethod.class);
             methodList.add(method);
         }
-
-        for (TMeasureMethod method : methodList) {
-            // 判断是否存在
-            TMeasureMethod exist = tMeasureMethodService.getById(method.getId());
-            if (exist != null) {
-                // 这里根据需求选择覆盖 or 新建
-                method.setId(UUID.randomUUID().toString()); // 新建
+        if(!CollectionUtils.isEmpty(methodList)) {
+            for (TMeasureMethod method : methodList) {
+                // 判断是否存在
+                TMeasureMethod exist = tMeasureMethodService.getById(method.getId());
+                if (exist == null) {
+                    // 这里根据需求选择覆盖 or 新建
+                    method.setId(UUID.randomUUID().toString()); // 新建
+                    tMeasureMethodService.save(method);
+                }
+                if (exist != null) {
+                    tMeasureMethodService.updateById(method);
+                }
             }
-            tMeasureMethodService.save(method);
         }
-
         return Result.ok("成功导入 " + methodList.size() + " 个方法");
     }
 

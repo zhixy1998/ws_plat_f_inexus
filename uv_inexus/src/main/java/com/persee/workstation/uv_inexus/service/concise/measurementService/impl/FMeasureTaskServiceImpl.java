@@ -15,10 +15,14 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService.impl
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureTaskDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.concise.common.SelectTaskDto;
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
@@ -27,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 测量任务表(FMeasureTask)表服务实现类
@@ -68,6 +73,19 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
     public boolean delTask(String taskId) {
         int i=fMeasureTaskMapper.delTask(taskId);
         return i!=0;
+    }
+
+    @Override
+    public Result<Page<FMeasureTaskDTO>> querybyName(SelectTaskDto selectTaskDto) {
+        try {
+            Page<FMeasureTaskDTO> page = new Page<>(selectTaskDto.getPageNum(), selectTaskDto.getPageSize());
+            List<FMeasureTaskDTO> list = fMeasureTaskMapper.querybyMethodName(selectTaskDto);
+            page.setRecords(list);
+            page.setTotal(list.size());
+            return Result.ok(page);
+        }catch (Exception e){
+            return Result.fail();
+        }
     }
 }
 

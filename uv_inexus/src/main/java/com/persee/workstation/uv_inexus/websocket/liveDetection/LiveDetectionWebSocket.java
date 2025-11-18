@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
@@ -79,6 +80,9 @@ public class LiveDetectionWebSocket {
     @Value("/topic/detection")
     String measureTopic;
 
+    @Value("/topic/deviceStatus")
+    String deviceStatusTopic;
+
     private static volatile boolean status = true;
 
     private static volatile String serialNumber = null;
@@ -114,6 +118,7 @@ public class LiveDetectionWebSocket {
             // 启动发送接收线程
             serialNumber = deviceSerialNumber;
             this.startMeasureLoop(deviceSerialNumber);
+            this.getDeviceStatus(deviceSerialNumber);
             status = false;
         }
 
@@ -156,13 +161,14 @@ public class LiveDetectionWebSocket {
                         ignore.put("ignore", "设备在执行其他操作，等待空闲！");
                         messagingTemplate.convertAndSend(measureTopic, ignore.toJSONString());
                     }
+                    DetectionConstants.isDeviceIdle = false;
                     int timeout = 0;
 
                     while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
                          Thread.sleep(1000);
                          timeout++;
 
-                         if (timeout > 20) {
+                         if (timeout > 200) {
                              log.info("没有订阅者，断开仪器连接！");
                              devMessageUtil.disConnect(deviceIp);
                              stopAllMeasurements();
@@ -173,7 +179,6 @@ public class LiveDetectionWebSocket {
                          }
                     }
 
-                    DetectionConstants.isDeviceIdle = false;
                     R<DatagramSocket> news = messageUtil.getSocket();
                     if (!news.getSuccess()) {
                         log.info("绑定 socket 失败: {}");
@@ -195,8 +200,10 @@ public class LiveDetectionWebSocket {
                         vo.setTotalPoolNum(attachmentInfo.getSamplePoolNum());
 
                         int sum = 1;
+                        boolean isConnect = true;
                         while (sum <= LiveDetectionCmdEnum.getLength()) {
                             if (Constants.devConnectInfo.get(deviceSerialNumber) == null || !Constants.devConnectInfo.get(deviceSerialNumber)) {
+                                isConnect = false;
                                 break;
                             }
 
@@ -260,16 +267,43 @@ public class LiveDetectionWebSocket {
                                 }
 
                             } else if (comId.equals(LiveDetectionCmdEnum.GetLampPos.getComId())) {
-                                List<DetectionLampStatus> dataList = getDetectionLampStatuses((int) parseResult);
-                                vo.setDataList(dataList);
+                                String result = parseResult.toString();
+                                vo.setLampPos(EnergyLampEnums.getName(result));
+
                             } else if (comId.equals(LiveDetectionCmdEnum.GetPhotoMode.getComId())) {
                                 vo.setLuminosity(WaveLengthEnum.getName(DetectionConstants.luminosity));
                             } else if (comId.equals(LiveDetectionCmdEnum.GetChangeLampWl.getComId())) {
                                 Double v = formulaUtil.calculateWl(Double.parseDouble(parseResult.toString()), deviceSerialNumber);
                                 vo.setChangeLampWl(String.valueOf(v));
+                            } else if (comId.equals(LiveDetectionCmdEnum.GetDLampStatus.getComId())) {
+                                if (vo.getDataList() == null) {
+                                    vo.setDataList(new ArrayList<>());
+                                }
+                                Boolean result = (Boolean) parseResult;
+
+                                DetectionLampStatus status = new DetectionLampStatus();
+                                status.setLabel("氘灯");
+                                status.setValue(result ? "亮" : "不亮");
+
+                                vo.getDataList().add(status);
+                            } else if (comId.equals(LiveDetectionCmdEnum.GetWLampStatus.getComId())) {
+                                if (vo.getDataList() == null) {
+                                    vo.setDataList(new ArrayList<>());
+                                }
+                                Boolean result = (Boolean) parseResult;
+                                DetectionLampStatus status = new DetectionLampStatus();
+                                status.setLabel("钨灯");
+                                status.setValue(result ? "亮" : "不亮");
+
+                                vo.getDataList().add(status);
                             }
 
                             sum ++ ;
+                        }
+
+                        if (!isConnect) {
+                            status = true;
+                            return;
                         }
 
                         vo.setY(vo.getY() + WaveLengthEnum.getName(DetectionConstants.luminosity));
@@ -340,6 +374,57 @@ public class LiveDetectionWebSocket {
         return R.ok();
     }
 
+    private volatile Thread statusThread;
+
+    public R<Boolean> getDeviceStatus(String deviceSerialNumber) {
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        if (info == null) {
+            log.info("实时监测：未找到该设备");
+            return R.fail("请先连接仪器");
+        }
+
+        // 只有当线程尚未启动或者已经终止时才重新启动
+        if (statusThread == null || !statusThread.isAlive()) {
+            synchronized (this) {
+                if (statusThread == null || !statusThread.isAlive()) {
+                    statusThread = new Thread(() -> {
+                        int connectStatus = info.getConnectStatus() == null ?
+                                Constants.CONNECT_DEVICE_NO : info.getConnectStatus();
+                        while (connectStatus == Constants.CONNECT_DEVICE_SUCCESS &&
+                                Constants.devConnectInfo.get(deviceSerialNumber) != null &&
+                                Constants.devConnectInfo.get(deviceSerialNumber)) {
+                            try {
+                                Thread.sleep(1000);
+
+                                DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
+                                if (infoPO != null && infoPO.getDeviceCurrentStatus() != null) {
+                                    JSONObject status = new JSONObject();
+                                    status.put("devCurrentStatus", infoPO.getDeviceCurrentStatus());
+                                    messagingTemplate.convertAndSend(deviceStatusTopic, status);
+                                }
+
+                                if (infoPO == null) {
+                                    connectStatus = Constants.CONNECT_DEVICE_NO;
+                                } else {
+                                    connectStatus = infoPO.getConnectStatus() == null ?
+                                            Constants.CONNECT_DEVICE_NO : infoPO.getConnectStatus();
+                                }
+
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt(); // 恢复中断状态
+                                break;
+                            }
+                        }
+                    }, "StatusThread");
+
+                    statusThread.start();
+                }
+            }
+        }
+
+        return R.ok();
+    }
+
     @MessageMapping("/detection/stop")
     public void stopMeasure() {
         // 减少活跃订阅者计数
@@ -353,7 +438,7 @@ public class LiveDetectionWebSocket {
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
-
+        String destination = headerAccessor.getDestination();
 
         log.info("WebSocket连接建立: {}", sessionId);
 
@@ -368,6 +453,7 @@ public class LiveDetectionWebSocket {
             startMeasureLoop(deviceSerialNumber);
             status = false;
         }
+
     }
 
     private String extractDeviceSerialNumber(StompHeaderAccessor headerAccessor) {
@@ -418,6 +504,12 @@ public class LiveDetectionWebSocket {
                 log.info("会话 {} 订阅了主题: {}", sessionId, destination);
             }
         }
+
+
+        if (deviceStatusTopic.equals(destination) && StringUtils.hasText(serialNumber)&& status ){
+            getDeviceStatus(serialNumber);
+        }
+
     }
 
     @EventListener
@@ -473,16 +565,17 @@ public class LiveDetectionWebSocket {
         DetectionConstants.isDeviceIdle = true;
     }
 
-    private static List<DetectionLampStatus> getDetectionLampStatuses(int parseResult) {
+    private static List<DetectionLampStatus> getDetectionLampStatuses(boolean parseResult, String comId) {
         List<DetectionLampStatus> dataList = new ArrayList<>();
         DetectionLampStatus status = new DetectionLampStatus();
+
         status.setLabel("氘灯");
-        status.setValue(parseResult == 1 ? "亮" : "不亮");
+        status.setValue(parseResult ? "亮" : "不亮");
         dataList.add(status);
 
         DetectionLampStatus status1 = new DetectionLampStatus();
         status1.setLabel("钨灯");
-        status1.setValue(parseResult == 0 ? "亮" : "不亮");
+        status1.setValue(parseResult ? "亮" : "不亮");
         dataList.add(status1);
         return dataList;
     }

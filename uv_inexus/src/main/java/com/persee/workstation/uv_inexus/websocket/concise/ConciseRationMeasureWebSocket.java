@@ -734,11 +734,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                             String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType(), digit);
 
                             if (ans != null) {
-                                ans = rationService.fitDataRounding(ans, parameter);
                                 FRationCountDataInfo valueData = new FRationCountDataInfo();
+                                valueData.setOriginalValue(ans);
+                                String s = rationService.fitDataRounding(ans, parameter);
+
                                 valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
                                 valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                                valueData.setColValue(ans);
+                                valueData.setColValue(s);
                                 measureAbsDataList.add(valueData);
 
                                 measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
@@ -749,7 +751,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                                 jsonObject.put("value", valueData.getColValue());
                                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
-                                sendPoint(session, DataCountUtil.addZero(Double.valueOf(valueData.getColValue()), digit), String.valueOf(countValue), parameter);
+                                sendUnknowPoint(session, valueData, String.valueOf(countValue), parameter);
 
                             }
 
@@ -854,12 +856,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             String valued = rationService.valueCalculate(curveData, Double.valueOf(toCountData.getColValue()), parameter.getEquationType(), digit);
 
             if (valued != null) {
-                valued = rationService.fitDataRounding(valued, parameter);
-
                 FRationCountDataInfo valueData = new FRationCountDataInfo();
+                valueData.setOriginalValue(valued);
+                String s = rationService.fitDataRounding(valued, parameter);
+
                 valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
                 valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                valueData.setColValue(valued);
+                valueData.setColValue(s);
                 newData.add(valueData);
 
                 JSONObject jsonObject = new JSONObject();
@@ -899,6 +902,37 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             point.put("x", param);
             point.put("y", absValue);
         }
+        if (session.isOpen()) {
+            JSONObject payload = new JSONObject();
+            payload.put("point", point);
+            payload.put("equationType", RationCurveParamEnums.getName(parameter.getEquationType()));
+            session.sendMessage(new TextMessage(payload.toJSONString()));
+        }
+    }
+
+    public void sendUnknowPoint(WebSocketSession session, FRationCountDataInfo param, String absValue, FRationParameter parameter) throws IOException {
+        JSONObject point = new JSONObject();
+        if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+            point.put("x", absValue);
+
+            if (param.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                point.put("y", DataCountUtil.addZero(Double.valueOf(param.getOriginalValue()), digit));
+                point.put("yValue", param.getColValue());
+                point.put("xValue", absValue);
+            } else {
+                point.put("y", DataCountUtil.addZero(Double.valueOf(param.getColValue()), digit));
+            }
+        } else {
+            point.put("y", absValue);
+            if (param.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                point.put("x", DataCountUtil.addZero(Double.valueOf(param.getOriginalValue()), digit));
+                point.put("xValue", param.getColValue());
+                point.put("yValue", absValue);
+            } else {
+                point.put("x", DataCountUtil.addZero(Double.valueOf(param.getColValue()), digit));
+            }
+        }
+
         if (session.isOpen()) {
             JSONObject payload = new JSONObject();
             payload.put("point", point);
@@ -1182,11 +1216,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 response.setWl(waveLength + "-" + i);
                 machineData.add(response);
                 ChangeParam originRsd = new ChangeParam();
-                List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                for (ChangeParam param : params) {
-                    if (param.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
+                if (StringUtils.hasText(task.getZeroParam())) {
+                    List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+                    for (ChangeParam param : params) {
+                        if (param.getWl().equals(waveLength)) {
+                            BeanUtils.copyProperties(param, originRsd);
+                            break;
+                        }
                     }
                 }
                 String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);

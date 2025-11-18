@@ -1,0 +1,120 @@
+server:
+  port: 8081  # 开发端口
+  #  port: 25319  # 线上端口
+  #  port: 41082
+
+#  ssl:
+#    key-store: classpath:keystore.p12  # 证书路径
+#    key-store-password: px123456  # 证书密码（与生成时一致）
+#    key-store-type: PKCS12  # 证书类型
+#    key-alias: myhttps  # 证书别名（与生成时一致）
+#    enabled: true  # 启用HTTPS
+spring:
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+  datasource:
+    dynamic:
+      primary: guide #设置默认的数据源
+      strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
+      datasource:
+        guide:
+          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+          username: root
+          password: px123456
+          driver-class-name: com.mysql.cj.jdbc.Driver
+        concise:
+          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
+          username: root
+          password: px123456
+          driver-class-name: com.mysql.cj.jdbc.Driver
+        factory_inspection:
+          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+          username: root
+          password: px123456
+          driver-class-name: com.mysql.cj.jdbc.Driver
+
+#服务器
+#  datasource:
+#    dynamic:
+#      primary: guide #设置默认的数据源
+#      strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
+#      datasource:
+#        guide:
+#          url: jdbc:mysql://localhost:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+#        concise:
+#          url: jdbc:mysql://localhost:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+
+#测试数据库
+#  datasource:
+#    dynamic:
+#      primary: guide #设置默认的数据源
+#      strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
+#      datasource:
+#        guide:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_test?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+#        concise:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_concise_test?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+# 部署版本
+#  datasource:
+#    dynamic:
+#      primary: guide #设置默认的数据源
+#      strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
+#      datasource:
+#        guide:
+#          url: jdbc:mysql://localhost:33066/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+#        concise:
+#          url: jdbc:mysql://localhost:33066/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+
+
+mybatis:
+  mapper-locations:
+    - classpath:dao/*.xml
+    - classpath*:com/**/mapper/*.xml
+device:
+  default:
+    sendPort: 5000
+    receivePort: 6000
+    machineIP: 169.254.110.67
+    T600xmlPath: "file/T600.1.xml"
+    T800xmlPath: "file/T800新.1.xml"
+
+sys-manage-default:
+  defaultId: "00000000"
+  userId: "11111111"
+
+python-code:
+  baseUrl: http://192.168.61.82:8002/
+#  baseUrl: http://192.168.61.48:8000/
+#  baseUrl: http://localhost:10029/
+#  baseUrl: http://192.168.61.82:42082/
+
+
+
+
+
+
+

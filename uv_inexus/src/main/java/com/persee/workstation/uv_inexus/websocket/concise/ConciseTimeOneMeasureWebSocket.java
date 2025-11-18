@@ -381,7 +381,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", valueY);
+            point.put("y", decimalY);
+            point.put("roundOffY",valueY);
             point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Abs");
@@ -400,7 +401,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             Double decimalY = new Double(s);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", valueY);
+            point.put("y", decimalY);
+            point.put("roundOffY",valueY);
             point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "T%");
@@ -420,7 +422,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", valueY);
+            point.put("y", decimalY);
+            point.put("roundOffY",valueY);
             point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Es");
@@ -440,7 +443,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             Double decimalY = new Double(y);
             Double value = DataCountUtil.formatValue(digit, decimalY);
             String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", valueY);
+            point.put("y", decimalY);
+            point.put("roundOffY",valueY);
             point.put("nm", param.getWaveLength() + "nm");
             point.put("xType", "s");
             point.put("yType", "Er");

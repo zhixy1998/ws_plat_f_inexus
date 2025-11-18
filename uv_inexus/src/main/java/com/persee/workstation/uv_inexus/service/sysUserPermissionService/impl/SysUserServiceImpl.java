@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
+import com.alibaba.excel.util.StringUtils;
+import com.persee.workstation.uv_inexus.utils.AESencryption.HmacMD5Util;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -87,6 +89,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
             return Result.fail(YamlMessageSource.getMessageStatic("00601001"));
         }
 
+        saveDTO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
         // 2. 校验小组是否存在
         String groupId = saveDTO.getGroupId();
         if (groupId == null || groupId.isEmpty()) {
@@ -147,7 +150,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         BeanUtils.copyProperties(saveDTO, userPO, "password");  // 排除密码
         // 密码更新（若有新密码）
         if (saveDTO.getPassword() != null && !saveDTO.getPassword().isEmpty()) {
-            userPO.setPassword(PasswordUtils.encode(saveDTO.getPassword()));
+            userPO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
         }
         userPO.setUpdateBy("admin");
         userPO.setUpdated(LocalDateTime.now());
@@ -269,12 +272,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         }
         
         // 2. 验证旧密码是否正确
-        if (!PasswordUtils.matches(updateDTO.getOldPassword(), userPO.getPassword())) {
-            return Result.fail(YamlMessageSource.getMessageStatic("00601008"));
+        if (!StringUtils.equals(HmacMD5Util.hmacMD5(updateDTO.getOldPassword()), userPO.getPassword())) {
+          return Result.fail(YamlMessageSource.getMessageStatic("00601008"));
         }
         
         // 3. 检查新密码是否与旧密码相同
-        if (PasswordUtils.matches(updateDTO.getNewPassword(), userPO.getPassword())) {
+        if (StringUtils.equals(HmacMD5Util.hmacMD5(updateDTO.getNewPassword()), userPO.getPassword())) {
             //新密码不能与旧密码相同
             return Result.fail(YamlMessageSource.getMessageStatic("00601009"));
         }
@@ -286,7 +289,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         }
         
         // 5. 更新密码
-        userPO.setPassword(PasswordUtils.encode(updateDTO.getNewPassword()));
+        userPO.setPassword(HmacMD5Util.hmacMD5(updateDTO.getNewPassword()));
         userPO.setUpdateBy("admin"); // 实际应用中应该是当前登录用户
         userPO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(userPO);
@@ -308,13 +311,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         String defaultPassword = "123456";
         
         // 3. 检查默认密码是否与当前密码相同
-        if (PasswordUtils.matches(defaultPassword, userPO.getPassword())) {
-            //当前密码已是默认密码，无需重置
+        if (StringUtils.equals(HmacMD5Util.hmacMD5(defaultPassword), userPO.getPassword())) {
+          //当前密码已是默认密码，无需重置
             return Result.fail(YamlMessageSource.getMessageStatic("0060100C"));
         }
         
         // 4. 更新密码（加密存储）
-        userPO.setPassword(PasswordUtils.encode(defaultPassword));
+        userPO.setPassword(HmacMD5Util.hmacMD5(defaultPassword));
         userPO.setUpdateBy("admin"); // 实际应用中应该是当前登录用户
         userPO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(userPO);
