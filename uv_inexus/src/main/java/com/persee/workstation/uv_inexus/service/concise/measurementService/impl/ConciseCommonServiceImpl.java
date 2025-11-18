@@ -54,7 +54,6 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReport
 import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReportParametersVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReport;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
-import io.netty.util.internal.StringUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -2003,13 +2002,21 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             analysisData.setAnalysisParam(JSON.toJSONString(jsonObject));
             fMeasureAnalysisDataService.updateById(analysisData);
         } else {
-            analysisData = new FMeasureAnalysisData();
+
+            queryWrapper.clear();
+            queryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                    .eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                    .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
+            analysisData = fMeasureAnalysisDataService.getOne(queryWrapper);
+            if (analysisData == null) {
+                analysisData = new FMeasureAnalysisData();
+                analysisData.setDataVersion(0);
+            }
             analysisData.setTaskId(taskId);
             analysisData.setSampleKey(sampleId);
             analysisData.setAnalysisParam(JSON.toJSONString(vo.getData()));
-            analysisData.setDataVersion(0);
             analysisData.setIsDelete(createType);
-            fMeasureAnalysisDataService.save(analysisData);
+            fMeasureAnalysisDataService.saveOrUpdate(analysisData);
         }
 
         return Result.ok(true);

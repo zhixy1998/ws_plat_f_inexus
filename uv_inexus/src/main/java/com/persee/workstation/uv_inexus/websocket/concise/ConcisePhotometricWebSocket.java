@@ -589,7 +589,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                     list.add(new Command("Measure", new Object[]{}));
 
                     String ip = infoService.getIp(deviceSerialNumber);
-                    R<ChangeParam> res = null;
+                    R<ChangeParam> res;
                     try {
                         res = devMessageUtil.photometricAndRationMeasurement(list, ip);
                     } catch (Exception e) {
@@ -746,7 +746,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
 
-        repetitionTime = repetitionTime + 1;
+//        repetitionTime = repetitionTime + 1;
         if (isAvg) {
             jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
             jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + repetitionTime);

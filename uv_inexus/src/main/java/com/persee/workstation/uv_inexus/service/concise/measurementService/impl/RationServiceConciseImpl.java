@@ -3279,7 +3279,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 } catch (Exception ignored) {
                 }
                 if (r != null) {
-                    resultVo.setR(DataCountUtil.addZero(r, digit));
+                    if (!r.isNaN()) {
+                        resultVo.setR(DataCountUtil.addZero(r, digit));
+                    } else {
+                        resultVo.setR(String.valueOf(r));
+                    }
+
                 }
             }
             if (StringUtils.hasText(fittingParam.getR2())) {
@@ -3290,7 +3295,11 @@ public class RationServiceConciseImpl implements RationConciseService {
                 } catch (Exception ignored) {
                 }
                 if (r2 != null) {
-                    resultVo.setR2(DataCountUtil.addZero(r2, digit));
+                    if (!r2.isNaN()) {
+                        resultVo.setR2(DataCountUtil.addZero(r2, digit));
+                    } else {
+                        resultVo.setR2(String.valueOf(r2));
+                    }
                 }
             }
 
@@ -3480,6 +3489,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         vo.setDataList(dataList);
         vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
+
         if (StringUtils.hasText(info.getR())) {
             Double r = null;
             try  {
@@ -3487,21 +3497,28 @@ public class RationServiceConciseImpl implements RationConciseService {
             } catch (Exception ignored) {
             }
             if (r != null) {
-                vo.setR(DataCountUtil.addZero(r, dataDigit));
+                if (!r.isNaN()) {
+                    vo.setR(DataCountUtil.addZero(r, dataDigit));
+                } else {
+                    vo.setR(String.valueOf(r));
+                }
             }
         }
         if (StringUtils.hasText(info.getR2())) {
-
             Double r2 = null;
             try  {
                 r2 = Double.valueOf(info.getR2());
             } catch (Exception ignored) {
             }
+
             if (r2 != null) {
-                vo.setR2(DataCountUtil.addZero(r2, dataDigit));
+                if (!r2.isNaN()) {
+                    vo.setR2(DataCountUtil.addZero(r2, dataDigit));
+                } else {
+                    vo.setR2(String.valueOf(r2));
+                }
             }
         }
-
         return vo;
     }
 
