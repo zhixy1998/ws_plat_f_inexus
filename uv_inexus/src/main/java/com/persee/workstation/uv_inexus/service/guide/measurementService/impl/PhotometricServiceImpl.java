@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMap
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
@@ -122,7 +123,7 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
             //请填写波长值
-            return Result.fail("请填写波长值");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000000E"));
         }
 
         // 创建测量方法表
@@ -135,9 +136,11 @@ public class PhotometricServiceImpl implements PhotometricService {
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if (save) {
-            return Result.ok("创建成功");
+            //创建成功
+            return Result.ok(YamlMessageSource.getMessageStatic("0000000F"));
         } else {
-            return Result.fail("创建失败");
+            //创建失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
         }
     }
 
@@ -145,15 +148,18 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result<String> updateMethodParameter(PhotometricMethodParameterDto methodDto) {
         // 根据方法id查询当前方法
         if (!StringUtils.hasText(methodDto.getMethodId())) {
-            return Result.fail("缺少方法");
+            //缺少方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00302001"));
         }
         if(methodDto.getMethodName().length() >= 256){
-            return Result.fail("方法名格式错误");
+            //方法名格式错误
+            return Result.fail(YamlMessageSource.getMessageStatic("00300002"));
         }
         // 根据方法id查询方法
         TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getMethodId());
         if (measureMethod==null){
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         // 将前端传过来的值复制到SpectrumParameter类中
         PhotometricParameter parameter = new PhotometricParameter();
@@ -162,7 +168,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         measureMethod.setMethodName(methodDto.getMethodName());
         boolean update = tMeasureMethodService.updateById(measureMethod);
         if (!update){
-            return Result.fail("更新失败");
+            //更新失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
         return Result.ok(measureMethod.getId());
     }
@@ -230,14 +237,17 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result addOrDeleteSample(AddOrDeleteSampleDTO dto) {
 
         if (!StringUtils.hasText(dto.getMethodId())) {
-            return Result.fail("请先创建方法");
+            //请先创建方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
         }
         if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
-            return Result.fail("至少需要一个表头");
+            //至少需要一个表头
+            return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
 
         if (dto.getHeads() != null && dto.getHeads().size() > 10) {
-            return Result.fail("表格新增列数不能超过10列");
+            //表格新增列数不能超过10列
+            return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
@@ -265,7 +275,8 @@ public class PhotometricServiceImpl implements PhotometricService {
                 }
             }
             if (!save) {
-                return Result.fail("系统出错");
+                //系统出错
+                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
             }
             dto.setTaskId(newTask.getId());
         }
@@ -273,7 +284,8 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         TMeasureTask task = tMeasureTaskService.getById(dto.getTaskId());
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -351,14 +363,17 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result<Boolean> deleteSample(String taskId, String sampleId) {
 
         if (!StringUtils.hasText(taskId) || !StringUtils.hasText(sampleId)) {
-            return Result.fail("请选择需要删除的任务和样品");
+            //请选择需要删除的任务和样品
+            return Result.fail(YamlMessageSource.getMessageStatic("00000015"));
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         if (!StringUtils.hasText(task.getSampleKey())) {
-            return Result.fail("任务无样品");
+            //任务无样品
+            return Result.fail(YamlMessageSource.getMessageStatic("00000016"));
         }
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         for (TaskSpecimen specimen : taskSpecimen) {
@@ -418,7 +433,8 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         if (StringUtils.hasText(task.getSampleKey())) {
@@ -455,7 +471,8 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         if (!StringUtils.hasText(task.getTableInfo())) {
@@ -477,14 +494,17 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
         if (!StringUtils.hasText(method.getMeasurementParamInfo())) {
-            return Result.fail("未查询到该方法参数");
+            //未查询到该方法参数
+            return Result.fail(YamlMessageSource.getMessageStatic("00000017"));
         }
         if(methodId.length() != 32){
-            return  Result.fail("方法参数格式错误");
+            //方法参数格式错误
+            return  Result.fail(YamlMessageSource.getMessageStatic("00000018"));
         }
         PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
 
@@ -503,18 +523,21 @@ public class PhotometricServiceImpl implements PhotometricService {
     public R<PhotometricReportDataVO> getReportCount(String taskId) {
 
         if (!StringUtils.hasText(taskId)) {
-            return R.fail("缺少任务id");
+            //缺少任务id
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
 
         if (parameter.getResultParams() == null || parameter.getResultParams().isEmpty()) {
-            return R.fail("缺少结果参数");
+            //缺少结果参数
+            return R.fail(YamlMessageSource.getMessageStatic("00302002"));
         }
 
         List<HeadVO> heads = new ArrayList<>();
@@ -565,13 +588,19 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Override
     public Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay) {
-        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
-            return Result.fail("请选择方法或任务");
+        if (!StringUtils.hasText(taskId)) {
+            //请选择任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
+        }
+        if (!StringUtils.hasText(methodId)){
+            //请选择方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
         LinkedHashSet<HeadVO> ans = new LinkedHashSet<>();
@@ -717,11 +746,13 @@ public class PhotometricServiceImpl implements PhotometricService {
     public R<List<PhotometricCountDataInfo>> formula(List<PhotometricOriginDataInfo> vo, TMeasureSample sample, TMeasureTask task, PhotometricParameter parameter, Integer digit) {
 
         if (!StringUtils.hasText(task.getTableInfo())) {
-            return R.fail("缺少分析参数，无法计算分析");
+            //缺少分析参数，无法计算分析
+            return R.fail(YamlMessageSource.getMessageStatic("00300003"));
         }
         TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
         if (snapshot.getMapRelation() == null || snapshot.getMapRelation().isEmpty()) {
-            return R.fail("缺少映射关系，无法计算分析");
+            //缺少映射关系，无法计算分析
+            return R.fail(YamlMessageSource.getMessageStatic("00300004"));
         }
         String jsonString = JSON.toJSONString(sample);
         JSONObject allData = JSON.parseObject(jsonString);
@@ -758,12 +789,14 @@ public class PhotometricServiceImpl implements PhotometricService {
             Optional<InputParamMapTableHead> mapTableHead = snapshot.getMapRelation().stream().filter(
                     mapRelation -> inputParam.getResultIdentity().equals(mapRelation.getParamIdentity())).findFirst();
             if (!mapTableHead.isPresent()) {
-                return R.fail("缺少参数映射：" + inputParam.getParamName());
+                //"缺少参数映射：" + inputParam.getParamName()
+                return R.fail(YamlMessageSource.getMessageStatic("00300005",inputParam.getParamName()));
             }
             identity.append(mapTableHead.get().getParamIdentity()).append(",");
             String s = allData.getString(mapTableHead.get().getHeadIdentity());
             if (!StringUtils.hasText(s)) {
-                return R.fail("缺少数据！");
+                //缺少数据！
+                return R.fail(YamlMessageSource.getMessageStatic("00300006"));
             }
             s = DataCountUtil.formatValueWithBigDecimal(digit, s);
             values.append(s).append(",");
@@ -781,7 +814,8 @@ public class PhotometricServiceImpl implements PhotometricService {
             JSONObject resultJson = JSONObject.parseObject(result);
 
             if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
-                return R.fail("公式计算出错！" + resultJson.get("message"));
+                //"公式计算出错！" + resultJson.get("message")！
+                return R.fail(YamlMessageSource.getMessageStatic("00300007",resultJson.get("message")));
             }
             countDataInfo.setCountValue(resultJson.get("result").toString());
             countList.add(countDataInfo);
@@ -798,7 +832,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<String> option = queryDataDTO.getOption();
 
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
-            return Result.fail("未选择任务");
+            //未选择任务
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001B"));
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         List<Map<String, Object>> ans = new ArrayList<>();
@@ -1135,7 +1170,8 @@ public class PhotometricServiceImpl implements PhotometricService {
     public R<Boolean> saveCountData(PhotometricSampleAndDataVO countData, String dataId) {
 
         if (countData.getCountData() == null || countData.getCountData().isEmpty()) {
-            return R.fail("没有要保存的数据");
+            //没有要保存的数据
+            return R.fail(YamlMessageSource.getMessageStatic("00302003"));
         }
         String taskId = countData.getTaskId();
         String sampleId = countData.getSampleId();
@@ -1170,15 +1206,17 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result saveDataInfo(SaveDataVO vo) {
         if (!StringUtils.hasText(vo.getTaskId())) {
-            return Result.fail("缺少任务id");
+            //缺少任务id
+            return Result.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
 
         if (!StringUtils.hasText(vo.getSampleId())) {
-            return Result.fail("缺少样品id");
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001C"));
         }
 
         if (!StringUtils.hasText(vo.getRemark())) {
-            return Result.fail("缺少备注");
+            //缺少备注
+            return Result.fail(YamlMessageSource.getMessageStatic("00302004"));
         }
 
         String taskId = vo.getTaskId();
@@ -1213,12 +1251,14 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result zero(String deviceSerialNumber, String methodId, String taskId,String updateBy) {
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
-            return Result.fail("未连接仪器");
+            //未连接仪器
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
         }
 
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
-            return Result.fail("方法不存在");
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
 
         if (!StringUtils.hasText(taskId)){
@@ -1247,7 +1287,8 @@ public class PhotometricServiceImpl implements PhotometricService {
                 }
             }
             if (!save) {
-                return Result.fail("系统出错");
+                //系统出错
+                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
             }
             taskId = newTask.getId();
         }
@@ -1255,7 +1296,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         PhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
         if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
-            return Result.fail("缺少波长");
+            //缺少波长
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001E"));
         }
         List<String> waveLength = photometricParameter.getWaveLength();
         // 通过序列号获取ip
@@ -1290,11 +1332,13 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result<Boolean> saveButton(String taskId, String updateBy) {
         if (!StringUtils.hasText(taskId)) {
-            return Result.fail("未创建任务，无法保存");
+            //未创建任务，无法保存
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001F"));
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return Result.fail("任务不存在");
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
         String id = po.getId();
@@ -1307,7 +1351,8 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result<MeasurementCurrentInfoVO> getInfoByTaskId(String taskId) {
         if (!StringUtils.hasText(taskId)){
-            return Result.fail("缺少任务id");
+            //缺少任务id
+            return Result.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         MeasurementCurrentInfoVO measurementCurrentInfoVO = new MeasurementCurrentInfoVO();
@@ -1334,12 +1379,14 @@ public class PhotometricServiceImpl implements PhotometricService {
         log.info("开始导出，taskId: {}, fileType: {}", taskId, fileType);
         // 1. 基础参数校验（复用原逻辑）
         if (!StringUtils.hasText(taskId)) {
-            return R.fail("缺少任务id");
+            //缺少任务id
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             log.error("导出失败：任务不存在，taskId: {}", taskId);
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         // 处理fileType默认值和合法性
         if (!StringUtils.hasText(fileType)) {
@@ -1348,7 +1395,8 @@ public class PhotometricServiceImpl implements PhotometricService {
             fileType = fileType.toLowerCase();
         }
         if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
-            return R.fail("不支持的导出格式，仅支持word/txt/xlsx");
+            //不支持的导出格式，仅支持word/txt/xlsx
+            return R.fail(YamlMessageSource.getMessageStatic("00300001"));
         }
         // 处理allDisplay默认值
         if (allDisplay == null) {
@@ -1359,7 +1407,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         String methodId = task.getMethodKey();
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
-            return R.fail("测量方法不存在");
+            //测量方法不存在
+            return R.fail(YamlMessageSource.getMessageStatic("00300009"));
         }
 
         // 构建表头（与原逻辑一致）
@@ -1386,7 +1435,8 @@ public class PhotometricServiceImpl implements PhotometricService {
         queryDataDTO.setAllDisplay(allDisplay);
         List<Map<String, Object>> data = queryData(queryDataDTO).getData();
         if (data == null || data.isEmpty()) {
-            return R.fail("没有可导出的数据");
+            //没有可导出的数据
+            return R.fail(YamlMessageSource.getMessageStatic("00302005"));
         }
         // 给数据加序号（与序号列对应）
         for (int i = 0; i < data.size(); i++) {
@@ -1415,7 +1465,8 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (file.exists()) {
                 file.delete();
             }
-            return R.fail("文件生成失败：" + e.getMessage());
+            //"文件生成失败：" + e.getMessage()
+            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
         }
     }
 
@@ -1646,11 +1697,13 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public R<List<InputParam>> queryInputParam(String methodId) {
         if (!StringUtils.hasText(methodId)) {
-            return R.fail("未选择方法");
+            //未选择方法
+            return R.fail(YamlMessageSource.getMessageStatic("00000008"));
         }
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
         if (method == null) {
-            return R.fail("方法不存在");
+            //没有找到该方法
+            return R.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         PhotometricParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
         List<InputParam> inputParams = parameter.getSampleInputParams();
@@ -1662,12 +1715,14 @@ public class PhotometricServiceImpl implements PhotometricService {
     public R<List<InputParamMapTableHead>> queryInputParamMapTableHead(String taskId) {
 
         if (!StringUtils.hasText(taskId)) {
-            return R.fail("未选择任务");
+            //未选择任务
+            return R.fail(YamlMessageSource.getMessageStatic("0000001B"));
         }
 
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
         List<InputParamMapTableHead> ans = new ArrayList<>();
         if (task.getTableInfo() != null) {
@@ -1682,12 +1737,14 @@ public class PhotometricServiceImpl implements PhotometricService {
     public R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO snapshotDTO) {
 
         if (!StringUtils.hasText(snapshotDTO.getTaskId())) {
-            return R.fail("未选择任务");
+            //未选择任务
+            return R.fail(YamlMessageSource.getMessageStatic("0000001B"));
         }
 
         TMeasureTask task = tMeasureTaskService.getById(snapshotDTO.getTaskId());
         if (task == null) {
-            return R.fail("任务不存在");
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
         TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
@@ -1706,13 +1763,14 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
-        return tMeasureTaskService.updateById(task) ? R.ok(true) : R.fail("保存失败");
+        return tMeasureTaskService.updateById(task) ? R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00300008"));//保存失败
     }
 
     @Override
     public Result<InputParam> insertMethodParameter(InputParam methodParameter) {
         if(methodParameter.getParamName().length() >= 256){
-            return Result.fail("名称格式错误");
+            //名称格式错误
+            return Result.fail(YamlMessageSource.getMessageStatic("00000020"));
         }
         String methodMark = methodParameter.getResultIdentity();
         String regex = "^[A-Z]\\d{1,99}$";

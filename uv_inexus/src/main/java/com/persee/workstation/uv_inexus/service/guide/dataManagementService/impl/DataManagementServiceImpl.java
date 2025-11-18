@@ -24,6 +24,7 @@ import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUser
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
@@ -101,7 +102,8 @@ public class DataManagementServiceImpl implements DataManagementService {
             methodAndTasks.setMethodCounts(results);
         } catch (Exception e) {
             log.error("根据类型分类查询方法失败", e);
-            return Result.fail("查询失败");
+            //查询失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00306001"));
         }
         //任务统计封装
         TaskCount taskCount = new TaskCount();
@@ -127,7 +129,8 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result<Page<ProjectManagementDto>> getProjectsManagementList(ProjectQueryParam projectQueryParam) {
         // 参数校验
         if (projectQueryParam == null) {
-            return Result.fail("查询参数不能为空");
+            //查询参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
         }
 
         // 分页参数默认值设置
@@ -160,16 +163,20 @@ public class DataManagementServiceImpl implements DataManagementService {
     @Override
     public Result<UnFinishTasksAndNum> getTasks(UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
         if (unFinishTasksAndNumParam == null) {
-            return Result.fail("参数不能为空");
+            //参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00306003"));
         }
         if (unFinishTasksAndNumParam.getNeedSelectNum() == null || unFinishTasksAndNumParam.getNeedSelectNum() == 0) {
-            return Result.fail("数量不能为0");
+            //数量不能为0
+            return Result.fail(YamlMessageSource.getMessageStatic("00306004"));
         }
         if (unFinishTasksAndNumParam.getNeedSelectNum() > 50) {
-            return Result.fail("数量不能大于50");
+            //数量不能大于50
+            return Result.fail(YamlMessageSource.getMessageStatic("00306005"));
         }
         if (unFinishTasksAndNumParam.getTaskType().isEmpty()) {
-            return Result.fail("类型不能为空");
+            //类型不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("0000004B"));
         }
         String status = unFinishTasksAndNumParam.getStatus();
 
@@ -301,7 +308,8 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam) {
         // 参数校验
         if (taskQueryParam == null) {
-            return Result.fail("查询参数不能为空");
+            //查询参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00306002"));
         }
 
         // 分页参数默认值设置
@@ -380,15 +388,19 @@ public class DataManagementServiceImpl implements DataManagementService {
 
                 int res = taskManagementMapper.deleteById(deleteTaskId);
                 if (res == 0) {
-                    return Result.fail("任务删除失败");
+                    //任务删除失败
+                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
                 }
-                return Result.ok("删除成功");
+                //删除成功
+                return Result.ok(YamlMessageSource.getMessageStatic("00100022"));
             } catch (Exception e) {
                 int i = taskManagementMapper.deleteById(deleteTaskId);
                 if (i == 0) {
-                    return Result.fail("任务删除失败");
+                    //任务删除失败
+                    return Result.fail(YamlMessageSource.getMessageStatic("0030101D"));
                 }
-                return Result.ok("删除成功");
+                //删除成功
+                return Result.ok(YamlMessageSource.getMessageStatic("00100022"));
             }
 
         }
@@ -399,7 +411,8 @@ public class DataManagementServiceImpl implements DataManagementService {
     public Result<String> deleteMethod(Box List) {
 
         if (List == null) {
-            return Result.fail("参数不能为空");
+            //参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
         }
         List<String> deleteMethodIdList = List.getParams();
         for (String deleteMethodId : deleteMethodIdList) {
@@ -409,15 +422,18 @@ public class DataManagementServiceImpl implements DataManagementService {
 
             int size = tMeasureTasks.size();
             if (size > 0) {
-                return Result.fail("该方法包含未完成的任务");
+                //该方法包含未完成的任务
+                return Result.fail(YamlMessageSource.getMessageStatic("00306006"));
             }
             int i = methodManagementMapper.deleteById(deleteMethodId);
             if (i == 0) {
-                return Result.fail("该方法包含未完成的任务");
+                //该方法包含未完成的任务
+                return Result.fail(YamlMessageSource.getMessageStatic("00306006"));
             }
 
         }
-        return Result.ok("删除成功");
+        //删除成功
+        return Result.ok(YamlMessageSource.getMessageStatic("00100022"));
     }
 
     @Override
@@ -430,11 +446,13 @@ public class DataManagementServiceImpl implements DataManagementService {
             List<TMeasureMethod> tMeasureMethods = methodManagementMapper.selectList(tMeasureMethodLambdaQueryWrapper);
             int size = tMeasureMethods.size();
             if (size > 0) {
-                return Result.fail("该项目包含未删除的方法");
+                //该项目包含未删除的方法
+                return Result.fail(YamlMessageSource.getMessageStatic("00306007"));
             }
             int i = projectManagementMapper.deleteById(deleteProjectId);
             if (i == 0) {
-                return Result.fail("该项目包含未删除的方法");
+                //该项目包含未删除的方法
+                return Result.fail(YamlMessageSource.getMessageStatic("00306007"));
             }
         }
         return Result.ok();

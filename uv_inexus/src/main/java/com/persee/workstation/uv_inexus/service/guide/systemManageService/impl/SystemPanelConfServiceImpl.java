@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemLoginConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelConfDTO;
 import com.persee.workstation.uv_inexus.dto.systemManageDto.SystemPanelOrderDTO;
 import com.persee.workstation.uv_inexus.enums.systemManageEnums.SystemManageEnum;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemPanelConfPO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemPanelConfService;
@@ -166,7 +167,8 @@ public class SystemPanelConfServiceImpl implements SystemPanelConfService {
     @Override
     public R<Boolean> savePanelOrder(SystemPanelOrderDTO dto) {
         if (!StringUtils.hasText(dto.getUpdateBy())) {
-            return R.fail("用户未登录");
+            //用户未登录
+            return R.fail(YamlMessageSource.getMessageStatic("00607001"));
         }
 
         SystemPanelConfPO po = dao.selectById(userId);

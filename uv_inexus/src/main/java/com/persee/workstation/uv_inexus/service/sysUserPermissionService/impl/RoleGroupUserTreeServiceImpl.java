@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -63,19 +64,22 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
             // -------------------------- 1. 基础校验：查询用户及所属角色ID --------------------------
             SysUserPO userPO = getUserByUserId(userId);
             if (userPO == null) {
-                return Result.fail("用户不存在或已禁用");
+                //用户不存在或已禁用
+                return Result.fail(YamlMessageSource.getMessageStatic("00604001"));
             }
 
             Integer userRoleId = userPO.getRoleId();
             if (userRoleId == null) {
                 log.warn("用户未分配角色，userId={}", userId);
-                return Result.fail("该用户未分配任何角色");
+                //该用户未分配任何角色
+                return Result.fail("00604002");
             }
 
             // -------------------------- 2. 查询用户所属角色，判断是否为超级管理员 --------------------------
             SysRolePO userRolePO = getRoleByRoleId(userRoleId);
             if (userRolePO == null) {
-                return Result.fail("用户所属角色不存在或已禁用");
+                //用户所属角色不存在或已禁用
+                return Result.fail(YamlMessageSource.getMessageStatic("00604003"));
             }
 
             // -------------------------- 3. 分场景处理：超级管理员 vs 普通用户 --------------------------
@@ -95,7 +99,8 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
 
         } catch (Exception e) {
             log.error("获取角色-组-用户树形异常：userId={}", userId, e);
-            return Result.fail("查询失败：" + e.getMessage());
+            //"查询失败：" + e.getMessage()
+            return Result.fail(YamlMessageSource.getMessageStatic("0060300B",e.getMessage()));
         }
     }
 

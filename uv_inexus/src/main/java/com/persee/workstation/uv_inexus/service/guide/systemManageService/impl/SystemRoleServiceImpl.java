@@ -13,6 +13,7 @@
 package com.persee.workstation.uv_inexus.service.guide.systemManageService.impl;
 
 import com.persee.workstation.uv_inexus.dao.guide.systemManageDao.SystemRoleDAO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.systemManagePo.SystemRolePO;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemRoleService;
@@ -32,7 +33,8 @@ public class SystemRoleServiceImpl implements SystemRoleService {
     public R<Boolean> addSystemRole(SystemRolePO systemRolePO) {
         systemRolePO.setCreateBy(systemRolePO.getUpdateBy());
         boolean b = roleDAO.insert(systemRolePO) > 0;
-        return b ? R.ok() : R.fail("添加失败");
+        //添加失败
+        return b ? R.ok() : R.fail(YamlMessageSource.getMessageStatic("00501001"));
     }
 
     @Override

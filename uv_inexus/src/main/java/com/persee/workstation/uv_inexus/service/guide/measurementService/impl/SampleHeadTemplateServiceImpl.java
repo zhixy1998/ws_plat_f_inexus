@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.SampleHeadTemplateDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SampleHeadTemplateDTO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.SampleHeadTemplatePO;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SampleHeadTemplateService;
@@ -40,17 +41,21 @@ public class SampleHeadTemplateServiceImpl implements SampleHeadTemplateService 
     @Override
     public R<Boolean> createTemplate(SampleHeadTemplateDTO templateDto) {
         if (templateDto.getTemplateHeads() == null || templateDto.getTemplateHeads().isEmpty()) {
-            return R.fail("没有可保存为模板的信息");
+            //没有可保存为模板的信息
+            return R.fail(YamlMessageSource.getMessageStatic("00307001"));
         }
         if (!StringUtils.hasText(templateDto.getTemplateName())) {
-            return R.fail("模板名称不能为空");
+            //模板名称不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("00307002"));
         }
         if (!StringUtils.hasText(templateDto.getMeasureType())) {
-            return R.fail("测量类型不能为空");
+            //测量类型不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("00307003"));
         }
 
         if (!StringUtils.hasText(templateDto.getUpdateBy())){
-            return R.fail("请登录后操作！");
+            //请登录后操作！
+            return R.fail(YamlMessageSource.getMessageStatic("00307004"));
         }
         String jsonString = JSON.toJSONString(templateDto.getTemplateHeads());
         LambdaQueryWrapper<SampleHeadTemplatePO> queryWrapper = new LambdaQueryWrapper<>();
@@ -58,7 +63,8 @@ public class SampleHeadTemplateServiceImpl implements SampleHeadTemplateService 
         List<SampleHeadTemplatePO> check = dao.selectList(queryWrapper);
         if (!check.isEmpty()) {
             SampleHeadTemplatePO templatePO = check.get(0);
-            return R.fail("该模板已存在,模板名称为：" + templatePO.getTemplateName());
+            //"该模板已存在,模板名称为：" + templatePO.getTemplateName()
+            return R.fail(YamlMessageSource.getMessageStatic("00307005",templatePO.getTemplateName()));
         }
         SampleHeadTemplatePO templatePO = new SampleHeadTemplatePO();
         BeanUtils.copyProperties(templateDto, templatePO);
@@ -68,7 +74,8 @@ public class SampleHeadTemplateServiceImpl implements SampleHeadTemplateService 
         if (save) {
             return R.ok(true);
         } else {
-            return R.fail("保存失败");
+            //保存失败
+            return R.fail(YamlMessageSource.getMessageStatic("00300008"));
         }
     }
 
@@ -98,18 +105,21 @@ public class SampleHeadTemplateServiceImpl implements SampleHeadTemplateService 
     @Override
     public R<Boolean> deleteTemplate(String templateId, String updateBy) {
         if (!StringUtils.hasText(templateId)) {
-            return R.fail("没有要删除的模板");
+            //没有要删除的模板
+            return R.fail(YamlMessageSource.getMessageStatic("00307006"));
         }
 
         SampleHeadTemplatePO templatePO = dao.selectById(templateId);
         if (!templatePO.getUpdateBy().equals(updateBy)) {
-            return R.fail("不可删除他人创建的模板");
+            //不可删除他人创建的模板
+            return R.fail(YamlMessageSource.getMessageStatic("00307007"));
         }
         int result = dao.deleteById(templateId);
         if (result > 0) {
             return R.ok(true);
         } else {
-            return R.fail("删除失败");
+            //删除失败
+            return R.fail(YamlMessageSource.getMessageStatic("00100008"));
         }
     }
 }

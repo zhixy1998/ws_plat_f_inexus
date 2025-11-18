@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -91,7 +92,8 @@ public class DetectionController {
     @ApiOperation("详情接口（通过id查询原始数据）")
     public Result<DetectionDetailDTO> getDetail(@PathVariable Integer id) {
         DetectionDetailDTO detailDTO = detectionService.getDetailById(id);
-        return detailDTO != null ? Result.ok(detailDTO) : Result.fail(404, "未找到ID为" + id + "的记录");
+        //"未找到ID为" + id + "的记录"
+        return detailDTO != null ? Result.ok(detailDTO) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
     }
 
     // 新增：参数及子表字段接口
@@ -99,14 +101,16 @@ public class DetectionController {
     @ApiOperation("查询测量参数及子表字段详情（id）")
     public Result<DetectionParametersDTO> getParametersById(@PathVariable Integer id) {
         DetectionParametersDTO paramsDTO = detectionService.getParametersById(id);
-        return paramsDTO != null ? Result.ok(paramsDTO) : Result.fail(404, "未找到ID为" + id + "的记录");
+        //"未找到ID为" + id + "的记录"
+        return paramsDTO != null ? Result.ok(paramsDTO) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
     }
 
     @GetMapping("/detail/multi_tables/{id}")
     @ApiOperation("标准公用查询")
     public Result<MultiTableDataDTO> getMultiTablesData(@PathVariable Integer id) {
         MultiTableDataDTO dataDTO = detectionService.getMultiTablesData(id);
-        return dataDTO != null ? Result.ok(dataDTO) : Result.fail(404, "未找到ID为" + id + "的记录");
+        // //"未找到ID为" + id + "的记录"
+        return dataDTO != null ? Result.ok(dataDTO) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
     }
     
     // 其他原有接口保持不变...
@@ -114,7 +118,8 @@ public class DetectionController {
     @ApiOperation("查询单条记录")
     public Result<Detection> findById(@PathVariable Integer id) {
         Detection detection = detectionService.findById(id);
-        return detection != null ? Result.ok(detection) : Result.fail(404, "未找到ID为" + id + "的记录");
+        // //"未找到ID为" + id + "的记录"
+        return detection != null ? Result.ok(detection) : Result.fail(404, YamlMessageSource.getMessageStatic("00401001",id));
     }
 
     @GetMapping("/industryType")
@@ -154,6 +159,7 @@ public class DetectionController {
     @ApiOperation("批量删除")
     public Result<Void> deleteBatch(@RequestBody List<Integer> ids) {
         int count = detectionService.deleteBatchIds(ids);
-        return count > 0 ? Result.ok() : Result.fail(500, "批量删除失败");
+        //批量删除失败
+        return count > 0 ? Result.ok() : Result.fail(500, YamlMessageSource.getMessageStatic("0000004C"));
     }
 }

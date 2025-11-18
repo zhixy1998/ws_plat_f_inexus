@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 import java.util.Map;
 
 // import com.persee.workstation.uv_inexus.model.ResultCodeEnum; // 引入你定义的 ResultCodeEnum 枚举
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -57,7 +58,8 @@ public class StandardPretreatmentController {
     public Result<StandardPretreatment> getStandardPretreatmentById(@PathVariable Integer id) {
         StandardPretreatment standardPretreatment = standardPretreatmentService.findById(id);
         if (standardPretreatment == null) {
-            return Result.fail(404, "未找到ID为" + id + "的检测记录"); // 使用自定义的错误代码和消息
+            //"未找到ID为" + id + "的检测记录"
+            return Result.fail(404, YamlMessageSource.getMessageStatic("004007001",id)); // 使用自定义的错误代码和消息
         } else {
             return Result.ok(standardPretreatment);
         }

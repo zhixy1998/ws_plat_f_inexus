@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskAttachmentMapper;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
@@ -32,6 +33,7 @@ public class TMeasureTaskAttachmentServiceImpl extends ServiceImpl<TMeasureTaskA
         if (attachment != null) {
             return R.ok(attachment);
         }
-        return R.fail("未找到记录");
+        //未找到记录
+        return R.fail(YamlMessageSource.getMessageStatic("00100025"));
     }
 }

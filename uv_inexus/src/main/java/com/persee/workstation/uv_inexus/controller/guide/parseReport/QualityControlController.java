@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 
 import java.util.Map;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,7 +59,8 @@ public class QualityControlController {
     public Result<QualityControl> findQualityControlById(@PathVariable Integer id) {
         QualityControl qualityControl = qualityControlService.findById(id);
         if (qualityControl == null) {
-            return Result.fail(404, "未找到ID为" + id + "的质控记录"); // 自定义错误码和消息
+            //"未找到ID为" + id + "的质控记录"
+            return Result.fail(404, YamlMessageSource.getMessageStatic("00405001",id)); // 自定义错误码和消息
         } else {
             return Result.ok(qualityControl);
         }

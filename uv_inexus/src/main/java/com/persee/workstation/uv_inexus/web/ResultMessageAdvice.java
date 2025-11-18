@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 import java.util.Locale;
-/*
+/**
 * 信息码拦截器，暂未使用。建议使用YamlMessageSource的静态方法getMessageStatic返回信息
 * */
 @RestControllerAdvice(basePackages = "com.persee.workstation.uv_inexus.controller")

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -101,8 +102,8 @@ public class FileCryptoController {
         resultData.put("currentDescription", currentDescription); // 返回当前版本的更新说明
         resultData.put("updateDescription", txtContent);          // 返回新版本的更新说明
         resultData.put("fileName", fileName);
-
-        return ResponseEntity.ok(Result.ok(resultData).message("版本解析成功"));
+        //版本解析成功
+        return ResponseEntity.ok(Result.ok(resultData).message(YamlMessageSource.getMessageStatic("00901001")));
     }
 
 
@@ -161,7 +162,8 @@ public class FileCryptoController {
             errorData.put("version", parsedVersion);return ResponseEntity.ok(
             Result.fail(errorData)
                 .code(400)
-                .message("当前版本已存在，请核实升级版本")
+                    //当前版本已存在，请核实升级版本
+                .message(YamlMessageSource.getMessageStatic("00901002"))
             );
         }
 
@@ -178,8 +180,8 @@ public class FileCryptoController {
         resultData.put("fileCount", excelFiles.size());
         resultData.put("newVersion", parsedVersion);
         resultData.put("updateDescription", updateDescription);
-
-        return ResponseEntity.ok(Result.ok(resultData).message("导入并存储版本信息成功"));
+        //导入并存储版本信息成功
+        return ResponseEntity.ok(Result.ok(resultData).message(YamlMessageSource.getMessageStatic("00901003")));
     }
 
 

@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.controller.guide.parseReport;
 
 import java.util.Map;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,7 +56,8 @@ public class RoundingRulesController { // 修改了控制器类名
     public Result<RoundingRules> findById(@PathVariable Integer id) { // 修改了返回类型和方法名
         RoundingRules roundingRules = roundingRulesService.findById(id); // 修改了变量名和Service方法调用
         if (roundingRules == null) {
-            return Result.fail(404, "未找到ID为" + id + "的修约规则记录"); // 修改了错误消息
+            //"未找到ID为" + id + "的修约规则记录"
+            return Result.fail(404, YamlMessageSource.getMessageStatic("00406001",id)); // 修改了错误消息
         } else {
             return Result.ok(roundingRules);
         }

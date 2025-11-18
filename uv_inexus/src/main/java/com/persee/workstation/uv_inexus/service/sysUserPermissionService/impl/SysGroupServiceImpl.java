@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -84,17 +85,20 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         nameCheckWrapper.eq("group_name", saveDTO.getGroupName());
         Long count = baseMapper.selectCount(nameCheckWrapper);
         if (count > 0) {
-            return Result.fail("小组名已存在，请更改");
+            //小组名已存在，请更改
+            return Result.fail(YamlMessageSource.getMessageStatic("00602001"));
         }
 
         // 2. 校验角色是否存在
         String roleId = saveDTO.getRoleId();
         if (roleId == null || roleId.isEmpty()) {
-            return Result.fail("角色ID不能为空");
+            //角色ID不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00602002"));
         }
         SysRolePO rolePO = sysRoleMapper.selectById(roleId);
         if (rolePO == null) {
-            return Result.fail("该角色不存在，请刷新重试！");
+            //该角色不存在，请刷新重试！
+            return Result.fail(YamlMessageSource.getMessageStatic("00602003"));
         }
 
         // 3. 封装小组信息并保存
@@ -103,8 +107,8 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         groupPO.setCreateBy("admin");  // 修正拼写错误（原"amdin"）
         groupPO.setCreated(LocalDateTime.now());
         baseMapper.insert(groupPO);
-
-        return Result.ok("小组创建成功，已关联角色");
+        //小组创建成功，已关联角色
+        return Result.ok(YamlMessageSource.getMessageStatic("00602004"));
     }
 
     // 修改小组：校验角色存在性并更新关联
@@ -114,17 +118,20 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         // 1. 校验小组是否存在
         SysGroupPO groupPO = baseMapper.selectById(saveDTO.getId());
         if (groupPO == null) {
-            return Result.fail("小组不存在");
+            //小组不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00602005"));
         }
 
         // 2. 校验角色是否存在
         String roleId = saveDTO.getRoleId();
         if (roleId == null || roleId.isEmpty()) {
-            return Result.fail("角色ID不能为空");
+            //角色ID不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00602002"));
         }
         SysRolePO rolePO = sysRoleMapper.selectById(roleId);
         if (rolePO == null) {
-            return Result.fail("该角色不存在，请刷新重试！");
+            //该角色不存在，请刷新重试！
+            return Result.fail(YamlMessageSource.getMessageStatic("00602003"));
         }
 
         // 3. 更新小组信息（包含角色ID）
@@ -132,8 +139,8 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         groupPO.setUpdateBy("admin");  // 修正拼写错误
         groupPO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(groupPO);
-
-        return Result.ok("小组更新成功，已同步更新角色关联");
+        //小组更新成功，已同步更新角色关联
+        return Result.ok(YamlMessageSource.getMessageStatic("00602006"));
     }
 
     // 批量删除小组
@@ -141,11 +148,13 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     @Transactional
     public Result<String> deleteBatch(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
-            return Result.fail("请选择需要删除的小组");
+            //请选择需要删除的小组
+            return Result.fail(YamlMessageSource.getMessageStatic("00602007"));
         }
         
         baseMapper.deleteBatchIds(ids);
-        return Result.ok("小组删除成功");
+        //小组删除成功
+        return Result.ok(YamlMessageSource.getMessageStatic("00602008"));
     }
 
     // 根据ID查询小组
@@ -153,7 +162,8 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     public Result<SysGroupPO> getGroupById(String id) {
         SysGroupPO groupPO = baseMapper.selectById(id);
         if (groupPO == null) {
-            return Result.fail("小组不存在");
+            //小组不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00602005"));
         }
         return Result.ok(groupPO);
     }
@@ -164,10 +174,11 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     public Result<String> deleteById(String id) {
         SysGroupPO groupPO = baseMapper.selectById(id);
         if (groupPO == null) {
-            return Result.fail("小组不存在，删除失败"); 
+            return Result.fail(YamlMessageSource.getMessageStatic("00602009"));
         }
         
         baseMapper.deleteById(id);
-        return Result.ok("小组删除成功"); 
+        //小组删除成功
+        return Result.ok(YamlMessageSource.getMessageStatic("00602008"));
     }
 }

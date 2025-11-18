@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.UserLoginDTO;
 import com.persee.workstation.uv_inexus.dto.systemUserManageDto.CreateSystemUserDTO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.service.guide.systemUserManageService.SystemUserGroupManageService;
@@ -56,14 +57,16 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
 
         if (!StringUtils.hasText(dto.getSystemIdentityId())) {
             System.out.println("缺少用户角色");
-            return R.fail("缺少用户角色");
+            //缺少用户角色
+            return R.fail(YamlMessageSource.getMessageStatic("00204001"));
         }
 
         log.info("权限验证");
         Boolean b = permissionService.checkCreateUserPermission(dto.getUpdateBy(), dto.getSystemIdentityId());
         if (!b) {
             log.info("当前用户没有权限");
-            return R.fail("添加用户出错，权限不足");
+            //添加用户出错，权限不足
+            return R.fail(YamlMessageSource.getMessageStatic("00204002"));
         }
 
         LambdaQueryWrapper<SystemUserManagePO> wrapper = new LambdaQueryWrapper<>();
@@ -75,7 +78,8 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
         wrapper.eq(SystemUserManagePO::getUserName, dto.getUserName());
         if (!dao.selectList(wrapper).isEmpty()) {
             log.info("当前用户名已存在");
-            return R.fail("当前用户名已存在");
+            //当前用户名已存在
+            return R.fail(YamlMessageSource.getMessageStatic("00204003"));
         }
 
         UserFactoryRoute route = new UserFactoryRoute();
@@ -95,7 +99,8 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
         Boolean b = permissionService.checkUpdateUserPermission(dto.getUpdateBy(), dto);
         if (!b) {
             log.info("操作权限不足");
-            return R.fail("修改用户出错，权限不足");
+            //修改用户出错，权限不足
+            return R.fail(YamlMessageSource.getMessageStatic("00204004"));
         }
 
         LambdaQueryWrapper<SystemUserManagePO> wrapper = new LambdaQueryWrapper<>();
@@ -103,7 +108,8 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
         SystemUserManagePO po = dao.selectOne(wrapper);
         if (po == null) {
             log.info("用户不存在");
-            return R.fail("修改用户名出错，请检查");
+            //修改用户名出错，请检查
+            return R.fail(YamlMessageSource.getMessageStatic("00204005"));
         }
 
         BeanUtils.copyProperties(dto, po);
@@ -116,22 +122,26 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
 
         if (deleteUserName.equals(Constants.SUPER_USER_NAME)) {
             log.info("管理员不允许删除");
-            return R.fail("管理员不允许删除");
+            //管理员不允许删除
+            return R.fail(YamlMessageSource.getMessageStatic("00204006"));
         }
 
         if (updateBy.equals(deleteUserName)) {
-            return R.fail("不能删除自己");
+            //不能删除自己
+            return R.fail(YamlMessageSource.getMessageStatic("00204007"));
         }
         Boolean b = permissionService.checkDeleteUserPermission(updateBy, deleteUserName);
         if (!b) {
             log.info("删除权限不足");
-            return R.fail("删除用户出错，权限不足");
+            //删除用户出错，权限不足
+            return R.fail(YamlMessageSource.getMessageStatic("00204008"));
         }
         LambdaQueryWrapper<SystemUserManagePO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SystemUserManagePO::getUserName, deleteUserName);
         int delete = dao.delete(wrapper);
         if (delete == 0) {
-            return R.fail("删除失败");
+            //删除失败
+            return R.fail(YamlMessageSource.getMessageStatic("00100008"));
         } else {
             return R.ok(true);
         }
@@ -251,7 +261,8 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
         wrapper.eq(SystemUserManagePO::getUserName, updateBy);
         SystemUserManagePO po = dao.selectOne(wrapper);
         if (po == null) {
-            return R.fail("用户不存在");
+            //用户不存在
+            return R.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
 
         List<SystemUserGroupInfo> result;
@@ -283,13 +294,15 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
 
         if (!StringUtils.hasText(loginDTO.getUserName()) || !StringUtils.hasText(loginDTO.getPassword())) {
             log.info("未传入用户名或密码");
-            return R.fail(false, "缺少用户名或密码");
+            //缺少用户名或密码
+            return R.fail(false, YamlMessageSource.getMessageStatic("00204009"));
         }
 
         String password = dao.getPassword(loginDTO.getUserName());
         if (!StringUtils.hasText(password)) {
             log.info("未查找到用户密码");
-            return R.fail(false, "没找到该用户");
+            //没找到该用户
+            return R.fail(false, YamlMessageSource.getMessageStatic("0020400A"));
         }
 
         if (loginDTO.getPassword().equals(password)) {
@@ -317,7 +330,8 @@ public class SystemUserManageServiceImpl implements SystemUserManageService {
             return R.ok(vo);
         } else {
             log.info("用户名密码错误！");
-            return R.fail(false, "密码错误！");
+            //密码错误！
+            return R.fail(false, YamlMessageSource.getMessageStatic("0020400B"));
         }
     }
 }

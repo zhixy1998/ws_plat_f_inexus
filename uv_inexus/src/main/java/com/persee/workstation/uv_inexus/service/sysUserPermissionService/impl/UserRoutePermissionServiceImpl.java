@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -49,7 +50,8 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
                 .map(SysUserGroupPO::getGroupId)
                 .collect(Collectors.toList());
         if (groupIds.isEmpty()) {
-            return Result.fail("用户未关联任何小组，无访问权限");
+            //用户未关联任何小组，无访问权限
+            return Result.fail(YamlMessageSource.getMessageStatic("00606001"));
         }
 
         // 2. 查询小组关联的所有权限ID
@@ -60,7 +62,8 @@ public class UserRoutePermissionServiceImpl implements UserRoutePermissionServic
                 .distinct()
                 .collect(Collectors.toList());
         if (permIds.isEmpty()) {
-            return Result.fail("用户所在小组未配置权限");
+            //用户所在小组未配置权限
+            return Result.fail(YamlMessageSource.getMessageStatic("00606002"));
         }
 
         // 3. 查询权限详情（只查菜单类型的权限），并提取 name 字段

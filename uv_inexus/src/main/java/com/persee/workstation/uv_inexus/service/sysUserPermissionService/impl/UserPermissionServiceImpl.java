@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -71,7 +72,8 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         // 1. 校验用户是否存在
         SysUserPO userPO = sysUserMapper.selectById(userId);
         if (userPO == null) {
-            return Result.fail("用户不存在");
+            //用户不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
 
         // 2. 查用户关联的小组ID
@@ -79,7 +81,8 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         userGroupQuery.eq("user_id", userId);
         List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
         if (userGroupList.isEmpty()) {
-            return Result.fail("该用户未关联任何小组");
+            //该用户未关联任何小组
+            return Result.fail(YamlMessageSource.getMessageStatic("00605001"));
         }
         List<String> groupIds = userGroupList.stream()
                 .map(SysUserGroupPO::getGroupId)
@@ -242,14 +245,16 @@ public class UserPermissionServiceImpl implements UserPermissionService {
     public Result<List<String>> getRootPermissionPaths(String userId) {
         SysUserPO userPO = sysUserMapper.selectById(userId);
         if (userPO == null) {
-            return Result.fail("用户不存在");
+            //用户不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
 
         QueryWrapper<SysUserGroupPO> userGroupQuery = new QueryWrapper<>();
         userGroupQuery.eq("user_id", userId);
         List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(userGroupQuery);
         if (userGroupList.isEmpty()) {
-            return Result.fail("该用户未关联任何小组");
+            //该用户未关联任何小组
+            return Result.fail(YamlMessageSource.getMessageStatic("00605001"));
         }
 
         List<String> groupIds = userGroupList.stream()
@@ -292,27 +297,31 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         try {
             // 1. 校验小组ID有效性
             if (!StringUtils.hasText(groupId)) {
-                return Result.fail("小组ID不能为空");
+                //小组ID不能为空
+                return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
             }
             
             // 2. 查询小组信息，获取关联的角色ID
             SysGroupPO groupPO = sysGroupMapper.selectById(groupId);
             System.out.println("groupPO:"+groupPO);
             if (groupPO == null) {
-                return Result.fail("小组不存在（groupId：" + groupId + "）");
+                //"小组不存在（groupId：" + groupId + "）"
+                return Result.fail(YamlMessageSource.getMessageStatic("00605002",groupId));
             }
             
             String roleId = groupPO.getRoleId();
             System.out.println("roleId:"+roleId);
             if (!StringUtils.hasText(roleId)) {
-                return Result.fail("小组未关联任何角色（groupId：" + groupId + "）");
+                //"小组未关联任何角色（groupId：" + groupId + "）"
+                return Result.fail(YamlMessageSource.getMessageStatic("00605003",groupId));
             }
             
             // 3. 查询角色信息，获取该角色的所有权限ID（总权限）
             SysRolePO rolePO = sysRoleMapper.selectById(roleId);
             System.out.println("rolePO:"+rolePO);
             if (rolePO == null) {
-                return Result.fail("角色不存在（roleId：" + roleId + "）");
+                //"角色不存在（roleId：" + roleId + "）"
+                return Result.fail(YamlMessageSource.getMessageStatic("00605004",roleId));
             }
             
             String permIdsStr = rolePO.getPermIds();
@@ -346,7 +355,8 @@ public class UserPermissionServiceImpl implements UserPermissionService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return Result.fail("查询权限树形结构失败：" + e.getMessage());
+            //"查询权限树形结构失败：" + e.getMessage()
+            return Result.fail(YamlMessageSource.getMessageStatic("00605005",e.getMessage()));
         }
     }
 
@@ -457,10 +467,12 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         try {
             // 1. 校验参数（原有逻辑不变）
             if (!StringUtils.hasText(groupId)) {
-                return Result.fail("小组ID不能为空");
+                //小组ID不能为空
+                return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
             }
             if (CollectionUtils.isEmpty(targetPermIds)) {
-                return Result.fail("权限ID列表不能为空");
+                //权限ID列表不能为空
+                return Result.fail(YamlMessageSource.getMessageStatic("00605006"));
             }
 
             // 关键修复：将不可修改的列表转换为可修改的ArrayList
@@ -522,7 +534,8 @@ public class UserPermissionServiceImpl implements UserPermissionService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return Result.fail("更新小组权限失败：" + e.getMessage());
+            //"更新小组权限失败：" + e.getMessage()
+            return Result.fail(YamlMessageSource.getMessageStatic("00605007",e.getMessage()));
         }
     }
 
