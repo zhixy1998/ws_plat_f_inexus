@@ -1470,6 +1470,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, analysisIdList, decimalDigits);
                 if (dataList != null) {
                     vo.setDataList(dataList);
+                }else{
+                    vo.setDataList(new ArrayList<>());
                 }
 
                 // 获取额外的映射关系

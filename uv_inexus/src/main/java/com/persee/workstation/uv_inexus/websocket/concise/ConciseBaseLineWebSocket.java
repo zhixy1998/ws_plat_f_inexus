@@ -112,6 +112,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         private final AtomicBoolean measurementStarted = new AtomicBoolean(false);
         private final AtomicBoolean stopCommandSent = new AtomicBoolean(false);
         private final AtomicBoolean stopSuccessSent = new AtomicBoolean(false);
+        private final AtomicBoolean measurementCompleted = new AtomicBoolean(false);
+        private final AtomicBoolean endWavelengthReached = new AtomicBoolean(false);
         private String deviceSerialNumber;
         private String ip;
 
@@ -120,6 +122,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             measurementStarted.set(false);
             stopCommandSent.set(false);
             stopSuccessSent.set(false);
+            measurementCompleted.set(false);
+            endWavelengthReached.set(false);
             deviceSerialNumber = null;
             ip = null;
         }
@@ -187,6 +191,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             // 发送停止命令
             sendStopCommandIfNeeded(session);
 
+            // 停止数据接收线程
+            stopDataReceivingThread();
+
             // 立即响应停止请求 - 确保只发送一次
             if (!state.stopSuccessSent.getAndSet(true)) {
                 sendMessageSafe(session, "停止成功");
@@ -228,6 +235,22 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     }
 
     /**
+     * 停止数据接收线程
+     */
+    private void stopDataReceivingThread() {
+        try {
+            Thread dataReceivingThread = Constants.sendMeasureThread;
+            if (dataReceivingThread != null && dataReceivingThread.isAlive()) {
+                dataReceivingThread.interrupt();
+                log.info("数据接收线程已停止");
+            }
+            Constants.sendMeasureThread = null;
+        } catch (Exception e) {
+            log.error("停止数据接收线程异常", e);
+        }
+    }
+
+    /**
      * 连接异常时触发
      */
     @Override
@@ -235,6 +258,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         log.error("连接异常, session: {}, 异常: {}", session.getId(), exception.getMessage(), exception);
         // 发送停止命令（如果测量已开始）
         sendStopCommandIfNeeded(session);
+        // 停止数据接收线程
+        stopDataReceivingThread();
         cleanupResources(session);
         sessions.remove(session.getId());
 
@@ -256,6 +281,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
         // 发送停止命令（如果测量已开始）
         sendStopCommandIfNeeded(session);
+
+        // 停止数据接收线程
+        stopDataReceivingThread();
 
         // 中断任务线程
         Thread taskThread = taskThreads.remove(session.getId());
@@ -338,7 +366,10 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             SessionState state = sessionStates.get(session.getId());
             if (state != null) {
                 state.measurementStarted.set(false);
+                state.measurementCompleted.set(true);
             }
+            // 停止数据接收线程
+            stopDataReceivingThread();
         }
     }
 
@@ -468,19 +499,52 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             log.info("期望数据点数: {}, 波长范围: {} - {}, 间隔: {}, session: {}",
                     expectedPoints, startWl, endWl, wavelengthInterval, session.getId());
 
+            SessionState state = sessionStates.get(session.getId());
+            if (state == null) {
+                sendAndClose(session, "会话状态异常");
+                return null;
+            }
+
             while (true) {
                 checkInterrupted(session);
 
+                // 如果已经到达结束波长，立即停止数据收集
+                if (state.endWavelengthReached.get()) {
+                    log.info("已到达结束波长，停止数据收集, session: {}", session.getId());
+                    break;
+                }
+
                 // 处理测量数据
                 while (!Constants.measurd_data.isEmpty()) {
+                    checkInterrupted(session);
+
+                    // 如果已经到达结束波长，立即停止处理
+                    if (state.endWavelengthReached.get()) {
+                        log.info("已到达结束波长，清空剩余数据, session: {}", session.getId());
+                        Constants.measurd_data.clear();
+                        break;
+                    }
+
                     ChangeParam changeParam = Constants.measurd_data.remove(0);
                     Double originalWavelength = Double.parseDouble(changeParam.getWl());
                     Double correctedWavelength = formulaUtil.calculateWavelength(originalWavelength, linearSegment);
 
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
-                            wavelengthInterval, isDescending, session.getId());
+                            wavelengthInterval, isDescending, session.getId(), state);
 
                     if (constrainedWavelength != null) {
+                        // 检查是否到达结束波长
+                        if (isEndWavelengthReached(constrainedWavelength, endWl, isDescending)) {
+                            log.info("到达结束波长: {}, 标记结束状态, session: {}", constrainedWavelength, session.getId());
+                            state.endWavelengthReached.set(true);
+
+                            // 立即停止数据接收线程
+                            stopDataReceivingThread();
+
+                            // 清空剩余数据
+                            Constants.measurd_data.clear();
+                        }
+
                         pushBaselineDataPoint(session, constrainedWavelength);
 
                         ChangeParam processedParam = new ChangeParam();
@@ -492,14 +556,19 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
                         log.debug("基线数据 - 原始波长: {}, 修约后波长: {}, session: {}",
                                 correctedWavelength, constrainedWavelength, session.getId());
+
+                        // 如果到达结束波长，立即跳出内层循环
+                        if (state.endWavelengthReached.get()) {
+                            break;
+                        }
                     }
                 }
 
-                // 检查测量是否结束
-                if (isMeasurementComplete()) {
-                    SessionState state = sessionStates.get(session.getId());
+                // 检查测量是否结束或已到达结束波长
+                if (isMeasurementComplete() || state.endWavelengthReached.get()) {
                     if (state != null) {
                         state.measurementStarted.set(false);
+                        state.measurementCompleted.set(true);
                     }
 
                     int actualPoints = dataPointIndexMap.get(session.getId());
@@ -509,6 +578,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     if (actualPoints < expectedPoints * 0.8) {
                         log.warn("基线数据点数不足，可能采集不完整, session: {}", session.getId());
                     }
+
+                    // 停止数据接收线程
+                    stopDataReceivingThread();
                     break;
                 }
 
@@ -531,6 +603,26 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         } catch (InterruptedException e) {
             log.info("数据收集被中断, session: {}", session.getId());
             throw new UserInterruptedException("用户主动停止");
+        }
+    }
+
+    /**
+     * 检查是否到达结束波长
+     */
+    private boolean isEndWavelengthReached(Double currentWavelength, Double endWavelength, boolean isDescending) {
+        if (currentWavelength == null || endWavelength == null) {
+            return false;
+        }
+
+        // 使用容差比较，避免浮点数精度问题
+        double tolerance = 0.001;
+
+        if (isDescending) {
+            // 递减扫描：当前波长 <= 结束波长
+            return currentWavelength <= endWavelength + tolerance;
+        } else {
+            // 递增扫描：当前波长 >= 结束波长
+            return currentWavelength >= endWavelength - tolerance;
         }
     }
 
@@ -626,14 +718,17 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
         // 清理线程引用
         taskThreads.remove(sessionId);
+
+        // 确保数据接收线程被停止
+        stopDataReceivingThread();
     }
 
     /**
      * 强制约束波长值，确保符合设定的波长间隔和范围
      */
     private Double forceConstrainWavelength(Double originalWl, double startWl, double endWl,
-                                            double interval, boolean isDescending, String sessionId) {
-        if (originalWl == null) {
+                                            double interval, boolean isDescending, String sessionId, SessionState state) {
+        if (originalWl == null || (state != null && state.endWavelengthReached.get())) {
             return null;
         }
 
@@ -838,5 +933,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         Constants.measurd_data.clear();
         Constants.instrumentData.clear();
         Constants.measureStatus = false;
+        // 清空数据接收线程引用
+        Constants.sendMeasureThread = null;
     }
 }

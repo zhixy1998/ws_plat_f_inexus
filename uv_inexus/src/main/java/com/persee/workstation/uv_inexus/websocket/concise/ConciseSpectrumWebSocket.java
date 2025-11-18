@@ -347,6 +347,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         taskThread.start();
         taskThreads.put(session.getId(), taskThread);
     }
+
     /**
      * 处理接收到的文本消息
      *
@@ -359,6 +360,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         // 打印接收到的消息内容，包括发送方会话ID和消息内容
         System.out.println("收到消息: " + session.getId() + " -> " + message.getPayload());
         if (message.getPayload().equals("close")){
+            // 优先释放测量线程
+            releaseMeasureThread();
+
             Thread thread = taskThreads.get(session.getId());
             if (measureStatus){
                 try {
@@ -371,23 +375,31 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 } finally {
-                    session.sendMessage(new TextMessage("停止成功"));
-                    sessions.remove(session.getId());
-                    session.close();
-                    thread.interrupt();
-                    deviceInfoService.releaseDevice(deviceSerialNumber);
+                    // 确保测量状态被重置
+                    measureStatus = false;
                 }
             }
-            session.sendMessage(new TextMessage("停止成功"));
-            sessions.remove(session.getId());
-            session.close();
-            // 如果线程正在被使用
-            if (occupancyStatus){
-                // 释放线程
-                deviceInfoService.releaseDevice(deviceSerialNumber);
+
+            // 然后关闭其他线程和会话
+            if (thread != null) {
+                thread.interrupt();
+                taskThreads.remove(session.getId());
+            }
+
+            try {
+                session.sendMessage(new TextMessage("停止成功"));
+                sessions.remove(session.getId());
+                session.close();
+            } finally {
+                // 最后释放设备
+                if (occupancyStatus){
+                    deviceInfoService.releaseDevice(deviceSerialNumber);
+                    occupancyStatus = false;
+                }
             }
         }
     }
+
     /**
      * 重写afterConnectionClosed方法，用于处理WebSocket连接关闭后的操作
      *
@@ -398,18 +410,32 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         // 打印客户端退出信息，包括会话ID、退出时间和关闭原因
         System.out.println("客户端退出: " + session.getId() + " 时间: " + LocalDateTime.now() + " 原因: " + status);
-        if (Constants.sendMeasureThread != null){
-            Constants.sendMeasureThread.interrupt();
-        }
+
+        // 1. 优先释放测量线程
+        releaseMeasureThread();
+
+        // 2. 关闭任务线程
         Thread taskThread = taskThreads.remove(session.getId());
         if (taskThread != null) {
-            taskThread.interrupt(); // 直接打断子线程
+            taskThread.interrupt();
         }
+
+        // 3. 移除会话
         sessions.remove(session.getId());
-        exceptionHandling(); // 清空公共数据
-        // 清空原始Y值存储
+
+        // 4. 清空公共数据
+        exceptionHandling();
+
+        // 5. 清空原始Y值存储
         originalYValues.remove(session.getId());
+
+        // 6. 最后释放设备
+        if (occupancyStatus){
+            deviceInfoService.releaseDevice(deviceSerialNumber);
+            occupancyStatus = false;
+        }
     }
+
     /**
      * 连接异常时触发
      *
@@ -418,20 +444,49 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
      */
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
+        // 优先释放测量线程
+        releaseMeasureThread();
+
+        // 关闭任务线程
+        Thread taskThread = taskThreads.remove(session.getId());
+        if (taskThread != null) {
+            taskThread.interrupt();
+        }
+
         sessions.remove(session.getId());
         try {
             session.close();
         } catch (IOException e) {
-            handleTransportError(session, e);
-            Thread.currentThread().interrupt();
-            return;
+            log.error("关闭会话时发生异常", e);
         } finally {
-            deviceInfoService.releaseDevice(deviceSerialNumber);
+            // 最后释放设备
+            if (occupancyStatus){
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+                occupancyStatus = false;
+            }
             // 清空原始Y值存储
             originalYValues.remove(session.getId());
         }
         System.out.println("连接异常: " + exception.getMessage());
     }
+
+    /**
+     * 释放测量线程 - 新增方法
+     */
+    private void releaseMeasureThread() {
+        if (Constants.sendMeasureThread != null) {
+            try {
+                Constants.sendMeasureThread.interrupt();
+                Constants.sendMeasureThread = null;
+                log.info("测量线程已释放");
+            } catch (Exception e) {
+                log.error("释放测量线程时发生异常", e);
+            }
+        }
+        // 重置测量状态
+        measureStatus = false;
+    }
+
     /**
      * 获取查询参数
      *
@@ -447,6 +502,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         }
         return null;
     }
+
     private void doOneMeasurementSerial(WebSocketSession session,
                                         Command command,
                                         FSpectrumParameter spectrumParameter,
@@ -537,6 +593,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(finishMessage.toJSONString()));
         }
     }
+
     // doOneMeasurementCore 改造，返回 MeasurementResult
     private MeasurementResult doOneMeasurementCore(WebSocketSession session,
                                                    Command command,
@@ -1899,6 +1956,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             }
         }
     }
+
     /**
      * 发送消息并关闭连接2
      *
@@ -1916,6 +1974,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             return;
         }
     }
+
     /**
      * 发送消息并关闭连接
      *
@@ -1924,8 +1983,16 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
      */
     private void sendAndClose(WebSocketSession session, String msg) {
         try {
-            // 释放线程
-            deviceInfoService.releaseDevice(deviceSerialNumber);
+            // 优先释放测量线程
+            releaseMeasureThread();
+
+            // 关闭任务线程
+            Thread thread = taskThreads.get(session.getId());
+            if (thread != null) {
+                thread.interrupt();
+                taskThreads.remove(session.getId());
+            }
+
             session.sendMessage(new TextMessage(msg));
             sessions.remove(session.getId());
             session.close();
@@ -1933,8 +2000,15 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             handleTransportError(session, e);
             Thread.currentThread().interrupt();
             return;
+        } finally {
+            // 最后释放设备
+            if (occupancyStatus){
+                deviceInfoService.releaseDevice(deviceSerialNumber);
+                occupancyStatus = false;
+            }
         }
     }
+
     /**
      * 全局数据清空
      */
@@ -1946,8 +2020,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         Constants.originalCalculationData.clear();
         Constants.startTime = null;
         Constants.endTime = null;
-        Constants.sendMeasureThread = null;
+        // 测量线程在releaseMeasureThread方法中单独处理
     }
+
     // 返回测量结果的类
     class MeasurementResult {
         List<Double> x;
