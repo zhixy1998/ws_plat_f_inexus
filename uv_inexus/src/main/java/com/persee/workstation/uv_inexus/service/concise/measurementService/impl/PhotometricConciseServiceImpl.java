@@ -1990,7 +1990,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
                         .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
                 one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-                if (StringUtils.hasText(one.getAnalysisParam())) {
+                if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
                     Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {});
                     map.putAll(jsonObject);
                 }
