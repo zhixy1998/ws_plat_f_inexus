@@ -1184,7 +1184,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         for (FTaskSpecimen specimen : taskSpecimen) {
             if (specimen.getSpecimenKey().equals(sampleId)) {
                 specimen.setDeleteType(createType);
-                newSample.setHeads(JSON.toJSONString(shot.getSampleHeads()));
+
+                if (shot != null && shot.getSampleHeads() != null) {
+                    newSample.setHeads(JSON.toJSONString(shot.getSampleHeads()));
+                }
+
                 fMeasureSampleService.updateById(newSample);
                 LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())

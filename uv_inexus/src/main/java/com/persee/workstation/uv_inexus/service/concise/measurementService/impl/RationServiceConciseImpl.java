@@ -1663,11 +1663,19 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (specimen.getSpecimenKey().equals(sampleId)) {
                 specimen.setDeleteType(createType);
 
-                if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
-                    newSample.setHeads(JSON.toJSONString(shot.getUnknownHead().getSampleHeads()));
-                } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                    newSample.setHeads(JSON.toJSONString(shot.getStandHead().getSampleHeads()));
+                if (shot != null && specimen.getSampleKind() != null) {
+                    if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+
+                        if (shot.getUnknownHead() != null && shot.getUnknownHead().getSampleHeads() != null) {
+                            newSample.setHeads(JSON.toJSONString(shot.getUnknownHead().getSampleHeads()));
+                        }
+                    } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        if (shot.getStandHead() != null && shot.getStandHead().getSampleHeads() != null) {
+                            newSample.setHeads(JSON.toJSONString(shot.getStandHead().getSampleHeads()));
+                        }
+                    }
                 }
+
                 fMeasureSampleService.updateById(newSample);
 
                 LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
@@ -2039,6 +2047,9 @@ public class RationServiceConciseImpl implements RationConciseService {
                     ans.addAll(shot.getUnknownHead().getSampleHeads());
                 }
             }
+        }else {
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_unknown.getIdentity());
+            ans.addAll(preHead);
         }
 
         boolean empty = false;

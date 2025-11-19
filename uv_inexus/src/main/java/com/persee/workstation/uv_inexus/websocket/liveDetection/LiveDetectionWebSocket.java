@@ -175,16 +175,16 @@ public class LiveDetectionWebSocket {
                              return;
                          }
 
-                         if (timeout > 200) {
-                             log.info("没有订阅者，断开仪器连接！");
-                             DetectionConstants.isDeviceIdle = false;
-                             devMessageUtil.disConnect(deviceIp);
-                             stopAllMeasurements();
-                             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-                             info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
-                             infoService.saveOrUpdateInfo(info);
-                             return;
-                         }
+//                         if (timeout > 200) {
+//                             log.info("没有订阅者，断开仪器连接！");
+//                             DetectionConstants.isDeviceIdle = false;
+//                             devMessageUtil.disConnect(deviceIp);
+//                             stopAllMeasurements();
+//                             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+//                             info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+//                             infoService.saveOrUpdateInfo(info);
+//                             return;
+//                         }
                     }
 
                     R<DatagramSocket> news = messageUtil.getSocket();

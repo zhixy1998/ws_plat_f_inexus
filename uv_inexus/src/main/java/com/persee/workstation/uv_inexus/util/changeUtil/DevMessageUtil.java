@@ -99,6 +99,7 @@ public class DevMessageUtil {
             return R.fail(ans.getMessage());
         }
         DatagramSocket socket = ans.getData();
+        defaultIp = "255.255.255.255";
 
         byte[] sendData = new byte[]{
                 (byte) 0xFF, (byte) 0xB5, 0x00, 0x00, 0x00, 0x14, 0x00, 0x28,

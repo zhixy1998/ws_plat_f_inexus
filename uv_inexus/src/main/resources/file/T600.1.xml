@@ -1870,10 +1870,10 @@
 <string/>
 </OutputString>
 <SendBytes>
-<string>181:254:241:2:0:0:0:0:0:0:0:Check</string>
+<string>181:254:240:2:0:0:0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
-<string>254:181:241:2:0:0:0:Check</string>
+<string>254:181:240:2:0:0:0:Check</string>
 </ReadBytes>
 </ProtocolItem>
 <ProtocolItem>
