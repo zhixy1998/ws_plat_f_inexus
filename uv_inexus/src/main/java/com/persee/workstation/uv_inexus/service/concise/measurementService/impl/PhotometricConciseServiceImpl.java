@@ -1523,7 +1523,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
-            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
             ans.addAll(preHead);
             return Result.ok(new ArrayList<>(ans));
         }
@@ -1539,7 +1539,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 }
             }
         } else {
-            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_stand.getIdentity());
+            List<FHeadVO> preHead = fMeasureTaskMapper.getPreHead(method.getMeasurementType(), null);
             ans.addAll(preHead);
         }
 
@@ -1903,20 +1903,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                         map.putAll(countData);
                     }
                 }
-
-                LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                        .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
-                        .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
-
-                FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-                if (one != null) {
-                    if (StringUtils.hasText(one.getAnalysisParam())) {
-                        Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {
-                        });
-                        map.putAll(jsonObject);
-                    }
-                }
             } else {
                 if (data != null) {
                     if (StringUtils.hasText(data.getOriginalCalculationData())){
@@ -1982,21 +1968,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     }
                     map.put("remark", data.getRemark());
                 }
-
-
-                LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                        .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
-                        .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
-
-                FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-                if (one != null) {
-                    if (StringUtils.hasText(one.getAnalysisParam())) {
-                        Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {
-                        });
-                        map.putAll(jsonObject);
-                    }
-                }
             }
 
             LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
@@ -2005,11 +1976,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (data != null) {
                 analysisDataQueryWrapper.eq(FMeasureAnalysisData::getMeasureDataId, data.getId());
             }
-            analysisDataQueryWrapper.orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
+            analysisDataQueryWrapper.orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
 
             FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
             if (one != null) {
                 if (StringUtils.hasText(one.getAnalysisParam())) {
+                    Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {});
+                    map.putAll(jsonObject);
+                }
+            } else {
+                analysisDataQueryWrapper.clear();
+                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
+                        .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
+                        .orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
+                one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
                     Map<String, String> jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>() {});
                     map.putAll(jsonObject);
                 }
@@ -2205,6 +2186,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         Map<String, String> map = new HashMap<>();
 
+
+        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureData::getTaskId, task.getId())
+                .eq(FMeasureData::getSampleKey, sample.getId())
+                .orderByDesc(FMeasureData::getSerialNumber)
+                .last("limit 1");
+        FMeasureData data = fMeasureDataService.getOne(queryWrapper);
+
         R<List<FPhotometricCountDataInfo>> formula = formula(wlDataList, sample, task, parameter, digit);
         if (formula.getSuccess()) {
             List<FPhotometricCountDataInfo> formulaData = formula.getData();
@@ -2217,8 +2206,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         } else {
             LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
             analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, task.getId())
-                    .eq(FMeasureAnalysisData::getSampleKey, sample.getId())
-                    .orderByDesc(FMeasureAnalysisData::getAnalysisName).last("limit 1");
+                    .eq(FMeasureAnalysisData::getSampleKey, sample.getId());
+            if (data != null) {
+                analysisDataQueryWrapper.eq(FMeasureAnalysisData::getMeasureDataId, data.getId());
+            }
+            analysisDataQueryWrapper.orderByDesc(FMeasureAnalysisData::getDataVersion).last("limit 1");
 
             FMeasureAnalysisData one = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
             if (one != null) {

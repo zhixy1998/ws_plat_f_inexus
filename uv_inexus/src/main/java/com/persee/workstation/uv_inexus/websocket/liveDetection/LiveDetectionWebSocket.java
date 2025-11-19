@@ -113,12 +113,11 @@ public class LiveDetectionWebSocket {
                     "设备未激活: " + deviceSerialNumber);
             return;
         }
-
-        if (status) {
+        this.getDeviceStatus(deviceSerialNumber);
+        if (status && info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
             // 启动发送接收线程
             serialNumber = deviceSerialNumber;
             this.startMeasureLoop(deviceSerialNumber);
-            this.getDeviceStatus(deviceSerialNumber);
             status = false;
         }
 
@@ -166,10 +165,19 @@ public class LiveDetectionWebSocket {
 
                     while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
                          Thread.sleep(1000);
+
+                         if (timeout == 0) {
+                             DetectionConstants.isDeviceIdle = true;
+                         }
                          timeout++;
+                         if (!DetectionConstants.isDeviceIdle) {
+                             log.info("仪器被重新占用，等待下次判断");
+                             return;
+                         }
 
                          if (timeout > 200) {
                              log.info("没有订阅者，断开仪器连接！");
+                             DetectionConstants.isDeviceIdle = false;
                              devMessageUtil.disConnect(deviceIp);
                              stopAllMeasurements();
                              DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -181,7 +189,7 @@ public class LiveDetectionWebSocket {
 
                     R<DatagramSocket> news = messageUtil.getSocket();
                     if (!news.getSuccess()) {
-                        log.info("绑定 socket 失败: {}");
+                        log.info("绑定 socket 失败");
 
                         JSONObject errorMsg = new JSONObject();
                         errorMsg.put("error", "请检查网口连接！");
@@ -395,11 +403,16 @@ public class LiveDetectionWebSocket {
                                 Constants.devConnectInfo.get(deviceSerialNumber)) {
                             try {
                                 Thread.sleep(1000);
+                                if (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
+                                    return;
+                                }
+
 
                                 DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
                                 if (infoPO != null && infoPO.getDeviceCurrentStatus() != null) {
                                     JSONObject status = new JSONObject();
                                     status.put("devCurrentStatus", infoPO.getDeviceCurrentStatus());
+                                    log.info("仪器状态：{}", status);
                                     messagingTemplate.convertAndSend(deviceStatusTopic, status);
                                 }
 
@@ -451,6 +464,7 @@ public class LiveDetectionWebSocket {
             serialNumber = deviceSerialNumber;
             Constants.devConnectInfo.put(deviceSerialNumber, true);
             startMeasureLoop(deviceSerialNumber);
+            getDeviceStatus(deviceSerialNumber);
             status = false;
         }
 
@@ -504,12 +518,6 @@ public class LiveDetectionWebSocket {
                 log.info("会话 {} 订阅了主题: {}", sessionId, destination);
             }
         }
-
-
-        if (deviceStatusTopic.equals(destination) && StringUtils.hasText(serialNumber)&& status ){
-            getDeviceStatus(serialNumber);
-        }
-
     }
 
     @EventListener

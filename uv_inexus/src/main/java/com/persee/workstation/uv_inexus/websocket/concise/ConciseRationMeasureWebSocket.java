@@ -1366,7 +1366,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sample.getId());
-        repetitionTime = repetitionTime + 1;
+//        repetitionTime = repetitionTime + 1;
 
         if (isAvg) {
             jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());

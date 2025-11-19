@@ -452,8 +452,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (po.getIsInited() == null) {
                 po.setIsInited(Constants.INIT_STATUS_NO);
             }
+            Constants.devConnectInfo.put(deviceVO.getDeviceSerialNumber(), true);
             if (po.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
-                Constants.devConnectInfo.put(deviceVO.getDeviceSerialNumber(), true);
                 liveDetectionWebSocket.startMeasure(deviceVO.getDeviceSerialNumber());
             }
 
