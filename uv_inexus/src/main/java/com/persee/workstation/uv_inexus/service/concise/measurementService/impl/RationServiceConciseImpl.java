@@ -1778,6 +1778,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
         task.setUserId(id);
+        task.setEndSaveTime(LocalDateTime.now());
         fMeasureTaskService.updateById(task);
         saveData(taskId);
         return Result.ok(true);
