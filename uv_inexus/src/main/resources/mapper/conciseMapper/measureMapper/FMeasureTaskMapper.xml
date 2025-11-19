@@ -53,7 +53,7 @@
         t1.device_serial_number as deviceSerialNumber,
         t1.image_data as imageData
         from t800_uv_inexus_concise.f_t_measure_task t1 left join t800_uv_inexus_concise.f_t_measure_method t2 on
-        t1.method_key = t2.id where t1.is_delete = '0' and t1.user_id = #{updateBy}
+        t1.method_key = t2.id where t1.is_delete = '0' and t1.user_id = #{updateBy} and t1.measure_type = #{methodType}
         <if test="taskName != null and taskName != ''">
             and t1.task_name like concat('%',#{taskName},'%')
         </if>
