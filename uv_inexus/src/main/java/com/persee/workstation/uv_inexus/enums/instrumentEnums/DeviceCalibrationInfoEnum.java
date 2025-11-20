@@ -17,7 +17,7 @@ import java.util.Map;
 @Getter
 public enum DeviceCalibrationInfoEnum {
 
-    Wavelength(1,"CheckWl"),
+    Wavelength(1,"CorrectWl"),
     Dark(2, "Dark");
 
 

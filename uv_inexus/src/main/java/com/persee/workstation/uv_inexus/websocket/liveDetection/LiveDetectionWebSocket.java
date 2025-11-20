@@ -107,13 +107,13 @@ public class LiveDetectionWebSocket {
             return;
         }
         String ip = info.getIp();
+        this.getDeviceStatus(deviceSerialNumber);
 
         if (info.getIsActivated() == null || info.getIsActivated() == 0) {
             messagingTemplate.convertAndSend(measureTopic,
                     "设备未激活: " + deviceSerialNumber);
             return;
         }
-        this.getDeviceStatus(deviceSerialNumber);
         if (status && info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
             // 启动发送接收线程
             serialNumber = deviceSerialNumber;
@@ -154,6 +154,8 @@ public class LiveDetectionWebSocket {
 
                 while (Constants.devConnectInfo.get(deviceSerialNumber) != null && Constants.devConnectInfo.get(deviceSerialNumber)) {
 
+                    serialNumber = deviceSerialNumber;
+
                     while (!DetectionConstants.isDeviceIdle) {
                         Thread.sleep(1000);
                         JSONObject ignore = new JSONObject();
@@ -174,17 +176,16 @@ public class LiveDetectionWebSocket {
                              log.info("仪器被重新占用，等待下次判断");
                              return;
                          }
+                    }
 
-//                         if (timeout > 200) {
-//                             log.info("没有订阅者，断开仪器连接！");
-//                             DetectionConstants.isDeviceIdle = false;
-//                             devMessageUtil.disConnect(deviceIp);
-//                             stopAllMeasurements();
-//                             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-//                             info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
-//                             infoService.saveOrUpdateInfo(info);
-//                             return;
-//                         }
+                    DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                    if (!info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                        log.info("设备未初始化成功: {}", deviceSerialNumber);
+                        return;
+                    }
+                    if (!info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+                        log.info("设备未连接: {}", deviceSerialNumber);
+                        return;
                     }
 
                     R<DatagramSocket> news = messageUtil.getSocket();
@@ -438,6 +439,18 @@ public class LiveDetectionWebSocket {
         return R.ok();
     }
 
+//    @PreDestroy
+//    public void end(){
+//        log.info("关闭前执行");
+//        DeviceInfoPO info = infoService.getInfo(serialNumber);
+//        if (info != null && info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+//            String ip = info.getIp();
+//            devMessageUtil.disConnect(ip);
+//            info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+//            infoService.saveOrUpdateInfo(info);
+//        }
+//    }
+
     @MessageMapping("/detection/stop")
     public void stopMeasure() {
         // 减少活跃订阅者计数
@@ -503,8 +516,7 @@ public class LiveDetectionWebSocket {
         String sessionId = headerAccessor.getSessionId();
         String destination = headerAccessor.getDestination();
 
-        log.info("WebSocket订阅: {}", sessionId);
-
+        log.info("WebSocket{}订阅: {}", sessionId, destination);
 
         if (measureTopic.equals(destination)) {
             // 使用 Set 避免同一会话重复订阅同一主题

@@ -186,6 +186,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.info(r.getMessage());
             return R.fail(r.getMessage());
         }
+        infoPO = infoService.getInfo(initDTO.getDeviceSerialNumber());
 
         LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DeviceModelInfoPO::getDevModel, infoPO.getDeviceModel());
@@ -207,15 +208,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         infoService.saveOrUpdateInfo(infoPO);
 
 
-        new Thread(() -> {
+        Thread initThread = new Thread(() -> {
             try {
+                DeviceInfoPO finalInfoPO = infoService.getInfo(initDTO.getDeviceSerialNumber());
                 stopInit.put(initDTO.getDeviceSerialNumber(), false);
-                newStartInit(infoPO, attachmentInfo.getAttachmentKind());
+                newStartInit(finalInfoPO, attachmentInfo.getAttachmentKind());
             } catch (Exception e) {
                 DetectionConstants.isDeviceIdle = true;
                 throw new RuntimeException(e);
             }
-        }).start();
+        });
+        initThread.start();
 
         return R.ok(true);
     }
@@ -658,7 +661,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             //波长校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
             try {
-                devMessageUtil.deviceCalibration(command, ip);
+                R<String> stringR = devMessageUtil.deviceCalibration(command, ip);
+                if (!stringR.getSuccess()) {
+                    return R.fail("波长校正失败，请检查仪器!");
+                }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }finally {

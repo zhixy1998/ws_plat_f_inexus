@@ -115,9 +115,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         private final AtomicBoolean deviceOccupied = new AtomicBoolean(false);
         private final AtomicBoolean measurementStarted = new AtomicBoolean(false);
         private final AtomicBoolean stopCommandSent = new AtomicBoolean(false);
-        private final AtomicBoolean stopSuccessSent = new AtomicBoolean(false);
-        private final AtomicBoolean measurementCompleted = new AtomicBoolean(false);
-        private final AtomicBoolean dataCollectionFinished = new AtomicBoolean(false);
         private final AtomicBoolean cleanupInProgress = new AtomicBoolean(false);
         private final AtomicBoolean sessionClosing = new AtomicBoolean(false);
         private String deviceSerialNumber;
@@ -128,9 +125,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             deviceOccupied.set(false);
             measurementStarted.set(false);
             stopCommandSent.set(false);
-            stopSuccessSent.set(false);
-            measurementCompleted.set(false);
-            dataCollectionFinished.set(false);
             cleanupInProgress.set(false);
             sessionClosing.set(false);
             deviceSerialNumber = null;
@@ -434,10 +428,13 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         try {
             // 标记停止状态
-            state.stopSuccessSent.set(true);
+            state.stopCommandSent.set(true);
 
             // 发送停止命令
             sendStopCommandIfNeeded(session);
+
+            // 停止数据接收线程（关键：先停止接收数据）
+//            stopDataReceivingThread();
 
             // 中断任务线程
             Thread thread = taskThreads.get(session.getId());
@@ -460,25 +457,32 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
      * 如果需要，发送停止命令
      */
     private void sendStopCommandIfNeeded(WebSocketSession session) {
-        SessionState state = sessionStates.get(session.getId());
+        String sessionId = session.getId();
+        SessionState state = sessionStates.get(sessionId);
         if (state == null) {
             return;
         }
 
         // 只有在测量已开始且停止命令未发送过的情况下才发送停止命令
-        if (state.measurementStarted.get() && !state.stopCommandSent.getAndSet(true)) {
+        if (state.measurementStarted.get() && state.stopCommandSent.getAndSet(true)) {
             if (state.ip != null) {
                 try {
+                    log.info("【发送设备停止】向设备发送停止命令, session: {}, ip: {}", sessionId, state.ip);
                     R<String> stopResult = devMessageUtil.stop(buildCommand(SetParamEnum.Stop, new Object[]{}), state.ip);
                     if (stopResult.getSuccess()) {
-                        log.info("设备停止命令发送成功, session: {}", session.getId());
+                        log.info("【设备停止成功】设备停止命令发送成功, session: {}", sessionId);
                     } else {
-                        log.error("设备停止命令发送失败, session: {}", session.getId());
+                        log.error("【设备停止失败】设备停止命令发送失败, session: {}", sessionId);
                     }
                 } catch (Exception e) {
-                    log.error("发送停止命令异常, session: {}", session.getId(), e);
+                    log.error("【发送停止异常】发送停止命令异常, session: {}", sessionId, e);
                 }
+            }else {
+                log.warn("【无IP地址】无法发送停止命令，IP地址为空, session: {}", sessionId);
             }
+        }else {
+            log.info("【无需停止】测量未开始或停止命令已发送, session: {}, measurementStarted: {}, stopCommandSent: {}",
+                    sessionId, state.measurementStarted.get(), state.stopCommandSent.get());
         }
     }
 
@@ -489,12 +493,30 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         try {
             Thread dataReceivingThread = Constants.sendMeasureThread;
             if (dataReceivingThread != null && dataReceivingThread.isAlive()) {
+                log.info("【停止数据线程】开始停止数据接收线程");
+
+                // 中断数据接收线程
                 dataReceivingThread.interrupt();
-                log.info("数据接收线程停止请求已发送");
+
+                // 等待线程结束，但不要等太久
+                try {
+                    dataReceivingThread.join(500); // 等待500ms
+                    log.info("【数据线程停止】数据接收线程已停止");
+                } catch (InterruptedException e) {
+                    log.warn("【等待线程中断】等待数据接收线程结束被中断");
+                    // 重新中断当前线程
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                log.info("【数据线程状态】数据接收线程不存在或未运行");
             }
-            Constants.sendMeasureThread = null;
+
+            // 无论怎样，都清空引用
+//            Constants.sendMeasureThread = null;
+            log.info("【数据线程清理】数据接收线程引用已清理");
+
         } catch (Exception e) {
-            log.error("停止数据接收线程异常", e);
+            log.error("【停止数据线程异常】停止数据接收线程异常", e);
         }
     }
 
@@ -517,7 +539,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     }
 
     /**
-     * 清理资源 - 完全重写的版本，避免所有竞争条件
+     * 清理资源
      */
     private void cleanupResources(WebSocketSession session) {
         String sessionId = session.getId();
@@ -547,6 +569,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             if (state.deviceOccupied.compareAndSet(true, false)) {
                 if (state.deviceSerialNumber != null) {
                     try {
+                        while (Constants.sendMeasureThread!=null&&Constants.sendMeasureThread.isAlive()){
+                            Thread.sleep(500);
+                        }
                         deviceInfoService.releaseDevice(state.deviceSerialNumber);
                         log.info("设备释放成功: {}, session: {}", state.deviceSerialNumber, sessionId);
                     } catch (Exception e) {
@@ -743,7 +768,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             SessionState state = sessionStates.get(session.getId());
             if (state != null) {
                 state.measurementStarted.set(false);
-                state.measurementCompleted.set(true);
             }
 
             // 立即清空缓存，释放锁
@@ -2120,6 +2144,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         Constants.field3Values.clear();
         Constants.instrumentData.clear();
         Constants.originalCalculationData.clear();
+        Constants.sendMeasureThread = null;
         Constants.startTime = null;
         Constants.endTime = null;
     }
