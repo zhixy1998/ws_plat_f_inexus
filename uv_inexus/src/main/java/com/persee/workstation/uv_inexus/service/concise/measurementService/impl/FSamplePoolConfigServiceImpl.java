@@ -220,7 +220,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         FSamplePoolConfigPO po = dao.selectOne(query);
         if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
             //未找到该仪器附件配置
-            return R.fail("00106001");
+            return R.fail(YamlMessageSource.getMessageStatic("00106001"));
         }
 
         FSamplePoolInfoVO vo = new FSamplePoolInfoVO();
@@ -263,7 +263,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         if (!StringUtils.hasText(updateBy)) {
             log.info("缺少更新人信息");
             //请登录后操作
-            return R.fail("00307004");
+            return R.fail(YamlMessageSource.getMessageStatic("00307004"));
         }
         LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
         query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);

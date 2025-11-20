@@ -72,7 +72,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
             if (userRoleId == null) {
                 log.warn("用户未分配角色，userId={}", userId);
                 //该用户未分配任何角色
-                return Result.fail("00604002");
+                return Result.fail(YamlMessageSource.getMessageStatic("00604002"));
             }
 
             // -------------------------- 2. 查询用户所属角色，判断是否为超级管理员 --------------------------

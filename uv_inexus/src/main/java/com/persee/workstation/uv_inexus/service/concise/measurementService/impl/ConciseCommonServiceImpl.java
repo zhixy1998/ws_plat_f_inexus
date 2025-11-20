@@ -332,7 +332,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 boolean update = fMeasureAnalysisDataService.updateById(fMeasureAnalysisData);
                 if (!(update)) {
                     //保存草稿失败
-                    return Result.fail("00100005");
+                    return Result.fail(YamlMessageSource.getMessageStatic("00100005"));
                 }
             }
         }
@@ -342,7 +342,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             return Result.ok();
         } else {
             //保存草稿失败
-            return Result.fail("00100005");
+            return Result.fail(YamlMessageSource.getMessageStatic("00100005"));
         }
     }
 
