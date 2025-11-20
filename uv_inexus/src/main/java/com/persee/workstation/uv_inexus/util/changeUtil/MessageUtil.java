@@ -691,11 +691,16 @@ public class MessageUtil {
     private void scanReceiveAndDeal(DatagramSocket scanSocket) {
         int i = 0;
         ChangeParam changeParam = null;
+        int count = 0;
         while (Constants.isRunning) {
             try {
                 DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                 scanSocket.receive(receivePacket);
-
+                System.out.println("收到当前消息的时间为: "+ System.currentTimeMillis());
+                count++;
+                if (count>1){
+//                    scanSocket.setSoTimeout(100);
+                }
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
 
                 System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
@@ -747,11 +752,16 @@ public class MessageUtil {
     private void scanReceiveAndDealScanFast(DatagramSocket scanSocket) {
         int i = 0;
         ChangeParam changeParam = null;
+        int count = 0;
         while (Constants.isRunning) {
             try {
                 DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                 scanSocket.receive(receivePacket);
-
+                System.out.println("当前收到消息的时间是: "+ System.currentTimeMillis());
+                count++;
+                if (count>1){
+                    scanSocket.setSoTimeout(500);
+                }
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
 
                 System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
@@ -803,10 +813,15 @@ public class MessageUtil {
     private void scanReceiveAndDealBaseline(DatagramSocket scanSocket) {
         int i = 0;
         ChangeParam changeParam = null;
+        int count = 0;
         while (Constants.isRunning) {
             try {
                 DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                 scanSocket.receive(receivePacket);
+                count++;
+                if (count > 1) {
+                    scanSocket.setSoTimeout(500);
+                }
 
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
 
@@ -859,11 +874,15 @@ public class MessageUtil {
     private void scanReceiveAndDealFastBaseline(DatagramSocket scanSocket) {
         int i = 0;
         ChangeParam changeParam = null;
+        int cont=0;
         while (Constants.isRunning) {
             try {
                 DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                 scanSocket.receive(receivePacket);
-
+                cont++;
+                if (cont>1){
+                    scanSocket.setSoTimeout(500);
+                }
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
 
                 System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());

@@ -117,9 +117,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         private final AtomicBoolean deviceOccupied = new AtomicBoolean(false);
         private final AtomicBoolean measurementStarted = new AtomicBoolean(false);
         private final AtomicBoolean stopCommandSent = new AtomicBoolean(false);
-        private final AtomicBoolean stopSuccessSent = new AtomicBoolean(false);
-        private final AtomicBoolean measurementCompleted = new AtomicBoolean(false);
-        private final AtomicBoolean dataCollectionFinished = new AtomicBoolean(false);
         private final AtomicBoolean cleanupInProgress = new AtomicBoolean(false);
         private final AtomicBoolean sessionClosing = new AtomicBoolean(false);
         private final AtomicBoolean dataReceivingThreadStopped = new AtomicBoolean(false);
@@ -130,9 +127,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             deviceOccupied.set(false);
             measurementStarted.set(false);
             stopCommandSent.set(false);
-            stopSuccessSent.set(false);
-            measurementCompleted.set(false);
-            dataCollectionFinished.set(false);
             cleanupInProgress.set(false);
             sessionClosing.set(false);
             dataReceivingThreadStopped.set(false);
@@ -213,7 +207,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             log.info("【处理停止】开始处理停止请求, session: {}", sessionId);
 
             // 标记停止状态
-            state.stopSuccessSent.set(true);
+            state.stopCommandSent.set(true);
 
             // 发送停止命令到设备
             sendStopCommandToDevice(session);
@@ -250,7 +244,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
 
         // 只有在测量已开始且停止命令未发送过的情况下才发送停止命令
-        if (state.measurementStarted.get() && !state.stopCommandSent.getAndSet(true)) {
+        if (state.measurementStarted.get() && state.stopCommandSent.getAndSet(true)) {
             if (state.ip != null) {
                 try {
                     log.info("【发送设备停止】向设备发送停止命令, session: {}, ip: {}", sessionId, state.ip);
@@ -298,7 +292,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             }
 
             // 无论怎样，都清空引用
-            Constants.sendMeasureThread = null;
+//            Constants.sendMeasureThread = null;
             log.info("【数据线程清理】数据接收线程引用已清理");
 
         } catch (Exception e) {
@@ -323,7 +317,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         String sessionId = session.getId();
         log.info("【连接关闭】客户端退出: {} 时间: {} 原因: {}", sessionId, LocalDateTime.now(), status);
-        cleanupResources(session);
     }
 
     /**
@@ -379,7 +372,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             // 标记数据收集完成
             SessionState state = sessionStates.get(sessionId);
             if (state != null) {
-                state.dataCollectionFinished.set(true);
                 log.info("【数据收集完成】数据收集完成, 数据点数: {}, session: {}", dataList.size(), sessionId);
             }
 
@@ -640,7 +632,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 if (isMeasurementComplete()) {
                     log.info("【测量完成】检测到测量完成标志, session: {}", sessionId);
                     state.measurementStarted.set(false);
-                    state.measurementCompleted.set(true);
                     break;
                 }
 
@@ -648,7 +639,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 if (dataList.size() >= expectedPoints) {
                     log.info("【数据点达到】达到期望数据点数: {}, session: {}", expectedPoints, sessionId);
                     state.measurementStarted.set(false);
-                    state.measurementCompleted.set(true);
                     break;
                 }
 
@@ -656,7 +646,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 if (consecutiveEndWavelengthCount >= MAX_CONSECUTIVE_END_WAVELENGTH) {
                     log.info("【结束波长完成】通过结束波长检测完成数据收集, session: {}", sessionId);
                     state.measurementStarted.set(false);
-                    state.measurementCompleted.set(true);
                     break;
                 }
 
@@ -770,18 +759,23 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         String sessionId = session.getId();
         SessionState state = sessionStates.get(sessionId);
 
+        if (state.cleanupInProgress.getAndSet(true)) {
+            log.info("【清理资源】清理正在进行中，跳过重复清理, session: {}", sessionId);
+            return;
+        }
+        while (Constants.sendMeasureThread!=null&&Constants.sendMeasureThread.isAlive()){
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         if (state == null) {
             log.info("【清理资源】会话状态为空，无需清理, session: {}", sessionId);
             // 即使状态为空，也要清理其他资源
             cleanupRemainingResources(sessionId);
             return;
         }
-
-        if (state.cleanupInProgress.getAndSet(true)) {
-            log.info("【清理资源】清理正在进行中，跳过重复清理, session: {}", sessionId);
-            return;
-        }
-
         try {
             log.info("【开始清理资源】session: {}", sessionId);
 
@@ -974,6 +968,11 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 发送消息,并关闭连接
+     * @param session
+     * @param message
+     */
     private void sendMessageSynchronized(WebSocketSession session, String message) {
         SessionState state = sessionStates.get(session.getId());
         if (state != null && state.sessionClosing.get()) {
@@ -1001,6 +1000,11 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 发送消息
+     * @param session
+     * @param message
+     */
     private void sendMessageSafe(WebSocketSession session, String message) {
         sendMessageSynchronized(session, message);
     }
