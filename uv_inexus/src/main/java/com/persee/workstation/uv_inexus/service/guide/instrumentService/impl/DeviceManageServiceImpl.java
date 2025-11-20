@@ -658,7 +658,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             //波长校正
             Command command = new Command(DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()), new Object[]{});
             try {
-                devMessageUtil.deviceCalibration(command, ip);
+                R<String> stringR = devMessageUtil.deviceCalibration(command, ip);
+                if (!stringR.getSuccess()) {
+                    return R.fail("波长校正失败，请检查仪器!");
+                }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }finally {

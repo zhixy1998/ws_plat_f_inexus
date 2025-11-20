@@ -248,6 +248,64 @@ public class MessageUtil {
 
     }
 
+    public List<byte[]> calibrationSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
+        try {
+
+            List<byte[]> responses = new ArrayList<>();
+
+            // 发送命令
+            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
+                    InetAddress.getByName(sendIp), remotePort);
+            currentSocket.send(packet);
+
+            System.out.print("发送指令 [" + cmdId + "] 报文：");
+            for (byte b : sendBytes) System.out.printf("%02X ", b);
+            System.out.println();
+
+
+
+            int timeoutMs = 18000 ;
+            currentSocket.setSoTimeout(timeoutMs);
+
+            long lastReceiveTime = System.currentTimeMillis();
+
+            int count = 0;
+
+            while (Constants.isRunning) {
+                try {
+                    DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                    currentSocket.receive(receivePacket);
+                    count++;
+
+                    byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+                    responses.add(reply);
+
+                    System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+
+                    System.out.print("十六进制回应：");
+                    for (byte b : reply) System.out.printf("%02X ", b);
+                    System.out.println();
+
+
+                    lastReceiveTime = System.currentTimeMillis();
+                    if(cmdId.equals("CorrectWl") && (reply[2] & 0xFF) == 0 && (reply[3] & 0xFF) == 15){
+                        System.out.println("CorrectWl 命令结束");
+                        break;
+                    }
+                } catch (SocketTimeoutException e) {
+                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
+                }
+            }
+
+
+            return responses;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+
+    }
+
     /**
      * 仪器监测使用的发送和接收
      */

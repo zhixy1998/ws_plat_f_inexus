@@ -82,6 +82,7 @@ public class ResponseDeal {
             case "DisConnect":
             case "DisConnectIAP":
             case "InitSlit1Motor":
+            case "CorrectWl":
                 return parseBooleanFrom5thByte(responses);
             case "SetCellPos":
                 return parseSetCellPos(responses, sendBytes);

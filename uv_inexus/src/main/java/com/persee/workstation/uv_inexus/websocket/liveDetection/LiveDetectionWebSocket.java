@@ -178,6 +178,16 @@ public class LiveDetectionWebSocket {
                          }
                     }
 
+                    DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                    if (!info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                        log.info("设备未初始化成功: {}", deviceSerialNumber);
+                        return;
+                    }
+                    if (!info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+                        log.info("设备未连接: {}", deviceSerialNumber);
+                        return;
+                    }
+
                     R<DatagramSocket> news = messageUtil.getSocket();
                     if (!news.getSuccess()) {
                         log.info("绑定 socket 失败");

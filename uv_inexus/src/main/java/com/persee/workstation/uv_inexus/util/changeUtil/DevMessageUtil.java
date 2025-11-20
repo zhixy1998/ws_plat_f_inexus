@@ -391,7 +391,7 @@ public class DevMessageUtil {
             String cmdId = command.getCmdId();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.calibrationSendAndReceive(socket, deviceIp, cmdId, bytes);
             if (responses.size() < 2) {
                 return R.fail("校正失败");
             }
