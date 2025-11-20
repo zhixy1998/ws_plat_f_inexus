@@ -2098,7 +2098,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         boolean allTested = true;
         for (FTaskSpecimen specimen : taskSpecimen) {
             if(specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                if (specimen.getIsTested().equals(noTested)) {
+                if (specimen.getIsTested().equals(noTested) && specimen.getDeleteType().equals(createType)) {
                     allTested = false;
                     break;
                 }
@@ -3291,7 +3291,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 } catch (Exception ignored) {
                 }
                 if (r != null) {
-                    if (!r.isNaN()) {
+                    if (!r.isNaN() && !r.isInfinite()) {
                         resultVo.setR(DataCountUtil.addZero(r, digit));
                     } else {
                         resultVo.setR(String.valueOf(r));
@@ -3307,7 +3307,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 } catch (Exception ignored) {
                 }
                 if (r2 != null) {
-                    if (!r2.isNaN()) {
+                    if (!r2.isNaN() && !r2.isInfinite()) {
                         resultVo.setR2(DataCountUtil.addZero(r2, digit));
                     } else {
                         resultVo.setR2(String.valueOf(r2));
@@ -3509,7 +3509,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             } catch (Exception ignored) {
             }
             if (r != null) {
-                if (!r.isNaN()) {
+                if (!r.isNaN() && !r.isInfinite()) {
                     vo.setR(DataCountUtil.addZero(r, dataDigit));
                 } else {
                     vo.setR(String.valueOf(r));
@@ -3524,7 +3524,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
 
             if (r2 != null) {
-                if (!r2.isNaN()) {
+                if (!r2.isNaN() && !r2.isInfinite()) {
                     vo.setR2(DataCountUtil.addZero(r2, dataDigit));
                 } else {
                     vo.setR2(String.valueOf(r2));

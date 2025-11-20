@@ -248,6 +248,16 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 return;
             }
 
+            for (TaskSpecimen speciman : taskSpecimen) {
+
+                if (speciman.getSpecimenKey().equals(sampleId)) {
+                    speciman.setIsTested(right);
+                }
+            }
+            task = tMeasureTaskService.getById(task.getId());
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            tMeasureTaskService.updateById(task);
+
             //后续添加仪器状态检测
 
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
