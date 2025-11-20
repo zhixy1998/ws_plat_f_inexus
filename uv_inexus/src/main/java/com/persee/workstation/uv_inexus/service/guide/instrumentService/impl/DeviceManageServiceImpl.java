@@ -186,6 +186,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.info(r.getMessage());
             return R.fail(r.getMessage());
         }
+        infoPO = infoService.getInfo(initDTO.getDeviceSerialNumber());
 
         LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DeviceModelInfoPO::getDevModel, infoPO.getDeviceModel());
@@ -207,15 +208,17 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         infoService.saveOrUpdateInfo(infoPO);
 
 
-        new Thread(() -> {
+        Thread initThread = new Thread(() -> {
             try {
+                DeviceInfoPO finalInfoPO = infoService.getInfo(initDTO.getDeviceSerialNumber());
                 stopInit.put(initDTO.getDeviceSerialNumber(), false);
-                newStartInit(infoPO, attachmentInfo.getAttachmentKind());
+                newStartInit(finalInfoPO, attachmentInfo.getAttachmentKind());
             } catch (Exception e) {
                 DetectionConstants.isDeviceIdle = true;
                 throw new RuntimeException(e);
             }
-        }).start();
+        });
+        initThread.start();
 
         return R.ok(true);
     }
