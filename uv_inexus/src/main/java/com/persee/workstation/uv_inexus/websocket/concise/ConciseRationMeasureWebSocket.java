@@ -463,6 +463,20 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         specimen.setIsTested(right);
                     }
                 }
+
+
+                //样品测完，移动样品池到1号
+                if (isAutoChangePool) {
+                    String ip = infoService.getIp(deviceSerialNumber);
+                    R<String> stringR = devMessageUtil.setCurrentCellPos(1, ip);
+                    if (stringR.getSuccess()) {
+                        fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, 1, updateBy);
+                        JSONObject object = new JSONObject();
+                        object.put("currentPoolNum", 1);
+                        session.sendMessage(new TextMessage(object.toJSONString()));
+                    }
+                }
+
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
                 tMeasureTaskService.updateById(task);
                 task = tMeasureTaskService.getById(taskId);
@@ -776,6 +790,18 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 //                        rationService.saveAnalyzeData(saveDataInfo);
                     }
                     specimen.setIsTested(right);
+                }
+
+                //样品测完，移动样品池到1号
+                if (isAutoChangePool) {
+                    String ip = infoService.getIp(deviceSerialNumber);
+                    R<String> stringR = devMessageUtil.setCurrentCellPos(1, ip);
+                    if (stringR.getSuccess()) {
+                        fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, 1, updateBy);
+                        JSONObject object = new JSONObject();
+                        object.put("currentPoolNum", 1);
+                        session.sendMessage(new TextMessage(object.toJSONString()));
+                    }
                 }
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
                 tMeasureTaskService.updateById(task);

@@ -40,7 +40,7 @@ public class MessageUtil {
         String localIp = getEthernetIPv4();
         if (localIp == null) {
             System.out.println("获取当前ip有问题");
-            return R.fail("未找到可用的IP");
+            return R.fail("请检查网线连接！");
         }
 
         try {
@@ -57,6 +57,7 @@ public class MessageUtil {
 
         } catch (Exception e) {
             System.out.println(e.getMessage());
+            return R.fail("请检查网线连接！");
         }
         return R.ok(socket);
     }

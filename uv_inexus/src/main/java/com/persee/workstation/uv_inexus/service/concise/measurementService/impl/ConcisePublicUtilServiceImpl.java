@@ -158,115 +158,98 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
         return R.ok(true);
     }
 
-
     @Override
     public R<Boolean> checkApproximateRange(FRoundingVO vo) {
         List<FRoundingParamVO> params = vo.getRoundingParams();
 
-        int size =  params.size();
-        double min = Double.MAX_VALUE;
-        double max = Double.MIN_VALUE;
+        if (params == null || params.isEmpty()) {
+            return R.fail(YamlMessageSource.getMessageStatic("00100023"));
+        }
 
         // 1. 检查每个区间内部的合法性
         for (FRoundingParamVO param : params) {
             Double lowerLimit = param.getLowerLimit();
             Double upperLimit = param.getUpperLimit();
 
-            if (lowerLimit == null) {
-                min = Double.MIN_VALUE;
+            // 检查无穷边界的包含性设置
+            if (lowerLimit == null && Boolean.TRUE.equals(param.getIsLowerLimitIncluded())) {
+                return R.fail(YamlMessageSource.getMessageStatic("00100026")); // 下限为负无穷时不能包含端点
             }
-            if (upperLimit == null) {
-                max = Double.MAX_VALUE;
+            if (upperLimit == null && Boolean.TRUE.equals(param.getIsUpperLimitIncluded())) {
+                return R.fail(YamlMessageSource.getMessageStatic("00100026")); // 上限为正无穷时不能包含端点
             }
 
-            if (lowerLimit == null && upperLimit == null && size != 1) {
-                //区间重叠，请检查！
+            if (lowerLimit == null && upperLimit == null && params.size() != 1) {
                 return R.fail(YamlMessageSource.getMessageStatic("00100023"));
             }
-            // 只有当下限和上限都不为空时才进行检查
+
             if (lowerLimit != null && upperLimit != null) {
-                // 下限值不能大于上限值
                 if (lowerLimit > upperLimit) {
                     return R.fail(YamlMessageSource.getMessageStatic("00100020"));
                 }
-                // 如果下限值等于上限值且为有限值，必须同时包含两端点
                 if (lowerLimit.equals(upperLimit)) {
                     if (!param.getIsLowerLimitIncluded() || !param.getIsUpperLimitIncluded()) {
                         return R.fail(YamlMessageSource.getMessageStatic("00100021"));
                     }
                 }
             }
-            if (lowerLimit != null && lowerLimit < min) {
-                min = lowerLimit;
-            }
-            if (upperLimit != null && upperLimit > max) {
-                max = upperLimit;
-            }
         }
 
-        if (min != Double.MIN_VALUE && max != Double.MAX_VALUE) {
-            //修约范围未覆盖所有区间！
-            return R.fail(YamlMessageSource.getMessageStatic("00100024"));
-        }
+        // 2. 综合检查区间重叠和覆盖
+        return validateIntervals(params);
+    }
 
-        // 2. 检查区间之间是否重叠
-        // 过滤掉无效区间（上下限都为null）
+    private R<Boolean> validateIntervals(List<FRoundingParamVO> params) {
         List<FRoundingParamVO> validParams = params.stream()
                 .filter(p -> p.getLowerLimit() != null || p.getUpperLimit() != null)
-                .collect(Collectors.toList());
-
-        // 按下限值排序，null值（负无穷）排在最前
-        List<FRoundingParamVO> sortedParams = validParams.stream()
                 .sorted((p1, p2) -> {
-                    Double lower1 = p1.getLowerLimit();
-                    Double lower2 = p2.getLowerLimit();
-
-                    // null值处理（视为负无穷）
-                    if (lower1 == null) return -1;
-                    if (lower2 == null) return 1;
-
-                    return lower1.compareTo(lower2);
+                    if (p1.getLowerLimit() == null) return -1;
+                    if (p2.getLowerLimit() == null) return 1;
+                    return p1.getLowerLimit().compareTo(p2.getLowerLimit());
                 })
                 .collect(Collectors.toList());
 
-        // 检查相邻区间是否有重叠
-        for (int i = 0; i < sortedParams.size() - 1; i++) {
-            if (isOverlapping(sortedParams.get(i), sortedParams.get(i + 1))) {
-                //区间重叠，请检查！
-                return R.fail(YamlMessageSource.getMessageStatic("00100023"));
+        if (validParams.isEmpty()) {
+            return params.size() == 1 &&
+                    params.get(0).getLowerLimit() == null &&
+                    params.get(0).getUpperLimit() == null ?
+                    R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00100024"));
+        }
+
+        // 检查是否完整覆盖
+        if (validParams.get(0).getLowerLimit() != null ||
+                validParams.get(validParams.size() - 1).getUpperLimit() != null) {
+            return R.fail(YamlMessageSource.getMessageStatic("00100024"));
+        }
+
+        // 检查重叠和连续性
+        for (int i = 0; i < validParams.size() - 1; i++) {
+            FRoundingParamVO current = validParams.get(i);
+            FRoundingParamVO next = validParams.get(i + 1);
+
+            Double upper1 = current.getUpperLimit();
+            Double lower2 = next.getLowerLimit();
+            boolean includeUpper1 = Boolean.TRUE.equals(current.getIsUpperLimitIncluded());
+            boolean includeLower2 = Boolean.TRUE.equals(next.getIsLowerLimitIncluded());
+
+            if (upper1 != null && lower2 != null) {
+                int compare = upper1.compareTo(lower2);
+                if (compare > 0) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00100023")); // 重叠
+                } else if (compare < 0) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00100024")); // 不连续(未覆盖)
+                } else {
+                    // 边界相等时，必须恰好一个包含端点
+                    if (includeUpper1 && includeLower2) {
+                        return R.fail(YamlMessageSource.getMessageStatic("00100023")); // 重叠
+                    } else if (!includeUpper1 && !includeLower2) {
+                        return R.fail(YamlMessageSource.getMessageStatic("00100024")); // 不连续(未覆盖)
+                    }
+                    // 恰好一个包含端点是正确的
+                }
             }
         }
 
         return R.ok(true);
     }
-
-    /**
-     * 判断两个区间是否重叠
-     *
-     * @param interval1 第一个区间
-     * @param interval2 第二个区间
-     * @return 如果重叠返回true，否则返回false
-     */
-    private boolean isOverlapping(FRoundingParamVO interval1, FRoundingParamVO interval2) {
-
-        Double upper1 = interval1.getUpperLimit();
-        boolean includeUpper1 = Boolean.TRUE.equals(interval1.getIsUpperLimitIncluded());
-
-        Double lower2 = interval2.getLowerLimit();
-        boolean includeLower2 = Boolean.TRUE.equals(interval2.getIsLowerLimitIncluded());
-
-        // 处理null边界值（null表示无穷）
-        if (upper1 == null || lower2 == null) {
-            return true;
-        }
-
-        if (upper1 > lower2) {
-            return true;
-        } else if (upper1.equals(lower2)) {
-            return includeUpper1 && includeLower2;
-        }
-
-        return false;
-    }
-
 }
