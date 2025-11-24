@@ -1931,6 +1931,11 @@ public class RationServiceConciseImpl implements RationConciseService {
                 ans.remove(an);
                 break;
             }
+
+            if (an.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity()) && StringUtils.hasText(parameter.getUnit())) {
+                an.setName(an.getName() + "(" + parameter.getUnit() + ")");
+                break;
+            }
         }
 
         if (StringUtils.hasText(deviceSerialNumber)) {
