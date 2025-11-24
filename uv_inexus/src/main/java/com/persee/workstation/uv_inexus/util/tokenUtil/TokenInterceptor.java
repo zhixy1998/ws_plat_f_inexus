@@ -15,6 +15,7 @@ package com.persee.workstation.uv_inexus.util.tokenUtil;
 
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -33,12 +34,25 @@ public class TokenInterceptor implements HandlerInterceptor{
 
         response.setCharacterEncoding("utf-8");
 
-        String token = request.getHeader("Token");
-//        System.out.println("验证token");
-        if (token != null) {
-            boolean result = JWTUtils.verify(token);//验证token
+        // String token = request.getHeader("Token");
+        // if (token != null) {
+        //     boolean result = JWTUtils.verify(token);
+        //     if (result) {
+        //         return true;
+        //     }
+        // }
+
+        String authHeader = request.getHeader("Authorization");
+        String token = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
+        if (token == null || token.trim().isEmpty()) {
+            token = request.getHeader("Token");
+        }
+        if (token != null && !token.trim().isEmpty()) {
+            boolean result = JWTUtils.verify(token);
             if (result) {
-//                System.out.println("token验证通过");
                 return true;
             }
         }
@@ -57,5 +71,10 @@ public class TokenInterceptor implements HandlerInterceptor{
             return false;
         }
         return false;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        UserContext.clear();
     }
 }

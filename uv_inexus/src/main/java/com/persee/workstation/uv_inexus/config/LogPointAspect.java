@@ -14,6 +14,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
+import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
+import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 
 @Aspect
 @Component
@@ -107,45 +109,42 @@ public class LogPointAspect {
      * @return 当前用户名或"anonymous"
      */
     private String getCurrentUserSafely() {
-        try {
-            // 尝试从常见的安全框架中获取用户信息
-            // 1. 尝试Spring Security
-            Class<?> securityContextClass = Class.forName("org.springframework.security.core.context.SecurityContextHolder");
-            Object context = securityContextClass.getMethod("getContext").invoke(null);
-            if (context != null) {
-                Object authentication = context.getClass().getMethod("getAuthentication").invoke(context);
-                if (authentication != null) {
-                    Object principal = authentication.getClass().getMethod("getPrincipal").invoke(authentication);
-                    if (principal != null) {
-                        return authentication.getClass().getMethod("getName").invoke(authentication).toString();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            /*存在异常的话。。。那就用默认值*/
+        // 旧逻辑（已弃用）：通过反射读取Spring Security或从Request/Session取用户
+        // try {
+        //     Class<?> securityContextClass = Class.forName("org.springframework.security.core.context.SecurityContextHolder");
+        //     Object context = securityContextClass.getMethod("getContext").invoke(null);
+        //     if (context != null) {
+        //         Object authentication = context.getClass().getMethod("getAuthentication").invoke(context);
+        //         if (authentication != null) {
+        //             Object principal = authentication.getClass().getMethod("getPrincipal").invoke(authentication);
+        //             if (principal != null) {
+        //                 return authentication.getClass().getMethod("getName").invoke(authentication).toString();
+        //             }
+        //         }
+        //     }
+        // } catch (Exception e) {
+        // }
+        // try {
+        //     ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        //     if (attributes != null) {
+        //         HttpServletRequest request = attributes.getRequest();
+        //         Object userAttr = request.getAttribute("user");
+        //         if (userAttr != null) {
+        //             return userAttr.toString();
+        //         }
+        //         Object userSession = request.getSession().getAttribute("user");
+        //         if (userSession != null) {
+        //             return userSession.toString();
+        //         }
+        //     }
+        // } catch (Exception e) {
+        // }
+
+        // 新逻辑：统一从 UserContext 读取，由全局拦截器在请求入口写入
+        LoginUserInfoVO current = UserContext.getCurrentUser();
+        if (current != null && current.getUsername() != null && !current.getUsername().isEmpty()) {
+            return current.getUsername();
         }
-        
-        try {
-            // 从Request中获取用户信息
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes != null) {
-                HttpServletRequest request = attributes.getRequest();
-                // 尝试从常见的请求属性中获取用户信息
-                Object userAttr = request.getAttribute("user");
-                if (userAttr != null) {
-                    return userAttr.toString();
-                }
-                
-                // 尝试从Session中获取
-                Object userSession = request.getSession().getAttribute("user");
-                if (userSession != null) {
-                    return userSession.toString();
-                }
-            }
-        } catch (Exception e) {
-            // 如果也没有获取到的话，就使用匿名默认值
-        }
-        //默认值给的是匿名
         return "anonymous";
     }
     

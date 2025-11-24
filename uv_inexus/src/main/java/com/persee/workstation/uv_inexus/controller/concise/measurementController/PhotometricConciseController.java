@@ -12,6 +12,8 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
+import com.persee.workstation.uv_inexus.config.LogPoint;
+import com.persee.workstation.uv_inexus.config.logging.SysLog;
 import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
@@ -53,6 +55,7 @@ public class PhotometricConciseController {
 
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")
+    @SysLog(action = "查询方法参数",module = "光度测量",recordResult = true,recordParams = true)
     public Result<FMethodParam> queryMethodParam(@RequestParam String methodId) {
         return fPhotometricService.queryMethodParam(methodId);
     }
@@ -60,6 +63,7 @@ public class PhotometricConciseController {
 
     @PostMapping("newDraft")
     @ApiOperation("新建草稿")
+    @SysLog(action = "新建草稿",module = "光度测量",recordResult = true,recordParams = true)
     public Result<FMeasurementCurrentInfoVO> newDraft(@RequestBody SaveDataDto dto) {
         return fPhotometricService.newDraft(dto);
     }
@@ -78,6 +82,7 @@ public class PhotometricConciseController {
 
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
+    @SysLog(action = "获取样本列表",module = "光度测量",recordResult = true,recordParams = true)
     public Result getSampleList(@RequestParam String taskId) {
         return fPhotometricService.newQuerySampleInfo(taskId);
     }
