@@ -2256,7 +2256,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         boolean removed = tMeasureMethodService.removeById(methodId);
         if (removed){
             //方法已删除
-            return Result.ok("00301014");
+            return Result.ok(YamlMessageSource.getMessageStatic("00301014"));
         }else {
             //方法删除失败
             return Result.fail(YamlMessageSource.getMessageStatic("00301011"));
