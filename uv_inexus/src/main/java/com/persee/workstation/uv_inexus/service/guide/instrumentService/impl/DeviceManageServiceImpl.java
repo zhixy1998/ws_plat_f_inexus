@@ -271,22 +271,24 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         }
 
+
         infoPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
         infoService.saveOrUpdateInfo(infoPO);
+        synchronized (infoPO) {
+            Command mode = new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()});
+            Boolean b = devMessageUtil.wavelengthLocate(mode, ip);
 
-        Command mode = new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()});
-        devMessageUtil.wavelengthLocate(mode, ip);
+            Double step = formulaUtil.calculateStep(660.0, infoPO.getDeviceSerialNumber());
+            Command command = new Command("SetWl", new Object[]{step});
+            Boolean locate = devMessageUtil.wavelengthLocate(command, ip);
 
-        Double step = formulaUtil.calculateStep(660.0, infoPO.getDeviceSerialNumber());
-        Command command = new Command("SetWl", new Object[]{step});
-        devMessageUtil.wavelengthLocate(command, ip);
+            R<String> stringR = devMessageUtil.setDeviceInitStatus(ip, 1);
 
-        devMessageUtil.setDeviceInitStatus(ip, 1);
+            infoService.releaseDevice(infoPO.getDeviceSerialNumber());
 
-        infoService.releaseDevice(infoPO.getDeviceSerialNumber());
-
-        Constants.devConnectInfo.put(infoPO.getDeviceSerialNumber(), true);
-        liveDetectionWebSocket.startMeasure(infoPO.getDeviceSerialNumber());
+            Constants.devConnectInfo.put(infoPO.getDeviceSerialNumber(), true);
+            liveDetectionWebSocket.startMeasure(infoPO.getDeviceSerialNumber());
+        }
 
     }
 

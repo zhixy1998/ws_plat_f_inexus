@@ -892,17 +892,17 @@ public class DevMessageUtil {
     /**
      * 定位波长
      */
-    public void wavelengthLocate(Command command, String deviceIp) {
+    public Boolean wavelengthLocate(Command command, String deviceIp) {
         R<DatagramSocket> ans = messageUtil.getSocket();
         if (!ans.getSuccess()) {
             log.info("绑定socket失败");
-            return;
+            return  false;
         }
         DatagramSocket socket = ans.getData();
-        if(flag == "T600") {
+        if(flag.equals("T600")) {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
-                return;
+                return false;
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
@@ -911,13 +911,13 @@ public class DevMessageUtil {
             List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
-                return;
+                return false;
             }
         }
-        else if(flag == "T800"){
+        else if(flag.equals("T800")){
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
-                return;
+                return false;
             }
             String cmdId = command.getCmdId();
 
@@ -931,9 +931,10 @@ public class DevMessageUtil {
             String result = ResponseParser.Result;
 
             if (result.equals("false")) {
-                return;
+                return false;
             }
         }
+        return true;
     }
 
     /**

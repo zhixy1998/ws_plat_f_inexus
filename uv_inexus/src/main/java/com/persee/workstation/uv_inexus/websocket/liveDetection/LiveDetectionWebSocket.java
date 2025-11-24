@@ -404,8 +404,18 @@ public class LiveDetectionWebSocket {
                                 Constants.devConnectInfo.get(deviceSerialNumber)) {
                             try {
                                 Thread.sleep(1000);
-                                if (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
-                                    return;
+                                int timeout = 0;
+                                while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
+
+                                    if (timeout == 0) {
+                                        DetectionConstants.isDeviceIdle = true;
+                                    }
+                                    Thread.sleep(1000);
+                                    timeout++;
+                                    if (!DetectionConstants.isDeviceIdle) {
+                                        log.info("仪器被重新占用，等待下次判断");
+                                        return;
+                                    }
                                 }
 
 
@@ -518,7 +528,7 @@ public class LiveDetectionWebSocket {
 
         log.info("WebSocket{}订阅: {}", sessionId, destination);
 
-        if (measureTopic.equals(destination)) {
+        if (measureTopic.equals(destination) || deviceStatusTopic.equals(destination)) {
             // 使用 Set 避免同一会话重复订阅同一主题
             sessionSubscriptions.computeIfAbsent(sessionId, k -> {
                 activeSubscribers.incrementAndGet();

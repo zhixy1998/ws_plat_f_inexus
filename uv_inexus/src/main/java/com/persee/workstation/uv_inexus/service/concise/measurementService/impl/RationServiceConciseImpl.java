@@ -155,6 +155,9 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Value("文件数据")
     String newTaskName;
 
+    @Value("默认方法")
+    String defaultMethodName;
+
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
         if (!StringUtils.hasText(methodDto.getMethodId())){
@@ -751,12 +754,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (!StringUtils.hasText(methodId)) {
             FMeasureMethod method = new FMeasureMethod();
             method.setMeasurementParamInfo(JSON.toJSONString(methodDTO.getNewMethodParam()));
-            if (StringUtils.hasText(methodDTO.getMethodName())) {
-                String[] split = methodDTO.getMethodName().split("-");
-                method.setMethodName(split[0] + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-            } else {
-                method.setMethodName(newTaskName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-            }
+
+            method.setMethodName(defaultMethodName + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+
             method.setMeasurementType(methodDTO.getMeasureType());
             method.setProjectItemKey(defaultProjectId);
             method.setMethodCreator(methodDTO.getUpdateBy());
@@ -1959,9 +1959,15 @@ public class RationServiceConciseImpl implements RationConciseService {
             String fitConcentrationName = SampleTableEnum.FIT_CONCENTRATION.getName();
             String fitConcentrationIdentity = SampleTableEnum.FIT_CONCENTRATION.getIdentity();
 
+            if (StringUtils.hasText(parameter.getUnit())) {
+                fitConcentrationName = fitConcentrationName + "(" + parameter.getUnit() + ")";
+            }
+
             FHeadVO fitHead = new FHeadVO(fitConcentrationName, SampleTableEnum.FIT_CONCENTRATION.getIdentity(), TableHeadILocateEnums.analyze.getIdentity(), fitConcentrationName);
             if (analyzeMap.containsKey(fitConcentrationIdentity)) {
-                fitHead = analyzeMap.get(fitConcentrationIdentity);
+
+                FHeadVO fHeadVO = analyzeMap.get(fitConcentrationIdentity);
+                fitHead.setPrintTitle(fHeadVO.getPrintTitle());
             }
             ans.add(fitHead);
 
