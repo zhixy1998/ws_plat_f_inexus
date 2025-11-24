@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -26,6 +27,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.guide.softwareActivationDao.SoftwareActivationMapper;
 import com.persee.workstation.uv_inexus.po.guide.softwareActivation.SoftwareActivationPO;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.SoftwareActivationService;
+import org.springframework.scheduling.annotation.Scheduled;
 
 /**
  * 软件激活Service实现类（基于MyBatis-Plus的ServiceImpl）
@@ -82,5 +84,23 @@ public class SoftwareActivationServiceImpl extends ServiceImpl<SoftwareActivatio
 
         // 执行分页查询
         return baseMapper.selectPage(page, queryWrapper);
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void expireCheckRealtime() {
+        expireOverdueActivations();
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?")
+    public void expireCheckDaily() {
+        expireOverdueActivations();
+    }
+
+    private void expireOverdueActivations() {
+        UpdateWrapper<SoftwareActivationPO> wrapper = new UpdateWrapper<>();
+        wrapper.eq("activation_status", 1);
+        wrapper.apply("COALESCE(STR_TO_DATE(expiration_date,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(expiration_date,'%Y-%m-%d')) < NOW() ");
+        wrapper.set("activation_status", 0);
+        baseMapper.update(null, wrapper);
     }
 }

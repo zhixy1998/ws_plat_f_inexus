@@ -78,51 +78,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> im
         return Result.ok(pageView);
     }
 
-//    @Override
-//    @Transactional  // 事务保证：用户和关联关系同时成功/失败
-//    public Result<String>   addUser(UserSaveDTO saveDTO) {
-//        // 1. 检查用户名是否已存在
-//        QueryWrapper<SysUserPO> queryWrapper = new QueryWrapper<>();
-//        queryWrapper.eq("username", saveDTO.getUsername());
-//        if (baseMapper.selectCount(queryWrapper) > 0) {
-//            //用户名已存在
-//            return Result.fail(YamlMessageSource.getMessageStatic("00601001"));
-//        }
-//
-//        saveDTO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
-//        // 2. 校验小组是否存在
-//        String groupId = saveDTO.getGroupId();
-//        if (groupId == null || groupId.isEmpty()) {
-//            //小组ID不能为空
-//            return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
-//        }
-//        SysGroupPO groupPO = sysGroupMapper.selectById(groupId);
-//        if (groupPO == null) {
-//            //该小组不存在，请刷新重试！
-//            return Result.fail(YamlMessageSource.getMessageStatic("00601002"));
-//        }
-//
-//        // 3. 封装用户信息并保存
-//        SysUserPO userPO = new SysUserPO();
-//        BeanUtils.copyProperties(saveDTO, userPO);
-//        // 密码加密
-////        userPO.setPassword(MD5Util.md5(saveDTO.getPassword()));
-//        userPO.setCreateBy("admin");
-//        userPO.setCreated(LocalDateTime.now());
-//        baseMapper.insert(userPO);  // 保存用户，生成用户ID
-//
-////        // 4.检验所属小组是否为禁用
-////        if (groupPO.getStatus() != null && groupPO.getStatus() == 0) {
-////            userPO.setStatus(0);  // 设置用户状态为禁用
-////        }
-//        // 5. 添加用户-小组关联
-//        SysUserGroupPO userGroupPO = new SysUserGroupPO();
-//        userGroupPO.setUserId(userPO.getId());  // 绑定用户ID
-//        userGroupPO.setGroupId(groupId);  // 绑定小组ID
-//        sysUserGroupMapper.insert(userGroupPO);  // 保存关联关系
-//        //用户创建成功，已关联小组
-//        return Result.ok(YamlMessageSource.getMessageStatic("00601003"));
-//    }
+
 @Override
 @Transactional
 public Result<String> addUser(UserSaveDTO saveDTO) {

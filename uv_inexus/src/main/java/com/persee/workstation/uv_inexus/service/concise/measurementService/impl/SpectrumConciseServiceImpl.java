@@ -1732,7 +1732,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             String normX = normalizeNumberString(xStr);
             if (!rawXSet.contains(normX)) {
                 //"波长 " + xStr + " 不存在，请重新选择"
-                return Result.fail(YamlMessageSource.getMessageStatic("00104004 ",xStr ));
+                return Result.fail(YamlMessageSource.getMessageStatic("00104004",xStr ));
             }
         }
 
