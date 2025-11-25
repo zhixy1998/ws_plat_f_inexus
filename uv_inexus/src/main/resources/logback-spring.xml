@@ -7,30 +7,23 @@
         </encoder>
     </appender>
 
-    <!-- 埋点的日志文件输出配置 -->
-    <appender name="BURIED_POINT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/buried-points.log</file>
+    <!-- 加密审计日志文件输出配置 -->
+    <appender name="ENCRYPTED_AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/encrypted_audit.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <!--滚动策略：
-每天创建一个新的日志文件
-单个日志文件最大为 10MB
-最多保留 30 天的日志文件
-所有日志文件总大小不超过 1GB-->
-            <fileNamePattern>./logs/buried-points.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>./logs/encrypted_audit.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [operation:%X{operation}] [module:%X{module}]
-                [method:%X{method}] [user:%X{user}] [clientIP:%X{clientIP}] %logger{36} - %msg%n
-            </pattern>
+            <pattern>%msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- 埋点专用 logger 配置 -->
-    <logger name="com.persee.workstation.uv_inexus.config.LogPointAspect" level="INFO" additivity="false">
-        <appender-ref ref="BURIED_POINT_FILE"/>
+    <!-- 加密审计专用 logger 配置 -->
+    <logger name="ENCRYPTED_AUDIT_LOGGER" level="INFO" additivity="false">
+        <appender-ref ref="ENCRYPTED_AUDIT_FILE"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
 

@@ -204,8 +204,18 @@
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.70</version> <!-- JDK 8 兼容版本 -->
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.78</version> <!-- 支持Curve25519的版本 -->
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpg-jdk18on</artifactId>
+            <version>1.78</version> <!-- 支持Curve25519 PGP -->
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>1.78</version> <!-- 支持Curve25519 PKIX -->
         </dependency>
 
         <!-- <dependency>
