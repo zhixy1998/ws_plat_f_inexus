@@ -1444,7 +1444,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         for (String xStr : paramDto.getGaugePoints()) {
             int normX = normalizeNumberString(xStr);  // 获取传入的标记点整数部分
             if (!rawXSet.contains(normX)) {
-                return Result.fail(YamlMessageSource.getMessageStatic("00104017 ",xStr) );
+                return Result.fail(YamlMessageSource.getMessageStatic("00104017",xStr) );
             }
         }
 

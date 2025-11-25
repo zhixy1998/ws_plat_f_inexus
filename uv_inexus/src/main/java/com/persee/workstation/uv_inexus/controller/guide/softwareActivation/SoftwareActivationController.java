@@ -113,9 +113,9 @@ public class SoftwareActivationController {
             }
 
             // 7. 验证过期时间是否有效
-            // if (activationExpirationDate.isBefore(LocalDate.now())) {
-            //     return Result.fail(403, "激活码已过期（过期时间:" + expirationDateStr + "）");
-            // }
+             if (activationExpirationDate.isBefore(LocalDate.now())) {
+                 return Result.fail(201, YamlMessageSource.getMessageStatic("0070100D"));
+             }
 
             // 8. 更新设备激活状态
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

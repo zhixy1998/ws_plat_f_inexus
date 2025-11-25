@@ -55,6 +55,7 @@ public class PhotometricConciseController {
 
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")
+    @LogPoint(value = "查询方法参数",module = "光度测量",recordResult = true,recordParams = true)
     @SysLog(action = "查询方法参数",module = "光度测量",recordResult = true,recordParams = true)
     public Result<FMethodParam> queryMethodParam(@RequestParam String methodId) {
         return fPhotometricService.queryMethodParam(methodId);
