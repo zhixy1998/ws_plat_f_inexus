@@ -87,6 +87,9 @@ public class LiveDetectionWebSocket {
 
     private static volatile String serialNumber = null;
 
+    private static volatile Thread measureThread;
+
+
     // 用于跟踪活跃的订阅者数量
     private final AtomicInteger activeSubscribers = new AtomicInteger(0);
     // 添加会话和订阅映射
@@ -114,10 +117,18 @@ public class LiveDetectionWebSocket {
                     "设备未激活: " + deviceSerialNumber);
             return;
         }
+
         if (status && info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
             // 启动发送接收线程
             serialNumber = deviceSerialNumber;
-            this.startMeasureLoop(deviceSerialNumber);
+
+            if (measureThread == null || !measureThread.isAlive()) {
+                synchronized (this) {
+                    if (measureThread == null || !measureThread.isAlive()) {
+                        this.startMeasureLoop(deviceSerialNumber);
+                    }
+                }
+            }
             status = false;
         }
 
@@ -146,7 +157,7 @@ public class LiveDetectionWebSocket {
         }
         DetectionConstants.isDeviceIdle = true;
 
-        Thread measureThread = new Thread(() -> {
+        measureThread = new Thread(() -> {
             try {
                 // 获取 socket
                 // 循环发送

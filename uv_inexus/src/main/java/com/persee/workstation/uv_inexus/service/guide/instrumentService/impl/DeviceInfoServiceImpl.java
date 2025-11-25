@@ -139,6 +139,10 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
                 //未初始化
                 return R.fail(YamlMessageSource.getMessageStatic("00202004"));
             }
+
+            if (!info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+            }
         }
 
 

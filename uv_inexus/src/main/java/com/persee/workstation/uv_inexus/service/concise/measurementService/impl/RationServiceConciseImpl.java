@@ -570,8 +570,8 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
                 try {
                     Double.parseDouble(coeffStr);
-                    if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 3) {
-                        //"第" + (i + 1) + "个系数参数小数位数不能超过3位，当前值：" + coeffStr
+                    if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 10) {
+                        //"第" + (i + 1) + "个系数参数小数位数不能超过10位，当前值：" + coeffStr
                         return R.fail(YamlMessageSource.getMessageStatic("00102013",(i + 1),coeffStr));
                     }
                 } catch (NumberFormatException e) {
@@ -1110,10 +1110,16 @@ public class RationServiceConciseImpl implements RationConciseService {
                         case 4: fittingReceiveInfo.setK4(coeffValue); break;
                     }
                     if(!coefficientList.get(degree - i).equals("0")){
+                        double cuff = Double.parseDouble(coefficientList.get(degree - i));
                         if (i > 0) {
-                            formula.append(" + ");
+                            if (cuff < 0) {
+                                formula.append(" - ");
+                            } else {
+                                formula.append(" + ");
+                            }
                         }
-                        formula.append(coefficientList.get(degree - i));
+                        // 添加系数绝对值，如果是负数则取绝对值
+                        formula.append(Math.abs(cuff));
                         if (degree - i > 0) {
                             formula.append("*").append(variable);
                             if (degree - i > 1) {
@@ -3986,8 +3992,13 @@ public class RationServiceConciseImpl implements RationConciseService {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
                                 double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
-                                yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v1), digit));
-                                newList.add(yAbs);
+
+                                FRationCountDataInfo sumAbs = new FRationCountDataInfo();
+                                BeanUtils.copyProperties(yAbs, sumAbs);
+
+                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
+//                                yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v1), digit));
+                                newList.add(sumAbs);
                             }
                         }
                         emptyData.setCountData(newList);
@@ -4171,8 +4182,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
                                 double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
-                                yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
-                                newList.add(yAbs);
+                                FRationCountDataInfo sumAbs = new FRationCountDataInfo();
+                                BeanUtils.copyProperties(yAbs, sumAbs);
+
+                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
+//                                yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
+                                newList.add(sumAbs);
                             }
                         }
                         emptyData.setCountData(newList);
