@@ -20,12 +20,12 @@ public @interface SysLog {
     String module() default "";
 
     /**
-     * 是否记录参数摘要（可能进行脱敏与长度截断），默认不记录
+     * 是否记录参数摘要（可能进行脱敏与长度截断），默认记录
      */
-    boolean recordParams() default false;
+    boolean recordParams() default true;
 
     /**
-     * 是否记录返回结果摘要（可能进行脱敏与长度截断），默认不记录
+     * 是否记录返回结果摘要（可能进行脱敏与长度截断），默认记录
      */
-    boolean recordResult() default false;
+    boolean recordResult() default true;
 }

@@ -21,12 +21,12 @@ public @interface LogPoint {
     /**
      * 是否记录方法参数
      */
-    boolean recordParams() default false;
+    boolean recordParams() default true;
     
     /**
      * 是否记录返回结果
      */
-    boolean recordResult() default false;
+    boolean recordResult() default true;
     
     /**
      * 是否记录用户信息
