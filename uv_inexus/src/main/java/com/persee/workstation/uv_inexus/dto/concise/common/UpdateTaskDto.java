@@ -21,4 +21,6 @@ public class UpdateTaskDto {
     private String taskId;
     @ApiModelProperty("方法名称")
     private String taskName;
+    @ApiModelProperty("更新人")
+    private String updateBy;
 }

@@ -516,9 +516,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             //参数不能为空
             return Result.fail(YamlMessageSource.getMessageStatic("00306003"));
         }
+        SysUserPO po = userMapper.selectByUsername(updateTaskDto.getUpdateBy());
         LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<FMeasureTask>()
                 .eq(FMeasureTask::getTaskName, updateTaskDto.getTaskName())
-                .notIn(FMeasureTask::getId, updateTaskDto.getTaskId());
+                .notIn(FMeasureTask::getId, updateTaskDto.getTaskId())
+                .eq(FMeasureTask::getIsDelete, "0");
+        if (po != null) {
+                wrapper.eq(FMeasureTask::getUserId, po.getId());
+        }
         long count = fMeasureTaskService.count(wrapper);
         if (count > 0) {
             //任务名称重复
