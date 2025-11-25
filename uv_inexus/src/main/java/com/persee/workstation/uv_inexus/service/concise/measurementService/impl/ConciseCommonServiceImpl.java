@@ -518,7 +518,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<FMeasureTask>()
                 .eq(FMeasureTask::getTaskName, updateTaskDto.getTaskName())
-                .notIn(FMeasureTask::getId, updateTaskDto.getTaskId());
+                .notIn(FMeasureTask::getId, updateTaskDto.getTaskId())
+                .eq(FMeasureTask::getIsDelete, "0");
         long count = fMeasureTaskService.count(wrapper);
         if (count > 0) {
             //任务名称重复
