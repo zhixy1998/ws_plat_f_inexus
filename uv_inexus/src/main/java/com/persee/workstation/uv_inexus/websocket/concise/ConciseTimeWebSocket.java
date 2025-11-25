@@ -8,7 +8,6 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
@@ -42,334 +41,698 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Component
 public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(TimingWebSocket.class);
-    // 所有设备连接 <sessionId, session>
+    private static final Logger log = LoggerFactory.getLogger(ConciseTimeWebSocket.class);
+
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-    // 使用多线程调度器避免阻塞
+    private static final Map<String, TimeScanContext> contexts = new ConcurrentHashMap<>();
+
     private final ExecutorService executor = Executors.newCachedThreadPool();
-    private Future<?> future;
-    private String ip;
-    private String deviceSerialNumber;
-    private boolean occupancyStatus = false;
-    private Integer digit;
 
+    @Autowired private TimeSweepConciseService timeSweepConciseService;
+    @Autowired private FMeasureTaskService tMeasureTaskService;
+    @Autowired private FMeasureMethodService tMeasureMethodService;
+    @Autowired private DeviceInfoService deviceInfoService;
+    @Autowired private FMeasureDataService tMeasureDataService;
+    @Autowired private FMeasureAnalysisDataService tMeasureAnalysisDataService;
+    @Autowired private FMeasureAnalysisImageService tMeasureAnalysisImageService;
+    @Autowired private FSamplePoolConfigService fSamplePoolConfigService;
+    @Autowired private FMeasureSampleService tMeasureSampleService;
+    @Autowired private SystemAlgorithmConfService systemAlgorithmConfService;
+    @Autowired private DevMessageUtil devMessageUtil;
+    @Autowired private RestTemplate restTemplate;
+    @Autowired private FormulaUtil formulaUtil;
 
-    @Autowired
-    private TimeSweepConciseService timeSweepConciseService;
+    /**
+     * 时间扫描上下文
+     */
+    private static class TimeScanContext {
+        final AtomicBoolean running = new AtomicBoolean(true);
+        final AtomicBoolean dataSaved = new AtomicBoolean(false);
+        final CountDownLatch saveLatch = new CountDownLatch(1);
 
-    @Autowired
-    private FMeasureTaskService tMeasureTaskService;
+        ScheduledExecutorService scheduler;
+        ScheduledFuture<?> scheduledTask;
 
-    @Autowired
-    private FMeasureMethodService tMeasureMethodService;
+        final List<BigDecimal> xData = new ArrayList<>();
+        final List<BigDecimal> yData = new ArrayList<>();
+        final List<ChangeParam> originalData = new ArrayList<>();
 
-    @Autowired
-    private DeviceInfoService deviceInfoService;
+        String deviceSerialNumber;
+        String ip;
+        Integer digit;
+        String currentSampleId;
+        FMeasureTask task;
 
-    @Autowired
-    private FMeasureDataService tMeasureDataService;
+        void clearData() {
+            xData.clear();
+            yData.clear();
+            originalData.clear();
+        }
 
-    @Autowired
-    private FMeasureAnalysisDataService tMeasureAnalysisDataService;
+        void stopAllTasks() {
+            running.set(false);
 
-    @Autowired
-    private FMeasureAnalysisImageService tMeasureAnalysisImageService;
+            if (scheduledTask != null && !scheduledTask.isDone()) {
+                scheduledTask.cancel(true);
+            }
 
-    @Autowired
-    private FSamplePoolConfigService fSamplePoolConfigService;
+            if (scheduler != null && !scheduler.isShutdown()) {
+                scheduler.shutdownNow();
+            }
+        }
 
-    @Autowired
-    private FMeasureSampleService tMeasureSampleService;
-
-    @Autowired
-    private SystemAlgorithmConfService systemAlgorithmConfService;
-
-    @Autowired
-    private DevMessageUtil devMessageUtil;
-
-    @Autowired
-    private RestTemplate restTemplate;
-
-    // WebSocket 会话对象
-    private WebSocketSession currentSession;
-
-    @Autowired
-    private FormulaUtil formulaUtil;
-
-    // 当WebSocket连接建立成功时，会调用此方法
-    @Override
-    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        occupancyStatus = false;
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
-        session.getAttributes().put("scheduler", scheduler);
-        // 将耗时逻辑提交到线程池
-        future = executor.submit(() -> {
+        // 等待数据保存完成
+        boolean waitForDataSave(long timeout, TimeUnit unit) {
             try {
-                log.info("WebSocket连接已建立: " + session.getId());
-                sessions.put(session.getId(), session);
-                String query = Objects.requireNonNull(session.getUri()).getQuery();
-                String taskId = getQueryParam(query, "taskId");
-                deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
-                String updateBy = getQueryParam(query, "updateBy");
-                digit = Integer.parseInt(getQueryParam(query, "digit"));
-                if (taskId == null) {
-                    sendClose(session, "缺少 taskId 参数");
-                    return;
-                }
-                if (deviceSerialNumber == null) {
-                    sendClose(session, "缺少 deviceSerialNumber 参数");
-                    return;
-                }
-                if (updateBy == null) {
-                    sendClose(session, "缺少 updateBy 参数");
-                    return;
-                }
-                // 根据任务id查询任务数据
-                FMeasureTask task = tMeasureTaskService.getById(taskId);
-                if (task == null) {
-                    sendClose(session, "任务不存在");
-                    return;
-                }
+                return saveLatch.await(timeout, unit);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
 
-                //占用仪器
-                R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
-                if (!message.getSuccess()) {
-                    sendClose(session, message.getMessage());
-                    return;
-                }
-                occupancyStatus = true;
+        // 标记数据保存完成
+        void markDataSaved() {
+            dataSaved.set(true);
+            saveLatch.countDown();
+        }
+    }
 
-                /// 设置参数
-                Result result = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
-                if (result.getCode() != 200) {
-                    sendAndClose(session, "设置参数失败");
-                    return;
-                }
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) {
+        String sessionId = session.getId();
+        log.info("时间扫描连接建立: {}", sessionId);
 
-                // 根据方法id查询方法数据
-                FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-                if (method == null) {
-                    sendAndClose(session, "方法不存在");
-                    return;
-                }
-                // 将方法参数提取出来
-                FTimeSweepParamter timeSweepParameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+        sessions.put(sessionId, session);
 
+        TimeScanContext context = new TimeScanContext();
+        contexts.put(sessionId, context);
 
-                startTimedTask(session, timeSweepParameter, deviceSerialNumber, task, updateBy);
+        executor.execute(() -> {
+            try {
+                initializeAndStart(session, context);
             } catch (Exception e) {
-                log.error("连接建立逻辑异常", e);
-                sendAndClose(session, "执行异常: " + e.getMessage());
+                log.error("时间扫描初始化失败: {}", sessionId, e);
+                safeCleanup(sessionId, true);
             }
         });
     }
 
+    private void initializeAndStart(WebSocketSession session, TimeScanContext context) {
+        String sessionId = session.getId();
 
-    // 开始定时任务
-    private void startTimedTask(WebSocketSession session, FTimeSweepParamter param, String deviceSerialNumber, FMeasureTask task, String updateBy) {
-        ScheduledExecutorService scheduler = (ScheduledExecutorService) session.getAttributes().get("scheduler");
-        // 获取任务的校零参数
-        final ChangeParam baselineData = (task.getZeroParam() != null && !task.getZeroParam().equals(""))
-                ? JSON.parseObject(task.getZeroParam(), ChangeParam.class)
-                : null;
+        try {
+            String query = Objects.requireNonNull(session.getUri()).getQuery();
+            String taskId = getQueryParam(query, "taskId");
+            String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+            String updateBy = getQueryParam(query, "updateBy");
+            Integer digit = Integer.parseInt(getQueryParam(query, "digit"));
 
-        // 获取任务样品参数
-        List<FTaskSpecimen> specimenList = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-
-        List<FTaskSpecimen> newSampleData = new ArrayList<>();
-        for (FTaskSpecimen taskSpecimen : specimenList) {
-            if ("0".equals(taskSpecimen.getDeleteType()) && "0".equals(taskSpecimen.getIsTested())) {
-                newSampleData.add(taskSpecimen);
-            }
-        }
-
-
-        ip = deviceInfoService.getIp(deviceSerialNumber);
-        // 根据序列号查询对应的附件配置表信息
-        QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
-        wrapper.eq("device_serial_number", deviceSerialNumber);
-        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
-        if (configPO == null) {
-            sendAndClose(session, "没有找到对应的附件配置信息");
-        }
-        String maxLocation = "";
-        if (configPO.getIsAutoChangePool()) {
-            List<String> sampleIds = newSampleData.stream().map(obj -> obj.getSpecimenKey()).collect(Collectors.toCollection(ArrayList::new));
-            QueryWrapper<FMeasureSample> eq = new QueryWrapper<>();
-            eq.in("id", sampleIds);
-            List<FMeasureSample> list = tMeasureSampleService.list(eq);
-            maxLocation = list.stream().map(FMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
-        }
-
-
-        boolean poolStatus = false;
-        if (configPO.getIsAutoChangePool()) {
-            List<FSamplePoolStatus> poolStatuses = JSON.parseArray(configPO.getPoolInfo(), FSamplePoolStatus.class);
-            for (FSamplePoolStatus status : poolStatuses) {
-                if (status.getPoolStatus()) {
-                    poolStatus = true;
-                    break;
-                }
-            }
-        }
-
-
-        // 循环每个样品进行测量
-        for (FTaskSpecimen newSampleDatum : newSampleData) {
-            ///  设置样品池位置
-            FMeasureSample sample = tMeasureSampleService.getById(newSampleDatum.getSpecimenKey());
-            if (configPO.getIsAutoChangePool()) {
-                if (sample == null) {
-                    sendAndClose(session, "请先创建样品");
-                    return;
-                }
-
-                if (poolStatus) {
-                    R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
-                    if (!stringR.getSuccess()) {
-                        sendAndClose(session, "设置出错");
-                        return;
-                    }
-                    fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
-                    JSONObject object = new JSONObject();
-                    object.put("currentPoolNum", sample.getSampleLocation());
-                    try {
-                        session.sendMessage(new TextMessage(object.toJSONString()));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+            if (taskId == null || deviceSerialNumber == null || updateBy == null) {
+                safeCleanup(sessionId, true);
+                return;
             }
 
-            // 计算并执行定时任务
-            int totalTasks = Integer.parseInt(param.getTotalNumber());  // 执行的总次数
-            CountDownLatch latch = new CountDownLatch(totalTasks);  // 每个样品的定时任务数作为latch的计数
+            context.deviceSerialNumber = deviceSerialNumber;
+            context.digit = digit;
+            context.ip = deviceInfoService.getIp(deviceSerialNumber);
 
-            // 执行测量任务（现在使用固定速率调度）
-            executeTimedTaskForSample(session, param, baselineData, newSampleDatum, ip, task, deviceSerialNumber, scheduler, latch);
+            FMeasureTask task = tMeasureTaskService.getById(taskId);
+            if (task == null) {
+                safeCleanup(sessionId, true);
+                return;
+            }
+            context.task = task;
 
-            // 新增：等待当前样品的所有任务完成
-            try {
-                // 理论总时长 * 2 + 30 秒缓冲（足够应对 GC、网络抖动等）
-                long maxWaitMs = (long) (totalTasks * Double.parseDouble(param.getIntervalTime()) * 1000 * 2) + 30_000;
-                log.info("开始等待样品任务完成，最大等待时间: {}ms (≈{}秒)", maxWaitMs, maxWaitMs / 1000);
-
-                if (!latch.await(maxWaitMs, TimeUnit.MILLISECONDS)) {
-                    log.error("样品任务严重超时！已等待 {}ms，仍未完成。Specimen: {}", maxWaitMs, newSampleDatum.getSpecimenKey());
-                    // 这里可以选择继续强制关闭，或者直接返回让上层处理
-                } else {
-                    log.info("样品任务正常完成！Specimen: {}", newSampleDatum.getSpecimenKey());
-                }
-            } catch (InterruptedException e) {
-                log.error("等待样品任务被中断", e);
-                Thread.currentThread().interrupt();
+            R<Boolean> useResult = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+            if (!useResult.getSuccess()) {
+                safeCleanup(sessionId, true);
+                return;
             }
 
-            if (sample.getSampleLocation() == null || sample.getSampleLocation().equals("") || sample.getSampleLocation().equals(maxLocation) || !configPO.getIsAutoChangePool()) {
-                break;
+            Result paramResult = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
+            if (paramResult.getCode() != 200) {
+                safeCleanup(sessionId, true);
+                return;
             }
 
-            // 任务完成，清理资源后继续下一个样品
-            System.out.println("当前样品任务执行完毕，开始执行下一个样品...");
+            FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            if (method == null) {
+                safeCleanup(sessionId, true);
+                return;
+            }
+
+            FTimeSweepParamter timeParam = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+            startTimeMeasurement(session, context, timeParam, updateBy);
+
+        } catch (Exception e) {
+            log.error("时间扫描初始化异常: {}", sessionId, e);
+            safeCleanup(sessionId, true);
         }
-
-        // 关闭会话
-        close(session);
-
     }
 
-    // 执行单个样品的定时任务
-    private void executeTimedTaskForSample(WebSocketSession session,
-                                           FTimeSweepParamter param,
-                                           ChangeParam baselineData,
-                                           FTaskSpecimen newSampleDatum,
-                                           String ip,
-                                           FMeasureTask task,
-                                           String deviceSerialNumber,
-                                           ScheduledExecutorService scheduler,
-                                           CountDownLatch latch) {
+    private void startTimeMeasurement(WebSocketSession session, TimeScanContext context,
+                                      FTimeSweepParamter param, String updateBy) {
+        String sessionId = session.getId();
 
-        double interval = Double.parseDouble(param.getIntervalTime()); // 间隔时间（秒）
-        int totalTasks = Integer.parseInt(param.getTotalNumber());  // 执行的总次数
+        try {
+            List<FTaskSpecimen> specimenList = JSON.parseArray(context.task.getSampleKey(), FTaskSpecimen.class);
+            List<FTaskSpecimen> validSamples = new ArrayList<>();
 
-        // 记录数据
-        List<BigDecimal> x_data = new ArrayList<>();
-        List<BigDecimal> y_data = new ArrayList<>();
-        List<ChangeParam> originalData = new ArrayList<>();
+            for (FTaskSpecimen specimen : specimenList) {
+                if ("0".equals(specimen.getDeleteType()) && "0".equals(specimen.getIsTested())) {
+                    validSamples.add(specimen);
+                }
+            }
 
-        AtomicInteger counter = new AtomicInteger(0); // 跟踪执行计数
-        long startTime = System.currentTimeMillis(); // 仅用于日志实际时间
+            if (validSamples.isEmpty()) {
+                safeCleanup(sessionId, true);
+                return;
+            }
 
-        // 固定速率调度：初始延迟 0，然后每 interval 秒执行一次
-        ScheduledFuture<?> scheduledFuture = scheduler.scheduleAtFixedRate(() -> {
+            configureSamplePool(session, context, validSamples, updateBy);
+
+            for (FTaskSpecimen sample : validSamples) {
+                if (!context.running.get()) {
+                    break;
+                }
+
+                context.currentSampleId = sample.getSpecimenKey();
+                executeSampleMeasurement(session, context, param, sample);
+            }
+
+            // 正常完成 - 等待数据保存后再清理
+            if (context.running.get()) {
+                log.info("所有样品测量完成，等待数据保存...");
+                if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
+                    log.info("数据保存完成，开始清理会话");
+                    safeCleanup(sessionId, true);
+                } else {
+                    log.warn("数据保存超时，强制清理");
+                    safeCleanup(sessionId, true);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("时间测量执行异常: {}", sessionId, e);
+            safeCleanup(sessionId, true);
+        }
+    }
+
+    private void configureSamplePool(WebSocketSession session, TimeScanContext context,
+                                     List<FTaskSpecimen> samples, String updateBy) {
+        try {
+            QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+            wrapper.eq("device_serial_number", context.deviceSerialNumber);
+            FSamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
+
+            if (config == null || !config.getIsAutoChangePool()) {
+                return;
+            }
+
+            List<String> sampleIds = new ArrayList<>();
+            for (FTaskSpecimen sample : samples) {
+                sampleIds.add(sample.getSpecimenKey());
+            }
+
+            QueryWrapper<FMeasureSample> sampleWrapper = new QueryWrapper<>();
+            sampleWrapper.in("id", sampleIds);
+            List<FMeasureSample> sampleList = tMeasureSampleService.list(sampleWrapper);
+
+            if (sampleList.isEmpty()) {
+                return;
+            }
+
+            FMeasureSample firstSample = sampleList.get(0);
+            if (firstSample.getSampleLocation() != null && !firstSample.getSampleLocation().isEmpty()) {
+                R<String> setResult = devMessageUtil.setCurrentCellPos(Integer.valueOf(firstSample.getSampleLocation()), context.ip);
+                if (setResult.getSuccess()) {
+                    fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber,
+                            Integer.parseInt(firstSample.getSampleLocation()), updateBy);
+
+                    JSONObject poolMsg = new JSONObject();
+                    poolMsg.put("currentPoolNum", firstSample.getSampleLocation());
+                    sendMessageSafe(session, poolMsg.toJSONString());
+                }
+            }
+
+        } catch (Exception e) {
+            log.warn("配置样品池异常: {}", e.getMessage());
+        }
+    }
+
+    private void executeSampleMeasurement(WebSocketSession session, TimeScanContext context,
+                                          FTimeSweepParamter param, FTaskSpecimen sample) {
+        String sessionId = session.getId();
+
+        context.clearData();
+
+        double interval = Double.parseDouble(param.getIntervalTime());
+        int totalTasks = Integer.parseInt(param.getTotalNumber());
+
+        log.info("开始样品测量: {}, 间隔: {}s, 总数: {}", sample.getSpecimenKey(), interval, totalTasks);
+
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        context.scheduler = scheduler;
+
+        AtomicInteger counter = new AtomicInteger(0);
+        CountDownLatch completionLatch = new CountDownLatch(1);
+
+        final ChangeParam baselineData = (context.task.getZeroParam() != null && !context.task.getZeroParam().isEmpty())
+                ? JSON.parseObject(context.task.getZeroParam(), ChangeParam.class)
+                : null;
+
+        Constants.startTime = LocalDateTime.now();
+
+        context.scheduledTask = scheduler.scheduleAtFixedRate(() -> {
+            if (!context.running.get() || Thread.currentThread().isInterrupted()) {
+                scheduler.shutdown();
+                completionLatch.countDown();
+                return;
+            }
+
             int currentIndex = counter.getAndIncrement();
 
-            // 超出任务总数时也要 countDown，防止 latch 永远等不到 0
             if (currentIndex >= totalTasks) {
-                latch.countDown();
+                log.info("样品测量完成: {}, 总点数: {}", sample.getSpecimenKey(), totalTasks);
+                Constants.endTime = LocalDateTime.now();
+
+                // 同步保存数据
+                saveMeasurementDataSync(session, context, sample.getSpecimenKey());
+
+                scheduler.shutdown();
+                completionLatch.countDown();
                 return;
             }
 
             try {
-                // session 已关闭或线程被中断 → 直接结束当前任务
-                if (Thread.currentThread().isInterrupted() || !session.isOpen()) {
-                    latch.countDown();
-                    return;
-                }
-
-                // ------------------- 正常业务逻辑 -------------------
-                long expectedTime = startTime + (long) (currentIndex * interval * 1000L);
-                long actualTime = System.currentTimeMillis();
-                log.debug("任务 {}: 预期 {}ms, 实际 {}ms, 漂移 {}ms",
-                        currentIndex, expectedTime, actualTime, actualTime - expectedTime);
-
-                BigDecimal xValue = BigDecimal.valueOf(currentIndex * interval)
-                        .setScale(1, RoundingMode.DOWN);
-
-                Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
-                ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, ip);
-                if (changeParam == null) {
-                    sendAndClose(session, "扫描失败");
-                    return;
-                }
-
-                Double v = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
-                changeParam.setWl(String.valueOf(v));
-                originalData.add(changeParam);
-
-                calculateAndPushYValue(param, baselineData, changeParam, xValue,
-                        x_data, y_data, session, newSampleDatum.getSpecimenKey());
-
-                if (currentIndex == totalTasks - 1) {
-                    Constants.endTime = LocalDateTime.now();
-                    saveData(session, originalData, x_data, y_data,
-                            newSampleDatum.getSpecimenKey(), task, deviceSerialNumber);
-                }
-                // ----------------------------------------------------
+                executeSingleMeasurement(session, context, param, baselineData, currentIndex, interval);
             } catch (Exception e) {
-                log.error("定时任务执行异常，Index: {}", currentIndex, e);
-                sendAndClose(session, "任务执行错误");
-            } finally {
-                // 关键：每执行一次（无论成功/失败）都必须 countDown
-                latch.countDown();
+                log.error("单次测量异常, 索引: {}", currentIndex, e);
             }
+
         }, 0, (long) (interval * 1000), TimeUnit.MILLISECONDS);
+
+        try {
+            long timeout = (long) (totalTasks * interval * 1000) + 10000;
+            completionLatch.await(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            log.warn("等待测量完成时被中断: {}", sample.getSpecimenKey());
+            Thread.currentThread().interrupt();
+        } finally {
+            if (!scheduler.isShutdown()) {
+                scheduler.shutdownNow();
+            }
+        }
     }
 
+    private void executeSingleMeasurement(WebSocketSession session, TimeScanContext context,
+                                          FTimeSweepParamter param, ChangeParam baselineData,
+                                          int currentIndex, double interval) {
+        if (!context.running.get()) {
+            return;
+        }
+
+        BigDecimal xValue = BigDecimal.valueOf(currentIndex * interval).setScale(1, RoundingMode.DOWN);
+
+        Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
+        ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, context.ip);
+
+        if (changeParam == null) {
+            log.error("获取测量数据失败");
+            return;
+        }
+
+        Double wavelength = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), context.deviceSerialNumber);
+        changeParam.setWl(String.valueOf(wavelength));
+
+        context.originalData.add(changeParam);
+        calculateAndPushData(session, context, param, baselineData, changeParam, xValue);
+    }
+
+    private void calculateAndPushData(WebSocketSession session, TimeScanContext context,
+                                      FTimeSweepParamter param, ChangeParam baselineData,
+                                      ChangeParam changeParam, BigDecimal xValue) {
+        try {
+            BigDecimal yValue = null;
+            String yType = "";
+
+            switch (param.getLuminosity()) {
+                case "1": // Abs
+                    String absValue = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
+                    String absResult = DataCountUtil.changeTPercentOrAbs2(null, absValue);
+                    yValue = new BigDecimal(absResult);
+                    yType = "Abs";
+                    break;
+
+                case "2": // T%
+                    String tPercent = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
+                    yValue = new BigDecimal(tPercent);
+                    yType = "T%";
+                    break;
+
+                case "3": // Es
+                    Double sData = Double.valueOf(changeParam.getS());
+                    String esValue = String.valueOf((sData / (4095 * 32)) * 100);
+                    yValue = new BigDecimal(esValue);
+                    yType = "Es";
+                    break;
+
+                case "4": // Er
+                    Double rData = Double.valueOf(changeParam.getR());
+                    String erValue = String.valueOf((rData / (4095 * 32)) * 100);
+                    yValue = new BigDecimal(erValue);
+                    yType = "Er";
+                    break;
+
+                default:
+                    return;
+            }
+
+            context.xData.add(xValue);
+            context.yData.add(yValue);
+            pushDataPoint(session, xValue, yValue, context.currentSampleId, param, context.digit, yType);
+
+        } catch (Exception e) {
+            log.error("计算数据异常", e);
+        }
+    }
+
+    private void pushDataPoint(WebSocketSession session, BigDecimal xValue, BigDecimal yValue,
+                               String sampleId, FTimeSweepParamter param, Integer digit, String yType) {
+        JSONObject payload = new JSONObject();
+        JSONArray points = new JSONArray();
+        JSONObject point = new JSONObject();
+
+        point.put("x", xValue);
+
+        Double decimalY = yValue.doubleValue();
+        Double formattedValue = DataCountUtil.formatValue(digit, decimalY);
+        String displayValue = DataCountUtil.addZero(formattedValue, digit);
+
+        point.put("y", decimalY);
+        point.put("roundOffY", displayValue);
+        point.put("nm", param.getWaveLength() + "nm");
+        point.put("xType", "s");
+        point.put("yType", yType);
+
+        points.add(point);
+        payload.put("data", points);
+        payload.put("sampleId", sampleId);
+
+        sendMessageSafe(session, payload.toJSONString());
+    }
 
     /**
-     * 获取查询参数
-     *
-     * @param query
-     * @param key
-     * @return
+     * 同步保存测量数据
      */
+    private void saveMeasurementDataSync(WebSocketSession session, TimeScanContext context, String sampleId) {
+        log.info("开始同步保存测量数据, 样品: {}, 数据点数: {}", sampleId, context.xData.size());
+        saveMeasurementData(session, context, sampleId);
+        context.markDataSaved();
+        log.info("同步保存测量数据完成, 样品: {}", sampleId);
+    }
+
+    /**
+     * 保存测量数据
+     */
+    private void saveMeasurementData(WebSocketSession session, TimeScanContext context, String sampleId) {
+        try {
+            if (context.xData.isEmpty() || context.yData.isEmpty()) {
+                log.warn("没有数据需要保存");
+                return;
+            }
+
+            log.info("保存测量数据, 样品: {}, 数据点数: {}", sampleId, context.xData.size());
+
+            // 保存数据到数据库
+            SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> analysisBody = new HashMap<>();
+            analysisBody.put("x_data", context.xData.stream().map(BigDecimal::doubleValue).collect(Collectors.toList()));
+            analysisBody.put("y_data", context.yData.stream().map(BigDecimal::doubleValue).collect(Collectors.toList()));
+
+            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+            analysisBody.put("height", height);
+            analysisBody.put("distance", confVO.getPeakInterval());
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(analysisBody, headers);
+
+            // 寻峰寻谷
+            Map<String, Object> peakResult = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
+            Map<String, Object> valleyResult = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+
+            List<Double> peakX = (List<Double>) peakResult.get("peak_x");
+            List<String> peakY = (List<String>) peakResult.get("peak_y");
+            List<Double> valleyX = (List<Double>) valleyResult.get("valley_x");
+            List<String> valleyY = (List<String>) valleyResult.get("valley_y");
+
+            // 保存测量数据
+            FMeasureData measureData = new FMeasureData();
+
+            FMeasureData lastData = tMeasureDataService.getOne(
+                    new QueryWrapper<FMeasureData>()
+                            .eq("task_id", context.task.getId())
+                            .eq("sample_key", sampleId)
+                            .orderByDesc("serial_number")
+                            .last("LIMIT 1")
+            );
+
+            measureData.setSerialNumber(lastData != null ? lastData.getSerialNumber() + 1 : 1);
+            measureData.setTaskId(context.task.getId());
+            measureData.setSampleKey(sampleId);
+            measureData.setInstrumentData(JSON.toJSONString(context.originalData));
+
+            List<String> resultData = new ArrayList<>();
+            for (int i = 0; i < context.xData.size(); i++) {
+                resultData.add(context.xData.get(i) + "," + context.yData.get(i));
+            }
+            measureData.setOriginalCalculationData(JSON.toJSONString(resultData));
+
+            measureData.setMeasurementStartTime(Constants.startTime);
+            measureData.setMeasurementEndTime(Constants.endTime);
+            measureData.setIsDelete("0");
+            measureData.setIsSave("1");
+
+            tMeasureDataService.save(measureData);
+
+            // 保存分析数据
+            FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
+            FMeasureAnalysisData lastAnalysis = tMeasureAnalysisDataService.getOne(
+                    new QueryWrapper<FMeasureAnalysisData>()
+                            .eq("task_id", context.task.getId())
+                            .eq("sample_key", sampleId)
+                            .orderByDesc("analysis_number")
+                            .last("LIMIT 1")
+            );
+
+            analysisData.setAnalysisNumber(lastAnalysis != null ? lastAnalysis.getAnalysisNumber() + 1 : 1);
+
+            FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+            analysisData.setAnalysisName(sample != null ? sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")" : "未知样品");
+            analysisData.setTaskId(context.task.getId());
+            analysisData.setSampleKey(sampleId);
+            analysisData.setMeasureDataId(measureData.getId());
+            analysisData.setAnalysisParam(JSON.toJSONString(context.originalData));
+            analysisData.setAnalysisResult(JSON.toJSONString(resultData));
+            analysisData.setAnalysisType("5");
+
+            List<FPeakValleyMarking> peaks = new ArrayList<>();
+            List<FPeakValleyMarking> valleys = new ArrayList<>();
+
+            for (int i = 0; i < peakX.size(); i++) {
+                FPeakValleyMarking peak = new FPeakValleyMarking();
+                peak.setX(peakX.get(i).toString());
+                peak.setY(peakY.get(i));
+                peak.setType("波峰");
+                peaks.add(peak);
+            }
+
+            for (int i = 0; i < valleyX.size(); i++) {
+                FPeakValleyMarking valley = new FPeakValleyMarking();
+                valley.setX(valleyX.get(i).toString());
+                valley.setY(valleyY.get(i));
+                valley.setType("波谷");
+                valleys.add(valley);
+            }
+
+            analysisData.setPeak(com.alibaba.fastjson2.JSON.toJSONString(peaks));
+            analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(valleys));
+            analysisData.setColor("#000000");
+            analysisData.setIsDelete("0");
+            analysisData.setIsSave("1");
+
+            tMeasureAnalysisDataService.save(analysisData);
+
+            // 保存分析图片
+            FMeasureAnalysisImage image = new FMeasureAnalysisImage();
+            image.setAnalysisId(analysisData.getId());
+            tMeasureAnalysisImageService.save(image);
+
+            // 更新任务状态
+            updateTaskStatus(context.task, sampleId, context.deviceSerialNumber);
+
+            log.info("测量数据保存完成: 样品={}, 点数={}", sampleId, context.xData.size());
+
+        } catch (Exception e) {
+            log.error("保存测量数据异常", e);
+        }
+    }
+
+    private void updateTaskStatus(FMeasureTask task, String sampleId, String deviceSerialNumber) {
+        try {
+            List<FTaskSpecimen> specimens = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            for (FTaskSpecimen specimen : specimens) {
+                if (specimen.getSpecimenKey().equals(sampleId)) {
+                    specimen.setIsTested("1");
+                    break;
+                }
+            }
+
+            task.setSampleKey(JSON.toJSONString(specimens));
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            tMeasureTaskService.updateById(task);
+
+        } catch (Exception e) {
+            log.error("更新任务状态异常", e);
+        }
+    }
+
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        String sessionId = session.getId();
+        String payload = message.getPayload();
+
+        log.info("收到时间扫描停止消息: {}", sessionId);
+
+        if ("close".equals(payload)) {
+            handleStopRequest(sessionId);
+        }
+    }
+
+    /**
+     * 处理停止请求 - 先保存数据再关闭
+     */
+    private void handleStopRequest(String sessionId) {
+        log.info("处理时间扫描停止请求: {}", sessionId);
+
+        TimeScanContext context = contexts.get(sessionId);
+        if (context == null) {
+            return;
+        }
+
+        // 停止任务
+        context.stopAllTasks();
+
+        // 发送设备停止命令
+        if (context.ip != null) {
+            try {
+                Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
+                devMessageUtil.stop(stopCmd, context.ip);
+            } catch (Exception e) {
+                log.error("发送设备停止命令异常", e);
+            }
+        }
+
+        // 保存已采集的数据（同步）
+        if (!context.xData.isEmpty() && context.currentSampleId != null) {
+            log.info("停止时保存已采集数据, 点数: {}", context.xData.size());
+            Constants.endTime = LocalDateTime.now();
+            saveMeasurementDataSync(sessions.get(sessionId), context, context.currentSampleId);
+        } else {
+            // 如果没有数据，也要标记保存完成
+            context.markDataSaved();
+        }
+
+        // 等待数据保存完成后再清理
+        log.info("等待数据保存完成...");
+        if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
+            log.info("数据保存完成，开始清理会话");
+            safeCleanup(sessionId, true);
+        } else {
+            log.warn("数据保存超时，强制清理");
+            safeCleanup(sessionId, true);
+        }
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        String sessionId = session.getId();
+        log.info("时间扫描连接关闭: {}", sessionId);
+        safeCleanup(sessionId, false);
+    }
+
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        String sessionId = session.getId();
+        log.error("时间扫描传输错误: {}", sessionId, exception);
+        safeCleanup(sessionId, false);
+    }
+
+    /**
+     * 安全清理 - 确保数据保存完成后再关闭WebSocket
+     */
+    private void safeCleanup(String sessionId, boolean releaseDevice) {
+        TimeScanContext context = contexts.get(sessionId);
+        if (context != null) {
+            // 先停止任务
+            context.stopAllTasks();
+
+            // 等待数据保存完成
+            if (!context.dataSaved.get()) {
+                log.info("等待数据保存完成...");
+                context.waitForDataSave(10, TimeUnit.SECONDS);
+            }
+
+            // 释放设备
+            if (releaseDevice && context.deviceSerialNumber != null) {
+                try {
+                    deviceInfoService.releaseDevice(context.deviceSerialNumber);
+                    log.info("释放时间扫描设备: {}", context.deviceSerialNumber);
+                } catch (Exception e) {
+                    log.error("释放设备异常", e);
+                }
+            }
+
+            contexts.remove(sessionId);
+        }
+
+        // 最后关闭WebSocket
+        WebSocketSession session = sessions.remove(sessionId);
+        if (session != null && session.isOpen()) {
+            try {
+                session.close();
+                log.info("WebSocket连接已关闭: {}", sessionId);
+            } catch (IOException e) {
+                log.debug("关闭WebSocket会话异常: {}", sessionId);
+            }
+        }
+
+        clearGlobalData();
+        log.info("时间扫描会话安全清理完成: {}", sessionId);
+    }
+
+    private void sendMessageSafe(WebSocketSession session, String message) {
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+
+        try {
+            session.sendMessage(new TextMessage(message));
+        } catch (IOException e) {
+            log.debug("发送消息失败: {}", session.getId());
+        }
+    }
+
     private String getQueryParam(String query, String key) {
         if (query == null) return null;
         for (String param : query.split("&")) {
@@ -379,407 +742,8 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         return null;
     }
 
-
-    /**
-     * 计算并推送 Y 值（光度模式等相关计算）
-     *
-     * @param param
-     * @param baselineData
-     * @param changeParam
-     * @param xValue
-     * @param x_data
-     * @param y_data
-     * @param session
-     * @param sampleId
-     * @throws IOException
-     */
-    private void calculateAndPushYValue(
-            FTimeSweepParamter param,
-            ChangeParam baselineData,
-            ChangeParam changeParam,
-            BigDecimal xValue,
-            List<BigDecimal> x_data,
-            List<BigDecimal> y_data,
-            WebSocketSession session,
-            String sampleId) throws IOException {
-
-
-        if (param.getLuminosity().equals("1")) {
-            String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-            String y = DataCountUtil.changeTPercentOrAbs2(null, s);
-            x_data.add(xValue);
-            y_data.add(new BigDecimal(y));
-            JSONObject payload = new JSONObject();
-            JSONArray points = new JSONArray();
-            JSONObject point = new JSONObject();
-            point.put("x", xValue);
-            Double decimalY = new Double(y);
-            Double value = DataCountUtil.formatValue(digit, decimalY);
-            String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", decimalY);
-            point.put("roundOffY",valueY);
-            point.put("nm", param.getWaveLength() + "nm");
-            point.put("xType", "s");
-            point.put("yType", "Abs");
-            points.add(point);
-            payload.put("data", points);
-            payload.put("sampleId", sampleId);
-            session.sendMessage(new TextMessage(payload.toJSONString()));
-        } else if (param.getLuminosity().equals("2")) {
-            String s = DataCountUtil.countTPercent(baselineData, changeParam, 1.0);
-            x_data.add(xValue);
-            y_data.add(new BigDecimal(s));
-            JSONObject payload = new JSONObject();
-            JSONArray points = new JSONArray();
-            JSONObject point = new JSONObject();
-            point.put("x", xValue);
-            Double decimalY = new Double(s);
-            Double value = DataCountUtil.formatValue(digit, decimalY);
-            String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", decimalY);
-            point.put("roundOffY",valueY);
-            point.put("nm", param.getWaveLength() + "nm");
-            point.put("xType", "s");
-            point.put("yType", "T%");
-            points.add(point);
-            payload.put("data", points);
-            payload.put("sampleId", sampleId);
-            session.sendMessage(new TextMessage(payload.toJSONString()));
-        } else if (param.getLuminosity().equals("3")) {
-            Double sData = Double.valueOf(changeParam.getS());
-            String y = String.valueOf((sData / (4095 * 32)) * 100);
-            x_data.add(xValue);
-            y_data.add(new BigDecimal(y));
-            JSONObject payload = new JSONObject();
-            JSONArray points = new JSONArray();
-            JSONObject point = new JSONObject();
-            point.put("x", xValue);
-            Double decimalY = new Double(y);
-            Double value = DataCountUtil.formatValue(digit, decimalY);
-            String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", decimalY);
-            point.put("roundOffY",valueY);
-            point.put("nm", param.getWaveLength() + "nm");
-            point.put("xType", "s");
-            point.put("yType", "Es");
-            points.add(point);
-            payload.put("data", points);
-            payload.put("sampleId", sampleId);
-            session.sendMessage(new TextMessage(payload.toJSONString()));
-        } else if (param.getLuminosity().equals("4")) {
-            Double rData = Double.valueOf(changeParam.getR());
-            String y = String.valueOf((rData / (4095 * 32)) * 100);
-            x_data.add(xValue);
-            y_data.add(new BigDecimal(y));
-            JSONObject payload = new JSONObject();
-            JSONArray points = new JSONArray();
-            JSONObject point = new JSONObject();
-            point.put("x", xValue);
-            Double decimalY = new Double(y);
-            Double value = DataCountUtil.formatValue(digit, decimalY);
-            String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", decimalY);
-            point.put("roundOffY",valueY);
-            point.put("nm", param.getWaveLength() + "nm");
-            point.put("xType", "s");
-            point.put("yType", "Er");
-            points.add(point);
-            payload.put("data", points);
-            payload.put("sampleId", sampleId);
-            session.sendMessage(new TextMessage(payload.toJSONString()));
-        } else {
-            sendAndClose(session, "光度模式错误");
-            session.close();
-        }
-        System.err.println("Current JVM Timezone: " + TimeZone.getDefault().getID());
-    }
-
-
-    /**
-     * 存储数据
-     *
-     * @param session
-     * @param originalData
-     * @param x_data
-     * @param y_data
-     * @param sampleId
-     * @param task
-     * @throws IOException
-     */
-    private void saveData(WebSocketSession session,
-                          List<ChangeParam> originalData,
-                          List<BigDecimal> x_data,
-                          List<BigDecimal> y_data,
-                          String sampleId,
-                          FMeasureTask task,
-                          String deviceSerialNumber) {
-        // 先对数据进行寻峰寻谷
-        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String, Object> body = new HashMap<>();
-        body.put("x_data", x_data);
-        body.put("y_data", y_data);
-        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
-        body.put("height", height);
-        body.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
-        List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
-        List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
-        List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
-        List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
-        // 创建一个测量数据对象
-        FMeasureData tMeasureData = new FMeasureData();
-        // 根据任务id和样品id去测量数据表中进行查询,根据序列号进行从大到小的排序,并读取最大的那一条
-        // 如果发现测量数据表中有数据则将最大的序列号拿出来加1并放入新建的测量数据对象中
-        FMeasureData data = tMeasureDataService.getOne(new QueryWrapper<FMeasureData>().eq("task_id", task.getId()).eq("sample_key", sampleId).orderByDesc("serial_number").last("LIMIT 1"));
-        if (data != null) {
-            tMeasureData.setSerialNumber(data.getSerialNumber() + 1);
-        } else {
-            tMeasureData.setSerialNumber(1);
-        }
-        List<String> listData = new ArrayList<>();
-        for (int i = 0; i < x_data.size(); i++) {
-            listData.add(x_data.get(i) + "," + y_data.get(i));
-        }
-        List<FPeakValleyMarking> peakValleys = new ArrayList<>();
-        List<FPeakValleyMarking> markings = new ArrayList<>();
-        for (int i = 0; i < xDataFeng.size(); i++) {
-            FPeakValleyMarking marking = new FPeakValleyMarking();
-            marking.setX(xDataFeng.get(i).toString());
-            marking.setY(yDataFeng.get(i));
-            marking.setType("波峰");
-            peakValleys.add(marking);
-        }
-        for (int i = 0; i < xDataGu.size(); i++) {
-            FPeakValleyMarking marking = new FPeakValleyMarking();
-            marking.setX(xDataGu.get(i).toString());
-            marking.setY(yDataGu.get(i));
-            marking.setType("波谷");
-            markings.add(marking);
-        }
-        tMeasureData.setTaskId(task.getId());
-        tMeasureData.setSampleKey(sampleId);
-        tMeasureData.setInstrumentData(JSON.toJSONString(originalData));
-        tMeasureData.setOriginalCalculationData(JSON.toJSONString(listData));
-        tMeasureData.setMeasurementStartTime(Constants.startTime);
-        tMeasureData.setMeasurementEndTime(Constants.endTime);
-        tMeasureData.setIsDelete("0");
-        tMeasureData.setIsSave("1");
-        boolean save = tMeasureDataService.save(tMeasureData);
-        if (!save) {
-            sendAndClose(session, "保存测量数据失败");
-            return;
-        }
-
-        FMeasureAnalysisData analysisData = new FMeasureAnalysisData();
-        FMeasureAnalysisData analysisDataLast = tMeasureAnalysisDataService.getOne(
-                new QueryWrapper<FMeasureAnalysisData>()
-                        .eq("task_id", task.getId())
-                        .eq("sample_key", sampleId)
-                        .orderByDesc("analysis_number")
-                        .last("LIMIT 1")
-        );
-        analysisData.setAnalysisNumber(analysisDataLast != null ? analysisDataLast.getAnalysisNumber() + 1 : 1);
-        // 根据样品id查询样品数据
-        FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-        analysisData.setAnalysisName(sample.getSampleName() + "(" + analysisData.getAnalysisNumber() + ")");
-        analysisData.setTaskId(task.getId());
-        analysisData.setSampleKey(sampleId);
-        analysisData.setMeasureDataId(tMeasureData.getId());
-        analysisData.setAnalysisParam(JSON.toJSONString(originalData));
-        analysisData.setAnalysisResult(JSON.toJSONString(listData));
-        analysisData.setAnalysisType("5");
-        analysisData.setPeak(com.alibaba.fastjson2.JSON.toJSONString(peakValleys));
-        analysisData.setGrain(com.alibaba.fastjson2.JSON.toJSONString(markings));
-        analysisData.setColor("#000000");
-        analysisData.setIsDelete("0");
-        analysisData.setIsSave("1");
-        boolean save1 = tMeasureAnalysisDataService.save(analysisData);
-        if (!save1) {
-            sendAndClose(session, "保存分析数据失败");
-            return;
-        }
-
-        ///  创建分析图片表的对象
-        FMeasureAnalysisImage image = new FMeasureAnalysisImage();
-        image.setAnalysisId(analysisData.getId());
-        boolean save2 = tMeasureAnalysisImageService.save(image);
-        if (!save2) {
-            sendAndClose(session, "保存分析图片数据失败");
-            return;
-        }
-
-        List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-        for (FTaskSpecimen taskSpecimen : specimen) {
-            if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
-                taskSpecimen.setIsTested("1");
-                break;
-            }
-        }
-        task.setSampleKey(JSON.toJSONString(specimen));
-        task.setDeviceSerialNumber(deviceSerialNumber);
-        boolean update = tMeasureTaskService.updateById(task);
-        if (!update) {
-            sendAndClose(session, "更新任务失败");
-            return;
-        }
-
-    }
-
-    /**
-     * 全局数据清空
-     */
-    private void exceptionHandling() {
+    private void clearGlobalData() {
         Constants.startTime = null;
         Constants.endTime = null;
-    }
-
-
-    // 当WebSocket接收到消息时，会调用此方法
-    @Override
-    public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        // 处理客户端发来的消息
-        log.info("收到客户端消息: " + message.getPayload());
-        if (message.getPayload().equals("close")) {
-            session.sendMessage(new TextMessage("停止成功"));
-            sessions.remove(session.getId());
-            session.close();
-            // 如果线程正在被使用
-            if (occupancyStatus) {
-                // 释放线程
-                deviceInfoService.releaseDevice(deviceSerialNumber);
-            }
-        }
-    }
-
-    // afterConnectionClosed (优化日志，合并重复)
-
-    /**
-     * 连接关闭时触发
-     *
-     * @param session
-     * @param status
-     * @throws Exception
-     */
-    @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        super.afterConnectionClosed(session, status);
-        log.info("WebSocket连接关闭: {}，原因: {}", session.getId(), status);
-
-        this.currentSession = null;
-
-        ScheduledExecutorService scheduler = (ScheduledExecutorService) session.getAttributes().get("scheduler");
-        if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
-                    log.warn("Scheduler 30秒内未完全终止，剩余任务被丢弃");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        if (future != null && !future.isDone()) {
-            future.cancel(true);
-        }
-
-        exceptionHandling();
-        sessions.remove(session.getId());
-
-        if (occupancyStatus && deviceSerialNumber != null) {
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-        }
-    }
-
-    /**
-     * 连接异常时触发
-     *
-     * @param session
-     * @param exception
-     */
-    @Override
-    public void handleTransportError(WebSocketSession session, Throwable exception) {
-        sessions.remove(session.getId());
-        try {
-            session.close();
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-        } catch (IOException e) {
-            handleTransportError(session, e);
-            Thread.currentThread().interrupt();
-            return;
-        }
-        System.out.println("连接异常: " + exception.getMessage());
-    }
-
-
-    /**
-     * 发送消息并关闭连接
-     *
-     * @param session
-     * @param msg
-     */
-    private void sendAndClose(WebSocketSession session, String msg) {
-        try {
-            // 释放设备
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-            session.sendMessage(new TextMessage(msg));
-            session.close();
-        } catch (IOException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
-    }
-
-    /**
-     * 关闭连接
-     *
-     * @param session
-     */
-    private void close(WebSocketSession session) {
-        try {
-            // 释放设备
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-            session.close();
-        } catch (IOException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
-    }
-
-    /**
-     * 发送消息并关闭连接2
-     *
-     * @param session
-     * @param msg
-     */
-    private void sendClose(WebSocketSession session, String msg) {
-        try {
-            session.sendMessage(new TextMessage(msg));
-            sessions.remove(session.getId());
-            session.close();
-        } catch (IOException e) {
-            handleTransportError(session, e);
-            Thread.currentThread().interrupt();
-            return;
-        }
-    }
-
-
-    /**
-     * 构建命令
-     *
-     * @param cmdEnum
-     * @param value
-     * @return
-     */
-    private Command buildCommand(SetParamEnum cmdEnum, Object value) {
-        Command cmd = new Command();
-        cmd.setCmdId(cmdEnum.getComId());
-        cmd.setParams(new Object[]{value});
-        return cmd;
     }
 }

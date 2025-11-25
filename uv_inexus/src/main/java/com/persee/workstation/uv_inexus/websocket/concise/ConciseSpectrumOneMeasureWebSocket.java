@@ -336,6 +336,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
     }
 
+
     /**
      * 如果需要，发送停止命令
      */
@@ -360,10 +361,10 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 } catch (Exception e) {
                     log.error("【发送停止异常】发送停止命令异常, session: {}", sessionId, e);
                 }
-            }else {
+            } else {
                 log.warn("【无IP地址】无法发送停止命令，IP地址为空, session: {}", sessionId);
             }
-        }else {
+        } else {
             log.info("【无需停止】测量未开始或停止命令已发送, session: {}, measurementStarted: {}, stopCommandSent: {}",
                     sessionId, state.measurementStarted.get(), state.stopCommandSent.get());
         }
@@ -720,63 +721,164 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         List<Double> y = new ArrayList<>();
         int pushCount = 0;
 
-        // 获取波长参数用于约束
-        double startWl = Double.parseDouble(spectrumParameter.getStartWaveLength());
-        double endWl = Double.parseDouble(spectrumParameter.getEndWaveLength());
-        double interval = Double.parseDouble(spectrumParameter.getWaveLengthInterval());
-        boolean isDescending = startWl > endWl;
-
         // 判断是否为极快扫描模式
         boolean isFastScan = "3".equals(spectrumParameter.getScanSpeed());
 
         if (isFastScan) {
-            // 极快扫描模式：一次性处理所有数据
+            // 极快扫描模式：优化版本
             ProcessedData processedData = processAndPushFastScanData(session, spectrumParameter, x, y, number,
-                    task, sampleId, luminosity, spectrumParameter.getLadderCorrection(), deviceSerialNumber);
-            // 使用处理后的数据
-            x = processedData.x;
-            y = processedData.y;
-        } else {
-            // 普通扫描模式：保持原来的逐点推送逻辑
-            int currentIndex = 0; // 用于强制修约的索引
-            while (true) {
-                if (Thread.currentThread().isInterrupted() || !session.isOpen()) return null;
+                    task, sampleId, spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection(), deviceSerialNumber);
 
-                List<String> snapshot = new ArrayList<>(Constants.instrumentData);
-                if (!snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData)) {
-                    if (snapshot.get(0).equals(Constants.EndData)) {
+            // 立即完成测量
+            Constants.endTime = LocalDateTime.now();
+            if (state != null) {
+                state.measurementStarted.set(false);
+            }
+
+            // 返回处理后的数据
+            return new MeasurementResult(
+                    processedData.x,
+                    processedData.y,
+                    Constants.startTime,
+                    Constants.endTime,
+                    new ArrayList<>(Constants.instrumentData),
+                    new ArrayList<>(Constants.originalCalculationData)
+            );
+        } else {
+            // 普通扫描模式：简化的单缓冲区机制，确保数据完整性和台阶消除
+            List<Double> tempXBuffer = new ArrayList<>();
+            List<Double> tempYBuffer = new ArrayList<>();
+
+            // 记录已推送的数据点数量，避免重复推送
+            AtomicInteger totalPushedPoints = new AtomicInteger(0);
+
+            // 获取波长参数用于约束
+            double startWl = Double.parseDouble(spectrumParameter.getStartWaveLength());
+            double endWl = Double.parseDouble(spectrumParameter.getEndWaveLength());
+            double interval = Double.parseDouble(spectrumParameter.getWaveLengthInterval());
+            boolean isDescending = startWl > endWl;
+
+            int currentIndex = 0;
+
+            try {
+                while (true) {
+                    if (Thread.currentThread().isInterrupted() || !session.isOpen()) {
+                        log.info("线程被中断或会话关闭，退出测量循环");
                         break;
                     }
+
+                    // 采集 & 计算一个点
+                    List<String> snapshot = new ArrayList<>(Constants.instrumentData);
+                    boolean hasEndData = !snapshot.isEmpty() && snapshot.get(snapshot.size() - 1).equals(Constants.EndData);
+
+                    if (hasEndData && snapshot.get(0).equals(Constants.EndData)) {
+                        log.info("检测到结束标志，准备结束测量");
+                        break;
+                    }
+
+                    // 处理所有可用的数据点
                     while (!Constants.measurd_data.isEmpty()) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            log.info("线程被中断，退出内部循环");
+                            break;
+                        }
+
                         calcOnePoint(spectrumParameter, baselineCopy, x, y, currentIndex, startWl, endWl, interval, isDescending, deviceSerialNumber);
                         currentIndex++;
-                        pushCount = pushDataIfNeeded(session, x, y, pushCount, number, task, sampleId,
-                                spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection());
+
+                        // 将新点添加到临时缓冲区
+                        if (!x.isEmpty() && !y.isEmpty()) {
+                            int currentDataIndex = x.size() - 1;
+                            tempXBuffer.add(x.get(currentDataIndex));
+                            tempYBuffer.add(y.get(currentDataIndex));
+
+                            // 每10个点进行一次台阶消除并推送
+                            if (tempXBuffer.size() >= 10) {
+                                processAndPushBatchData(session, tempXBuffer, tempYBuffer, totalPushedPoints.get(),
+                                        number, task, sampleId, spectrumParameter.getLuminosity(),
+                                        spectrumParameter.getLadderCorrection(), state.digit);
+
+                                // 更新已推送点数
+                                totalPushedPoints.addAndGet(tempXBuffer.size());
+
+                                // 清空临时缓冲区，准备下一批
+                                tempXBuffer.clear();
+                                tempYBuffer.clear();
+                            }
+                        }
                     }
-                    break;
+
+                    // 推送缓冲区中的数据（即使不足10个点）
+                    if (!tempXBuffer.isEmpty()) {
+                        int currentPushed = totalPushedPoints.get();
+                        if (currentPushed < tempXBuffer.size() + currentPushed) {
+                            processAndPushBatchData(session, tempXBuffer, tempYBuffer, currentPushed,
+                                    number, task, sampleId, spectrumParameter.getLuminosity(),
+                                    spectrumParameter.getLadderCorrection(), state.digit);
+                            totalPushedPoints.addAndGet(tempXBuffer.size());
+                            tempXBuffer.clear();
+                            tempYBuffer.clear();
+                        }
+                    }
+
+                    // 检查是否应该结束（基于结束标志）
+                    if (hasEndData) {
+                        log.info("检测到结束标志，结束数据采集");
+                        break;
+                    }
+
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.info("测量线程被中断");
+                        break;
+                    }
                 }
-                while (!Constants.measurd_data.isEmpty()) {
-                    calcOnePoint(spectrumParameter, baselineCopy, x, y, currentIndex, startWl, endWl, interval, isDescending, deviceSerialNumber);
-                    currentIndex++;
-                    pushCount = pushDataIfNeeded(session, x, y, pushCount, number, task, sampleId,
-                            spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection());
+
+                // 测量结束，处理所有剩余数据
+                log.info("开始处理剩余数据，缓冲区大小: " + tempXBuffer.size());
+
+                if (!tempXBuffer.isEmpty()) {
+                    processAndPushBatchData(session, tempXBuffer, tempYBuffer, totalPushedPoints.get(),
+                            number, task, sampleId, spectrumParameter.getLuminosity(),
+                            spectrumParameter.getLadderCorrection(), state.digit);
                 }
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return null;
+
+                // 确保所有数据点都被处理
+                int remainingPoints = x.size() - totalPushedPoints.get();
+                if (remainingPoints > 0) {
+                    log.info("处理遗漏的数据点，数量: " + remainingPoints);
+                    List<Double> remainingX = x.subList(totalPushedPoints.get(), x.size());
+                    List<Double> remainingY = y.subList(totalPushedPoints.get(), y.size());
+
+                    if (!remainingX.isEmpty()) {
+                        processAndPushBatchData(session, new ArrayList<>(remainingX), new ArrayList<>(remainingY),
+                                totalPushedPoints.get(), number, task, sampleId,
+                                spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection(),
+                                state.digit);
+                    }
                 }
+
+                log.info("测量完成，总数据点: " + x.size() + ", 已推送: " + totalPushedPoints.get());
+
+            } catch (Exception e) {
+                log.error("测量过程中发生异常", e);
+                throw e;
             }
-            // 推送剩余数据
-            pushRemainingData(session, x, y, pushCount, number, task, sampleId,
-                    spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection());
         }
 
         Constants.endTime = LocalDateTime.now();
         if (state != null) {
             state.measurementStarted.set(false);
         }
+
+        // 数据完整性检查
+        log.info("=== 测量结果统计 ===");
+        log.info("总数据点数 - X: " + x.size() + ", Y: " + y.size());
+        log.info("测量时间 - 开始: " + Constants.startTime + ", 结束: " + Constants.endTime);
+        log.info("仪器数据快照大小: " + Constants.instrumentData.size());
+        log.info("原始计算数据快照大小: " + Constants.originalCalculationData.size());
 
         // 返回快照 + x/y
         return new MeasurementResult(
@@ -1307,6 +1409,133 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         return Math.round(value * scale) / scale;
     }
 
+
+    /**
+     * 推送单个数据点
+     */
+    private void pushSinglePoint(WebSocketSession session,
+                                 Double x,
+                                 Double y,
+                                 Integer count,
+                                 String sampleId,
+                                 String luminosity,
+                                 Integer digit) throws IOException {
+        // 安全检查
+        if (x == null || y == null) {
+            log.warn("推送数据点为空，跳过推送");
+            return;
+        }
+
+        // 检查会话状态
+        SessionState state = sessionStates.get(session.getId());
+        if (state == null || state.sessionClosing.get()) {
+            log.debug("会话正在关闭，跳过推送");
+            return;
+        }
+
+        JSONArray dataArray = new JSONArray();
+        JSONObject point = new JSONObject();
+        point.put("x", x);
+
+        // 推送时：根据指定位数格式化Y值
+        Double value = DataCountUtil.formatValue(digit, y);
+        String valueY = DataCountUtil.addZero(value, digit);
+        point.put("y", y);
+        point.put("roundOffY", valueY);  // 修复：这里应该是valueY而不是y.get(i)
+
+        point.put("xType", "nm");
+        // 光度模式是1.Abs 2.T% 3.Es 4.Er
+        String luminosityType = luminosity.equals("1")?"Abs":luminosity.equals("2")?"T%":luminosity.equals("3")?"Es":"Er";
+        point.put("yType", luminosityType);
+        dataArray.add(point);
+
+        JSONObject payload = new JSONObject();
+        payload.put("data", dataArray);
+        payload.put("sampleId", sampleId);
+        payload.put("count", count);
+
+        sendMessageSafe(session, payload.toJSONString());
+
+        // 添加小延迟，避免推送过快
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.debug("推送线程被中断");
+        }
+    }
+
+
+    /**
+     * 处理并推送一批数据（进行台阶消除后逐个推送）
+     */
+    private void processAndPushBatchData(WebSocketSession session,
+                                         List<Double> xBatch,
+                                         List<Double> yBatch,
+                                         int startIndex,
+                                         Integer count,
+                                         FMeasureTask task,
+                                         String sampleId,
+                                         String luminosity,
+                                         boolean ladderCorrection,
+                                         Integer digit) throws IOException {
+        if (xBatch.isEmpty() || yBatch.isEmpty()) {
+            return;
+        }
+
+        log.info("处理批次数据，点数: " + xBatch.size() + ", 起始索引: " + startIndex + ", 台阶消除: " + ladderCorrection);
+
+        List<Double> processedY = yBatch;
+
+        // 如果需要台阶校正，处理数据
+        if (ladderCorrection) {
+            log.info("执行台阶消除，数据点数: " + xBatch.size());
+            processedY = processAndSaveData(task, xBatch, yBatch, luminosity, ladderCorrection, sampleId);
+            log.info("台阶消除完成");
+        } else {
+            log.info("跳过台阶消除");
+        }
+
+        // 存储原始Y值（用于后续存储到数据库）
+        String key = session.getId() + "_" + sampleId + "_" + count;
+        synchronized (originalYValues) {
+            if (!originalYValues.containsKey(key)) {
+                originalYValues.put(key, new ArrayList<>(yBatch));
+            } else {
+                List<Double> existingY = originalYValues.get(key);
+                // 确保不重复添加
+                if (existingY.size() < startIndex + yBatch.size()) {
+                    for (int i = existingY.size(); i < startIndex; i++) {
+                        existingY.add(0.0); // 填充空缺
+                    }
+                    existingY.addAll(yBatch);
+                }
+            }
+        }
+
+        // 逐个推送数据点
+        for (int i = 0; i < xBatch.size(); i++) {
+            if (!session.isOpen()) {
+                log.warn("会话已关闭，停止推送数据");
+                break;
+            }
+
+            pushSinglePoint(session, xBatch.get(i), processedY.get(i),
+                    count, sampleId, luminosity, digit);
+
+            // 添加小延迟，避免推送过快
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.info("推送线程被中断");
+                break;
+            }
+        }
+
+        log.info("批次数据推送完成，点数: " + xBatch.size());
+    }
+
     /**
      * 一次性推送所有数据（推送时格式化Y值）- 修正版本
      */
@@ -1646,10 +1875,15 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                                            String luminosityMode,
                                            boolean ladderCorrection,
                                            String sampleId) {
+
+        log.info("---------------进入台阶消除处理逻辑---------------");
+        log.info("台阶消除参数 - 数据点数: " + x.size() + ", 光度模式: " + luminosityMode + ", 样品ID: " + sampleId);
+
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
 
         // 如果不需要台阶校正，直接返回原始数据
         if (!ladderCorrection) {
+            log.info("台阶消除已禁用，返回原始数据");
             return y;
         }
 
@@ -1692,8 +1926,14 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             threshold = 100;
         }
 
+        log.info("台阶消除阈值: " + threshold);
+
         // 这里调用 Python 的台阶消除算法，返回处理后的 y 值
         List<Double> processedY = callStepEliminationPython(x, y, threshold);
+
+        log.info("台阶消除完成，原始数据点数: " + y.size() + ", 处理后数据点数: " + processedY.size());
+        log.info("---------------台阶消除处理逻辑结束---------------");
+
         return processedY;
     }
 
