@@ -879,7 +879,7 @@ public class MessageUtil {
                 scanSocket.receive(receivePacket);
                 count++;
                 if (count > 1) {
-                    scanSocket.setSoTimeout(500);
+                    scanSocket.setSoTimeout(3500);
                 }
 
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
