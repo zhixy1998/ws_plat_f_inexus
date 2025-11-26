@@ -317,6 +317,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 usefulPoolNum = usefulLocation.size();
                 maxPoolNum = Collections.max(usefulLocation);
             }
+            task.setDeviceSerialNumber(deviceSerialNumber);
 
             for (TaskSpecimen specimen : taskSpecimen) {
                 if (!isAutoChangePool && measureCount == 1) {
@@ -364,7 +365,6 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 }
                 specimen.setIsTested(right);
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
-                task.setDeviceSerialNumber(deviceSerialNumber);
                 tMeasureTaskService.updateById(task);
                 //公式计算
                 measureCount++;
@@ -376,7 +376,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                     }
                 }
             }
-
+            task = tMeasureTaskService.getById(task.getId());
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            tMeasureTaskService.updateById(task);
             //样品测完，移动样品池到1号
             if (isAutoChangePool) {
                 String ip = infoService.getIp(deviceSerialNumber);
@@ -389,9 +391,6 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 }
             }
         }
-        task.setSampleKey(JSON.toJSONString(taskSpecimen));
-        task.setDeviceSerialNumber(deviceSerialNumber);
-        tMeasureTaskService.updateById(task);
 
         JSONObject message = new JSONObject();
         message.put("success", "测量完成");

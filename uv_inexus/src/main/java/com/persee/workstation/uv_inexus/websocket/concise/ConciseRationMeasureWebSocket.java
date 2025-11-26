@@ -248,6 +248,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 maxPoolNum = Collections.max(usefulLocation);
             }
 
+            task.setDeviceSerialNumber(deviceSerialNumber);
+
             //后续添加仪器状态检测
 
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
@@ -463,7 +465,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         specimen.setIsTested(right);
                     }
                 }
-
+                task = tMeasureTaskService.getById(taskId);
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                tMeasureTaskService.updateById(task);
 
                 //样品测完，移动样品池到1号
                 if (isAutoChangePool) {
@@ -476,10 +480,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         session.sendMessage(new TextMessage(object.toJSONString()));
                     }
                 }
-
-                task.setSampleKey(JSON.toJSONString(taskSpecimen));
-                tMeasureTaskService.updateById(task);
-                task = tMeasureTaskService.getById(taskId);
 
                 //所有样品测完，拟合曲线
                 //拟合曲线
@@ -668,7 +668,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         sendAndClose(session, r.getMessage());
                         return;
                     }
-                    task.setDeviceSerialNumber(deviceSerialNumber);
 
                     measureCount++;
                     FRationDataVO data = r.getData();
@@ -684,6 +683,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     FRationSaveCountDataInfo saveDataInfo = saved.getData();
                     specimen.setIsTested(right);
                     task.setSampleKey(JSON.toJSONString(taskSpecimen));
+
                     tMeasureTaskService.updateById(task);
 
                     List<FRationCountDataInfo> measureAbsDataList = saveDataInfo.getCountData();
@@ -791,7 +791,9 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     }
                     specimen.setIsTested(right);
                 }
-
+                task = tMeasureTaskService.getById(taskId);
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                tMeasureTaskService.updateById(task);
                 //样品测完，移动样品池到1号
                 if (isAutoChangePool) {
                     String ip = infoService.getIp(deviceSerialNumber);
@@ -803,8 +805,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         session.sendMessage(new TextMessage(object.toJSONString()));
                     }
                 }
-                task.setSampleKey(JSON.toJSONString(taskSpecimen));
-                tMeasureTaskService.updateById(task);
+
                 JSONObject message = new JSONObject();
                 message.put("success", "测量完成");
                 session.sendMessage(new TextMessage(message.toJSONString()));

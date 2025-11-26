@@ -256,6 +256,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             }
             task = tMeasureTaskService.getById(task.getId());
             task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
             tMeasureTaskService.updateById(task);
 
             //后续添加仪器状态检测

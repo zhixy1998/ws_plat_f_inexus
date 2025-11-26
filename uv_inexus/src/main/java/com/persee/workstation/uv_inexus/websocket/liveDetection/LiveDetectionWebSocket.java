@@ -125,11 +125,13 @@ public class LiveDetectionWebSocket {
             if (measureThread == null || !measureThread.isAlive()) {
                 synchronized (this) {
                     if (measureThread == null || !measureThread.isAlive()) {
-                        this.startMeasureLoop(deviceSerialNumber);
+                        R<Boolean> r = this.startMeasureLoop(deviceSerialNumber);
+                        if (r.getSuccess()) {
+                            status = false;
+                        }
                     }
                 }
             }
-            status = false;
         }
 
         // 主动推送通知给前端
@@ -417,18 +419,18 @@ public class LiveDetectionWebSocket {
                             try {
                                 Thread.sleep(1000);
                                 int timeout = 0;
-                                while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
-
-                                    if (timeout == 0) {
-                                        DetectionConstants.isDeviceIdle = true;
-                                    }
-                                    Thread.sleep(1000);
-                                    timeout++;
-                                    if (!DetectionConstants.isDeviceIdle) {
-                                        log.info("仪器被重新占用，等待下次判断");
-                                        return;
-                                    }
-                                }
+//                                while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
+//
+//                                    if (timeout == 0) {
+//                                        DetectionConstants.isDeviceIdle = true;
+//                                    }
+//                                    Thread.sleep(1000);
+//                                    timeout++;
+//                                    if (!DetectionConstants.isDeviceIdle) {
+//                                        log.info("仪器被重新占用，等待下次判断");
+//                                        return;
+//                                    }
+//                                }
 
 
                                 DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
