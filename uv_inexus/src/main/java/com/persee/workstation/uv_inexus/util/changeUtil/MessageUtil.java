@@ -414,8 +414,8 @@ public class MessageUtil {
                     byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
                     responses.add(reply);
 
-                    System.out.println("实时监测: 收到回应来自 " + receivePacket.getAddress().getHostAddress());
-                    System.out.print("实时监测: 十六进制回应：");
+                    System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                    System.out.print("十六进制回应：");
                     for (byte b : reply) System.out.printf("%02X ", b);
                     System.out.println();
 

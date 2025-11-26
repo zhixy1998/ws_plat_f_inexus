@@ -162,11 +162,11 @@ public class LiveDetectionWebSocket {
                 // 获取 socket
                 // 循环发送
                 int error = 0;
-
+                log.info("线程开始, 共享变量值{}",DetectionConstants.isDeviceIdle);
                 while (Constants.devConnectInfo.get(deviceSerialNumber) != null && Constants.devConnectInfo.get(deviceSerialNumber)) {
 
                     serialNumber = deviceSerialNumber;
-
+                    log.info("循环进入, 共享变量值{}",DetectionConstants.isDeviceIdle);
                     while (!DetectionConstants.isDeviceIdle) {
                         Thread.sleep(1000);
                         JSONObject ignore = new JSONObject();
@@ -221,6 +221,7 @@ public class LiveDetectionWebSocket {
 
                         int sum = 1;
                         boolean isConnect = true;
+                        log.info("共享变量值{}",DetectionConstants.isDeviceIdle);
                         while (sum <= LiveDetectionCmdEnum.getLength()) {
                             if (Constants.devConnectInfo.get(deviceSerialNumber) == null || !Constants.devConnectInfo.get(deviceSerialNumber)) {
                                 isConnect = false;

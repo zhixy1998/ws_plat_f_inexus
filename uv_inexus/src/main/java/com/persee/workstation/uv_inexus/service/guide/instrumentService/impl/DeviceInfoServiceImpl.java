@@ -151,6 +151,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             if (DetectionConstants.isDeviceIdle){
                 DetectionConstants.isDeviceIdle = false;
                 updateDeviceCurrentStatus(deviceSerialNumber, status);
+                log.info("[通知线程] 成功抢占线程!!!");
                 return R.ok();
             }
             try {
