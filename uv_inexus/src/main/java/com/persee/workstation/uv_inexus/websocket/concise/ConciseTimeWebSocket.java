@@ -227,7 +227,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 context.currentSampleId = sample.getSpecimenKey();
                 executeSampleMeasurement(session, context, param, sample);
             }
-
+            sendMessageSafe(session, "扫描成功");
             // 正常完成 - 等待数据保存后再清理
             if (context.running.get()) {
                 log.info("所有样品测量完成，等待数据保存...");
@@ -246,6 +246,13 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 配置样品池
+     * @param session
+     * @param context
+     * @param samples
+     * @param updateBy
+     */
     private void configureSamplePool(WebSocketSession session, TimeScanContext context,
                                      List<FTaskSpecimen> samples, String updateBy) {
         try {
@@ -276,7 +283,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 if (setResult.getSuccess()) {
                     fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber,
                             Integer.parseInt(firstSample.getSampleLocation()), updateBy);
-
                     JSONObject poolMsg = new JSONObject();
                     poolMsg.put("currentPoolNum", firstSample.getSampleLocation());
                     sendMessageSafe(session, poolMsg.toJSONString());
@@ -288,6 +294,13 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 执行单个样品测量
+     * @param session
+     * @param context
+     * @param param
+     * @param sample
+     */
     private void executeSampleMeasurement(WebSocketSession session, TimeScanContext context,
                                           FTimeSweepParamter param, FTaskSpecimen sample) {
         String sessionId = session.getId();
@@ -312,8 +325,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         Constants.startTime = LocalDateTime.now();
 
         context.scheduledTask = scheduler.scheduleAtFixedRate(() -> {
+            // 检查运行状态，如果已停止则立即退出
             if (!context.running.get() || Thread.currentThread().isInterrupted()) {
-                scheduler.shutdown();
+                log.info("检测到任务已停止，退出测量循环");
                 completionLatch.countDown();
                 return;
             }
@@ -326,8 +340,6 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
                 // 同步保存数据
                 saveMeasurementDataSync(session, context, sample.getSpecimenKey());
-
-                scheduler.shutdown();
                 completionLatch.countDown();
                 return;
             }
@@ -342,11 +354,24 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
         try {
             long timeout = (long) (totalTasks * interval * 1000) + 10000;
-            completionLatch.await(timeout, TimeUnit.MILLISECONDS);
+            if (!completionLatch.await(timeout, TimeUnit.MILLISECONDS)) {
+                log.warn("样品测量超时: {}", sample.getSpecimenKey());
+                // 超时情况下也要保存已收集的数据
+                if (!context.xData.isEmpty()) {
+                    Constants.endTime = LocalDateTime.now();
+                    saveMeasurementDataSync(session, context, sample.getSpecimenKey());
+                }
+            }
         } catch (InterruptedException e) {
             log.warn("等待测量完成时被中断: {}", sample.getSpecimenKey());
             Thread.currentThread().interrupt();
+            // 被中断时也要保存已收集的数据
+            if (!context.xData.isEmpty()) {
+                Constants.endTime = LocalDateTime.now();
+                saveMeasurementDataSync(session, context, sample.getSpecimenKey());
+            }
         } finally {
+            // 确保调度器被关闭
             if (!scheduler.isShutdown()) {
                 scheduler.shutdownNow();
             }
@@ -455,9 +480,21 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
      */
     private void saveMeasurementDataSync(WebSocketSession session, TimeScanContext context, String sampleId) {
         log.info("开始同步保存测量数据, 样品: {}, 数据点数: {}", sampleId, context.xData.size());
-        saveMeasurementData(session, context, sampleId);
-        context.markDataSaved();
-        log.info("同步保存测量数据完成, 样品: {}", sampleId);
+
+        try {
+            // 在实际保存前再次检查运行状态
+            if (!context.running.get()) {
+                log.info("任务已停止，但仍保存已收集的数据");
+            }
+
+            saveMeasurementData(session, context, sampleId);
+            context.markDataSaved();
+            log.info("同步保存测量数据完成, 样品: {}", sampleId);
+        } catch (Exception e) {
+            log.error("同步保存测量数据异常", e);
+            // 即使保存异常也要标记为已完成，避免死锁
+            context.markDataSaved();
+        }
     }
 
     /**
@@ -626,40 +663,52 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         log.info("处理时间扫描停止请求: {}", sessionId);
 
         TimeScanContext context = contexts.get(sessionId);
-        if (context == null) {
+        WebSocketSession session = sessions.get(sessionId);
+        if (context == null || session == null) {
             return;
         }
 
-        // 停止任务
-        context.stopAllTasks();
+        try {
+            // 先停止数据采集，但保持上下文可用
+            context.stopAllTasks();
 
-        // 发送设备停止命令
-        if (context.ip != null) {
-            try {
-                Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
-                devMessageUtil.stop(stopCmd, context.ip);
-            } catch (Exception e) {
-                log.error("发送设备停止命令异常", e);
+            // 发送设备停止命令
+            if (context.ip != null) {
+                try {
+                    Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
+                    devMessageUtil.stop(stopCmd, context.ip);
+                } catch (Exception e) {
+                    log.error("发送设备停止命令异常", e);
+                }
             }
-        }
 
-        // 保存已采集的数据（同步）
-        if (!context.xData.isEmpty() && context.currentSampleId != null) {
-            log.info("停止时保存已采集数据, 点数: {}", context.xData.size());
+            // 设置结束时间
             Constants.endTime = LocalDateTime.now();
-            saveMeasurementDataSync(sessions.get(sessionId), context, context.currentSampleId);
-        } else {
-            // 如果没有数据，也要标记保存完成
-            context.markDataSaved();
-        }
 
-        // 等待数据保存完成后再清理
-        log.info("等待数据保存完成...");
-        if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
-            log.info("数据保存完成，开始清理会话");
+            // 如果有数据需要保存，先同步保存数据
+            if (!context.xData.isEmpty() && context.currentSampleId != null) {
+                log.info("停止时保存已采集数据, 点数: {}", context.xData.size());
+                saveMeasurementDataSync(session, context, context.currentSampleId);
+            } else {
+                // 如果没有数据，直接标记保存完成
+                context.markDataSaved();
+            }
+
+            // 等待数据保存完成（最多30秒）
+            log.info("等待数据保存完成...");
+            boolean saved = context.waitForDataSave(30, TimeUnit.SECONDS);
+            if (saved) {
+                log.info("数据保存完成，开始清理会话");
+            } else {
+                log.warn("数据保存超时，强制清理");
+            }
+
+            // 最后进行资源清理（确保数据已保存）
             safeCleanup(sessionId, true);
-        } else {
-            log.warn("数据保存超时，强制清理");
+
+        } catch (Exception e) {
+            log.error("处理停止请求异常", e);
+            // 异常情况下也要确保清理
             safeCleanup(sessionId, true);
         }
     }
@@ -668,32 +717,85 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         String sessionId = session.getId();
         log.info("时间扫描连接关闭: {}", sessionId);
-        safeCleanup(sessionId, false);
+
+        // 连接关闭时也需要确保数据保存和资源释放
+        handleConnectionClosed(sessionId);
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         String sessionId = session.getId();
         log.error("时间扫描传输错误: {}", sessionId, exception);
-        safeCleanup(sessionId, false);
+
+        // 传输错误时也需要确保数据保存和资源释放
+        handleConnectionClosed(sessionId);
+    }
+
+
+
+    /**
+     * 处理连接关闭情况 - 统一处理数据保存和资源释放
+     */
+    private void handleConnectionClosed(String sessionId) {
+        TimeScanContext context = contexts.get(sessionId);
+        WebSocketSession session = sessions.get(sessionId);
+
+        if (context == null) {
+            // 如果没有上下文，直接清理
+            safeCleanup(sessionId, false);
+            return;
+        }
+
+        try {
+            // 先停止任务
+            context.stopAllTasks();
+
+            // 设置结束时间
+            Constants.endTime = LocalDateTime.now();
+
+            // 如果有数据需要保存，尝试保存
+            if (!context.xData.isEmpty() && context.currentSampleId != null) {
+                log.info("连接关闭时保存已采集数据, 点数: {}", context.xData.size());
+                saveMeasurementDataSync(session, context, context.currentSampleId);
+            } else {
+                context.markDataSaved();
+            }
+
+            // 等待数据保存完成（较短超时时间）
+            log.info("等待数据保存完成...");
+            boolean saved = context.waitForDataSave(10, TimeUnit.SECONDS);
+            if (saved) {
+                log.info("数据保存完成");
+            } else {
+                log.warn("数据保存超时");
+            }
+
+        } catch (Exception e) {
+            log.error("处理连接关闭异常", e);
+        } finally {
+            // 最终确保资源清理
+            safeCleanup(sessionId, true);
+        }
     }
 
     /**
      * 安全清理 - 确保数据保存完成后再关闭WebSocket
      */
     private void safeCleanup(String sessionId, boolean releaseDevice) {
+        log.info("开始安全清理会话: {}", sessionId);
+
         TimeScanContext context = contexts.get(sessionId);
         if (context != null) {
-            // 先停止任务
+            // 确保任务已停止
             context.stopAllTasks();
 
-            // 等待数据保存完成
+            // 如果数据还未保存，等待一小段时间
             if (!context.dataSaved.get()) {
-                log.info("等待数据保存完成...");
-                context.waitForDataSave(10, TimeUnit.SECONDS);
+                log.info("等待最终数据保存...");
+                context.waitForDataSave(5, TimeUnit.SECONDS);
             }
 
-            // 释放设备
+            // 释放设备资源
             if (releaseDevice && context.deviceSerialNumber != null) {
                 try {
                     deviceInfoService.releaseDevice(context.deviceSerialNumber);
@@ -703,10 +805,12 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 }
             }
 
+            // 从上下文中移除
             contexts.remove(sessionId);
+            log.info("时间扫描上下文已移除: {}", sessionId);
         }
 
-        // 最后关闭WebSocket
+        // 关闭WebSocket会话
         WebSocketSession session = sessions.remove(sessionId);
         if (session != null && session.isOpen()) {
             try {

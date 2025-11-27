@@ -704,12 +704,25 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
         } else {
             for (DataNameValue data : dto.getData()) {
+                LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                        .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
 
-                CalibrationTempPO po = new CalibrationTempPO();
-                po.setUpdateBy(dto.getUpdateBy());
-                po.setParamValue(data.getDataValue());
-                queryWrapper.eq(CalibrationTempPO::getParam, data.getDataKey());
-                tempDao.update(po, queryWrapper);
+                wrapper.eq(CalibrationTempPO::getParam, data.getDataKey());
+                CalibrationTempPO calibrationTempPO = tempDao.selectOne(wrapper);
+                if (calibrationTempPO == null) {
+                    CalibrationTempPO po = new CalibrationTempPO();
+                    po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+                    po.setCreateBy(dto.getUpdateBy());
+                    po.setCalibrationType(dto.getCalibrationType());
+                    po.setParam(data.getDataKey());
+                    po.setParamValue(data.getDataValue());
+                    tempDao.insert(po);
+                } else {
+                    calibrationTempPO.setUpdateBy(dto.getUpdateBy());
+                    calibrationTempPO.setParamValue(data.getDataValue());
+                    tempDao.update(calibrationTempPO, wrapper);
+                }
             }
         }
 

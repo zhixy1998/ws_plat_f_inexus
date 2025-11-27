@@ -150,6 +150,11 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
         });
     }
 
+    /**
+     * 初始化并启动单次时间测量
+     * @param session
+     * @param context
+     */
     private void initializeAndStart(WebSocketSession session, TimeOneMeasureContext context) {
         String sessionId = session.getId();
 
@@ -337,6 +342,8 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             } else {
                 context.markDataSaved();
             }
+
+            sendMessageSafe(session, "扫描成功");
 
             // 正常完成 - 等待数据保存后再清理
             if (context.running.get()) {

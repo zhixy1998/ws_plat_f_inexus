@@ -301,12 +301,15 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                 payload.put("result", "finish");
                                 sendMessageSafe(session, payload.toJSONString());
                             }else {
+                                sendMessageSafe(session, "扫描成功");
+
                                 // 全部完成后再告诉前端 finish
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendAndClose(session, payload.toJSONString());
                             }
                         } else {
+                            sendMessageSafe(session, "扫描成功");
                             // 全部完成后再告诉前端 finish
                             JSONObject payload = new JSONObject();
                             payload.put("result", "finish");
@@ -389,6 +392,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                             break;
                         }
                     }
+                    sendMessageSafe(session, "扫描成功");
                     // 全部完成后再告诉前端 finish
                     JSONObject payload = new JSONObject();
                     payload.put("result", "finish");
@@ -1061,11 +1065,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         log.info("测量时间 - 开始: " + Constants.startTime + ", 结束: " + Constants.endTime);
         log.info("仪器数据快照大小: " + Constants.instrumentData.size());
         log.info("原始计算数据快照大小: " + Constants.originalCalculationData.size());
+        log.info("阶梯校正状态: " + spectrumParameter.getLadderCorrection());
 
         // 返回快照 + x/y
         return new MeasurementResult(
                 x,
-                y,
+                y, // 这里的y已经是处理后的数据（校正或原始）
                 Constants.startTime,
                 Constants.endTime,
                 new ArrayList<>(Constants.instrumentData),
@@ -1095,34 +1100,41 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         log.info("处理批次数据，点数: " + xBatch.size() + ", 起始索引: " + startIndex + ", 台阶消除: " + ladderCorrection);
 
         List<Double> processedY = yBatch;
+        List<Double> yForStorage = yBatch; // 用于存储的Y值
 
         // 如果需要台阶校正，处理数据
         if (ladderCorrection) {
             log.info("执行台阶消除，数据点数: " + xBatch.size());
             processedY = processAndSaveData(task, xBatch, yBatch, luminosity, ladderCorrection, sampleId);
             log.info("台阶消除完成");
+            // 开启阶梯校正时，存储校正后的数据
+            yForStorage = processedY;
         } else {
             log.info("跳过台阶消除");
+            // 未开启阶梯校正时，存储原始数据
+            yForStorage = yBatch;
         }
 
-        // 存储原始Y值（用于后续存储到数据库）
+        // 关键修改：根据是否开启阶梯校正来决定存储的数据
         String key = session.getId() + "_" + sampleId + "_" + count;
         synchronized (originalYValues) {
             if (!originalYValues.containsKey(key)) {
-                originalYValues.put(key, new ArrayList<>(yBatch));
+                // 根据阶梯校正状态决定存储的数据
+                originalYValues.put(key, new ArrayList<>(yForStorage));
             } else {
                 List<Double> existingY = originalYValues.get(key);
                 // 确保不重复添加
-                if (existingY.size() < startIndex + yBatch.size()) {
+                if (existingY.size() < startIndex + yForStorage.size()) {
                     for (int i = existingY.size(); i < startIndex; i++) {
                         existingY.add(0.0); // 填充空缺
                     }
-                    existingY.addAll(yBatch);
+                    // 根据阶梯校正状态决定存储的数据
+                    existingY.addAll(yForStorage);
                 }
             }
         }
 
-        // 逐个推送数据点
+        // 逐个推送数据点 - 使用处理后的数据（校正或原始）
         for (int i = 0; i < xBatch.size(); i++) {
             if (!session.isOpen()) {
                 log.warn("会话已关闭，停止推送数据");
@@ -1320,6 +1332,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         List<Double> processedX = processedData.x;
         List<Double> processedY = processedData.y;
+        List<Double> yForStorage = processedY; // 用于存储的Y值
 
         log.info("波长序列修复完成，修复后点数: " + processedX.size());
 
@@ -1329,20 +1342,23 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             List<Double> correctedY = processAndSaveData(task, processedX, processedY,
                     luminosity, ladderCorrection, sampleId);
             processedY = correctedY;
+            yForStorage = correctedY; // 开启校正时存储校正后的数据
             log.info("台阶校正完成");
+        } else {
+            // 未开启校正时存储原始数据
+            yForStorage = processedY;
         }
 
-        // 存储原始Y值（用于后续存储到数据库）
+        // 关键修改：根据是否开启阶梯校正来决定存储的数据
         String key = session.getId() + "_" + sampleId + "_" + count;
-        originalYValues.put(key, new ArrayList<>(processedY));
+        originalYValues.put(key, new ArrayList<>(yForStorage));
 
-        // 一次性推送所有数据
+        // 一次性推送所有数据 - 使用处理后的数据（校正或原始）
         pushAllDataAtOnce(session, processedX, processedY, count, sampleId, luminosity);
 
         log.info("极快扫描模式数据处理完成");
         return new ProcessedData(processedX, processedY);
     }
-
     /**
      * 计算期望的数据点数
      */

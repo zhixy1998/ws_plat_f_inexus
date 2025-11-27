@@ -125,11 +125,13 @@ public class LiveDetectionWebSocket {
             if (measureThread == null || !measureThread.isAlive()) {
                 synchronized (this) {
                     if (measureThread == null || !measureThread.isAlive()) {
-                        this.startMeasureLoop(deviceSerialNumber);
+                        R<Boolean> r = this.startMeasureLoop(deviceSerialNumber);
+                        if (r.getSuccess()) {
+                            status = false;
+                        }
                     }
                 }
             }
-            status = false;
         }
 
         // 主动推送通知给前端
@@ -162,11 +164,11 @@ public class LiveDetectionWebSocket {
                 // 获取 socket
                 // 循环发送
                 int error = 0;
-
+                log.info("线程开始, 共享变量值{}",DetectionConstants.isDeviceIdle);
                 while (Constants.devConnectInfo.get(deviceSerialNumber) != null && Constants.devConnectInfo.get(deviceSerialNumber)) {
 
                     serialNumber = deviceSerialNumber;
-
+                    log.info("循环进入, 共享变量值{}",DetectionConstants.isDeviceIdle);
                     while (!DetectionConstants.isDeviceIdle) {
                         Thread.sleep(1000);
                         JSONObject ignore = new JSONObject();
@@ -221,6 +223,7 @@ public class LiveDetectionWebSocket {
 
                         int sum = 1;
                         boolean isConnect = true;
+                        log.info("共享变量值{}",DetectionConstants.isDeviceIdle);
                         while (sum <= LiveDetectionCmdEnum.getLength()) {
                             if (Constants.devConnectInfo.get(deviceSerialNumber) == null || !Constants.devConnectInfo.get(deviceSerialNumber)) {
                                 isConnect = false;
@@ -416,18 +419,18 @@ public class LiveDetectionWebSocket {
                             try {
                                 Thread.sleep(1000);
                                 int timeout = 0;
-                                while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
-
-                                    if (timeout == 0) {
-                                        DetectionConstants.isDeviceIdle = true;
-                                    }
-                                    Thread.sleep(1000);
-                                    timeout++;
-                                    if (!DetectionConstants.isDeviceIdle) {
-                                        log.info("仪器被重新占用，等待下次判断");
-                                        return;
-                                    }
-                                }
+//                                while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
+//
+//                                    if (timeout == 0) {
+//                                        DetectionConstants.isDeviceIdle = true;
+//                                    }
+//                                    Thread.sleep(1000);
+//                                    timeout++;
+//                                    if (!DetectionConstants.isDeviceIdle) {
+//                                        log.info("仪器被重新占用，等待下次判断");
+//                                        return;
+//                                    }
+//                                }
 
 
                                 DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
