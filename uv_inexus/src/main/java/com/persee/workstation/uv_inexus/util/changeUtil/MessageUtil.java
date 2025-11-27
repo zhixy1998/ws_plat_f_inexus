@@ -16,9 +16,11 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.net.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -34,11 +36,14 @@ public class MessageUtil {
     Integer localPort;
 
     public static DatagramSocket socket;
+    private static String localIp="";
 
 
     public R<DatagramSocket> getSocket() {
-        String localIp = getEthernetIPv4();
-        if (localIp == null) {
+        if (!StringUtils.hasText(localIp)){
+            localIp = getEthernetIPv4();
+        }
+        if (!StringUtils.hasText(localIp)) {
             System.out.println("获取当前ip有问题");
             return R.fail("请检查网线连接！");
         }
