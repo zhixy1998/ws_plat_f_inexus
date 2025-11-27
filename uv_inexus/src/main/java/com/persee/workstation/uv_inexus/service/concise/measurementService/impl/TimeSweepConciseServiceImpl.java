@@ -187,7 +187,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             double waveLength = Double.parseDouble(parameter.getWaveLength());
             if (waveLength < 190 || waveLength > 900) {
                 //波长值 waveLength 必须在190-900范围内
-                return R.fail(YamlMessageSource.getMessageStatic("00105004",waveLength));
+                return R.fail(YamlMessageSource.getMessageStatic("00105004", waveLength));
             }
             // 校验小数点后最多1位
             String[] parts = parameter.getWaveLength().split("\\.");
@@ -462,14 +462,14 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      * @return
      */
     @Override
-    public Result use (TimeUseMethodDto paramDto) {
+    public Result use(TimeUseMethodDto paramDto) {
         double response = Double.parseDouble(paramDto.getParameter().getResponseTime());
         double interval = Double.parseDouble(paramDto.getParameter().getIntervalTime());
-        if (response> interval){
-            return Result.fail("响应时间不能大于时间间隔");
+        if (response >= interval) {
+            return Result.fail("响应时间必须小于时间间隔");
         }
         Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-        if (result.getCode()!=200) {
+        if (result.getCode() != 200) {
             return result;
         }
         Map<String, Object> map = new HashMap<>();
@@ -916,7 +916,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
         if (!duplicates.isEmpty()) {
             //"样品编号重复: " + String.join(",", duplicates)
-            return Result.fail(YamlMessageSource.getMessageStatic("0010501B",String.join(",", duplicates)));
+            return Result.fail(YamlMessageSource.getMessageStatic("0010501B", String.join(",", duplicates)));
         }
         if (taskSpecimen == null) {
             taskSpecimen = new ArrayList<>();
@@ -1444,7 +1444,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         for (String xStr : paramDto.getGaugePoints()) {
             int normX = normalizeNumberString(xStr);  // 获取传入的标记点整数部分
             if (!rawXSet.contains(normX)) {
-                return Result.fail(YamlMessageSource.getMessageStatic("00104017",xStr) );
+                return Result.fail(YamlMessageSource.getMessageStatic("00104017", xStr));
             }
         }
 
@@ -3085,7 +3085,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
             }
             //"文件生成失败：" + e.getMessage()
-            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
+            return R.fail(YamlMessageSource.getMessageStatic("00302006", e.getMessage()));
         } finally {
             // log.info("===== 导出流程结束 =====");
         }
