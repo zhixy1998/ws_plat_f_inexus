@@ -39,6 +39,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.*;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricReportDataVO;
@@ -54,6 +55,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReport
 import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReportParametersVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReport;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -122,6 +124,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
     @Autowired
     DeviceInfoService deviceInfoService;
+
+    @Autowired
+    SystemBusinessParamService systemBusinessParamService;
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -867,8 +872,18 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         param.deleteCharAt(param.length() - 1);
                         vo.setCurveParams(param.toString());
                     }
-                    vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
-                    vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
+
+                    SystemBusinessParamVO systemBusinessParamVO = systemBusinessParamService.queryBusinessParam();
+                    String curveConf = systemBusinessParamVO.getStandardCurveConf();
+                    String[] split = curveConf.split(",");
+                    for (int i = 0; i < split.length; i++) {
+                        if (split[i].equals("1")) {
+                            vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
+                        }
+                        if (split[i].equals("2")) {
+                            vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
+                        }
+                    }
                     vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());
                     vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree() == null ? "" : fittingReceiveInfo.getDegree()));
 

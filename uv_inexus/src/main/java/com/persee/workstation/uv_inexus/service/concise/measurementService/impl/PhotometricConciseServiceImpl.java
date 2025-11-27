@@ -20,7 +20,6 @@ import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.persee.workstation.uv_inexus.config.logging.LogPointContextHolder;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
@@ -182,7 +181,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
             try {
                 double waveLength = Double.parseDouble(waveStr);
-                if (waveLength <= 190 || waveLength >= 900) {
+                if (waveLength <= 190 || waveLength >= 1100) {
                     //"波长值" + waveStr + "必须在190-900范围内"
                     return R.fail(YamlMessageSource.getMessageStatic("00105004",waveStr));
                 }
@@ -195,6 +194,19 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             } catch (NumberFormatException e) {
                 //"波长值" + waveStr + "必须为有效的数字"
                 return R.fail(YamlMessageSource.getMessageStatic("00105006",waveStr));
+            }
+        }
+
+        if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
+            double v = Double.parseDouble(parameter.getChangeLampWaveLength());
+            if (v < 330 || v > 390) {
+                //"换灯波长要在（330-390）之间，当前值：" + v
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A",v));
+            }
+
+            if (parameter.getWaveLength().contains(parameter.getChangeLampWaveLength())) {
+                //换灯波长不能和测量波长一样。
+                return R.fail(YamlMessageSource.getMessageStatic("0010202B"));
             }
         }
 
@@ -905,6 +917,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FMeasureTask::getUserId, id)
                 .eq(FMeasureTask::getMeasureType, measureType)
+                .eq(FMeasureTask::getIsDelete, createType)
                 .orderByDesc(FMeasureTask::getCreateTime);
 
         List<FMeasureTask> taskList = fMeasureTaskService.list(wrapper);
@@ -1302,6 +1315,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
         });
 
+        Boolean isAutoChangePool = false;
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+        }
+
         if (taskSpecimen.isEmpty()) {
             FMeasureSample newSample = new FMeasureSample();
 
@@ -1341,7 +1361,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (hasNoTested) {
                 return R.ok(true);
             }
-
             FMeasureSample newSample = new FMeasureSample();
 
             sampleAutoNum = sampleAutoNum + 1;
@@ -1354,6 +1373,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             newSample.setSampleNumber("default-"+ number);
             newSample.setSampleName("默认样品" + number);
 
+            sampleNumList.add("default-" + number);
+
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            int all = usefulLocation.size();
+
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
             if (!dynamicHeads.isEmpty()) {
                 newSample.setHeads(JSON.toJSONString(dynamicHeads));
@@ -1365,6 +1389,27 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
 
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+
+            if (isAutoChangePool) {
+                for (int i = 1; i < all; i++) {
+                    newSample.setId(null);
+                    while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                        sampleAutoNum += 1;
+                    }
+
+                    int newNum = sampleAutoNum;
+                    sampleNumList.add("default-" + newNum);
+                    newSample.setSampleNumber("default-" + newNum);
+                    newSample.setSampleName("默认样品" + newNum);
+
+                    save = fMeasureSampleService.save(newSample);
+                    if (!save) {
+                        //保存失败
+                        return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                    }
+                    taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+                }
+            }
         }
 
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
@@ -1374,14 +1419,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             //更新失败
             return R.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
-        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
-        if (poolInfo.getSuccess()) {
-            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
-            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
-            if (isAutoChangePool) {
-                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
-            }
+
+        if (isAutoChangePool) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
         }
         return R.ok(true);
     }
@@ -1911,7 +1952,34 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             } else {
                 if (data != null) {
                     if (StringUtils.hasText(data.getOriginalCalculationData())){
-                        Map<String, Map<String, String>> childrenList = new TreeMap<>();
+                        Map<String, Map<String, String>> childrenList = new TreeMap<>((key1, key2) -> {
+                            // 分割键，格式如 "default-1-1"
+                            String[] parts1 = key1.split("-");
+                            String[] parts2 = key2.split("-");
+
+                            // 按照各部分进行比较
+                            for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+
+                                // 如果都是数字，则按数值比较
+                                if (isNumeric(parts1[i]) && isNumeric(parts2[i])) {
+                                    int num1 = Integer.parseInt(parts1[i]);
+                                    int num2 = Integer.parseInt(parts2[i]);
+                                    int compare = Integer.compare(num1, num2);
+                                    if (compare != 0) {
+                                        return compare;
+                                    }
+                                } else {
+                                    // 否则按字符串比较
+                                    int compare = parts1[i].compareTo(parts2[i]);
+                                    if (compare != 0) {
+                                        return compare;
+                                    }
+                                }
+                            }
+
+                            // 如果前缀都相同，长度短的排在前面
+                            return Integer.compare(parts1.length, parts2.length);
+                        });
 
                         List<Map<String, String>> middle = new ArrayList<>();
                         List<FPhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), FPhotometricOriginDataInfo.class);
@@ -2005,6 +2073,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         return Result.ok(ans);
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        return str.matches("-?\\d+");
     }
 
     @Override
@@ -2546,32 +2621,49 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
-        for (String s : waveLength) {
+        try {
             Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{photometricParameter.getLuminosity()});
             devMessageUtil.wavelengthLocate(command, ip);
+            double maxValue = 0.0;
+            try {
+                maxValue = waveLength.stream()
+                        .mapToDouble(Double::parseDouble)
+                        .max()
+                        .orElse(Double.parseDouble(waveLength.get(0)));
+            } catch (Exception e) {
+                maxValue = Double.parseDouble(waveLength.get(0));
+            }
 
-            Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
-
-            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
+            Double aDouble = formulaUtil.calculateStep(maxValue, deviceSerialNumber);
+            command = new Command(SetParamEnum.SetStartWl.getComId(), new Object[]{aDouble});
             devMessageUtil.wavelengthLocate(command, ip);
 
-            command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-            R<ChangeParam> zero = null;
-            try {
-                zero = devMessageUtil.zero(command, ip);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            for (String s : waveLength) {
+                Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
+                command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
+                devMessageUtil.wavelengthLocate(command, ip);
+
+                command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+                R<ChangeParam> zero = null;
+                try {
+                    zero = devMessageUtil.zero(command, ip);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+                if (!zero.getSuccess()) {
+                    return Result.fail(zero.getMessage());
+                }
+                ChangeParam changeParam = zero.getData();
+                changeParam.setWl(s);
+                list.add(changeParam);
+                wave = changeParam.getWl();
+                if (StringUtils.hasText(changeParam.getWl())) {
+                    DetectionConstants.zeroResult.put(Double.valueOf(changeParam.getWl()), changeParam);
+                }
             }
-            if (!zero.getSuccess()) {
-                return Result.fail(zero.getMessage());
-            }
-            ChangeParam changeParam = zero.getData();
-            changeParam.setWl(s);
-            list.add(changeParam);
-            wave = changeParam.getWl();
-            if (StringUtils.hasText(changeParam.getWl())) {
-                DetectionConstants.zeroResult.put(Double.valueOf(changeParam.getWl()), changeParam);
-            }
+        } finally {
+            // 最终释放设备状态
+            deviceInfoService.releaseDevice(deviceSerialNumber); // 假设存在此接口
         }
         task.setZeroParam(JSON.toJSONString(list));
 

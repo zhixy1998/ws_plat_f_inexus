@@ -200,7 +200,8 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("CheckDLamp")
                     || cmdId.equalsIgnoreCase("CheckWl")
                     || cmdId.equalsIgnoreCase("BaseLineFast")
-                    || cmdId.equalsIgnoreCase("Dark");
+                    || cmdId.equalsIgnoreCase("Dark")
+                    || cmdId.equalsIgnoreCase("SetWl");
 
             int timeoutMs = isSlowCommand ? 18000 : 4500;
             currentSocket.setSoTimeout(timeoutMs);
@@ -244,7 +245,10 @@ public class MessageUtil {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
                 }
             }
-
+            if (responses.size() == 1) {
+                responses.clear();
+                responses = singleSendAndReceive(currentSocket, sendIp, cmdId, sendBytes);
+            }
 
             return responses;
         } catch (Exception e) {

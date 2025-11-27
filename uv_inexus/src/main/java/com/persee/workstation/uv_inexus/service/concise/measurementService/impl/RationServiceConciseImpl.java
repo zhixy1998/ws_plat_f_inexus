@@ -479,12 +479,25 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
             try {
                 double waveVal = Double.parseDouble(waveStr);
-                if (waveVal < 190 || waveVal > 900) {
+                if (waveVal < 190 || waveVal > 1100) {
                     //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
                     return R.fail(YamlMessageSource.getMessageStatic("00102006",(i + 1),waveVal));
                 }
             } catch (NumberFormatException e) {
                 return R.fail(YamlMessageSource.getMessageStatic("00102007",(i + 1) ,waveStr));
+            }
+        }
+
+        if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
+            double v = Double.parseDouble(parameter.getChangeLampWaveLength());
+            if (v < 330 || v > 390) {
+                //"换灯波长要在（330-390）之间，当前值：" + v
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A",v));
+            }
+
+            if (waveLengths.contains(parameter.getChangeLampWaveLength())) {
+                //换灯波长不能和测量波长一样。
+                return R.fail(YamlMessageSource.getMessageStatic("0010202B"));
             }
         }
 
@@ -1147,6 +1160,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(FMeasureTask::getUserId, id)
                 .eq(FMeasureTask::getMeasureType, measureType)
+                .eq(FMeasureTask::getIsDelete, createType)
                 .orderByDesc(FMeasureTask::getCreateTime);
         List<FMeasureTask> taskList = fMeasureTaskService.list(wrapper);
         if (taskList != null && !taskList.isEmpty()){
@@ -1766,6 +1780,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());
+        param.setCoefficientModeName(RationCurveParamEnums.getName(param.getCoefficientMode()));
         return Result.ok(param);
     }
 
@@ -2159,6 +2174,14 @@ public class RationServiceConciseImpl implements RationConciseService {
                 dynamicHeads.add(head);
             }
         });
+        boolean isAutoChangePool = false;
+
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+
+        }
 
         if (taskSpecimen.isEmpty()) {
             FMeasureSample newSample = new FMeasureSample();
@@ -2189,6 +2212,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         } else {
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
+
+            double cou = 0;
+            double last = 0;
+
             for (FTaskSpecimen specimen : taskSpecimen) {
                 if (!specimen.getSampleKind().equals(sampleKind) || specimen.getDeleteType().equals(deleteType)) {
                     continue;
@@ -2200,6 +2227,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())){
                     sampleNumList.add(measureSample.getSampleNumber());
+                    if (StringUtils.hasText(measureSample.getNormalConcentration())) {
+                        cou =  Double.parseDouble(measureSample.getNormalConcentration()) - last;
+                        last = Double.parseDouble(measureSample.getNormalConcentration());
+                    }
                 }
             }
             if (hasNoTested) {
@@ -2207,16 +2238,22 @@ public class RationServiceConciseImpl implements RationConciseService {
             }
 
             FMeasureSample newSample = new FMeasureSample();
+            if (cou == 0) {
+                cou = 1;
+            }
 
             sampleAutoNum = 1;
             while (sampleNumList.contains("default-"+ sampleAutoNum)) {
                 sampleAutoNum += 1;
             }
 
-
             int num = sampleAutoNum;
+
+            sampleNumList.add("default-" + num);
             newSample.setSampleNumber("default-" + num);
             newSample.setSampleName("默认样品" + num);
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            int all = usefulLocation.size();
 
             if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -2233,8 +2270,36 @@ public class RationServiceConciseImpl implements RationConciseService {
                 //保存失败
                 return R.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
-
             taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
+
+
+            if (isAutoChangePool) {
+                for (int i = 1; i < all; i++) {
+                    newSample.setId(null);
+                    sampleAutoNum ++;
+
+                    while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                        sampleAutoNum += 1;
+                    }
+
+                    int newNum = sampleAutoNum;
+                    sampleNumList.add("default-" + newNum);
+                    newSample.setSampleNumber("default-" + newNum);
+                    newSample.setSampleName("默认样品" + newNum);
+
+                    if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        normalConcentration = String.valueOf(Double.parseDouble(normalConcentration) + cou);
+
+                        newSample.setNormalConcentration(normalConcentration);
+                    }
+                    save = fMeasureSampleService.save(newSample);
+                    if (!save) {
+                        //保存失败
+                        return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                    }
+                    taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
+                }
+            }
         }
         task.setSampleAutoNum(sampleAutoNum);
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
@@ -2243,15 +2308,12 @@ public class RationServiceConciseImpl implements RationConciseService {
             //更新失败
             return R.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
-        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
-        if (poolInfo.getSuccess()) {
-            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
-            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
-            if (isAutoChangePool) {
-                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
-            }
+
+        if (isAutoChangePool) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
         }
+
         return R.ok(true);
     }
 
@@ -2907,7 +2969,34 @@ public class RationServiceConciseImpl implements RationConciseService {
                 map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
                 map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
                 if (StringUtils.hasText(data.getOriginalCalculationData())) {
-                    Map<String, Map<String, String>> childrenList = new TreeMap<>();
+                    Map<String, Map<String, String>> childrenList = new TreeMap<>((key1, key2) -> {
+                        // 分割键，格式如 "default-1-1"
+                        String[] parts1 = key1.split("-");
+                        String[] parts2 = key2.split("-");
+
+                        // 按照各部分进行比较
+                        for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+
+                            // 如果都是数字，则按数值比较
+                            if (isNumeric(parts1[i]) && isNumeric(parts2[i])) {
+                                int num1 = Integer.parseInt(parts1[i]);
+                                int num2 = Integer.parseInt(parts2[i]);
+                                int compare = Integer.compare(num1, num2);
+                                if (compare != 0) {
+                                    return compare;
+                                }
+                            } else {
+                                // 否则按字符串比较
+                                int compare = parts1[i].compareTo(parts2[i]);
+                                if (compare != 0) {
+                                    return compare;
+                                }
+                            }
+                        }
+
+                        // 如果前缀都相同，长度短的排在前面
+                        return Integer.compare(parts1.length, parts2.length);
+                    });
                     Map<String, Map<String, String>> resultChildrenList = new TreeMap<>();
                     List<Map<String, String>> middle = new ArrayList<>();
                     List<FRationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), FRationWavelengthDataInfo.class);
@@ -2995,6 +3084,13 @@ public class RationServiceConciseImpl implements RationConciseService {
             map.putAll(jsonObject);
         }
         return map;
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        return str.matches("-?\\d+");
     }
 
 

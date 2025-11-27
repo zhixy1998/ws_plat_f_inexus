@@ -222,6 +222,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
 
             boolean repeat = parameter.getRepeatMode().equals("单池重复");
+            dealSample.setSampleLocation(null);
 
             R<FRationDataVO> r;
             if (repeat) {
@@ -522,11 +523,17 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("sampleId", sample.getId());
                 jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
-                jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getAbsValue()));
+
+                String s = DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getAbsValue());
+                s = DataCountUtil.addZero(Double.valueOf(s), digit);
+
+                jsonObject.put("value", s);
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
+                String tP = DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue());
+                tP = DataCountUtil.addZero(Double.valueOf(tP), digit);
                 jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
-                jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue()));
+                jsonObject.put("value", tP);
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
             }
             list.clear();
@@ -647,12 +654,20 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
                     jsonObject.put("sampleId", sample.getId());
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.abs.getCode());
                     jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.abs.getCode() + "-" + i);
-                    jsonObject.put("value", originDataInfo.getAbsValue());
+                    String s = DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getAbsValue());
+                    s = DataCountUtil.addZero(Double.parseDouble(s), digit);
+
+
+                    jsonObject.put("value", s);
                     session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
                     jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
                     jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.tPercent.getCode() + "-" + i);
-                    jsonObject.put("value", originDataInfo.getTPercentValue());
+
+                    String tP = DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue());
+                    tP = DataCountUtil.addZero(Double.parseDouble(tP), digit);
+
+                    jsonObject.put("value", tP);
                     session.sendMessage(new TextMessage(jsonObject.toJSONString()));
                 }
 
