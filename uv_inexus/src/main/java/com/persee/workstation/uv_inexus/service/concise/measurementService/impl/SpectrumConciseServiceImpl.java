@@ -565,17 +565,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (paramDto.getParameter().getScanSpeed().equals("3")&&update1){
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
-        // 下发参数
-        Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-        if (result.getCode()!=200) {
-            return result;
-        }
         double start = Double.parseDouble(paramDto.getParameter().getStartWaveLength());
         double end = Double.parseDouble(paramDto.getParameter().getEndWaveLength());
         // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
         if (start <= end) {
             //起始波长不能小于等于停止波长
             return Result.fail(YamlMessageSource.getMessageStatic("00104015"));
+        }
+        if (paramDto.getParameter().getScanSpeed().equals("3")&&(start>800||start<380)){
+            return Result.fail("极快扫描速度时,波长区间应在800.0~380.0");
+        }
+        // 下发参数
+        Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
+        if (result.getCode()!=200) {
+            return result;
         }
         Map<String, Object> map = new HashMap<>();
         if (paramDto.getMethodId2() != null) {
