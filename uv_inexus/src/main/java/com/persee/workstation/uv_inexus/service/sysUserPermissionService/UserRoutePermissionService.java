@@ -16,7 +16,9 @@ import java.util.List;
 
 import com.persee.workstation.uv_inexus.model.Result;
 
+import javax.servlet.http.HttpServletRequest;
+
 public interface UserRoutePermissionService {
     // 根据用户ID查询有权访问的路由结构
-    Result<List<String>> getUserRoutePermissions(String userId);
+    Result<List<String>> getUserRoutePermissions(String userId, HttpServletRequest request);
 }

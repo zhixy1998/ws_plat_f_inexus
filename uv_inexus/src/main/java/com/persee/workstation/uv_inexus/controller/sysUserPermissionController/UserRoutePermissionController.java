@@ -27,6 +27,8 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 
+import javax.servlet.http.HttpServletRequest;
+
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/route-permission")
 @Api(tags = "用户路由权限接口")
@@ -39,8 +41,8 @@ public class UserRoutePermissionController {
     @ApiOperation("根据用户ID查询有权访问的路由path列表")
     public Result<List<String>> getUserRoutePermissions(
             @ApiParam(value = "用户ID", required = true)
-            @RequestParam String userId) {
+            @RequestParam String userId, HttpServletRequest request) {
         // 返回值改为 List<String>
-        return userRoutePermissionService.getUserRoutePermissions(userId);
+        return userRoutePermissionService.getUserRoutePermissions(userId, request);
     }
 }

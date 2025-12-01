@@ -41,7 +41,9 @@ device:
 sys-manage-default:
   defaultId: "00000000"
   userId: "11111111"
-
+# 是否允许远程访问 (true/false)
+remote-access:
+  enabled: false
 python-code:
 #  baseUrl: http://192.168.61.82:8002/
 #  baseUrl: http://192.168.61.48:8000/
