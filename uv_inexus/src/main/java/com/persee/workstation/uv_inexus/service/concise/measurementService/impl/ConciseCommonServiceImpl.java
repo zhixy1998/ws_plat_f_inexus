@@ -64,6 +64,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.PreDestroy;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -2079,5 +2080,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         } else {
             return Result.fail(r.getMessage());
         }
+    }
+
+    @PreDestroy //
+    public void cleanDeletedData() {
+        // 清理30天前被逻辑删除的数据
+        LocalDateTime threshold = LocalDateTime.now().minusDays(2);
+        fMeasureTaskService.remove(new QueryWrapper<FMeasureTask>()
+                .eq("is_delete", "1")
+                .lt("end_save_time", threshold));
     }
 }
