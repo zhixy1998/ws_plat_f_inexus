@@ -105,6 +105,9 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
     @Autowired
     private FormulaUtil formulaUtil;
+    // 注入PythonPathConstant
+    @Autowired
+    private PythonPathConstant pythonPathConstant;
 
     // 用于存储原始Y值（未经格式化）
     private Map<String, List<Double>> originalYValues = new ConcurrentHashMap<>();
@@ -2071,7 +2074,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // 调用 Python API
-            ResponseEntity<Map> response = restTemplate.postForEntity(PythonPathConstant.REMOVE_STEP_OR_SPIKES, request, Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(pythonPathConstant.getRemoveStepOrSpikes(), request, Map.class);
 
             // 从响应中获取处理后的 y 值
             List<Double> processedY = (List<Double>) response.getBody().get("smoothed_data");
@@ -2115,6 +2118,13 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             headers.setContentType(MediaType.APPLICATION_JSON);
             Map<String, Object> body = new HashMap<>();
 
+            String peakUrl = pythonPathConstant.getPeakSearching();
+            String valleyUrl = pythonPathConstant.getValleySearching();
+
+            // 添加日志输出（调试用）
+            log.info("调用寻峰接口: " + peakUrl);
+            log.info("调用寻谷接口: " + valleyUrl);
+
             // 关键修改：直接使用传入的y值（处理后的）进行峰谷分析
             // 这样峰谷分析基于的数据与前端显示的数据一致
             body.put("x_data", x);
@@ -2124,8 +2134,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             body.put("distance", confVO.getPeakInterval());
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-            Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+            Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+            Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
 
             List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
             List<String> yDataFeng = (List<String>) resultMap.get("peak_y");

@@ -20,7 +20,6 @@ import org.springframework.util.StringUtils;
 
 import java.net.*;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -201,6 +200,7 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("CheckWl")
                     || cmdId.equalsIgnoreCase("BaseLineFast")
                     || cmdId.equalsIgnoreCase("Dark")
+                    || cmdId.equalsIgnoreCase("Zero")
                     || cmdId.equalsIgnoreCase("SetWl");
 
             int timeoutMs = isSlowCommand ? 18000 : 4500;
@@ -245,7 +245,7 @@ public class MessageUtil {
                     if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
                 }
             }
-            if (responses.size() == 1) {
+            if (responses.size() == 1&&!cmdId.equals("Stop")) {
                 responses.clear();
                 responses = singleSendAndReceive(currentSocket, sendIp, cmdId, sendBytes);
             }

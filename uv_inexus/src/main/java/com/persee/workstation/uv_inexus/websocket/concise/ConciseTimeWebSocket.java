@@ -55,6 +55,10 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
+    // 添加连接状态管理
+    private static final Map<String, AtomicBoolean> connectionClosingMap = new ConcurrentHashMap<>();
+    private static final Map<String, AtomicBoolean> stopProcessingMap = new ConcurrentHashMap<>();
+
     @Autowired private TimeSweepConciseService timeSweepConciseService;
     @Autowired private FMeasureTaskService tMeasureTaskService;
     @Autowired private FMeasureMethodService tMeasureMethodService;
@@ -68,13 +72,15 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     @Autowired private DevMessageUtil devMessageUtil;
     @Autowired private RestTemplate restTemplate;
     @Autowired private FormulaUtil formulaUtil;
-
+    @Autowired private PythonPathConstant pythonPathConstant;
     /**
      * 时间扫描上下文
      */
     private static class TimeScanContext {
         final AtomicBoolean running = new AtomicBoolean(true);
         final AtomicBoolean dataSaved = new AtomicBoolean(false);
+        final AtomicBoolean cleanupInProgress = new AtomicBoolean(false);
+        final AtomicBoolean connectionClosed = new AtomicBoolean(false);
         final CountDownLatch saveLatch = new CountDownLatch(1);
 
         ScheduledExecutorService scheduler;
@@ -123,6 +129,15 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             dataSaved.set(true);
             saveLatch.countDown();
         }
+
+        // 标记连接已关闭
+        void markConnectionClosed() {
+            connectionClosed.set(true);
+        }
+
+        boolean isConnectionClosed() {
+            return connectionClosed.get();
+        }
     }
 
     @Override
@@ -131,6 +146,8 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         log.info("时间扫描连接建立: {}", sessionId);
 
         sessions.put(sessionId, session);
+        connectionClosingMap.put(sessionId, new AtomicBoolean(false));
+        stopProcessingMap.put(sessionId, new AtomicBoolean(false));
 
         TimeScanContext context = new TimeScanContext();
         contexts.put(sessionId, context);
@@ -144,6 +161,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             }
         });
     }
+
 
     private void initializeAndStart(WebSocketSession session, TimeScanContext context) {
         String sessionId = session.getId();
@@ -227,9 +245,11 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 context.currentSampleId = sample.getSpecimenKey();
                 executeSampleMeasurement(session, context, param, sample);
             }
-            sendMessageSafe(session, "扫描成功");
-            // 正常完成 - 等待数据保存后再清理
+
+            // 只有在正常完成（没有被停止）的情况下才发送"扫描成功"
             if (context.running.get()) {
+                sendMessageSafe(session, "扫描成功");
+                // 正常完成 - 等待数据保存后再清理
                 log.info("所有样品测量完成，等待数据保存...");
                 if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
                     log.info("数据保存完成，开始清理会话");
@@ -303,14 +323,18 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
      */
     private void executeSampleMeasurement(WebSocketSession session, TimeScanContext context,
                                           FTimeSweepParamter param, FTaskSpecimen sample) {
-        String sessionId = session.getId();
-
         context.clearData();
 
-        double interval = Double.parseDouble(param.getIntervalTime());
+        // 使用BigDecimal避免浮点数精度问题
+        BigDecimal interval = new BigDecimal(param.getIntervalTime());
         int totalTasks = Integer.parseInt(param.getTotalNumber());
 
-        log.info("开始样品测量: {}, 间隔: {}s, 总数: {}", sample.getSpecimenKey(), interval, totalTasks);
+        // 计算总时长并增加10秒缓冲时间
+        BigDecimal totalDuration = interval.multiply(BigDecimal.valueOf(totalTasks));
+        long timeoutMs = totalDuration.multiply(BigDecimal.valueOf(1000)).longValue() + 10000; // 增加10秒缓冲
+
+        log.info("开始样品测量: {}, 间隔: {}s, 总数: {}, 总时长+缓冲: {}ms",
+                sample.getSpecimenKey(), interval, totalTasks, timeoutMs);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         context.scheduler = scheduler;
@@ -338,7 +362,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 log.info("样品测量完成: {}, 总点数: {}", sample.getSpecimenKey(), totalTasks);
                 Constants.endTime = LocalDateTime.now();
 
-                // 同步保存数据
+                // 同步保存数据 - 确保在关闭线程前保存
                 saveMeasurementDataSync(session, context, sample.getSpecimenKey());
                 completionLatch.countDown();
                 return;
@@ -350,17 +374,20 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 log.error("单次测量异常, 索引: {}", currentIndex, e);
             }
 
-        }, 0, (long) (interval * 1000), TimeUnit.MILLISECONDS);
+        }, 0, interval.multiply(BigDecimal.valueOf(1000)).longValue(), TimeUnit.MILLISECONDS);
 
         try {
-            long timeout = (long) (totalTasks * interval * 1000) + 10000;
-            if (!completionLatch.await(timeout, TimeUnit.MILLISECONDS)) {
-                log.warn("样品测量超时: {}", sample.getSpecimenKey());
-                // 超时情况下也要保存已收集的数据
+            // 使用计算好的超时时间（包含10秒缓冲）
+            if (!completionLatch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                log.warn("样品测量超时: {}, 已采集点数: {}", sample.getSpecimenKey(), context.xData.size());
+                // 超时情况下先保存数据，再停止任务
                 if (!context.xData.isEmpty()) {
                     Constants.endTime = LocalDateTime.now();
+                    log.info("超时情况下保存已收集的数据，点数: {}", context.xData.size());
                     saveMeasurementDataSync(session, context, sample.getSpecimenKey());
                 }
+                // 标记任务停止
+                context.running.set(false);
             }
         } catch (InterruptedException e) {
             log.warn("等待测量完成时被中断: {}", sample.getSpecimenKey());
@@ -370,8 +397,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 Constants.endTime = LocalDateTime.now();
                 saveMeasurementDataSync(session, context, sample.getSpecimenKey());
             }
+            context.running.set(false);
         } finally {
-            // 确保调度器被关闭
+            // 确保调度器被关闭 - 在数据保存完成后关闭
             if (!scheduler.isShutdown()) {
                 scheduler.shutdownNow();
             }
@@ -380,12 +408,14 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
 
     private void executeSingleMeasurement(WebSocketSession session, TimeScanContext context,
                                           FTimeSweepParamter param, ChangeParam baselineData,
-                                          int currentIndex, double interval) {
+                                          int currentIndex, BigDecimal interval) {
         if (!context.running.get()) {
             return;
         }
 
-        BigDecimal xValue = BigDecimal.valueOf(currentIndex * interval).setScale(1, RoundingMode.DOWN);
+        // 使用BigDecimal精确计算时间点，避免浮点数精度问题
+        BigDecimal xValue = interval.multiply(BigDecimal.valueOf(currentIndex))
+                .setScale(1, RoundingMode.HALF_UP);
 
         Command command = new Command(SetParamEnum.Measure.getComId(), new Object[]{});
         ChangeParam changeParam = devMessageUtil.timeSweepGetMeasureData(command, context.ip);
@@ -523,10 +553,15 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             analysisBody.put("distance", confVO.getPeakInterval());
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(analysisBody, headers);
+            String peakUrl = pythonPathConstant.getPeakSearching();
+            String valleyUrl = pythonPathConstant.getValleySearching();
 
+            // 添加日志输出（调试用）
+            log.info("调用寻峰接口: " + peakUrl);
+            log.info("调用寻谷接口: " + valleyUrl);
             // 寻峰寻谷
-            Map<String, Object> peakResult = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-            Map<String, Object> valleyResult = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+            Map<String, Object> peakResult = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+            Map<String, Object> valleyResult = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
 
             List<Double> peakX = (List<Double>) peakResult.get("peak_x");
             List<String> peakY = (List<String>) peakResult.get("peak_y");
@@ -649,22 +684,32 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         String sessionId = session.getId();
         String payload = message.getPayload();
 
-        log.info("收到时间扫描停止消息: {}", sessionId);
+        log.info("收到时间扫描消息: {}", payload);
 
         if ("close".equals(payload)) {
             handleStopRequest(sessionId);
         }
+        // 移除 safeClose 的处理，因为不需要前端配合
     }
 
     /**
-     * 处理停止请求 - 先保存数据再关闭
+     * 改进的停止请求处理 - 确保消息发送完成后再关闭连接
      */
     private void handleStopRequest(String sessionId) {
         log.info("处理时间扫描停止请求: {}", sessionId);
 
         TimeScanContext context = contexts.get(sessionId);
         WebSocketSession session = sessions.get(sessionId);
+
         if (context == null || session == null) {
+            log.warn("停止请求处理失败: 上下文或会话不存在");
+            return;
+        }
+
+        // 使用双重检查防止重复处理
+        AtomicBoolean stopProcessing = stopProcessingMap.get(sessionId);
+        if (stopProcessing == null || !stopProcessing.compareAndSet(false, true)) {
+            log.info("停止请求已在处理中，忽略重复请求: {}", sessionId);
             return;
         }
 
@@ -677,6 +722,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 try {
                     Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
                     devMessageUtil.stop(stopCmd, context.ip);
+                    log.info("已发送设备停止命令");
                 } catch (Exception e) {
                     log.error("发送设备停止命令异常", e);
                 }
@@ -688,35 +734,116 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             // 如果有数据需要保存，先同步保存数据
             if (!context.xData.isEmpty() && context.currentSampleId != null) {
                 log.info("停止时保存已采集数据, 点数: {}", context.xData.size());
+
+                // 同步保存数据
                 saveMeasurementDataSync(session, context, context.currentSampleId);
+
+                // 等待数据保存完成
+                log.info("等待数据保存完成...");
+                boolean saved = context.waitForDataSave(30, TimeUnit.SECONDS);
+                if (saved) {
+                    log.info("数据保存完成");
+                } else {
+                    log.warn("数据保存超时，继续处理停止流程");
+                }
             } else {
                 // 如果没有数据，直接标记保存完成
+                log.info("无数据需要保存");
                 context.markDataSaved();
             }
 
-            // 等待数据保存完成（最多30秒）
-            log.info("等待数据保存完成...");
-            boolean saved = context.waitForDataSave(30, TimeUnit.SECONDS);
-            if (saved) {
-                log.info("数据保存完成，开始清理会话");
-            } else {
-                log.warn("数据保存超时，强制清理");
-            }
+            // 关键改进：在关闭连接前确保停止成功消息发送完成
+            sendStopSuccessWithRetry(session, sessionId);
 
-            // 最后进行资源清理（确保数据已保存）
-            safeCleanup(sessionId, true);
+            // 延迟一小段时间确保消息发送完成，然后清理
+            ScheduledExecutorService delayScheduler = Executors.newSingleThreadScheduledExecutor();
+            delayScheduler.schedule(() -> {
+                try {
+                    log.info("延迟清理开始，会话: {}", sessionId);
+                    safeCleanup(sessionId, true);
+                } finally {
+                    delayScheduler.shutdown();
+                }
+            }, 300, TimeUnit.MILLISECONDS); // 增加到300ms确保消息发送
 
         } catch (Exception e) {
             log.error("处理停止请求异常", e);
-            // 异常情况下也要确保清理
+            // 异常情况下也要确保发送停止成功并清理
+            sendStopSuccessWithRetry(session, sessionId);
             safeCleanup(sessionId, true);
+        } finally {
+            // 重置处理状态，允许后续清理操作
+            if (stopProcessing != null) {
+                stopProcessing.set(false);
+            }
         }
     }
 
+    /**
+     * 带重试的停止成功消息发送
+     */
+    private void sendStopSuccessWithRetry(WebSocketSession session, String sessionId) {
+        if (session == null || !session.isOpen()) {
+            log.warn("会话已关闭，无法发送停止成功消息: {}", sessionId);
+            return;
+        }
+
+        int maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                // 检查连接状态
+                if (!session.isOpen()) {
+                    log.warn("会话在重试 {} 时已关闭: {}", i, sessionId);
+                    break;
+                }
+
+                // 发送停止成功消息
+                sendMessageSafe(session, "停止成功");
+                log.info("停止成功消息发送完成 (尝试 {}): {}", i + 1, sessionId);
+
+                // 短暂延迟确保消息发送
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                // 如果发送成功，退出重试循环
+                break;
+
+            } catch (Exception e) {
+                log.warn("发送停止成功消息失败 (尝试 {}): {}", i + 1, sessionId, e);
+                if (i == maxRetries - 1) {
+                    log.error("发送停止成功消息最终失败: {}", sessionId);
+                }
+
+                // 短暂延迟后重试
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+    }
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         String sessionId = session.getId();
-        log.info("时间扫描连接关闭: {}", sessionId);
+        log.info("时间扫描连接关闭: {}, 原因: {}", sessionId, status);
+
+        // 标记连接已关闭
+        TimeScanContext context = contexts.get(sessionId);
+        if (context != null) {
+            context.markConnectionClosed();
+        }
+
+        // 标记连接正在关闭
+        AtomicBoolean connectionClosing = connectionClosingMap.get(sessionId);
+        if (connectionClosing != null) {
+            connectionClosing.set(true);
+        }
 
         // 连接关闭时也需要确保数据保存和资源释放
         handleConnectionClosed(sessionId);
@@ -725,6 +852,15 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         String sessionId = session.getId();
+
+        // 如果是连接已关闭的异常，不记录为错误
+        if (exception instanceof IOException &&
+                (exception.getMessage() == null || exception.getMessage().contains("Broken pipe") ||
+                        exception.getMessage().contains("Connection reset"))) {
+            log.info("时间扫描连接传输错误（正常关闭）: {}", sessionId);
+            return;
+        }
+
         log.error("时间扫描传输错误: {}", sessionId, exception);
 
         // 传输错误时也需要确保数据保存和资源释放
@@ -745,6 +881,14 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             safeCleanup(sessionId, false);
             return;
         }
+
+        // 检查是否已经在处理停止或连接已关闭
+        if (context.cleanupInProgress.get() || context.isConnectionClosed()) {
+            log.info("连接关闭时检测到清理已在处理中或连接已关闭，忽略: {}", sessionId);
+            return;
+        }
+
+        context.cleanupInProgress.set(true);
 
         try {
             // 先停止任务
@@ -784,6 +928,12 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private void safeCleanup(String sessionId, boolean releaseDevice) {
         log.info("开始安全清理会话: {}", sessionId);
 
+        // 标记连接正在关闭
+        AtomicBoolean connectionClosing = connectionClosingMap.get(sessionId);
+        if (connectionClosing != null) {
+            connectionClosing.set(true);
+        }
+
         TimeScanContext context = contexts.get(sessionId);
         if (context != null) {
             // 确保任务已停止
@@ -792,7 +942,12 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             // 如果数据还未保存，等待一小段时间
             if (!context.dataSaved.get()) {
                 log.info("等待最终数据保存...");
-                context.waitForDataSave(5, TimeUnit.SECONDS);
+                boolean saved = context.waitForDataSave(5, TimeUnit.SECONDS);
+                if (saved) {
+                    log.info("数据保存完成");
+                } else {
+                    log.warn("数据保存超时，强制继续清理");
+                }
             }
 
             // 释放设备资源
@@ -814,26 +969,67 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         WebSocketSession session = sessions.remove(sessionId);
         if (session != null && session.isOpen()) {
             try {
+                // 在关闭前再次检查是否有未发送的消息
+                try {
+                    Thread.sleep(100); // 额外延迟确保所有操作完成
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
                 session.close();
                 log.info("WebSocket连接已关闭: {}", sessionId);
             } catch (IOException e) {
-                log.debug("关闭WebSocket会话异常: {}", sessionId);
+                log.debug("关闭WebSocket会话异常（可能已关闭）: {}", sessionId);
             }
         }
+
+        // 清理状态映射
+        connectionClosingMap.remove(sessionId);
+        stopProcessingMap.remove(sessionId);
 
         clearGlobalData();
         log.info("时间扫描会话安全清理完成: {}", sessionId);
     }
 
+
+
     private void sendMessageSafe(WebSocketSession session, String message) {
-        if (session == null || !session.isOpen()) {
+        if (session == null) {
+            return;
+        }
+
+        String sessionId = session.getId();
+
+        // 检查连接是否正在关闭
+        AtomicBoolean connectionClosing = connectionClosingMap.get(sessionId);
+        if (connectionClosing != null && connectionClosing.get()) {
+            log.debug("连接正在关闭，跳过消息发送: {}", sessionId);
+            return;
+        }
+
+        if (!session.isOpen()) {
+            log.debug("会话已关闭，无法发送消息: {}", sessionId);
             return;
         }
 
         try {
-            session.sendMessage(new TextMessage(message));
+            synchronized (session) {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(message));
+                }
+            }
         } catch (IOException e) {
-            log.debug("发送消息失败: {}", session.getId());
+            // 如果是连接已关闭的异常，不记录为错误
+            if (e.getMessage() != null &&
+                    (e.getMessage().contains("Broken pipe") ||
+                            e.getMessage().contains("Connection reset") ||
+                            e.getMessage().contains("已断开的连接"))) {
+                log.debug("发送消息时连接已关闭: {}", sessionId);
+            } else {
+                log.warn("发送消息失败: {}", sessionId, e);
+            }
+        } catch (Exception e) {
+            log.warn("发送消息异常: {}", sessionId, e);
         }
     }
 
