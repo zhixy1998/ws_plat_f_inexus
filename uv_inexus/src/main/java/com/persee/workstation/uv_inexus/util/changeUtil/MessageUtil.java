@@ -141,7 +141,7 @@ public class MessageUtil {
                     || cmdId.equalsIgnoreCase("Scan")
                     || cmdId.equalsIgnoreCase("ScanFast")
                     || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 5000 : 4500;
+            int timeoutMs = isSlowCommand ? 30000 : 4500;
             scanSocket.setSoTimeout(timeoutMs);
 
             long lastReceiveTime = System.currentTimeMillis();
