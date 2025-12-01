@@ -14,6 +14,7 @@ package com.persee.workstation.uv_inexus.controller.guide.softwareActivation;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
 import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -219,6 +220,7 @@ public class SoftwareActivationController {
      * 根据ID删除
      */
     @DeleteMapping("/{id}")
+    @ButtonPermission("revokeActivation")
     @ApiOperation("根据ID删除软件激活记录")
     public Result<Void> deleteById(@PathVariable Integer id) {
         softwareActivationService.removeById(id);
