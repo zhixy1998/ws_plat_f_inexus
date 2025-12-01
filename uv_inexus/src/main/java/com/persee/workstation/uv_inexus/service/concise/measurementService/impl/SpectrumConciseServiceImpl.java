@@ -60,6 +60,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
@@ -316,7 +317,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 所有校验通过
         return R.ok(true);
     }
-
     // 内部工具方法：判断字符串是否为空（适配JDK1.8）
     private boolean isBlank(String str) {
         return str == null || str.trim().isEmpty();
@@ -348,7 +348,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         wrapper.eq("measurement_type", measureType);
         wrapper.orderByDesc("method_use_time");
         wrapper.last("LIMIT 1");
-
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+        String id = po.getId();
         FMeasureMethod method = fMeasureMethodService.getOne(wrapper);
 
         if (method == null) {
@@ -367,6 +368,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 根据方法id查询出最近创建的任务
         QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
         taskWrapper.eq("method_key", method.getId());
+        taskWrapper.eq("is_delete", "0");
+        taskWrapper.eq("user_id",id);
         taskWrapper.orderByDesc("create_time");
         taskWrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
@@ -400,8 +403,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             vo.setTaskId(task.getId());
         }
         if (Objects.isNull(task)) {
-            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
-            String id = po.getId();
+
             FMeasureTask fMeasureTask = new FMeasureTask();
 
 

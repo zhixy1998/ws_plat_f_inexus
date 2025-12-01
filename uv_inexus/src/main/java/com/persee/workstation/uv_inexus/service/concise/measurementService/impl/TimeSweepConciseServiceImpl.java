@@ -314,7 +314,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         wrapper.last("LIMIT 1");
 
         FMeasureMethod method = fMeasureMethodService.getOne(wrapper);
-
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+        String id = po.getId();
         if (method == null) {
             // 查询对应类型的默认方法
             QueryWrapper<FMeasureMethod> queryWrapper = new QueryWrapper<>();
@@ -332,6 +333,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
         taskWrapper.eq("method_key", method.getId());
         taskWrapper.orderByDesc("create_time");
+        taskWrapper.eq("is_delete", "0");
+        taskWrapper.eq("user_id",id);
         taskWrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
 
@@ -364,8 +367,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             vo.setTaskId(task.getId());
         }
         if (Objects.isNull(task)) {
-            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
-            String id = po.getId();
             FMeasureTask fMeasureTask = new FMeasureTask();
 
 
