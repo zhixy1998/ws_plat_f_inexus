@@ -249,7 +249,7 @@ public class MessageUtil {
             }
             if (responses.size() == 1&&!cmdId.equals("Stop")) {
                 responses.clear();
-                responses = singleSendAndReceive(currentSocket, sendIp, cmdId, sendBytes);
+                responses = singleSendAndReceive(currentSocket, sendIp, cmdId, sendBytes, replyNumber, timeout);
             }
 
             return responses;

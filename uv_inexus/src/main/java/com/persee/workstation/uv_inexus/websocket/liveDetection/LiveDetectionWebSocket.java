@@ -238,7 +238,9 @@ public class LiveDetectionWebSocket {
 
                             Integer count = anEnum.getCount();
 
-                            byte[] sendBytes = protocolItemUtil.calcSendBytes(objects, xml.get(comId));
+                            Transition transition = xml.get(comId);
+
+                            byte[] sendBytes = protocolItemUtil.calcSendBytes(objects, transition);
 
                             List<byte[]> responses = messageUtil.detectionSendAndReceive(socket, deviceIp, comId, sendBytes, count);
                             if (responses == null || responses.isEmpty()) {
