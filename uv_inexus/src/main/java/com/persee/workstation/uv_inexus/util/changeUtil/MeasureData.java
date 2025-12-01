@@ -69,12 +69,12 @@ public class MeasureData {
                         byte[] sendBytes6 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetPhotoMode"));
 
                         // 发送并接收
-                        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, "Measure", sendBytes);
-                        List<byte[]> responses2 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetChangeLampWl", sendBytes2);
-                        List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetCellPos", sendBytes3);
-                        List<byte[]> responses4 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetLampPos", sendBytes4);
-                        List<byte[]> responses5 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetAccessoryType", sendBytes5);
-                        List<byte[]> responses6 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetPhotoMode", sendBytes6);
+                        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, "Measure", sendBytes, xml.get("Measure").getReplyNumber(), xml.get("Measure").getTimeout());
+                        List<byte[]> responses2 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetChangeLampWl", sendBytes2, xml.get("GetChangeLampWl").getReplyNumber(), xml.get("GetChangeLampWl").getTimeout());
+                        List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetCellPos", sendBytes3, xml.get("GetCellPos").getReplyNumber(), xml.get("GetCellPos").getTimeout());
+                        List<byte[]> responses4 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetLampPos", sendBytes4, xml.get("GetLampPos").getReplyNumber(), xml.get("GetLampPos").getTimeout());
+                        List<byte[]> responses5 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetAccessoryType", sendBytes5, xml.get("GetAccessoryType").getReplyNumber(), xml.get("GetAccessoryType").getTimeout());
+                        List<byte[]> responses6 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetPhotoMode", sendBytes6, xml.get("GetPhotoMode").getReplyNumber(), xml.get("GetPhotoMode").getTimeout());
 
 
                         // 解析报文

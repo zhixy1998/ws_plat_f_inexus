@@ -20,7 +20,6 @@ import org.springframework.util.StringUtils;
 
 import java.net.*;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -77,7 +76,7 @@ public class MessageUtil {
      * @param cmdId      指令
      * @param sendBytes  发送报文
      */
-    public void scanSendAndDeal(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
+    public void scanSendAndDeal(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes, int replyNumber, int timeout) {
 
         try {
             List<byte[]> responses = new ArrayList<>();
@@ -90,13 +89,7 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 5000 : 4500;
-            scanSocket.setSoTimeout(timeoutMs);
+            scanSocket.setSoTimeout(timeout);
 
             long lastReceiveTime = System.currentTimeMillis();
             Thread sendMeasure = null;
@@ -124,7 +117,7 @@ public class MessageUtil {
      * @param cmdId      指令
      * @param sendBytes  发送报文
      */
-    public void scanSendAndDealBaseline(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
+    public void scanSendAndDealBaseline(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes, int replyNumber, int timeout) {
 
         try {
             List<byte[]> responses = new ArrayList<>();
@@ -137,13 +130,7 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 5000 : 4500;
-            scanSocket.setSoTimeout(timeoutMs);
+            scanSocket.setSoTimeout(timeout);
 
             long lastReceiveTime = System.currentTimeMillis();
 
@@ -174,9 +161,14 @@ public class MessageUtil {
      * @param sendBytes
      * @return
      */
-    public List<byte[]> singleSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
-        try {
+    public List<byte[]> singleSendAndReceive(DatagramSocket currentSocket,
+                                             String sendIp,
+                                             String cmdId,
+                                             byte[] sendBytes,
+                                             int replyNumber,
+                                             int timeout) {
 
+        try {
             List<byte[]> responses = new ArrayList<>();
 
             // 发送命令
@@ -188,74 +180,80 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("InitSlit1Motor")
-                    || cmdId.equalsIgnoreCase("SetSlit1")
-                    || cmdId.equalsIgnoreCase("InitWlMotor")
-                    || cmdId.equalsIgnoreCase("InitLampMotor")
-                    || cmdId.equalsIgnoreCase("CheckWLamp")
-                    || cmdId.equalsIgnoreCase("CheckDLamp")
-                    || cmdId.equalsIgnoreCase("CheckWl")
-                    || cmdId.equalsIgnoreCase("BaseLineFast")
-                    || cmdId.equalsIgnoreCase("Dark")
-                    || cmdId.equalsIgnoreCase("SetWl");
+            if (replyNumber == -1) {
+                // 一次性等待 timeout 毫秒
+                currentSocket.setSoTimeout(timeout);
 
-            int timeoutMs = isSlowCommand ? 18000 : 4500;
-            currentSocket.setSoTimeout(timeoutMs);
+                long lastReceiveTime = System.currentTimeMillis();
+                int count = 0;
 
-            long lastReceiveTime = System.currentTimeMillis();
+                while (true) {
+                    try {
+                        DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                        currentSocket.receive(receivePacket);
+                        count++;
 
-            int count = 0;
+                        byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+                        responses.add(reply);
 
-            while (Constants.isRunning) {
+                        System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                        System.out.print("十六进制回应：");
+                        for (byte b : reply) System.out.printf("%02X ", b);
+                        System.out.println();
+
+                        //收到第二包后把等待时间缩短到 100ms
+                        lastReceiveTime = System.currentTimeMillis();
+                        if (count > 1 ) {
+                            currentSocket.setSoTimeout(100);
+                            if (cmdId.equals( "BaseLine" ) || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl") || cmdId.equals("CorrectWl") || cmdId.equals("SetWl")){
+                                currentSocket.setSoTimeout(4000);
+                            }
+                        }
+
+                    } catch (SocketTimeoutException e) {
+                        // 收到 timeout 就结束
+                        if (System.currentTimeMillis() - lastReceiveTime >= currentSocket.getSoTimeout()) {
+                            break;
+                        }
+                    }
+                }
+
+                return responses;
+            }
+
+            long startTime = System.currentTimeMillis();
+            currentSocket.setSoTimeout(timeout);   // 等待所有包的最长时间
+
+            while (System.currentTimeMillis() - startTime < timeout) {
                 try {
                     DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                     currentSocket.receive(receivePacket);
-                    count++;
 
                     byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
                     responses.add(reply);
 
                     System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
-
                     System.out.print("十六进制回应：");
                     for (byte b : reply) System.out.printf("%02X ", b);
                     System.out.println();
 
-
-                    lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1 ) {
-                        currentSocket.setSoTimeout(100);
-                        timeoutMs = 100;
-                        if (cmdId.equals("BaseLine") || cmdId.equals("BaseLineFast") ||
-                                cmdId.equals("Scan") || cmdId.equals("ScanFast") ||
-                                cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") ||
-                                cmdId.equals("CheckWl") || cmdId.equals("Dark")){
-                            currentSocket.setSoTimeout(1300);
-                            timeoutMs = 1300;
-                        }
-                    }
-                    if(cmdId.equals("Stop")){
+                    //replyNumber 个直接结束
+                    if (responses.size() >= replyNumber) {
                         break;
                     }
+
                 } catch (SocketTimeoutException e) {
-                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
+                    //超时 → 跳出
+                    break;
                 }
-            }
-            if (responses.size() == 1) {
-                responses.clear();
-                responses = singleSendAndReceive(currentSocket, sendIp, cmdId, sendBytes);
             }
 
             return responses;
+
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
-
     }
 
     public List<byte[]> calibrationSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
@@ -377,10 +375,14 @@ public class MessageUtil {
      * @param sendBytes
      * @return
      */
-    public List<byte[]> singleSendAndReceive2(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
+    public List<byte[]> singleSendAndReceive2(DatagramSocket currentSocket,
+                                              String sendIp,
+                                              String cmdId,
+                                              byte[] sendBytes,
+                                              int replyNumber,
+                                              int timeout) {
+
         try {
-
-
             List<byte[]> responses = new ArrayList<>();
 
             // 发送命令
@@ -392,33 +394,54 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("InitSlit1Motor")
-                    || cmdId.equalsIgnoreCase("SetSlit1")
-                    || cmdId.equalsIgnoreCase("InitWlMotor")
-                    || cmdId.equalsIgnoreCase("InitLampMotor")
-                    || cmdId.equalsIgnoreCase("CheckWLamp")
-                    || cmdId.equalsIgnoreCase("CheckDLamp")
-                    || cmdId.equalsIgnoreCase("CheckWl")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
+            if (replyNumber == -1) {
+                // 一次性等待 timeout 毫秒
+                currentSocket.setSoTimeout(timeout);
 
-            int timeoutMs = isSlowCommand ? 18000 : 4500;
-            currentSocket.setSoTimeout(timeoutMs);
+                long lastReceiveTime = System.currentTimeMillis();
+                int count = 0;
 
-            long lastReceiveTime = System.currentTimeMillis();
+                while (true) {
+                    try {
+                        DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                        currentSocket.receive(receivePacket);
+                        count++;
 
-            int count = 0;
-            int i = 0;
-            while (Constants.isRunning) {
-                System.out.println("测试:" + System.currentTimeMillis());
-                System.err.println("////////////////////////////"+System.currentTimeMillis());
+                        byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+                        responses.add(reply);
+
+                        System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                        System.out.print("十六进制回应：");
+                        for (byte b : reply) System.out.printf("%02X ", b);
+                        System.out.println();
+
+                        //收到第二包后把等待时间缩短到 100ms
+                        lastReceiveTime = System.currentTimeMillis();
+                        if (count > 1 ) {
+                            currentSocket.setSoTimeout(100);
+                            if (cmdId.equals( "BaseLine" ) || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl") || cmdId.equals("CorrectWl") || cmdId.equals("SetWl")){
+                                currentSocket.setSoTimeout(4000);
+                            }
+                        }
+
+                    } catch (SocketTimeoutException e) {
+                        // 收到 timeout 就结束
+                        if (System.currentTimeMillis() - lastReceiveTime >= currentSocket.getSoTimeout()) {
+                            break;
+                        }
+                    }
+                }
+
+                return responses;
+            }
+
+            long startTime = System.currentTimeMillis();
+            currentSocket.setSoTimeout(timeout);   // 等待所有包的最长时间
+
+            while (System.currentTimeMillis() - startTime < timeout) {
                 try {
                     DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                     currentSocket.receive(receivePacket);
-                    count++;
 
                     byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
                     responses.add(reply);
@@ -428,31 +451,23 @@ public class MessageUtil {
                     for (byte b : reply) System.out.printf("%02X ", b);
                     System.out.println();
 
-                    lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1 ) {
-                        currentSocket.setSoTimeout(100);
-                        timeoutMs = 100;
-                        if (cmdId == "BaseLine" || cmdId == "BaseLineFast" || cmdId == "Scan" || cmdId == "ScanFast" || cmdId == "CheckWLamp" || cmdId == "CheckDLamp" || cmdId == "CheckWl"){
-                            currentSocket.setSoTimeout(1300);
-                            timeoutMs = 1300;
-                        }
-                    }
-                    if (count == 3){
+                    //replyNumber 个直接结束
+                    if (responses.size() >= replyNumber) {
                         break;
                     }
+
                 } catch (SocketTimeoutException e) {
-                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
+                    //超时 → 跳出
+                    break;
                 }
             }
 
-            System.err.println("[[[[[[[[[[[[[[[[[[[[[[[[[[[["+System.currentTimeMillis());
-
             return responses;
+
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
-
     }
 
     /**
@@ -534,9 +549,8 @@ public class MessageUtil {
                     if (count > 1 ) {
                         currentSocket.setSoTimeout(100);
                         timeoutMs = 100;
-                        if (cmdId == "BaseLine" || cmdId == "BaseLineFast" || cmdId == "Scan" || cmdId == "ScanFast" || cmdId == "CheckWLamp" || cmdId == "CheckDLamp" || cmdId == "CheckWl"){
-                            currentSocket.setSoTimeout(1300);
-                            timeoutMs = 1300;
+                        if (cmdId.equals( "BaseLine" ) || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl") || cmdId.equals("CorrectWl") || cmdId.equals("SetWl")){
+                            currentSocket.setSoTimeout(4000);
                         }
                     }
                     System.out.println("[[[[[[[[[[[[[[[[[[[[[[[[[[[["+System.currentTimeMillis());
@@ -561,7 +575,7 @@ public class MessageUtil {
      * @param cmdId      指令
      * @param sendBytes  发送报文
      */
-    public List<ChangeParam> RationDifferentialCall(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes) {
+    public List<ChangeParam> RationDifferentialCall(DatagramSocket scanSocket, String sendIp, String cmdId, byte[] sendBytes, int replyNumber, int timeout) {
 
         try {
             List<byte[]> responses = new ArrayList<>();
@@ -574,13 +588,7 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 5000 : 4500;
-            scanSocket.setSoTimeout(timeoutMs);
+            scanSocket.setSoTimeout(timeout);
 
             List<ChangeParam> changeParams = parseScanFast(scanSocket);
             if (changeParams == null) {
@@ -595,15 +603,10 @@ public class MessageUtil {
         }
     }
 
-
-//    public List<byte[]> singleSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
+//    public List<byte[]> quickSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes, int Number, int time) {
 //        try {
-//            List<byte[]> responses = new ArrayList<>();
 //
-//            // 记录发送报文的第 3、4、5 位
-//            byte sentThirdByte = sendBytes[2];  // 第3位
-//            byte sentFourthByte = sendBytes[3]; // 第4位
-//            byte sentFifthByte = sendBytes[4];  // 第5位
+//            List<byte[]> responses = new ArrayList<>();
 //
 //            // 发送命令
 //            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
@@ -614,30 +617,26 @@ public class MessageUtil {
 //            for (byte b : sendBytes) System.out.printf("%02X ", b);
 //            System.out.println();
 //
-//            // 是否为特定指令，结束条件是根据接收到多条回应
-//            Set<String> specialCommands = new HashSet<>();
-//            specialCommands.add("CheckWLamp");
-//            specialCommands.add("CheckDLamp");
-//            specialCommands.add("CheckWl");
-//            specialCommands.add("Measure");
-//            specialCommands.add("BaseLine");
-//            specialCommands.add("Scan");
-//            specialCommands.add("Zero");
-//            specialCommands.add("BaseLineFast");
-//            specialCommands.add("ScanFast");
-//            specialCommands.add("SearchInSameZoom");
-//            specialCommands.add("SearchAround");
-//            specialCommands.add("NewIP");
-//            specialCommands.add("GetSn");
 //
-//            boolean isSpecialCommand = specialCommands.contains(cmdId);
-//
-//            int timeoutMs = isSpecialCommand ? 20000 : 4500;
+//            // 是否为慢命令（用于接收等待时间判断）
+//            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
+//                    || cmdId.equalsIgnoreCase("Scan")
+//                    || cmdId.equalsIgnoreCase("ScanFast")
+//                    || cmdId.equalsIgnoreCase("InitSlit1Motor")
+//                    || cmdId.equalsIgnoreCase("SetSlit1")
+//                    || cmdId.equalsIgnoreCase("InitWlMotor")
+//                    || cmdId.equalsIgnoreCase("InitLampMotor")
+//                    || cmdId.equalsIgnoreCase("CheckWLamp")
+//                    || cmdId.equalsIgnoreCase("CheckDLamp")
+//                    || cmdId.equalsIgnoreCase("CheckWl")
+//                    || cmdId.equalsIgnoreCase("SetWl")
+//                    || cmdId.equalsIgnoreCase("BaseLineFast");
+//            int timeoutMs = isSlowCommand ? 15000 : 4500;
 //            currentSocket.setSoTimeout(timeoutMs);
 //
 //            long lastReceiveTime = System.currentTimeMillis();
-//            int count = 0;
 //
+//            int count = 0;
 //            while (Constants.isRunning) {
 //                try {
 //                    DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
@@ -653,24 +652,12 @@ public class MessageUtil {
 //                    System.out.println();
 //
 //                    lastReceiveTime = System.currentTimeMillis();
-//
-//                    if (isSpecialCommand) {
-//                        // 对于特殊指令，接收到超过 1 条回应后结束接收
-//                        if (count > 1) {
-//                            break; // 结束接收
-//                        }
-//                    } else {
-//                        // 对于其他指令，检查发送的第 3、4、5 位与接收到的最后一条报文的 3、4、5 位是否匹配
-//                        if (reply.length > 4 && reply[2] == sentThirdByte && reply[3] == sentFourthByte && reply[4] == sentFifthByte) {
-//                            break; // 如果匹配，终止接收
-//                        }
-//                    }
-//
-//                    // 设置更短的超时时间
 //                    if (count > 1) {
-//                        currentSocket.setSoTimeout(1000);
-//                        timeoutMs = 1000;
+//                        currentSocket.setSoTimeout(100);
+//                        timeoutMs = 100;
 //                    }
+//
+//
 //                } catch (SocketTimeoutException e) {
 //                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
 //                }
@@ -681,12 +668,18 @@ public class MessageUtil {
 //            e.printStackTrace();
 //            return null;
 //        }
+//
 //    }
 
+    public List<byte[]> quickSendAndReceive(
+            DatagramSocket currentSocket,
+            String sendIp,
+            String cmdId,
+            byte[] sendBytes,
+            int replyNumber,
+            int timeout) {
 
-    public List<byte[]> quickSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes) {
         try {
-
             List<byte[]> responses = new ArrayList<>();
 
             // 发送命令
@@ -698,30 +691,54 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            // 是否为慢命令（用于接收等待时间判断）
-            boolean isSlowCommand = cmdId.equalsIgnoreCase("BaseLine")
-                    || cmdId.equalsIgnoreCase("Scan")
-                    || cmdId.equalsIgnoreCase("ScanFast")
-                    || cmdId.equalsIgnoreCase("InitSlit1Motor")
-                    || cmdId.equalsIgnoreCase("SetSlit1")
-                    || cmdId.equalsIgnoreCase("InitWlMotor")
-                    || cmdId.equalsIgnoreCase("InitLampMotor")
-                    || cmdId.equalsIgnoreCase("CheckWLamp")
-                    || cmdId.equalsIgnoreCase("CheckDLamp")
-                    || cmdId.equalsIgnoreCase("CheckWl")
-                    || cmdId.equalsIgnoreCase("SetWl")
-                    || cmdId.equalsIgnoreCase("BaseLineFast");
-            int timeoutMs = isSlowCommand ? 15000 : 4500;
-            currentSocket.setSoTimeout(timeoutMs);
+            if (replyNumber == -1) {
+                // 一次性等待 timeout 毫秒
+                currentSocket.setSoTimeout(timeout);
 
-            long lastReceiveTime = System.currentTimeMillis();
+                long lastReceiveTime = System.currentTimeMillis();
+                int count = 0;
 
-            int count = 0;
-            while (Constants.isRunning) {
+                while (true) {
+                    try {
+                        DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
+                        currentSocket.receive(receivePacket);
+                        count++;
+
+                        byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
+                        responses.add(reply);
+
+                        System.out.println("收到回应来自 " + receivePacket.getAddress().getHostAddress());
+                        System.out.print("十六进制回应：");
+                        for (byte b : reply) System.out.printf("%02X ", b);
+                        System.out.println();
+
+                        //收到第二包后把等待时间缩短到 100ms
+                        lastReceiveTime = System.currentTimeMillis();
+                        if (count > 1 ) {
+                            currentSocket.setSoTimeout(100);
+                            if (cmdId.equals( "BaseLine" ) || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl") || cmdId.equals("CorrectWl") || cmdId.equals("SetWl")){
+                                currentSocket.setSoTimeout(4000);
+                            }
+                        }
+
+                    } catch (SocketTimeoutException e) {
+                        // 收到 timeout 就结束
+                        if (System.currentTimeMillis() - lastReceiveTime >= currentSocket.getSoTimeout()) {
+                            break;
+                        }
+                    }
+                }
+
+                return responses;
+            }
+
+            long startTime = System.currentTimeMillis();
+            currentSocket.setSoTimeout(timeout);   // 等待所有包的最长时间
+
+            while (System.currentTimeMillis() - startTime < timeout) {
                 try {
                     DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);
                     currentSocket.receive(receivePacket);
-                    count++;
 
                     byte[] reply = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
                     responses.add(reply);
@@ -731,25 +748,26 @@ public class MessageUtil {
                     for (byte b : reply) System.out.printf("%02X ", b);
                     System.out.println();
 
-                    lastReceiveTime = System.currentTimeMillis();
-                    if (count > 1) {
-                        currentSocket.setSoTimeout(100);
-                        timeoutMs = 100;
+                    //replyNumber 个直接结束
+                    if (responses.size() >= replyNumber) {
+                        break;
                     }
 
-
                 } catch (SocketTimeoutException e) {
-                    if (System.currentTimeMillis() - lastReceiveTime >= timeoutMs) break;
+                    //超时 → 跳出
+                    break;
                 }
             }
 
             return responses;
+
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
-
     }
+
+
 
     /**
      * 扫描接收并处理
@@ -767,7 +785,7 @@ public class MessageUtil {
                 System.out.println("收到当前消息的时间为: "+ System.currentTimeMillis());
                 count++;
                 if (count>1){
-//                    scanSocket.setSoTimeout(100);
+                    scanSocket.setSoTimeout(4000);
                 }
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
 
@@ -828,7 +846,7 @@ public class MessageUtil {
                 System.out.println("当前收到消息的时间是: "+ System.currentTimeMillis());
                 count++;
                 if (count>1){
-                    scanSocket.setSoTimeout(500);
+                    scanSocket.setSoTimeout(4000);
                 }
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
 

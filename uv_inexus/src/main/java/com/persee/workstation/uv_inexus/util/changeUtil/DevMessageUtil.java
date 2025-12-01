@@ -203,8 +203,11 @@ public class DevMessageUtil {
             }
 
             //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, defaultIp, cmdId, bytes);
+            Transition transition = xml.get(cmdId);
+            int ReplyNumber = transition.getReplyNumber();
+            int Timeout = transition.getTimeout();
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, defaultIp, cmdId, bytes, ReplyNumber, Timeout);
 
             if (responses == null || responses.isEmpty()) {
                 if (cmdId.equals(FindDevEnum.FindDevice.getComId())) {
@@ -344,9 +347,11 @@ public class DevMessageUtil {
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
                 return;
@@ -389,9 +394,12 @@ public class DevMessageUtil {
                 return R.fail("xml文件加载失败");
             }
             String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
             //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.calibrationSendAndReceive(socket, deviceIp, cmdId, bytes);
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             if (responses.size() < 2) {
                 return R.fail("校正失败");
             }
@@ -448,9 +456,11 @@ public class DevMessageUtil {
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             return !parse.equals("false");
         }
@@ -493,9 +503,12 @@ public class DevMessageUtil {
 
 
             String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
             //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             String result = String.valueOf(parse);
             List<StepPoint> linearSegments = JSON.parseArray(parse.toString(), StepPoint.class);
@@ -569,14 +582,17 @@ public class DevMessageUtil {
                 return R.fail("xml文件加载失败");
             }
             String cmdId = command.getCmdId();
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
 
             if ("InitLampMotor".equals(cmdId) || "InitSlit1Motor".equals(cmdId) || "InitWlMotor".equals(cmdId)) {
 
                 if (responses.size() == 1) {
                     System.out.println(cmdId + " 仅收到1条回应，重发一次");
-                    responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+                    responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
                 }
             }
 
@@ -630,8 +646,11 @@ public class DevMessageUtil {
             Object[] param = new Object[]{status};
 
             //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(param, xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
+            byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             String result = parse.toString();
             if ("false".equals(result)) {
@@ -683,8 +702,11 @@ public class DevMessageUtil {
         String cmdId = "SetCellPos";
 
         //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(new Object[]{poolNum}, xml.get(cmdId));
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Transition transition = xml.get(cmdId);
+        int timeout = transition.getTimeout();
+        int replyNumber = transition.getReplyNumber();
+        byte[] bytes = protocolItemUtil.calcSendBytes(new Object[]{poolNum}, transition);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         String result = parse.toString();
         if ("false".equals(result)) {
@@ -712,7 +734,7 @@ public class DevMessageUtil {
         Transition transition = xml.get(cmdId);
         //发送报文组
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<byte[]> responses = messageUtil.quickSendAndReceive(socket, defaultIp, cmdId, bytes);
+        List<byte[]> responses = messageUtil.quickSendAndReceive(socket, defaultIp, cmdId, bytes, transition.getReplyNumber(), transition.getTimeout());
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse.equals("false")) {
             return R.fail("校零失败");
@@ -739,8 +761,11 @@ public class DevMessageUtil {
             for (Command command : list) {
                 String cmdId = command.getCmdId();
                 //发送报文组
-                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-                List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+                Transition transition = xml.get(cmdId);
+                int timeout = transition.getTimeout();
+                int replyNumber = transition.getReplyNumber();
+                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+                List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
                 Object parse = ResponseDeal.parse(cmdId, responses, bytes);
                     if (parse.equals("false")) {
                     return R.fail("解析报文出错");
@@ -789,8 +814,11 @@ public class DevMessageUtil {
         }
         String cmdId = cmd.getCmdId();
         //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(cmd.getParams(), xml.get(cmdId));
-        messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+        Transition transition = xml.get(cmdId);
+        int timeout = transition.getTimeout();
+        int replyNumber = transition.getReplyNumber();
+        byte[] bytes = protocolItemUtil.calcSendBytes(cmd.getParams(), transition);
+        messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
         return R.ok();
     }
 
@@ -810,8 +838,11 @@ public class DevMessageUtil {
         }
         String cmdId = command.getCmdId();
         //发送报文组
-        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes);
+        Transition transition = xml.get(cmdId);
+        int timeout = transition.getTimeout();
+        int replyNumber = transition.getReplyNumber();
+        byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, defaultIp, cmdId, bytes, replyNumber, timeout);
         Object parse = ResponseDeal.parse(cmdId, responses, bytes);
         if (parse.equals("false")) {
             return Result.fail("解析报文出错");
@@ -837,8 +868,11 @@ public class DevMessageUtil {
             }
             String cmdId = command.getCmdId();
             //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
                 return R.fail("基线失败");
@@ -884,9 +918,11 @@ public class DevMessageUtil {
         }
         String cmdId = command.getCmdId();
         Transition transition = xml.get(cmdId);
+        int timeout = transition.getTimeout();
+        int replyNumber = transition.getReplyNumber();
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
         Constants.startTime = LocalDateTime.now();
-        messageUtil.scanSendAndDealBaseline(socket, deviceIp, cmdId, bytes);
+        messageUtil.scanSendAndDealBaseline(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
     }
 
     /**
@@ -907,8 +943,10 @@ public class DevMessageUtil {
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
             //发送报文组
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
                 return false;
@@ -957,10 +995,14 @@ public class DevMessageUtil {
 
             for (Command command : list) {
                 String cmdId = command.getCmdId();
+                Transition transition = xml.get(cmdId);
+                int ReplyNumber = transition.getReplyNumber();
+                int Timeout = transition.getTimeout();
                 //发送报文组
-                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-                List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
+                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+                List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
                 Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+
                 if (parse == null || parse.equals("false")) {
                     return R.fail("解析报文出错");
                 }
@@ -1012,9 +1054,13 @@ public class DevMessageUtil {
 
             for (Command command : list) {
                 String cmdId = command.getCmdId();
+                Transition transition = xml.get(cmdId);
+                int ReplyNumber = transition.getReplyNumber();
+                int Timeout = transition.getTimeout();
+
                 //发送报文组
-                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-                List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes);
+                byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+                List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
                 Object parse = ResponseDeal.parse(cmdId, responses, bytes);
                 if (parse == null || parse.equals("false")) {
                     return R.fail("解析报文出错");
@@ -1067,9 +1113,11 @@ public class DevMessageUtil {
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
+            int ReplyNumber = transition.getReplyNumber();
+            int Timeout = transition.getTimeout();
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
             Constants.startTime = LocalDateTime.now();
-            messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes);
+            messageUtil.scanSendAndDeal(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
         }
 
         else if (flag == "T800") {
@@ -1111,8 +1159,10 @@ public class DevMessageUtil {
         }
         String cmdId = command.getCmdId();
         Transition transition = xml.get(cmdId);
+        int ReplyNumber = transition.getReplyNumber();
+        int Timeout = transition.getTimeout();
         byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-        List<ChangeParam> changeParams = messageUtil.RationDifferentialCall(socket, deviceIp, cmdId, bytes);
+        List<ChangeParam> changeParams = messageUtil.RationDifferentialCall(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
         if (changeParams == null) {
             log.info("获取数据失败");
             return null;
@@ -1187,9 +1237,11 @@ public class DevMessageUtil {
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
+            int ReplyNumber = transition.getReplyNumber();
+            int Timeout = transition.getTimeout();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
                 return R.fail("校零失败");
@@ -1238,9 +1290,12 @@ public class DevMessageUtil {
         }
         for (Command command : list) {
             String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            int replyNumber = transition.getReplyNumber();
+            int timeout = transition.getTimeout();
             //发送报文组
-            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), xml.get(cmdId));
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(),transition);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
                 return R.fail("false");
@@ -1267,9 +1322,11 @@ public class DevMessageUtil {
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
+            int ReplyNumber = transition.getReplyNumber();
+            int Timeout = transition.getTimeout();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse.equals("false")) {
                 return;
@@ -1316,10 +1373,12 @@ public class DevMessageUtil {
             }
             String cmdId = command.getCmdId();
             Transition transition = xml.get(cmdId);
+            int ReplyNumber = transition.getReplyNumber();
+            int Timeout = transition.getTimeout();
             Constants.startTime=LocalDateTime.now();
             // 发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-            List<byte[]> responses = messageUtil.singleSendAndReceive2(socket, deviceIp, cmdId, bytes);
+            List<byte[]> responses = messageUtil.singleSendAndReceive2(socket, deviceIp, cmdId, bytes, ReplyNumber, Timeout);
             Object parse = ResponseDeal.parse(cmdId, responses, bytes);
             if (parse==null || parse.equals("false")) {
                 return null;
