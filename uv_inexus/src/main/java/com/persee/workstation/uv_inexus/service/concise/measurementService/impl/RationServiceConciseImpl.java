@@ -1151,6 +1151,116 @@ public class RationServiceConciseImpl implements RationConciseService {
         return null;
     }
 
+
+    /**
+     * 计算拟合信息的X轴范围
+     *
+     * @param taskId             任务ID
+     * @param parameter          参数对象
+     * @return FittingRangeResult or null
+     */
+    private FittingRangeResult calculateFittingInfoRange(String taskId, FRationParameter parameter) {
+        if (parameter == null) {
+            return null;
+        }
+
+        if (StringUtils.hasText(taskId)) {
+            FMeasureTask task = fMeasureTaskService.getById(taskId);
+            if (task != null && StringUtils.hasText(task.getSampleKey())) {
+                List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+                if (taskSpecimen != null) {
+                    Double minX = null;
+                    Double maxX = null;
+                    for (FTaskSpecimen specimen : taskSpecimen) {
+                        if (specimen.getDeleteType().equals(deleteType)) {
+                            continue;
+                        }
+
+
+                        FMeasureSample sample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                        String abs = null;
+                        String sumAbs = null;
+                        String countValue = null;
+                        String measureValue;
+
+                        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                        queryWrapper.eq(FMeasureData::getTaskId, taskId)
+                                .eq(FMeasureData::getSampleKey, sample.getId())
+                                .orderByDesc(FMeasureData::getSerialNumber).last("limit 1");
+                        FMeasureData data = fMeasureDataService.getOne(queryWrapper);
+                        if (data == null) {
+                            continue;
+                        }
+
+                        LambdaQueryWrapper<FMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+                        analysisDataQueryWrapper.eq(FMeasureAnalysisData::getTaskId, taskId)
+                                .eq(FMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
+                                .eq(FMeasureAnalysisData::getMeasureDataId, data.getId())
+                                .orderByDesc(FMeasureAnalysisData::getDataVersion)
+                                .last("limit 1");
+                        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+                        if (analysisData == null) {
+                            analysisData = new FMeasureAnalysisData();
+                        }
+
+                        if (StringUtils.hasText(analysisData.getAnalysisResult())) {
+                            List<FRationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), FRationCountDataInfo.class);
+                            for (FRationCountDataInfo dataInfo : countDataInfoList) {
+                                if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                                    abs = dataInfo.getColValue();
+                                }
+                                if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
+                                    sumAbs = dataInfo.getColValue();
+                                }
+                                if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                                    countValue = dataInfo.getColValue();
+                                }
+                            }
+                        }
+
+                        if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                            countValue = sample.getNormalConcentration();
+                        }
+
+                        if (StringUtils.hasText(sumAbs)) {
+                            measureValue = sumAbs;
+                        } else {
+                            measureValue = abs;
+                        }
+
+                        Double xValue = null;
+                        try {
+                            if (countValue != null && measureValue != null) {
+                                // 如果是 typeAbs (Abs = f(Conc))，则 X 轴是 Conc (countValue)
+                                // 否则 typeCurve (Conc = f(Abs))，则 X 轴是 Abs (measureValue)
+                                if (parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+                                    xValue = Double.valueOf(measureValue);
+                                } else {
+                                    xValue = Double.valueOf(countValue);
+                                }
+                            }
+                        } catch (NumberFormatException ignored) {
+                        }
+
+                        if (xValue != null) {
+                            if (minX == null || xValue < minX) {
+                                minX = xValue;
+                            }
+                            if (maxX == null || xValue > maxX) {
+                                maxX = xValue;
+                            }
+                        }
+                    }
+
+                    if (minX != null && maxX != null) {
+                        return new FittingRangeResult(minX, maxX);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     @Override
     public Result<FMeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType) {
 
@@ -3382,9 +3492,14 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
         if (StringUtils.hasText(parameter.getCoefficientMode()) && parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
-
             FittingReceiveInfo fittingInfo = createFittingInfo(methodId);
+            //获取xy轴的最大值和最小值
+            FittingRangeResult range = calculateFittingInfoRange(taskId, parameter);
             if (fittingInfo != null) {
+                if (range != null) {
+                    fittingInfo.setMinX(range.getMinX());
+                    fittingInfo.setMaxX(range.getMaxX());
+                }
                 resultVo = curveData(fittingInfo);
                 resultVo.setTaskId(taskId);
                 resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
@@ -3396,6 +3511,14 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")) {
             FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+            //获取xy轴的最大值和最小值
+            FittingRangeResult range = calculateFittingInfoRange(taskId, parameter);
+            if (fittingParam != null) {
+                if (range != null) {
+                    fittingParam.setMinX(range.getMinX());
+                    fittingParam.setMaxX(range.getMaxX());
+                }
+            }
             resultVo = curveData(fittingParam);
             if (StringUtils.hasText(fittingParam.getR())) {
                 Double r = null;
