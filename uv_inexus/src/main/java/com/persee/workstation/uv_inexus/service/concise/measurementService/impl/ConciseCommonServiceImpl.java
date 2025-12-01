@@ -265,7 +265,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         }
         SaveStateVo vo = new SaveStateVo();
         // 根据任务id查询任务
-        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        QueryWrapper<FMeasureTask> wrapper = new QueryWrapper<>();
+        wrapper.eq("id", taskId)
+                .eq("is_delete", "0");
+        FMeasureTask task = fMeasureTaskService.getOne(wrapper);
         if (task == null) {
             //草稿不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00101004"));
@@ -527,7 +530,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 .notIn(FMeasureTask::getId, updateTaskDto.getTaskId())
                 .eq(FMeasureTask::getIsDelete, "0");
         if (po != null) {
-                wrapper.eq(FMeasureTask::getUserId, po.getId());
+            wrapper.eq(FMeasureTask::getUserId, po.getId());
         }
         long count = fMeasureTaskService.count(wrapper);
         if (count > 0) {
@@ -975,7 +978,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setStartWaveLength(param.getStartWaveLength() + "nm");
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
             // (0.慢速 1.中速 2.快速 3.极快)
-            vo.setScanSpeed(param.getScanSpeed().equals("0")?"慢速": param.getScanSpeed().equals("1")?"中速": param.getScanSpeed().equals("2")?"快速":"极快");
+            vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
             vo.setTimeInterval(param.getTimeInterval());
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setRepetitionPattern(param.getRepetitionPattern());
@@ -1493,7 +1496,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 List<Map<String, Object>> dataList = timeSweepConciseService.queryTableData(taskId, analysisIdList, decimalDigits);
                 if (dataList != null) {
                     vo.setDataList(dataList);
-                }else{
+                } else {
                     vo.setDataList(new ArrayList<>());
                 }
 
