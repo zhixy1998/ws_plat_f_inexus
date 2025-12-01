@@ -20,7 +20,6 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.File;
 import java.io.InputStream;
 import java.util.*;
 
@@ -52,8 +51,28 @@ public class ProtocolItemUtil {
             item.setOutputString(new ArrayList<>());
             item.setID(getText(elem, "ID"));
             item.setDescribe(getText(elem, "Describe"));
-            item.setTimeout(getText(elem, "Timeout"));
+            String TimeoutStr = getText(elem, "Timeout");
+            int Timeout = 0;
+            if (!TimeoutStr.isEmpty()) {
+                try {
+                    Timeout = Integer.parseInt(TimeoutStr);
+                } catch (NumberFormatException e) {
+                    System.err.println("Timeout 数字格式错误：" + Timeout);
+                }
+            }
+            item.setTimeout(Timeout);
+
             item.setACK(getText(elem, "ACK"));
+            String replyNumStr = getText(elem, "ReplyNumber");
+            int replyNum = 0;
+            if (!replyNumStr.isEmpty()) {
+                try {
+                    replyNum = Integer.parseInt(replyNumStr);
+                } catch (NumberFormatException e) {
+                    System.err.println("ReplyNumber 数字格式错误：" + replyNumStr);
+                }
+            }
+            item.setReplyNumber(replyNum);
 
             Element inputElem = getElement(elem, "InputString");
             if (inputElem != null) {
