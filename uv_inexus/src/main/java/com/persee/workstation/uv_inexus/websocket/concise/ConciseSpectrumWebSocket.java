@@ -61,6 +61,7 @@ import java.util.stream.Collectors;
 
 @Component
 public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
+
     private static final Logger log = LoggerFactory.getLogger(ConciseSpectrumWebSocket.class);
 
     // 所有设备连接 <sessionId, session>
@@ -104,6 +105,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
     @Autowired
     private FormulaUtil formulaUtil;
+    // 注入PythonPathConstant
+    @Autowired
+    private PythonPathConstant pythonPathConstant;
 
     // 用于存储原始Y值（未经格式化）
     private Map<String, List<Double>> originalYValues = new ConcurrentHashMap<>();
@@ -2100,7 +2104,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // 调用 Python API
-            ResponseEntity<Map> response = restTemplate.postForEntity(PythonPathConstant.REMOVE_STEP_OR_SPIKES, request, Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(pythonPathConstant.getRemoveStepOrSpikes(), request, Map.class);
 
             // 从响应中获取处理后的 y 值
             List<Double> processedY = (List<Double>) response.getBody().get("smoothed_data");
@@ -2151,14 +2155,21 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 originalY = y;
             }
 
+            String peakUrl = pythonPathConstant.getPeakSearching();
+            String valleyUrl = pythonPathConstant.getValleySearching();
+
+            // 添加日志输出（调试用）
+            System.out.println("调用寻峰接口: " + peakUrl);
+            System.out.println("调用寻谷接口: " + valleyUrl);
+
             body.put("x_data", x);
             body.put("y_data", originalY);
             double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
             body.put("height", height);
             body.put("distance", confVO.getPeakInterval());
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-            Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+            Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+            Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
             List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
             List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
             List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");

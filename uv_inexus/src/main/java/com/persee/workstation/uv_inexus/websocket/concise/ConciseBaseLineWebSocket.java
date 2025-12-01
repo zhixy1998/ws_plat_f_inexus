@@ -375,6 +375,18 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 log.info("【数据收集完成】数据收集完成, 数据点数: {}, session: {}", dataList.size(), sessionId);
             }
 
+            log.info("【零点校零开始】开始进行校零, session: {}", sessionId);
+            /// 基线结束之后横插一个校零
+            // 进行校零
+            String ip = deviceInfoService.getIp(deviceSerialNumber);
+            Command command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+            R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+            if (!zero.getSuccess()) {
+                sendAndClose(session, zero.getMessage());
+                return;
+            }
+            log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
+
             // 保存任务结果
             if (!saveTaskResult(session, taskId, methodId, deviceSerialNumber, method, dataList)) {
                 return;

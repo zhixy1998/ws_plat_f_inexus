@@ -151,6 +151,10 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     @Autowired
     private FormulaUtil formulaUtil;
 
+    // 注入PythonPathConstant
+    @Autowired
+    private PythonPathConstant pythonPathConstant;
+
 
     @Autowired
     private RestTemplate restTemplate;
@@ -1622,7 +1626,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body.put("valley_height", paramDto.getHeight());
         body.put("distance", paramDto.getDistance());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING_AND_VALLEY_SEARCHING, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class).getBody();
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
         List<String> yPeak = (List<String>) resultMap.get("peak_y");
@@ -1959,7 +1963,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 创建请求对象
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         // 将请求结果转换成对象
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_FOUR_OPERATION, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumFourOperation(), request, Map.class).getBody();
         if (resultMap == null) {
             //python接口调用失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
@@ -1975,9 +1979,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2101,7 +2105,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body.put("y_data", yList);
         body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
         body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2112,9 +2116,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
         // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2223,7 +2227,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SMOOTHED, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSmoothed(), request, Map.class).getBody();
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
         Map<String, Object> body1 = new HashMap<>();
@@ -2234,8 +2238,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2344,7 +2348,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body.put("polyorder", paramDto.getCoefficient());
         body.put("deriv", paramDto.getDifferentialNum());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.DIFFERENTIATED, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getDifferentiated(), request, Map.class).getBody();
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2355,8 +2359,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2485,7 +2489,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body.put("y_data", yList);
         body.put("transform_type", type);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.SPECTRUM_TRANSFORMATION, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
@@ -2495,8 +2499,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request1, Map.class).getBody();
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
+        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");

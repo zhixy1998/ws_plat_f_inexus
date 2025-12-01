@@ -12,55 +12,118 @@
 
 package com.persee.workstation.uv_inexus.constant;
 
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.net.URL;
 
 @Component
+@Data
 public class PythonPathConstant {
 
     @Value("${python-code.baseUrl}")
-    public String httpUrl;
-
+    private String httpUrl;
 
     // 最小二乘接口路径
-    public static String LEAST_SQUARE_FIT;
+    private String leastSquareFit;
     // 计算浓度或吸收率接口路径
-    public static String CONCENTRATION_OR_ABSORPTION_RATE;
+    private String concentrationOrAbsorptionRate;
     // 代数运算接口路径
-    public static String ALGEBRAIC_OPERATION;
+    private String algebraicOperation;
     // 寻峰接口路径
-    public static String PEAK_SEARCHING;
+    private String peakSearching;
     // 寻谷接口路径
-    public static String VALLEY_SEARCHING;
+    private String valleySearching;
     // 寻峰寻谷接口路径
-    public static String PEAK_SEARCHING_AND_VALLEY_SEARCHING;
+    private String peakSearchingAndValleySearching;
     // 光谱四则运算接口路径
-    public static String SPECTRUM_FOUR_OPERATION;
+    private String spectrumFourOperation;
     // 光谱变换接口路径
-    public static String SPECTRUM_TRANSFORMATION;
+    private String spectrumTransformation;
     // 消除台阶或者倒刺
-    public static String REMOVE_STEP_OR_SPIKES;
+    private String removeStepOrSpikes;
     // 微分
-    public static String DIFFERENTIATED;
+    private String differentiated;
     // 平滑
-    public static String SMOOTHED;
+    private String smoothed;
 
     @PostConstruct
     public void init() {
-        // 在构造器后初始化静态字段
-        LEAST_SQUARE_FIT = httpUrl + "least_squares_fitting";
-        CONCENTRATION_OR_ABSORPTION_RATE = httpUrl + "calculate_concentration_or_abs";
-        ALGEBRAIC_OPERATION = httpUrl + "algebraic_operations";
-        PEAK_SEARCHING = httpUrl + "get_peak";
-        VALLEY_SEARCHING = httpUrl + "get_valley";
-        PEAK_SEARCHING_AND_VALLEY_SEARCHING = httpUrl + "get_peaks_and_valleys";
-        SPECTRUM_FOUR_OPERATION = httpUrl + "spectral_arithmetic_operations";
-        SPECTRUM_TRANSFORMATION = httpUrl + "spectrum_transform";
-        REMOVE_STEP_OR_SPIKES = httpUrl + "detect_step_skipe";
-        DIFFERENTIATED = httpUrl + "differentiated";
-        SMOOTHED = httpUrl + "smoothed";
+        // 验证基础配置
+        validateBaseUrl();
+
+        // 初始化所有路径
+        this.leastSquareFit = buildUrl("least_squares_fitting");
+        this.concentrationOrAbsorptionRate = buildUrl("calculate_concentration_or_abs");
+        this.algebraicOperation = buildUrl("algebraic_operations");
+        this.peakSearching = buildUrl("get_peak");
+        this.valleySearching = buildUrl("get_valley");
+        this.peakSearchingAndValleySearching = buildUrl("get_peaks_and_valleys");
+        this.spectrumFourOperation = buildUrl("spectral_arithmetic_operations");
+        this.spectrumTransformation = buildUrl("spectrum_transform");
+        this.removeStepOrSpikes = buildUrl("detect_step_skipe");
+        this.differentiated = buildUrl("differentiated");
+        this.smoothed = buildUrl("smoothed");
+
+        // 输出初始化日志（生产环境可删除）
+        logInitializedUrls();
     }
 
+    /**
+     * 验证基础URL配置
+     */
+    private void validateBaseUrl() {
+        if (httpUrl == null || httpUrl.trim().isEmpty()) {
+            throw new IllegalStateException("Python服务基础URL未配置，请检查application.yml中的python-code.baseUrl配置");
+        }
+
+        // 去除首尾空格
+        httpUrl = httpUrl.trim();
+
+        // 验证URL格式
+        if (!httpUrl.startsWith("http://") && !httpUrl.startsWith("https://")) {
+            throw new IllegalArgumentException("Python服务基础URL必须以http://或https://开头，当前配置: " + httpUrl);
+        }
+
+        // 确保URL以斜杠结尾
+        if (!httpUrl.endsWith("/")) {
+            httpUrl = httpUrl + "/";
+        }
+    }
+
+    /**
+     * 构建完整的URL
+     */
+    private String buildUrl(String endpoint) {
+        String url = httpUrl + endpoint;
+
+        // 验证URL格式
+        try {
+            new URL(url).toURI();
+            return url;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("构建Python服务URL失败: " + url + ", 错误: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 输出初始化日志（用于调试，生产环境可移除）
+     */
+    private void logInitializedUrls() {
+        System.out.println("=== Python服务URL初始化完成 ===");
+        System.out.println("基础URL: " + httpUrl);
+        System.out.println("最小二乘拟合: " + leastSquareFit);
+        System.out.println("寻峰接口: " + peakSearching);
+        System.out.println("寻谷接口: " + valleySearching);
+        System.out.println("=== 初始化结束 ===");
+    }
+
+    /**
+     * 获取基础URL（如果需要）
+     */
+    public String getBaseUrl() {
+        return httpUrl;
+    }
 }

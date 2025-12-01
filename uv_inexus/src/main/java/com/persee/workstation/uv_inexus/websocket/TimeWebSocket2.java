@@ -75,6 +75,9 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
     private TMeasureSampleService  tMeasureSampleService;
 
     @Autowired
+    private PythonPathConstant pythonPathConstant;
+
+    @Autowired
     private DeviceInfoService deviceInfoService;
 
     @Autowired
@@ -365,8 +368,8 @@ public class TimeWebSocket2 extends TextWebSocketHandler {
         body.put("height", 0.5);
         body.put("distance", 1);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request, Map.class).getBody();
+        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request, Map.class).getBody();
         List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
         List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
         List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");

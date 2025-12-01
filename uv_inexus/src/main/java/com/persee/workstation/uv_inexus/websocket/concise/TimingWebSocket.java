@@ -102,6 +102,8 @@ public class TimingWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
+    @Autowired
+    private PythonPathConstant pythonPathConstant;
 
     /**
      * 当WebSocket连接建立后调用此方法
@@ -722,7 +724,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
         // 调用 Python API，假设路径是 "/api/eliminateStep"
-        ResponseEntity<Map> response = restTemplate.postForEntity(PythonPathConstant.REMOVE_STEP_OR_SPIKES, request, Map.class);
+        ResponseEntity<Map> response = restTemplate.postForEntity(pythonPathConstant.getRemoveStepOrSpikes(), request, Map.class);
 
         // 从响应中获取处理后的 y 值
         List<Double> processedY = (List<Double>) response.getBody().get("smoothed_data");
@@ -956,8 +958,8 @@ public class TimingWebSocket extends TextWebSocketHandler {
         body.put("distance", 1);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
-        Map<String, Object> peakResult = restTemplate.postForEntity(PythonPathConstant.PEAK_SEARCHING, request, Map.class).getBody();
-        Map<String, Object> valleyResult = restTemplate.postForEntity(PythonPathConstant.VALLEY_SEARCHING, request, Map.class).getBody();
+        Map<String, Object> peakResult = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request, Map.class).getBody();
+        Map<String, Object> valleyResult = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request, Map.class).getBody();
 
         List<Double> peakX = (List<Double>) peakResult.get("peak_x");
         List<String> peakY = (List<String>) peakResult.get("peak_y");
