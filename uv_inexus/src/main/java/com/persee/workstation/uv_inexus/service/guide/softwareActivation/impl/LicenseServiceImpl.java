@@ -1,20 +1,7 @@
 package com.persee.workstation.uv_inexus.service.guide.softwareActivation.impl;
 
-
-import com.persee.workstation.uv_inexus.entity.License;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.LicenseService;
-import com.persee.workstation.uv_inexus.util.CryptoUtil;
-import com.persee.workstation.uv_inexus.util.LicenseValidator;
-import org.apache.commons.collections4.MapUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import javax.crypto.SecretKey;
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
