@@ -987,7 +987,7 @@ public class DevMessageUtil {
         DatagramSocket socket = re.getData();
         ChangeParam changeParam = null;
 
-        if(flag == "T600") {
+        if(flag.equals("T600")) {
             Boolean b = changeXml(T600xmlPath);
             if (!b) {
                 return R.fail("转换xml出错");
@@ -1011,7 +1011,7 @@ public class DevMessageUtil {
                 }
             }
         }
-        else if(flag == "T800") {
+        else if(flag.equals("T800")) {
             Boolean b = T800changeXml(T800xmlPath);
             if (!b) {
                 return R.fail("转换xml出错");

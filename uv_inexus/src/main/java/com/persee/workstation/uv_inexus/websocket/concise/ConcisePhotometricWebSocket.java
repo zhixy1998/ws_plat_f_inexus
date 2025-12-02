@@ -189,96 +189,103 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         }
 
         if (sampleId != null) {
-            TaskSpecimen specimen = new TaskSpecimen();
-            for (TaskSpecimen s : taskSpecimen) {
-                if (s.getSpecimenKey().equals(sampleId)) {
-                    BeanUtils.copyProperties(s, specimen);
+
+            for (TaskSpecimen specimen : taskSpecimen) {
+                if (!specimen.getSpecimenKey().equals(sampleId)) {
+                    continue;
                 }
-            }
-            if (specimen.getDeleteType().equals(right)) {
-                log.info("删除的样品,不需要测量");
-                infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "删除的样品,不需要测量");
-                return;
-            }
-            removeOldData(taskId, sampleId);
 
-            FMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
-            if (measureSample == null) {
-                infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "样品不存在");
-                return;
-            }
-            measureSample.setSampleLocation(null);
+                if (specimen.getDeleteType().equals(right)) {
+                    log.info("删除的样品,不需要测量");
+                    infoService.releaseDevice(deviceSerialNumber);
+                    sendAndClose(session, "删除的样品,不需要测量");
+                    return;
+                }
+                removeOldData(taskId, sampleId);
 
-            R<FPhotometricSampleAndDataVO> measure;
-            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
-            if (!poolInfo.getSuccess()) {
-                infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "无样品池信息");
-                return;
-            }
-            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
-            Integer currentPoolNum = poolInfoVO.getCurrentPoolNum();
+                FMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
+                if (measureSample == null) {
+                    infoService.releaseDevice(deviceSerialNumber);
+                    sendAndClose(session, "样品不存在");
+                    return;
+                }
+                measureSample.setSampleLocation(null);
 
-            boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool() != null && poolInfoVO.getIsAutoChangePool();
+                R<FPhotometricSampleAndDataVO> measure;
+                R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+                if (!poolInfo.getSuccess()) {
+                    infoService.releaseDevice(deviceSerialNumber);
+                    sendAndClose(session, "无样品池信息");
+                    return;
+                }
+                FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+                Integer currentPoolNum = poolInfoVO.getCurrentPoolNum();
 
-            if (isAutoChangePool) {
-                List<FSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
-                boolean poolCanUse = false;
-                for (FSamplePoolStatus poolStatus : list) {
-                    if (poolStatus.getPoolNum().equals(currentPoolNum)) {
-                        poolCanUse = true;
-                        break;
+                boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool() != null && poolInfoVO.getIsAutoChangePool();
+
+                if (isAutoChangePool) {
+                    List<FSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
+                    boolean poolCanUse = false;
+                    for (FSamplePoolStatus poolStatus : list) {
+                        if (poolStatus.getPoolNum().equals(currentPoolNum)) {
+                            poolCanUse = true;
+                            break;
+                        }
                     }
+                    if (!poolCanUse) {
+                        infoService.releaseDevice(deviceSerialNumber);
+                        sendAndClose(session, "当前定位样品池不可用，请移动样品池");
+                        return;
+                    }
+                    measureSample.setSampleLocation(currentPoolNum.toString());
+                    tMeasureSampleService.updateById(measureSample);
                 }
-                if (!poolCanUse) {
+
+                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+                if (!setParams.getSuccess()) {
                     infoService.releaseDevice(deviceSerialNumber);
-                    sendAndClose(session, "当前定位样品池不可用，请移动样品池");
+                    sendAndClose(session, "参数设置异常！");
                     return;
                 }
-                measureSample.setSampleLocation(currentPoolNum.toString());
-                tMeasureSampleService.updateById(measureSample);
-            }
 
-            if (parameter.getRepetitionPattern().equals("单池重复")) {
-                measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber, session.getId());
-            } else {
-                measure = singleSampleMeasure(measureSample, parameter, task, deviceSerialNumber, session.getId());
-            }
+                if (parameter.getRepetitionPattern().equals("单池重复")) {
+                    measure = singleSampleRepeatMeasure(measureSample, parameter, task, deviceSerialNumber, session.getId());
+                } else {
+                    measure = singleSampleMeasure(measureSample, parameter, task, deviceSerialNumber, session.getId());
+                }
 
-            if (!measure.getSuccess()) {
-                infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "测量失败");
-                return;
-            }
-            FPhotometricSampleAndDataVO data = measure.getData();
-            R<String> measureData = photometricService.savePhotometricMeasureData(data);
-            String dataId = measureData.getData();
-            if (!StringUtils.hasText(dataId)) {
-                infoService.releaseDevice(deviceSerialNumber);
-                sendAndClose(session, "数据保存异常！"); 
-                return;
-            }
-            specimen.setIsTested(right);
-            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-            task.setDeviceSerialNumber(deviceSerialNumber);
-            tMeasureTaskService.updateById(task);
-
-            FMeasureSample sample = tMeasureSampleService.getById(sampleId);
-
-            if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
-                R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
-                if (!formulaCount.getSuccess()) {
+                if (!measure.getSuccess()) {
                     infoService.releaseDevice(deviceSerialNumber);
-                    sendAndClose(session, "公式计算出错，请检查公式配置！");
+                    sendAndClose(session, "测量失败");
                     return;
                 }
-                data = formulaCount.getData();
+                FPhotometricSampleAndDataVO data = measure.getData();
+                R<String> measureData = photometricService.savePhotometricMeasureData(data);
+                String dataId = measureData.getData();
+                if (!StringUtils.hasText(dataId)) {
+                    infoService.releaseDevice(deviceSerialNumber);
+                    sendAndClose(session, "数据保存异常！");
+                    return;
+                }
+                specimen.setIsTested(right);
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                task.setDeviceSerialNumber(deviceSerialNumber);
+                tMeasureTaskService.updateById(task);
 
-                photometricService.saveCountData(data, dataId);
+                FMeasureSample sample = tMeasureSampleService.getById(sampleId);
+
+                if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+                    R<FPhotometricSampleAndDataVO> formulaCount = formulaCont(session, data, sample, task, parameter);
+                    if (!formulaCount.getSuccess()) {
+                        infoService.releaseDevice(deviceSerialNumber);
+                        sendAndClose(session, "公式计算出错，请检查公式配置！");
+                        return;
+                    }
+                    data = formulaCount.getData();
+
+                    photometricService.saveCountData(data, dataId);
+                }
             }
-
 
         } else {
 
@@ -318,6 +325,13 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 maxPoolNum = Collections.max(usefulLocation);
             }
             task.setDeviceSerialNumber(deviceSerialNumber);
+
+            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+            if (!setParams.getSuccess()) {
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, "参数设置异常！");
+                return;
+            }
 
             for (TaskSpecimen specimen : taskSpecimen) {
                 if (!isAutoChangePool && measureCount == 1) {
@@ -393,7 +407,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         }
 
         JSONObject message = new JSONObject();
-        message.put("success", "测量完成");
+        message.put("success", "测量完成，请更换样品继续测量");
         session.sendMessage(new TextMessage(message.toJSONString()));
 
         JSONObject jsonObject = new JSONObject();
@@ -457,17 +471,6 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         List<String> waveLengths = parameter.getWaveLength();
 
-        list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
-        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
-
-        String changeLampWaveLength = parameter.getChangeLampWaveLength();
-        Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
-        list.add(new Command("SetChangeLampWl", new Object[]{v1}));
-
-        if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
-            list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
-            list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
-        }
         if (StringUtils.hasText(sample.getSampleLocation())) {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             JSONObject object = new JSONObject();
@@ -558,17 +561,6 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
             List<String> waveLengths = parameter.getWaveLength();
 
-            list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
-
-            String changeLampWaveLength = parameter.getChangeLampWaveLength();
-            Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
-            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
-
-            if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
-                list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
-                list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
-            }
-            list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
             if (StringUtils.hasText(sample.getSampleLocation())) {
                 list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
                 JSONObject object = new JSONObject();
@@ -746,6 +738,41 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             status = 0;
             return R.fail("测量出错");
         }
+    }
+
+    private R<Boolean> setPreMeasureParams(String deviceSerialNumber, FPhotometricParameter parameter) {
+
+        List<Command> list = new ArrayList<>();
+
+        list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+
+        String changeLampWaveLength = parameter.getChangeLampWaveLength();
+        Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+        list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
+        if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
+            list.add(new Command("SetSlit1", new Object[]{parameter.getSpectralBandwidth()}));
+        }
+
+        if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+            list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
+            list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
+        }
+        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+
+        String ip = infoService.getIp(deviceSerialNumber);
+        R<ChangeParam> res;
+        try {
+            res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+            if (!res.getSuccess()) {
+                return R.fail("参数设置出错！");
+            }
+        } catch (Exception e) {
+            return R.fail("参数设置出错！");
+        }
+
+        return R.ok(true);
+
     }
 
     public void repeatSend(WebSocketSession session, List<Double> data, FMeasureSample sample, Integer repetitionTime, String key) throws IOException {

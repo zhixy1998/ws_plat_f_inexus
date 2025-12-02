@@ -252,6 +252,13 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
 
             //后续添加仪器状态检测
 
+            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+            if (!setParams.getSuccess()) {
+                infoService.releaseDevice(deviceSerialNumber);
+                sendAndClose(session, "参数设置异常！");
+                return;
+            }
+
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 boolean repeat = parameter.getRepeatMode().equals("单池重复");
 
@@ -1084,8 +1091,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         List<String> waveLengths = parameter.getWaveLength();
         String ip = infoService.getIp(deviceSerialNumber);
 
-        list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
-        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
         if (StringUtils.hasText(sample.getSampleLocation())) {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             JSONObject object = new JSONObject();
@@ -1206,8 +1211,6 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         String ip = infoService.getIp(deviceSerialNumber);
 
         LocalDateTime startTime = LocalDateTime.now();
-        list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
-        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
         if (StringUtils.hasText(sample.getSampleLocation())) {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             JSONObject object = new JSONObject();
@@ -1373,6 +1376,36 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
         return R.ok(ans);
 
     }
+
+    private R<Boolean> setPreMeasureParams(String deviceSerialNumber, FRationParameter parameter) {
+
+        List<Command> list = new ArrayList<>();
+
+        list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
+        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+
+        String changeLampWaveLength = parameter.getChangeLampWaveLength();
+        Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
+        list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+
+        if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
+            list.add(new Command("SetSlit1", new Object[]{parameter.getSpectralBandwidth()}));
+        }
+        String ip = infoService.getIp(deviceSerialNumber);
+        R<ChangeParam> res;
+        try {
+            res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+            if (!res.getSuccess()) {
+                return R.fail("参数设置出错！");
+            }
+        } catch (Exception e) {
+            return R.fail("参数设置出错！");
+        }
+
+        return R.ok(true);
+
+    }
+
 
     public void sampleSend(WebSocketSession session, String sampleId, String key, String identity, String value) throws IOException {
         JSONObject jsonObject = new JSONObject();

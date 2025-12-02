@@ -15,9 +15,12 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoDAO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceModelInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
@@ -33,6 +36,9 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
     @Autowired
     DeviceInfoDAO dao;
+
+    @Autowired
+    DeviceModelInfoDAO deviceModelInfoDAO;
 
     @Override
     public DeviceInfoPO getInfo(String deviceSerialNumber) {
@@ -189,6 +195,25 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return i;
         }
         return 0;
+    }
+
+    @Override
+    public Boolean isNeedSetSit(String deviceSerialNumber) {
+
+        String devModel = deviceSerialNumber.substring(3, 8);
+
+        LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+        query.eq(DeviceModelInfoPO::getDevModel, devModel);
+
+        DeviceModelInfoPO po = deviceModelInfoDAO.selectOne(query);
+        if (po != null && po.getInitEntry() != null) {
+            for (DeviceInitEntryInfo entry : po.getInitEntry()) {
+                if (entry.getInitComId().contains("SetSlit1")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 

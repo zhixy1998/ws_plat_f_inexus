@@ -275,7 +275,6 @@ public class MessageUtil {
             System.out.println();
 
 
-
             int timeoutMs = 18000 ;
             currentSocket.setSoTimeout(timeoutMs);
 
@@ -720,9 +719,16 @@ public class MessageUtil {
                         lastReceiveTime = System.currentTimeMillis();
                         if (count > 1 ) {
                             currentSocket.setSoTimeout(100);
-                            if (cmdId.equals( "BaseLine" ) || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl") || cmdId.equals("CorrectWl") || cmdId.equals("SetWl")){
+                            if (cmdId.equals( "BaseLine" ) || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl") || cmdId.equals("SetWl")){
                                 currentSocket.setSoTimeout(4000);
+                            } else if (cmdId.equals("CorrectWl")) {
+                                currentSocket.setSoTimeout(8000);
                             }
+                        }
+
+                        if(cmdId.equals("CorrectWl") && (reply[2] & 0xFF) == 0 && (reply[3] & 0xFF) == 15){
+                            System.out.println("CorrectWl 命令结束");
+                            break;
                         }
 
                     } catch (SocketTimeoutException e) {
@@ -1117,6 +1123,48 @@ public class MessageUtil {
         }
         return null;
     }
+
+    //获取wifi连接的ip地址
+//    private String getEthernetIPv4() {
+//        try {
+//            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+//            while (interfaces.hasMoreElements()) {
+//                NetworkInterface ni = interfaces.nextElement();
+//
+//                if (!ni.isUp() || ni.isLoopback()) continue;
+//
+//                String name = ni.getName().toLowerCase();
+//                String displayName = ni.getDisplayName().toLowerCase();
+//
+//                // 保留有线以太网接口和WiFi接口（常见关键词）
+//                boolean isEthernetOrWiFi = name.contains("eth") ||
+//                        displayName.contains("ethernet") ||
+//                        displayName.contains("以太网") ||
+//                        name.contains("wlan") ||
+//                        displayName.contains("wi-fi") ||
+//                        displayName.contains("wireless");
+//
+//                if (!isEthernetOrWiFi) continue;
+//
+//                // 排除 VMware、VirtualBox 等虚拟网卡
+//                if (name.contains("vmnet") || displayName.contains("vmware")) continue;
+//                if (name.contains("vbox") || displayName.contains("virtualbox")) continue;
+//                if (displayName.contains("virtual ethernet")) continue;
+//
+//                // 遍历地址，返回第一个 IPv4 地址
+//                Enumeration<InetAddress> addresses = ni.getInetAddresses();
+//                while (addresses.hasMoreElements()) {
+//                    InetAddress addr = addresses.nextElement();
+//                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+//                        return addr.getHostAddress();
+//                    }
+//                }
+//            }
+//        } catch (SocketException e) {
+//            e.printStackTrace();
+//        }
+//        return null;
+//    }
 
 
 }

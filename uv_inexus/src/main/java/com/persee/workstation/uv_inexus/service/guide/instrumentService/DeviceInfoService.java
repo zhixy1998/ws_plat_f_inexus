@@ -41,4 +41,6 @@ public interface DeviceInfoService {
 
     //查询仪器激活状态
     Integer queryDeviceActivationStatus(String deviceSerialNumber);
+    
+    Boolean isNeedSetSit(String deviceSerialNumber);
 }

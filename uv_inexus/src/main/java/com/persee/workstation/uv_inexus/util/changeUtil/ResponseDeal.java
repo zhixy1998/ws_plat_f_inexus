@@ -818,6 +818,7 @@ private static Object parseLampPos(List<byte[]> responses) {
         //设置光度模式时，实时更新共享变量
         int mode = lastResponse[4] & 0xFF;
         DetectionConstants.luminosity = String.valueOf(mode);
+        DetectionConstants.zeroResult.clear();
 
         result = isEqual ? "true" : "false";
         return isEqual;

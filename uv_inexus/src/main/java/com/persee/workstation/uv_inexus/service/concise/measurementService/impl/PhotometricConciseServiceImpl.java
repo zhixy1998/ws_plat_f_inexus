@@ -39,6 +39,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -46,6 +47,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
@@ -112,6 +114,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
+    DeviceManageService manageService;
+
+    @Autowired
     RestUtil restUtil;
 
     @Autowired
@@ -173,28 +178,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         if (parameter.getWaveLength().size() > 26) {
             //波长值数量必须在1-26个范围内
             return R.fail(YamlMessageSource.getMessageStatic("00103005"));
-        }
-        for (String waveStr : parameter.getWaveLength()) {
-            if (waveStr == null || waveStr.trim().isEmpty()) {
-                //波长值不能包含空值
-                return R.fail(YamlMessageSource.getMessageStatic("00103006"));
-            }
-            try {
-                double waveLength = Double.parseDouble(waveStr);
-                if (waveLength <= 190 || waveLength >= 1100) {
-                    //"波长值" + waveStr + "必须在190-900范围内"
-                    return R.fail(YamlMessageSource.getMessageStatic("00105004",waveStr));
-                }
-                // 校验小数点后最多1位
-                String[] parts = waveStr.split("\\.");
-                if (parts.length > 1 && parts[1].length() > 1) {
-                    //"波长值" + waveStr + "小数点后最多保留1位"
-                    return R.fail(YamlMessageSource.getMessageStatic("00105005",waveStr));
-                }
-            } catch (NumberFormatException e) {
-                //"波长值" + waveStr + "必须为有效的数字"
-                return R.fail(YamlMessageSource.getMessageStatic("00105006",waveStr));
-            }
         }
 
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
@@ -420,10 +403,53 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
-            R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
+
+            FPhotometricParameter newMethodParam = checkDTO.getNewMethodParam();
+
+            R<Boolean> r = checkParam(newMethodParam);
             if (!r.getSuccess()) {
                 return Result.fail(r.getMessage());
             }
+
+            double minWaveLength = 190.0;
+            double maxWaveLength = 1100.0;
+
+            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+
+                }
+            }
+
+            for (String waveStr : newMethodParam.getWaveLength()) {
+                if (waveStr == null || waveStr.trim().isEmpty()) {
+                    //波长值不能包含空值
+                    return Result.fail(YamlMessageSource.getMessageStatic("00103006"));
+                }
+                try {
+                    double waveLength = Double.parseDouble(waveStr);
+                    if (waveLength < minWaveLength || waveLength > maxWaveLength) {
+                        //"波长值" + waveStr + "必须在范围内"
+                        return Result.fail(YamlMessageSource.getMessageStatic("00105004",waveStr, minWaveLength, maxWaveLength));
+                    }
+                    // 校验小数点后最多1位
+                    String[] parts = waveStr.split("\\.");
+                    if (parts.length > 1 && parts[1].length() > 1) {
+                        //"波长值" + waveStr + "小数点后最多保留1位"
+                        return Result.fail(YamlMessageSource.getMessageStatic("00105005",waveStr));
+                    }
+                } catch (NumberFormatException e) {
+                    //"波长值" + waveStr + "必须为有效的数字"
+                    return Result.fail(YamlMessageSource.getMessageStatic("00105006",waveStr));
+                }
+            }
+
+
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();

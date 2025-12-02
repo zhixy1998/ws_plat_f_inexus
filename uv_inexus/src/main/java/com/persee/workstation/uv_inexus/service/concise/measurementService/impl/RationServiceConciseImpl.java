@@ -42,6 +42,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -51,6 +52,7 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
@@ -120,6 +122,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
+    DeviceManageService manageService;
 
 
     @Value("1")
@@ -308,11 +313,56 @@ public class RationServiceConciseImpl implements RationConciseService {
             //没有可应用的方法参数
             return Result.fail(YamlMessageSource.getMessageStatic("00103014"));
         }
+
         if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
-            R<Boolean> r = checkParam(checkDTO.getNewMethodParam());
+
+            FRationParameter methodParam = checkDTO.getNewMethodParam();
+
+            R<Boolean> r = checkParam(methodParam);
             if (!r.getSuccess()) {
                 return Result.fail(r.getMessage());
             }
+
+            double minWaveLength = 190.0;
+            double maxWaveLength = 1100.0;
+
+            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+
+                }
+            }
+
+            List<String> waveLengths = methodParam.getWaveLength();
+
+            for (int i = 0; i < waveLengths.size(); i++) {
+                String waveStr = waveLengths.get(i);
+                if (isBlank(waveStr)) {
+                    //"第" + (i + 1) + "个波长值不能为空字符串"
+                    return Result.fail(YamlMessageSource.getMessageStatic("00102005",(i + 1)));
+                }
+                try {
+                    double waveVal = Double.parseDouble(waveStr);
+                    if (waveVal < minWaveLength || waveVal > maxWaveLength) {
+                        //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
+                        return Result.fail(YamlMessageSource.getMessageStatic("00102006",(i + 1),waveVal, minWaveLength, maxWaveLength));
+                    }
+                    // 校验小数点后最多1位
+                    String[] parts = waveStr.split("\\.");
+                    if (parts.length > 1 && parts[1].length() > 1) {
+                        //"波长值" + waveStr + "小数点后最多保留1位"
+                        return Result.fail(YamlMessageSource.getMessageStatic("00105005",waveStr));
+                    }
+                } catch (NumberFormatException e) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("00102007",(i + 1) ,waveStr));
+                }
+            }
+
         }
 
         FMethodChangeCheckVO vo = new FMethodChangeCheckVO();
@@ -471,22 +521,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             //"波长值最多支持3个，当前数量：" + waveLengths.size()
             return R.fail(YamlMessageSource.getMessageStatic("00102004", waveLengths.size()));
         }
-        for (int i = 0; i < waveLengths.size(); i++) {
-            String waveStr = waveLengths.get(i);
-            if (isBlank(waveStr)) {
-                //"第" + (i + 1) + "个波长值不能为空字符串"
-                return R.fail(YamlMessageSource.getMessageStatic("00102005",(i + 1)));
-            }
-            try {
-                double waveVal = Double.parseDouble(waveStr);
-                if (waveVal < 190 || waveVal > 1100) {
-                    //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
-                    return R.fail(YamlMessageSource.getMessageStatic("00102006",(i + 1),waveVal));
-                }
-            } catch (NumberFormatException e) {
-                return R.fail(YamlMessageSource.getMessageStatic("00102007",(i + 1) ,waveStr));
-            }
-        }
+
 
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
@@ -4975,7 +5010,13 @@ public class RationServiceConciseImpl implements RationConciseService {
         taskHeadSnapshot.setTaskHeads(taskHeads);
         taskHeadSnapshot.setSampleHeads(sampleHeads);
 
-        FRationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), FRationTaskHeadSnapShot.class);
+        FRationTaskHeadSnapShot shot = new FRationTaskHeadSnapShot();
+        if (StringUtils.hasText(task.getTableInfo())) {
+            shot = JSON.parseObject(task.getTableInfo(), FRationTaskHeadSnapShot.class);
+            if (shot == null) {
+                shot = new FRationTaskHeadSnapShot();
+            }
+        }
         if (snapshotDTO.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
             shot.setStandHead(taskHeadSnapshot);
         } else if (snapshotDTO.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {

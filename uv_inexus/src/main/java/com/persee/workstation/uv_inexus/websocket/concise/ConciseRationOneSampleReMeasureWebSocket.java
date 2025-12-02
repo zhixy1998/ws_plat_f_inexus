@@ -466,6 +466,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
 
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
+            list.add(new Command("SetSlit1", new Object[]{parameter.getSpectralBandwidth()}));
+        }
         if (StringUtils.hasText(sample.getSampleLocation())) {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             JSONObject object = new JSONObject();
@@ -594,6 +597,9 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
         LocalDateTime startTime = LocalDateTime.now();
         list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
         list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
+            list.add(new Command("SetSlit1", new Object[]{parameter.getSpectralBandwidth()}));
+        }
         if (StringUtils.hasText(sample.getSampleLocation())) {
             list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
             JSONObject object = new JSONObject();
