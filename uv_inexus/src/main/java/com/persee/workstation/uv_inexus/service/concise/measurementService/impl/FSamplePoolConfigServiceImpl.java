@@ -153,15 +153,29 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             //未找到该仪器附件配置
             return R.fail(YamlMessageSource.getMessageStatic("00106001"));
         }
-
-        if (!po.getIsAutoChangePool() && changeDto.getIsAutoChangePool() != null && changeDto.getIsAutoChangePool()) {
-            if (StringUtils.hasText(po.getPoolInfo())) {
-                List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
-                if (list != null && !list.isEmpty()) {
-                    for (FSamplePoolStatus status : list) {
-                        status.setPoolStatus(true);
+        if (changeDto.getIsAutoChangePool() == null && changeDto.getPoolNum() == null && changeDto.getPoolStatus() != null) {
+            changeDto.setIsAutoChangePool(changeDto.getPoolStatus());
+        }
+        if (changeDto.getIsAutoChangePool() != null) {
+            if (changeDto.getIsAutoChangePool()) {
+                if (StringUtils.hasText(po.getPoolInfo())) {
+                    List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
+                    if (list != null && !list.isEmpty()) {
+                        for (FSamplePoolStatus status : list) {
+                            status.setPoolStatus(true);
+                        }
+                        po.setPoolInfo(JSON.toJSONString(list));
                     }
-                    po.setPoolInfo(JSON.toJSONString(list));
+                }
+            } else {
+                if (StringUtils.hasText(po.getPoolInfo())) {
+                    List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
+                    if (list != null && !list.isEmpty()) {
+                        for (FSamplePoolStatus status : list) {
+                            status.setPoolStatus(false);
+                        }
+                        po.setPoolInfo(JSON.toJSONString(list));
+                    }
                 }
             }
         }
