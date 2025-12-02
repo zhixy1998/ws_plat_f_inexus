@@ -946,8 +946,18 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         List<FMeasureTask> taskList = fMeasureTaskService.list(wrapper);
         if (taskList != null && !taskList.isEmpty()) {
             FMeasureTask task = taskList.get(0);
-            String projectItemKey = task.getProjectItemKey();
             String methodKey = task.getMethodKey();
+
+            try {
+                if (StringUtils.hasText(task.getZeroParam())) {
+                    List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+                    if (params != null && !params.isEmpty()) {
+                        params.forEach(param -> DetectionConstants.zeroResult.putIfAbsent(Double.valueOf(param.getWl()), param));
+                    }
+                }
+            } catch (Exception e) {
+                log.error("解析任务里的校零参数异常: {}", e.getMessage());
+            }
 
             FMeasureMethod method = fMeasureMethodService.getById(methodKey);
             FMeasurementCurrentInfoVO vo = new FMeasurementCurrentInfoVO();
@@ -2640,10 +2650,11 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
         String wave = "--";
-        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_ZERO);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
+        DetectionConstants.zeroWavelength = "";
         try {
             Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{photometricParameter.getLuminosity()});
             devMessageUtil.wavelengthLocate(command, ip);
@@ -2664,6 +2675,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             for (String s : waveLength) {
                 Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
                 command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
+                DetectionConstants.zeroWavelength = s;
                 devMessageUtil.wavelengthLocate(command, ip);
 
                 command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});

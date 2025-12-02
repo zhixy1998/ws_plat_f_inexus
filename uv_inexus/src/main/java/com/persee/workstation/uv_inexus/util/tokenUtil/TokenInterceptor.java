@@ -11,8 +11,12 @@ package com.persee.workstation.uv_inexus.util.tokenUtil;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
+import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -21,6 +25,10 @@ import javax.servlet.http.HttpServletResponse;
 
 @Component
 public class TokenInterceptor implements HandlerInterceptor{
+
+    @Autowired
+    SysUserMapper userMapper;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,Object handler)throws Exception {
 
@@ -50,6 +58,18 @@ public class TokenInterceptor implements HandlerInterceptor{
         if (token != null && !token.trim().isEmpty()) {
             boolean result = JWTUtils.verify(token);
             if (result) {
+                LoginUserInfoVO currentUser = UserContext.getCurrentUser();
+                String username = currentUser.getUsername();
+                SysUserPO sysUserPO = userMapper.selectByUsername(username);
+                if (sysUserPO == null) {
+                    JSONObject json = new JSONObject();
+                    json.put("success", "false");
+                    json.put("message", "当前账户已禁用！");
+                    json.put("code", ResultCodeEnum.TOKEN_ERROR.getCode());
+                    response.getWriter().append(json.toString());
+                    return false;
+
+                }
                 return true;
             }
         }

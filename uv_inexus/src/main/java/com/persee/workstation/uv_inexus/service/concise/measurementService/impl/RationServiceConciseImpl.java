@@ -1509,6 +1509,19 @@ public class RationServiceConciseImpl implements RationConciseService {
             vo.setTaskName(task.getTaskName());
             vo.setMethodId(method.getId());
             vo.setMethodName(method.getMethodName());
+            try {
+                if (StringUtils.hasText(task.getZeroParam())) {
+                    List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+                    if (params != null && !params.isEmpty()) {
+                        params.forEach(param -> DetectionConstants.zeroResult.putIfAbsent(Double.valueOf(param.getWl()), param));
+                    }
+                }
+            } catch (Exception e) {
+                log.error("解析任务里的校零参数异常: {}", e.getMessage());
+            }
+
+
+
 
             return Result.ok(vo);
         }
@@ -4772,10 +4785,11 @@ public class RationServiceConciseImpl implements RationConciseService {
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         List<ChangeParam> list = new ArrayList<>();
         String wave = "--";
-        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_ZERO);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         }
+        DetectionConstants.zeroWavelength = "";
         for (String s : waveLength) {
             Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{WaveLengthEnum.abs.getCode()});
             devMessageUtil.wavelengthLocate(command, ip);
@@ -4783,6 +4797,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
 
             command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
+            DetectionConstants.zeroWavelength = s;
             devMessageUtil.wavelengthLocate(command, ip);
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});

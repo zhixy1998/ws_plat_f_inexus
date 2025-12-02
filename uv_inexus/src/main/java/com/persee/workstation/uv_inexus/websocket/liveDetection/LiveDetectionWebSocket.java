@@ -438,6 +438,19 @@ public class LiveDetectionWebSocket {
                                     status.put("devCurrentStatus", infoPO.getDeviceCurrentStatus());
                                     log.info("仪器状态：{}", status);
                                     messagingTemplate.convertAndSend(deviceStatusTopic, status);
+
+                                    if (infoPO.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_ZERO) && StringUtils.hasText(DetectionConstants.zeroWavelength)) {
+                                        log.info("校零中，回显当前波长");
+
+                                        DetectionResponseInfoVO vo = new DetectionResponseInfoVO();
+                                        vo.setX(DetectionConstants.zeroWavelength + "nm");
+
+                                        Map<String, Object> map = vo.toMap();
+                                        JSONObject jsonObject = new JSONObject();
+                                        jsonObject.putAll(map);
+
+                                        messagingTemplate.convertAndSend(measureTopic, jsonObject);
+                                    }
                                 }
 
                                 if (infoPO == null) {

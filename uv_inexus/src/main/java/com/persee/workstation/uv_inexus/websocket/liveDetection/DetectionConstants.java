@@ -34,6 +34,12 @@ public class DetectionConstants {
      * 校零结果
      */
     public static volatile LinkedHashMap<Double, ChangeParam> zeroResult = new LinkedHashMap<>();
+
+    /**
+     * 当前校零波长
+     */
+    public static volatile String zeroWavelength = "";
+
     /**
      * 采集数据间隔,单位ms
      */
