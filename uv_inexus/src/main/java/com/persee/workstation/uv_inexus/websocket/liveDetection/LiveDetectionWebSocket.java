@@ -404,6 +404,9 @@ public class LiveDetectionWebSocket {
             log.info("实时监测：未找到该设备");
             return R.fail("请先连接仪器");
         }
+        if (info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+            Constants.devConnectInfo.put(deviceSerialNumber, true);
+        }
 
         // 只有当线程尚未启动或者已经终止时才重新启动
         if (statusThread == null || !statusThread.isAlive()) {

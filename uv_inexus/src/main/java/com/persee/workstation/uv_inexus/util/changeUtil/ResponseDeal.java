@@ -312,7 +312,7 @@ public class ResponseDeal {
         String SpectralBandwidth = String.valueOf(Bandwidth);
         MeasureController.addBandwidthData(SpectralBandwidth);
 
-        if (DetectionConstants.detectionInfo != null && SpectralBandwidth != null) {
+        if (DetectionConstants.detectionInfo != null) {
             DetectionConstants.detectionInfo.put("bandwidth", SpectralBandwidth);
         }
 
@@ -814,8 +814,10 @@ private static Object parseLampPos(List<byte[]> responses) {
                 lastResponse[4] == sendBytes[4];
         //设置光度模式时，实时更新共享变量
         int mode = lastResponse[4] & 0xFF;
-        DetectionConstants.luminosity = String.valueOf(mode);
-        DetectionConstants.zeroResult.clear();
+        if (!String.valueOf(mode).equals(DetectionConstants.luminosity)) {
+            DetectionConstants.luminosity = String.valueOf(mode);
+            DetectionConstants.zeroResult.clear();
+        }
 
         result = isEqual ? "true" : "false";
         return isEqual;
