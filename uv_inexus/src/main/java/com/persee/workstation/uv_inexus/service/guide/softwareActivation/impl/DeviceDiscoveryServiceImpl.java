@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
     private final DeviceDiscoveryServiceMapper softwareActivationMapper;
-    private static final DateTimeFormatter  DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // 状态定义
     private static final int STATUS_HISTORY = 0;
@@ -51,6 +51,26 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     }
 
 
+//    @Override
+//    public List<DeviceInfoDTO> generateMockDeviceData() {
+//        List<DeviceInfoDTO> mockData = new ArrayList<>();
+//        String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
+//
+//
+//        String sn = ResponseDeal.Sn;
+//
+//        if (sn == null || sn.isEmpty()) {
+//            sn = "UNKNOWN-SN";
+//        }
+//
+//
+//        sn = sn.substring(0, 16);
+//        // 使用解析好的序列号替代
+//        mockData.add(buildDeviceInfo(sn, currentTime));
+//
+//        return mockData;
+//    }
+
     @Override
     public List<DeviceInfoDTO> generateMockDeviceData() {
         List<DeviceInfoDTO> mockData = new ArrayList<>();
@@ -59,19 +79,19 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
         String sn = ResponseDeal.Sn;
 
+//        if (sn == null || sn.isEmpty()) {
+//            sn = "UNKNOWN-SN";
+//        } else
         if (sn == null || sn.isEmpty()) {
-            sn = "UNKNOWN-SN";
+            return mockData;
         }
-
-
-        sn = sn.substring(0, 16);
-        // 使用解析好的序列号替代
-        mockData.add(buildDeviceInfo(sn, currentTime));
-
+        if (sn.length() >=16) {
+            sn = sn.substring(0, 16);
+            // 使用解析好的序列号替代
+            mockData.add(buildDeviceInfo(sn, currentTime));
+        }
         return mockData;
     }
-
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<DeviceInfoDTO> addNonDuplicateDevicesToDb() {
