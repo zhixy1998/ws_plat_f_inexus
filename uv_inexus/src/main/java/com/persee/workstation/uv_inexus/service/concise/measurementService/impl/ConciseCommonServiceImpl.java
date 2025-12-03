@@ -1876,12 +1876,16 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             //拷贝失败,传入taskId不能为空！！！
             return Result.fail(YamlMessageSource.getMessageStatic("00101013"));
         }
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task!=null&&task.getIsDelete().equals("1")){
+            //任务已删除
+            return Result.fail("任务已删除");
+        }
         rationConciseService.saveButton(copyParam.getTaskId(), copyParam.getUpdateBy());
         try {
             /*
              * 复制任务
              */
-            FMeasureTask task = fMeasureTaskService.getById(taskId);
 
             LambdaQueryWrapper<FMeasureTask> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(FMeasureTask::getTaskName, taskName)
