@@ -103,7 +103,33 @@ public class Result<T> {
         result.setMessage(messageCode);
         return result;
     }
+    public static<T> Result<T> warn(){
+        return Result.warn(null);
+    }
 
+    public static<T> Result<T> warn(T data){
+        Result<T> result = build(data);
+        return build(data, ResultCodeEnum.WARN);
+    }
+
+    // 警告（通过消息码与参数）
+    public static<T> Result<T> warn(String messageCode, Object... obj){
+        return build(ResultCodeEnum.WARN.getCode(), messageCode, obj);
+    }
+
+    // 警告便捷别名，统一调用风格
+    public static<T> Result<T> warnCode(String messageCode, Object... obj){
+        return warn(messageCode, obj);
+    }
+
+    public static<T> Result<T> warn(String message){
+        return Result.warn(ResultCodeEnum.WARN.getCode(), message);
+    }
+
+    public static<T> Result<T> warn(Integer code, String message) {
+        Result<T> result = build(code, message);
+        return result;
+    }
     public static<T> Result<T> fail(){
         return Result.fail(null);
     }

@@ -9,10 +9,10 @@
 
 package com.persee.workstation.uv_inexus.config;
 
+import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.util.UserPermissionUtil;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
-
 import com.persee.workstation.uv_inexus.vo.sysUserPermissionVo.LoginUserInfoVO;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -52,17 +51,17 @@ public class ButtonPermissionAspect {
         // 获取当前用户信息
         LoginUserInfoVO currentUser = UserContext.getCurrentUser();
         if (currentUser == null) {
-            log.warn("用户未登录，无法执行需要权限的操作: {}", buttonPermission.description());
-            throw new SecurityException("用户未登录，无法执行操作: " + buttonPermission.description());
+            log.warn("用户未登录，无法执行操作 {}", buttonPermission.description());
+            return createUnauthorizedResult("用户未登录，无法执行操作 " + buttonPermission.description());
         }
 
         // 检查用户是否有执行该操作的权限
         if (!hasButtonPermission(currentUser, buttonPermission.value())) {
-            log.warn("用户 {} 没有权限执行操作: {} (权限标识: {})",
+            log.warn("用户 {} 没有权限执行操作 {} (权限标识: {})",
                     currentUser.getUsername(),
                     buttonPermission.description(),
                     buttonPermission.value());
-            throw new SecurityException("权限不足，无法执行操作: " + buttonPermission.description());
+            return createUnauthorizedResult("权限不足，无法执行操作 " + buttonPermission.description());
         }
 
         log.info("用户 {} 执行操作: {} (权限标识: {})",
@@ -73,7 +72,15 @@ public class ButtonPermissionAspect {
         // 执行原方法
         return joinPoint.proceed();
     }
-
+    /**
+     * 创建权限不足的返回结果
+     *
+     * @param message 错误消息
+     * @return Result 对象
+     */
+    private Result<?> createUnauthorizedResult(String message) {
+        return Result.warn(message);
+    }
     /**
      * 检查用户是否有指定按钮权限
      *

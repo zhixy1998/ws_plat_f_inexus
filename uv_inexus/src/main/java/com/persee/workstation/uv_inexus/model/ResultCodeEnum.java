@@ -20,6 +20,7 @@ public enum ResultCodeEnum {
 
     SUCCESS(200,"成功"),
     FAIL(201, "失败"),
+    WARN(202, "警告"),
     SERVICE_ERROR(2012, "服务异常"),
     SYS_ERROR(500,"系统异常"),
     DATA_ERROR(204, "数据异常"),
