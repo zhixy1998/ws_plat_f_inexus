@@ -220,7 +220,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             } else {
                 log.info("【线程状态】任务线程不存在或未运行, session: {}", sessionId);
             }
-
             // 发送停止成功消息
             log.info("【发送停止成功】向前端发送停止成功消息, session: {}", sessionId);
             sendMessageSafe(session, "停止成功");
@@ -263,9 +262,40 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
     }
 
-    /**
-     * 停止数据接收线程 - 关键方法，确保不再接收新数据
-     */
+//    /**
+//     * 停止数据接收线程 - 关键方法，确保不再接收新数据
+//     */
+//    private void stopDataReceivingThread() {
+//        try {
+//            Thread dataReceivingThread = Constants.sendMeasureThread;
+//            if (dataReceivingThread != null && dataReceivingThread.isAlive()) {
+//                log.info("【停止数据线程】开始停止数据接收线程");
+//
+//                // 中断数据接收线程
+//                dataReceivingThread.interrupt();
+//
+//                // 等待线程结束，但不要等太久
+//                try {
+//                    dataReceivingThread.join(500); // 等待500ms
+//                    log.info("【数据线程停止】数据接收线程已停止");
+//                } catch (InterruptedException e) {
+//                    log.warn("【等待线程中断】等待数据接收线程结束被中断");
+//                    // 重新中断当前线程
+//                    Thread.currentThread().interrupt();
+//                }
+//            } else {
+//                log.info("【数据线程状态】数据接收线程不存在或未运行");
+//            }
+//
+//            // 无论怎样，都清空引用
+////            Constants.sendMeasureThread = null;
+//            log.info("【数据线程清理】数据接收线程引用已清理");
+//
+//        } catch (Exception e) {
+//            log.error("【停止数据线程异常】停止数据接收线程异常", e);
+//        }
+//    }
+
     private void stopDataReceivingThread() {
         try {
             Thread dataReceivingThread = Constants.sendMeasureThread;
@@ -275,21 +305,28 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 // 中断数据接收线程
                 dataReceivingThread.interrupt();
 
-                // 等待线程结束，但不要等太久
-                try {
-                    dataReceivingThread.join(500); // 等待500ms
+                // 重试直到线程停止或者超时
+                long startTime = System.currentTimeMillis();
+                while (dataReceivingThread.isAlive() && (System.currentTimeMillis() - startTime) < 5000) {
+                    try {
+                        dataReceivingThread.join(100);  // 等待100ms，重试直到线程停止或超时
+                    } catch (InterruptedException e) {
+                        log.warn("【等待线程中断】等待数据接收线程结束被中断");
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
+                if (dataReceivingThread.isAlive()) {
+                    log.warn("数据接收线程未在超时时间内停止，强制停止");
+                } else {
                     log.info("【数据线程停止】数据接收线程已停止");
-                } catch (InterruptedException e) {
-                    log.warn("【等待线程中断】等待数据接收线程结束被中断");
-                    // 重新中断当前线程
-                    Thread.currentThread().interrupt();
                 }
             } else {
                 log.info("【数据线程状态】数据接收线程不存在或未运行");
             }
 
-            // 无论怎样，都清空引用
-//            Constants.sendMeasureThread = null;
+            // 清空线程引用
+            Constants.sendMeasureThread = null;
             log.info("【数据线程清理】数据接收线程引用已清理");
 
         } catch (Exception e) {
@@ -371,6 +408,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             if (state != null) {
                 log.info("【数据收集完成】数据收集完成, 数据点数: {}, session: {}", dataList.size(), sessionId);
             }
+
 
             log.info("【零点校零开始】开始进行校零, session: {}", sessionId);
             /// 基线结束之后横插一个校零

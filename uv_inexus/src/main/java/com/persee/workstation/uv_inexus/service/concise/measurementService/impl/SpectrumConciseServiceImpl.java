@@ -57,7 +57,6 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
-import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
@@ -2043,11 +2042,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
         com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
         commands.add(com4);
-        // 光谱带宽
-        Command com5 = new Command();
-        com5.setCmdId(SetParamEnum.SetSlit1.getComId());
-        com5.setParams(new Object[]{scanParamInfo.getSpectralBandwidth()});
-        commands.add(com5);
+
+        if (StringUtils.hasText(scanParamInfo.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            // 光谱带宽
+            Command com5 = new Command();
+            com5.setCmdId(SetParamEnum.SetSlit1.getComId());
+            com5.setParams(new Object[]{scanParamInfo.getSpectralBandwidth()});
+            commands.add(com5);
+        }
+
         // 扫描速度
         Command com6 = new Command();
         com6.setCmdId(SetParamEnum.SetScanSpeed.getComId());

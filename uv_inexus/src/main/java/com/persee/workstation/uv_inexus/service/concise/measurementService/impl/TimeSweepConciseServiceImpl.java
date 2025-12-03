@@ -1736,7 +1736,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         // 设置波长
         commands.add(buildCommand(SetParamEnum.SetWl, v));
         // 设置光谱带宽
-        commands.add(buildCommand(SetParamEnum.SetSlit1, time.getSpectralBandwidth()));
+        if (StringUtils.hasText(time.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            commands.add(buildCommand(SetParamEnum.SetSlit1, time.getSpectralBandwidth()));
+        }
 
         if (time.getLuminosity().equals("3") || time.getLuminosity().equals("4")) {
             // 设置能量灯

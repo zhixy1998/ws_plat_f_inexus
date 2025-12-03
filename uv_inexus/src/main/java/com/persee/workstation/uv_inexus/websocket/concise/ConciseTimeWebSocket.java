@@ -698,11 +698,10 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         if ("close".equals(payload)) {
             handleStopRequest(sessionId);
         }
-        // 移除 safeClose 的处理，因为不需要前端配合
     }
 
     /**
-     * 改进的停止请求处理 - 确保消息发送完成后再关闭连接
+     * 消息发送完成后再关闭连接
      */
     private void handleStopRequest(String sessionId) {
         log.info("处理时间扫描停止请求: {}", sessionId);
@@ -723,10 +722,10 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         }
 
         try {
-            // 先停止数据采集，但保持上下文可用
+            // 1. 先停止数据采集，但保持上下文可用
             context.stopAllTasks();
 
-            // 发送设备停止命令
+            // 2. 发送设备停止命令
             if (context.ip != null) {
                 try {
                     Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
@@ -737,10 +736,10 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 }
             }
 
-            // 设置结束时间
+            // 3. 设置结束时间
             Constants.endTime = LocalDateTime.now();
 
-            // 如果有数据需要保存，先同步保存数据
+            // 4. 如果有数据需要保存，先同步保存数据
             if (!context.xData.isEmpty() && context.currentSampleId != null) {
                 log.info("停止时保存已采集数据, 点数: {}", context.xData.size());
 
@@ -761,15 +760,25 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 context.markDataSaved();
             }
 
-            // 关键改进：在关闭连接前确保停止成功消息发送完成
+            // 5. 关键改进：在关闭连接前确保停止成功消息发送完成
             sendStopSuccessWithRetry(session, sessionId);
 
-            // 延迟一小段时间确保消息发送完成，然后清理
+            // 6. 释放设备资源
+            if (context.deviceSerialNumber != null) {
+                try {
+                    deviceInfoService.releaseDevice(context.deviceSerialNumber);
+                    log.info("释放时间扫描设备: {}", context.deviceSerialNumber);
+                } catch (Exception e) {
+                    log.error("释放设备异常", e);
+                }
+            }
+
+            // 7. 延迟一小段时间确保消息发送完成，然后清理
             ScheduledExecutorService delayScheduler = Executors.newSingleThreadScheduledExecutor();
             delayScheduler.schedule(() -> {
                 try {
                     log.info("延迟清理开始，会话: {}", sessionId);
-                    safeCleanup(sessionId, true);
+                    cleanupAfterStop(sessionId);
                 } finally {
                     delayScheduler.shutdown();
                 }
@@ -779,7 +788,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             log.error("处理停止请求异常", e);
             // 异常情况下也要确保发送停止成功并清理
             sendStopSuccessWithRetry(session, sessionId);
-            safeCleanup(sessionId, true);
+            cleanupAfterStop(sessionId);
         } finally {
             // 重置处理状态，允许后续清理操作
             if (stopProcessing != null) {
@@ -787,6 +796,53 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             }
         }
     }
+
+
+    /**
+     * 停止后的清理工作 - 不包含释放设备和关闭WebSocket
+     */
+    private void cleanupAfterStop(String sessionId) {
+        log.info("开始停止后清理: {}", sessionId);
+
+        TimeScanContext context = contexts.get(sessionId);
+        if (context != null) {
+            // 确保任务已停止
+            context.stopAllTasks();
+
+            // 清理上下文数据
+            context.clearData();
+
+            // 从上下文中移除
+            contexts.remove(sessionId);
+            log.info("时间扫描上下文已移除: {}", sessionId);
+        }
+
+        // 关闭WebSocket会话
+        WebSocketSession session = sessions.remove(sessionId);
+        if (session != null && session.isOpen()) {
+            try {
+                // 在关闭前再次检查是否有未发送的消息
+                try {
+                    Thread.sleep(100); // 额外延迟确保所有操作完成
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                session.close();
+                log.info("WebSocket连接已关闭: {}", sessionId);
+            } catch (IOException e) {
+                log.debug("关闭WebSocket会话异常（可能已关闭）: {}", sessionId);
+            }
+        }
+
+        // 清理状态映射
+        connectionClosingMap.remove(sessionId);
+        stopProcessingMap.remove(sessionId);
+
+        clearGlobalData();
+        log.info("停止后清理完成: {}", sessionId);
+    }
+
 
     /**
      * 带重试的停止成功消息发送

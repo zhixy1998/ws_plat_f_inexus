@@ -638,89 +638,217 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
 
         if ("close".equals(payload)) {
             handleStopRequest(sessionId);
-        } else if ("safeClose".equals(payload)) {
-            // 前端收到canClose后发送safeClose，此时真正关闭连接
-            log.info("收到安全关闭确认，开始清理资源");
-            safeCleanup(sessionId, true);
         }
     }
 
     /**
-     * 处理停止请求 - 先保存数据再关闭
+     * 处理停止请求 - 确保消息发送完成后再关闭连接
      */
     private void handleStopRequest(String sessionId) {
         log.info("处理单次时间测量停止请求: {}", sessionId);
 
         TimeOneMeasureContext context = contexts.get(sessionId);
         WebSocketSession session = sessions.get(sessionId);
+
         if (context == null || session == null) {
+            log.warn("停止请求处理失败: 上下文或会话不存在");
             return;
         }
 
         try {
-            // 先停止数据采集，但保持上下文可用
+            // 1. 先停止数据采集，但保持上下文可用
             context.stopAllTasks();
 
-            // 发送设备停止命令
-            sendStopCommandIfNeeded(context);
+            // 2. 发送设备停止命令
+            if (context.ip != null) {
+                try {
+                    Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
+                    devMessageUtil.stop(stopCmd, context.ip);
+                    log.info("已发送设备停止命令");
+                } catch (Exception e) {
+                    log.error("发送设备停止命令异常", e);
+                }
+            }
 
-            // 设置结束时间
+            // 3. 设置结束时间
             Constants.endTime = LocalDateTime.now();
 
-            // 如果有数据需要保存，先同步保存数据
+            // 4. 如果有数据需要保存，先同步保存数据
             if (!context.xData.isEmpty()) {
                 log.info("停止时保存已采集数据, 点数: {}", context.xData.size());
+
+                // 同步保存数据
                 saveMeasurementDataSync(session, context);
+
+                // 等待数据保存完成
+                log.info("等待数据保存完成...");
+                boolean saved = context.waitForDataSave(30, TimeUnit.SECONDS);
+                if (saved) {
+                    log.info("数据保存完成");
+                } else {
+                    log.warn("数据保存超时，继续处理停止流程");
+                }
             } else {
                 // 如果没有数据，直接标记保存完成
+                log.info("无数据需要保存");
                 context.markDataSaved();
             }
 
-            // 等待数据保存完成
-            log.info("等待数据保存完成...");
-            boolean saved = context.waitForDataSave(30, TimeUnit.SECONDS);
-            if (saved) {
-                log.info("数据保存完成，发送停止成功");
-                // 发送停止成功消息
-                sendMessageSafe(session, "停止成功");
+            // 5. 关键改进：在关闭连接前确保停止成功消息发送完成
+            sendStopSuccessWithRetry(session, sessionId);
 
-                // 延迟一小段时间确保消息发送完成，然后清理
-                scheduler.schedule(() -> {
-                    safeCleanup(sessionId, true);
-                }, 100, TimeUnit.MILLISECONDS);
-            } else {
-                log.warn("数据保存超时，发送停止成功并强制清理");
-                sendMessageSafe(session, "停止成功");
-                safeCleanup(sessionId, true);
-            }
+            // 6. 延迟一小段时间确保消息发送完成，然后进行最终清理
+            ScheduledExecutorService delayScheduler = Executors.newSingleThreadScheduledExecutor();
+            delayScheduler.schedule(() -> {
+                try {
+                    log.info("开始最终清理，会话: {}", sessionId);
+
+                    // 7. 释放设备资源（在这里释放设备）
+                    if (context.deviceSerialNumber != null) {
+                        try {
+                            deviceInfoService.releaseDevice(context.deviceSerialNumber);
+                            log.info("释放单次时间测量设备: {}", context.deviceSerialNumber);
+                        } catch (Exception e) {
+                            log.error("释放设备异常", e);
+                        }
+                    }
+
+                    // 8. 清理上下文数据
+                    if (context != null) {
+                        context.stopAllTasks();
+                        context.clearData();
+                        contexts.remove(sessionId);
+                        log.info("单次时间测量上下文已移除: {}", sessionId);
+                    }
+
+                    // 9. 关闭WebSocket会话（这是最后一步）
+                    WebSocketSession sessionToClose = sessions.remove(sessionId);
+                    if (sessionToClose != null && sessionToClose.isOpen()) {
+                        try {
+                            // 在关闭前再次检查是否有未发送的消息
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+
+                            sessionToClose.close();
+                            log.info("WebSocket连接已关闭: {}", sessionId);
+                        } catch (IOException e) {
+                            log.debug("关闭WebSocket会话异常（可能已关闭）: {}", sessionId);
+                        }
+                    }
+
+                    // 10. 清理发送锁
+                    sessionSendLocks.remove(sessionId);
+
+                    clearGlobalData();
+                    log.info("单次时间测量停止处理完成: {}", sessionId);
+
+                } finally {
+                    delayScheduler.shutdown();
+                }
+            }, 300, TimeUnit.MILLISECONDS);
 
         } catch (Exception e) {
             log.error("处理停止请求异常", e);
-            // 异常情况下也要发送停止成功并确保清理
-            sendMessageSafe(session, "停止成功");
-            safeCleanup(sessionId, true);
+            // 异常情况下也要确保发送停止成功并清理
+            sendStopSuccessWithRetry(session, sessionId);
+            // 异常情况下的清理
+            cleanupInException(sessionId);
         }
     }
 
     /**
-     * 如果需要，发送停止命令
+     * 带重试的停止成功消息发送
      */
-    private void sendStopCommandIfNeeded(TimeOneMeasureContext context) {
-        if (context.measurementStarted.get() && !context.stopCommandSent.getAndSet(true)) {
-            if (context.ip != null) {
+    private void sendStopSuccessWithRetry(WebSocketSession session, String sessionId) {
+        if (session == null || !session.isOpen()) {
+            log.warn("会话已关闭，无法发送停止成功消息: {}", sessionId);
+            return;
+        }
+
+        int maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                // 检查连接状态
+                if (!session.isOpen()) {
+                    log.warn("会话在重试 {} 时已关闭: {}", i, sessionId);
+                    break;
+                }
+
+                // 发送停止成功消息
+                sendMessageSafe(session, "停止成功");
+                log.info("停止成功消息发送完成 (尝试 {}): {}", i + 1, sessionId);
+
+                // 短暂延迟确保消息发送
                 try {
-                    log.info("【发送设备停止】向设备发送停止命令, ip: {}", context.ip);
-                    Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
-                    R<String> stopResult = devMessageUtil.stop(stopCmd, context.ip);
-                    if (stopResult.getSuccess()) {
-                        log.info("【设备停止成功】设备停止命令发送成功");
-                    } else {
-                        log.error("【设备停止失败】设备停止命令发送失败");
-                    }
-                } catch (Exception e) {
-                    log.error("【发送停止异常】发送停止命令异常", e);
+                    Thread.sleep(50);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                // 如果发送成功，退出重试循环
+                break;
+
+            } catch (Exception e) {
+                log.warn("发送停止成功消息失败 (尝试 {}): {}", i + 1, sessionId, e);
+                if (i == maxRetries - 1) {
+                    log.error("发送停止成功消息最终失败: {}", sessionId);
+                }
+
+                // 短暂延迟后重试
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
                 }
             }
+        }
+    }
+
+    /**
+     * 异常情况下的清理
+     */
+    private void cleanupInException(String sessionId) {
+        try {
+            TimeOneMeasureContext context = contexts.get(sessionId);
+
+            // 释放设备资源
+            if (context != null && context.deviceSerialNumber != null) {
+                try {
+                    deviceInfoService.releaseDevice(context.deviceSerialNumber);
+                    log.info("异常情况下释放设备: {}", context.deviceSerialNumber);
+                } catch (Exception e) {
+                    log.error("异常情况下释放设备异常", e);
+                }
+            }
+
+            // 清理上下文
+            if (context != null) {
+                contexts.remove(sessionId);
+            }
+
+            // 清理发送锁
+            sessionSendLocks.remove(sessionId);
+
+            // 关闭WebSocket
+            WebSocketSession session = sessions.remove(sessionId);
+            if (session != null && session.isOpen()) {
+                try {
+                    session.close();
+                } catch (IOException e) {
+                    log.debug("异常关闭WebSocket会话: {}", sessionId);
+                }
+            }
+
+            clearGlobalData();
+            log.info("异常清理完成: {}", sessionId);
+
+        } catch (Exception e) {
+            log.error("异常清理过程中出错: {}", sessionId, e);
         }
     }
 
@@ -752,9 +880,17 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
 
         if (context == null) {
             // 如果没有上下文，直接清理
-            safeCleanup(sessionId, false);
+            cleanupInException(sessionId);
             return;
         }
+
+        // 检查是否已经在处理停止或连接已关闭
+        if (context.cleanupInProgress.get() || context.sessionClosing.get()) {
+            log.info("连接关闭时检测到清理已在处理中，忽略: {}", sessionId);
+            return;
+        }
+
+        context.cleanupInProgress.set(true);
 
         try {
             // 先停止任务
@@ -776,24 +912,22 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             boolean saved = context.waitForDataSave(10, TimeUnit.SECONDS);
             if (saved) {
                 log.info("数据保存完成");
-                // 连接关闭时也发送停止成功
-                sendMessageSafe(session, "停止成功");
             } else {
                 log.warn("数据保存超时");
-                sendMessageSafe(session, "停止成功");
             }
 
         } catch (Exception e) {
             log.error("处理连接关闭异常", e);
         } finally {
             // 最终确保资源清理
-            safeCleanup(sessionId, true);
+            cleanupInException(sessionId);
         }
     }
 
 
+
     /**
-     * 安全清理 - 确保数据保存完成后再关闭WebSocket
+     * 安全清理 - 这个方法现在主要用于正常完成时的清理
      */
     private void safeCleanup(String sessionId, boolean releaseDevice) {
         log.info("开始安全清理会话: {}", sessionId);
