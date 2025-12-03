@@ -515,7 +515,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     infoService.releaseDevice(deviceSerialNumber);
                     log.info("数据点数不足，不进行曲线拟合");
                     JSONObject message = new JSONObject();
-                    message.put("success", "测量完成");
+                    message.put("success", "测量完成，请更换样品继续测量。");
                     session.sendMessage(new TextMessage(message.toJSONString()));
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("result", "finish");
@@ -562,7 +562,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 }
 
                 JSONObject message = new JSONObject();
-                message.put("success", "测量完成");
+                message.put("success", "测量完成，请更换样品继续测量。");
                 session.sendMessage(new TextMessage(message.toJSONString()));
 
                 JSONObject jsonObject = new JSONObject();
@@ -811,7 +811,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                 }
 
                 JSONObject message = new JSONObject();
-                message.put("success", "测量完成");
+                message.put("success", "测量完成，请更换样品继续测量。");
                 session.sendMessage(new TextMessage(message.toJSONString()));
 
                 JSONObject jsonObject = new JSONObject();

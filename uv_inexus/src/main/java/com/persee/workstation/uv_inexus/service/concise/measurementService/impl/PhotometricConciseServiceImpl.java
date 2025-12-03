@@ -2689,11 +2689,12 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     return Result.fail(zero.getMessage());
                 }
                 ChangeParam changeParam = zero.getData();
+                Double zeroWave = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
                 changeParam.setWl(s);
                 list.add(changeParam);
                 wave = changeParam.getWl();
                 if (StringUtils.hasText(changeParam.getWl())) {
-                    DetectionConstants.zeroResult.put(Double.valueOf(changeParam.getWl()), changeParam);
+                    DetectionConstants.zeroResult.put(zeroWave, changeParam);
                 }
             }
         } finally {

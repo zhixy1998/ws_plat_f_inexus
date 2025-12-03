@@ -404,7 +404,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         }
 
         JSONObject message = new JSONObject();
-        message.put("success", "测量完成，请更换样品继续测量");
+        message.put("success", "测量完成，请更换样品继续测量。");
         session.sendMessage(new TextMessage(message.toJSONString()));
 
         JSONObject jsonObject = new JSONObject();
