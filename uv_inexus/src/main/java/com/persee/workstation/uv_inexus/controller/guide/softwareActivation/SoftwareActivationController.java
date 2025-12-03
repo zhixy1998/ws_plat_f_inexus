@@ -270,8 +270,8 @@ public class SoftwareActivationController {
      */
     @PostMapping("/resetAllAddStatus")
     @ApiOperation("关闭弹窗时重置所有设备状态为历史状态")
-    public Result<Boolean> resetAllDeviceAddStatus() {
-        boolean result = deviceDiscoveryService.resetAllDeviceAddStatus();
+    public Result<Boolean> resetAllDeviceAddStatus(@RequestBody Map<String, Object> params) {
+        boolean result = deviceDiscoveryService.resetAllDeviceAddStatus(params);
         //设备状态重置失败
         return result ? Result.ok() : Result.fail(500,YamlMessageSource.getMessageStatic("0070100B"));
     }

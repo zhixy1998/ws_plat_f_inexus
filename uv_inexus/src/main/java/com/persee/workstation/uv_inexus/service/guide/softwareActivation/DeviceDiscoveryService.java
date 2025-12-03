@@ -9,12 +9,12 @@
 
 package com.persee.workstation.uv_inexus.service.guide.softwareActivation;
 
-import java.util.List;
-import java.util.Map;
-
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
+
+import java.util.List;
+import java.util.Map;
 
 public interface DeviceDiscoveryService {
     // 保留必要的三个方法
@@ -27,5 +27,5 @@ public interface DeviceDiscoveryService {
     IPage<DeviceInfoDTO> getAddedDevicesPage(Page<DeviceInfoDTO> page, Map<String, String> searchParams);
 
     // 新增：重置所有设备的isAddStatus为0的方法
-    boolean resetAllDeviceAddStatus();
+    boolean resetAllDeviceAddStatus(Map<String, Object> params);
 }

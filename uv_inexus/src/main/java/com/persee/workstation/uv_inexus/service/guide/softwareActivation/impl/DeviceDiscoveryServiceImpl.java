@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.softwareActivation.impl;
 
+import com.alibaba.excel.util.StringUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -20,6 +21,7 @@ import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceD
 import com.persee.workstation.uv_inexus.util.changeUtil.ResponseDeal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -318,7 +320,16 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean resetAllDeviceAddStatus() {
+    public boolean resetAllDeviceAddStatus(Map<String, Object> params) {
+        String type = MapUtils.getString(params, "type");
+        String deviceSerialNumber = MapUtils.getString(params, "deviceSerialNumber");
+
+        if (StringUtils.equals(type,"1")){
+            log.info("===== 点击了取消，不添加 =====");
+            LambdaUpdateWrapper<SoftwareActivationPO> eq = new LambdaUpdateWrapper<SoftwareActivationPO>()
+                    .eq(SoftwareActivationPO::getDeviceNumber, deviceSerialNumber);
+            int i = softwareActivationMapper.delete(eq);
+        }
         log.info("===== 执行所有设备isAddStatus重置为0 =====");
 
         // 构建更新条件：更新所有记录的isAddStatus为0
