@@ -1,15 +1,19 @@
 /*
- * *
- *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
- *  * 本软件受商业机密法和版权法保护。
- *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
- *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
+ * *****************************************************************************************************
+ * Module name:    **.**
  *
+ * Copyright (C) 2025 北京普析通用仪器有限责任公司 All Rights Reserved.
+ *                此源代码仅限在公司内部使用。未经公司事先书面许可，任何单位和个人不得以任何方式复制、传播本代码的任何部分。
+ * Description:
+ *
+ *
+ * *************************************************************************************
  */
 
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,29 +62,29 @@ public class MeasureData {
                 while (Constants.Running) {
                     try {
                         Map<String, Transition> xml = protocolItemUtil.loadFromXml(T600xmlPath);
-                        byte[] sendBytes = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("Measure"));
-                        byte[] sendBytes2 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetChangeLampWl"));
-                        byte[] sendBytes3 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetCellPos"));
-                        byte[] sendBytes4 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetLampPos"));
-                        byte[] sendBytes5 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetAccessoryType"));
-                        byte[] sendBytes6 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get("GetPhotoMode"));
+                        byte[] sendBytes = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get(T600ComIdEnums.Measure.getComId()));
+                        byte[] sendBytes2 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get(T600ComIdEnums.GetChangeLampWl.getComId()));
+                        byte[] sendBytes3 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get(T600ComIdEnums.GetCellPos.getComId()));
+                        byte[] sendBytes4 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get(T600ComIdEnums.GetLampPos.getComId()));
+                        byte[] sendBytes5 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get(T600ComIdEnums.GetAccessoryType.getComId()));
+                        byte[] sendBytes6 = protocolItemUtil.calcSendBytes(new Object[]{}, xml.get(T600ComIdEnums.GetPhotoMode.getComId()));
 
                         // 发送并接收
-                        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, "Measure", sendBytes, xml.get("Measure").getReplyNumber(), xml.get("Measure").getTimeout());
-                        List<byte[]> responses2 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetChangeLampWl", sendBytes2, xml.get("GetChangeLampWl").getReplyNumber(), xml.get("GetChangeLampWl").getTimeout());
-                        List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetCellPos", sendBytes3, xml.get("GetCellPos").getReplyNumber(), xml.get("GetCellPos").getTimeout());
-                        List<byte[]> responses4 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetLampPos", sendBytes4, xml.get("GetLampPos").getReplyNumber(), xml.get("GetLampPos").getTimeout());
-                        List<byte[]> responses5 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetAccessoryType", sendBytes5, xml.get("GetAccessoryType").getReplyNumber(), xml.get("GetAccessoryType").getTimeout());
-                        List<byte[]> responses6 = messageUtil.singleSendAndReceive(socket, deviceIp, "GetPhotoMode", sendBytes6, xml.get("GetPhotoMode").getReplyNumber(), xml.get("GetPhotoMode").getTimeout());
+                        List<byte[]> responses = messageUtil.singleSendAndReceive(socket, deviceIp, T600ComIdEnums.Measure.getComId(), sendBytes, xml.get(T600ComIdEnums.Measure.getComId()).getReplyNumber(), xml.get(T600ComIdEnums.Measure.getComId()).getTimeout());
+                        List<byte[]> responses2 = messageUtil.singleSendAndReceive(socket, deviceIp, T600ComIdEnums.GetChangeLampWl.getComId(), sendBytes2, xml.get(T600ComIdEnums.GetChangeLampWl.getComId()).getReplyNumber(), xml.get(T600ComIdEnums.GetChangeLampWl.getComId()).getTimeout());
+                        List<byte[]> responses3 = messageUtil.singleSendAndReceive(socket, deviceIp, T600ComIdEnums.GetCellPos.getComId(), sendBytes3, xml.get(T600ComIdEnums.GetCellPos.getComId()).getReplyNumber(), xml.get(T600ComIdEnums.GetCellPos.getComId()).getTimeout());
+                        List<byte[]> responses4 = messageUtil.singleSendAndReceive(socket, deviceIp, T600ComIdEnums.GetLampPos.getComId(), sendBytes4, xml.get(T600ComIdEnums.GetLampPos.getComId()).getReplyNumber(), xml.get(T600ComIdEnums.GetLampPos.getComId()).getTimeout());
+                        List<byte[]> responses5 = messageUtil.singleSendAndReceive(socket, deviceIp, T600ComIdEnums.GetAccessoryType.getComId(), sendBytes5, xml.get(T600ComIdEnums.GetAccessoryType.getComId()).getReplyNumber(), xml.get(T600ComIdEnums.GetAccessoryType.getComId()).getTimeout());
+                        List<byte[]> responses6 = messageUtil.singleSendAndReceive(socket, deviceIp, T600ComIdEnums.GetPhotoMode.getComId(), sendBytes6, xml.get(T600ComIdEnums.GetPhotoMode.getComId()).getReplyNumber(), xml.get(T600ComIdEnums.GetPhotoMode.getComId()).getTimeout());
 
 
                         // 解析报文
-                        Object parseResult = ResponseDeal.parse("Measure", responses, sendBytes);
-                        Object parseResult2 = ResponseDeal.parse("GetChangeLampWl", responses2, sendBytes2);
-                        Object parseResult3 = ResponseDeal.parse("GetCellPos", responses3, sendBytes3);
-                        Object parseResult4 = ResponseDeal.parse("GetLampPos", responses4, sendBytes4);
-                        Object parseResult5 = ResponseDeal.parse("GetAccessoryType", responses5, sendBytes5);
-                        Object parseResult6 = ResponseDeal.parse("GetPhotoMode", responses6, sendBytes6);
+                        Object parseResult = ResponseDeal.parse(T600ComIdEnums.Measure.getComId(), responses, sendBytes);
+                        Object parseResult2 = ResponseDeal.parse(T600ComIdEnums.GetChangeLampWl.getComId(), responses2, sendBytes2);
+                        Object parseResult3 = ResponseDeal.parse(T600ComIdEnums.GetCellPos.getComId(), responses3, sendBytes3);
+                        Object parseResult4 = ResponseDeal.parse(T600ComIdEnums.GetLampPos.getComId(), responses4, sendBytes4);
+                        Object parseResult5 = ResponseDeal.parse(T600ComIdEnums.GetAccessoryType.getComId(), responses5, sendBytes5);
+                        Object parseResult6 = ResponseDeal.parse(T600ComIdEnums.GetPhotoMode.getComId(), responses6, sendBytes6);
 
                         if (parseResult == null || "false".equals(parseResult.toString())) {
                             log.print("Measure 指令解析失败");

@@ -13,6 +13,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
@@ -469,7 +470,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         List<String> waveLengths = parameter.getWaveLength();
 
         if (StringUtils.hasText(sample.getSampleLocation())) {
-            list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+            list.add(new Command(T600ComIdEnums.SetCellPos.getComId(), new Object[]{sample.getSampleLocation()}));
             JSONObject object = new JSONObject();
             object.put("currentPoolNum", sample.getSampleLocation());
             session.sendMessage(new TextMessage(object.toJSONString()));
@@ -484,8 +485,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
             Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
 
-            list.add(new Command("SetWl", new Object[]{step}));
-            list.add(new Command("Measure", new Object[]{}));
+            list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
+            list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
 
             String ip = infoService.getIp(deviceSerialNumber);
             R<ChangeParam> res = null;
@@ -559,7 +560,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             List<String> waveLengths = parameter.getWaveLength();
 
             if (StringUtils.hasText(sample.getSampleLocation())) {
-                list.add(new Command("SetCellPos", new Object[]{sample.getSampleLocation()}));
+                list.add(new Command(T600ComIdEnums.SetCellPos.getComId(), new Object[]{sample.getSampleLocation()}));
                 JSONObject object = new JSONObject();
                 object.put("currentPoolNum", sample.getSampleLocation());
                 session.sendMessage(new TextMessage(object.toJSONString()));
@@ -585,8 +586,8 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 for (String waveLength : waveLengths) {
                     Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
 
-                    list.add(new Command("SetWl", new Object[]{step}));
-                    list.add(new Command("Measure", new Object[]{}));
+                    list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
+                    list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
 
                     String ip = infoService.getIp(deviceSerialNumber);
                     R<ChangeParam> res;
@@ -741,21 +742,21 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         List<Command> list = new ArrayList<>();
 
-        list.add(new Command("SetPhotoMode", new Object[]{parameter.getLuminosity()}));
+        list.add(new Command(T600ComIdEnums.SetPhotoMode.getComId(), new Object[]{parameter.getLuminosity()}));
 
         String changeLampWaveLength = parameter.getChangeLampWaveLength();
         Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
-        list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+        list.add(new Command(T600ComIdEnums.SetChangeLampWl.getComId(), new Object[]{v1}));
 
         if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
-            list.add(new Command("SetSlit1", new Object[]{parameter.getSpectralBandwidth()}));
+            list.add(new Command(T600ComIdEnums.SetSlit1.getComId(), new Object[]{parameter.getSpectralBandwidth()}));
         }
 
         if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
-            list.add(new Command("SetLampPos", new Object[]{parameter.getEnergyLamp()}));
-            list.add(new Command("SetGain", new Object[]{parameter.getGain()}));
+            list.add(new Command(T600ComIdEnums.SetLampPos.getComId(), new Object[]{parameter.getEnergyLamp()}));
+            list.add(new Command(T600ComIdEnums.SetGain.getComId(), new Object[]{parameter.getGain()}));
         }
-        list.add(new Command("SetResponseTime", new Object[]{parameter.getResponseTime()}));
+        list.add(new Command(T600ComIdEnums.SetResponseTime.getComId(), new Object[]{parameter.getResponseTime()}));
 
         String ip = infoService.getIp(deviceSerialNumber);
         R<ChangeParam> res;

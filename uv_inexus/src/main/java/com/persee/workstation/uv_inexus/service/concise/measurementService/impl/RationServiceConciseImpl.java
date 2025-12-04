@@ -29,6 +29,7 @@ import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDelete
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.NewRationMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
+import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -1061,14 +1062,14 @@ public class RationServiceConciseImpl implements RationConciseService {
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         if (StringUtils.hasText(ip)) {
             List<Command> list = new ArrayList<>();
-            list.add(new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()}));
+            list.add(new Command(T600ComIdEnums.SetPhotoMode.getComId(), new Object[]{WaveLengthEnum.abs.getCode()}));
 
             String changeLampWaveLength = parameter.getChangeLampWaveLength();
             Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
-            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+            list.add(new Command(T600ComIdEnums.SetChangeLampWl.getComId(), new Object[]{v1}));
 
             String responseTime = StringUtils.hasText(parameter.getResponseTime()) ? parameter.getResponseTime() : "0.5";
-            list.add(new Command("SetResponseTime", new Object[]{responseTime}));
+            list.add(new Command(T600ComIdEnums.SetResponseTime.getComId(), new Object[]{responseTime}));
 
             String waveLength = "660";
             if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()){
@@ -1077,7 +1078,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
 
-            list.add(new Command("SetWl", new Object[]{step}));
+            list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
 
             try {
                 deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);

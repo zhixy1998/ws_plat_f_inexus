@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -893,21 +894,21 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 waveLength = parameter.getWaveLength().get(parameter.getWaveLength().size() - 1);
             }
 
-            list.add(new Command("SetPhotoMode", new Object[]{wave}));
-            list.add(new Command("SetResponseTime", new Object[]{responseTime}));
+            list.add(new Command(T600ComIdEnums.SetPhotoMode.getComId(), new Object[]{wave}));
+            list.add(new Command(T600ComIdEnums.SetResponseTime.getComId(), new Object[]{responseTime}));
             String changeLampWaveLength = parameter.getChangeLampWaveLength();
             Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
-            list.add(new Command("SetChangeLampWl", new Object[]{v1}));
+            list.add(new Command(T600ComIdEnums.SetChangeLampWl.getComId(), new Object[]{v1}));
 
             Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
-            list.add(new Command("SetWl", new Object[]{step}));
+            list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
             if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
 
                 String lampPos = StringUtils.hasText(parameter.getEnergyLamp()) ? parameter.getEnergyLamp() : "0";
                 int gain = parameter.getGain() == null ? 3: parameter.getGain();
 
-                list.add(new Command("SetLampPos", new Object[]{lampPos}));
-                list.add(new Command("SetGain", new Object[]{gain}));
+                list.add(new Command(T600ComIdEnums.SetLampPos.getComId(), new Object[]{lampPos}));
+                list.add(new Command(T600ComIdEnums.SetGain.getComId(), new Object[]{gain}));
             }
             try {
                 R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);

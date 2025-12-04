@@ -1,0 +1,78 @@
+package com.persee.workstation.uv_inexus.enums;
+
+import lombok.Getter;
+
+@Getter
+public enum T600ComIdEnums {
+    SetWLampStatus("SetWLampStatus","设置钨灯状态"),
+    SetDLampStatus("SetDLampStatus","设置氘灯状态"),
+    SetLampPos("SetLampPos","设置灯位置"),
+    SetChangeLampWl("SetChangeLampWl","设置换灯波长"),
+    SetWlList("SetWlList","设置波长校正列表"),
+    SetScanWlInterval("SetScanWlInterval","设置扫描间隔"),
+    SetScanSpeed("SetScanSpeed","设置扫描速度"),
+    SetWl("SetWl","定位波长"),
+    SetStartWl("SetStartWl","设置扫描开始波长"),
+    SetEndWl("SetEndWl","设置扫描结束波长"),
+    SetFilter("SetFilter","设置滤色片"),
+    SetGain("SetGain","设置增益"),
+    SetResponseTime("SetResponseTime","设置响应时间"),
+    SetPhotoMode("SetPhotoMode","设置光度模式(Abs:1,T%2,Es:3,Er:4)"),
+    SetSlit1("SetSlit1","设置主狭缝的宽度"),
+    SetCellPos("SetCellPos","设置样品池位置"),
+    GetCellPos("GetCellPos","读取样品池位置"),
+    GetAccessoryType("GetAccessoryType","读取样品池类型"),
+    GetChangeLampWl("GetChangeLampWl","读取换灯波长"),
+    GetWlList("GetWlList","读取波长列表"),
+    GetSn("GetSn","读取序列号"),
+    InitLampMotor("InitLampMotor","灯电机初始化"),
+    InitFilterMotor("InitFilterMotor","滤色片初始化"),
+    InitSampleCell("InitSampleCell","样品池初始化"),
+    InitWlMotor("InitWlMotor","波长初始化"),
+    InitSlit1Motor("InitSlit1Motor","狭缝电机初始化"),
+    CheckWLamp("CheckWLamp","检查钨灯能量"),
+    CheckDLamp("CheckDLamp","检查氘灯能量"),
+    CheckWl("CheckWl","检查波长"),
+    Stop("Stop","停止扫描"),
+    Dark("Dark","暗电流校正"),
+    Measure("Measure","读取测量值"),
+    BaseLine("BaseLine","基线"),
+    Scan("Scan","扫描"),
+    Zero("Zero","校零"),
+    BaseLineFast("BaseLineFast","快速基线"),
+    ScanFast("ScanFast","极快扫描"),
+    DisConnect("DisConnect","断开连接"),
+    DisConnectIAP("DisConnectIAP","断开IAP连接"),
+    SearchInSameZoom("SearchInSameZoom","同网段查找-这个的接收没解析"),
+    SearchAround("SearchAround","跨网段查找-这个的接收没解析"),
+    Connect("Connect","联机"),
+    ConnectIAP("ConnectIAP","IAP联机"),
+    NewIP("NewIP","修改仪器IP地址"),
+    GetPressCover("GetPressCover","检查是否是关盖状态"),
+    SetPadModeTrue("SetPadModeTrue","设成平板模式"),
+    SetPadModeFalse("SetPadModeFalse","设成平板模式"),
+    GetInitStatus("GetInitStatus","获取初始化状态"),
+    SetPCModeTrue("SetPCModeTrue","设置成PC模式"),
+    SetPCModeFalse("SetPCModeFalse","设置成PC模式"),
+    SetProgrammeModeTrue("SetProgrammeModeTrue","设置烧写模式"),
+    SetProgrammeModeFalse("SetProgrammeModeFalse","设置烧写模式"),
+    SetInitStatus("SetInitStatus","设置初始化状态"),
+    Update("Update","固件升级，输入文件"),
+    ReceiveSuc("ReceiveSuc","下位机接收成功"),
+    ReadCheckWLampEnergy("ReadCheckWLampEnergy","钨灯能量"),
+    ReadCheckDLampEnergy("ReadCheckDLampEnergy","氘灯能量"),
+    ReadCheckWlEnergy("ReadCheckWlEnergy","波长"),
+    GetLampPos("GetLampPos","获取灯位置"),
+    GetPhotoMode("GetPhotoMode","获取光度模式(Abs:1,T%2,Es:3,Er:4)"),
+    GetResponseTime("GetResponseTime","获取响应时间"),
+    GetWLampStatus("GetWLampStatus","读取钨灯状态"),
+    GetDLampStatus("GetDLampStatus","获取氘灯状态"),
+    CorrectWl("CorrectWl","波长校正"),
+    ;
+    private final String comId;
+    private final String Describe;
+    T600ComIdEnums(String comId, String Describe) {
+        this.comId = comId;
+        this.Describe = Describe;
+    }
+}
