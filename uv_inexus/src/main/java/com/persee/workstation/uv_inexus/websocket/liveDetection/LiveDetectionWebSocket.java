@@ -239,7 +239,7 @@ public class LiveDetectionWebSocket {
 
                             byte[] sendBytes = protocolItemUtil.calcSendBytes(objects, transition);
 
-                            List<byte[]> responses = messageUtil.detectionSendAndReceive(socket, deviceIp, comId, sendBytes, count);
+                            List<byte[]> responses = messageUtil.detectionSendAndReceive(socket, deviceIp, comId, sendBytes, count, 3);
                             if (responses == null || responses.isEmpty()) {
                                 log.info("仪器无响应");
                                 error ++;
@@ -348,7 +348,7 @@ public class LiveDetectionWebSocket {
                     } catch (Exception e) {
                         log.info("监测线程异常: {}", e.getMessage());
 
-                        if (error > 3) {
+                        if (error > 0) {
                             stopAllMeasurements();
                             if (e.getMessage().equals("仪器无响应")) {
                                 DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
@@ -357,6 +357,7 @@ public class LiveDetectionWebSocket {
 
                                 JSONObject errorMsg = new JSONObject();
                                 errorMsg.put("error", "仪器无响应！");
+                                errorMsg.put("disconnect", "仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！");
                                 messagingTemplate.convertAndSend(measureTopic, errorMsg);
 
                             }

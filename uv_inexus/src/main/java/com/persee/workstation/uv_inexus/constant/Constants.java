@@ -64,7 +64,7 @@ public class Constants {
     public final static Integer CONNECT_DEVICE_STOP = 4;
 
     /**
-     * 仪器当前状态 0-空闲，1-初始化中，2-测量中，3-回显线程占用中，4其他指令-占用
+     * 仪器当前状态 0-空闲，1-初始化中，2-测量中，3-回显线程占用中，4其他指令-占用, 5-零点校准中
      */
     public final static Integer DEVICE_STATUS_IDLE = 0;
     public final static Integer DEVICE_STATUS_INIT = 1;

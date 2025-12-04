@@ -115,7 +115,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         Integer isInited = info.getIsInited();
 
-        if (info.getConnectStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
+        if (!info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
             //仪器已断开！
             return R.fail(YamlMessageSource.getMessageStatic("00202007"));
         }

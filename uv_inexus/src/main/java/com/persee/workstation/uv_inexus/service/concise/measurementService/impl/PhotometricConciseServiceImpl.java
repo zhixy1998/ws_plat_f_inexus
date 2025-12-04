@@ -1110,10 +1110,29 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
+        List<String> sampleNos = dto.getNewSamples().stream()
+                .map(m -> m.get(SampleTableEnum.SAMPLE_NUMBER.getIdentity())) // 取出 sampleNo
+//                    .filter(Objects::nonNull)    // 过滤掉空值
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
+
+        if (sampleNos.size() < dto.getNewSamples().size()) {
+            return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+        }
+        // 查重：找到重复的样品编号
+        Set<String> duplicates = sampleNos.stream()
+                .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!duplicates.isEmpty()) {
+            //标准样品编号重复
+            return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
+        }
 
         for (Map<String, String> map : dto.getNewSamples()) {
             String jsonString = JSON.toJSONString(map);
             FSampleVO sample = JSON.parseObject(jsonString, FSampleVO.class);
+
             FMeasureSample newSample = new FMeasureSample();
             BeanUtils.copyProperties(sample, newSample);
             newSample.setId(sample.getSampleId());

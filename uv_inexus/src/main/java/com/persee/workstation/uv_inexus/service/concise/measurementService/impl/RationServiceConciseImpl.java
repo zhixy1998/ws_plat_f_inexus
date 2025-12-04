@@ -1703,8 +1703,14 @@ public class RationServiceConciseImpl implements RationConciseService {
             // 取出所有样品编号
             List<String> sampleNos = dto.getNewStandSamples().stream()
                     .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
-                    .filter(Objects::nonNull)    // 过滤掉空值
+//                    .filter(Objects::nonNull)    // 过滤掉空值
+                    .filter(StringUtils::hasText)
                     .collect(Collectors.toList());
+
+            if (sampleNos.size() < dto.getNewStandSamples().size()) {
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+            }
+
             // 查重：找到重复的样品编号
             Set<String> duplicates = sampleNos.stream()
                     .filter(no -> Collections.frequency(sampleNos, no) > 1)
@@ -1718,8 +1724,13 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         List<String> unknownSampleNos = dto.getNewUnknowSamples().stream()
                 .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
-                .filter(Objects::nonNull)    // 过滤掉空值
+//                .filter(Objects::nonNull)    // 过滤掉空值
+                .filter(StringUtils::hasText)
                 .collect(Collectors.toList());
+
+        if (unknownSampleNos.size() < dto.getNewUnknowSamples().size()) {
+            return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+        }
         // 查重：找到重复的样品编号
         Set<String> isDuplicates = unknownSampleNos.stream()
                 .filter(no -> Collections.frequency(unknownSampleNos, no) > 1)

@@ -318,7 +318,7 @@ public class MessageUtil {
      * 仪器监测使用的发送和接收
      */
 
-    public List<byte[]> detectionSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes, Integer responseNum) {
+    public List<byte[]> detectionSendAndReceive(DatagramSocket currentSocket, String sendIp, String cmdId, byte[] sendBytes, Integer responseNum, Integer maxRetryNum) {
         try {
 
             List<byte[]> responses = new ArrayList<>();
@@ -331,7 +331,7 @@ public class MessageUtil {
             for (byte b : sendBytes) System.out.printf("%02X ", b);
             System.out.println();
 
-            int timeoutMs = 15000;
+            int timeoutMs = 3000;
             currentSocket.setSoTimeout(timeoutMs);
 
             int count = 0;
@@ -352,10 +352,18 @@ public class MessageUtil {
 
                 } catch (SocketTimeoutException e) {
                     System.out.println("超时");
-                    return null;
+
+                    // 若已收到部分数据但不足，并且还有重试机会，则继续重试
+                    if (responses.size() < responseNum && maxRetryNum > 0) {
+                        responses.clear();
+                        System.out.println("回应不足，重试");
+                        return detectionSendAndReceive(currentSocket, sendIp, cmdId, sendBytes, responseNum, --maxRetryNum);
+                    } else if (responses.size() < responseNum) {
+                        // 达到最大重试次数仍未完成任务，放弃并返回null
+                        return null;
+                    }
                 }
             }
-
 
             return responses;
         } catch (Exception e) {
