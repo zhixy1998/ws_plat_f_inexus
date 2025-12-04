@@ -75,24 +75,23 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
 
     @Override
     public List<DeviceInfoDTO> generateMockDeviceData() {
-        List<DeviceInfoDTO> mockData = new ArrayList<>();
-        String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
+        try {
+            List<DeviceInfoDTO> mockData = new ArrayList<>();
+            String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
+            String sn = ResponseDeal.Sn;
 
+            if (sn == null || sn.isEmpty()) {
+                sn = "UNKNOWN-SN";
+            }
 
-        String sn = ResponseDeal.Sn;
-
-//        if (sn == null || sn.isEmpty()) {
-//            sn = "UNKNOWN-SN";
-//        } else
-        if (sn == null || sn.isEmpty()) {
-            return mockData;
-        }
-        if (sn.length() >=16) {
             sn = sn.substring(0, 16);
             // 使用解析好的序列号替代
             mockData.add(buildDeviceInfo(sn, currentTime));
+
+            return mockData;
+        }finally {
+            ResponseDeal.Sn = null;
         }
-        return mockData;
     }
     @Override
     @Transactional(rollbackFor = Exception.class)
