@@ -475,6 +475,48 @@ public class UserPermissionServiceImpl implements UserPermissionService {
             // 关键修复：将不可修改的列表转换为可修改的ArrayList
             targetPermIds = new ArrayList<>(targetPermIds);
 
+            // ===================== 新增逻辑：递归补全所有上级父节点ID =====================
+            // 解决前端只传子节点导致树结构断裂的问题
+            // 1. 查询所有权限的父子关系（仅查询ID和ParentID以提升性能）
+            QueryWrapper<SysPermissionPO> allPermQuery = new QueryWrapper<>();
+            allPermQuery.select("id", "parent_id");
+            List<SysPermissionPO> allPerms = sysPermissionMapper.selectList(allPermQuery);
+            
+            // 2. 构建 子ID -> 父ID 的映射
+            Map<String, Integer> childToParentMap = allPerms.stream()
+                    .filter(perm -> perm.getId() != null) // 过滤ID为空的记录
+                    .collect(Collectors.toMap(
+                        SysPermissionPO::getId, 
+                        perm -> perm.getParentId() == null ? 0 : perm.getParentId(), // 处理ParentId为null的情况
+                        (existing, replacement) -> existing // 处理重复key的情况，保留旧值
+                    ));
+
+            // 3. 遍历当前目标ID，向上查找父节点
+            Set<String> parentIdsToAdd = new HashSet<>();
+            for (String permId : targetPermIds) {
+                String currentId = permId;
+                // 循环查找直到根节点（ParentId为0或null）或找不到映射
+                while (childToParentMap.containsKey(currentId)) {
+                    Integer parentId = childToParentMap.get(currentId);
+                    if (parentId == null || parentId == 0) {
+                        break; // 到达根节点
+                    }
+                    String parentIdStr = String.valueOf(parentId);
+                    // 如果父节点不在目标列表中，且未被添加过，则加入待添加集合
+                    // 注意：这里不检查targetPermIds是否包含，统一加入set最后addAll去重，效率更高
+                    parentIdsToAdd.add(parentIdStr);
+                    currentId = parentIdStr; // 继续向上
+                }
+            }
+            
+            // 4. 将补全的父节点加入目标列表
+            if (!parentIdsToAdd.isEmpty()) {
+                targetPermIds.addAll(parentIdsToAdd);
+                // 再次去重，确保唯一性
+                targetPermIds = targetPermIds.stream().distinct().collect(Collectors.toList());
+            }
+            // ==========================================================================
+
             // ===================== 新增逻辑：自动关联一级菜单的首页子权限 =====================
             // 1.1 筛选目标权限中的一级菜单ID
             List<String> firstLevelPermIds = filterFirstLevelPermIds(targetPermIds);
