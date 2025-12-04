@@ -305,35 +305,98 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
      * 处理停止请求
      */
     private void handleStopRequest(WebSocketSession session) {
-        SessionState state = sessionStates.get(session.getId());
-        if (state == null) {
+        String sessionId = session.getId();
+        SessionState state = sessionStates.get(sessionId);
+
+        if (state == null || state.cleanupInProgress.getAndSet(true)) {
+            // 已经在清理中或状态为空，避免重复清理
             return;
         }
 
         try {
-            // 标记停止状态
-            state.stopCommandSent.set(true);
+            log.info("开始清理资源, session: {}", sessionId);
 
-            // 发送停止命令
-            sendStopCommandIfNeeded(session);
-
-            // 停止数据接收线程（关键：先停止接收数据）
-            stopDataReceivingThread();
-
-            // 中断任务线程
-            Thread thread = taskThreads.get(session.getId());
-            if (thread != null && thread.isAlive()) {
-                thread.interrupt();
-            }
-
-            // 发送停止成功消息
             sendMessageSafe(session, "停止成功");
 
+            // 1. 标记会话正在关闭，阻止新的消息发送
+            state.sessionClosing.set(true);
+
+            state.stopCommandSent.set(true);
+
+            // 2. 发送停止命令（参考前端close逻辑）
+            sendStopCommandIfNeeded(session);
+
+            // 3. 停止数据接收线程（关键：先停止接收数据）
+            stopDataReceivingThread();
+
+
+            // 4. 中断任务线程（参考前端close逻辑）
+            Thread thread = taskThreads.get(sessionId);
+            if (thread != null && thread.isAlive()) {
+                thread.interrupt();
+                log.info("已中断任务线程, session: {}", sessionId);
+
+                // 等待线程结束，但不要等太久
+                try {
+                    thread.join(1000); // 等待1秒
+                    log.info("任务线程已停止, session: {}", sessionId);
+                } catch (InterruptedException e) {
+                    log.warn("等待任务线程结束被中断, session: {}", sessionId);
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            // 5. 释放设备（关键步骤）
+            if (state.deviceOccupied.compareAndSet(true, false)) {
+                if (state.deviceSerialNumber != null) {
+                    try {
+                        // 不再使用Thread.sleep(500)，改为检查线程状态
+                        int waitCount = 0;
+                        while (Constants.sendMeasureThread != null &&
+                                Constants.sendMeasureThread.isAlive() &&
+                                waitCount < 10) { // 最多等待5秒
+                            try {
+                                Thread.sleep(500);
+                                waitCount++;
+                            } catch (InterruptedException e) {
+                                log.warn("等待数据接收线程时被中断, session: {}", sessionId);
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
+                        }
+
+                        deviceInfoService.releaseDevice(state.deviceSerialNumber);
+                        log.info("设备释放成功: {}, session: {}", state.deviceSerialNumber, sessionId);
+                    } catch (Exception e) {
+                        log.error("释放设备异常, session: {}", sessionId, e);
+                    }
+                }
+            }
+
+            // 6. 清理数据点索引
+            pendingStorages.remove(sessionId);
+            storageLatches.remove(sessionId);
+
+            // 7. 清理发送锁
+            sessionSendLocks.remove(sessionId);
+
+
+            // 8. 清空全局数据
+            clearGlobalData();
+
+            // 9. 清空原始Y值存储
+            originalYValues.entrySet().removeIf(entry -> entry.getKey().startsWith(sessionId + "_"));
+
+
+
+            // 10. 从会话管理中移除
+            sessionStates.remove(sessionId);
+            sessions.remove(sessionId);
+
+            log.info("资源清理完成, session: {}", sessionId);
+
         } catch (Exception e) {
-            log.error("处理停止消息异常, session: {}", session.getId(), e);
-        } finally {
-            // 确保资源被清理
-            cleanupResources(session);
+            log.error("清理资源异常, session: {}", sessionId, e);
         }
     }
 
@@ -1572,83 +1635,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
 
     /**
-     * 处理并推送一批数据（进行台阶消除后逐个推送）
-     */
-    private void processAndPushBatchData(WebSocketSession session,
-                                         List<Double> xBatch,
-                                         List<Double> yBatch,
-                                         int startIndex,
-                                         Integer count,
-                                         FMeasureTask task,
-                                         String sampleId,
-                                         String luminosity,
-                                         boolean ladderCorrection,
-                                         Integer digit) throws IOException {
-        if (xBatch.isEmpty() || yBatch.isEmpty()) {
-            return;
-        }
-
-        log.info("处理批次数据，点数: " + xBatch.size() + ", 起始索引: " + startIndex + ", 台阶消除: " + ladderCorrection);
-
-        List<Double> processedY = yBatch;
-        List<Double> yForStorage = yBatch; // 用于存储的Y值
-
-        // 如果需要台阶校正，处理数据
-        if (ladderCorrection) {
-            log.info("执行台阶消除，数据点数: " + xBatch.size());
-            processedY = processAndSaveData(task, xBatch, yBatch, luminosity, ladderCorrection, sampleId);
-            log.info("台阶消除完成");
-            // 开启阶梯校正时，存储校正后的数据
-            yForStorage = processedY;
-        } else {
-            log.info("跳过台阶消除");
-            // 未开启阶梯校正时，存储原始数据
-            yForStorage = yBatch;
-        }
-
-        // 关键修改：根据是否开启阶梯校正来决定存储的数据
-        String key = session.getId() + "_" + sampleId + "_" + count;
-        synchronized (originalYValues) {
-            if (!originalYValues.containsKey(key)) {
-                // 根据阶梯校正状态决定存储的数据
-                originalYValues.put(key, new ArrayList<>(yForStorage));
-            } else {
-                List<Double> existingY = originalYValues.get(key);
-                // 确保不重复添加
-                if (existingY.size() < startIndex + yForStorage.size()) {
-                    for (int i = existingY.size(); i < startIndex; i++) {
-                        existingY.add(0.0); // 填充空缺
-                    }
-                    // 根据阶梯校正状态决定存储的数据
-                    existingY.addAll(yForStorage);
-                }
-            }
-        }
-
-        // 逐个推送数据点 - 使用处理后的数据（校正或原始）
-        for (int i = 0; i < xBatch.size(); i++) {
-            if (!session.isOpen()) {
-                log.warn("会话已关闭，停止推送数据");
-                break;
-            }
-
-            pushSinglePoint(session, xBatch.get(i), processedY.get(i),
-                    count, sampleId, luminosity, digit);
-
-            // 添加小延迟，避免推送过快
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.info("推送线程被中断");
-                break;
-            }
-        }
-
-        log.info("批次数据推送完成，点数: " + xBatch.size());
-    }
-
-    /**
      * 一次性推送所有数据（推送时格式化Y值）- 修正版本
      */
     private void pushAllDataAtOnce(WebSocketSession session,
@@ -1706,157 +1692,6 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
     }
 
-    // 推送逻辑：每 10 个点推送一次（推送时格式化Y值）
-    private int pushDataIfNeeded(WebSocketSession session,
-                                 List<Double> x,
-                                 List<Double> y,
-                                 int pushCount,
-                                 Integer count,
-                                 FMeasureTask task,
-                                 String sampleId,
-                                 String luminosity,
-                                 boolean ladderCorrection) throws IOException {
-        if (x.size() >= (pushCount + 1) * 10) {
-            List<Double> x_data = new ArrayList<>();
-            List<Double> y_data = new ArrayList<>();
-            for (int i = pushCount * 10; i < x.size(); i++) {
-                x_data.add(x.get(i));
-                y_data.add(y.get(i));
-            }
-
-            // 如果需要台阶校正，处理数据
-            if (ladderCorrection){
-                List<Double> correctedY = processAndSaveData(task, x_data, y_data, luminosity, ladderCorrection, sampleId);
-                // 更新y值
-                for (int i = pushCount * 10, j = 0; i < x.size(); i++, j++) {
-                    y.set(i, correctedY.get(j));
-                }
-            }
-
-            // 存储原始Y值（用于后续存储到数据库）
-            String key = session.getId() + "_" + sampleId + "_" + count;
-            if (!originalYValues.containsKey(key)) {
-                originalYValues.put(key, new ArrayList<>(y));
-            } else {
-                // 更新已存在的原始Y值
-                List<Double> existingY = originalYValues.get(key);
-                for (int i = pushCount * 10, j = 0; i < x.size(); i++, j++) {
-                    if (i < existingY.size()) {
-                        existingY.set(i, y.get(i));
-                    } else {
-                        existingY.add(y.get(i));
-                    }
-                }
-            }
-
-            SessionState state = sessionStates.get(session.getId());
-            if (state == null) {
-                return pushCount;
-            }
-
-            JSONArray dataArray = new JSONArray();
-            for (int i = pushCount * 10; i < x.size(); i++) {
-                JSONObject point = new JSONObject();
-                point.put("x", x.get(i));
-
-                // 推送时：根据指定位数格式化Y值
-                Double value = DataCountUtil.formatValue(state.digit, y.get(i));
-                String valueY = DataCountUtil.addZero(value, state.digit);
-                point.put("y", y.get(i));
-                point.put("roundOffY",valueY);
-
-                point.put("xType", "nm");
-                String luminosityType = getLuminosityType(luminosity);
-                point.put("yType", luminosityType);
-                dataArray.add(point);
-            }
-            JSONObject payload = new JSONObject();
-            payload.put("data", dataArray);
-            payload.put("sampleId", sampleId);
-            payload.put("count", count);
-
-            sendMessageSafe(session, payload.toJSONString());
-            pushCount++;
-        }
-        return pushCount;
-    }
-
-    // 推送剩余数据（最后不足10条的情况）（推送时格式化Y值）
-    private void pushRemainingData(WebSocketSession session,
-                                   List<Double> x,
-                                   List<Double> y,
-                                   int pushCount,
-                                   Integer count,
-                                   FMeasureTask task,
-                                   String sampleId,
-                                   String luminosity,
-                                   boolean ladderCorrection) throws IOException {
-        int startIndex = pushCount * 10;
-        int surplusLength = x.size() - startIndex;
-        if (startIndex < x.size()) {
-            JSONArray dataArray = new JSONArray();
-            List<Double> x_data = new ArrayList<>();
-            List<Double> y_data = new ArrayList<>();
-            // 收集需要处理的数据段
-            for (int i = startIndex; i < x.size(); i++) {
-                x_data.add(x.get(i));
-                y_data.add(y.get(i));
-            }
-
-            // 如果需要台阶校正
-            if (ladderCorrection) {
-                List<Double> correctedY = processAndSaveData(task, x_data, y_data, luminosity, ladderCorrection, sampleId);
-                // 更新y值
-                for (int i = 0; i < correctedY.size(); i++) {
-                    y.set(startIndex + i, correctedY.get(i));
-                }
-            }
-
-            // 存储原始Y值（用于后续存储到数据库）
-            String key = session.getId() + "_" + sampleId + "_" + count;
-            if (!originalYValues.containsKey(key)) {
-                originalYValues.put(key, new ArrayList<>(y));
-            } else {
-                // 更新已存在的原始Y值
-                List<Double> existingY = originalYValues.get(key);
-                for (int i = startIndex, j = 0; i < x.size(); i++, j++) {
-                    if (i < existingY.size()) {
-                        existingY.set(i, y.get(i));
-                    } else {
-                        existingY.add(y.get(i));
-                    }
-                }
-            }
-
-            SessionState state = sessionStates.get(session.getId());
-            if (state == null) {
-                return;
-            }
-
-            // 构建推送数据
-            for (int i = 0; i < surplusLength; i++) {
-                JSONObject point = new JSONObject();
-                point.put("x", x.get(startIndex + i));
-
-                // 推送时：根据指定位数格式化Y值
-                Double value = DataCountUtil.formatValue(state.digit, y.get(startIndex + i));
-                String valueY = DataCountUtil.addZero(value, state.digit);
-                point.put("y", y.get(i));
-                point.put("roundOffY",valueY);
-
-                point.put("xType", "nm");
-                String luminosityType = getLuminosityType(luminosity);
-                point.put("yType", luminosityType);
-                dataArray.add(point);
-            }
-            JSONObject payload = new JSONObject();
-            payload.put("data", dataArray);
-            payload.put("sampleId", sampleId);
-            payload.put("count", count);
-
-            sendMessageSafe(session, payload.toJSONString());
-        }
-    }
 
     /**
      * 计算光度模式的Abs/T%（带强制修约）

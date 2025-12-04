@@ -659,17 +659,6 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
             // 1. 先停止数据采集，但保持上下文可用
             context.stopAllTasks();
 
-            // 2. 发送设备停止命令
-            if (context.ip != null) {
-                try {
-                    Command stopCmd = new Command(SetParamEnum.Stop.getComId(), new Object[]{});
-                    devMessageUtil.stop(stopCmd, context.ip);
-                    log.info("已发送设备停止命令");
-                } catch (Exception e) {
-                    log.error("发送设备停止命令异常", e);
-                }
-            }
-
             // 3. 设置结束时间
             Constants.endTime = LocalDateTime.now();
 

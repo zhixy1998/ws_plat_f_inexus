@@ -262,40 +262,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
     }
 
-//    /**
-//     * 停止数据接收线程 - 关键方法，确保不再接收新数据
-//     */
-//    private void stopDataReceivingThread() {
-//        try {
-//            Thread dataReceivingThread = Constants.sendMeasureThread;
-//            if (dataReceivingThread != null && dataReceivingThread.isAlive()) {
-//                log.info("【停止数据线程】开始停止数据接收线程");
-//
-//                // 中断数据接收线程
-//                dataReceivingThread.interrupt();
-//
-//                // 等待线程结束，但不要等太久
-//                try {
-//                    dataReceivingThread.join(500); // 等待500ms
-//                    log.info("【数据线程停止】数据接收线程已停止");
-//                } catch (InterruptedException e) {
-//                    log.warn("【等待线程中断】等待数据接收线程结束被中断");
-//                    // 重新中断当前线程
-//                    Thread.currentThread().interrupt();
-//                }
-//            } else {
-//                log.info("【数据线程状态】数据接收线程不存在或未运行");
-//            }
-//
-//            // 无论怎样，都清空引用
-////            Constants.sendMeasureThread = null;
-//            log.info("【数据线程清理】数据接收线程引用已清理");
-//
-//        } catch (Exception e) {
-//            log.error("【停止数据线程异常】停止数据接收线程异常", e);
-//        }
-//    }
-
+    /**
+     * 停止数据接收线程
+     */
     private void stopDataReceivingThread() {
         try {
             Thread dataReceivingThread = Constants.sendMeasureThread;
@@ -1129,9 +1098,5 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         Constants.instrumentData.clear();
         Constants.measureStatus = false;
         Constants.sendMeasureThread = null;
-    }
-
-    private void exceptionHandling() {
-        clearGlobalData();
     }
 }

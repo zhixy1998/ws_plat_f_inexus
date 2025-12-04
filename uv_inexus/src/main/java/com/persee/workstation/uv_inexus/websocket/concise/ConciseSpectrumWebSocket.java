@@ -428,35 +428,98 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
      * 处理停止请求
      */
     private void handleStopRequest(WebSocketSession session) {
-        SessionState state = sessionStates.get(session.getId());
-        if (state == null) {
+        String sessionId = session.getId();
+        SessionState state = sessionStates.get(sessionId);
+
+        if (state == null || state.cleanupInProgress.getAndSet(true)) {
+            // 已经在清理中或状态为空，避免重复清理
             return;
         }
 
         try {
-            // 标记停止状态
-            state.stopCommandSent.set(true);
+            log.info("开始清理资源, session: {}", sessionId);
 
-            // 发送停止命令
-            sendStopCommandIfNeeded(session);
-
-            // 停止数据接收线程（关键：先停止接收数据）
-//            stopDataReceivingThread();
-
-            // 中断任务线程
-            Thread thread = taskThreads.get(session.getId());
-            if (thread != null && thread.isAlive()) {
-                thread.interrupt();
-            }
-
-            // 发送停止成功消息
             sendMessageSafe(session, "停止成功");
 
+            // 1. 标记会话正在关闭，阻止新的消息发送
+            state.sessionClosing.set(true);
+
+            state.stopCommandSent.set(true);
+
+            // 2. 发送停止命令（参考前端close逻辑）
+            sendStopCommandIfNeeded(session);
+
+            // 3. 停止数据接收线程（关键：先停止接收数据）
+            stopDataReceivingThread();
+
+
+            // 4. 中断任务线程（参考前端close逻辑）
+            Thread thread = taskThreads.get(sessionId);
+            if (thread != null && thread.isAlive()) {
+                thread.interrupt();
+                log.info("已中断任务线程, session: {}", sessionId);
+
+                // 等待线程结束，但不要等太久
+                try {
+                    thread.join(1000); // 等待1秒
+                    log.info("任务线程已停止, session: {}", sessionId);
+                } catch (InterruptedException e) {
+                    log.warn("等待任务线程结束被中断, session: {}", sessionId);
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            // 5. 释放设备（关键步骤）
+            if (state.deviceOccupied.compareAndSet(true, false)) {
+                if (state.deviceSerialNumber != null) {
+                    try {
+                        // 不再使用Thread.sleep(500)，改为检查线程状态
+                        int waitCount = 0;
+                        while (Constants.sendMeasureThread != null &&
+                                Constants.sendMeasureThread.isAlive() &&
+                                waitCount < 10) { // 最多等待5秒
+                            try {
+                                Thread.sleep(500);
+                                waitCount++;
+                            } catch (InterruptedException e) {
+                                log.warn("等待数据接收线程时被中断, session: {}", sessionId);
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
+                        }
+
+                        deviceInfoService.releaseDevice(state.deviceSerialNumber);
+                        log.info("设备释放成功: {}, session: {}", state.deviceSerialNumber, sessionId);
+                    } catch (Exception e) {
+                        log.error("释放设备异常, session: {}", sessionId, e);
+                    }
+                }
+            }
+
+            // 6. 清理数据点索引
+            pendingStorages.remove(sessionId);
+            storageLatches.remove(sessionId);
+
+            // 7. 清理发送锁
+            sessionSendLocks.remove(sessionId);
+
+
+            // 8. 清空全局数据
+            clearGlobalData();
+
+            // 9. 清空原始Y值存储
+            originalYValues.entrySet().removeIf(entry -> entry.getKey().startsWith(sessionId + "_"));
+
+
+
+            // 10. 从会话管理中移除
+            sessionStates.remove(sessionId);
+            sessions.remove(sessionId);
+
+            log.info("资源清理完成, session: {}", sessionId);
+
         } catch (Exception e) {
-            log.error("处理停止消息异常, session: {}", session.getId(), e);
-        } finally {
-            // 确保资源被清理
-            cleanupResources(session);
+            log.error("清理资源异常, session: {}", sessionId, e);
         }
     }
 
@@ -505,21 +568,28 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 // 中断数据接收线程
                 dataReceivingThread.interrupt();
 
-                // 等待线程结束，但不要等太久
-                try {
-                    dataReceivingThread.join(500); // 等待500ms
+                // 重试直到线程停止或者超时
+                long startTime = System.currentTimeMillis();
+                while (dataReceivingThread.isAlive() && (System.currentTimeMillis() - startTime) < 5000) {
+                    try {
+                        dataReceivingThread.join(100);  // 等待100ms，重试直到线程停止或超时
+                    } catch (InterruptedException e) {
+                        log.warn("【等待线程中断】等待数据接收线程结束被中断");
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
+                if (dataReceivingThread.isAlive()) {
+                    log.warn("数据接收线程未在超时时间内停止，强制停止");
+                } else {
                     log.info("【数据线程停止】数据接收线程已停止");
-                } catch (InterruptedException e) {
-                    log.warn("【等待线程中断】等待数据接收线程结束被中断");
-                    // 重新中断当前线程
-                    Thread.currentThread().interrupt();
                 }
             } else {
                 log.info("【数据线程状态】数据接收线程不存在或未运行");
             }
 
-            // 无论怎样，都清空引用
-//            Constants.sendMeasureThread = null;
+            // 清空线程引用
+            Constants.sendMeasureThread = null;
             log.info("【数据线程清理】数据接收线程引用已清理");
 
         } catch (Exception e) {
@@ -1811,75 +1881,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     }
 
 
-    /**
-     * 处理缓冲区数据：进行台阶消除后逐个推送
-     */
-    private void processAndPushBuffer(WebSocketSession session,
-                                      List<Double> tempXBuffer,
-                                      List<Double> tempYBuffer,
-                                      Integer count,
-                                      FMeasureTask task,
-                                      String sampleId,
-                                      String luminosity,
-                                      boolean ladderCorrection,
-                                      Integer digit) throws IOException {
-        if (tempXBuffer.isEmpty() || tempYBuffer.isEmpty()) {
-            return;
-        }
-
-        List<Double> processedY = tempYBuffer;
-
-        // 如果需要台阶校正，处理数据
-        if (ladderCorrection) {
-            processedY = processAndSaveData(task, tempXBuffer, tempYBuffer, luminosity, ladderCorrection, sampleId);
-        }
-
-        // 存储原始Y值（用于后续存储到数据库）
-        String key = session.getId() + "_" + sampleId + "_" + count;
-        if (!originalYValues.containsKey(key)) {
-            originalYValues.put(key, new ArrayList<>(tempYBuffer));
-        } else {
-            // 更新已存在的原始Y值
-            List<Double> existingY = originalYValues.get(key);
-            existingY.addAll(tempYBuffer);
-        }
-
-        // 逐个推送数据点
-        for (int i = 0; i < tempXBuffer.size(); i++) {
-            JSONArray dataArray = new JSONArray();
-            JSONObject point = new JSONObject();
-            point.put("x", tempXBuffer.get(i));
-
-            // 推送时：根据指定位数格式化Y值
-            Double value = DataCountUtil.formatValue(digit, processedY.get(i));
-            String valueY = DataCountUtil.addZero(value, digit);
-            point.put("y", processedY.get(i));
-            point.put("roundOffY", valueY);
-
-            point.put("xType", "nm");
-            // 光度模式是1.Abs 2.T% 3.Es 4.Er
-            String luminosityType = luminosity.equals("1")?"Abs":luminosity.equals("2")?"T%":luminosity.equals("3")?"Es":"Er";
-            point.put("yType", luminosityType);
-            dataArray.add(point);
-
-            JSONObject payload = new JSONObject();
-            payload.put("data", dataArray);
-            payload.put("sampleId", sampleId);
-            payload.put("count", count);
-
-            sendMessageSafe(session, payload.toJSONString());
-
-            // 添加小延迟，避免推送过快
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-    }
-
-
 
     /**
      * 计算光度模式的Abs/T%
@@ -2379,10 +2380,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         Constants.sendMeasureThread = null;
         Constants.startTime = null;
         Constants.endTime = null;
-    }
-
-    private void exceptionHandling() {
-        clearGlobalData();
     }
 
     // 返回测量结果的类

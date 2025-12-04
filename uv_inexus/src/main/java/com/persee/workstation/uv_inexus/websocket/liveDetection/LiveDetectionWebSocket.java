@@ -419,7 +419,7 @@ public class LiveDetectionWebSocket {
                                 Constants.devConnectInfo.get(deviceSerialNumber) != null &&
                                 Constants.devConnectInfo.get(deviceSerialNumber)) {
                             try {
-                                Thread.sleep(1000);
+                                Thread.sleep(500);
                                 int timeout = 0;
 //                                while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()){
 //
