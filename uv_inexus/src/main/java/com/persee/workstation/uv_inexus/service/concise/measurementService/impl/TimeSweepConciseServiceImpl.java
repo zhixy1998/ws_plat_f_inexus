@@ -475,6 +475,28 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (result.getCode() != 200) {
             return result;
         }
+
+        // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
+        if (paramDto.getMethodId() != null && (paramDto.getMethodId2() == null || paramDto.getMethodId().equals(paramDto.getMethodId2()))) {
+            FMeasureMethod currentMethod = fMeasureMethodService.getById(paramDto.getMethodId());
+            if (currentMethod != null) {
+                // 1. 获取数据库中的旧参数
+                FTimeSweepParamter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), FTimeSweepParamter.class);
+
+                // 2. 获取传入的新参数
+                FTimeSweepParamter newParam = new FTimeSweepParamter();
+                BeanUtils.copyProperties(paramDto.getParameter(), newParam);
+
+                // 3. 比较参数
+                if (compareParam(oldParam, newParam)) {
+                    // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("method", currentMethod);
+                    return Result.ok(map);
+                }
+            }
+        }
+
         Map<String, Object> map = new HashMap<>();
         if (paramDto.getMethodId2() != null) {
             FMeasureMethod method2 = fMeasureMethodService.getById(paramDto.getMethodId2());
