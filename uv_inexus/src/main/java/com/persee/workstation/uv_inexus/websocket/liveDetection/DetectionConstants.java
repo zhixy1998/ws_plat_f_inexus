@@ -33,7 +33,7 @@ public class DetectionConstants {
     /**
      * 校零结果
      */
-    public static volatile LinkedHashMap<Double, ChangeParam> zeroResult = new LinkedHashMap<>();
+    public static volatile LinkedHashMap<String, ChangeParam> zeroResult = new LinkedHashMap<>();
 
     /**
      * 当前校零波长
@@ -51,4 +51,6 @@ public class DetectionConstants {
      * 光度模式
      */
     public static volatile String luminosity = "1";
+
+    public static volatile String currentWavelength ="";
 }

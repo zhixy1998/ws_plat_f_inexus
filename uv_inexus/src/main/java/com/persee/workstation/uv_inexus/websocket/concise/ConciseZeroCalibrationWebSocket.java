@@ -290,9 +290,10 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
             return;
         }
         ChangeParam zeroData = zero.getData();
-        Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
+//        Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
 
-        DetectionConstants.zeroResult.put(v, zero.getData());
+//        DetectionConstants.zeroResult.put(v, zero.getData());
+        DetectionConstants.zeroResult.put(timeSweepParamter.getWaveLength(), zero.getData());
 
         zero.getData().setWl(timeSweepParamter.getWaveLength());
 

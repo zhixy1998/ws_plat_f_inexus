@@ -394,7 +394,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 }
                 ChangeParam zeroData = zero.getData();
                 Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
-                DetectionConstants.zeroResult.put(v, zero.getData());
+//                DetectionConstants.zeroResult.put(v, zero.getData());
+                DetectionConstants.zeroResult.put(String.valueOf(v), zero.getData());
                 log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
             }
 

@@ -259,12 +259,13 @@ public class LiveDetectionWebSocket {
                                 if (!Objects.isNull(measureParam)) {
                                     String luminosity = DetectionConstants.luminosity;
 
-                                    Double wl = formulaUtil.calculateWl(Double.parseDouble(measureParam.getWl()), deviceSerialNumber);
+//                                    Double wl = formulaUtil.calculateWl(Double.parseDouble(measureParam.getWl()), deviceSerialNumber);
+                                    String wl = DetectionConstants.currentWavelength;
                                     vo.setX(wl + "nm");
-                                    measureParam.setWl(String.valueOf(wl));
+                                    measureParam.setWl(wl);
 
                                     if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
-                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(Double.valueOf(measureParam.getWl()));
+                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(measureParam.getWl());
                                         String s;
                                         if (!Objects.isNull(zeroParam)) {
                                              s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
@@ -277,7 +278,7 @@ public class LiveDetectionWebSocket {
                                         String s = DataCountUtil.countErOrEs(measureParam, luminosity);
                                         vo.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
                                     } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
-                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(Double.valueOf(measureParam.getWl()));
+                                        ChangeParam zeroParam = DetectionConstants.zeroResult.get(measureParam.getWl());
                                         String s;
                                         if (!Objects.isNull(zeroParam)) {
                                             s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);

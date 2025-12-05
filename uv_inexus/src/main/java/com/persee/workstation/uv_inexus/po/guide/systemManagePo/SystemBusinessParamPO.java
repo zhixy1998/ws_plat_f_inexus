@@ -55,4 +55,45 @@ public class SystemBusinessParamPO extends BasePO {
     @ApiModelProperty("exe文件路径")
     private String filePath;
 
+    /*Abs位数
+    T%,R%
+    E
+    浓度
+    SD,RSD
+    K
+    R/R平方
+     */
+
+//    @ApiModelProperty("Abs显示位数")
+//    @TableField("abs_digits")
+//    private Integer absDigits;
+//
+//    @ApiModelProperty("T%、R%显示位数")
+//    @TableField("t_digits")
+//    private Integer tDigits;
+//
+//
+//    @ApiModelProperty("E显示位数")
+//    @TableField("e_digits")
+//    private Integer eDigits;
+
+//    @ApiModelProperty("SD和RSD显示位数")
+//    @TableField("sd_digits")
+//    private Integer sdDigits;
+//
+//    @ApiModelProperty("K显示位数")
+//    @TableField("k_digits")
+//    private Integer kDigits;
+//
+//    @ApiModelProperty("R/R平方显示位数")
+//    @TableField("r_square_digits")
+//    private Integer rSquareDigits;
+//
+//    @ApiModelProperty("浓度负值是否显示未检出")
+//    @TableField("is_negative_show")
+//    private Boolean isNegativeShow;
+//
+
+
+
 }

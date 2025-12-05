@@ -20,10 +20,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
-import com.persee.workstation.uv_inexus.dto.concise.common.FAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
+import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
@@ -34,6 +31,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -553,7 +551,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewPhotometricMethodParamCheckDTO methodDTO) {
 
-        if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+        if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId()) && !StringUtils.hasText(methodDTO.getCurrentMethodId())) {
             return Result.fail(YamlMessageSource.getMessageStatic("00103015"));
         }
         if (!StringUtils.hasText(methodDTO.getMeasureType())) {
@@ -565,6 +563,35 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (method == null) {
                 //没有找到该方法
                 return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            }
+        }
+
+        if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+            String currentMethodId = methodDTO.getCurrentMethodId();
+
+            if (!StringUtils.hasText(currentMethodId) && Objects.isNull(methodDTO.getNewMethodParam())) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00103015"));
+            }
+            FMeasureMethod currentMethod = fMeasureMethodService.getById(currentMethodId);
+            if (currentMethod == null) {
+                //没有找到该方法
+                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            }
+            if (!StringUtils.hasText(methodDTO.getDeviceSerialNumber())) {
+                //未连接仪器
+                return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
+            }
+
+            DeviceInfoPO info = deviceInfoService.getInfo(methodDTO.getDeviceSerialNumber());
+            if (info == null || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+                //未连接仪器
+                return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
+
+            }
+            R<Boolean> r = setParamToDevice(currentMethodId, methodDTO.getDeviceSerialNumber());
+            if (!r.getSuccess()) {
+                log.info("设置参数失败");
+                return Result.fail(YamlMessageSource.getMessageStatic("0030000C"));
             }
         }
 
@@ -953,7 +980,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 if (StringUtils.hasText(task.getZeroParam())) {
                     List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
                     if (params != null && !params.isEmpty()) {
-                        params.forEach(param -> DetectionConstants.zeroResult.putIfAbsent(Double.valueOf(param.getWl()), param));
+                        params.forEach(param -> DetectionConstants.zeroResult.putIfAbsent(param.getWl(), param));
                     }
                 }
             } catch (Exception e) {
@@ -1338,6 +1365,168 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Override
     public R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber) {
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
+        }
+
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+        Result<List<FHeadVO>> listResult = querySampleHeads(taskId);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+            return R.fail(listResult.getMessage());
+        }
+
+        List<FHeadVO> heads = listResult.getData();
+        //动态表头
+        List<FHeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+                dynamicHeads.add(head);
+            }
+        });
+
+        Boolean isAutoChangePool = false;
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+        }
+
+        if (taskSpecimen.isEmpty()) {
+            FMeasureSample newSample = new FMeasureSample();
+
+            sampleAutoNum = 1;
+            newSample.setSampleName("默认样品" + 1);
+            newSample.setSampleNumber("default-" + 1);
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+
+        } else {
+            boolean hasNoTested = false;
+            List<String> sampleNumList = new ArrayList<>();
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
+                if (specimen.getIsTested().equals(noTested)) {
+                    hasNoTested = true;
+                    break;
+                }
+
+                FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                    sampleNumList.add(measureSample.getSampleNumber());
+                }
+            }
+            if (hasNoTested) {
+                return R.ok(true);
+            }
+            FMeasureSample newSample = new FMeasureSample();
+
+            sampleAutoNum = sampleAutoNum + 1;
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                sampleAutoNum += 1;
+            }
+
+            int number = sampleAutoNum;
+
+            newSample.setSampleNumber("default-"+ number);
+            newSample.setSampleName("默认样品" + number);
+
+            sampleNumList.add("default-" + number);
+
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            int all = usefulLocation.size();
+
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = fMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+
+            if (isAutoChangePool) {
+                for (int i = 1; i < all; i++) {
+                    newSample.setId(null);
+                    while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                        sampleAutoNum += 1;
+                    }
+
+                    int newNum = sampleAutoNum;
+                    sampleNumList.add("default-" + newNum);
+                    newSample.setSampleNumber("default-" + newNum);
+                    newSample.setSampleName("默认样品" + newNum);
+
+                    save = fMeasureSampleService.save(newSample);
+                    if (!save) {
+                        //保存失败
+                        return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                    }
+                    taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+                }
+            }
+        }
+
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setSampleAutoNum(sampleAutoNum);
+        boolean update = fMeasureTaskService.updateById(task);
+        if (!update) {
+            //更新失败
+            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
+        }
+
+        if (isAutoChangePool) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+        }
+        return R.ok(true);
+    }
+
+    @Override
+    public R<Boolean> newCreateSample(CreateSampleDTO dto) {
+
+        String taskId = dto.getTaskId();
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+        String updateBy = dto.getUpdateBy();
+        CreateSampleNumPreInfo preInfo = dto.getPreInfo();
+
+        String sampleNamePre = "默认样品";
+        String sampleNumPre = "default-";
+        if (preInfo != null) {
+            if (StringUtils.hasText(preInfo.getSampleNamePre())) {
+                sampleNamePre = preInfo.getSampleNamePre();
+            }
+            if (StringUtils.hasText(preInfo.getSampleNumPre())) {
+                sampleNumPre = preInfo.getSampleNumPre();
+            }
+
+        }
+
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
@@ -2692,11 +2881,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             command = new Command(SetParamEnum.SetStartWl.getComId(), new Object[]{aDouble});
             devMessageUtil.wavelengthLocate(command, ip);
 
+
             for (String s : waveLength) {
                 Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
                 command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
                 DetectionConstants.zeroWavelength = s;
-                devMessageUtil.wavelengthLocate(command, ip);
+                Boolean b = devMessageUtil.wavelengthLocate(command, ip);
+                if (!b) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("00100028"));
+                }
+                DetectionConstants.currentWavelength = s;
 
                 command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
                 R<ChangeParam> zero = null;
@@ -2709,12 +2903,13 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     return Result.fail(zero.getMessage());
                 }
                 ChangeParam changeParam = zero.getData();
-                Double zeroWave = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+//                Double zeroWave = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
                 changeParam.setWl(s);
                 list.add(changeParam);
                 wave = changeParam.getWl();
                 if (StringUtils.hasText(changeParam.getWl())) {
-                    DetectionConstants.zeroResult.put(zeroWave, changeParam);
+//                    DetectionConstants.zeroResult.put(zeroWave, changeParam);
+                    DetectionConstants.zeroResult.put(s, changeParam);
                 }
             }
         } finally {

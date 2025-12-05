@@ -61,6 +61,7 @@ import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterV
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.TimeSweepSearchMethodVo;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.*;
@@ -1735,6 +1736,15 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         Double v = formulaUtil.calculateStep(Double.parseDouble(time.getWaveLength()), deviceSerialNumber);
         // 设置波长
         commands.add(buildCommand(SetParamEnum.SetWl, v));
+
+        R<String> stringR = devMessageUtil.timeSweepSet(commands, ip);
+        if (stringR.getData().equals("true")) {
+            DetectionConstants.currentWavelength = time.getWaveLength();
+        } else {
+            return Result.fail(false);
+        }
+        commands.clear();
+
         // 设置光谱带宽
         if (StringUtils.hasText(time.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
             commands.add(buildCommand(SetParamEnum.SetSlit1, time.getSpectralBandwidth()));
@@ -1747,12 +1757,18 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
         }
 
-        R<String> stringR = devMessageUtil.timeSweepSet(commands, ip);
-        if (stringR.getData().equals("true")) {
+        if (commands.isEmpty()) {
             return Result.ok(true);
         } else {
-            return Result.fail(false);
+            stringR = devMessageUtil.timeSweepSet(commands, ip);
+            if (stringR.getData().equals("true")) {
+                return Result.ok(true);
+            } else {
+                return Result.fail(false);
+            }
         }
+
+
     }
 
 //    /**
