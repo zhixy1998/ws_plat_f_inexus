@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.softwareActivation.impl;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.excel.util.StringUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -28,10 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -331,7 +329,9 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         if (!StringUtils.equals(type,"0")){
             log.info("===== 点击了取消，不添加 =====");
             LambdaUpdateWrapper<SoftwareActivationPO> eq = new LambdaUpdateWrapper<SoftwareActivationPO>()
-                    .eq(SoftwareActivationPO::getDeviceNumber, deviceSerialNumber);
+                    .eq(SoftwareActivationPO::getDeviceNumber, deviceSerialNumber)
+                    .eq(SoftwareActivationPO::getActivationStatus, "0")
+                    .eq(SoftwareActivationPO::getIsAddStatus,"0");
             int i = softwareActivationMapper.delete(eq);
         }
         log.info("===== 执行所有设备isAddStatus重置为0 =====");
