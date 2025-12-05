@@ -574,8 +574,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //起始波长不能小于等于停止波长
             return Result.fail(YamlMessageSource.getMessageStatic("00104015"));
         }
-        if (paramDto.getParameter().getScanSpeed().equals("3")&&(start>800||start<380)){
-            return Result.fail("极快扫描速度时,波长区间应在800.0~380.0");
+        if (paramDto.getParameter().getScanSpeed().equals("3")&&(start>1100||start<380)){
+            return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
         // 下发参数
         Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
