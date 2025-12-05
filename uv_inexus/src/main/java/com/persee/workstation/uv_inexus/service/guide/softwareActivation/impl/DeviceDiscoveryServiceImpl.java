@@ -21,6 +21,7 @@ import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceD
 import com.persee.workstation.uv_inexus.util.changeUtil.ResponseDeal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -81,16 +83,16 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
             String sn = ResponseDeal.Sn;
 
             if (sn == null || sn.isEmpty()) {
-                sn = "UNKNOWN-SN";
+                return mockData;
+            }else if(sn.length() >= 16){
+                sn = sn.substring(0, 16);
             }
-
-            sn = sn.substring(0, 16);
             // 使用解析好的序列号替代
             mockData.add(buildDeviceInfo(sn, currentTime));
 
             return mockData;
         }finally {
-            ResponseDeal.Sn = null;
+//            ResponseDeal.Sn = null;
         }
     }
     @Override
@@ -191,6 +193,9 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     // 获取过滤后的设备列表（模拟数据模糊查询）
     private List<DeviceInfoDTO> getFilteredDevices(Map<String, String> searchParams) {
         List<DeviceInfoDTO> allDevices = generateMockDeviceData();
+        if (CollectionUtils.isNotEmpty(allDevices)){
+            return allDevices;
+        }
         if (searchParams == null || searchParams.isEmpty()) {
             return allDevices;
         }
@@ -323,7 +328,7 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         String type = MapUtils.getString(params, "type");
         String deviceSerialNumber = MapUtils.getString(params, "deviceSerialNumber");
 
-        if (StringUtils.equals(type,"1")){
+        if (!StringUtils.equals(type,"0")){
             log.info("===== 点击了取消，不添加 =====");
             LambdaUpdateWrapper<SoftwareActivationPO> eq = new LambdaUpdateWrapper<SoftwareActivationPO>()
                     .eq(SoftwareActivationPO::getDeviceNumber, deviceSerialNumber);

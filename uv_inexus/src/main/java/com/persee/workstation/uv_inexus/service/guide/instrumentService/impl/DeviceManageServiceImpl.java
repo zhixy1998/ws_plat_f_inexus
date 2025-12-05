@@ -416,7 +416,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
         infoService.saveOrUpdateInfo(infoPO);
-
+        ResponseDeal.Sn = null;
         return true;
     }
 
