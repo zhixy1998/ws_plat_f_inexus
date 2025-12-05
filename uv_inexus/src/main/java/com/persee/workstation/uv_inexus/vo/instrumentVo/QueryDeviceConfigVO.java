@@ -25,4 +25,10 @@ public class QueryDeviceConfigVO {
     @ApiModelProperty("光谱带宽设置")
     private Double bandWidth;
 
+    @ApiModelProperty("通讯端口是否可改")
+    private Boolean messagePortChange;
+
+    @ApiModelProperty("附件设置是否可改")
+    private Boolean annexSettingChange;
+
 }

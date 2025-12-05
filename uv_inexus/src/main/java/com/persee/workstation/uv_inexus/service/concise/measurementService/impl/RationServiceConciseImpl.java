@@ -42,6 +42,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
@@ -58,6 +59,7 @@ import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMeasu
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FMethodChangeCheckVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -124,6 +126,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
     DeviceManageService manageService;
+
+    @Autowired
+    SystemBusinessParamService businessParamService;
 
 
     @Value("1")
@@ -4086,6 +4091,13 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Override
     public String fitDataRounding(String fitConcentration, FRationParameter parameter) {
+
+        BigDecimal bd = new BigDecimal(fitConcentration);
+
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        if (vo.getIsNegativeShow() && bd.signum() < 0) {
+            return "未检出";
+        }
 
         List<FRoundingVO> approxParams = parameter.getApproxParams();
         if (approxParams == null || approxParams.isEmpty()) {

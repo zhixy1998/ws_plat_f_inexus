@@ -43,6 +43,15 @@ public class InsConfigPO extends BasePO {
     @ApiModelProperty("光谱带宽设置")
     private Double bandWidth;
 
+    @ApiModelProperty("通讯端口是否可改")
+    @TableField("message_port_change")
+    private Boolean messagePortChange;
+
+    @ApiModelProperty("附件设置是否可改")
+    @TableField("annex_setting_change")
+    private Boolean annexSettingChange;
+
+
 //    @TableField(value = "restoreFactorySetting",exist = false)
 //    @ApiModelProperty("是否恢复出厂设置")
 //    private Boolean restoreFactorySetting;

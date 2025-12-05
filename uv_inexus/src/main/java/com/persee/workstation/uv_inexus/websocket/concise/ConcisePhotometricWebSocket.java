@@ -483,18 +483,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
         LocalDateTime startTime = LocalDateTime.now();
         R<ChangeParam> res = null;
         String ip = infoService.getIp(deviceSerialNumber);
-        try {
-            res = devMessageUtil.photometricAndRationMeasurement(list, ip);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        if (!res.getSuccess()) {
-            log.info("参数下发失败");
-            return R.fail("测量出错");
-        }
-
         for (String waveLength : waveLengths) {
-            list.clear();
 
             Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
 
@@ -505,9 +494,12 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 throw new RuntimeException(e);
             }
             if (!res.getSuccess()) {
-                log.info("测量出错");
-                return R.fail("测量出错");
+                log.info("设置波长出错");
+                return R.fail("设置波长出错！");
             }
+
+            DetectionConstants.currentWavelength = waveLength;
+            list.clear();
 
             list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
 
@@ -605,14 +597,26 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                 jsonObject.put("value", sample.getSampleNumber() + "-" + (i + 1));
                 session.sendMessage(new TextMessage(jsonObject.toJSONString()));
 
+                String ip = infoService.getIp(deviceSerialNumber);
+                R<ChangeParam> res;
                 for (String waveLength : waveLengths) {
                     Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
 
                     list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
+                    try {
+                        res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    if (!res.getSuccess()) {
+                        log.info("设置波长出错");
+                        return R.fail("设置波长出错！");
+                    }
+
+                    DetectionConstants.currentWavelength = waveLength;
+                    list.clear();
                     list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
 
-                    String ip = infoService.getIp(deviceSerialNumber);
-                    R<ChangeParam> res;
                     try {
                         res = devMessageUtil.photometricAndRationMeasurement(list, ip);
                     } catch (Exception e) {
