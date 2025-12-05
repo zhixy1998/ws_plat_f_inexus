@@ -30,6 +30,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -396,7 +397,16 @@ public class DevMessageUtil {
             int replyNumber = transition.getReplyNumber();
             //发送报文组
             byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
+            List<byte[]> responses = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
+                if (responses.size() < 2) {
+                    i++;
+                } else {
+                    break;
+                }
+            }
+
             if (responses.size() < 2) {
                 return R.fail("校正失败");
             }

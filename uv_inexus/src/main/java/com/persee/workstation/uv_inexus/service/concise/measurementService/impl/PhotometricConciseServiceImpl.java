@@ -948,6 +948,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                     log.info("设置参数失败");
                     return R.fail("设置参数失败");
                 }
+                DetectionConstants.currentWavelength = waveLength;
             } catch (Exception e) {
                 log.info("参数设置异常");
             } finally {
