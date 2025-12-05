@@ -62,6 +62,7 @@ import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.*;
@@ -2058,7 +2059,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Command com3 = new Command();
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         double parsed2 = Double.parseDouble(scanParamInfo.getEndWaveLength());
-        if (linearSegment!=null){
+        if (linearSegment!=null&& !linearSegment.isEmpty()){
             double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
             parsed2=parsed2-waveLengthInterval;
         }
@@ -2092,6 +2093,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         com7.setParams(new Object[]{v3});
         commands.add(com7);
 
+        // 波长
+        Command com10 = new Command();
+        com10.setCmdId(SetParamEnum.SetWl.getComId());
+        com10.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
+        commands.add(com10);
+
         if (scanParamInfo.getLuminosity().equals("3") || scanParamInfo.getLuminosity().equals("4")) {
             // 能量灯
             Command com8 = new Command();
@@ -2112,6 +2119,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             throw new RuntimeException(e);
         }
         if (stringR.getData().equals("true")) {
+            DetectionConstants.currentWavelength = scanParamInfo.getStartWaveLength();
             return Result.ok(true);
         } else {
             return Result.fail(false);
@@ -4018,6 +4026,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             }
             R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
             if (stringR.getData().equals("true")) {
+                DetectionConstants.currentWavelength = startWaveLength;
                 return Result.ok(true);
             } else {
                 // 返回具体的下发错误信息
