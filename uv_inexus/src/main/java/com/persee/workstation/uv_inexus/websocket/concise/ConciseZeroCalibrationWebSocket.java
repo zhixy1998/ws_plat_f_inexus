@@ -29,6 +29,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import org.slf4j.Logger;
@@ -71,6 +72,9 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
     private String deviceSerialNumber;
 
     private boolean occupancyStatus = false;
+
+    @Autowired
+    FormulaUtil formulaUtil;
 
 
 
@@ -285,10 +289,12 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
             sendAndClose(session, zero.getMessage());
             return;
         }
+        ChangeParam zeroData = zero.getData();
+        Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
+
+        DetectionConstants.zeroResult.put(v, zero.getData());
 
         zero.getData().setWl(timeSweepParamter.getWaveLength());
-
-        DetectionConstants.zeroResult.put(Double.parseDouble(zero.getData().getWl()), zero.getData());
 
         // 检测中断
         checkInterrupted(session);

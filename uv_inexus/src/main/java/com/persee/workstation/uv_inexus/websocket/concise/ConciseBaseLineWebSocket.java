@@ -32,6 +32,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -378,18 +379,22 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 log.info("【数据收集完成】数据收集完成, 数据点数: {}, session: {}", dataList.size(), sessionId);
             }
 
-
-            log.info("【零点校零开始】开始进行校零, session: {}", sessionId);
-            /// 基线结束之后横插一个校零
-            // 进行校零
-            String ip = deviceInfoService.getIp(deviceSerialNumber);
-            Command command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-            R<ChangeParam> zero = devMessageUtil.zero(command, ip);
-            if (!zero.getSuccess()) {
-                sendAndClose(session, zero.getMessage());
-                return;
+            if (!state.stopCommandSent.get()) {
+                log.info("【零点校零开始】开始进行校零, session: {}", sessionId);
+                /// 基线结束之后横插一个校零
+                // 进行校零
+                String ip = deviceInfoService.getIp(deviceSerialNumber);
+                Command command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+                R<ChangeParam> zero = devMessageUtil.zero(command, ip);
+                if (!zero.getSuccess()) {
+                    sendAndClose(session, zero.getMessage());
+                    return;
+                }
+                ChangeParam zeroData = zero.getData();
+                Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
+                DetectionConstants.zeroResult.put(v, zero.getData());
+                log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
             }
-            log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
 
             // 保存任务结果
             if (!saveTaskResult(session, taskId, methodId, deviceSerialNumber, method, dataList)) {

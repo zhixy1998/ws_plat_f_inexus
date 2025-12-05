@@ -189,6 +189,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         //占用仪器
         R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
         if (!message.getSuccess()) {
+            log.error("占用仪器失败!!!!!!!");
             sendClose(session, message.getMessage());
             return;
         }
