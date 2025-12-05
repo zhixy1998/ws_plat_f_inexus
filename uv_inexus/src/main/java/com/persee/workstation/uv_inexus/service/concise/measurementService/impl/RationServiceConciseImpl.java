@@ -37,6 +37,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.*;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -782,7 +783,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     @Override
     public Result<FMeasurementCurrentInfoVO> applyMethod(NewRationMethodParamCheckDTO methodDTO) {
 
-        if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+        if (Objects.isNull(methodDTO.getNewMethodParam()) && !StringUtils.hasText(methodDTO.getNewMethodId()) && !StringUtils.hasText(methodDTO.getCurrentMethodId())) {
             //没有可应用的方法或参数
             return Result.fail(YamlMessageSource.getMessageStatic("00103015"));
         }
@@ -790,6 +791,38 @@ public class RationServiceConciseImpl implements RationConciseService {
             methodDTO.setMeasureType(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription());
         }
         String methodId = methodDTO.getNewMethodId();
+
+
+        if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
+            String currentMethodId = methodDTO.getCurrentMethodId();
+
+            if (!StringUtils.hasText(currentMethodId) && Objects.isNull(methodDTO.getNewMethodParam())) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00103015"));
+            }
+            FMeasureMethod currentMethod = fMeasureMethodService.getById(currentMethodId);
+            if (currentMethod == null) {
+                //没有找到该方法
+                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            }
+            if (!StringUtils.hasText(methodDTO.getDeviceSerialNumber())) {
+                //未连接仪器
+                return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
+            }
+
+            DeviceInfoPO info = deviceInfoService.getInfo(methodDTO.getDeviceSerialNumber());
+            if (info == null || !info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+                //未连接仪器
+                return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
+
+            }
+            R<Boolean> r = setParamToDevice(currentMethodId, methodDTO.getDeviceSerialNumber());
+            if (!r.getSuccess()) {
+                //仪器下发参数出错
+                return Result.fail(YamlMessageSource.getMessageStatic("0030000C"));
+            }
+        }
+
+
 
         FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
 
@@ -1041,23 +1074,23 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
     }
 
-    private void setParamToDevice(String methodId, String deviceSerialNumber) {
+    private R<Boolean> setParamToDevice(String methodId, String deviceSerialNumber) {
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
             log.info("设备未连接,无需下发参数");
-            return;
+            return R.fail("设备未连接,无需下发参数");
         }
 
         FMeasureMethod fMeasureMethod = fMeasureMethodService.getById(methodId);
         if (fMeasureMethod == null) {
             log.warn("找不到对应的测量方法: methodId={}", methodId);
-            return;
+            return R.fail("找不到对应的测量方法");
         }
 
         FRationParameter parameter = JSON.parseObject(fMeasureMethod.getMeasurementParamInfo(), FRationParameter.class);
         if (parameter == null) {
             log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
-            return;
+            return R.fail("解析测量参数失败");
         }
         String ip = deviceInfoService.getIp(deviceSerialNumber);
         if (StringUtils.hasText(ip)) {
@@ -1081,15 +1114,24 @@ public class RationServiceConciseImpl implements RationConciseService {
             list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
 
             try {
-                deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-                devMessageUtil.photometricAndRationMeasurement(list, ip);
+                R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
+                if (!r.getSuccess()) {
+                    log.info("设置参数，仪器抢占失败");
+                    return R.fail(r.getMessage());
+                }
+                R<ChangeParam> changeParamR = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                if (!changeParamR.getSuccess()) {
+                    log.info("设置参数失败");
+                    return R.fail("设置参数失败");
+                }
+                DetectionConstants.currentWavelength = waveLength;
             } catch (Exception e) {
                 log.info("参数设置异常");
             } finally {
                 deviceInfoService.releaseDevice(deviceSerialNumber);
             }
         }
-
+        return R.ok(true);
     }
 
     private void saveData(String taskId) {
@@ -1514,15 +1556,12 @@ public class RationServiceConciseImpl implements RationConciseService {
                 if (StringUtils.hasText(task.getZeroParam())) {
                     List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
                     if (params != null && !params.isEmpty()) {
-                        params.forEach(param -> DetectionConstants.zeroResult.putIfAbsent(Double.valueOf(param.getWl()), param));
+                        params.forEach(param -> DetectionConstants.zeroResult.putIfAbsent(param.getWl(), param));
                     }
                 }
             } catch (Exception e) {
                 log.error("解析任务里的校零参数异常: {}", e.getMessage());
             }
-
-
-
 
             return Result.ok(vo);
         }
@@ -4810,7 +4849,11 @@ public class RationServiceConciseImpl implements RationConciseService {
 
             command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
             DetectionConstants.zeroWavelength = s;
-            devMessageUtil.wavelengthLocate(command, ip);
+            Boolean b = devMessageUtil.wavelengthLocate(command, ip);
+            if (!b) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00100028"));
+            }
+            DetectionConstants.currentWavelength = s;
 
             command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
             R<ChangeParam> zero = null;
@@ -4823,12 +4866,13 @@ public class RationServiceConciseImpl implements RationConciseService {
                 return Result.fail(zero.getMessage());
             }
             ChangeParam changeParam = zero.getData();
-            Double zeroWave = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
+//            Double zeroWave = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
             changeParam.setWl(s);
             list.add(changeParam);
             wave = changeParam.getWl();
             if (StringUtils.hasText(changeParam.getWl())) {
-                DetectionConstants.zeroResult.put(zeroWave, changeParam);
+//                DetectionConstants.zeroResult.put(zeroWave, changeParam);
+                DetectionConstants.zeroResult.put(s, changeParam);
             }
         }
         task.setZeroParam(JSON.toJSONString(list));
