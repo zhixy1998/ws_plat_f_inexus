@@ -363,6 +363,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 sendAndClose(session, "方法不存在");
                 return;
             }
+            // 将方法中的参数转换为对象
+            FSpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
 
             // 开始测量
             if (!startMeasurement(session, method, deviceSerialNumber)) {
@@ -382,10 +384,22 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             }
 
             if (!state.stopCommandSent.get()) {
+                String ip = deviceInfoService.getIp(deviceSerialNumber);
+                log.info("【设置波长开始】开始设置波长, session: {}", sessionId);
+                List<Command> commands = new ArrayList<>();
+                double parsed = Double.parseDouble(param.getStartWaveLength());
+                Double va = formulaUtil.calculateStep(parsed, deviceSerialNumber);
+                Command command1 = buildCommand(SetParamEnum.SetWl, parsed);
+                command1.setParams(new Object[]{va});
+                commands.add(command1);
+                devMessageUtil.spectrumScanSet(commands, ip);
+                DetectionConstants.currentWavelength = param.getStartWaveLength();
+                log.info("【设置波长结束】结束设置波长, session: {}", sessionId);
+
                 log.info("【零点校零开始】开始进行校零, session: {}", sessionId);
                 /// 基线结束之后横插一个校零
                 // 进行校零
-                String ip = deviceInfoService.getIp(deviceSerialNumber);
+
                 Command command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
                 R<ChangeParam> zero = devMessageUtil.zero(command, ip);
                 if (!zero.getSuccess()) {
@@ -394,7 +408,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 }
                 ChangeParam zeroData = zero.getData();
                 Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
-//                DetectionConstants.zeroResult.put(v, zero.getData());
                 DetectionConstants.zeroResult.put(String.valueOf(v), zero.getData());
                 log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
             }

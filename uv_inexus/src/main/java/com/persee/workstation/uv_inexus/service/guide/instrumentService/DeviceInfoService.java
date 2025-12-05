@@ -40,4 +40,6 @@ public interface DeviceInfoService {
     Integer queryDeviceActivationStatus(String deviceSerialNumber);
     
     Boolean isNeedSetSit(String deviceSerialNumber);
+
+    void checkDeviceStatus();
 }

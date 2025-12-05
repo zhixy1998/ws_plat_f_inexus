@@ -26,6 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.PostConstruct;
+import java.util.List;
+
 
 @Service
 @Slf4j
@@ -211,6 +214,26 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             }
         }
         return false;
+    }
+
+    @PostConstruct
+    @Override
+    public void checkDeviceStatus() {
+        log.info("[检查设备状态] 开始检查设备状态");
+        LambdaQueryWrapper<DeviceInfoPO> query = new LambdaQueryWrapper<>();
+        List<DeviceInfoPO> pos = dao.selectList(query);
+        if (pos == null || pos.isEmpty()) {
+            return;
+        }
+        for (DeviceInfoPO po : pos) {
+            log.info("初始化设备：{}", po.getDeviceSerialNumber());
+
+//            po.setIsInited(Constants.INIT_STATUS_NO);
+            po.setConnectStatus(Constants.CONNECT_DEVICE_NO);
+            po.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
+            dao.updateById(po);
+
+        }
     }
 
 

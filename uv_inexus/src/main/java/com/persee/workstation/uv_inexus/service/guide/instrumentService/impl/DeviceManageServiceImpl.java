@@ -278,6 +278,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             Double step = formulaUtil.calculateStep(660.0, infoPO.getDeviceSerialNumber());
             Command command = new Command("SetWl", new Object[]{step});
             Boolean locate = devMessageUtil.wavelengthLocate(command, ip);
+            DetectionConstants.currentWavelength = String.valueOf(660);
 
             R<String> stringR = devMessageUtil.setDeviceInitStatus(ip, 1);
 
@@ -442,6 +443,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (connected.getSuccess()) {
             log.info("找到设备");
             FindDeviceVO deviceVO = connected.getData();
+            String ip = deviceVO.getIp();
+
             DeviceInfoPO po = infoService.getInfo(deviceVO.getDeviceSerialNumber());
             if (po == null) {
                 po = new DeviceInfoPO();
@@ -457,9 +460,18 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             Constants.devConnectInfo.put(deviceVO.getDeviceSerialNumber(), true);
             if (po.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
                 liveDetectionWebSocket.startMeasure(deviceVO.getDeviceSerialNumber());
+
+                Command mode = new Command("SetPhotoMode", new Object[]{WaveLengthEnum.abs.getCode()});
+                Boolean b = devMessageUtil.wavelengthLocate(mode, ip);
+
+                Double step = formulaUtil.calculateStep(660.0, deviceVO.getLinearSegment());
+                Command command = new Command("SetWl", new Object[]{step});
+                Boolean locate = devMessageUtil.wavelengthLocate(command, ip);
+
+                DetectionConstants.currentWavelength = "660";
             }
 
-            po.setIp(deviceVO.getIp());
+            po.setIp(ip);
             po.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
             po.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
             po.setIsDevOpened(1);
@@ -493,12 +505,31 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             //附件处理
             DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(deviceVO.getAttachmentType());
-
+            LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, deviceVO.getDeviceSerialNumber());
+            InsConfigPO configPO = configDAO.selectOne(queryWrapper);
             if (attachmentInfo == null) {
                 attachmentInfo = new DeviceAttachmentTypeVO();
                 attachmentInfo.setAttachmentNum(12);
                 attachmentInfo.setAttachmentName("未识别");
             }
+
+            if (configPO == null) {
+                configPO = new InsConfigPO();
+                configPO.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
+                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
+                configPO.setMessagePort(1);
+                configPO.setMessagePortChange(false);
+                configPO.setAnnexSettingChange(false);
+                configDAO.insert(configPO);
+            } else {
+                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
+                configPO.setMessagePort(1);
+                configPO.setMessagePortChange(false);
+                configPO.setAnnexSettingChange(false);
+                configDAO.updateById(configPO);
+            }
+
             attachmentInfo.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
             FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
 
@@ -572,10 +603,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             vo.setMessagePort(1);
             vo.setAnnexSetting(1);
             vo.setBandWidth(2.0);
+            vo.setAnnexSettingChange(false);
+            vo.setMessagePortChange(false);
         } else{
             vo.setMessagePort(po.getMessagePort());
             vo.setAnnexSetting(po.getAnnexSetting());
             vo.setBandWidth(po.getBandWidth());
+            vo.setAnnexSettingChange(false);
+            vo.setMessagePortChange(false);
         }
 
         return R.ok(vo);

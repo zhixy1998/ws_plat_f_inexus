@@ -30,6 +30,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.ration.*;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1096,12 +1097,25 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(object.toJSONString()));
         }
         LocalDateTime startTime = LocalDateTime.now();
+        R<ChangeParam> res = null;
         for (String waveLength : waveLengths) {
             Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
             list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
+
+            try {
+                res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            if (!res.getSuccess()) {
+                log.info("单测设置波长出错");
+                return R.fail("设置波长出错！");
+            }
+
+            DetectionConstants.currentWavelength = waveLength;
+            list.clear();
             list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
 
-            R<ChangeParam> res = null;
             try {
                 res = devMessageUtil.photometricAndRationMeasurement(list, ip);
             } catch (Exception e) {
@@ -1224,13 +1238,26 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
             object.put("value", sample.getSampleNumber() + "-" + (i + 1));
             session.sendMessage(new TextMessage(object.toJSONString()));
-
+            R<ChangeParam> res = null;
             for (String waveLength : waveLengths) {
                 Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
                 list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
+
+                try {
+                    res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+                if (!res.getSuccess()) {
+                    log.info("设置波长出错");
+                    return R.fail("设置波长出错！");
+                }
+
+                DetectionConstants.currentWavelength = waveLength;
+                list.clear();
+
                 list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
 
-                R<ChangeParam> res = null;
                 try {
                     res = devMessageUtil.photometricAndRationMeasurement(list, ip);
                 } catch (Exception e) {

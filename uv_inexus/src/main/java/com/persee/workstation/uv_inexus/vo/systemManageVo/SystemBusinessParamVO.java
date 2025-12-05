@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.vo.systemManageVo;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -37,6 +36,28 @@ public class SystemBusinessParamVO {
     @ApiModelProperty("自动登出时间")
     private String autoLeaveTime;
 
-    @TableField("exe_file_path")
+
     private String filePath;
+
+    @ApiModelProperty("Abs显示位数")
+    private Integer absDigits;
+
+    @ApiModelProperty("T%、R%显示位数")
+    private Integer tDigits;
+
+
+    @ApiModelProperty("E显示位数")
+    private Integer eDigits;
+
+    @ApiModelProperty("SD和RSD显示位数")
+    private Integer sdDigits;
+
+    @ApiModelProperty("K显示位数")
+    private Integer kDigits;
+
+    @ApiModelProperty("R/R平方显示位数")
+    private Integer rSquareDigits;
+
+    @ApiModelProperty("浓度负值是否显示未检出")
+    private Boolean isNegativeShow;
 }

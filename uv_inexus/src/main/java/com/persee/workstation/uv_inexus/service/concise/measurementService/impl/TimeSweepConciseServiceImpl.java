@@ -1784,6 +1784,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } else {
             stringR = devMessageUtil.timeSweepSet(commands, ip);
             if (stringR.getData().equals("true")) {
+                DetectionConstants.currentWavelength = time.getWaveLength();
                 return Result.ok(true);
             } else {
                 return Result.fail(false);
@@ -2785,6 +2786,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             }
             R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
             if (stringR.getData().equals("true")) {
+                DetectionConstants.currentWavelength = startWaveLength;
                 return Result.ok(true);
             } else {
                 // 返回具体的下发错误信息
