@@ -115,6 +115,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         private final AtomicBoolean deviceOccupied = new AtomicBoolean(false);
         private final AtomicBoolean measurementStarted = new AtomicBoolean(false);
         private final AtomicBoolean stopCommandSent = new AtomicBoolean(false);
+        private final AtomicBoolean stopCommandSent2 = new AtomicBoolean(false);
         private final AtomicBoolean cleanupInProgress = new AtomicBoolean(false);
         private final AtomicBoolean sessionClosing = new AtomicBoolean(false);
         private final AtomicBoolean dataReceivingThreadStopped = new AtomicBoolean(false);
@@ -125,6 +126,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             deviceOccupied.set(false);
             measurementStarted.set(false);
             stopCommandSent.set(false);
+            stopCommandSent2.set(false);
             cleanupInProgress.set(false);
             sessionClosing.set(false);
             dataReceivingThreadStopped.set(false);
@@ -241,7 +243,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
 
         // 只有在测量已开始且停止命令未发送过的情况下才发送停止命令
-        if (state.measurementStarted.get() && state.stopCommandSent.getAndSet(true)) {
+        if (state.measurementStarted.get() && state.stopCommandSent.getAndSet(true) && !state.stopCommandSent2.getAndSet(true)) {
             if (state.ip != null) {
                 try {
                     log.info("【发送设备停止】向设备发送停止命令, session: {}, ip: {}", sessionId, state.ip);
@@ -571,6 +573,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             double startWl = Double.parseDouble(param.getStartWaveLength());
             double endWl = Double.parseDouble(param.getEndWaveLength());
             boolean isDescending = startWl > endWl;
+            Double stopWaveLength = endWl + (wavelengthInterval * 3);
 
             int expectedPoints = calculateExpectedDataPoints(startWl, endWl, wavelengthInterval);
             log.info("【数据点预期】期望数据点数: {}, 波长范围: {} - {}, 间隔: {}, session: {}",
@@ -618,9 +621,15 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     ChangeParam changeParam = Constants.measurd_data.remove(0);
                     Double originalWavelength = Double.parseDouble(changeParam.getWl());
                     Double correctedWavelength = formulaUtil.calculateWavelength(originalWavelength, linearSegment);
-
+                    // 强制约束波长
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             wavelengthInterval, isDescending, sessionId);
+
+
+                    if (stopWaveLength.equals(constrainedWavelength)){
+                        log.info("【停止命令不会再发送】session: {}", sessionId);
+                        state.stopCommandSent2.set(true);
+                    }
 
                     if (constrainedWavelength != null) {
                         hasNewData = true;
@@ -906,6 +915,16 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 强制约束波长，确保波长在指定范围内
+     * @param originalWl
+     * @param startWl
+     * @param endWl
+     * @param interval
+     * @param isDescending
+     * @param sessionId
+     * @return
+     */
     private Double forceConstrainWavelength(Double originalWl, double startWl, double endWl,
                                             double interval, boolean isDescending, String sessionId) {
         if (originalWl == null) {

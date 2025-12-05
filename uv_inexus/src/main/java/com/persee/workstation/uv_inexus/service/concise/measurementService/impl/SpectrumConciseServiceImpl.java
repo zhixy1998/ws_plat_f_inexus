@@ -42,6 +42,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
@@ -2013,6 +2014,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
 
         FSpectrumParameter scanParamInfo = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), FSpectrumParameter.class);
 
@@ -2034,6 +2036,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Command com3 = new Command();
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         double parsed2 = Double.parseDouble(scanParamInfo.getEndWaveLength());
+        if (linearSegment!=null){
+            double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
+            parsed2=parsed2-waveLengthInterval;
+        }
         Double v2 = formulaUtil.calculateStep(parsed2, deviceSerialNumber);
         com3.setParams(new Object[]{v2});
         commands.add(com3);

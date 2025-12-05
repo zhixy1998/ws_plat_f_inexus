@@ -116,6 +116,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         private final AtomicBoolean deviceOccupied = new AtomicBoolean(false);
         private final AtomicBoolean measurementStarted = new AtomicBoolean(false);
         private final AtomicBoolean stopCommandSent = new AtomicBoolean(false);
+        private final AtomicBoolean stopCommandSent2 = new AtomicBoolean(false);
         private final AtomicBoolean cleanupInProgress = new AtomicBoolean(false);
         private final AtomicBoolean sessionClosing = new AtomicBoolean(false);
         private String deviceSerialNumber;
@@ -126,6 +127,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             deviceOccupied.set(false);
             measurementStarted.set(false);
             stopCommandSent.set(false);
+            stopCommandSent2.set(false);
             cleanupInProgress.set(false);
             sessionClosing.set(false);
             deviceSerialNumber = null;
@@ -412,7 +414,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         }
 
         // 只有在测量已开始且停止命令未发送过的情况下才发送停止命令
-        if (state.measurementStarted.get() && state.stopCommandSent.getAndSet(true)) {
+        if (state.measurementStarted.get() && state.stopCommandSent.getAndSet(true) && !state.stopCommandSent2.getAndSet(true)) {
             if (state.ip != null) {
                 try {
                     log.info("【发送设备停止】向设备发送停止命令, session: {}, ip: {}", sessionId, state.ip);
@@ -850,7 +852,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                             break;
                         }
 
-                        calcOnePoint(spectrumParameter, baselineCopy, x, y, currentIndex, startWl, endWl, interval, isDescending, deviceSerialNumber);
+                        calcOnePoint(spectrumParameter, baselineCopy, x, y, currentIndex, startWl, endWl, interval, isDescending, deviceSerialNumber,session);
                         currentIndex++;
 
                         // 将新点添加到临时缓冲区
@@ -1705,8 +1707,11 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                               double endWl,
                               double interval,
                               boolean isDescending,
-                              String deviceSerialNumber) {
+                              String deviceSerialNumber,
+                              WebSocketSession session) {
         List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
+        String sessionId = session.getId();
+        Double stopWaveLength = endWl + (interval * 3);
 
         if (baselineCopy != null && !baselineCopy.isEmpty()) {
             if (spectrumParameter.getLuminosity().equals("1")) {
@@ -1718,6 +1723,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
 
                 Constants.originalCalculationData.add(v + "," + yy);
                 x.add(Double.parseDouble(v.toString()));
@@ -1729,6 +1735,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
 
                 Constants.originalCalculationData.add(v + "," + s);
                 x.add(Double.parseDouble(v.toString()));
@@ -1741,6 +1748,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
 
                 Constants.originalCalculationData.add(v + "," + yy);
                 x.add(Double.parseDouble(v.toString()));
@@ -1753,6 +1761,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
 
                 Constants.originalCalculationData.add(v + "," + yy);
                 x.add(Double.parseDouble(v.toString()));
@@ -1769,6 +1778,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
 
                 Constants.originalCalculationData.add(v + "," + yy);
                 x.add(Double.parseDouble(v.toString()));
@@ -1780,6 +1790,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
 
                 Constants.originalCalculationData.add(v + "," + s);
                 x.add(Double.parseDouble(v.toString()));
@@ -1792,6 +1803,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
 
                 Constants.originalCalculationData.add(v + "," + yy);
                 x.add(Double.parseDouble(v.toString()));
@@ -1804,12 +1816,24 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
 
                 // 添加波长约束 - 强制修约
                 v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, currentIndex);
+                calcOnePoint(stopWaveLength, v, sessionId);
+
 
                 Constants.originalCalculationData.add(v + "," + yy);
                 x.add(Double.parseDouble(v.toString()));
                 y.add(Double.parseDouble(yy));
             }
             Constants.measurd_data.remove(0);
+        }
+    }
+
+    public void calcOnePoint(Double stopWaveLength,
+                             Double constrainedWavelength,
+                             String sessionId) {
+        if (stopWaveLength.equals(constrainedWavelength)){
+            log.info("【停止命令不会再发送】session: {}", sessionId);
+            SessionState state = sessionStates.get(sessionId);
+            state.stopCommandSent2.set(true);
         }
     }
 
