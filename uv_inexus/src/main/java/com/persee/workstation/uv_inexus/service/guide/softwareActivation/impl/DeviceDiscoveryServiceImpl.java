@@ -325,13 +325,15 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
         String type = MapUtils.getString(params, "type");
         String deviceSerialNumber = MapUtils.getString(params, "deviceSerialNumber");
 
-        if (!StringUtils.equals(type,"0")){
+        if (!StringUtils.equals(type, "0")) {
             log.info("===== 点击了取消，不添加 =====");
-            LambdaUpdateWrapper<SoftwareActivationPO> eq = new LambdaUpdateWrapper<SoftwareActivationPO>()
-                    .eq(SoftwareActivationPO::getDeviceNumber, deviceSerialNumber)
+            LambdaQueryWrapper<SoftwareActivationPO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(SoftwareActivationPO::getDeviceNumber, deviceSerialNumber)
                     .eq(SoftwareActivationPO::getActivationStatus, "0")
-                    .eq(SoftwareActivationPO::getIsAddStatus,"0");
-            int i = softwareActivationMapper.delete(eq);
+                    .and(wrapper -> wrapper.eq(SoftwareActivationPO::getIsAddStatus, "0")
+                            .or()
+                            .eq(SoftwareActivationPO::getIsAddStatus, "2"));
+            int i = softwareActivationMapper.delete(queryWrapper);
         }
         log.info("===== 执行所有设备isAddStatus重置为0 =====");
 
