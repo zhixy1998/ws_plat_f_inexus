@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
@@ -149,6 +150,10 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 初始化并开始测量
+     * @param session
+     */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String sessionId = session.getId();
@@ -172,6 +177,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     }
 
 
+    /**
+     * 初始化并开始测量
+     */
     private void initializeAndStart(WebSocketSession session, TimeScanContext context) {
         String sessionId = session.getId();
 
@@ -244,15 +252,26 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 return;
             }
 
-            configureSamplePool(session, context, validSamples, updateBy);
+            // 检查是否启用自动换池
+            QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+            wrapper.eq("device_serial_number", context.deviceSerialNumber);
+            FSamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
 
-            for (FTaskSpecimen sample : validSamples) {
-                if (!context.running.get()) {
-                    break;
+            if (config == null || !config.getIsAutoChangePool()) {
+                // 未启用自动换池，只测量第一个样品
+                log.info("未启用自动换池，只测量第一个样品");
+                if (!validSamples.isEmpty()) {
+                    executeSampleMeasurement(session, context, param, validSamples.get(0), updateBy);
                 }
-
-                context.currentSampleId = sample.getSpecimenKey();
-                executeSampleMeasurement(session, context, param, sample);
+            } else {
+                // 启用自动换池，按顺序测量所有样品
+                log.info("启用自动换池，按顺序测量所有样品，数量: {}", validSamples.size());
+                for (FTaskSpecimen sample : validSamples) {
+                    if (!context.running.get()) {
+                        break;
+                    }
+                    executeSampleMeasurement(session, context, param, sample, updateBy);
+                }
             }
 
             // 只有在正常完成（没有被停止）的情况下才发送"扫描成功"
@@ -293,6 +312,23 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 return;
             }
 
+            // 检查样品池状态
+            boolean poolStatus = false;
+            if (config.getPoolInfo() != null && !config.getPoolInfo().isEmpty()) {
+                List<FSamplePoolStatus> poolStatuses = JSON.parseArray(config.getPoolInfo(), FSamplePoolStatus.class);
+                for (FSamplePoolStatus status : poolStatuses) {
+                    if (status.getPoolStatus()) {
+                        poolStatus = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!poolStatus) {
+                log.info("样品池状态为关闭，不设置样品池位置");
+                return;
+            }
+
             List<String> sampleIds = new ArrayList<>();
             for (FTaskSpecimen sample : samples) {
                 sampleIds.add(sample.getSpecimenKey());
@@ -306,15 +342,43 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
                 return;
             }
 
-            FMeasureSample firstSample = sampleList.get(0);
-            if (firstSample.getSampleLocation() != null && !firstSample.getSampleLocation().isEmpty()) {
-                R<String> setResult = devMessageUtil.setCurrentCellPos(Integer.valueOf(firstSample.getSampleLocation()), context.ip);
-                if (setResult.getSuccess()) {
-                    fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber,
-                            Integer.parseInt(firstSample.getSampleLocation()), updateBy);
-                    JSONObject poolMsg = new JSONObject();
-                    poolMsg.put("currentPoolNum", firstSample.getSampleLocation());
-                    sendMessageSafe(session, poolMsg.toJSONString());
+            // 按照任务中的样品顺序处理
+            for (FMeasureSample sample : sampleList) {
+                // 根据任务中的样品顺序找到对应的样品
+                FTaskSpecimen taskSpecimen = samples.stream()
+                        .filter(s -> s.getSpecimenKey().equals(sample.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (taskSpecimen == null) {
+                    continue;
+                }
+
+                // 只处理未测试的样品
+                if (!"0".equals(taskSpecimen.getIsTested())) {
+                    continue;
+                }
+
+                if (sample.getSampleLocation() != null && !sample.getSampleLocation().isEmpty()) {
+                    try {
+                        R<String> setResult = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), context.ip);
+                        if (setResult.getSuccess()) {
+                            // 更新当前样品池位置
+                            fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber,
+                                    Integer.parseInt(sample.getSampleLocation()), updateBy);
+
+                            // 发送样品池位置信息到前端
+                            JSONObject poolMsg = new JSONObject();
+                            poolMsg.put("currentPoolNum", sample.getSampleLocation());
+                            sendMessageSafe(session, poolMsg.toJSONString());
+
+                            log.info("成功设置样品池位置: {}", sample.getSampleLocation());
+                        } else {
+                            log.warn("设置样品池位置失败: {}", sample.getSampleLocation());
+                        }
+                    } catch (Exception e) {
+                        log.error("设置样品池位置异常: {}", e.getMessage());
+                    }
                 }
             }
 
@@ -331,8 +395,12 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
      * @param sample
      */
     private void executeSampleMeasurement(WebSocketSession session, TimeScanContext context,
-                                          FTimeSweepParamter param, FTaskSpecimen sample) {
+                                          FTimeSweepParamter param, FTaskSpecimen sample, String updateBy) {
         context.clearData();
+        context.currentSampleId = sample.getSpecimenKey();
+
+        // 首先检查是否需要设置样品池位置
+        setupSamplePoolIfNeeded(session, context, sample, updateBy);
 
         // 使用BigDecimal避免浮点数精度问题
         BigDecimal interval = new BigDecimal(param.getIntervalTime());
@@ -412,6 +480,69 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             if (!scheduler.isShutdown()) {
                 scheduler.shutdownNow();
             }
+        }
+    }
+
+
+    /**
+     * 设置样品池位置
+     */
+    private void setupSamplePoolIfNeeded(WebSocketSession session, TimeScanContext context,
+                                         FTaskSpecimen sample, String updateBy) {
+        try {
+            QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+            wrapper.eq("device_serial_number", context.deviceSerialNumber);
+            FSamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
+
+            // 检查是否启用自动换池
+            if (config == null || !config.getIsAutoChangePool()) {
+                log.info("未启用自动换池，不设置样品池位置");
+                return;
+            }
+
+            // 检查样品池状态
+            boolean poolStatus = false;
+            if (config.getPoolInfo() != null && !config.getPoolInfo().isEmpty()) {
+                List<FSamplePoolStatus> poolStatuses = JSON.parseArray(config.getPoolInfo(), FSamplePoolStatus.class);
+                for (FSamplePoolStatus status : poolStatuses) {
+                    if (status.getPoolStatus()) {
+                        poolStatus = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!poolStatus) {
+                log.info("样品池状态为关闭，不设置样品池位置");
+                return;
+            }
+
+            // 根据样品ID获取样品信息
+            FMeasureSample sampleInfo = tMeasureSampleService.getById(sample.getSpecimenKey());
+            if (sampleInfo == null || sampleInfo.getSampleLocation() == null || sampleInfo.getSampleLocation().isEmpty()) {
+                log.warn("样品位置信息为空，无法设置样品池位置");
+                return;
+            }
+
+            // 设置样品池位置
+            R<String> setResult = devMessageUtil.setCurrentCellPos(Integer.valueOf(sampleInfo.getSampleLocation()), context.ip);
+            if (setResult.getSuccess()) {
+                // 更新当前样品池位置
+                fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber,
+                        Integer.parseInt(sampleInfo.getSampleLocation()), updateBy);
+
+                // 发送样品池位置信息到前端
+                JSONObject poolMsg = new JSONObject();
+                poolMsg.put("currentPoolNum", sampleInfo.getSampleLocation());
+                sendMessageSafe(session, poolMsg.toJSONString());
+
+                log.info("成功设置样品池位置: {}", sampleInfo.getSampleLocation());
+            } else {
+                log.warn("设置样品池位置失败: {}", sampleInfo.getSampleLocation());
+            }
+
+        } catch (Exception e) {
+            log.error("设置样品池位置异常: {}", e.getMessage());
         }
     }
 

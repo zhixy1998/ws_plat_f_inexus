@@ -2063,6 +2063,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
             parsed2=parsed2-waveLengthInterval;
         }
+        if (true){
+            double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
+            parsed2=parsed2-waveLengthInterval;
+        }
         Double v2 = formulaUtil.calculateStep(parsed2, deviceSerialNumber);
         com3.setParams(new Object[]{v2});
         commands.add(com3);

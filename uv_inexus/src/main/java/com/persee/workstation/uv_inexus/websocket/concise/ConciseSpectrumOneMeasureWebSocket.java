@@ -818,6 +818,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             // 记录已推送的数据点数量，避免重复推送
             AtomicInteger totalPushedPoints = new AtomicInteger(0);
 
+            boolean endWaveLengthState = false;
+
             // 获取波长参数用于约束
             double startWl = Double.parseDouble(spectrumParameter.getStartWaveLength());
             double endWl = Double.parseDouble(spectrumParameter.getEndWaveLength());
@@ -855,8 +857,18 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         calcOnePoint(spectrumParameter, baselineCopy, x, y, currentIndex, startWl, endWl, interval, isDescending, deviceSerialNumber,session);
                         currentIndex++;
 
+                        if (x.size()>2){
+                            Double x_endOne = x.get(x.size() - 1);
+                            Double x_endTwo = x.get(x.size() - 2);
+                            if (x_endOne.equals(x_endTwo)) {
+                                x.remove(x.size() - 1);
+                                y.remove(y.size() - 1);
+                                endWaveLengthState = true;
+                            }
+                        }
+
                         // 将新点添加到临时缓冲区
-                        if (!x.isEmpty() && !y.isEmpty()) {
+                        if (!x.isEmpty() && !y.isEmpty() && !endWaveLengthState) {
                             int currentDataIndex = x.size() - 1;
                             tempXBuffer.add(x.get(currentDataIndex));
                             tempYBuffer.add(y.get(currentDataIndex));
@@ -1651,6 +1663,13 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         SessionState state = sessionStates.get(session.getId());
         if (state == null) {
             return;
+        }
+
+        Double x_endOne = x.get(x.size() - 1);
+        Double x_endTwo = x.get(x.size() - 2);
+        if (x_endOne.equals(x_endTwo)) {
+            x.remove(x.size() - 1);
+            y.remove(y.size() - 1);
         }
 
         JSONArray dataArray = new JSONArray();
