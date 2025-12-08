@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.service.guide.softwareActivation.impl;
 
-import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.excel.util.StringUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
