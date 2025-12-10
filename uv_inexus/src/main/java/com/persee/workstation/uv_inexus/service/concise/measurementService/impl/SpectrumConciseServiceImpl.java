@@ -1377,7 +1377,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setColor(null);
                         vo.setData(null);
                         vo.setDeleteType("0");
-                    } else {
+                    } else if (measureData != null) {
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
                         vo.setAnalysisId(measureData.getId());
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
@@ -1392,6 +1392,8 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                             vo.setOriginalData(getOriginalSampleData(measureData, digit));
                         }
                         vo.setDeleteType(measureData.getIsDelete());
+                    }else{
+                        continue;
                     }
                     vo.setType("0");
 
