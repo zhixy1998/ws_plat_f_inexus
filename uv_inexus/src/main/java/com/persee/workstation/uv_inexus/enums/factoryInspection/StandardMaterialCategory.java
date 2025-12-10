@@ -20,6 +20,8 @@ public enum StandardMaterialCategory {
      * 外部参考物
      */
     EXTERNAL_REFERENCE("外部参考物", "ExtRef"),
+    MEASUREMENT("测量物质", "measurement"),
+    ZERO("校零物质", "zero"),
 
     /**
      * Non-standard external reference material
@@ -30,9 +32,9 @@ public enum StandardMaterialCategory {
     private final String description;
     private final String code;
 
-    StandardMaterialCategory(String chineseName, String englishName) {
-        this.description = chineseName;
-        this.code = englishName;
+    StandardMaterialCategory(String description, String code) {
+        this.description = description;
+        this.code = code;
     }
 
     public String getDescription() {
