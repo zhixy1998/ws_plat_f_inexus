@@ -561,6 +561,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result use(FUseMethodDto paramDto) {
+        // 先进行非空校验
+        Result validateResult = validateSpectrumParam(paramDto.getParameter());
+        if (validateResult.getCode() != 200) {
+            return validateResult;
+        }
         if (paramDto.getParameter().getLuminosity().equals("3") || paramDto.getParameter().getLuminosity().equals("4")) {
             paramDto.getParameter().setLadderCorrection(false);
         }
@@ -4055,6 +4060,43 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         cmd.setCmdId(cmdEnum.getComId());
         cmd.setParams(new Object[]{value});
         return cmd;
+    }
+
+
+    private Result validateSpectrumParam(FSpectrumParameterVo parameter) {
+        // 必填字段校验
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getLuminosity())) {
+            return Result.fail("光度模式不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getStartWaveLength())) {
+            return Result.fail("开始波长不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getEndWaveLength())) {
+            return Result.fail("结束波长不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getWaveLengthInterval())) {
+            return Result.fail("波长间隔不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getTimeInterval())) {
+            return Result.fail("时间间隔不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getScanSpeed())) {
+            return Result.fail("扫描速度不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getSpectralBandwidth())) {
+            return Result.fail("光谱带宽不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getChangeLampWaveLength())) {
+            return Result.fail("换灯波长不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getEnergyLamp())) {
+            return Result.fail("能量灯不能为空");
+        }
+        if (parameter.getGain() == null) {
+            return Result.fail("增益不能为空");
+        }
+
+        return Result.ok();
     }
 
 }

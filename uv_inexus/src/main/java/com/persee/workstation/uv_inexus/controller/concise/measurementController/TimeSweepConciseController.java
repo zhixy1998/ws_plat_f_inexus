@@ -25,12 +25,15 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.URLEncoder;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController("timeSweepConciseController")
@@ -65,7 +68,14 @@ public class TimeSweepConciseController {
 
     @RequestMapping("applyMethod")
     @ApiOperation("应用接口")
-    public Result applyMethod(@RequestBody TimeUseMethodDto paramDto) {
+    public Result applyMethod(@Valid @RequestBody TimeUseMethodDto paramDto, BindingResult bindingResult) {
+        // 校验参数
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return timeSweepConciseService.use(paramDto);
     }
 

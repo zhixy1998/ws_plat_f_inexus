@@ -3455,7 +3455,8 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } else {
             for (String analysisId : analysisIdList) {
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
-                ans.add(new FHeadVO(analysisData.getAnalysisName(), "sampleNumber", "name", "样品名称"));
+                FMeasureSample sample = fMeasureSampleService.getById(analysisData.getSampleKey());
+                ans.add(new FHeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
                 ans.add(new FHeadVO("峰/谷", "peakValley", "system", "峰谷"));
             }
             return Result.ok(ans);
