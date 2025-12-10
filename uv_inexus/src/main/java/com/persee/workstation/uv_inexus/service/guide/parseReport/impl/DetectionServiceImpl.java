@@ -42,12 +42,15 @@ import com.persee.workstation.uv_inexus.dto.parseReport.InputParamDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.MultiTableDataDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.PretreatmentDTO;
 import com.persee.workstation.uv_inexus.dto.parseReport.QualityControlDTO;
-import com.persee.workstation.uv_inexus.dto.parseReport.RoundingSettingDTO;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.CalculationFormula;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.Detection;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.QualityControl;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.RoundingRules;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.StandardPretreatment;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.DetectionService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +73,9 @@ public class DetectionServiceImpl implements DetectionService {
 
     @Autowired
     private RoundingRulesDao roundingRulesDao; // 计算公式表DAO
+
+    @Autowired
+    private ConcisePublicUtilService concisePublicUtilService;
 
     private final ObjectMapper objectMapper = new ObjectMapper(); // JSON转换工具
     // 日期格式转换器（支持多种常见格式）
@@ -334,14 +340,80 @@ public class DetectionServiceImpl implements DetectionService {
 
         // 4. 查询修约表数据
         List<RoundingRules> roundingRules = roundingRulesDao.findByDetectionIdList(detectionId);
-        List<RoundingSettingDTO> roundingSettings = roundingRules.stream().map(rule -> {
-            RoundingSettingDTO dto = new RoundingSettingDTO();
-            dto.setResultIdentity(rule.getResultIdentity());
-            dto.setRoundingType(rule.getRoundingType());
-            dto.setRoundingCondition(rule.getRoundingCondition());
-            dto.setDecimalPlaces(rule.getDecimalPlaces());
-            return dto;
-        }).collect(Collectors.toList());
+        List<FRoundingVO> roundingSettings = new ArrayList<>();
+
+        // 构建 resultIdentity -> resultName 的映射
+        Map<String, String> resultNameMap = calculationResults.stream()
+                .filter(dto -> dto.getResultIdentity() != null)
+                .collect(Collectors.toMap(
+                        CalculationResultDTO::getResultIdentity,
+                        dto -> dto.getResultName() != null ? dto.getResultName() : "",
+                        (v1, v2) -> v1 // 如果有重复key，保留第一个
+                ));
+
+        // 按 resultIdentity 分组
+        Map<String, List<RoundingRules>> resultGroup = roundingRules.stream()
+                .collect(Collectors.groupingBy(RoundingRules::getResultIdentity));
+
+        int paramIdCounter = 1; // 计数器
+
+        for (Map.Entry<String, List<RoundingRules>> entry : resultGroup.entrySet()) {
+            String resultIdentity = entry.getKey();
+            List<RoundingRules> identityRules = entry.getValue();
+
+            FRoundingVO vo = new FRoundingVO();
+            vo.setResultIdentity(resultIdentity);
+            
+            // 使用映射表中的名称，如果没有则回退到使用 identity
+            String resultName = resultNameMap.getOrDefault(resultIdentity, resultIdentity);
+            vo.setResultIdentityName(resultName);
+
+            List<FRoundingParamVO> params = new ArrayList<>();
+            for (RoundingRules rule : identityRules) {
+                FRoundingParamVO paramVO = new FRoundingParamVO();
+                // 这里的ID生成逻辑保持与ImportService一致，使用detectionId_counter
+                paramVO.setId(detectionId + "_" + paramIdCounter++);
+                paramVO.setRoundingType(rule.getRoundingType());
+                paramVO.setDecimalPlaces(rule.getDecimalPlaces());
+
+                // 解析修约条件
+                boolean parsed = concisePublicUtilService.parseRoundingCondition(rule.getRoundingCondition(), paramVO, resultIdentity);
+                if (!parsed && rule.getRoundingCondition() != null && !rule.getRoundingCondition().trim().isEmpty()) {
+                    log.warn("修约条件解析失败（DetectionId: {}, 规则: {}）：格式错误或使用了非{}变量", detectionId, rule.getRoundingCondition(), resultIdentity);
+                }
+
+                params.add(paramVO);
+            }
+            vo.setRoundingParams(params);
+
+            // 校验修约范围是否正确 (按要求进行校验)
+            // 判断是否需要校验：如果所有参数的上下限及包含标识都为空，则跳过校验
+            boolean needCheck = false;
+            if (vo.getRoundingParams() != null) {
+                for (FRoundingParamVO p : vo.getRoundingParams()) {
+                    if (p.getLowerLimit() != null || p.getUpperLimit() != null ||
+                            p.getIsLowerLimitIncluded() != null || p.getIsUpperLimitIncluded() != null) {
+                        needCheck = true;
+                        break;
+                    }
+                }
+            }
+
+            if (needCheck) {
+                try {
+                    R<Boolean> checkResult = concisePublicUtilService.checkApproximateRange(vo);
+                    if (checkResult != null && !checkResult.getSuccess()) {
+                        log.error("修约规则校验失败（DetectionId: {}, ResultIdentity: {}）：{}",
+                                detectionId, resultIdentity, checkResult.getMessage());
+                        // 即使校验失败，也返回数据，以免影响页面展示，但在日志中记录错误
+                    }
+                } catch (Exception e) {
+                    log.error("修约规则校验过程异常（DetectionId: {}, ResultIdentity: {}）", detectionId, resultIdentity, e);
+                }
+            }
+
+            roundingSettings.add(vo);
+        }
 
         // 5. 处理输入参数（10个参数）
         Set<InputParamDTO> inputParamsSet = new HashSet<>();

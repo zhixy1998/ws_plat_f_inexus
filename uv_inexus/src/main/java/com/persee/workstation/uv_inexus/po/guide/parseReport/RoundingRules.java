@@ -15,6 +15,9 @@ import com.persee.workstation.uv_inexus.model.BasePO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.poi.hpsf.Decimal;
+
+import java.math.BigDecimal;
 
 // import java.time.LocalDateTime;
 

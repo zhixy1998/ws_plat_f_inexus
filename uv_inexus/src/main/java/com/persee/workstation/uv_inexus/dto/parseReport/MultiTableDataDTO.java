@@ -9,11 +9,12 @@
 
 package com.persee.workstation.uv_inexus.dto.parseReport;
 
-import java.util.List;
-
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+
+import java.util.List;
 
 /**
  * 多子表多条数据查询DTO
@@ -32,7 +33,8 @@ public class MultiTableDataDTO {
     private List<CalculationResultDTO> calculationResults;
 
     @ApiModelProperty("修约设置列表（修约表）")
-    private List<RoundingSettingDTO> roundingSettings;
+    private List<FRoundingVO> roundingSettings;
+//    private List<RoundingSettingDTO> roundingSettings;
 
     @ApiModelProperty("输入参数列表（计算公式表）")
     private List<InputParamDTO> inputParams;

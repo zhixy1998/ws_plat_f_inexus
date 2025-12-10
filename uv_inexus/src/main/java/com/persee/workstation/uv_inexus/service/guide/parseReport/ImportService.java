@@ -13,13 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,10 +41,22 @@ import com.persee.workstation.uv_inexus.po.guide.parseReport.QualityControl;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.RoundingRules;
 import com.persee.workstation.uv_inexus.po.guide.parseReport.StandardPretreatment;
    
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingParamVO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
+import com.persee.workstation.uv_inexus.model.R;
+
 @Service
 public class ImportService {
     // 哈希算法：使用SHA-256（识别所有字段变化）
     private static final String HASH_ALGORITHM = "SHA-256";
+
+    @Autowired
+    private ConcisePublicUtilService concisePublicUtilService;
 
     @Autowired
     private DetectionMapper detectionMapper;
@@ -887,33 +893,139 @@ public class ImportService {
                     currentRow++;
                 }
             }
+            //修约条件合法性校验
+            if (errorMessages.isEmpty()) {
+                // 按 detectionId 分组
+                Map<String, List<RoundingRules>> detectionGroup = validRules.stream()
+                        .collect(Collectors.groupingBy(RoundingRules::getDetectionId));
+
+                for (Map.Entry<String, List<RoundingRules>> entry : detectionGroup.entrySet()) {
+                    String detectionId = entry.getKey();
+                    List<RoundingRules> rulesList = entry.getValue();
+
+                    // 按 resultIdentity 分组
+                    Map<String, List<RoundingRules>> resultGroup = rulesList.stream()
+                            .collect(Collectors.groupingBy(RoundingRules::getResultIdentity));
+
+                    List<FRoundingVO> fRoundingVOList = new ArrayList<>();
+                    int paramIdCounter = 1; // 每个 detectionId 下重新计数
+
+                    for (Map.Entry<String, List<RoundingRules>> resultEntry : resultGroup.entrySet()) {
+                        String resultIdentity = resultEntry.getKey();
+                        List<RoundingRules> identityRules = resultEntry.getValue();
+
+                        FRoundingVO vo = new FRoundingVO();
+                        vo.setResultIdentity(resultIdentity);
+                        // 暂时使用 resultIdentity 作为名称，如有需要可从其他地方获取
+                        vo.setResultIdentityName(resultIdentity); 
+                        
+                        List<FRoundingParamVO> params = new ArrayList<>();
+                        for (RoundingRules rule : identityRules) {
+                            FRoundingParamVO paramVO = new FRoundingParamVO();
+                            paramVO.setId(detectionId + "_" + paramIdCounter++);
+                            paramVO.setRoundingType(rule.getRoundingType());
+                            paramVO.setDecimalPlaces(rule.getDecimalPlaces());
+                            
+                            // 解析修约条件
+                            boolean parsed = concisePublicUtilService.parseRoundingCondition(rule.getRoundingCondition(), paramVO, resultIdentity);
+                            if (!parsed && rule.getRoundingCondition() != null && !rule.getRoundingCondition().trim().isEmpty()) {
+                                String errorMsg = String.format("修约条件解析失败（标准标识ID: %s, 结果标识: %s）：格式错误或使用了非%s变量（%s）", 
+                                        detectionId, resultIdentity, resultIdentity, rule.getRoundingCondition());
+                                System.err.println(errorMsg);
+                                errorMessages.add(errorMsg);
+                            }
+                            
+                            params.add(paramVO);
+                        }
+                        vo.setRoundingParams(params);
+                        System.out.println("DetectionId: " + detectionId + ", FRoundingVO JSON: " + JSONObject.toJSONString(vo));
+                        
+                        // 判断是否需要校验：如果所有参数的上下限及包含标识都为空，则跳过校验
+                        boolean needCheck = false;
+                        if (vo.getRoundingParams() != null) {
+                            for (FRoundingParamVO p : vo.getRoundingParams()) {
+                                if (p.getLowerLimit() != null || p.getUpperLimit() != null || 
+                                    p.getIsLowerLimitIncluded() != null || p.getIsUpperLimitIncluded() != null) {
+                                    needCheck = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (needCheck) {
+                            // 校验修约范围是否正确
+                            try {
+                                R<Boolean> checkResult = concisePublicUtilService.checkApproximateRange(vo);
+                                if (checkResult != null && !checkResult.getSuccess()) {
+                                    // 校验失败，记录具体错误信息
+                                    String errorMsg = String.format("修约规则校验失败（标准标识ID: %s, 结果标识: %s）：%s", 
+                                            detectionId, vo.getResultIdentity(), checkResult.getMessage());
+                                    System.err.println(errorMsg);
+                                    errorMessages.add(errorMsg);
+                                }
+                            } catch (Exception e) {
+                                // 调用过程异常处理
+                                String errorMsg = String.format("修约规则校验过程发生异常（标准标识ID: %s, 结果标识: %s）：%s", 
+                                        detectionId, vo.getResultIdentity(), e.getMessage());
+                                System.err.println(errorMsg);
+                                errorMessages.add(errorMsg);
+                            }
+                        }
+
+                        fRoundingVOList.add(vo);
+                    }
+
+                }
+            }
 
             // 步骤2：当前表无错误时才执行数据操作
             if (errorMessages.isEmpty()) {
                 // 步骤3：全量保存
                 currentRow = 2;
                 identityNameToDetectionIdMap.clear();
+                // 记录本次导入中已经匹配过的数据库记录ID，防止多条同名规则更新到同一条记录上
+                Set<String> usedRuleIds = new java.util.HashSet<>();
+
+                // 预加载所有涉及到的 detectionId 的现有规则，避免循环内反复查库
+                Set<String> involvedDetectionIds = validRules.stream()
+                        .map(RoundingRules::getDetectionId)
+                        .collect(Collectors.toSet());
+                
+                Map<String, List<RoundingRules>> dbRulesMap = new HashMap<>();
+                for (String detId : involvedDetectionIds) {
+                    dbRulesMap.put(detId, roundingRulesMapper.selectByDetectionId(detId));
+                }
+
                 for (RoundingRules rules : validRules) {
                     try {
                         String detectionId = rules.getDetectionId();
                         String currentHash = generateRoundingHash(rules);
 
-                        List<RoundingRules> dbRules = roundingRulesMapper.selectByDetectionId(detectionId);
-                        Map<String, RoundingRules> hashToRulesMap = new HashMap<>();
-                        for (RoundingRules dbRule : dbRules) {
-                            hashToRulesMap.put(generateRoundingHash(dbRule), dbRule);
-                        }
+                        // 从内存 Map 中获取当前 detectionId 的规则列表（如果为空则给空列表）
+                        List<RoundingRules> dbRules = dbRulesMap.getOrDefault(detectionId, new ArrayList<>());
+                        
+                        // 尝试通过哈希完全匹配（且未被使用过的记录）
+                        Optional<RoundingRules> perfectMatch = dbRules.stream()
+                                .filter(r -> !usedRuleIds.contains(r.getId())) // 排除已使用的
+                                .filter(r -> Objects.equals(generateRoundingHash(r), currentHash))
+                                .findFirst();
 
-                        if (hashToRulesMap.containsKey(currentHash)) {
+                        if (perfectMatch.isPresent()) {
+                            // 完全一致，无需更新，标记为已使用
+                            usedRuleIds.add(perfectMatch.get().getId());
                             System.out.println("第 " + currentRow + " 行: 修约规则未变更，标准标识ID: " + detectionId);
                         } else {
+                            // 查找同名（resultIdentity相同）且未被使用的记录进行更新
                             Optional<RoundingRules> sameResultRecord = dbRules.stream()
+                                    .filter(r -> !usedRuleIds.contains(r.getId())) // 排除已使用的
                                     .filter(r -> Objects.equals(r.getResultIdentity(), rules.getResultIdentity()))
                                     .findFirst();
 
                             if (sameResultRecord.isPresent()) {
-                                rules.setId(sameResultRecord.get().getId());
+                                RoundingRules dbRecord = sameResultRecord.get();
+                                rules.setId(dbRecord.getId());
                                 roundingRulesMapper.updateById(rules);
+                                usedRuleIds.add(dbRecord.getId()); // 标记为已使用
                                 System.out.println("第 " + currentRow + " 行: 更新修约规则，标准标识ID: " + detectionId);
                             } else {
                                 roundingRulesMapper.insert(rules);
@@ -931,11 +1043,10 @@ public class ImportService {
         }
         return errorMessages; // 返回当前表错误
     }
-
     // 修约表哈希（原有逻辑不变）
     private String generateRoundingHash(RoundingRules rules) {
+        // ID 不参与内容哈希计算，只比较业务字段
         String combined = 
-            (rules.getId() != null ? rules.getId().toString() : "") + "|" +
             rules.getDetectionId() + "|" +
             rules.getResultIdentity() + "|" +
             rules.getRoundingType() + "|" +
