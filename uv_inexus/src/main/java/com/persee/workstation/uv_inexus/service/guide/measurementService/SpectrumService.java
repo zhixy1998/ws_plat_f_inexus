@@ -24,123 +24,35 @@ import java.util.Map;
  * 该接口定义了光谱扫描相关的各种操作方法，包括数据查询、方法管理、参数处理等功能
  */
 public interface SpectrumService {
-    /**
-     * 查询测量数据
-     * @param dataVo 查询测量数据的参数对象
-     * @return 返回查询结果
-     */
+    // 查询测量数据接口
     Result queryMeasuredData(QueryMeasuredDataVo dataVo);
 
-    /**
-     * 查询项目任务方法
-     * @param updateBy 更新人
-     * @param measureType 测量类型
-     * @return 返回查询结果
-     */
+    // 查询项目任务方法
     Result queryProjectTaskMethod(String updateBy,String measureType);
 
-    /**
-     * 查询项目所有方法
-     * @param projectId 项目ID
-     * @param measureForm 测量形式
-     * @return 返回查询结果
-     */
+    // 查询项目下所有方法
     Result queryProjectAllMethods(String projectId,  String measureForm);
 
-    /**
-     * 查询方法参数
-     * @param methodId 方法ID
-     * @return 返回查询结果
-     */
+    // 查询方法参数
     Result queryMethodParameter(String methodId);
 
-    /**
-     * 更新方法参数
-     * @param methodDto 方法参数数据传输对象
-     * @return 返回操作结果
-     */
+    // 更新方法参数
     Result updateMethodParameter(SpectralMethodParameterDto methodDto);
 
-    /**
-     * 测试Python协议
-     */
-    void testPythonProt();
-
-    /**
-     * 创建方法端口
-     * @param methodDto 方法参数请求对象
-     * @param updateBy 更新人
-     * @param spectrumParameter 光谱参数
-     * @return 返回操作结果
-     */
+    // 创建方法接口
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
 
-    /**
-     * 查询测量参数
-     * @param taskId 任务ID
-     * @return 返回查询结果
-     */
+    // 查询测量参数接口
     Result queryMeasurementParameters(String taskId);
 
-    /**
-     * 四则运算端口
-     * @param paramDto 四则运算参数对象
-     * @return 返回运算结果
-     */
-    Result fourOperationsPort(FourOperationsParamDto paramDto);
-
-    /**
-     * 高级运算端口
-     * @param paramDto 高级运算参数对象
-     * @return 返回运算结果
-     */
-    Result advancedOperationsPort(AdvancedOperationsDto paramDto);
-
-    /**
-     * 亮度模式转换端口
-     * @param paramDto 亮度转换参数对象
-     * @return 返回转换结果
-     */
-    Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
-
-    // 获取样本列表
-    Result sampleListPort(String taskId,String type,Integer digit);
-
-    // 获取变换列表
-    Result changeTheListPort(String taskId,String type,Integer digit);
-
-    // 平滑度接口
-    Result smoothnessPort(SmoothnessDto paramDto);
-
-    // 获取差分列表
-    Result differentialPort(DifferentialDto paramDto);
-
-    // 获取测量点列表
-    Result queryMeasureGaugePoint(String measureId);
-
-    // 获取峰谷列表
-    Result peakSearchingPort(SeekingPeaksValleysDto paramDto);
-
-    // 获取谷列表
-    Result valleySearchingPort(String measureDataId);
-
-    // 获取转换谷列表
-    Result conversionValleySearching(String measureDataId);
-
-    // 新增测量点
-    Result addMeasureDataGaugePointPort(MeasureDataGaugePointDto paramDto);
-
-    Result queryAnalysisGaugePoint(String analysisId);
-
-    Result addAnalysisDataGaugePointPort(AnalysisDataGaugePointDto paramDto);
-
-    Result addGaugePoint(AddGaugePointDto paramDto);
-
+    // 设置参数接口
     Result setUpParametersPort(String methodId,String deviceSerialNumber);
 
-    void testScan();
+    // 保存数据接口
+    Result saveData(String taskId);
 
-    void testStart();
+    // 查询样本头信息
+    Result<List<HeadVO>> querySampleHeads(String taskId);
 
     // 获取样本列表
     Result querySampleList(String taskId);
@@ -151,49 +63,89 @@ public interface SpectrumService {
     // 删除样本
     Result deleteSamplePort(String sampleId, String taskId);
 
-    Result uploadImage(SpectrumImageUpload upload);
+    // 获取样本列表
+    Result sampleListPort(String taskId,String type,Integer digit);
 
-/**
- * 根据任务ID和类型查询任务图片
- * @param id 任务ID，用于唯一标识一个任务
- * @param type 图片类型，用于区分不同类型的图片
- * @return 返回查询结果，包含图片信息或错误信息
- */
-    Result queryTheTaskImage(String id, String type);
-
-    Result deleteChangeListPort(String analysisId);
-
-    // 删除变换列表
+    // 删除样本列表
     Result deleteSampleListPort(String taskId, String sampleId,String analysisId);
 
-    Result saveData(String taskId);
+    // 获取变换列表
+    Result changeTheListPort(String taskId,String type,Integer digit);
 
-    Result queryPreprocessingOperation(String methodId);
-
-    Result obtainTheBaseline(String taskId,String methodId,String deviceSerialNumber);
-
-    void exportToWord(String taskId, HttpServletResponse response) throws Exception;
+    // 删除变换列表
+    Result deleteChangeListPort(String analysisId);
 
     // 恢复删除列表数据
     Result restoreDeletedListData(String taskId,String sampleId, String type,String analysisId);
 
+    // 修改数据颜色接口
+    Result updateDataColor(UpdateDataColorDto paramDto);
+
+    // 获取分析标记点接口
+    Result queryAnalysisGaugePoint(String analysisId);
+
+    // 添加分析标记点接口
+    Result addAnalysisDataGaugePointPort(AnalysisDataGaugePointDto paramDto);
+
     // 查询峰谷接口
     Result queryPeakAndValleysPort(String dataId, Integer digit);
 
-    // 查询标记点接口
-    Result queryGaugePointPort(String dataId, Integer digit);
+    // 寻峰寻谷接口
+    Result peakSearchingPort(SeekingPeaksValleysDto paramDto);
 
     // 添加峰谷备注接口
     Result addPeakValleyRemarks(PeakValleyMarkingDto paramDto);
 
+    // 查询标记点接口
+    Result queryGaugePointPort(String dataId, Integer digit);
+
+    // 添加标记点接口
+    Result addGaugePoint(AddGaugePointDto paramDto);
+
     // 添加标记点备注接口
     Result addGaugePointRemarks(PeakValleyMarkingDto paramDto);
 
-    // 修改数据颜色接口
-    Result updateDataColor(UpdateDataColorDto paramDto);
+    // 查询算术源数据
+    Result queryArithmeticSourceData(String taskId);
 
-    // 查询样本头信息
-    Result<List<HeadVO>> querySampleHeads(String taskId);
+    // 四则运算接口
+    Result fourOperationsPort(FourOperationsParamDto paramDto);
+
+    // 高级运算接口
+    Result advancedOperationsPort(AdvancedOperationsDto paramDto);
+
+    // 平滑度接口
+    Result smoothnessPort(SmoothnessDto paramDto);
+
+    // 微分接口
+    Result differentialPort(DifferentialDto paramDto);
+
+    // 光度模式转换
+    Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
+
+    // 图片上传
+    Result uploadImage(SpectrumImageUpload upload);
+
+    // 获取任务图片接口
+    Result queryTheTaskImage(String id, String type);
+
+    // 测试扫描接口
+    void testScan();
+
+    // 测试开始接口
+    void testStart();
+
+    // 测试python接口
+    void testPythonProt();
+
+    // 获取预处理操作接口
+    Result queryPreprocessingOperation(String methodId);
+
+    // 获取基线接口
+    Result obtainTheBaseline(String taskId,String methodId,String deviceSerialNumber);
+
+    // 导出word接口
+    void exportToWord(String taskId, HttpServletResponse response) throws Exception;
 
     // 测试对比接口
     Result testCompare(String taskId, SpectrumParameter spectrumParameter);
@@ -208,4 +160,6 @@ public interface SpectrumService {
 
     // 查询表格数据
     List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
+
+
 }

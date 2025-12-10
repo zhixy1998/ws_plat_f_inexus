@@ -9,52 +9,29 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.List;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AnalysisDataGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.DifferentialDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.FourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.LuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryMeasuredDataVo;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectralMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
-import com.persee.workstation.uv_inexus.dto.measurementDto.UpdateDataColorDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -106,43 +83,49 @@ public class SpectrumController {
         return spectrumService.queryMeasuredData(dataVo);
     }
 
-
-
     @GetMapping("queryMeasurementParameters")
     @ApiOperation("查询测量参数接口")
     public Result queryMeasurementParameters(@RequestParam String taskId) {
         return spectrumService.queryMeasurementParameters(taskId);
     }
 
-    @PostMapping("fourOperationsPort")
-    @ApiOperation("四则运算接口")
-    public Result fourOperationsPort(@RequestBody FourOperationsParamDto paramDto){
-        return spectrumService.fourOperationsPort(paramDto);
+    @GetMapping("setUpParametersPort")
+    @ApiOperation("设置参数接口")
+    public Result setUpParametersPort(@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
+        return spectrumService.setUpParametersPort(methodId,deviceSerialNumber);
     }
 
-    @PostMapping("advancedOperationsPort")
-    @ApiOperation("高级运算接口")
-    public Result advancedOperationsPort(@RequestBody AdvancedOperationsDto paramDto){
-        return spectrumService.advancedOperationsPort(paramDto);
+    @GetMapping("saveData")
+    @ApiOperation("保存数据接口")
+    public Result saveData(@RequestParam String taskId) {
+        return spectrumService.saveData(taskId);
     }
 
-    @PostMapping("smoothnessPort")
-    @ApiOperation("平滑接口")
-    public Result smoothnessPort(@RequestBody SmoothnessDto paramDto){
-        return spectrumService.smoothnessPort(paramDto);
+
+    @GetMapping("querySampleHeads")
+    @ApiOperation("获取样本输入表头接口")
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+        return spectrumService.querySampleHeads(taskId);
     }
 
-    @PostMapping("differentialPort")
-    @ApiOperation("微分接口")
-    public Result differentialPort(@RequestBody DifferentialDto paramDto){
-        return spectrumService.differentialPort(paramDto);
+    @GetMapping("querySampleList")
+    @ApiOperation("获取样本按钮列表接口")
+    public Result querySampleList(@RequestParam String taskId) {
+        return spectrumService.querySampleList(taskId);
     }
 
-    @PostMapping("luminanceModeConversionPort")
-    @ApiOperation("光度模式转换")
-    public Result luminanceModeConversionPort(@RequestBody LuminosityConversionDto paramDto){
-        return spectrumService.luminanceModeConversionPort(paramDto);
+    @PostMapping("addOrDeleteSamplePort")
+    @ApiOperation("添加或删除样本接口")
+    public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto){
+        return spectrumService.addOrDeleteSamplePort(paramDto);
     }
+
+    @DeleteMapping("deleteSamplePort")
+    @ApiOperation("删除样本接口")
+    public Result deleteSamplePort(@RequestParam String sampleId,@RequestParam String taskId){
+        return spectrumService.deleteSamplePort(sampleId,taskId);
+    }
+
 
     @GetMapping("sampleListPort")
     @ApiOperation("获取样本列表接口")
@@ -238,6 +221,41 @@ public class SpectrumController {
         return spectrumService.addGaugePointRemarks(paramDto);
     }
 
+    @GetMapping("queryArithmeticSourceData")
+    @ApiOperation("查询运算源数据接口")
+    public Result queryArithmeticSourceData(@RequestParam String taskId) {
+        return spectrumService.queryArithmeticSourceData(taskId);
+    }
+
+    @PostMapping("fourOperationsPort")
+    @ApiOperation("四则运算接口")
+    public Result fourOperationsPort(@RequestBody FourOperationsParamDto paramDto){
+        return spectrumService.fourOperationsPort(paramDto);
+    }
+
+    @PostMapping("advancedOperationsPort")
+    @ApiOperation("高级运算接口")
+    public Result advancedOperationsPort(@RequestBody AdvancedOperationsDto paramDto){
+        return spectrumService.advancedOperationsPort(paramDto);
+    }
+
+    @PostMapping("smoothnessPort")
+    @ApiOperation("平滑接口")
+    public Result smoothnessPort(@RequestBody SmoothnessDto paramDto){
+        return spectrumService.smoothnessPort(paramDto);
+    }
+
+    @PostMapping("differentialPort")
+    @ApiOperation("微分接口")
+    public Result differentialPort(@RequestBody DifferentialDto paramDto){
+        return spectrumService.differentialPort(paramDto);
+    }
+
+    @PostMapping("luminanceModeConversionPort")
+    @ApiOperation("光度模式转换")
+    public Result luminanceModeConversionPort(@RequestBody LuminosityConversionDto paramDto){
+        return spectrumService.luminanceModeConversionPort(paramDto);
+    }
 
     @GetMapping("testStart")
     @ApiOperation("开始测试")
@@ -249,37 +267,6 @@ public class SpectrumController {
     @ApiOperation("测试python接口")
     public void testPythonProt() {
         spectrumService.testPythonProt();
-    }
-
-    @GetMapping("setUpParametersPort")
-    @ApiOperation("设置参数接口")
-    public Result setUpParametersPort(@RequestParam String methodId,@RequestParam String deviceSerialNumber) {
-        return spectrumService.setUpParametersPort(methodId,deviceSerialNumber);
-    }
-
-
-    @GetMapping("querySampleHeads")
-    @ApiOperation("获取样本输入表头接口")
-    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
-        return spectrumService.querySampleHeads(taskId);
-    }
-
-    @GetMapping("querySampleList")
-    @ApiOperation("获取样本按钮列表接口")
-    public Result querySampleList(@RequestParam String taskId) {
-        return spectrumService.querySampleList(taskId);
-    }
-
-    @PostMapping("addOrDeleteSamplePort")
-    @ApiOperation("添加或删除样本接口")
-    public Result addOrDeleteSamplePort(@RequestBody AddOrDeleteSampleDTO paramDto){
-        return spectrumService.addOrDeleteSamplePort(paramDto);
-    }
-
-    @DeleteMapping("deleteSamplePort")
-    @ApiOperation("删除样本接口")
-    public Result deleteSamplePort(@RequestParam String sampleId,@RequestParam String taskId){
-        return spectrumService.deleteSamplePort(sampleId,taskId);
     }
 
     @PostMapping("uploadImage")
@@ -304,11 +291,7 @@ public class SpectrumController {
 
 
 
-    @GetMapping("saveData")
-    @ApiOperation("保存数据接口")
-    public Result saveData(@RequestParam String taskId) {
-        return spectrumService.saveData(taskId);
-    }
+
 
     @GetMapping("queryPreprocessingOperation")
     @ApiOperation("查询预处理操作接口")

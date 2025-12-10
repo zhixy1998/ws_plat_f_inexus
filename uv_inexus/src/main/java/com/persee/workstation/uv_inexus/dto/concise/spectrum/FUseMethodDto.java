@@ -12,6 +12,9 @@ package com.persee.workstation.uv_inexus.dto.concise.spectrum;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
 import lombok.Data;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+
 @Data
 public class FUseMethodDto {
     // 方法id
@@ -25,6 +28,8 @@ public class FUseMethodDto {
     // 测量方式 (0. 向导数据库,1. 简洁数据库)
     private String type;
     // 方法参数
+    @Valid
+    @NotNull(message = "方法参数不能为空")
     private FSpectrumParameterVo parameter;
     // 序列号
     private String deviceSerialNumber;
