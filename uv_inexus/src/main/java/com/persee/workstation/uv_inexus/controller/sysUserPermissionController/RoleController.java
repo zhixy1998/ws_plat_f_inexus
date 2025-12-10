@@ -9,6 +9,8 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.validation.Valid;
@@ -105,5 +107,16 @@ public class RoleController {
     ) {
         // 直接调用Service层方法，返回结果（与现有接口风格一致）
         return sysRoleService.getGroupsByRoleId(id);
+    }
+
+    @PutMapping("/updatePermissions")
+    @ApiOperation("修改角色权限绑定")
+    public Result<String> updateRolePermissions(
+            @ApiParam(value = "角色ID", required = true) @RequestParam String roleId,
+            @ApiParam(value = "权限ID集合（逗号分隔）", required = true) @RequestParam String permIds) {
+        List<String> permIdList = permIds.split(",").length > 0 
+                ? Arrays.asList(permIds.split(",")) 
+                : new ArrayList<>();
+        return sysRoleService.updateRolePermissions(roleId, permIdList);
     }
 }

@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -296,5 +297,35 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             //"查询失败：" + e.getMessage()
             return Result.fail(YamlMessageSource.getMessageStatic("0060300B",e.getMessage()));
         }
+    }
+
+    @Override
+    @Transactional
+    public Result<String> updateRolePermissions(String roleId, List<String> permIds) {
+        // 1. 校验角色是否存在
+        SysRolePO rolePO = baseMapper.selectById(roleId);
+        if (rolePO == null) {
+            //角色不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+        }
+
+        // 2. 更新权限字段（直接存储逗号分隔的字符串，去除空格）
+        String permIdsStr = "";
+        if (permIds != null && !permIds.isEmpty()) {
+            // 去除每个元素的空格，并用逗号连接
+            permIdsStr = permIds.stream()
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.joining(","));
+        }
+        rolePO.setPermIds(permIdsStr);
+        
+        rolePO.setUpdateBy("admin");
+        rolePO.setUpdated(LocalDateTime.now());
+        
+        baseMapper.updateById(rolePO);
+        
+        // 角色更新成功
+        return Result.ok(YamlMessageSource.getMessageStatic("00603004"));
     }
 }

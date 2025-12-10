@@ -62,4 +62,12 @@ public interface SysRoleService extends IService<SysRolePO> {
 
     // 新增方法：根据角色ID查询下属组信息
     Result<List<SysGroupPO>> getGroupsByRoleId(String roleId);
+
+    /**
+     * 更新角色权限绑定
+     * @param roleId 角色ID
+     * @param permIds 权限ID集合
+     * @return 操作结果
+     */
+    Result<String> updateRolePermissions(String roleId, List<String> permIds);
 }
