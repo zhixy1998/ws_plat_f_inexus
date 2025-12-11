@@ -3065,10 +3065,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         } else {
             // 多样品逻辑
             List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
+            List<List<String>> allDataResults = new ArrayList<>(); // 存储所有样品的数据结果
+            int maxDataSize = 0; // 最大数据量
+
             for (String analysisId : analysisIds) {
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
                 if (analysisData != null) {
                     analysisDataList.add(analysisData);
+                    // 解析数据结果
+                    List<String> datas = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+                    allDataResults.add(datas);
+                    // 更新最大数据量
+                    if (datas != null && datas.size() > maxDataSize) {
+                        maxDataSize = datas.size();
+                    }
                 }
             }
 
@@ -3076,17 +3086,45 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return null;
             }
 
-            // 获取第一个样品的波长列表作为基准
-            List<String> list = new ArrayList<>();
-            List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
-            for (String s : result) {
-                String[] split = s.split(",");
-                String s1 = formatBigDecimal(split[0], 1);
-                list.add(s1);
+            // 构建波长映射，以第一个样品的所有波长为基准，如果第一个样品数据不足，则从其他样品补充
+            Map<String, String> wavelengthMap = new LinkedHashMap<>(); // 使用LinkedHashMap保持插入顺序
+
+            // 首先收集第一个样品的所有波长
+            if (!allDataResults.isEmpty() && !allDataResults.get(0).isEmpty()) {
+                for (String data : allDataResults.get(0)) {
+                    String[] split = data.split(",");
+                    if (split.length >= 1) {
+                        String wavelength = formatBigDecimal(split[0], 1);
+                        wavelengthMap.put(wavelength, wavelength);
+                    }
+                }
             }
 
+            // 如果第一个样品数据不足，从其他样品补充波长（避免重复）
+            if (wavelengthMap.size() < maxDataSize) {
+                for (int i = 1; i < allDataResults.size(); i++) {
+                    List<String> datas = allDataResults.get(i);
+                    if (datas != null) {
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            if (split.length >= 1) {
+                                String wavelength = formatBigDecimal(split[0], 1);
+                                wavelengthMap.put(wavelength, wavelength);
+                            }
+                        }
+                    }
+                    // 如果已经收集到足够多的波长，可以提前退出
+                    if (wavelengthMap.size() >= maxDataSize) {
+                        break;
+                    }
+                }
+            }
+
+            // 转换为有序列表
+            List<String> wavelengthList = new ArrayList<>(wavelengthMap.keySet());
+
             int id = 1;
-            for (String wavelength : list) {
+            for (String wavelength : wavelengthList) {
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
 
@@ -3094,40 +3132,45 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 List<String> sampleNumbers = new ArrayList<>();
                 List<String> peakValleys = new ArrayList<>();
 
-                for (FMeasureAnalysisData analysisData : analysisDataList) {
-                    List<String> datas = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+                for (int i = 0; i < analysisDataList.size(); i++) {
+                    FMeasureAnalysisData analysisData = analysisDataList.get(i);
+                    List<String> datas = allDataResults.get(i);
                     List<FPeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), FPeakValleyMarking.class);
                     List<FPeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), FPeakValleyMarking.class);
 
                     boolean found = false;
-                    for (String data : datas) {
-                        String[] split = data.split(",");
-                        String currentWavelength = formatBigDecimal(split[0], 1);
-                        if (Objects.equals(currentWavelength, wavelength)) {
-                            // 找到对应波长的数据
-                            sampleNumbers.add(formatBigDecimal(split[1], digit));
+                    if (datas != null) {
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            if (split.length >= 2) {
+                                String currentWavelength = formatBigDecimal(split[0], 1);
+                                if (Objects.equals(currentWavelength, wavelength)) {
+                                    // 找到对应波长的数据
+                                    sampleNumbers.add(formatBigDecimal(split[1], digit));
 
-                            // 检查是峰还是谷
-                            String peakValleyType = "";
-                            if (peaks != null) {
-                                for (FPeakValleyMarking peak : peaks) {
-                                    if (Objects.equals(formatBigDecimal(peak.getX(), 1), wavelength)) {
-                                        peakValleyType = "峰";
-                                        break;
+                                    // 检查是峰还是谷
+                                    String peakValleyType = "";
+                                    if (peaks != null) {
+                                        for (FPeakValleyMarking peak : peaks) {
+                                            if (Objects.equals(formatBigDecimal(peak.getX(), 1), wavelength)) {
+                                                peakValleyType = "峰";
+                                                break;
+                                            }
+                                        }
                                     }
+                                    if (valleys != null && peakValleyType.isEmpty()) {
+                                        for (FPeakValleyMarking valley : valleys) {
+                                            if (Objects.equals(formatBigDecimal(valley.getX(), 1), wavelength)) {
+                                                peakValleyType = "谷";
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    peakValleys.add(peakValleyType);
+                                    found = true;
+                                    break;
                                 }
                             }
-                            if (valleys != null && peakValleyType.isEmpty()) {
-                                for (FPeakValleyMarking valley : valleys) {
-                                    if (Objects.equals(formatBigDecimal(valley.getX(), 1), wavelength)) {
-                                        peakValleyType = "谷";
-                                        break;
-                                    }
-                                }
-                            }
-                            peakValleys.add(peakValleyType);
-                            found = true;
-                            break;
                         }
                     }
 
@@ -3150,7 +3193,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return arrayList;
         }
     }
-
 
     /**
      * 比较参数

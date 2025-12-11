@@ -166,7 +166,7 @@ public class ConciseCommonController {
         return conciseCommonService.obtainReportParameters(taskId,analysisId);
     }
 
-    @GetMapping("queryReportAllParameters")
+//    @GetMapping("queryReportAllParameters")
     @ApiOperation("获取报告所有参数接口")
     public Result queryReportAllParameters(@RequestParam String taskId,
                                            @RequestParam String sampleId,

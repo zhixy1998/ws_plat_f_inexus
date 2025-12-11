@@ -3478,7 +3478,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
         List<Map<String, Object>> arrayList = new ArrayList<>();
 
-
         // 判断样品长度是否为1
         if (analysisIds.size() == 1) {
             FMeasureAnalysisData measureAnalysisData = fMeasureAnalysisDataService.getById(analysisIds.get(0));
@@ -3527,101 +3526,109 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } else {
             // 多样品表数据
             List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
+            // 存储每个样品的数据映射，用于快速查找
+            List<Map<String, String[]>> sampleDataMaps = new ArrayList<>();
+            // 存储每个样品的峰谷标记映射
+            List<Map<String, String>> samplePeakValleyMaps = new ArrayList<>();
+            // 收集所有波长
+            Set<String> allWavelengthsSet = new LinkedHashSet<>();
+
             // 根据任务id和样品id查询分析数据
             for (String analysisId : analysisIds) {
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
-                analysisDataList.add(analysisData);
+                if (analysisData != null) {
+                    analysisDataList.add(analysisData);
+
+                    // 解析当前样品的数据
+                    List<String> datas = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+                    Map<String, String[]> dataMap = new HashMap<>();
+                    Map<String, String> peakValleyMap = new HashMap<>();
+
+                    if (datas != null) {
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            if (split.length >= 2) {
+                                String wavelength = formatBigDecimal(split[0], 1);
+                                String value = formatBigDecimal(split[1], digit);
+                                dataMap.put(wavelength, new String[]{value, split[0]}); // 存储格式化后的值和原始值
+                                allWavelengthsSet.add(wavelength); // 收集所有波长
+                            }
+                        }
+                    }
+
+                    // 处理峰标记
+                    List<FPeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), FPeakValleyMarking.class);
+                    if (peaks != null) {
+                        for (FPeakValleyMarking peak : peaks) {
+                            String wavelength = formatBigDecimal(peak.getX(), 1);
+                            peakValleyMap.put(wavelength, "峰");
+                        }
+                    }
+
+                    // 处理谷标记
+                    List<FPeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), FPeakValleyMarking.class);
+                    if (valleys != null) {
+                        for (FPeakValleyMarking valley : valleys) {
+                            String wavelength = formatBigDecimal(valley.getX(), 1);
+                            // 如果该波长已经有峰标记，则不覆盖
+                            if (!peakValleyMap.containsKey(wavelength)) {
+                                peakValleyMap.put(wavelength, "谷");
+                            }
+                        }
+                    }
+
+                    sampleDataMaps.add(dataMap);
+                    samplePeakValleyMaps.add(peakValleyMap);
+                }
             }
-            if (analysisDataList == null || analysisDataList.isEmpty()) {
+
+            if (analysisDataList.isEmpty()) {
                 return null;
             }
 
-            List<String> list = new ArrayList<>();
-            List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
-            for (String s : result) {
-                String[] split = s.split(",");
-                list.add(formatBigDecimal(split[0], 1));
-            }
+            // 将波长集合转换为列表并保持插入顺序
+            List<String> allWavelengths = new ArrayList<>(allWavelengthsSet);
+
             int id = 1;
-            for (String i : list) {
-                Map<String, Object> map = new HashMap<>();
+            for (String wavelength : allWavelengths) {
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
-                for (FMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
-                    List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-                    List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                    List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-                    for (String data : datas) {
-                        String[] split = data.split(",");
-                        String s = formatBigDecimal(split[0], 1);
-                        if (Objects.equals(s, i)) {
-                            if (resultMap.get("sampleNumber") == null) {
-                                List<String> y = new ArrayList<>();
-                                y.add(formatBigDecimal(split[1], digit));
-                                resultMap.put("sampleNumber", y);
-                            } else {
-                                List<String> y = (List<String>) resultMap.get("sampleNumber");
-                                y.add(formatBigDecimal(split[1], digit));
-                                resultMap.put("sampleNumber", y);
-                            }
-                            boolean statePeak = false;
-                            boolean stateValley = false;
-                            if (peaks != null) {
-                                for (FPeakValleyMarking peak : peaks) {
-                                    if (peak.getX().equals(split[0])) {
-                                        if (resultMap.get("peakValley") == null) {
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("峰");
-                                            resultMap.put("peakValley", peakList);
-                                        } else {
-                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                            peakList.add("峰");
-                                            resultMap.put("peakValley", peakList);
-                                        }
-                                        statePeak = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (valleys != null) {
-                                for (FPeakValleyMarking valley : valleys) {
-                                    if (valley.getX().equals(split[0])) {
-                                        if (resultMap.get("peakValley") == null) {
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("谷");
-                                            resultMap.put("peakValley", peakList);
-                                        } else {
-                                            List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                            peakList.add("谷");
-                                            resultMap.put("peakValley", peakList);
-                                        }
-                                        stateValley = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
-                            if (!statePeak && !stateValley) {
-                                if (resultMap.get("peakValley") == null) {
-                                    List<String> peakList = new ArrayList<>();
-                                    peakList.add("");
-                                    resultMap.put("peakValley", peakList);
-                                } else {
-                                    List<String> peakList = (List<String>) resultMap.get("peakValley");
-                                    peakList.add("");
-                                    resultMap.put("peakValley", peakList);
-                                }
-                            }
-                            break;
-                        }
+
+                // 为每个样品初始化列表
+                List<String> sampleNumbers = new ArrayList<>();
+                List<String> peakValleys = new ArrayList<>();
+
+                // 为每个样品查找对应波长的数据
+                for (int i = 0; i < sampleDataMaps.size(); i++) {
+                    Map<String, String[]> dataMap = sampleDataMaps.get(i);
+                    Map<String, String> peakValleyMap = samplePeakValleyMaps.get(i);
+
+                    // 查找数据
+                    if (dataMap.containsKey(wavelength)) {
+                        String[] data = dataMap.get(wavelength);
+                        sampleNumbers.add(data[0]); // 格式化后的值
+
+                        // 查找峰谷标记
+                        String peakValleyType = peakValleyMap.getOrDefault(wavelength, "");
+                        peakValleys.add(peakValleyType);
+                    } else {
+                        // 没有对应波长的数据，补充空值
+                        sampleNumbers.add("");
+                        peakValleys.add("");
                     }
                 }
-                map.put(String.valueOf(i), resultMap);
+
+                // 将列表放入resultMap
+                resultMap.put("sampleNumber", sampleNumbers);
+                resultMap.put("peakValley", peakValleys);
+                resultMap.put(SampleTableEnum.WAVELENGTH.getIdentity(), wavelength);
+
+                Map<String, Object> map = new HashMap<>();
+                map.put(wavelength, resultMap);
                 arrayList.add(map);
             }
+
             return arrayList;
-
-
         }
 
 
