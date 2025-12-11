@@ -877,8 +877,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                             if (tempXBuffer.size() >= 10) {
                                 // 关键修改：获取处理后的数据并更新finalY
                                 List<Double> processedBatchY = processAndPushBatchDataAndReturn(session, tempXBuffer, tempYBuffer, totalPushedPoints.get(),
-                                        number, task, sampleId, spectrumParameter.getLuminosity(),
-                                        spectrumParameter.getLadderCorrection(), state.digit);
+                                        number, task, sampleId, spectrumParameter, state.digit);
 
                                 // 将处理后的数据添加到finalY
                                 finalY.addAll(processedBatchY);
@@ -899,8 +898,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         if (currentPushed < tempXBuffer.size() + currentPushed) {
                             // 关键修改：获取处理后的数据并更新finalY
                             List<Double> processedBatchY = processAndPushBatchDataAndReturn(session, tempXBuffer, tempYBuffer, currentPushed,
-                                    number, task, sampleId, spectrumParameter.getLuminosity(),
-                                    spectrumParameter.getLadderCorrection(), state.digit);
+                                    number, task, sampleId, spectrumParameter, state.digit);
 
                             // 将处理后的数据添加到finalY
                             finalY.addAll(processedBatchY);
@@ -932,8 +930,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 if (!tempXBuffer.isEmpty()) {
                     // 关键修改：获取处理后的数据并更新finalY
                     List<Double> processedBatchY = processAndPushBatchDataAndReturn(session, tempXBuffer, tempYBuffer, totalPushedPoints.get(),
-                            number, task, sampleId, spectrumParameter.getLuminosity(),
-                            spectrumParameter.getLadderCorrection(), state.digit);
+                            number, task, sampleId, spectrumParameter, state.digit);
 
                     // 将处理后的数据添加到finalY
                     finalY.addAll(processedBatchY);
@@ -950,7 +947,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                         // 关键修改：获取处理后的数据并更新finalY
                         List<Double> processedBatchY = processAndPushBatchDataAndReturn(session, new ArrayList<>(remainingX), new ArrayList<>(remainingY),
                                 totalPushedPoints.get(), number, task, sampleId,
-                                spectrumParameter.getLuminosity(), spectrumParameter.getLadderCorrection(),
+                                spectrumParameter,
                                 state.digit);
 
                         // 将处理后的数据添加到finalY
@@ -1000,12 +997,14 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                                                           Integer count,
                                                           FMeasureTask task,
                                                           String sampleId,
-                                                          String luminosity,
-                                                          boolean ladderCorrection,
+                                                          FSpectrumParameter parameter,
                                                           Integer digit) throws IOException {
         if (xBatch.isEmpty() || yBatch.isEmpty()) {
             return new ArrayList<>();
         }
+
+        String luminosity = parameter.getLuminosity();
+        boolean ladderCorrection = parameter.getLadderCorrection();
 
         log.info("处理批次数据，点数: " + xBatch.size() + ", 起始索引: " + startIndex + ", 台阶消除: " + ladderCorrection);
 
@@ -1015,7 +1014,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         // 如果需要台阶校正，处理数据
         if (ladderCorrection) {
             log.info("执行台阶消除，数据点数: " + xBatch.size());
-            processedY = processAndSaveData(task, xBatch, yBatch, luminosity, ladderCorrection, sampleId);
+            processedY = processAndSaveData(task, xBatch, yBatch, parameter, sampleId);
             log.info("台阶消除完成");
             // 开启阶梯校正时，存储校正后的数据
             yForStorage = processedY;
@@ -1195,8 +1194,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         // 如果需要台阶校正
         if (ladderCorrection) {
             log.info("开始台阶校正");
-            List<Double> correctedY = processAndSaveData(task, processedX, processedY,
-                    luminosity, ladderCorrection, sampleId);
+            List<Double> correctedY = processAndSaveData(task, processedX, processedY,spectrumParameter
+                    , sampleId);
             processedY = correctedY;
             yForStorage = correctedY; // 开启校正时存储校正后的数据
             log.info("台阶校正完成");
@@ -1862,10 +1861,11 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     public List<Double> processAndSaveData(FMeasureTask task,
                                            List<Double> x,
                                            List<Double> y,
-                                           String luminosityMode,
-                                           boolean ladderCorrection,
+                                           FSpectrumParameter parameter,
                                            String sampleId) {
 
+        String luminosityMode = parameter.getLuminosity();
+        boolean ladderCorrection = parameter.getLadderCorrection();
         log.info("---------------进入台阶消除处理逻辑---------------");
         log.info("台阶消除参数 - 数据点数: " + x.size() + ", 光度模式: " + luminosityMode + ", 样品ID: " + sampleId);
 
@@ -1919,7 +1919,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         log.info("台阶消除阈值: " + threshold);
 
         // 这里调用 Python 的台阶消除算法，返回处理后的 y 值
-        List<Double> processedY = callStepEliminationPython(x, y, threshold);
+        List<Double> processedY = callStepEliminationPython(x, y, threshold,parameter);
 
         log.info("台阶消除完成，原始数据点数: " + y.size() + ", 处理后数据点数: " + processedY.size());
         log.info("---------------台阶消除处理逻辑结束---------------");
@@ -1930,7 +1930,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
     /**
      * 调用 Python 服务处理台阶消除
      */
-    private List<Double> callStepEliminationPython(List<Double> x, List<Double> y, Integer threshold) {
+    private List<Double> callStepEliminationPython(List<Double> x, List<Double> y, Integer threshold, FSpectrumParameter parameter) {
         // 确保threshold不为null
         if (threshold == null) {
             threshold = 100;
@@ -1945,6 +1945,8 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             requestBody.put("x_data", x);
             requestBody.put("y_data", y);
             requestBody.put("k", threshold);
+            requestBody.put("change_lamp_wavelength", parameter.getChangeLampWaveLength());
+            requestBody.put("wavelength_end", parameter.getEndWaveLength());
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
