@@ -9,12 +9,12 @@
 
 package com.persee.workstation.uv_inexus.dao.sysUserPermissionDao;
 
-import java.util.List;
-
-import org.apache.ibatis.annotations.Mapper;
-
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 用户-小组关联表数据库访问层
@@ -25,5 +25,6 @@ public interface SysUserGroupMapper extends BaseMapper<SysUserGroupPO> {
     // 示例：如需根据用户ID查询所属小组，可添加如下方法
     // List<SysGroupPO> selectGroupsByUserId(String userId);
     // 根据组ID查询用户ID列表
+    @Select("SELECT user_id FROM t_sys_user_group WHERE group_id = #{groupId}")
     List<String> selectUserIdsByGroupId(String groupId);
 }

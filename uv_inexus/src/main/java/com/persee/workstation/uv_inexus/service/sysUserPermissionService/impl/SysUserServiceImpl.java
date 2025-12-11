@@ -9,17 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.alibaba.excel.util.StringUtils;
-import com.persee.workstation.uv_inexus.utils.AESencryption.HmacMD5Util;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -33,14 +23,22 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateD
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
+import com.persee.workstation.uv_inexus.utils.AESencryption.HmacMD5Util;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
-import com.persee.workstation.uv_inexus.utils.PasswordUtils.PasswordUtils;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> implements SysUserService {
@@ -328,5 +326,21 @@ public Result<String> addUser(UserSaveDTO saveDTO) {
         baseMapper.updateById(userPO);
         //密码已重置为默认值123456，请提醒用户及时修改
         return Result.ok(YamlMessageSource.getMessageStatic("0060100D"));
+    }
+
+    @Override
+    public boolean updateUserStatusByGroupStatus(List<String> userIds, Integer status) {
+        if (userIds == null || userIds.isEmpty() || status == null) {
+            return false;
+        }
+        
+        // 批量更新用户状态
+        SysUserPO updateUser = new SysUserPO();
+        updateUser.setStatus(status);
+        
+        LambdaQueryWrapper<SysUserPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(SysUserPO::getId, userIds);
+        
+        return this.update(updateUser, queryWrapper);
     }
 }

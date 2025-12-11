@@ -9,34 +9,30 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupSaveDTO;
+import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
-import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO> implements SysGroupService {
@@ -47,7 +43,10 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     // 注入角色Mapper用于校验角色是否存在
     @Autowired
     private SysRoleMapper sysRoleMapper;
-
+    @Autowired
+    private SysUserGroupMapper  sysUserGroupMapper;
+    @Autowired
+    private SysUserService sysUserService;
 
 
 
@@ -136,6 +135,12 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         groupPO.setUpdateBy("admin");  // 修正拼写错误
         groupPO.setUpdated(LocalDateTime.now());
         baseMapper.updateById(groupPO);
+        //禁用小组后，禁用小组下的用户
+        List<String> userIds = sysUserGroupMapper.selectUserIdsByGroupId(saveDTO.getId());
+
+        if (CollectionUtils.isNotEmpty(userIds)){
+            boolean b=sysUserService.updateUserStatusByGroupStatus(userIds, saveDTO.getStatus());
+        }
         //小组更新成功，已同步更新角色关联
         return Result.ok(YamlMessageSource.getMessageStatic("00602006"));
     }
