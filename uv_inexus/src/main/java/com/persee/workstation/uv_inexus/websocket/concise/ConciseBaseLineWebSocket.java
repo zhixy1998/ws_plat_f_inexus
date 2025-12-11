@@ -601,21 +601,12 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
             int consecutiveEndWavelengthCount = 0;
             final int MAX_CONSECUTIVE_END_WAVELENGTH = 3;
-            long startTime = System.currentTimeMillis();
-            final long TIMEOUT_MS = 5 * 60 * 1000; // 5分钟超时
             final long NO_DATA_TIMEOUT_MS = 120 * 1000; // 120秒无数据超时（增加以处理换灯暂停）
             // Increased timeout to handle lamp change pauses
             long lastDataTime = System.currentTimeMillis();
 
             while (true) {
                 checkInterrupted(session);
-
-                // 检查超时
-                if (System.currentTimeMillis() - startTime > TIMEOUT_MS) {
-                    log.error("【收集数据超时】数据收集超时, session: {}, 耗时: {}ms", sessionId, System.currentTimeMillis() - startTime);
-                    sendAndClose(session, "数据收集超时");
-                    return null;
-                }
 
                 // 检查无数据超时
                 if (System.currentTimeMillis() - lastDataTime > NO_DATA_TIMEOUT_MS) {
