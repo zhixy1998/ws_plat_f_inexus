@@ -383,23 +383,25 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 log.info("【数据收集完成】数据收集完成, 数据点数: {}, session: {}", dataList.size(), sessionId);
             }
 
+            // 保存任务结果
+            if (!saveTaskResult(session, taskId, methodId, deviceSerialNumber, method, dataList)) {
+                return;
+            }
+
+            log.info("【基线成功】基线测量成功完成, session: {}", sessionId);
             if (!state.stopCommandSent.get()) {
                 String ip = deviceInfoService.getIp(deviceSerialNumber);
                 log.info("【设置波长开始】开始设置波长, session: {}", sessionId);
-                List<Command> commands = new ArrayList<>();
                 double parsed = Double.parseDouble(param.getStartWaveLength());
                 Double va = formulaUtil.calculateStep(parsed, deviceSerialNumber);
-                Command command1 = buildCommand(SetParamEnum.SetWl, parsed);
-                command1.setParams(new Object[]{va});
-                commands.add(command1);
-                devMessageUtil.spectrumScanSet(commands, ip);
+                Command com = new Command(SetParamEnum.SetWl.getComId(), new Object[]{va});
+                devMessageUtil.SetOneCommand(com, ip);
                 DetectionConstants.currentWavelength = param.getStartWaveLength();
                 log.info("【设置波长结束】结束设置波长, session: {}", sessionId);
 
                 log.info("【零点校零开始】开始进行校零, session: {}", sessionId);
                 /// 基线结束之后横插一个校零
                 // 进行校零
-
                 Command command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
                 R<ChangeParam> zero = devMessageUtil.zero(command, ip);
                 if (!zero.getSuccess()) {
@@ -407,16 +409,10 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     return;
                 }
                 ChangeParam zeroData = zero.getData();
-                DetectionConstants.zeroResult.put(param.getStartWaveLength(), zeroData);
+                Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
+                DetectionConstants.zeroResult.put(String.valueOf(v), zero.getData());
                 log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
             }
-
-            // 保存任务结果
-            if (!saveTaskResult(session, taskId, methodId, deviceSerialNumber, method, dataList)) {
-                return;
-            }
-
-            log.info("【基线成功】基线测量成功完成, session: {}", sessionId);
             sendAndClose(session, "基线成功");
 
         } catch (UserInterruptedException e) {
@@ -601,12 +597,21 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
             int consecutiveEndWavelengthCount = 0;
             final int MAX_CONSECUTIVE_END_WAVELENGTH = 3;
+            long startTime = System.currentTimeMillis();
+            final long TIMEOUT_MS = 5 * 60 * 1000; // 5分钟超时
             final long NO_DATA_TIMEOUT_MS = 120 * 1000; // 120秒无数据超时（增加以处理换灯暂停）
             // Increased timeout to handle lamp change pauses
             long lastDataTime = System.currentTimeMillis();
 
             while (true) {
                 checkInterrupted(session);
+
+                // 检查超时
+                if (System.currentTimeMillis() - startTime > TIMEOUT_MS) {
+                    log.error("【收集数据超时】数据收集超时, session: {}, 耗时: {}ms", sessionId, System.currentTimeMillis() - startTime);
+                    sendAndClose(session, "数据收集超时");
+                    return null;
+                }
 
                 // 检查无数据超时
                 if (System.currentTimeMillis() - lastDataTime > NO_DATA_TIMEOUT_MS) {

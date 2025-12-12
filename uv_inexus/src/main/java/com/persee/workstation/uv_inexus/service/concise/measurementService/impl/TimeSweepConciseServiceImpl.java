@@ -43,7 +43,6 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectru
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -55,6 +54,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.timesweep.FTimeSweepParamterVo;
@@ -856,7 +856,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
 
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+        if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
@@ -865,7 +865,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             FMeasureTask newTask = new FMeasureTask();
 
             FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
-            SystemUserManagePO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());
@@ -892,66 +892,88 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             dto.setTaskId(newTask.getId());
         }
 
-
         FMeasureTask task = fMeasureTaskService.getById(dto.getTaskId());
         if (task == null) {
             //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-
-        /// 校验是否有重复的样品编号
-        // 取出所有样品编号（不做过滤）
-        List<String> sampleNos = dto.getNewSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber())
-                .collect(Collectors.toList());
-
-        // 校验是否存在空编号（null、""、空格都算空）
-        boolean hasEmpty = sampleNos.stream()
-                .anyMatch(no -> no == null || no.trim().isEmpty());
-        if (hasEmpty) {
-            //存在空的样品编号
-            return Result.fail(YamlMessageSource.getMessageStatic("0010000C"));
+        List<FTaskSpecimen> taskSpecimen = new ArrayList<>();
+        if (StringUtils.hasText(task.getSampleKey())) {
+            taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+            // 调试信息
+            log.info("从任务中解析的样品列表: {}", taskSpecimen);
+            if (taskSpecimen != null) {
+                log.info("样品数量: {}", taskSpecimen.size());
+                for (FTaskSpecimen specimen : taskSpecimen) {
+                    log.info("样品键: {}", specimen.getSpecimenKey());
+                }
+            }
         }
 
-        // 校验样品编号长度是否超过 256
-        boolean tooLongNo = sampleNos.stream()
-                .anyMatch(no -> no.length() > 256);
-        if (tooLongNo) {
-            //样品编号长度不能超过256个字符
-            return Result.fail(YamlMessageSource.getMessageStatic("0010000D"));
+        // 调试信息
+        log.info("要删除的样品ID列表: {}", dto.getDelSampleIds());
+        if (dto.getDelSampleIds() != null) {
+            log.info("要删除的样品ID数量: {}", dto.getDelSampleIds().size());
+            for (String delId : dto.getDelSampleIds()) {
+                log.info("要删除的ID: {}", delId);
+            }
         }
 
-        // 校验样品名称长度是否超过 256
-        boolean tooLongName = dto.getNewSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleName())
-                .filter(Objects::nonNull)
-                .anyMatch(name -> name.length() > 256);
-        if (tooLongName) {
-            //样品名称长度不能超过256个字符
-            return Result.fail(YamlMessageSource.getMessageStatic("0010000E"));
-        }
+        Map<String, FTaskSpecimen> oldMap = new HashMap<>();
 
-
-        // 查重：找到重复的样品编号
-        Set<String> duplicates = sampleNos.stream()
-                .filter(no -> Collections.frequency(sampleNos, no) > 1)
-                .collect(Collectors.toSet());
-
-        if (!duplicates.isEmpty()) {
-            //"样品编号重复: " + String.join(",", duplicates)
-            return Result.fail(YamlMessageSource.getMessageStatic("0010501B", String.join(",", duplicates)));
-        }
-        if (taskSpecimen == null) {
-            taskSpecimen = new ArrayList<>();
-        }
-        if (taskSpecimen != null) {
+        // 处理删除逻辑
+        if (dto.getDelSampleIds() != null && !dto.getDelSampleIds().isEmpty()) {
             for (FTaskSpecimen specimen : taskSpecimen) {
-                if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+                String specimenKey = specimen.getSpecimenKey();
+
+                // 调试信息
+                log.info("正在比较样品键: {}", specimenKey);
+
+                // 首先检查是否为null
+                if (specimenKey == null) {
+                    log.warn("样品键为null，跳过处理");
+                    continue;
+                }
+
+                // 创建一个临时列表来存储要删除的ID，确保类型匹配
+                List<String> delIds = dto.getDelSampleIds().stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .collect(Collectors.toList());
+
+                String trimmedSpecimenKey = specimenKey.trim();
+
+                // 调试信息
+                log.info("修剪后的样品键: '{}'", trimmedSpecimenKey);
+                log.info("修剪后的待删除ID列表: {}", delIds);
+
+                // 使用多种方式进行比较
+                boolean shouldDelete = delIds.stream()
+                        .anyMatch(delId -> {
+                            boolean exactMatch = delId.equals(trimmedSpecimenKey);
+                            boolean containsMatch = delId.contains(trimmedSpecimenKey) || trimmedSpecimenKey.contains(delId);
+                            log.info("比较: delId='{}', specimenKey='{}', exactMatch={}, containsMatch={}",
+                                    delId, trimmedSpecimenKey, exactMatch, containsMatch);
+                            return exactMatch || containsMatch;
+                        });
+
+                // 备用方法：使用equals比较（如果上面的方法不工作）
+                boolean shouldDeleteAlt = delIds.contains(trimmedSpecimenKey);
+                log.info("备用比较方法结果: {}", shouldDeleteAlt);
+
+                // 使用contains方法直接比较
+                boolean shouldDeleteDirect = dto.getDelSampleIds().contains(specimenKey);
+                log.info("直接contains比较结果: {}", shouldDeleteDirect);
+
+                // 最终决定是否删除
+                if (shouldDelete || shouldDeleteAlt || shouldDeleteDirect) {
+                    log.info("找到要删除的样品，设置删除类型: {}", specimenKey);
                     specimen.setDeleteType(deleteType);
+
+                    // 同时标记对应的测量数据为删除
                     LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                    queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
+                    queryWrapper.eq(FMeasureData::getSampleKey, specimenKey)
                             .eq(FMeasureData::getTaskId, task.getId())
                             .orderByDesc(FMeasureData::getSerialNumber);
                     List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
@@ -961,13 +983,20 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                         fMeasureDataService.updateById(one);
                     }
                 }
+
+                oldMap.putIfAbsent(specimenKey, specimen);
+            }
+        } else {
+            // 如果没有要删除的样品，直接放入oldMap
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                oldMap.putIfAbsent(specimen.getSpecimenKey(), specimen);
             }
         }
 
-        FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
+        com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot taskHeadSnapshot = new com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot();
 
         if (StringUtils.hasText(task.getTableInfo())) {
-            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot.class);
         }
 
         if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
@@ -976,60 +1005,93 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
+        // 处理新增的样品
+        if (dto.getNewSamples() != null && !dto.getNewSamples().isEmpty()) {
+            List<String> sampleNos = dto.getNewSamples().stream()
+                    .map(m -> m.get(SampleTableEnum.SAMPLE_NUMBER.getIdentity())) // 取出 sampleNo
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.toList());
 
-        for (Map<String, String> map : dto.getNewSamples()) {
-            String jsonString = JSON.toJSONString(map);
-            FSampleVO sample = JSON.parseObject(jsonString, FSampleVO.class);
-            FMeasureSample newSample = new FMeasureSample();
-            BeanUtils.copyProperties(sample, newSample);
-            newSample.setId(sample.getSampleId());
-
-            if (dto.getHeads() != null) {
-                JSONObject newColData = new JSONObject();
-
-                for (FHeadVO head : dto.getHeads()) {
-                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
-                        continue;
-                    }
-                    String s = map.get(head.getIdentity());
-                    newColData.put(head.getIdentity(), s);
-                }
-                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
-                newSample.setNewColData(JSON.toJSONString(newColData));
+            if (sampleNos.size() < dto.getNewSamples().size()) {
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+            }
+            // 查重：找到重复的样品编号
+            Set<String> duplicates = sampleNos.stream()
+                    .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                    .collect(Collectors.toSet());
+            // 判断如果isTested为true，
+            if (!duplicates.isEmpty()) {
+                //标准样品编号重复
+                return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
             }
 
-            if (StringUtils.hasText(newSample.getId())) {
-                if (newSample.getSampleNumber() == null) {
-                    //样品编号不能位空
-                    return Result.fail(YamlMessageSource.getMessageStatic("00304005"));
+            for (Map<String, String> map : dto.getNewSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO sample = JSON.parseObject(jsonString, com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO.class);
+
+                FMeasureSample newSample = new FMeasureSample();
+                BeanUtils.copyProperties(sample, newSample);
+                newSample.setId(sample.getSampleId());
+
+                if (dto.getHeads() != null) {
+                    JSONObject newColData = new JSONObject();
+
+                    for (FHeadVO head : dto.getHeads()) {
+                        if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                            continue;
+                        }
+                        String s = map.get(head.getIdentity());
+                        newColData.put(head.getIdentity(), s);
+                    }
+                    newSample.setHeads(JSON.toJSONString(dto.getHeads()));
+                    newSample.setNewColData(JSON.toJSONString(newColData));
                 }
-                fMeasureSampleService.updateById(newSample);
-            } else {
-                FTaskSpecimen specimen = new FTaskSpecimen();
-                specimen.setDeleteType(createType);
-                specimen.setIsTested(noTested);
-                specimen.setSampleType(newSample.getSampleType());
-                log.info("新增的样品：{}", newSample);
-                fMeasureSampleService.save(newSample);
-                specimen.setSpecimenKey(newSample.getId());
-                taskSpecimen.add(specimen);
+
+                if (StringUtils.hasText(newSample.getId())) {
+                    fMeasureSampleService.updateById(newSample);
+                    FTaskSpecimen specimen = oldMap.get(newSample.getId());
+                    if (specimen != null) {
+                        specimen.setSampleType(newSample.getSampleType());
+                        oldMap.put(newSample.getId(), specimen);
+                    }
+                } else {
+                    FTaskSpecimen specimen = new FTaskSpecimen();
+                    specimen.setDeleteType(createType);
+                    specimen.setIsTested(noTested);
+                    specimen.setSampleType(newSample.getSampleType());
+                    log.info("新增的样品：{}", newSample);
+                    fMeasureSampleService.save(newSample);
+                    specimen.setSpecimenKey(newSample.getId());
+                    oldMap.put(newSample.getId(), specimen);
+                    taskSpecimen.add(specimen);
+                }
             }
         }
 
-        String jsonString = JSONArray.toJSONString(taskSpecimen);
+        // 更新任务中的样品列表
+        String jsonString = JSONArray.toJSONString(new ArrayList<>(oldMap.values()));
         task.setSampleKey(jsonString);
+
+        // 调试信息
+        log.info("更新后的样品列表JSON: {}", jsonString);
 
         boolean b = fMeasureTaskService.updateById(task);
         if (!b) {
-            //任务保存样品信息出错
             return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
         }
 
         if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
-            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
-            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                return Result.ok();
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
         }
-
         return Result.ok();
     }
 
@@ -1168,7 +1230,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                     vo.setColor(measureData.getColor());
                     vo.setData(getSampleData(measureData, digit));
                     vo.setOriginalData(getOriginalSampleData(measureData, digit));
-                    vo.setDeleteType(measureData.getIsDelete());
+                    vo.setDeleteType(taskSpeciman.getDeleteType());
                 }
                 vo.setType("0");
                 listVos.add(vo);
