@@ -125,22 +125,22 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
         private final AtomicBoolean stopCommandSent2 = new AtomicBoolean(false);
         private final AtomicBoolean cleanupInProgress = new AtomicBoolean(false);
         private final AtomicBoolean sessionClosing = new AtomicBoolean(false);
-        // 新增：停止请求标志
+        // 停止请求标志
         private final AtomicBoolean stopRequested = new AtomicBoolean(false);
-        // 新增：当前测量完成标志
+        // 当前测量完成标志
         private final AtomicBoolean currentMeasurementCompleted = new AtomicBoolean(true);
 
-        // 🔴 新增：批次数据缓冲区
+        // 批次数据缓冲区
         private final List<Double> batchXBuffer = Collections.synchronizedList(new ArrayList<>());
         private final List<Double> batchYBuffer = Collections.synchronizedList(new ArrayList<>());
 
-        // 🔴 新增：已推送点计数
+        // 已推送点计数
         private final AtomicInteger pushedPointsCount = new AtomicInteger(0);
 
         private String deviceSerialNumber;
         private String ip;
         private Integer digit;
-        private Integer batchSize; // 🔴 新增：批次大小
+        private Integer batchSize; // 批次大小
 
         public void reset() {
             deviceOccupied.set(false);
@@ -936,7 +936,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     new ArrayList<>(Constants.originalCalculationData)
             );
         } else {
-            // 🔴 普通扫描模式：使用批次处理机制
+            // 普通扫描模式：使用批次处理机制
             boolean endWaveLengthState = false;
 
             try {
@@ -982,7 +982,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                             }
                         }
 
-                        // 🔴 将新点添加到批次缓冲区，并检查是否达到批次大小
+                        // 将新点添加到批次缓冲区，并检查是否达到批次大小
                         if (!x.isEmpty() && !y.isEmpty() && !endWaveLengthState) {
                             int currentIndex = x.size() - 1;
                             Double currentX = x.get(currentIndex);
@@ -991,13 +991,13 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                             boolean isBatchFull = state.addToBatchBuffer(currentX, currentY);
 
                             if (isBatchFull) {
-                                // 🔴 批次已满，进行处理
+                                // 批次已满，进行处理
                                 BatchData batchData = state.getAndClearBatchBuffer(
                                         session.getId(), number, sampleId, state.digit,
                                         spectrumParameter, task);
 
                                 if (batchData != null) {
-                                    // 🔴 异步处理台阶消除
+                                    // 异步处理台阶消除
                                     processBatchDataAsync(batchData, session);
                                 }
                             }
@@ -1019,7 +1019,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     }
                 }
 
-                // 🔴 测量结束，处理所有剩余数据
+                // 测量结束，处理所有剩余数据
                 log.info("开始处理剩余数据，批次大小配置: {}", state.getBatchSize());
 
                 // 处理剩余的批次数据
@@ -1032,7 +1032,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     processBatchDataAsync(remainingBatch, session);
                 }
 
-                // 🔴 等待所有异步处理完成
+                // 等待所有异步处理完成
                 waitForAsyncProcessingComplete(state, session);
 
                 log.info("测量完成，总数据点: " + x.size());
@@ -1072,7 +1072,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
      * 异步处理批次数据（包含台阶消除）
      */
     private void processBatchDataAsync(BatchData batchData, WebSocketSession session) {
-        // 🔴 使用线程池异步处理
+        // 使用线程池异步处理
         CompletableFuture.runAsync(() -> {
             try {
                 log.info("异步处理批次数据，点数: {}, 起始索引: {}, 批次大小配置: {}",
@@ -1082,7 +1082,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                 List<Double> processedY = batchData.yBatch;
                 List<Double> yForStorage = batchData.yBatch;
 
-                // 🔴 执行台阶消除
+                // 执行台阶消除
                 if (ladderCorrection) {
                     log.info("执行台阶消除，数据点数: " + batchData.xBatch.size());
                     processedY = processAndSaveData(batchData.task, batchData.xBatch, batchData.yBatch,
@@ -1095,7 +1095,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     log.info("跳过台阶消除");
                 }
 
-                // 🔴 关键修改：根据是否开启阶梯校正来决定存储的数据
+                // 根据是否开启阶梯校正来决定存储的数据
                 String key = batchData.sessionId + "_" + batchData.sampleId + "_" + batchData.count;
                 synchronized (originalYValues) {
                     if (!originalYValues.containsKey(key)) {
@@ -1114,12 +1114,12 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     }
                 }
 
-                // 🔴 推送处理后的数据
+                // 推送处理后的数据
                 pushBatchDataDirectly(session, batchData.xBatch, processedY,
                         batchData.count, batchData.sampleId,
                         batchData.parameter.getLuminosity(), batchData.digit);
 
-                // 🔴 更新已推送点数
+                // 更新已推送点数
                 SessionState state = sessionStates.get(batchData.sessionId);
                 if (state != null) {
                     state.incrementPushedPoints(batchData.xBatch.size());

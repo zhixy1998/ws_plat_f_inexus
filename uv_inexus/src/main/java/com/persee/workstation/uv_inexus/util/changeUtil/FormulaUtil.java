@@ -38,12 +38,27 @@ public class FormulaUtil {
      * */
     public Double calculateWl(double actualStep, String deviceSerialNumber) {
         try {
-            List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
+            List<LinearSegment> linearSegment = this.getLinearSegment(deviceSerialNumber);
             if (CollectionUtils.isNotEmpty(linearSegment)) {
+                // 先查找是否在某个线段范围内
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsActualStep(actualStep)) {
                         return roundToOneDecimal((segment.getK() * actualStep+ segment.getB())/ 50);
                     }
+                }
+
+                // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
+                LinearSegment firstSegment = linearSegment.get(0);
+                LinearSegment lastSegment = linearSegment.get(linearSegment.size() - 1);
+
+                // 如果小于最小线段的起始点，则使用最小线段计算
+                if (actualStep < firstSegment.getMinActualStep()) {
+                    return roundToOneDecimal((firstSegment.getK() * actualStep + firstSegment.getB()) / 50);
+                }
+
+                // 如果大于最大线段的结束点，则使用最大线段计算
+                if (actualStep > lastSegment.getMaxActualStep()) {
+                    return roundToOneDecimal((lastSegment.getK() * actualStep + lastSegment.getB()) / 50);
                 }
             }
         } catch (Exception e) {
@@ -66,6 +81,19 @@ public class FormulaUtil {
                     if (segment.containsActualStep(actualStep)) {
                         return roundToOneDecimal((segment.getK() * actualStep + segment.getB()) / 50);
                     }
+                }
+                // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
+                LinearSegment firstSegment = linearSegments.get(0);
+                LinearSegment lastSegment = linearSegments.get(linearSegments.size() - 1);
+
+                // 如果小于最小线段的起始点，则使用最小线段计算
+                if (actualStep < firstSegment.getMinActualStep()) {
+                    return roundToOneDecimal((firstSegment.getK() * actualStep + firstSegment.getB()) / 50);
+                }
+
+                // 如果大于最大线段的结束点，则使用最大线段计算
+                if (actualStep > lastSegment.getMaxActualStep()) {
+                    return roundToOneDecimal((lastSegment.getK() * actualStep + lastSegment.getB()) / 50);
                 }
             }
         } catch (Exception e) {
@@ -104,6 +132,19 @@ public class FormulaUtil {
                     if (segment.containsWl(wl)) {
                         return roundToOneDecimal((wl * 50 - segment.getB()) / segment.getK());
                     }
+                }
+                // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
+                LinearSegment firstSegment = linearSegment.get(0);
+                LinearSegment lastSegment = linearSegment.get(linearSegment.size() - 1);
+
+                // 如果小于最小线段的起始点，则使用最小线段计算
+                if (wl*50 < firstSegment.getMinTheoryStep()) {
+                    return roundToOneDecimal((wl * 50 - firstSegment.getB()) / firstSegment.getK());
+                }
+
+                // 如果大于最大线段的结束点，则使用最大线段计算
+                if (wl*50 > lastSegment.getMaxActualStep()) {
+                    return roundToOneDecimal((wl * 50 - lastSegment.getB()) / lastSegment.getK());
                 }
             }
         } catch (Exception e) {

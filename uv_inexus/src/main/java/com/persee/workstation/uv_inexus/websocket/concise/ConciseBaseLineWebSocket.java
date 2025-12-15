@@ -413,6 +413,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 DetectionConstants.zeroResult.put(String.valueOf(v), zero.getData());
                 log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
             }
+
             sendAndClose(session, "基线成功");
 
         } catch (UserInterruptedException e) {
@@ -605,14 +606,6 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
             while (true) {
                 checkInterrupted(session);
-
-                // 检查超时
-                if (System.currentTimeMillis() - startTime > TIMEOUT_MS) {
-                    log.error("【收集数据超时】数据收集超时, session: {}, 耗时: {}ms", sessionId, System.currentTimeMillis() - startTime);
-                    sendAndClose(session, "数据收集超时");
-                    return null;
-                }
-
                 // 检查无数据超时
                 if (System.currentTimeMillis() - lastDataTime > NO_DATA_TIMEOUT_MS) {
                     log.error("【无数据超时】长时间没有收到数据, session: {}, 最后数据时间: {}ms前",
@@ -926,45 +919,55 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
     /**
      * 强制约束波长，确保波长在指定范围内
-     * @param originalWl
-     * @param startWl
-     * @param endWl
-     * @param interval
-     * @param isDescending
-     * @param sessionId
-     * @return
+     * @param originalWl 原始波长值
+     * @param startWl 波长范围起始值
+     * @param endWl 波长范围结束值
+     * @param interval 波长间隔
+     * @param isDescending 是否为递减模式
+     * @param sessionId 会话ID，用于追踪当前数据点索引
+     * @return 约束后的波长值
      */
     private Double forceConstrainWavelength(Double originalWl, double startWl, double endWl,
                                             double interval, boolean isDescending, String sessionId) {
+    // 如果原始波长为null，直接返回null
         if (originalWl == null) {
             return null;
         }
+    // 获取当前会话对应的数据点索引，如果不存在则初始化为0
         Integer currentIndex = dataPointIndexMap.get(sessionId);
         if (currentIndex == null) {
             currentIndex = 0;
         }
-        double expectedWl;
+        double expectedWl; // 期望的波长值
+    // 根据是否递减模式计算期望波长
         if (isDescending) {
             expectedWl = startWl - (currentIndex * interval);
+        // 如果期望波长小于结束波长，则设置为结束波长
             if (expectedWl < endWl) {
                 expectedWl = endWl;
             }
         } else {
             expectedWl = startWl + (currentIndex * interval);
+        // 如果期望波长大于结束波长，则设置为结束波长
             if (expectedWl > endWl) {
                 expectedWl = endWl;
             }
         }
+    // 获取间隔的小数位数，用于精度控制
         int decimalPlaces = getDecimalPlaces(interval);
+    // 将期望波长四舍五入到指定精度
         double constrainedWl = roundToPrecision(expectedWl, decimalPlaces);
+    // 根据递增或递减模式约束波长范围
         if (isDescending) {
-            if (constrainedWl > startWl) constrainedWl = startWl;
-            if (constrainedWl < endWl) constrainedWl = endWl;
+            if (constrainedWl > startWl) constrainedWl = startWl; // 确保不超过起始波长
+            if (constrainedWl < endWl) constrainedWl = endWl;   // 确保不低于结束波长
         } else {
-            if (constrainedWl < startWl) constrainedWl = startWl;
-            if (constrainedWl > endWl) constrainedWl = endWl;
+            if (constrainedWl < startWl) constrainedWl = startWl; // 确保不低于起始波长
+            if (constrainedWl > endWl) constrainedWl = endWl;     // 确保不超过结束波长
         }
+    // 更新当前会话的数据点索引
         dataPointIndexMap.put(sessionId, currentIndex + 1);
+    // 返回约束后的波长值
         return constrainedWl;
     }
 
