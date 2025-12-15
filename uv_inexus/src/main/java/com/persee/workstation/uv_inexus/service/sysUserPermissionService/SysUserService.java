@@ -9,8 +9,6 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService;
 
-import java.util.List;
-
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
@@ -20,6 +18,8 @@ import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserSaveDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+
+import java.util.List;
 
 public interface SysUserService extends IService<SysUserPO> {
 
@@ -64,4 +64,6 @@ public interface SysUserService extends IService<SysUserPO> {
      * @return 操作结果
      */
     Result<String> resetPassword(String userId);
+
+    boolean updateUserStatusByGroupStatus(List<String> userIds, Integer status);
 }

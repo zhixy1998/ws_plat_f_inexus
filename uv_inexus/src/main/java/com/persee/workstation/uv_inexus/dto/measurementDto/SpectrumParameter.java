@@ -28,7 +28,7 @@ public class SpectrumParameter extends MeasurePublicParameters {
     private String repetitionPattern;
     // 重复次数
     private String repetitionTime;
-    // 时间间隔
+    // 扫描间隔
     private String timeInterval;
     // 阶梯校正(false.不启用 true.启用)
     private Boolean ladderCorrection;

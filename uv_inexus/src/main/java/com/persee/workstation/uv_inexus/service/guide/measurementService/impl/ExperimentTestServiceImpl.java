@@ -66,14 +66,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import java.util.*;
-import java.util.stream.Collectors;
-
 @Service
 ("experimentTestService")
 public class ExperimentTestServiceImpl implements ExperimentTestService {
@@ -1593,7 +1585,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
             vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
-            vo.setGain(param.getGain().toString());
+            vo.setGain(param.getGain());
             vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
             vo.setSampleName(sample.getSampleName());
@@ -1726,7 +1718,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
             vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
-            vo.setGain(param.getGain().toString());
+            vo.setGain(param.getGain());
             vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
             vo.setSampleName(sample.getSampleName());

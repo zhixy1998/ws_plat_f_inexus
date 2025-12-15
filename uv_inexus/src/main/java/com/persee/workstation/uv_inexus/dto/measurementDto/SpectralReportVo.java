@@ -69,7 +69,7 @@ public class SpectralReportVo {
     // 扫描总个数
     private String totalNumber;
     // 增益
-    private String Gain;
+    private Integer Gain;
     // 扫描范围
     private String ScanRange;
     // 扫描速度

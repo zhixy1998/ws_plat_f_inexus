@@ -377,6 +377,58 @@ public class DevMessageUtil {
         }
     }
 
+
+    /**
+     * 设置单条指令
+     * @param command
+     * @param deviceIp
+     */
+    public void SetOneCommand(Command command,String deviceIp) {
+        R<DatagramSocket> ans = messageUtil.getSocket();
+        if (!ans.getSuccess()) {
+            log.info("绑定socket失败");
+            return;
+        }
+        DatagramSocket socket = ans.getData();
+        if(flag == "T600") {
+            Boolean b = changeXml(T600xmlPath);
+            if (!b) {
+                return;
+            }
+            String cmdId = command.getCmdId();
+            Transition transition = xml.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
+            //发送报文组
+            byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
+            List<byte[]> responses = messageUtil.quickSendAndReceive(socket, deviceIp, cmdId, bytes, replyNumber, timeout);
+            Object parse = ResponseDeal.parse(cmdId, responses, bytes);
+            if (parse.equals("false")) {
+                return;
+            }
+        }
+        else if(flag == "T800"){
+            Boolean b = T800changeXml(T800xmlPath);
+            if (!b) {
+                return;
+            }
+            String cmdId = command.getCmdId();
+
+            byte[] bytes = protocolItem.T800calcSendBytes(command.getParams() ,t800xml.get(cmdId));
+            try {
+                t800MessageUtil.sendCommand(cmdId, bytes, T800defaultIp);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            String result = ResponseParser.Result;
+
+            if (result.equals("false")) {
+                return;
+            }
+        }
+    }
+
     /**
      * 仪器校正
      */

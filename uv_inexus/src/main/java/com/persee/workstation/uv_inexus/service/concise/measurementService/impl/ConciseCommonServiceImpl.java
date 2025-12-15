@@ -996,8 +996,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
-            vo.setGain(param.getGain().toString());
+            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+                vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+                vo.setGain(param.getGain());
+            }
 //            vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
             vo.setMethodName(method.getMethodName());
@@ -1060,8 +1062,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
-            vo.setGain(param.getGain().toString());
+            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+                vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+                vo.setGain(param.getGain());
+            }
 //            vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
             vo.setMethodName(method.getMethodName());

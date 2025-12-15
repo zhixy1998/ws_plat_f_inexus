@@ -44,7 +44,6 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectru
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -56,6 +55,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
@@ -1050,7 +1050,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     /**
      * 添加或删除样品接口
      * <p>
-     * <p>
      * 该方法用于处理样品的添加或删除操作，包括创建新任务、验证样品信息、更新样品数据等功能。
      *
      * @param dto 包含样品操作相关数据传输对象，包括方法ID、表头信息、样品列表等
@@ -1058,30 +1057,33 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO dto) {
-
-        // 验证方法ID是否存在
         if (!StringUtils.hasText(dto.getMethodId())) {
             //请先创建方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
         }
-        // 验证表头信息是否存在且不为空
         if (dto.getHeads() == null || dto.getHeads().isEmpty()) {
             //至少需要一个表头
             return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
-
-        // 验证表格新增列数是否超过限制
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+        if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
-        // 如果没有任务ID，则创建新任务
+
+        // 获取方法信息，用于判断重复模式
+        FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
+        if (method == null) {
+            // 方法不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        // 将方法参数用json解析出来
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             FMeasureTask newTask = new FMeasureTask();
 
-            FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
-            SystemUserManagePO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());
@@ -1108,84 +1110,49 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             dto.setTaskId(newTask.getId());
         }
 
-
         FMeasureTask task = fMeasureTaskService.getById(dto.getTaskId());
         if (task == null) {
-            //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-
-        /// 校验是否有重复的样品编号
-        // 取出所有样品编号
-        List<String> sampleNos = dto.getNewSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
-                .filter(Objects::nonNull)    // 过滤掉空值
-                .collect(Collectors.toList());
-
-        // 校验是否存在空编号（null、""、空格都算空）
-        boolean hasEmpty = sampleNos.stream()
-                .anyMatch(no -> no == null || no.trim().isEmpty());
-        if (hasEmpty) {
-            //存在空的样品编号
-            return Result.fail(YamlMessageSource.getMessageStatic("0010000C"));
+        List<FTaskSpecimen> taskSpecimen = new ArrayList<>();
+        if (StringUtils.hasText(task.getSampleKey())) {
+            taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         }
 
-        // 校验样品编号长度是否超过 256
-        boolean tooLongNo = sampleNos.stream()
-                .anyMatch(no -> no.length() > 256);
-        if (tooLongNo) {
-            //样品编号长度不能超过256个字符
-            return Result.fail(YamlMessageSource.getMessageStatic("0010000D"));
+        Map<String, FTaskSpecimen> oldMap = new HashMap<>();
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            oldMap.put(specimen.getSpecimenKey(), specimen);
         }
 
-        // 校验样品名称长度是否超过 256
-        boolean tooLongName = dto.getNewSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleName())
-                .filter(Objects::nonNull)
-                .anyMatch(name -> name.length() > 256);
-        if (tooLongName) {
-            //样品名称长度不能超过256个字符
-            return Result.fail(YamlMessageSource.getMessageStatic("0010000E"));
-        }
+        // 处理要删除的样品
+        if (dto.getDelSampleIds() != null && !dto.getDelSampleIds().isEmpty()) {
+            // 获取方法的重复模式（假设方法中有isRepeatMode字段，0-不重复，1-重复）
+            Integer repeatMode = parameter.getRepetitionPattern().equals("单池重复")?1:null; // 请根据实际情况调整字段名
 
-
-        // 查重：找到重复的样品编号
-        Set<String> duplicates = sampleNos.stream()
-                .filter(no -> Collections.frequency(sampleNos, no) > 1)
-                .collect(Collectors.toSet());
-        // 判断如果isTested为true，
-        if (!duplicates.isEmpty()) {
-            //样品编号重复
-            return Result.fail(YamlMessageSource.getMessageStatic("0000003F"));
-        }
-
-        if (taskSpecimen == null) {
-            taskSpecimen = new ArrayList<>();
-        }
-        if (taskSpecimen != null) {
-            for (FTaskSpecimen specimen : taskSpecimen) {
-                if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+            for (String delSampleId : dto.getDelSampleIds()) {
+                FTaskSpecimen specimen = oldMap.get(delSampleId);
+                if (specimen != null) {
                     specimen.setDeleteType(deleteType);
-                    LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                    queryWrapper.eq(FMeasureData::getSampleKey, specimen.getSpecimenKey())
-                            .eq(FMeasureData::getTaskId, task.getId())
-                            .orderByDesc(FMeasureData::getSerialNumber);
-                    List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
-                    if (list != null && !list.isEmpty()) {
-                        FMeasureData one = list.get(0);
-                        one.setIsDelete(deleteType);
-                        fMeasureDataService.updateById(one);
+
+                    // 根据重复模式执行不同的删除逻辑
+                    if (repeatMode != null && repeatMode == 1) {
+                        // 重复模式：删除所有相关的测量数据和分析数据
+                        handleDeleteForRepeatMode(delSampleId, task.getId());
+                    } else {
+                        // 不重复模式：只删除最新的测量数据
+                        handleDeleteForNonRepeatMode(delSampleId, task.getId());
                     }
                 }
             }
         }
 
-        FTaskHeadSnapshot taskHeadSnapshot = new FTaskHeadSnapshot();
+        // 更新任务表头信息
+        com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot taskHeadSnapshot = new com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot();
 
         if (StringUtils.hasText(task.getTableInfo())) {
-            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), FTaskHeadSnapshot.class);
+            taskHeadSnapshot = JSON.parseObject(task.getTableInfo(), com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot.class);
         }
 
         if (dto.getHeads() != null && !dto.getHeads().isEmpty()) {
@@ -1194,60 +1161,168 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
+        // 处理新增或更新的样品
+        if (dto.getNewSamples() != null && !dto.getNewSamples().isEmpty()) {
+            List<String> sampleNos = dto.getNewSamples().stream()
+                    .map(m -> m.get(SampleTableEnum.SAMPLE_NUMBER.getIdentity()))
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.toList());
 
-        for (Map<String, String> map : dto.getNewSamples()) {
-            String jsonString = JSON.toJSONString(map);
-            FSampleVO sample = JSON.parseObject(jsonString, FSampleVO.class);
-            FMeasureSample newSample = new FMeasureSample();
-            BeanUtils.copyProperties(sample, newSample);
-            newSample.setId(sample.getSampleId());
-
-            if (dto.getHeads() != null) {
-                JSONObject newColData = new JSONObject();
-
-                for (FHeadVO head : dto.getHeads()) {
-                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
-                        continue;
-                    }
-                    String s = map.get(head.getIdentity());
-                    newColData.put(head.getIdentity(), s);
-                }
-                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
-                newSample.setNewColData(JSON.toJSONString(newColData));
+            if (sampleNos.size() < dto.getNewSamples().size()) {
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
             }
 
-            if (StringUtils.hasText(newSample.getId())) {
-                if (newSample.getSampleNumber() == null) {
-                    //样品编号不能为空
-                    return Result.fail(YamlMessageSource.getMessageStatic("0010000F"));
+            // 查重：找到重复的样品编号
+            Set<String> duplicates = sampleNos.stream()
+                    .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                    .collect(Collectors.toSet());
+
+            if (!duplicates.isEmpty()) {
+                //标准样品编号重复
+                return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
+            }
+
+            for (Map<String, String> map : dto.getNewSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO sample = JSON.parseObject(jsonString, com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO.class);
+
+                FMeasureSample newSample = new FMeasureSample();
+                BeanUtils.copyProperties(sample, newSample);
+                newSample.setId(sample.getSampleId());
+
+                if (dto.getHeads() != null) {
+                    JSONObject newColData = new JSONObject();
+
+                    for (FHeadVO head : dto.getHeads()) {
+                        if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                            continue;
+                        }
+                        String s = map.get(head.getIdentity());
+                        newColData.put(head.getIdentity(), s);
+                    }
+                    newSample.setHeads(JSON.toJSONString(dto.getHeads()));
+                    newSample.setNewColData(JSON.toJSONString(newColData));
                 }
-                fMeasureSampleService.updateById(newSample);
-            } else {
-                FTaskSpecimen specimen = new FTaskSpecimen();
-                specimen.setDeleteType(createType);
-                specimen.setIsTested(noTested);
-                specimen.setSampleType(newSample.getSampleType());
-                fMeasureSampleService.save(newSample);
-                specimen.setSpecimenKey(newSample.getId());
-                taskSpecimen.add(specimen);
+
+                if (StringUtils.hasText(newSample.getId())) {
+                    // 更新现有样品
+                    fMeasureSampleService.updateById(newSample);
+                    FTaskSpecimen specimen = oldMap.get(newSample.getId());
+                    if (specimen != null) {
+                        specimen.setSampleType(newSample.getSampleType());
+                        oldMap.put(newSample.getId(), specimen);
+                    }
+                } else {
+                    // 新增样品
+                    FTaskSpecimen specimen = new FTaskSpecimen();
+                    specimen.setDeleteType(createType);
+                    specimen.setIsTested(noTested);
+                    specimen.setSampleType(newSample.getSampleType());
+                    log.info("新增的样品：{}", newSample);
+                    fMeasureSampleService.save(newSample);
+                    specimen.setSpecimenKey(newSample.getId());
+                    oldMap.put(newSample.getId(), specimen);
+                    taskSpecimen.add(specimen);
+                }
             }
         }
 
+        // 更新任务中的样品信息
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
-
         boolean b = fMeasureTaskService.updateById(task);
         if (!b) {
-            //任务保存样品信息出错
             return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
         }
 
+        // 处理样品池自动切换
         if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
-            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
-            concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                return Result.ok();
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
         }
-
         return Result.ok();
+    }
+
+    /**
+     * 处理重复模式下的删除逻辑
+     * 删除所有相关的测量数据和分析数据
+     */
+    private void handleDeleteForRepeatMode(String sampleId, String taskId) {
+        // 查询所有未删除的测量数据
+        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureData::getSampleKey, sampleId)
+                .eq(FMeasureData::getTaskId, taskId)
+                .eq(FMeasureData::getIsDelete, 0);
+        List<FMeasureData> measureDataList = fMeasureDataService.list(queryWrapper);
+
+        if (measureDataList != null && !measureDataList.isEmpty()) {
+            for (FMeasureData measureData : measureDataList) {
+                // 标记测量数据为删除
+                measureData.setIsDelete(deleteType);
+                fMeasureDataService.updateById(measureData);
+
+                // 查询并标记相关的分析数据为删除
+                LambdaQueryWrapper<FMeasureAnalysisData> analysisQueryWrapper = new LambdaQueryWrapper<>();
+                analysisQueryWrapper.eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                        .eq(FMeasureAnalysisData::getTaskId, taskId)
+                        .eq(FMeasureAnalysisData::getMeasureDataId, measureData.getId())
+                        .eq(FMeasureAnalysisData::getIsDelete, 0);
+                List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(analysisQueryWrapper);
+
+                if (analysisDataList != null && !analysisDataList.isEmpty()) {
+                    for (FMeasureAnalysisData analysisData : analysisDataList) {
+                        analysisData.setIsDelete(deleteType);
+                        fMeasureAnalysisDataService.updateById(analysisData);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 处理不重复模式下的删除逻辑
+     * 只删除最新的测量数据
+     */
+    private void handleDeleteForNonRepeatMode(String sampleId, String taskId) {
+        // 查询最新的未删除的测量数据
+        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureData::getSampleKey, sampleId)
+                .eq(FMeasureData::getTaskId, taskId)
+                .eq(FMeasureData::getIsDelete, 0)
+                .last("LIMIT 1");
+
+        // 获取最新的一条
+        List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+        if (list != null && !list.isEmpty()) {
+            FMeasureData latestData = list.get(0);
+
+            // 标记测量数据为删除
+            latestData.setIsDelete(deleteType);
+            fMeasureDataService.updateById(latestData);
+
+            // 查询并标记相关的分析数据为删除
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisQueryWrapper = new LambdaQueryWrapper<>();
+            analysisQueryWrapper.eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                    .eq(FMeasureAnalysisData::getTaskId, taskId)
+                    .eq(FMeasureAnalysisData::getMeasureDataId, latestData.getId())
+                    .eq(FMeasureAnalysisData::getIsDelete, 0);
+            List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(analysisQueryWrapper);
+
+            if (analysisDataList != null && !analysisDataList.isEmpty()) {
+                for (FMeasureAnalysisData analysisData : analysisDataList) {
+                    analysisData.setIsDelete(deleteType);
+                    fMeasureAnalysisDataService.updateById(analysisData);
+                }
+            }
+        }
     }
 
 
@@ -1907,7 +1982,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail(YamlMessageSource.getMessageStatic("00100011"));
         }
         if (paramDto.getHeight() == null) {
-            paramDto.setHeight((double) Integer.parseInt(confVO.getPeakValleyDiff()));
+            paramDto.setHeight(Double.parseDouble(confVO.getPeakValleyDiff()));
         }
         if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
             paramDto.setDistance(confVO.getPeakInterval());
@@ -3065,10 +3140,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         } else {
             // 多样品逻辑
             List<FMeasureAnalysisData> analysisDataList = new ArrayList<>();
+            List<List<String>> allDataResults = new ArrayList<>(); // 存储所有样品的数据结果
+            int maxDataSize = 0; // 最大数据量
+
             for (String analysisId : analysisIds) {
                 FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getById(analysisId);
                 if (analysisData != null) {
                     analysisDataList.add(analysisData);
+                    // 解析数据结果
+                    List<String> datas = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+                    allDataResults.add(datas);
+                    // 更新最大数据量
+                    if (datas != null && datas.size() > maxDataSize) {
+                        maxDataSize = datas.size();
+                    }
                 }
             }
 
@@ -3076,17 +3161,45 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 return null;
             }
 
-            // 获取第一个样品的波长列表作为基准
-            List<String> list = new ArrayList<>();
-            List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
-            for (String s : result) {
-                String[] split = s.split(",");
-                String s1 = formatBigDecimal(split[0], 1);
-                list.add(s1);
+            // 构建波长映射，以第一个样品的所有波长为基准，如果第一个样品数据不足，则从其他样品补充
+            Map<String, String> wavelengthMap = new LinkedHashMap<>(); // 使用LinkedHashMap保持插入顺序
+
+            // 首先收集第一个样品的所有波长
+            if (!allDataResults.isEmpty() && !allDataResults.get(0).isEmpty()) {
+                for (String data : allDataResults.get(0)) {
+                    String[] split = data.split(",");
+                    if (split.length >= 1) {
+                        String wavelength = formatBigDecimal(split[0], 1);
+                        wavelengthMap.put(wavelength, wavelength);
+                    }
+                }
             }
 
+            // 如果第一个样品数据不足，从其他样品补充波长（避免重复）
+            if (wavelengthMap.size() < maxDataSize) {
+                for (int i = 1; i < allDataResults.size(); i++) {
+                    List<String> datas = allDataResults.get(i);
+                    if (datas != null) {
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            if (split.length >= 1) {
+                                String wavelength = formatBigDecimal(split[0], 1);
+                                wavelengthMap.put(wavelength, wavelength);
+                            }
+                        }
+                    }
+                    // 如果已经收集到足够多的波长，可以提前退出
+                    if (wavelengthMap.size() >= maxDataSize) {
+                        break;
+                    }
+                }
+            }
+
+            // 转换为有序列表
+            List<String> wavelengthList = new ArrayList<>(wavelengthMap.keySet());
+
             int id = 1;
-            for (String wavelength : list) {
+            for (String wavelength : wavelengthList) {
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
 
@@ -3094,40 +3207,45 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 List<String> sampleNumbers = new ArrayList<>();
                 List<String> peakValleys = new ArrayList<>();
 
-                for (FMeasureAnalysisData analysisData : analysisDataList) {
-                    List<String> datas = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+                for (int i = 0; i < analysisDataList.size(); i++) {
+                    FMeasureAnalysisData analysisData = analysisDataList.get(i);
+                    List<String> datas = allDataResults.get(i);
                     List<FPeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), FPeakValleyMarking.class);
                     List<FPeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), FPeakValleyMarking.class);
 
                     boolean found = false;
-                    for (String data : datas) {
-                        String[] split = data.split(",");
-                        String currentWavelength = formatBigDecimal(split[0], 1);
-                        if (Objects.equals(currentWavelength, wavelength)) {
-                            // 找到对应波长的数据
-                            sampleNumbers.add(formatBigDecimal(split[1], digit));
+                    if (datas != null) {
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            if (split.length >= 2) {
+                                String currentWavelength = formatBigDecimal(split[0], 1);
+                                if (Objects.equals(currentWavelength, wavelength)) {
+                                    // 找到对应波长的数据
+                                    sampleNumbers.add(formatBigDecimal(split[1], digit));
 
-                            // 检查是峰还是谷
-                            String peakValleyType = "";
-                            if (peaks != null) {
-                                for (FPeakValleyMarking peak : peaks) {
-                                    if (Objects.equals(formatBigDecimal(peak.getX(), 1), wavelength)) {
-                                        peakValleyType = "峰";
-                                        break;
+                                    // 检查是峰还是谷
+                                    String peakValleyType = "";
+                                    if (peaks != null) {
+                                        for (FPeakValleyMarking peak : peaks) {
+                                            if (Objects.equals(formatBigDecimal(peak.getX(), 1), wavelength)) {
+                                                peakValleyType = "峰";
+                                                break;
+                                            }
+                                        }
                                     }
+                                    if (valleys != null && peakValleyType.isEmpty()) {
+                                        for (FPeakValleyMarking valley : valleys) {
+                                            if (Objects.equals(formatBigDecimal(valley.getX(), 1), wavelength)) {
+                                                peakValleyType = "谷";
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    peakValleys.add(peakValleyType);
+                                    found = true;
+                                    break;
                                 }
                             }
-                            if (valleys != null && peakValleyType.isEmpty()) {
-                                for (FPeakValleyMarking valley : valleys) {
-                                    if (Objects.equals(formatBigDecimal(valley.getX(), 1), wavelength)) {
-                                        peakValleyType = "谷";
-                                        break;
-                                    }
-                                }
-                            }
-                            peakValleys.add(peakValleyType);
-                            found = true;
-                            break;
                         }
                     }
 
@@ -3150,7 +3268,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return arrayList;
         }
     }
-
 
     /**
      * 比较参数

@@ -37,7 +37,10 @@ device:
     machineIP: 169.254.110.67
     T600xmlPath: "file/T600.1.xml"
     T800xmlPath: "file/T800新.1.xml"
-
+# 鉴定校准Excel 文件保存路径配置
+excel:
+  save:
+    path: factory_inspection/excel/
 sys-manage-default:
   defaultId: "00000000"
   userId: "11111111"
