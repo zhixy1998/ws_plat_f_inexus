@@ -16,6 +16,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.CalArtifactsMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.CalStdCatsMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalStdCatsSaveDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.MaterialStatisticsDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
@@ -35,9 +36,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.DeleteStatusEnum.DELETED;
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.DeleteStatusEnum.NOT_DELETED;
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.StandardMaterialCategory.NON_STANDARD_EXTERNAL_REFERENCE;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.DELETED;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.NOT_DELETED;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.NON_STANDARD_EXTERNAL_REFERENCE;
 
 @Service
 public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdCats>
@@ -111,6 +112,12 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
             }
         }
         return Result.ok(Collections.singletonMap("calStdCats", map));
+    }
+
+    @Override
+    public Result<List<MaterialStatisticsDto>> getCalStdCatsStats() {
+        List<MaterialStatisticsDto> list = calStdCatsMapper.getCalStdCatsStats();
+        return Result.ok(list);
     }
 
 }

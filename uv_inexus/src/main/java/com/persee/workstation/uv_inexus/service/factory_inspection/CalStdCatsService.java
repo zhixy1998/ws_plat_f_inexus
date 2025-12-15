@@ -12,10 +12,12 @@ package com.persee.workstation.uv_inexus.service.factory_inspection;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalStdCatsSaveDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.MaterialStatisticsDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
 
+import java.util.List;
 import java.util.Map;
 
 
@@ -27,4 +29,6 @@ public interface CalStdCatsService extends IService<CalStdCats> {
     Result<Page<CalStdCats>> listCalStdCats(QueryCalStdCatsDto queryCalStdCatsDto);
 
     Result<Map> getCalStdCatsNameList();
+
+    Result<List<MaterialStatisticsDto>> getCalStdCatsStats();
 }

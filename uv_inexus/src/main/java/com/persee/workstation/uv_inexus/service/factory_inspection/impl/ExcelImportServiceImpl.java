@@ -31,8 +31,8 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.StandardMaterialCategory.MEASUREMENT;
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.StandardMaterialCategory.ZERO;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.MEASUREMENT;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.ZERO;
 
 @Slf4j
 @DS("factory_inspection")
@@ -91,7 +91,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             if (originalFilename != null && originalFilename.lastIndexOf(".") != -1) {
                 filenameWithoutExtension = originalFilename.substring(0, originalFilename.lastIndexOf("."));
             }
-            template.setTemplateName(filenameWithoutExtension + ".xlsx");
+            template.setTemplateName(filenameWithoutExtension);
             template.setStatus(1); // 启用状态
             // 构建列配置
             List<ExcelTemplate.ColumnConfig> columnConfigs = new ArrayList<>();
@@ -148,7 +148,6 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             // 批量保存标准物质种类
             List<CalStdCats> standardCategories = standardMaterials.stream()
                     .filter(Objects::nonNull)
-                    .filter(material -> !material.equals("空气"))
                     .map(material -> {
                         CalStdCats cat = new CalStdCats();
                         cat.setId(IdGeneratorUtil.generateIdWithPrefix("cal"));

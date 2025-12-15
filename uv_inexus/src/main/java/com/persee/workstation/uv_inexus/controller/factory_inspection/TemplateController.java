@@ -12,12 +12,16 @@
 
 package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateQeqDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateResponseDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateUpdateRequest;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelImportService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
+import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
+import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -40,8 +44,12 @@ public class TemplateController {
 
     @Autowired
     private ExcelImportService excelImportService;
+    @Autowired
+    private ExcelCellLocator excelCellLocator;
+    @Autowired
+    private ExcelCellEditor excelCellEditor;
 
-//    @Autowired
+    //    @Autowired
 //    private ExcelExportService excelExportService;
     //导入的是模板文件，目前这个只导入原始最全的模板
     @PostMapping("/import")
@@ -50,12 +58,14 @@ public class TemplateController {
             @RequestBody MultipartFile file) {
         return excelImportService.importExcel(file);
     }
+
     // 根据自定义检测模板code值来依据完整结果模板创建自定义检测结果模板
     @GetMapping("/buildResultTemplate")
     @ApiOperation("构建结果模板")
-    Result buildResultTemplate(String templateCode){
+    Result buildResultTemplate(String templateCode) {
         return templateService.buildResultTemplate(templateCode);
     }
+
     @GetMapping("/export")
     @ApiOperation("导出Excel文件")
     public Result exportExcel(
@@ -70,7 +80,8 @@ public class TemplateController {
             @RequestParam("templateCode") String templateCode) {
         return templateService.getStructuredData(templateCode);
     }
-//新增模板后弹出后以检测项 分组返回
+
+    //新增模板后弹出后以检测项 分组返回
     @GetMapping("/data/grouped")
     @ApiOperation("获取分组数据")
     public Result<Map<String, List<Map<String, Object>>>> getGroupedData(
@@ -86,14 +97,15 @@ public class TemplateController {
 //        return templateService.getHeaders(templateCode);
 //    }
 
-    @PostMapping("/data/custom/{templateCode}")
-    @ApiOperation("按自定义字段返回结构化数据")
-    public Result<List<Map<String, Object>>> getCustomStructuredData(
-            @PathVariable String templateCode,
-            @RequestBody List<String> selectedFields) {
-        return templateService.getCustomStructuredData(templateCode, selectedFields);
-    }
-//根据原有的内置模板进行新建模板
+//    @PostMapping("/data/custom/{templateCode}")
+//    @ApiOperation("按自定义字段返回结构化数据")
+//    public Result<List<Map<String, Object>>> getCustomStructuredData(
+//            @PathVariable String templateCode,
+//            @RequestBody List<String> selectedFields) {
+//        return templateService.getCustomStructuredData(templateCode, selectedFields);
+//    }
+
+    //根据原有的内置模板进行新建模板
     @PostMapping("/template/create")
     @ApiOperation("创建新结构化模板")
     public Result createNewTemplate(@RequestBody @Valid TemplateCreationRequest request) {
@@ -103,10 +115,10 @@ public class TemplateController {
                 return Result.fail("请求参数不能为空");
             }
             // 检查模板是否已存在
-            Result<List<String>> existingHeaders = templateService.getHeaders(request.getTemplateCode());
-            if (existingHeaders.getCode() == 200) {
-                return Result.fail("模板代码已存在");
-            }
+//            Result<List<String>> existingHeaders = templateService.getHeaders(request.getTemplateCode());
+//            if (existingHeaders.getCode() == 200) {
+//                return Result.fail("模板代码已存在");
+//            }
 
             // 调用服务创建模板
             Result result = templateService.createTemplate(request);
@@ -124,7 +136,8 @@ public class TemplateController {
             return Result.fail("创建模板失败: " + e.getMessage());
         }
     }
-//修改模板
+
+    //修改模板
     @PutMapping("/template/update")
     @ApiOperation("更新现有结构化模板")
     public Result updateTemplate(@RequestBody TemplateUpdateRequest request) {
@@ -162,7 +175,8 @@ public class TemplateController {
             return Result.fail("更新模板失败: " + e.getMessage());
         }
     }
-//从新的Excel中进行sheet页筛选，和指定sheet的行筛选
+
+    //从新的Excel中进行sheet页筛选，和指定sheet的行筛选
     @PostMapping("/edit-excel")
     public Result editExcel(
             @RequestParam("file") MultipartFile file,
@@ -180,10 +194,12 @@ public class TemplateController {
         );
         return result;
     }
+
     //获取模板列表
     @PostMapping("/template/list")
     @ApiOperation("获取模板列表")
-    public Result getTemplateList(@RequestBody TemplateQeqDto templateQeqDto) {
+    public Result<Page<TemplateResponseDto>> getTemplateList(@RequestBody TemplateQeqDto templateQeqDto) {
         return templateService.getTemplateList(templateQeqDto);
     }
+
 }

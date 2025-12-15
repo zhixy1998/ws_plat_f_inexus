@@ -1,10 +1,11 @@
 package com.persee.workstation.uv_inexus.util;
 
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.stereotype.Component;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,7 +47,7 @@ public class ExcelCellEditor {
             cell = row.createCell(cellNum);
         }
 
-        cell.setCellValue(value);
+        cell.setCellValue(Double.valueOf(value.trim()));
     }
 
     /**

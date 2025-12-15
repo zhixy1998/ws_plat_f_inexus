@@ -1,14 +1,17 @@
 package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TaskMgrQueryDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import io.swagger.annotations.Api;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /*
  * *
@@ -42,7 +45,50 @@ public class TaskManagementController {
      *展示当前任务对应的模板
      */
     @RequestMapping("/show-template")
-    public Result showTemplate(@RequestParam String id) {
+    public Result<TaskCheckItemDto> showTemplate(@RequestParam String id) {
         return taskManagementService.showTemplate(id);
+    }
+    /**
+     * 新建任务
+     */
+    @RequestMapping("/new-task")
+    public Result newTask(@RequestBody TaskAddDto task) {
+        return taskManagementService.newTask(task);
+    }
+    /**
+     * 根据当前任务新建任务，任务绑定的是模板的code值
+     */
+    @RequestMapping("/new-task-by-current")
+    public Result newTaskByCurrent(@RequestParam TaskCopyDto taskCreateDto) {
+        return taskManagementService.newTaskByCurrent(taskCreateDto);
+    }
+    /**
+     * 单项测量
+     */
+    @RequestMapping("/single-measure")
+    public Result singleMeasure(@RequestParam String id) {
+
+        return null;
+    }
+    /**
+     * 自动测量
+     */
+    @RequestMapping("/auto-measure")
+    public Result autoMeasure(@RequestParam String id) {
+        return null;
+    }
+    /**
+     * 任务统计
+     */
+    @RequestMapping("/task-count")
+    public Result<List<TaskStatsDto>> taskCount() {
+        return taskManagementService.taskCount();
+    }
+    /**
+     * 保存检测项配置
+     */
+    @RequestMapping("/save-check-item")
+    public Result saveCheckItem(@RequestBody TaskDetectionDTO dto) {
+        return taskManagementService.saveCheckItem(dto);
     }
 }

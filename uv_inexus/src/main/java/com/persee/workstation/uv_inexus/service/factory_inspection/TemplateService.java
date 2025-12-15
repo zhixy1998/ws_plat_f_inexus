@@ -1,12 +1,17 @@
 package com.persee.workstation.uv_inexus.service.factory_inspection;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateQeqDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateResponseDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateUpdateRequest;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 
+import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
+import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
@@ -23,7 +28,6 @@ public interface TemplateService extends IService<ExcelTemplate> {
     Result updateTemplate(TemplateUpdateRequest request);
     Result editExcel(MultipartFile file, Map<String, Set<String>> sheetRetainRows) throws IOException;
     Result buildResultTemplate(String templateCode);
-
 
     /**
      * 导出Excel文件
@@ -50,5 +54,13 @@ public interface TemplateService extends IService<ExcelTemplate> {
 
     Result<List<Map<String, Object>>> getCustomStructuredData(String templateCode, List<String> selectedFields);
 
-    Result getTemplateList(TemplateQeqDto templateQeqDto);
+    Result<Page<TemplateResponseDto>> getTemplateList(TemplateQeqDto templateQeqDto);
+    //写入多个，用,分开   写入一个或者多个cell全写入成一个值
+    void updateCellValues(Sheet sheet, ExcelCellLocator excelCellLocator,
+                          ExcelCellEditor excelCellEditor, String valueType,
+                          String projectName, String cellValue);
+    //修改单元格值一个
+    void updateCellValue(Sheet sheet, ExcelCellLocator excelCellLocator,
+                         ExcelCellEditor excelCellEditor, String valueType,
+                         String projectName, int positionIndex, String cellValue);
 }

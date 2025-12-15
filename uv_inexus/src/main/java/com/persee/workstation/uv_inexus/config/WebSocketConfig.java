@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.config;
 
 import com.persee.workstation.uv_inexus.websocket.*;
 import com.persee.workstation.uv_inexus.websocket.concise.*;
+import com.persee.workstation.uv_inexus.websocket.factory_inspection.ExcelWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -84,7 +85,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Autowired
     MeasureWebSocketHandler measureWebSocketHandler;
-
+    @Autowired
+    private ExcelWebSocketHandler excelWebSocketHandler;
     // 注册WebSocket处理器
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
@@ -131,8 +133,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*");
         registry.addHandler(timersWebSocket, "/ws/timing")
                 .setAllowedOrigins("*");
-
-
-
+        registry.addHandler(excelWebSocketHandler, "/ws/calibration/excel")
+                .setAllowedOrigins("*");
     }
 }

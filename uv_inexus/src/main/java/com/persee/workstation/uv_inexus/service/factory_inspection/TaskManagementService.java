@@ -1,9 +1,11 @@
 package com.persee.workstation.uv_inexus.service.factory_inspection;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TaskMgrQueryDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
+
+import java.util.List;
 
 /*
  * *
@@ -16,5 +18,13 @@ import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 public interface TaskManagementService extends IService<TaskManagement> {
     Result getList(TaskMgrQueryDto queryDto);
 
-    Result showTemplate(String id);
+    Result<TaskCheckItemDto> showTemplate(String id);
+
+    Result newTask(TaskAddDto task);
+
+    Result newTaskByCurrent(TaskCopyDto taskCreateDto);
+
+    Result<List<TaskStatsDto>> taskCount();
+
+    Result saveCheckItem(TaskDetectionDTO dto);
 }

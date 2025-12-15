@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalStdCatsSaveDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.MaterialStatisticsDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 import javax.validation.Valid;
+import java.util.List;
 import java.util.Map;
 
 
@@ -79,5 +81,14 @@ public class CalStdCatsController {
     @ApiOperation("获取标准物质名列表")
     public Result<Map> getCalStdCatsNameList() {
         return calStdService.getCalStdCatsNameList();
+    }
+    /**
+     * 标准物质种类统计
+     * @return
+     */
+    @GetMapping("/getCalStdCatsStats")
+    @ApiOperation("标准物质种类统计")
+    public Result<List<MaterialStatisticsDto>> getCalStdCatsStats() {
+        return calStdService.getCalStdCatsStats();
     }
 }

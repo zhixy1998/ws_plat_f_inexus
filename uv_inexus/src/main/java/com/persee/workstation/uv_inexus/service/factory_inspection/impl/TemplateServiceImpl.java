@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TemplateMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateQeqDto;
@@ -22,6 +23,7 @@ import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelDataAsse
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
 import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
+import com.persee.workstation.uv_inexus.util.ExcelUpdateNotifier;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.utils.IOUtils;
@@ -40,6 +42,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -58,6 +61,12 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     private ExcelCellLocator excelCellLocator;
     @Autowired
     private ExcelCellEditor excelCellEditor;
+    @Autowired
+    private ExcelUpdateNotifier excelUpdateNotifier;
+    @Autowired
+    private WorkbookCacheManager workbookCacheManager;
+    private final Map<String, Integer> operationCount = new ConcurrentHashMap<>();
+
 
     @Override
     public Result<List<String>> getHeaders(String templateCode) {
@@ -88,7 +97,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     @DS("factory_inspection")
     @Transactional(rollbackFor = Exception.class)
     public Result createTemplate(TemplateCreationRequest request) {
-        if (StringUtils.equals(request.getType(),"0")) {
+        if (StringUtils.equals(request.getType(), "0")) {
             log.info("创建模板开始");
             try {
                 String templateCode = "TEMP_" + System.currentTimeMillis();
@@ -112,6 +121,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                         .flatMap(List::stream)
                         .collect(Collectors.toList());
                 int rowIndex = 1; // 从第1行开始计数（跳过表头）
+                ArrayList<ExcelDataAsset> list = new ArrayList<>();
                 for (Map<String, Object> dataMap : selectedRows) {
                     ExcelDataAsset asset = new ExcelDataAsset();
                     asset.setId(IdGeneratorUtil.generateIdWithPrefix("asset"));
@@ -119,8 +129,10 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     asset.setBatchNo(String.valueOf(rowIndex++));
                     asset.setStructuredData(JSON.toJSONString(dataMap));
                     asset.setImportStatus("SUCCESS");
-                    excelDataAssetService.save(asset);
+                    list.add(asset);
                 }
+                excelDataAssetService.saveBatch(list);
+
                 if (saved) {
                     return Result.ok("模板创建成功");
                 } else {
@@ -130,33 +142,63 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 return Result.fail("模板创建失败: " + e.getMessage());
             }
         }
-        if (StringUtils.equals(request.getType(),"0")) {
-            log.info("修改模板开始");
+        if (StringUtils.equals(request.getType(), "1")) {
+            log.info("编辑模板开始");
             try {
-                String templateCode = request.getTemplateCode();
-                String remark = request.getRemark();
-                String updateBy = request.getUpdateBy();
-                ExcelTemplate template = new ExcelTemplate();
-                template.setUpdated(LocalDateTime.now());
-                template.setRemark(remark);
-                template.setUpdateBy(updateBy);
-                template.setId(request.getId());
-                template.setCategory("1");
-                template.setTemplateName(request.getTemplateName());
-                template.setTemplateCode(templateCode);
-                boolean b = this.updateById(template);
-                return null;
+                // 参数校验
+                if (StringUtils.isBlank(request.getId())) {
+                    return Result.fail("模板ID不能为空");
+                }
 
-//                if () {
-//                    return Result.ok("模板修改成功");
-//                } else {
-//                    return Result.fail("模板修改失败");
-//                }
+                // 查找现有模板
+                ExcelTemplate existingTemplate = this.getById(request.getId());
+                if (existingTemplate == null) {
+                    return Result.fail("未找到要编辑的模板");
+                }
+
+                // 更新模板信息
+                ExcelTemplate template = new ExcelTemplate();
+                template.setId(request.getId());
+                template.setTemplateName(request.getTemplateName());
+                template.setRemark(request.getRemark());
+                template.setUpdateBy(request.getUpdateBy());
+                template.setUpdated(LocalDateTime.now());
+                template.setCategory("1"); // 非内置模板
+
+                boolean updated = this.updateById(template);
+
+                if (updated) {
+                    // 删除原有的数据资产
+                    LambdaQueryWrapper<ExcelDataAsset> deleteWrapper = new LambdaQueryWrapper<>();
+                    deleteWrapper.eq(ExcelDataAsset::getTemplateCode, existingTemplate.getTemplateCode());
+                    excelDataAssetService.remove(deleteWrapper);
+
+                    // 保存新的数据资产
+                    List<Map<String, Object>> selectedRows = request.getSelectedRows().values().stream()
+                            .flatMap(List::stream)
+                            .collect(Collectors.toList());
+                    int rowIndex = 1;
+                    ArrayList<ExcelDataAsset> list = new ArrayList<>();
+                    for (Map<String, Object> dataMap : selectedRows) {
+                        ExcelDataAsset asset = new ExcelDataAsset();
+                        asset.setId(IdGeneratorUtil.generateIdWithPrefix("asset"));
+                        asset.setTemplateCode(existingTemplate.getTemplateCode()); // 使用原模板编码
+                        asset.setBatchNo(String.valueOf(rowIndex++));
+                        asset.setStructuredData(JSON.toJSONString(dataMap));
+                        asset.setImportStatus("SUCCESS");
+                        list.add(asset);
+                    }
+                    excelDataAssetService.saveBatch(list);
+
+                    return Result.ok("模板编辑成功");
+                } else {
+                    return Result.fail("模板编辑失败");
+                }
             } catch (Exception e) {
-                return Result.fail("模板修改失败: " + e.getMessage());
+                return Result.fail("模板编辑失败: " + e.getMessage());
             }
         }
-        return null;
+        return Result.fail("未知错误");
     }
 
     @Override
@@ -266,7 +308,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                         String featureValue = String.valueOf(featureValueObj);
                         updateCellValues(sheet, excelCellLocator, excelCellEditor, "特征值", projectName, featureValue);
                     }
-                    updateCellValues(sheet, excelCellLocator, excelCellEditor, "测量值", projectName, "123");
+
+//                    updateCellValues(sheet, excelCellLocator, excelCellEditor, "测量值", projectName, "123");
                     // 处理标准值
                     Object standardValueObj = temp.get("标准值");
                     if (standardValueObj != null) {
@@ -300,21 +343,47 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         return Result.fail("文件处理失败");
     }
 
-    // 提取的公共方法
-    private void updateCellValues(Sheet sheet, ExcelCellLocator excelCellLocator,
-                                  ExcelCellEditor excelCellEditor, String valueType,
-                                  String projectName, String cellValue) {
+    /**
+     * 编辑Excel文件
+     * 入参的话
+     * valueType 是表头
+     * projectName  是项目名称
+     * cellValue 是这个单元格你要改成啥名字
+     * 入参
+     *
+     * @return
+     * @throws IOException
+     */
+    public void updateCellValues(Sheet sheet, ExcelCellLocator excelCellLocator,
+                                 ExcelCellEditor excelCellEditor, String valueType,
+                                 String projectName, String cellValue) {
         List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, valueType, projectName);
         if (cellValue.contains(",")) {
             String[] values = cellValue.split(",");
             for (int i = 0; i < positions.size() && i < values.length; i++) {
                 ExcelCellLocator.CellPosition position = positions.get(i);
+                if (StringUtils.isBlank(values[i])) {
+                    continue;
+                }
                 excelCellEditor.setCellValue(sheet, position.getRow(), position.getCol(), values[i].trim());
             }
         } else {
             for (ExcelCellLocator.CellPosition position : positions) {
                 excelCellEditor.setCellValue(sheet, position.getRow(), position.getCol(), cellValue);
             }
+        }
+    }
+
+    // 设置单个值到指定位置0,1,2
+    public void updateCellValue(Sheet sheet, ExcelCellLocator excelCellLocator,
+                                ExcelCellEditor excelCellEditor, String valueType,
+                                String projectName, int positionIndex, String cellValue) {
+        List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(sheet, valueType, projectName);
+
+        if (positionIndex >= 0 && positionIndex < positions.size() &&
+                cellValue != null && !cellValue.isEmpty()) {
+            ExcelCellLocator.CellPosition position = positions.get(positionIndex);
+            excelCellEditor.setCellValue(sheet, position.getRow(), position.getCol(), cellValue);
         }
     }
 
@@ -404,11 +473,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     ));
             LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
-            ExcelTemplate template = getOne(queryWrapper);
+            ExcelTemplate template = this.getOne(queryWrapper);
             // 如果是子模板，则获取父模板   Category=1是子模板
             if (StringUtils.equals(template.getCategory(), "1")) {
                 ExcelTemplate excelTemplate = getById(template.getParentId());
-                editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
+                this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
             }
             return Result.ok();
         } catch (IOException e) {
@@ -689,7 +758,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     }
 
     @Override
-    public Result getTemplateList(TemplateQeqDto templateQeqDto) {
+    public Result<Page<TemplateResponseDto>> getTemplateList(TemplateQeqDto templateQeqDto) {
         Page<ExcelTemplate> page = new Page<>(templateQeqDto.getPageNum(), templateQeqDto.getPageSize());
         LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery());
@@ -837,6 +906,29 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         } catch (Exception e) {
             log.error("获取分组数据失败", e);
             return Result.fail("获取分组数据失败: " + e.getMessage());
+        }
+    }
+
+
+    private boolean shouldSaveToFile(String fileName) {
+        int count = operationCount.getOrDefault(fileName, 0) + 1;
+        operationCount.put(fileName, count);
+        return count % 5 == 0; // 每5次操作保存一次
+    }
+
+    private void calculateFormulas(Workbook workbook) {
+        try {
+            // 创建公式评估器
+            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+
+            // 一次性计算所有公式（处理依赖关系）
+            evaluator.evaluateAll();
+
+            // 设置强制重新计算标志
+            workbook.setForceFormulaRecalculation(true);
+
+        } catch (Exception e) {
+            log.error("Formula calculation error", e);
         }
     }
 }

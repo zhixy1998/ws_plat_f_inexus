@@ -22,8 +22,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.DeleteStatusEnum.DELETED;
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.DeleteStatusEnum.NOT_DELETED;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.DELETED;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.NOT_DELETED;
 
 @Service
 public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, CalArtifacts>
