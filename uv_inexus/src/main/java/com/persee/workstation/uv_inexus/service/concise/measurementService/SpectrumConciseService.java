@@ -135,4 +135,7 @@ public interface SpectrumConciseService {
 
     // 上传图片接口
     Result uploadImage(SpectrumImageUpload upload);
+
+    // 计算数据接口
+    Result calculateData(String taskId, String sampleId);
 }

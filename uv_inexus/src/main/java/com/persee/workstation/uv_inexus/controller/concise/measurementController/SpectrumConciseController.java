@@ -348,4 +348,11 @@ public class SpectrumConciseController {
         // 关键修正：返回Service层的具体错误信息，而非空字符串
         return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }
+
+
+    @GetMapping("calculateData")
+    @ApiOperation("计算数据接口")
+    public Result calculateData(@RequestParam String taskId, @RequestParam String sampleId) {
+        return spectrumConciseService.calculateData(taskId, sampleId);
+    }
 }

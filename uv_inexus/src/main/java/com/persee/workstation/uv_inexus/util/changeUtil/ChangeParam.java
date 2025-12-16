@@ -20,6 +20,9 @@ public class ChangeParam {
     // 波长
     private String wl;
 
+    // 步数
+    private String step;
+
     // R0
     private String r;
 
