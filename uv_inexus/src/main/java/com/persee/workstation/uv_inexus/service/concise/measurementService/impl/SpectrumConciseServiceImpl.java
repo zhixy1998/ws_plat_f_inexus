@@ -50,6 +50,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
@@ -2134,6 +2135,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Command com2 = new Command();
         com2.setCmdId(SetParamEnum.SetStartWl.getComId());
         double parsed = Double.parseDouble(scanParamInfo.getStartWaveLength());
+        if (linearSegment!=null&& !linearSegment.isEmpty()){
+            double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
+            parsed=parsed+waveLengthInterval;
+        }
         Double v = formulaUtil.calculateStep(parsed, deviceSerialNumber);
         com2.setParams(new Object[]{v});
         commands.add(com2);
@@ -2142,10 +2147,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         double parsed2 = Double.parseDouble(scanParamInfo.getEndWaveLength());
         if (linearSegment!=null&& !linearSegment.isEmpty()){
-            double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
-            parsed2=parsed2-waveLengthInterval;
-        }
-        if (true){
             double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
             parsed2=parsed2-waveLengthInterval;
         }
@@ -3802,6 +3803,48 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             boolean update = fMeasureTaskAttachmentService.updateById(byId);
             return Result.ok(update);
         }
+
+    }
+
+    @Override
+    public Result calculateData(String taskId, String sampleId) {
+        // 校验参数
+        if (!StringUtils.hasText(taskId)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+        }
+        if (!StringUtils.hasText(sampleId)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+        }
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment("31-U1704-01-0048");
+        // 根据任务id查询任务
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        // 将任务中的校零参数取出
+        List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+        // 根据任务id+样品id查询测量数据
+        FMeasureData data = fMeasureDataService.getOne(new QueryWrapper<FMeasureData>()
+                .eq("task_id", taskId)
+                .eq("sample_key", sampleId));
+        // 将测量数据中的原始数据转换为List<ChangeParam>
+        List<ChangeParam> originData = JSON.parseArray(data.getGaugePoint(), ChangeParam.class);
+        List<Map<String,String>> result = new ArrayList<>();
+        while (params.size() > 0){
+            Map<String, String> map = new HashMap<>();
+            String s = DataCountUtil.countTPercent(params.get(0), originData.get(0), 1.0);
+            String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
+            double parsed = Double.parseDouble(params.get(0).getWl());
+            Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+            double parsed1 = Double.parseDouble(originData.get(0).getWl());
+            Double v1 = formulaUtil.calculateWavelength(parsed1, linearSegment);
+            map.put("BaseLineStep", params.get(0).getStep());
+            map.put("MeasureStep", originData.get(0).getStep());
+            map.put("Abs", yy);
+            map.put("MeasureWl", String.valueOf(v1));
+            map.put("BaseLineWl", String.valueOf(v));
+            result.add(map);
+            params.remove(0);
+            originData.remove(0);
+        }
+        return Result.ok(result);
 
     }
 
