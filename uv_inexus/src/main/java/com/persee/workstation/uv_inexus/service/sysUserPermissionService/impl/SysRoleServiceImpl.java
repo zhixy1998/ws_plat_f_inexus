@@ -10,7 +10,13 @@
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -18,6 +24,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -26,19 +33,23 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupTreeDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysPermissionPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysRolePO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysGroupService;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysRoleService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
@@ -53,6 +64,12 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
     
     @Autowired
     private SysUserMapper sysUserMapper;
+    
+    @Autowired
+    private SysPermissionMapper sysPermissionMapper;
+
+    @Autowired
+    private SysGroupService sysGroupService;
     
     // 分页查询：返回封装后的 Result<PageView>
     @Override
@@ -133,6 +150,21 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             //请选择需要删除的角色
             return Result.fail(YamlMessageSource.getMessageStatic("00603005"));
         }
+
+        // 1. 查询这些角色下的所有组ID
+        LambdaQueryWrapper<SysGroupPO> groupQueryWrapper = new LambdaQueryWrapper<>();
+        groupQueryWrapper.in(SysGroupPO::getRoleId, ids);
+        List<SysGroupPO> groups = sysGroupMapper.selectList(groupQueryWrapper);
+
+        if (groups != null && !groups.isEmpty()) {
+            List<String> groupIds = groups.stream()
+                    .map(SysGroupPO::getId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 2. 批量删除这些组（SysGroupService中已实现级联删除组下用户）
+            sysGroupService.deleteBatch(groupIds);
+        }
         
         baseMapper.deleteBatchIds(ids);
         //角色删除成功
@@ -158,8 +190,23 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
             //角色不存在，删除失败
             return Result.fail(YamlMessageSource.getMessageStatic("00603007"));
         }
+
+        // 2. 查询该角色下的所有组ID
+        LambdaQueryWrapper<SysGroupPO> groupQueryWrapper = new LambdaQueryWrapper<>();
+        groupQueryWrapper.eq(SysGroupPO::getRoleId, id);
+        List<SysGroupPO> groups = sysGroupMapper.selectList(groupQueryWrapper);
+
+        if (groups != null && !groups.isEmpty()) {
+            List<String> groupIds = groups.stream()
+                    .map(SysGroupPO::getId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 3. 批量删除这些组（级联删除组下用户）
+            sysGroupService.deleteBatch(groupIds);
+        }
         
-        // 2. 执行删除
+        // 4. 执行删除
         baseMapper.deleteById(id);
         //角色删除成功
         return Result.ok(YamlMessageSource.getMessageStatic("00603006"));  // 修正描述错误
@@ -296,6 +343,102 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
         } catch (Exception e) {
             //"查询失败：" + e.getMessage()
             return Result.fail(YamlMessageSource.getMessageStatic("0060300B",e.getMessage()));
+        }
+    }
+
+    @Override
+    public Result<List<PermissionTreeDTO>> getAllPermissionTree(List<Integer> permTypeList, String roleId) {
+        try {
+            SysRolePO rolePO = baseMapper.selectById(roleId);
+            if (rolePO == null) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00603003"));
+            }
+
+            String permIdsStr = rolePO.getPermIds();
+            Set<String> rolePermIds = new HashSet<>();
+            if (permIdsStr != null && !permIdsStr.trim().isEmpty()) {
+                rolePermIds = Arrays.stream(permIdsStr.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toSet());
+            }
+
+            QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
+            queryWrapper.orderByAsc("sort");
+            if (permTypeList != null && !permTypeList.isEmpty()) {
+                queryWrapper.in("perm_type", permTypeList);
+            }
+            List<SysPermissionPO> permissions = sysPermissionMapper.selectList(queryWrapper);
+            if (permissions == null || permissions.isEmpty()) {
+                return Result.ok(new ArrayList<>());
+            }
+            List<PermissionTreeDTO> tree = buildPermissionTree(permissions, rolePermIds);
+            System.out.println("Permission Tree: " + JSON.toJSONString(tree));
+            return Result.ok(tree);
+        } catch (Exception e) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00605005",e.getMessage()));
+        }
+    }
+
+    private List<PermissionTreeDTO> buildPermissionTree(List<SysPermissionPO> permissions, Set<String> rolePermIds) {
+        List<PermissionTreeDTO> dtoList = permissions.stream().map(po -> {
+            PermissionTreeDTO dto = new PermissionTreeDTO();
+            BeanUtils.copyProperties(po, dto);
+            dto.setIsHave(rolePermIds.contains(po.getId()));
+            dto.setChildren(new ArrayList<>());
+            return dto;
+        }).collect(Collectors.toList());
+
+        Map<String, PermissionTreeDTO> dtoMap = dtoList.stream()
+                .collect(Collectors.toMap(PermissionTreeDTO::getId, dto -> dto, (existing, replacement) -> existing));
+
+        List<PermissionTreeDTO> rootNodes = new ArrayList<>();
+        for (PermissionTreeDTO currentDto : dtoList) {
+            Integer parentId = currentDto.getParentId();
+            String parentIdStr = parentId != null ? parentId.toString() : "0";
+            if ("0".equals(parentIdStr) || !dtoMap.containsKey(parentIdStr)) {
+                rootNodes.add(currentDto);
+            } else {
+                PermissionTreeDTO parentDto = dtoMap.get(parentIdStr);
+                if (parentDto.getChildren() == null) {
+                    parentDto.setChildren(new ArrayList<>());
+                }
+                parentDto.getChildren().add(currentDto);
+            }
+        }
+
+        for (PermissionTreeDTO root : rootNodes) {
+            calculateParentIsHave(root);
+        }
+
+        sortPermissionTree(rootNodes);
+        return rootNodes;
+    }
+
+    private boolean calculateParentIsHave(PermissionTreeDTO node) {
+        if (CollectionUtils.isEmpty(node.getChildren())) {
+            return node.getIsHave();
+        }
+        boolean allChildrenHave = true;
+        for (PermissionTreeDTO child : node.getChildren()) {
+            if (!calculateParentIsHave(child)) {
+                allChildrenHave = false;
+            }
+        }
+        node.setIsHave(allChildrenHave);
+        return allChildrenHave;
+    }
+
+    private void sortPermissionTree(List<PermissionTreeDTO> nodes) {
+        if (CollectionUtils.isEmpty(nodes)) {
+            return;
+        }
+        nodes.sort(Comparator.comparingInt(node -> {
+            Integer sort = node.getSort();
+            return sort != null ? sort : 0;
+        }));
+        for (PermissionTreeDTO node : nodes) {
+            sortPermissionTree(node.getChildren());
         }
     }
 

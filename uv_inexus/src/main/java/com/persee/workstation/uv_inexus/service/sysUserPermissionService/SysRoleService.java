@@ -13,6 +13,7 @@ import java.util.List;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
@@ -70,4 +71,6 @@ public interface SysRoleService extends IService<SysRolePO> {
      * @return 操作结果
      */
     Result<String> updateRolePermissions(String roleId, List<String> permIds);
+
+    Result<List<PermissionTreeDTO>> getAllPermissionTree(List<Integer> permTypeList, String roleId);
 }

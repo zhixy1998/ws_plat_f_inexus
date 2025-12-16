@@ -12,6 +12,8 @@ package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
@@ -118,5 +121,22 @@ public class RoleController {
                 ? Arrays.asList(permIds.split(",")) 
                 : new ArrayList<>();
         return sysRoleService.updateRolePermissions(roleId, permIdList);
+    }
+
+    @PostMapping("/permissions/tree")
+    @ApiOperation("查询所有权限树形结构")
+    public Result<List<PermissionTreeDTO>> getAllPermissionTree(
+            @ApiParam(value = "权限类型，多个用逗号分隔，如0,1,2，null表示所有类型")
+            @RequestParam(required = false) String permType,
+            @ApiParam(value = "角色ID", required = true)
+            @RequestParam String roleId) {
+        List<Integer> permTypeList = null;
+        if (permType != null && !permType.isEmpty()) {
+            permTypeList = Arrays.stream(permType.split(","))
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList());
+        }
+        System.out.println("permTypeList: " + permTypeList + ", roleId: " + roleId);
+        return sysRoleService.getAllPermissionTree(permTypeList, roleId);
     }
 }

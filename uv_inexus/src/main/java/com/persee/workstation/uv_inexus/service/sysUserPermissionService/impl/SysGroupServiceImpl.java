@@ -33,6 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 
 @Service
 public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO> implements SysGroupService {
@@ -153,6 +157,21 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
             //请选择需要删除的小组
             return Result.fail(YamlMessageSource.getMessageStatic("00602007"));
         }
+
+        // 1. 查询这些组下的所有用户ID
+        LambdaQueryWrapper<SysUserGroupPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(SysUserGroupPO::getGroupId, ids);
+        List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(queryWrapper);
+
+        if (userGroupList != null && !userGroupList.isEmpty()) {
+            List<String> userIds = userGroupList.stream()
+                    .map(SysUserGroupPO::getUserId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 2. 批量删除这些用户
+            sysUserService.deleteBatch(userIds);
+        }
         
         baseMapper.deleteBatchIds(ids);
         //小组删除成功
@@ -177,6 +196,21 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         SysGroupPO groupPO = baseMapper.selectById(id);
         if (groupPO == null) {
             return Result.fail(YamlMessageSource.getMessageStatic("00602009"));
+        }
+
+        // 1. 查询该组下的所有用户ID
+        LambdaQueryWrapper<SysUserGroupPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUserGroupPO::getGroupId, id);
+        List<SysUserGroupPO> userGroupList = sysUserGroupMapper.selectList(queryWrapper);
+
+        if (userGroupList != null && !userGroupList.isEmpty()) {
+            List<String> userIds = userGroupList.stream()
+                    .map(SysUserGroupPO::getUserId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 2. 批量删除这些用户
+            sysUserService.deleteBatch(userIds);
         }
         
         baseMapper.deleteById(id);
