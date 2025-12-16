@@ -410,7 +410,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                 }
                 ChangeParam zeroData = zero.getData();
                 Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
-                DetectionConstants.zeroResult.put(String.valueOf(v), zero.getData());
+                DetectionConstants.zeroResult.put(param.getStartWaveLength(), zero.getData());
                 log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
             }
 
@@ -642,6 +642,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
                         ChangeParam processedParam = new ChangeParam();
                         processedParam.setWl(constrainedWavelength.toString());
+                        processedParam.setStep(changeParam.getWl());
                         processedParam.setS(changeParam.getS());
                         processedParam.setR(changeParam.getR());
                         processedParam.setD(changeParam.getD());

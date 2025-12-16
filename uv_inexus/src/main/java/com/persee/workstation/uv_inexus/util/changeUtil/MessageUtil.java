@@ -831,6 +831,7 @@ public class MessageUtil {
 
                 // 检查是否完整：如果有值 wl, s, d, r 都已经填充，认为对象已完成
                 if (changeParam != null && changeParam.getWl() != null && changeParam.getS() != null && changeParam.getD() != null && changeParam.getR() != null) {
+                    changeParam.setStep(changeParam.getWl());
                     Constants.measurd_data.add(changeParam);  // 完成的对象添加到公共列表
                     System.out.println("已完成一个完整的对象：" + changeParam);
                     Constants.instrumentData.add(changeParam.toString());
@@ -892,6 +893,7 @@ public class MessageUtil {
 
                 // 检查是否完整：如果有值 wl, s, d, r 都已经填充，认为对象已完成
                 if (changeParam != null && changeParam.getWl() != null && changeParam.getS() != null && changeParam.getD() != null && changeParam.getR() != null) {
+                    changeParam.setStep(changeParam.getWl());
                     Constants.measurd_data.add(changeParam);  // 完成的对象添加到公共列表
                     System.out.println("已完成一个完整的对象：" + changeParam);
                     Constants.instrumentData.add(changeParam.toString());
