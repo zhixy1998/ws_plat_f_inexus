@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
@@ -124,12 +125,11 @@ public class RoleController {
     }
 
     @PostMapping("/permissions/tree")
-    @ApiOperation("查询所有权限树形结构")
+    @ApiOperation("查询对应角色权限树形结构")
     public Result<List<PermissionTreeDTO>> getAllPermissionTree(
-            @ApiParam(value = "权限类型，多个用逗号分隔，如0,1,2，null表示所有类型")
-            @RequestParam(required = false) String permType,
-            @ApiParam(value = "角色ID", required = true)
-            @RequestParam String roleId) {
+            @RequestBody PermissionTreeQueryDTO queryDTO) {
+        String permType = queryDTO.getPermType();
+        String roleId = queryDTO.getRoleId();
         List<Integer> permTypeList = null;
         if (permType != null && !permType.isEmpty()) {
             permTypeList = Arrays.stream(permType.split(","))
