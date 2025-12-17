@@ -126,7 +126,7 @@ public class RoleController {
 
     @PostMapping("/permissions/tree")
     @ApiOperation("查询对应角色权限树形结构")
-    public Result<List<PermissionTreeDTO>> getAllPermissionTree(
+    public Result<List<PermissionTreeDTO>> getPermissionTree(
             @RequestBody PermissionTreeQueryDTO queryDTO) {
         String permType = queryDTO.getPermType();
         String roleId = queryDTO.getRoleId();
@@ -137,6 +137,6 @@ public class RoleController {
                     .collect(Collectors.toList());
         }
         System.out.println("permTypeList: " + permTypeList + ", roleId: " + roleId);
-        return sysRoleService.getAllPermissionTree(permTypeList, roleId);
+        return sysRoleService.getPermissionTree(permTypeList, roleId);
     }
 }

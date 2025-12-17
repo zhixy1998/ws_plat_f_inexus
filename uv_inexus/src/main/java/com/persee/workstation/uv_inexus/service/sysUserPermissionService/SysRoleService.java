@@ -72,5 +72,5 @@ public interface SysRoleService extends IService<SysRolePO> {
      */
     Result<String> updateRolePermissions(String roleId, List<String> permIds);
 
-    Result<List<PermissionTreeDTO>> getAllPermissionTree(List<Integer> permTypeList, String roleId);
+    Result<List<PermissionTreeDTO>> getPermissionTree(List<Integer> permTypeList, String roleId);
 }

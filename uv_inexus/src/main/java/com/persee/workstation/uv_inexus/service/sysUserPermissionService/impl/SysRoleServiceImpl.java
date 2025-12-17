@@ -347,7 +347,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
     }
 
     @Override
-    public Result<List<PermissionTreeDTO>> getAllPermissionTree(List<Integer> permTypeList, String roleId) {
+    public Result<List<PermissionTreeDTO>> getPermissionTree(List<Integer> permTypeList, String roleId) {
         try {
             SysRolePO rolePO = baseMapper.selectById(roleId);
             if (rolePO == null) {
