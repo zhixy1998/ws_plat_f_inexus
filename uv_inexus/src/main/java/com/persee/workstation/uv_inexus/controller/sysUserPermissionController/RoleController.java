@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +31,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RolePermissionUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -115,13 +115,8 @@ public class RoleController {
 
     @PutMapping("/updatePermissions")
     @ApiOperation("修改角色权限绑定")
-    public Result<String> updateRolePermissions(
-            @ApiParam(value = "角色ID", required = true) @RequestParam String roleId,
-            @ApiParam(value = "权限ID集合（逗号分隔）", required = true) @RequestParam String permIds) {
-        List<String> permIdList = permIds.split(",").length > 0 
-                ? Arrays.asList(permIds.split(",")) 
-                : new ArrayList<>();
-        return sysRoleService.updateRolePermissions(roleId, permIdList);
+    public Result<String> updateRolePermissions(@RequestBody @Valid RolePermissionUpdateDTO dto) {
+        return sysRoleService.updateRolePermissions(dto.getRoleId(), dto.getPermIds());
     }
 
     @PostMapping("/permissions/tree")
