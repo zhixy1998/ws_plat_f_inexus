@@ -10,9 +10,13 @@
 package com.persee.workstation.uv_inexus.service.factory_inspection.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.CalArtifactsMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalArtifactsSaveDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.StandardSubstanceDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
 import com.persee.workstation.uv_inexus.service.factory_inspection.CalArtifactsService;
@@ -52,4 +56,22 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
                 .eq(CalArtifacts::getId, id);
         return update(wrapper1) ;
     }
+
+    // Service层代码
+    @Override
+    public Result<IPage<StandardSubstanceDto>> listCalArtifacts(QueryCalStdCatsDto dto) {
+        try {
+
+
+        // MyBatis-Plus会自动将pageNum和pageSize转换为offset和size
+        Page<StandardSubstanceDto> page = new Page<>(dto.getPageNum(), dto.getPageSize());
+        IPage<StandardSubstanceDto> result = calArtifactsMapper.selectCustomDtoPage(page, dto);
+        return Result.ok(result);
+        }catch (Exception e){
+            System.out.println(e);
+        }
+        return null;
+    }
+
+
 }

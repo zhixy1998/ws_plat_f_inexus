@@ -63,12 +63,11 @@ public class TaskManagementController {
         return taskManagementService.newTaskByCurrent(taskCreateDto);
     }
     /**
-     * 单项测量
+     * 单项测量,传入的是检测项的id
      */
-    @RequestMapping("/single-measure")
-    public Result singleMeasure(@RequestParam String id) {
-
-        return null;
+    @RequestMapping("/check-task-usage")
+    public Result<Boolean> checkTaskUsage(@RequestBody TaskUsageDto dto) {
+        return taskManagementService.checkTaskUsage(dto);
     }
     /**
      * 自动测量

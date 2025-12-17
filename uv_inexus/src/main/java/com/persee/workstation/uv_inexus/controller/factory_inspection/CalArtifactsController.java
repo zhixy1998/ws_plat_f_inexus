@@ -9,13 +9,19 @@
 
 package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalArtifactsSaveDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.StandardSubstanceDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.factory_inspection.CalArtifactsService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
 
@@ -41,6 +47,10 @@ public class CalArtifactsController {
         return calArtifactsService.addCalArtifacts(calArtifacts);
     }
 
-
+    @ApiOperation("标准物质列表")
+    @PostMapping("/list")
+    public Result<IPage<StandardSubstanceDto>> listCalArtifacts(@RequestBody QueryCalStdCatsDto dto) {
+        return calArtifactsService.listCalArtifacts(dto);
+    }
 
 }

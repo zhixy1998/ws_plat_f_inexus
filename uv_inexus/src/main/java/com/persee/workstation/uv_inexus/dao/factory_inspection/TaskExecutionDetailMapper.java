@@ -4,6 +4,9 @@ import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /*
  * *
@@ -16,4 +19,10 @@ import org.apache.ibatis.annotations.Mapper;
 @DS("factory_inspection")
 @Mapper
 public interface TaskExecutionDetailMapper extends BaseMapper<TaskExecutionDetail> {
+    @Select("(SELECT * FROM task_execution_detail WHERE task_id = #{taskId}) " +
+            "UNION ALL " +
+            "(SELECT * FROM task_execution_detail WHERE task_id IS NULL AND item_id NOT IN ( " +
+            "    SELECT item_id FROM task_execution_detail WHERE task_id = #{taskId} " +
+            "))")
+    List<TaskExecutionDetail> initTaskCal(String taskId);
 }

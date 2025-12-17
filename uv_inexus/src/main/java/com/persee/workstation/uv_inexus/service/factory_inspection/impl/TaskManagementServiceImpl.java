@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.service.factory_inspection.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
@@ -49,6 +50,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     private CalArtifactsService calArtifactsService;
     @Autowired
     private TaskExecutionDetailService taskExecutionDetailService;
+    @Autowired
+    private CalStdCatsService catsService;
+    @Autowired
+    private WorkbookCacheManager workbookCacheManager;
 
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
@@ -84,10 +89,15 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                     dto.setTemplateName(excelTemplate.getTemplateName());
                 }
                 // 查询任务关联的检测项和标准物质
-                LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(TaskExecutionDetail::getTaskId, id);
-                List<TaskExecutionDetail> list = taskExecutionDetailMapper.selectList(wrapper);
-
+//                LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
+//                wrapper.eq(TaskExecutionDetail::getTaskId, id);
+//                List<TaskExecutionDetail> list = taskExecutionDetailMapper.selectList(wrapper);
+//                if (CollectionUtils.isEmpty(list)){
+//                    log.info("默认任务，还没有选择标准物质！！！");
+//                    log.info("赋予默认标准物质，特征值和标准值使用模板默认的");
+//
+//                }
+                List<TaskExecutionDetail> list = taskExecutionDetailMapper.initTaskCal(dto.getTaskId());
                 // 构建检测项列表
                 List<TaskCheckItemDto.CheckItem> checkItems = this.buildCheckItems(list, excelTemplate);
                 dto.setCheckItems(checkItems);
@@ -193,7 +203,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                         TaskExecutionDetail zeroDetail = new TaskExecutionDetail();
                         zeroDetail.setId(IdGeneratorUtil.generateId());
                         zeroDetail.setTaskId(dto.getTaskId());
-                        zeroDetail.setDetectItemId(item.getId());
+                        zeroDetail.setItemId(item.getId());
                         zeroDetail.setStandardId(item.getZeroId());
                         zeroDetail.setStandardType(ZERO.getCode()); // 校零标准类型
                         detailList.add(zeroDetail);
@@ -204,7 +214,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                         TaskExecutionDetail measurementDetail = new TaskExecutionDetail();
                         measurementDetail.setId(IdGeneratorUtil.generateId());
                         measurementDetail.setTaskId(dto.getTaskId());
-                        measurementDetail.setDetectItemId(item.getId());
+                        measurementDetail.setItemId(item.getId());
                         measurementDetail.setStandardId(item.getMeasureId());
                         measurementDetail.setStandardType(MEASUREMENT.getCode()); // 测量标准类型
                         detailList.add(measurementDetail);
@@ -222,6 +232,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             log.error("保存检测项失败", e);
             throw new RuntimeException("保存检测项失败", e);
         }
+    }
+
+    @Override
+    public Result<Boolean> checkTaskUsage(TaskUsageDto dto) {
+        return Result.ok(!workbookCacheManager.isTaskBeingEditedByOthers(dto.getTaskId(), dto.getUpdateBy()));
     }
 
     //    private List<TaskCheckItemDto.CheckItem> buildCheckItems(List<TaskExecutionDetail> details, ExcelTemplate template) {
@@ -405,15 +420,22 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                                                String standardType, boolean isZeroStandard) {
         List<TaskExecutionDetail> filteredDetails = details.stream()
                 .filter(detail -> detail.getStandardType().equals(standardType))
-                .filter(detail -> detail.getDetectItemId().equals(item.getItemId()))
+                .filter(detail -> detail.getItemId().equals(item.getItemId()))
                 .collect(Collectors.toList());
 
         if (CollectionUtils.isNotEmpty(filteredDetails)) {
-            CalArtifacts calArtifact = calArtifactsService.getById(filteredDetails.get(0).getStandardId());
+            String id = filteredDetails.get(0).getStandardId();
+            CalArtifacts calArtifact = calArtifactsService.getById(id);
             TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
-            standard.setStandardId(calArtifact.getId());
-            standard.setStandardName(calArtifact.getName());
-
+            if (calArtifact == null) {
+                CalStdCats cats = catsService.getById(id);
+                standard.setStandardId(cats.getId());
+                standard.setStandardName(cats.getName());
+            }
+            if (calArtifact != null) {
+                standard.setStandardId(calArtifact.getId());
+                standard.setStandardName(calArtifact.getName());
+            }
             if (isZeroStandard) {
                 item.setZeroStandard(standard);
             } else {
@@ -443,7 +465,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
      */
     private void setAvailableStandardsForType(TaskCheckItemDto.CheckItem item, String standardType, boolean isZeroStandard) {
         LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TaskExecutionDetail::getDetectItemId, item.getItemId())
+        queryWrapper.eq(TaskExecutionDetail::getItemId, item.getItemId())
                 .eq(TaskExecutionDetail::getStandardType, standardType)
                 .isNull(TaskExecutionDetail::getTaskId);
 
@@ -460,22 +482,28 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
         LambdaQueryWrapper<CalArtifacts> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CalArtifacts::getCategoryId, detail.getStandardId());
+//这边是把默认的标准物种类放进去，方便前端取
+        CalStdCats cats = catsService.getById(detail.getStandardId());
+        ArrayList<TaskCheckItemDto.Standard> standards = new ArrayList<>();
+        TaskCheckItemDto.Standard standardCal = new TaskCheckItemDto.Standard();
+        standardCal.setStandardId(cats.getId());
+        standardCal.setStandardName(cats.getName());
+        standards.add(standardCal);
+
 
         List<CalArtifacts> artifacts = calArtifactsService.list(wrapper);
         if (CollectionUtils.isNotEmpty(artifacts)) {
-            ArrayList<TaskCheckItemDto.Standard> standards = new ArrayList<>();
             for (CalArtifacts artifact : artifacts) {
                 TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
                 standard.setStandardId(artifact.getId());
                 standard.setStandardName(artifact.getName());
                 standards.add(standard);
             }
-
-            if (isZeroStandard) {
-                item.setZeroStandards(standards);
-            } else {
-                item.setMeasurementStandards(standards);
-            }
+        }
+        if (isZeroStandard) {
+            item.setZeroStandards(standards);
+        } else {
+            item.setMeasurementStandards(standards);
         }
     }
 

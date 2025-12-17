@@ -11,8 +11,13 @@ package com.persee.workstation.uv_inexus.dao.factory_inspection;
 
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.StandardSubstanceDto;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 
 @DS("factory_inspection")
@@ -20,4 +25,6 @@ import org.apache.ibatis.annotations.Update;
 public interface CalArtifactsMapper extends BaseMapper<CalArtifacts> {
     @Update("update cal_artifacts set is_delete = 1 where id = #{id}")
     int updateIsDelete(String id);
+
+    IPage<StandardSubstanceDto> selectCustomDtoPage(@Param("page") Page<StandardSubstanceDto> page, @Param("dto") QueryCalStdCatsDto dto);
 }

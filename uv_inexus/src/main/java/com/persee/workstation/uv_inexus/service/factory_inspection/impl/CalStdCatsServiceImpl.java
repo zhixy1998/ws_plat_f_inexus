@@ -38,7 +38,6 @@ import java.util.Map;
 
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.DELETED;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.NOT_DELETED;
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.NON_STANDARD_EXTERNAL_REFERENCE;
 
 @Service
 public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdCats>
@@ -86,8 +85,7 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
         Page<CalStdCats> page = new Page<>(queryCalStdCatsDto.getPageNum(), queryCalStdCatsDto.getPageSize());
         LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(CalStdCats::getName, queryCalStdCatsDto.getSelectKey())
-                .eq(CalStdCats::getIsDelete, NOT_DELETED.getCode())
-                .notIn(CalStdCats::getMaterialType, NON_STANDARD_EXTERNAL_REFERENCE.getCode());
+                .eq(CalStdCats::getIsDelete, NOT_DELETED.getCode());
         Page<CalStdCats> calStdCatsPage = calStdCatsMapper.selectPage(page, wrapper);
         if (!ObjectUtils.isEmpty(calStdCatsPage) || !CollectionUtils.isEmpty(calStdCatsPage.getRecords())) {
             calStdCatsPage.getRecords().forEach(c -> {
