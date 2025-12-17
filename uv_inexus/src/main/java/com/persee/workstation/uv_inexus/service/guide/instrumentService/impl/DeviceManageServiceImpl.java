@@ -964,8 +964,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
 //        ChangeParam(wl=500, r=128337, s=103479, d=128337)
-        ChangeParam or = new ChangeParam("500", "128337", "103479", "128337");
-        ChangeParam cu = new ChangeParam("500", "491765", "402424", "1716");
+        ChangeParam or = new ChangeParam("500", "491765", "128337", "103479", "128337");
+        ChangeParam cu = new ChangeParam("500","491765", "491765", "402424", "1716");
 
 //        ChangeParam changeParam = new ChangeParam("0.01", "123456", "9852", "123456");
         String s = DataCountUtil.countTPercent(or, cu, 1.0);
