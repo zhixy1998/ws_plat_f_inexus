@@ -89,6 +89,12 @@ public class TemplateController {
             @RequestParam("groupByField") String groupByField) {
         return templateService.getGroupedData(templateCode, groupByField);
     }
+    @GetMapping("/data/list")
+    @ApiOperation("查看模板")
+    public Result<Map<String, List<Map<String, Object>>>> getGroupedData(
+            @RequestParam("templateCode") String templateCode) {
+        return templateService.getGroupedData(templateCode, "检测类别");
+    }
 
 //    @GetMapping("/headers")
 //    @ApiOperation("获取模板字段列表")

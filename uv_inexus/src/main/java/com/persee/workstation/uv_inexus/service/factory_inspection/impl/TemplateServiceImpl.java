@@ -48,6 +48,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
+
 @Slf4j
 @Service
 public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTemplate> implements TemplateService {
@@ -296,25 +298,25 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     System.out.println(temp);
 
                     // 提前获取常用值
-                    Object projectNameObj = temp.get("项目名称");
+                    Object projectNameObj = temp.get(PROJECT_NAME.getDescription());
                     if (projectNameObj == null) {
                         continue;
                     }
                     String projectName = String.valueOf(projectNameObj);
 
                     // 处理特征值
-                    Object featureValueObj = temp.get("特征值");
+                    Object featureValueObj = temp.get(CHARACTERISTIC.getDescription());
                     if (featureValueObj != null) {
                         String featureValue = String.valueOf(featureValueObj);
-                        updateCellValues(sheet, excelCellLocator, excelCellEditor, "特征值", projectName, featureValue);
+                        updateCellValues(sheet, excelCellLocator, excelCellEditor, CHARACTERISTIC.getDescription(), projectName, featureValue);
                     }
 
 //                    updateCellValues(sheet, excelCellLocator, excelCellEditor, "测量值", projectName, "123");
                     // 处理标准值
-                    Object standardValueObj = temp.get("标准值");
+                    Object standardValueObj = temp.get(STANDARD.getDescription());
                     if (standardValueObj != null) {
                         String standardValue = String.valueOf(standardValueObj);
-                        updateCellValues(sheet, excelCellLocator, excelCellEditor, "标准值", projectName, standardValue);
+                        updateCellValues(sheet, excelCellLocator, excelCellEditor, STANDARD.getDescription(), projectName, standardValue);
                     }
                 }
             }
@@ -466,10 +468,10 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             }
             // 结构化成结果模板  需要哪些sheet以及哪些检测项目
             Map<String, Set<String>> sheetRetainRows = hashMaps.stream()
-                    .filter(map -> map.containsKey("检测类别") && map.containsKey("项目名称"))
+                    .filter(map -> map.containsKey(TEST_CATEGORY.getDescription()) && map.containsKey(PROJECT_NAME.getDescription()))
                     .collect(Collectors.groupingBy(
-                            map -> map.get("检测类别").toString(),
-                            Collectors.mapping(map -> map.get("项目名称").toString(), Collectors.toSet())
+                            map -> map.get(TEST_CATEGORY.getDescription()).toString(),
+                            Collectors.mapping(map -> map.get(PROJECT_NAME.getDescription()).toString(), Collectors.toSet())
                     ));
             LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(ExcelTemplate::getTemplateCode, templateCode);

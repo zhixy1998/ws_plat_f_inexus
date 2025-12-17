@@ -79,4 +79,10 @@ public class CalArtifacts extends BasePO {
     @TableField(value = "is_delete")
     @ApiModelProperty(value="是否删除")
     private String isDelete;
+    /**
+     * 描述
+     */
+    @TableField(value = "remark")
+    @ApiModelProperty(value="描述")
+    private String remark;
 }

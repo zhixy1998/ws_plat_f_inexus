@@ -31,8 +31,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.MEASUREMENT;
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.ZERO;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
 
 @Slf4j
 @DS("factory_inspection")
@@ -110,7 +109,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             templateService.save(template);
 
             /*保存数据信息*/
-            List<Map<String, Object>> dataList = new ArrayList<>();
+            List<LinkedHashMap<String, Object>> dataList = new ArrayList<>();
             try (InputStream inputStream = file.getInputStream()) {
                 ExcelReader excelReader = EasyExcel.read(inputStream).build();
                 ReadSheet readSheet = EasyExcel.readSheet(sheeetName).headRowNumber(1).registerReadListener(new DataReadListener(dataList, headers)).build();
@@ -121,79 +120,99 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             // 新增标准物质种类
             Set<String> standardMaterials = new HashSet<>();
             Map<String, Map<String, Object>> assetStandardsMap = new HashMap<>();
-            
+            //标准物质的特征值和标准值
+            Map<String, Map<String, Object>> standardMaterialsMap = new HashMap<>();
             // 保存数据资产
             int rowIndex = 1; // 从第1行开始计数（跳过表头）
-            for (Map<String, Object> dataMap : dataList) {
+            for (LinkedHashMap<String, Object> dataMap : dataList) {
+                String s = JSON.toJSONString(dataMap);
                 ExcelDataAsset asset = new ExcelDataAsset();
                 asset.setId(IdGeneratorUtil.generateIdWithPrefix("asset"));
                 asset.setTemplateCode(templateCode);
                 asset.setBatchNo(String.valueOf(rowIndex++));
-                asset.setStructuredData(JSON.toJSONString(dataMap));
-                asset.setImportStatus("SUCCESS");
+                asset.setStructuredData(s);
+                String type = PHOTOMETRIC_SCAN.getCode();
+                if (s.contains("WlRange")) {
+                    type = SPECTRAL_SCAN.getCode();
+                }
+                if (s.contains("ResponseTime")) {
+                    type = TIME_SCAN.getCode();
+                }
+                asset.setImportStatus(type);
                 excelDataAssetService.save(asset);
-                
-                String zeroMaterial = MapUtils.getString(dataMap, "校零物质");
-                String measurementMaterial = MapUtils.getString(dataMap, "测量物质");
-                
+
+                String zeroMaterial = MapUtils.getString(dataMap, ZERO.getDescription());
+                String measurementMaterial = MapUtils.getString(dataMap, MEASUREMENT.getDescription());
+                String stdValue = MapUtils.getString(dataMap, STANDARD.getDescription());
+                String characteristicValue = MapUtils.getString(dataMap, CHARACTERISTIC.getDescription());
+
+                standardMaterialsMap.put(measurementMaterial, new HashMap<String, Object>() {{
+                    put("s", stdValue);
+                    put("c", characteristicValue);
+                }});
                 standardMaterials.add(zeroMaterial);
                 standardMaterials.add(measurementMaterial);
-                
+
                 Map<String, Object> standards = new HashMap<>();
-                standards.put("校零物质", zeroMaterial);
-                standards.put("测量物质", measurementMaterial);
+                standards.put(ZERO.getDescription(), zeroMaterial);
+                standards.put(MEASUREMENT.getDescription(), measurementMaterial);
                 assetStandardsMap.put(asset.getId(), standards);
             }
-            
+
             // 批量保存标准物质种类
             List<CalStdCats> standardCategories = standardMaterials.stream()
                     .filter(Objects::nonNull)
                     .map(material -> {
                         CalStdCats cat = new CalStdCats();
+                        if (standardMaterialsMap.containsKey(material) && !BLACK_BLOCK.getDescription().equals(material) && !AIR.getDescription().equals(material)) {
+                            Map<String, Object> map = standardMaterialsMap.get(material);
+                            cat.setStandardValue(MapUtils.getString(map, "s"));
+                            cat.setCharacteristicValue(MapUtils.getString(map, "c"));
+                        }
                         cat.setId(IdGeneratorUtil.generateIdWithPrefix("cal"));
                         cat.setName(material);
                         cat.setRemark("导入的默认标准物质种类");
                         return cat;
                     })
                     .collect(Collectors.toList());
-            
+
             if (CollectionUtils.isNotEmpty(standardCategories)) {
                 calStdCatsService.saveBatch(standardCategories);
             }
-            
+
             // 建立标准物质名称到ID的映射，减少数据库查询次数
             Map<String, String> materialNameToIdMap = standardCategories.stream()
                     .collect(Collectors.toMap(CalStdCats::getName, CalStdCats::getId));
-            
+
             // 保存任务执行详情
             List<TaskExecutionDetail> taskDetails = new ArrayList<>();
             for (Map.Entry<String, Map<String, Object>> entry : assetStandardsMap.entrySet()) {
                 String assetId = entry.getKey();
                 Map<String, Object> standards = entry.getValue();
-                
+
                 // 校零物质任务详情
-                String zeroMaterial = MapUtils.getString(standards, "校零物质");
+                String zeroMaterial = MapUtils.getString(standards, ZERO.getDescription());
                 if (zeroMaterial != null) {
                     TaskExecutionDetail zeroDetail = new TaskExecutionDetail();
                     zeroDetail.setId(IdGeneratorUtil.generateId());
-                    zeroDetail.setDetectItemId(assetId);
+                    zeroDetail.setItemId(assetId);
                     zeroDetail.setStandardId(materialNameToIdMap.get(zeroMaterial));
                     zeroDetail.setStandardType(ZERO.getCode());
                     taskDetails.add(zeroDetail);
                 }
-                
+
                 // 测量物质任务详情
-                String measurementMaterial = MapUtils.getString(standards, "测量物质");
+                String measurementMaterial = MapUtils.getString(standards, MEASUREMENT.getDescription());
                 if (measurementMaterial != null) {
                     TaskExecutionDetail measurementDetail = new TaskExecutionDetail();
                     measurementDetail.setId(IdGeneratorUtil.generateId());
-                    measurementDetail.setDetectItemId(assetId);
+                    measurementDetail.setItemId(assetId);
                     measurementDetail.setStandardId(materialNameToIdMap.get(measurementMaterial));
                     measurementDetail.setStandardType(MEASUREMENT.getCode());
                     taskDetails.add(measurementDetail);
                 }
             }
-            
+
             // 批量插入任务执行详情
             if (CollectionUtils.isNotEmpty(taskDetails)) {
                 taskDetails.forEach(taskExecutionDetailMapper::insert);
@@ -257,17 +276,17 @@ public class ExcelImportServiceImpl implements ExcelImportService {
      * 数据读取监听器
      */
     private static class DataReadListener implements ReadListener<Map<Integer, String>> {
-        private final List<Map<String, Object>> dataList;
+        private final List<LinkedHashMap<String, Object>> dataList;
         private final List<String> headers;
 
-        public DataReadListener(List<Map<String, Object>> dataList, List<String> headers) {
+        public DataReadListener(List<LinkedHashMap<String, Object>> dataList, List<String> headers) {
             this.dataList = dataList;
             this.headers = headers;
         }
 
         @Override
         public void invoke(Map<Integer, String> data, AnalysisContext context) {
-            Map<String, Object> rowData = new HashMap<>();
+            LinkedHashMap<String, Object> rowData = new LinkedHashMap<>();
             for (int i = 0; i < headers.size(); i++) {
                 rowData.put(headers.get(i), data.get(i));
             }

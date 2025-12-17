@@ -30,7 +30,7 @@ public class TaskExecutionDetail {
      * 检测项ID，外键
      */
     @TableField(value = "item_id")
-    private String detectItemId;
+    private String itemId;
     /**
      * 标准物id
      */

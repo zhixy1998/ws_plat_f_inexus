@@ -9,8 +9,11 @@
 
 package com.persee.workstation.uv_inexus.service.factory_inspection;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalArtifactsSaveDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.StandardSubstanceDto;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
 
@@ -20,4 +23,6 @@ public interface CalArtifactsService extends IService<CalArtifacts> {
     Result addCalArtifacts(CalArtifactsSaveDto calArtifacts);
 
     boolean delCalArtifacts(String id);
+
+    Result<IPage<StandardSubstanceDto>> listCalArtifacts(QueryCalStdCatsDto dto);
 }

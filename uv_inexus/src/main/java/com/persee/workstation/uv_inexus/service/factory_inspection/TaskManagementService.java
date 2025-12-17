@@ -27,4 +27,6 @@ public interface TaskManagementService extends IService<TaskManagement> {
     Result<List<TaskStatsDto>> taskCount();
 
     Result saveCheckItem(TaskDetectionDTO dto);
+
+    Result<Boolean> checkTaskUsage(TaskUsageDto dto);
 }
