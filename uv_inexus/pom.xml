@@ -22,6 +22,8 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>2.6.13</spring-boot.version>
+        <rocketmq.version>5.2.0</rocketmq.version>
+        <rocketmq-spring.version>2.3.0</rocketmq-spring.version>
     </properties>
 
     <dependencies>
@@ -198,6 +200,11 @@
             <groupId>com.github.ulisesbocchio</groupId>
             <artifactId>jasypt-spring-boot-starter</artifactId>
             <version>3.0.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <version>${rocketmq-spring.version}</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
