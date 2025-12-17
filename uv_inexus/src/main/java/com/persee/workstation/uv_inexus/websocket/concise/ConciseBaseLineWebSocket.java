@@ -390,6 +390,38 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
             log.info("【基线成功】基线测量成功完成, session: {}", sessionId);
             if (!state.stopCommandSent.get()) {
+//                log.info("【等待测量线程结束】开始等待数据接收线程结束, session: {}", sessionId);
+//                long waitStartTime = System.currentTimeMillis();
+//                final long MAX_WAIT_TIME_MS = 10000; // 最多等待10秒
+//                while (Constants.sendMeasureThread != null && Constants.sendMeasureThread.isAlive()) {
+//                    try {
+//                        // 检查是否超时
+//                        if (System.currentTimeMillis() - waitStartTime > MAX_WAIT_TIME_MS) {
+//                            log.warn("【等待超时】等待测量线程结束超时，强制继续执行, session: {}", sessionId);
+//                            break;
+//                        }
+//
+//                        // 短暂休眠，减少CPU占用
+//                        Thread.sleep(100);
+//
+//                        log.debug("【等待中】测量线程仍在运行，等待结束, session: {}, 线程状态: {}, 线程名: {}",
+//                                sessionId,
+//                                Constants.sendMeasureThread.getState(),
+//                                Constants.sendMeasureThread.getName());
+//                    } catch (InterruptedException e) {
+//                        log.warn("【等待中断】等待线程结束被中断, session: {}", sessionId);
+//                        Thread.currentThread().interrupt();
+//                        break;
+//                    }
+//                }
+                 try {
+                     Thread.sleep(1000);
+                     log.info("【等待完成】固定等待1秒完成, session: {}", sessionId);
+                 } catch (InterruptedException e) {
+                     log.warn("【等待中断】等待被中断, session: {}", sessionId);
+                     Thread.currentThread().interrupt();
+                 }
+
                 String ip = deviceInfoService.getIp(deviceSerialNumber);
                 log.info("【设置波长开始】开始设置波长, session: {}", sessionId);
                 double parsed = Double.parseDouble(param.getStartWaveLength());
