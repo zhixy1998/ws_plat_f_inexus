@@ -136,28 +136,37 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!r.getSuccess()) {
                 return R.fail(r.getMessage());
             }
-            infoService.releaseDevice(deviceSerialNumber);
         }
 
+        R<OperationResultEntity> result = R.ok();
+        boolean release = true;
         switch (anEnum) {
             case Find:
-                return find(inputParam);
+                result = find(inputParam);
+                break;
             case Connect:
-                return connect(inputParam);
+                result = connect(inputParam);
+                break;
             case Init:
                 synchronized (this) {
                     new Thread(() -> {
-//                        DevOperationInputParam findInputParam = inputParam;
                         initDevice(inputParam.getDeviceSerialNumber());
                     }).start();
-                    return R.ok();
+                    release = false;
                 }
+                break;
             case Disconnect:
-                return disconnect(inputParam);
+                result =  disconnect(inputParam);
+                break;
             default:
-                return R.fail("未定义的操作！");
+                infoService.releaseDevice(deviceSerialNumber);
+                break;
         }
-
+        //释放仪器，部分操作自主释放
+        if (release) {
+            infoService.releaseDevice(deviceSerialNumber);
+        }
+        return result;
     }
 
     private R<OperationResultEntity> find(DevOperationInputParam inputParam) {
@@ -268,10 +277,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             connectType = 1;
         }
 
-        if (connectType == 0) {
+        if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
             //串口
             return R.fail("串口连接暂未实现！");
-        } else if (connectType == 2) {
+        } else if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
             //wifi
             macAddress = connectUtil.getWifiMacAddress();
             if (!StringUtils.hasText(macAddress)) {
