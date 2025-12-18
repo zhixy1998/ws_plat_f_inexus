@@ -33,9 +33,13 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamp
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
-import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
@@ -89,6 +93,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     LiveDetectionWebSocket liveDetectionWebSocket;
+
+    @Autowired
+    DevOperationUtilService operationUtilService;
 
     @Value("${device.default.sendPort}")
     Integer sendPort;
@@ -191,7 +198,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
         List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
 
-        DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(initDTO.getDeviceSerialNumber());
+        DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(initDTO.getDeviceSerialNumber());
         Integer kind = attachmentInfo.getAttachmentKind();
 
         if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
@@ -964,15 +971,174 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
 
 //        ChangeParam(wl=500, r=128337, s=103479, d=128337)
-        ChangeParam or = new ChangeParam("500", "491765", "128337", "103479", "128337");
-        ChangeParam cu = new ChangeParam("500","491765", "491765", "402424", "1716");
+//        ChangeParam or = new ChangeParam("500", "128337", "103479", "128337");
+//        ChangeParam cu = new ChangeParam("500", "491765", "402424", "1716");
 
-//        ChangeParam changeParam = new ChangeParam("0.01", "123456", "9852", "123456");
-        String s = DataCountUtil.countTPercent(or, cu, 1.0);
-        String s1 = DataCountUtil.changeTPercentOrAbs(null, s);
-        System.out.println("+++" + s + "+++" + s1);
+////        ChangeParam changeParam = new ChangeParam("0.01", "123456", "9852", "123456");
+//        String s = DataCountUtil.countTPercent(or, cu, 1.0);
+//        String s1 = DataCountUtil.changeTPercentOrAbs(null, s);
+//        System.out.println("+++" + s + "+++" + s1);
 
 
     }
+
+    @Override
+    public R<List<SearchInfo>> searchDevice(Integer connectType) {
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Find.getType());
+        inputParam.setConnectType(connectType);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            OperationResultEntity data = operation.getData();
+            List<SearchInfo> searchInfo = data.getSearchInfo();
+            return R.ok(searchInfo);
+        }
+    }
+
+    @Override
+    public R<FindDeviceVO> connect(DevOperationInputParam param) {
+        Integer connectType = param.getConnectType();
+        SearchInfo searchInfo = param.getDeviceInfo();
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Connect.getType());
+        inputParam.setConnectType(connectType);
+        inputParam.setDeviceInfo(searchInfo);
+
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            OperationResultEntity data = operation.getData();
+            FindDeviceVO vo = new FindDeviceVO();
+
+            DeviceInfoPO info = new DeviceInfoPO();
+
+            BeanUtils.copyProperties(data, vo);
+            BeanUtils.copyProperties(data, info);
+
+            info.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
+            info.setIsDevOpened(1);
+
+
+            info.setDevicePort(data.getConnectPort());
+            info.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
+
+            //TODO 根据仪器序列号，获取型号信息，还需要调整
+            String deviceModel = vo.getDeviceSerialNumber().substring(3, 8);
+            info.setDeviceModel(deviceModel);
+
+            LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(DeviceModelInfoPO::getDevModel, deviceModel);
+            DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+
+            vo.setDeviceModelName(modelInfoPO.getDevName());
+            info.setDeviceModelName(modelInfoPO.getDevName());
+
+            if (StringUtils.hasText(info.getDeviceName())) {
+                vo.setDeviceName(info.getDeviceName());
+            } else {
+                vo.setDeviceName(modelInfoPO.getDevName());
+                info.setDeviceName(modelInfoPO.getDevName());
+            }
+
+            Integer i = infoService.queryDeviceActivationStatus(vo.getDeviceSerialNumber());
+            info.setIsActivated(i);
+
+            List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
+
+            //附件处理
+            DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(vo.getAttachmentType());
+            LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, vo.getDeviceSerialNumber());
+            InsConfigPO configPO = configDAO.selectOne(queryWrapper);
+            if (attachmentInfo == null) {
+                attachmentInfo = new DeviceAttachmentTypeVO();
+                attachmentInfo.setAttachmentNum(12);
+                attachmentInfo.setAttachmentName("未识别");
+            }
+
+            if (configPO == null) {
+                configPO = new InsConfigPO();
+                configPO.setDeviceSerialNumber(vo.getDeviceSerialNumber());
+                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
+                configPO.setMessagePort(1);
+                configPO.setMessagePortChange(false);
+                configPO.setAnnexSettingChange(false);
+                configDAO.insert(configPO);
+            } else {
+                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
+                configPO.setMessagePort(1);
+                configPO.setMessagePortChange(false);
+                configPO.setAnnexSettingChange(false);
+                configDAO.updateById(configPO);
+            }
+
+            attachmentInfo.setDeviceSerialNumber(vo.getDeviceSerialNumber());
+            FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
+
+            BeanUtils.copyProperties(vo, dto);
+            dto.setAttachmentTypeName(attachmentInfo.getAttachmentName());
+            samplePoolConfigService.saveSamplePoolInfo(dto);
+
+            info.setAttachmentName(attachmentInfo.getAttachmentName());
+            infoService.saveOrUpdateInfo(info);
+            boolean initRecord = true;
+
+            List<InitRecordPO> initList = initRecordService.searchInitStatus(vo.getDeviceSerialNumber(), info.getId());
+            if (initList == null || initList.isEmpty()) {
+                initRecord = false;
+            }
+
+            if (vo.getIsInited() == 0 || !initRecord) {
+                if (attachmentInfo.getAttachmentKind().equals(1)){
+                    List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
+                    initRecordService.initAllTask(vo.getDeviceSerialNumber(), info.getId(), allInitEntry);
+                }
+                initRecordService.initAllTask(vo.getDeviceSerialNumber(), info.getId(), initEntry);
+            }
+
+            BeanUtils.copyProperties(info, vo);
+            vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
+            vo.setLinearSegment(null);
+
+
+            infoService.saveOrUpdateInfo(info);
+
+            return R.ok(vo);
+        }
+    }
+
+    @Override
+    public R<Boolean> disconnectDevice(String deviceSerialNumber) {
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.Disconnect.getType());
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            OperationResultEntity data = operation.getData();
+            return R.ok(true);
+        }
+    }
+
+    @Override
+    public R<OperationResultEntity> initOneDevice(String deviceSerialNumber) {
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Init.getType());
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            OperationResultEntity data = operation.getData();
+            return R.ok(data);
+        }
+    }
+
 
 }

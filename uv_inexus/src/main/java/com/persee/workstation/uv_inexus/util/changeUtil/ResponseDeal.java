@@ -123,6 +123,7 @@ public class ResponseDeal {
                 return parseLampPos(responses);
 
             case "SearchAround":
+//                return deviceIp(responses);
             case "SearchInSameZoom":
                 return pareSearch(responses);
             case "InitSlit1Moto1":
@@ -917,6 +918,27 @@ private static Object parseLampPos(List<byte[]> responses) {
         }
 
         return new ArrayList<>(deviceInfo); // 返回副本，避免外部修改
+    }
+
+    public static String deviceIp(List<byte[]> responses) {
+
+        if (responses == null || responses.isEmpty()) {
+            return ""; // 返回空列表
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        if (last.length < 12) {
+            return ""; // 长度不足不处理
+        }
+
+        StringBuilder deviceIp = new StringBuilder();
+
+        for (int i = 15; i <=18; i++) {
+            deviceInfo.add(last[i] & 0xFF); // 转换为无符号十进制数
+            deviceIp.append(last[i] & 0xFF).append(".");
+        }
+
+        return deviceIp.substring(0,deviceIp.length()-1);
     }
 
 

@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.vo.systemManageVo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -36,26 +37,31 @@ public class SystemBusinessParamVO {
     @ApiModelProperty("自动登出时间")
     private String autoLeaveTime;
 
-
     private String filePath;
 
     @ApiModelProperty("Abs显示位数")
     private Integer absDigits;
 
     @ApiModelProperty("T%、R%显示位数")
+    @JsonProperty("tDigits")
     private Integer tDigits;
 
+    @ApiModelProperty("浓度显示位数")
+    private Integer concentrationDigits;
 
     @ApiModelProperty("E显示位数")
+    @JsonProperty("eDigits")
     private Integer eDigits;
 
     @ApiModelProperty("SD和RSD显示位数")
     private Integer sdDigits;
 
     @ApiModelProperty("K显示位数")
+    @JsonProperty("kDigits")
     private Integer kDigits;
 
     @ApiModelProperty("R/R平方显示位数")
+    @JsonProperty("rSquareDigits")
     private Integer rSquareDigits;
 
     @ApiModelProperty("浓度负值是否显示未检出")

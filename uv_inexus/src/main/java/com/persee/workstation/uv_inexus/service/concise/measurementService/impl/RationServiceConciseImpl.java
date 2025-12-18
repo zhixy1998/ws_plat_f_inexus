@@ -2550,8 +2550,23 @@ public class RationServiceConciseImpl implements RationConciseService {
     public R<Boolean> createSample(String taskId, String sampleKind, String normalConcentration, String updateBy, String deviceSerialNumber) {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
 
-        if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity()) && normalConcentration == null) {
-            return R.fail(YamlMessageSource.getMessageStatic("00102024"));
+        if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+
+            if (!StringUtils.hasText(normalConcentration)) {
+                //请输入标准浓度
+                return R.fail(YamlMessageSource.getMessageStatic("00102024"));
+            }
+            try {
+                double v = Double.parseDouble(normalConcentration);
+
+                if (v < 0) {
+                    // 输入提示：标准浓度必须是非负数
+                    return R.fail(YamlMessageSource.getMessageStatic("0010202D"));
+                }
+            } catch (Exception e) {
+                //请输入正确的标准浓度
+                return R.fail(YamlMessageSource.getMessageStatic("0010202D"));
+            }
         }
 
         if (task == null) {
@@ -2695,6 +2710,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                     if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                         normalConcentration = String.valueOf(Double.parseDouble(normalConcentration) + cou);
+
+//                        double result = Double.parseDouble(normalConcentration) + cou;
+//                        normalConcentration = new BigDecimal(result).setScale(8, RoundingMode.UNNECESSARY).stripTrailingZeros().toPlainString();
 
                         newSample.setNormalConcentration(normalConcentration);
                     }

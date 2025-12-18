@@ -25,6 +25,14 @@ public class DeviceInfoPO extends BasePO {
     @TableField("device_ip")
     private String ip;
 
+    @ApiModelProperty("联机方式")
+    @TableField("connect_type")
+    private Integer connectType;
+
+    @ApiModelProperty("唯一标识")
+    @TableField("device_id")
+    private String deviceId;
+
     @ApiModelProperty("仪器名称")
     @TableField("device_name")
     private String deviceName;

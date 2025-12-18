@@ -565,6 +565,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
             }
         }
+        FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
 
         if (methodDTO.getClearDataRange().equals(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity()) && !StringUtils.hasText(methodDTO.getNewMethodId())) {
             String currentMethodId = methodDTO.getCurrentMethodId();
@@ -593,9 +594,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 log.info("设置参数失败");
                 return Result.fail(YamlMessageSource.getMessageStatic("0030000C"));
             }
+            ans.setMethodId(currentMethodId);
+            ans.setMethodName(currentMethod.getMethodName());
+            ans.setTaskId(methodDTO.getCurrentTaskId());
+            ans.setTaskName(fMeasureTaskService.getById(methodDTO.getCurrentTaskId()).getTaskName());
+            return Result.ok(ans);
         }
 
-        FMeasurementCurrentInfoVO ans = new FMeasurementCurrentInfoVO();
+
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, methodDTO.getUpdateBy()));
         String userId = po.getId();
         ans.setMethodName(methodDTO.getMethodName());

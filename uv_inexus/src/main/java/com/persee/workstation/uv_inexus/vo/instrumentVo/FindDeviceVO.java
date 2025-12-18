@@ -30,6 +30,9 @@ public class FindDeviceVO {
     @ApiModelProperty("机器ip地址")
     private String ip;
 
+    @ApiModelProperty("唯一标识")
+    private String deviceId;
+
     @ApiModelProperty("附件类型")
     private Integer attachmentType;
 
@@ -50,6 +53,9 @@ public class FindDeviceVO {
 
     @ApiModelProperty("仪器型号名称")
     private String deviceModelName;
+
+    @ApiModelProperty("xmlKey")
+    private String xmlKey;
 
     @ApiModelProperty("计算公式")
     private String linearSegment;

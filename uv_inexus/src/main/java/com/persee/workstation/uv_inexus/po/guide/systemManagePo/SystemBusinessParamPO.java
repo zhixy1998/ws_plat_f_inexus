@@ -63,10 +63,13 @@ public class SystemBusinessParamPO extends BasePO {
     @TableField("t_digits")
     private Integer tDigits;
 
-
     @ApiModelProperty("E显示位数")
     @TableField("e_digits")
     private Integer eDigits;
+
+    @ApiModelProperty("浓度显示位数")
+    @TableField("concentration_digits")
+    private Integer concentrationDigits;
 
     @ApiModelProperty("SD和RSD显示位数")
     @TableField("sd_digits")
