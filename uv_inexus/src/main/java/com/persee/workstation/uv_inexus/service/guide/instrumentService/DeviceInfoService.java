@@ -11,6 +11,9 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+
+import java.util.List;
 
 public interface DeviceInfoService {
 
@@ -22,6 +25,10 @@ public interface DeviceInfoService {
 
     //查找附件类型
     String getAttachmentType(String deviceSerialNumber);
+
+    DeviceAttachmentTypeVO getAttachment(Integer attachmentType);
+
+    DeviceAttachmentTypeVO getAttachmentInfo(String deviceSerialNumber);
 
     void updateDeviceCurrentStatus(String deviceSerialNumber, Integer currentStatus);
 
@@ -40,6 +47,8 @@ public interface DeviceInfoService {
     Integer queryDeviceActivationStatus(String deviceSerialNumber);
     
     Boolean isNeedSetSit(String deviceSerialNumber);
+
+    List<DeviceInfoPO> getDeviceSerialNumberList();
 
     void checkDeviceStatus();
 }

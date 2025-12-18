@@ -86,6 +86,22 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     }
 
     @Override
+    public DeviceAttachmentTypeVO getAttachment(Integer attachmentType) {
+        return dao.getAttachmentInfoByAttachmentNum(attachmentType);
+    }
+
+    @Override
+    public DeviceAttachmentTypeVO getAttachmentInfo(String deviceSerialNumber) {
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            log.info("未传入序列号");
+            return null;
+        }
+
+        return dao.getAttachmentInfo(deviceSerialNumber);
+    }
+
+    @Override
     public void updateDeviceCurrentStatus(String deviceSerialNumber, Integer currentStatus) {
         LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(DeviceInfoPO::getDeviceSerialNumber, deviceSerialNumber)
@@ -214,6 +230,13 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             }
         }
         return false;
+    }
+
+    @Override
+    public List<DeviceInfoPO> getDeviceSerialNumberList() {
+        LambdaQueryWrapper<DeviceInfoPO> query = new LambdaQueryWrapper<>();
+        List<DeviceInfoPO> pos = dao.selectList(query);
+        return pos;
     }
 
     @PostConstruct

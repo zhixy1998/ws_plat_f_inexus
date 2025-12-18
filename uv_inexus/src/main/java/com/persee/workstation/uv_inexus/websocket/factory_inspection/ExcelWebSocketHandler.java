@@ -1,19 +1,19 @@
 package com.persee.workstation.uv_inexus.websocket.factory_inspection;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
+import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
-import com.persee.workstation.uv_inexus.service.factory_inspection.CalArtifactsService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.CalStdCatsService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.TaskExecutionDetailService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.util.ExcelCellComparator;
 import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
 import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,10 +36,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.DatagramSocket;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
@@ -96,6 +95,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private DevMessageUtil devMessageUtil;
     @Autowired
     private MessageUtil messageUtil;
+    @Autowired
+    private ExcelDataAssetService dataAssetService;
+
     // 会话信息类
     @Data
     private static class SessionInfo {
@@ -119,6 +121,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
         return null;
     }
+
     private String getUpdateByFromUrl(WebSocketSession session) {
         try {
             String query = session.getUri().getQuery();
@@ -148,11 +151,60 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             String taskId = getTaskIdFromSession(session);
             String updateBy = getUpdateByFromUrl(session);
             boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
-            System.out.println("564645151545"+b);
-            if (fileName != null) {
-                // 为会话创建专属Workbook
-                Workbook workbook = workbookCacheManager.createTaskWorkbook(taskId, fileName);
-                log.info("WebSocket连接建立，会话ID: {}, 文件: {}", sessionId, fileName);
+            System.out.println("564645151545" + b);
+
+            // 为会话创建专属Workbook
+            Workbook workbook = workbookCacheManager.createTaskWorkbook(taskId, fileName);
+            log.info("WebSocket连接建立，会话ID: {}, 文件: {}", sessionId, fileName);
+
+            //如果是选择过标准物的任务，则需要修改工作簿的特征值和标准值
+            LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TaskExecutionDetail::getTaskId, taskId);
+            //这是修改过标准物的任务
+            List<TaskExecutionDetail> list = detailService.list(queryWrapper);
+            if (CollectionUtils.isNotEmpty(list)) {
+                for (TaskExecutionDetail detail : list) {
+                    String standardId = detail.getStandardId();
+                    String itemId = detail.getItemId();
+                    //看看这个 标准物是哪个检测项的
+                    ExcelDataAsset item = dataAssetService.getById(itemId);
+                    String data = item.getStructuredData();
+                    ObjectMapper mapper = new ObjectMapper();
+                    //获取到检测项的所有数据
+                    Map<String, String> dataMap = mapper.readValue(data, new TypeReference<Map<String, String>>() {});
+                    String groupName = MapUtils.getString(dataMap, "检测类别");
+                    String itemName = MapUtils.getString(dataMap, "项目名称");
+                    //得到标准物质实体，可以进行修改了
+                    String characteristicValue = "";
+                    String standardValue = "";
+                    CalArtifacts artifacts = calArtifactsService.getById(standardId);
+                    if (artifacts == null) {
+                        CalStdCats cats = catsService.getById(standardId);
+                        characteristicValue = cats.getCharacteristicValue();
+                        standardValue = cats.getStandardValue();
+                    }
+                    if (artifacts != null) {
+                        characteristicValue = artifacts.getCharacteristicValue();
+                        standardValue = artifacts.getStandardValue();
+                    }
+                    if (StringUtils.isNotBlank(characteristicValue)) {
+                        CellUpdDto cellUpdDto = new CellUpdDto();
+                        cellUpdDto.setCellValue(characteristicValue);
+                        cellUpdDto.setSheetName(groupName);
+                        cellUpdDto.setValueType(CHARACTERISTIC.getDescription());
+                        cellUpdDto.setProjectName(itemName);
+                        updateWorkbookCells(workbook, cellUpdDto);
+                    }
+                    if (StringUtils.isNotBlank(standardValue)) {
+                        CellUpdDto cellUpdDto = new CellUpdDto();
+                        cellUpdDto.setCellValue(standardValue);
+                        cellUpdDto.setSheetName(groupName);
+                        cellUpdDto.setValueType(STANDARD.getDescription());
+                        cellUpdDto.setProjectName(itemName);
+                        updateWorkbookCells(workbook, cellUpdDto);
+                    }
+
+                }
             }
             this.pushEntireWorkbook(session, taskId, fileName);
             super.afterConnectionEstablished(session);
@@ -258,7 +310,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (CLOSE.getCode().equals(type)) {
             log.info("收到关闭指令");
             String taskId = root.get("taskId").asText();
-            workbookCacheManager.cleanupTask(taskId,updateBy);
+            workbookCacheManager.cleanupTask(taskId, updateBy);
             session.close();
         }
         if (SINGLE_ITEM.getCode().equals(type)) {
@@ -279,32 +331,33 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
   "itemId": "item_001",     // 检测项ID
   "standardType": "ZERO"    // 标准物质类型
 }*/
-            log.info("收到设置标准物指令");
             WebSocketMessageDto<StdMaterialSelectionDto> messageWrapper =
                     mapper.readValue(payload, new TypeReference<WebSocketMessageDto<StdMaterialSelectionDto>>() {
                     });
             StdMaterialSelectionDto selectionDto = messageWrapper.getData();
             String taskId = selectionDto.getTaskId();
+            String groupName = selectionDto.getGroupName();
+            String itemName = selectionDto.getItemName();
+            String standardId = selectionDto.getStandardId();
+            String standardType = selectionDto.getStandardType();
+            String itemId = selectionDto.getItemId();
+            log.info("收到设置检测项: {} 的标准物指令", itemName);
+
             //判断任务是否正在被编辑中
-            boolean edited = workbookCacheManager.isTaskBeingEditedByOthers(taskId,updateBy);
-            if(edited){
+            boolean edited = workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy);
+            if (edited) {
                 session.sendMessage(new TextMessage("任务正在被编辑中"));
             }
             if (!edited) {
-                String groupName = selectionDto.getGroupName();
-                String itemName = selectionDto.getItemName();
-                String standardId = selectionDto.getStandardId();
-                String standardType = selectionDto.getStandardType();
-                String itemId = selectionDto.getItemId();
+
                 //如果之前这个任务有设置过这个检测项的标准物，再次设置
                 LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(TaskExecutionDetail::getItemId, itemId)
-                        .eq(TaskExecutionDetail::getStandardId, standardId)
                         .eq(TaskExecutionDetail::getStandardType, standardType)
                         .eq(TaskExecutionDetail::getTaskId, taskId);
                 TaskExecutionDetail detail = new TaskExecutionDetail();
 
-                boolean acquired = workbookCacheManager.acquireEditLock(taskId,updateBy);
+                boolean acquired = workbookCacheManager.acquireEditLock(taskId, updateBy);
                 log.info("尝试获取编辑锁");
 
                 if (acquired) {
@@ -364,6 +417,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     sendSheetUpdate(session, workbook.getSheet(groupName));
                 }
             }
+            log.info("检测项标准物设置指令处理完毕 - 数据更新成功, 任务ID: {}, 检测项: {}", taskId, itemName);
         }
         //根据前端传输的内容进行处理  自动测试就按照模板进行测
         //单项测试就按照用户传过来的测试项id按照模板进行测试
@@ -377,6 +431,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //        cellUpdDto.setProjectName("紫外分光光度计标准物质GBW(E)130066");
 //        pushUpdatedData(session, cellUpdDto);
         super.handleTextMessage(session, message);
+
     }
 
     private void handleAutoInspection(WebSocketSession session, List<InspectionRequestDto> items) {
@@ -393,7 +448,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         list.add(new Command("SetGain", new Object[]{4}));
         list.add(new Command("SetSlit1", new Object[]{2}));
         list.add(new Command("SetLampPos", new Object[]{1}));
-//        messageUtil.singleSendAndReceive(socket, "192.168.1.1", "SetPhotoMode", new byte[]{0x01, 0x02});
+        R<DatagramSocket> ans = messageUtil.getSocket();
+//        messageUtil.singleSendAndReceive(ans.getData(), "192.168.1.1", "SetPhotoMode", new byte[]{0x01, 0x02});
     }
 
     private boolean shouldSaveToFile(String fileName) {

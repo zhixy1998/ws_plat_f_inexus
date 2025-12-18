@@ -114,7 +114,7 @@ public class TemplateController {
     //根据原有的内置模板进行新建模板
     @PostMapping("/template/create")
     @ApiOperation("创建新结构化模板")
-    public Result createNewTemplate(@RequestBody @Valid TemplateCreationRequest request) {
+    public Result<String> createNewTemplate(@RequestBody @Valid TemplateCreationRequest request) {
         try {
             // 参数校验
             if (request == null) {
@@ -127,7 +127,7 @@ public class TemplateController {
 //            }
 
             // 调用服务创建模板
-            Result result = templateService.createTemplate(request);
+            Result<String > result = templateService.createTemplate(request);
 
             // 记录日志
             if (result.getCode() == 200) {
@@ -206,6 +206,11 @@ public class TemplateController {
     @ApiOperation("获取模板列表")
     public Result<Page<TemplateResponseDto>> getTemplateList(@RequestBody TemplateQeqDto templateQeqDto) {
         return templateService.getTemplateList(templateQeqDto);
+    }
+    @GetMapping("/template/delete")
+    @ApiOperation("删除模板")
+    public Result deleteTemplate(@RequestParam("templateCode") String templateCode) {
+        return templateService.deleteTemplate(templateCode);
     }
 
 }

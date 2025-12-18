@@ -136,13 +136,16 @@ public class DevMessageUtil {
         for (Command command : list) {
             String cmdId = command.getCmdId();
             if (cmdId.equals(FindDevEnum.FindDevice.getComId())){
-                Object[] param = new Object[]{181,254,241,3,1,0,0,0,0,0,0};
+                Object[] param = new Object[]{0,0,0,0,0,0};
                 String macAddress = NetworkUtils.getEthernetMacAddress();
                 if (macAddress != null) {
                     String[] macParts = macAddress.split(":");
                     // 将上位机的前 6 个 MAC 地址部分插入到 param 数组的前 6 个位置
                     for (int i = 0; i < 6; i++) {
-                        param[i + 5] = Integer.parseInt(macParts[i], 16);  // 将每一部分从十六进制转换为十进制
+
+                        int anInt = Integer.parseInt(macParts[i], 16);
+
+                        param[i] = anInt;  // 将每一部分从十六进制转换为十进制
                     }
                 }
                 command.setParams(param);
@@ -223,6 +226,13 @@ public class DevMessageUtil {
             if (parse == null) {
                 return R.fail("接收报文解析异常");
             }
+
+//            if (cmdId.equals(FindDevEnum.FindDevice.getComId())) {
+//                defaultIp = parse.toString();
+//                findDeviceVO.setIp(defaultIp);
+//            }
+
+
             if (cmdId.equals(FindDevEnum.NewIP.getComId())) {
                 String ip = socket.getLocalAddress().getHostAddress();
                 String[] split = ip.split("\\.");

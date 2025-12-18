@@ -21,6 +21,9 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAu
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -57,6 +60,54 @@ public class DeviceController {
             return Result.ok(device.getData());
         }
 
+    }
+
+    @GetMapping("/searchDevice")
+    @ApiOperation("搜索仪器接口")
+    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
+    public Result<List<SearchInfo>> searchDevice(@RequestParam Integer connectType) throws Exception {
+        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok(r.getData());
+        }
+    }
+
+    @PostMapping("/connect")
+    @ApiOperation("连接仪器")
+    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
+    public Result<FindDeviceVO> connect(@RequestBody DevOperationInputParam param) throws Exception {
+
+
+        R<FindDeviceVO> r = deviceManageService.connect(param);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok(r.getData());
+        }
+    }
+
+    @GetMapping("/disconnectDevice")
+    @ApiOperation("断开连接")
+    public Result<Boolean> disconnectDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        R<Boolean> r = deviceManageService.disconnectDevice(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(true);
+        } else {
+            return Result.fail("断开失败");
+        }
+    }
+
+    @GetMapping("/initOneDevice")
+    @ApiOperation("初始化")
+    public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber) {
+        R<OperationResultEntity> r = deviceManageService.initOneDevice(deviceSerialNumber);
+        if (r.getSuccess()) {
+            return Result.ok(true);
+        } else {
+            return Result.fail(false);
+        }
     }
 
     @GetMapping("/disConnect")

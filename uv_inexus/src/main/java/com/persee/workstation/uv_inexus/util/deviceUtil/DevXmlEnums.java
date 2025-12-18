@@ -1,0 +1,55 @@
+/*
+ * *
+ *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
+ *  * 本软件受商业机密法和版权法保护。
+ *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
+ *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
+ *
+ */
+
+package com.persee.workstation.uv_inexus.util.deviceUtil;
+
+import lombok.Getter;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Getter
+public enum DevXmlEnums {
+
+    T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700");
+//    T800("T800", "file/T800新.1.xml", "T800");
+
+    // 仪器型号
+    private final String devType;
+    // xml地址
+    private final String xmlPath;
+    // 描述
+    private final String desc;
+
+
+    private static final Map<String, DevXmlEnums> enums = new HashMap<>();
+
+    static {
+        for(DevXmlEnums e : DevXmlEnums.values()) {
+            enums.put(e.devType, e);
+        }
+    }
+
+    // 构造函数
+    DevXmlEnums(String devType, String xmlPath, String desc) {
+        this.devType = devType;
+        this.xmlPath = xmlPath;
+        this.desc = desc;
+    }
+
+    public static DevXmlEnums getEnum(String type) {
+        return enums.get(type);
+    }
+
+    public static List<DevXmlEnums> getAll(){
+        return Arrays.asList(values());
+    }
+}
