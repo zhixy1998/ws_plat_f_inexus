@@ -606,6 +606,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
                     Map<String, Object> map = new HashMap<>();
                     map.put("method", currentMethod);
+                    Result draftButton = createDraftButton(currentMethod.getId(), null, paramDto.getUpdateBy(), paramDto.getDeviceSerialNumber());
+                    if (draftButton.getCode() == 200) {
+                        map.put("taskId", draftButton.getData());
+                    }
                     return Result.ok(map);
                 }
             }
