@@ -61,6 +61,9 @@ public class InitRecordServiceImpl implements InitRecordService {
             po.setDeviceInfoId(deviceInfoId);
             po.setDeviceSerialNumber(deviceSerialNumber);
             po.setInitStatus(Constants.INIT_TASK_NO);
+            if (i == 0) {
+                po.setInitStatus(Constants.INIT_TASK_ING);
+            }
             DeviceInitEntryInfo entryInfo = initEntryList.get(i);
             po.setInitCmdIdList(entryInfo.getInitComId());
             po.setInitCmdName(entryInfo.getInitComName());
