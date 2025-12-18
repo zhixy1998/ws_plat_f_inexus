@@ -63,7 +63,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         Page<TaskManagement> page = new Page<>(queryDto.getPageNum(), queryDto.getPageSize());
         LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(TaskManagement::getDetectName, queryDto.getQuery());
-        return Result.ok(this.page(page, wrapper));
+        Page<TaskManagement> managementPage = this.page(page, wrapper);
+        managementPage.getRecords().forEach(task -> {
+            task.setTemplateCode(templateService.getById(task.getUseTemplate()).getTemplateCode());
+        });
+        return Result.ok(managementPage);
     }
 
     @Override
