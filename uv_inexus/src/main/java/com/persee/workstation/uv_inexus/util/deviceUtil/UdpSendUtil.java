@@ -166,7 +166,7 @@ public class UdpSendUtil {
 
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName("255.255.255.255"), sendPort);
-            store.clearDevice(deviceId);
+            store.clearDeviceMessages(deviceId);
 
             String newDeviceId = deviceManager.getOrCreateDeviceId(newIp, receivePort, connectType);
 
@@ -263,7 +263,7 @@ public class UdpSendUtil {
 
         DatagramSocket socket;
         if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
-            socket = connectUtil.getWifiSocket(ethernetReceivePort);
+            socket = connectUtil.getWifiSocket(wifiReceivePort);
         } else {
             socket = connectUtil.getEtherSocket(ethernetReceivePort);
         }
@@ -277,7 +277,7 @@ public class UdpSendUtil {
 
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName(sendIp), sendPort);
-            store.clearDevice(deviceId);
+            store.clearDeviceMessages(deviceId);
             socket.send(packet);
 
             sendMessageLog(sendIp, cmdId, sendBytes);
@@ -316,17 +316,26 @@ public class UdpSendUtil {
      *
      */
     public R<Object> unknownReceive(String deviceId, String cmdId, byte[] sendBytes, int timeout, Boolean isDealOnTime, String deviceSerialNumber, byte[] endBytes) {
-        DatagramSocket socket = connectUtil.getEtherSocket(ethernetReceivePort);
+
+        DatagramSocket socket;
         try {
 
             MessageStoreManager store = MessageStoreManager.getInstance();
 
             DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+            Integer connectType = device.getConnectType();
+
+            if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
+                socket = connectUtil.getWifiSocket(ethernetReceivePort);
+            } else {
+                socket = connectUtil.getEtherSocket(ethernetReceivePort);
+            }
+
             String sendIp = device.getConnectIdentity();
 
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName(sendIp), sendPort);
-            store.clearDevice(sendIp);
+            store.clearDeviceMessages(sendIp);
             socket.send(packet);
 
             sendMessageLog(sendIp, cmdId, sendBytes);

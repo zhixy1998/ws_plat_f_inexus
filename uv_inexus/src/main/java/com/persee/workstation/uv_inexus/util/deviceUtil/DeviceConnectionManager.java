@@ -113,8 +113,7 @@ public class DeviceConnectionManager {
     }
 
     public DeviceConnectInfo getDevice(String deviceId) {
-        DeviceConnectInfo deviceConnectInfo = deviceMap.get(deviceId);
-        return deviceConnectInfo;
+        return deviceMap.get(deviceId);
     }
 
     public String convertToPermanent(String connectIdentity, Integer port) {
@@ -187,6 +186,7 @@ public class DeviceConnectionManager {
 
         // 移除旧临时设备
         deviceMap.remove(deviceId);
+        MessageStoreManager.getInstance().clearDevice(deviceId);
 
         logInfo("转换为永久标识: %s -> %s", deviceId, permanentId);
         return permanentId;

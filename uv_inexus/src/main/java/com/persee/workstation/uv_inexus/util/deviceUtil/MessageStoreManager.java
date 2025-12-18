@@ -234,6 +234,13 @@ public class MessageStoreManager {
         lastActivityMap.remove(deviceId);
     }
 
+    public void clearDeviceMessages(String deviceId) {
+        BlockingQueue<byte[]> q = deviceMessageMap.get(deviceId);
+        if (q != null) {
+            q.clear();
+        }
+    }
+
     private void printStatistics() {
         log.info("[MessageStore] 设备数量: {}, 消息总数: {}, 添加: {}, 处理: {}, 丢弃: {}",
                 deviceMessageMap.size(),

@@ -44,7 +44,7 @@ public class UdpReceiveThread {
                     ConnectUtil connectUtil = ConnectUtil.getInstance();
                     DatagramSocket socket = connectUtil.getWifiSocket(port);
 
-                    System.out.println("UDP接收线程启动，端口: " + port);
+                    System.out.println("wifi接收线程启动，端口: " + port);
 
                     DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
@@ -63,6 +63,7 @@ public class UdpReceiveThread {
 
                             // 处理数据
                             String ip = packet.getAddress().getHostAddress();
+                            System.out.println("接收数据，来自: " + ip);
 
                             String deviceId = deviceManager.getOrCreateDeviceId(ip, port, connectType);
 
@@ -83,7 +84,7 @@ public class UdpReceiveThread {
                     }
 
                     socket.close();
-                    System.out.println("UDP接收线程停止");
+                    System.out.println("wifi接收线程停止");
 
                 } catch (Exception e) {
                     System.err.println("启动失败: " + e.getMessage());
