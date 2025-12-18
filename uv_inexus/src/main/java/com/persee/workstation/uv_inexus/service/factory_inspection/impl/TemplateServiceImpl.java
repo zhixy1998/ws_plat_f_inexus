@@ -98,8 +98,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     @Override
     @DS("factory_inspection")
     @Transactional(rollbackFor = Exception.class)
-    public Result createTemplate(TemplateCreationRequest request) {
-        if (StringUtils.equals(request.getType(), "0")) {
+    public Result<String> createTemplate(TemplateCreationRequest request) {
+        if (StringUtils.equals(request.getType(), TEMPLATE_CREATE.getCode())) {
             log.info("创建模板开始");
             try {
                 String templateCode = "TEMP_" + System.currentTimeMillis();
@@ -110,7 +110,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 template.setTemplateName(request.getTemplateName());
                 template.setCreateBy(request.getUpdateBy());
                 //非内置模板
-                template.setCategory("1");
+                template.setCategory(TEMPLATE_USER_DEFINED.getCode());
                 template.setRemark(request.getRemark());
                 template.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
                 template.setParentId(request.getTemplateCode());
@@ -144,7 +144,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 return Result.fail("模板创建失败: " + e.getMessage());
             }
         }
-        if (StringUtils.equals(request.getType(), "1")) {
+        if (StringUtils.equals(request.getType(), TEMPLATE_UPDATE.getCode())) {
             log.info("编辑模板开始");
             try {
                 // 参数校验
@@ -157,7 +157,9 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 if (existingTemplate == null) {
                     return Result.fail("未找到要编辑的模板");
                 }
-
+                if (StringUtils.equals(existingTemplate.getCategory(), TEMPLATE_BUILT_IN.getCode())) {
+                    return Result.fail("内置模板不允许编辑");
+                }
                 // 更新模板信息
                 ExcelTemplate template = new ExcelTemplate();
                 template.setId(request.getId());
@@ -165,7 +167,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 template.setRemark(request.getRemark());
                 template.setUpdateBy(request.getUpdateBy());
                 template.setUpdated(LocalDateTime.now());
-                template.setCategory("1"); // 非内置模板
+                template.setCategory(TEMPLATE_USER_DEFINED.getCode()); // 非内置模板
 
                 boolean updated = this.updateById(template);
 
@@ -387,6 +389,21 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             ExcelCellLocator.CellPosition position = positions.get(positionIndex);
             excelCellEditor.setCellValue(sheet, position.getRow(), position.getCol(), cellValue);
         }
+    }
+
+    @Override
+    public Result deleteTemplate(String templateCode) {
+        LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ExcelTemplate::getTemplateCode, templateCode)
+                .notIn(ExcelTemplate::getCategory, TEMPLATE_BUILT_IN.getCode());
+        int i = templateMapper.delete(queryWrapper);
+        boolean b = i != 0;
+        if (b){
+            LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
+            b = excelDataAssetService.remove(wrapper);
+        }
+        return b ? Result.ok() : Result.fail("内置模板，不可删除");
     }
 
     @Override

@@ -63,4 +63,6 @@ public interface TemplateService extends IService<ExcelTemplate> {
     void updateCellValue(Sheet sheet, ExcelCellLocator excelCellLocator,
                          ExcelCellEditor excelCellEditor, String valueType,
                          String projectName, int positionIndex, String cellValue);
+
+    Result deleteTemplate(String templateCode);
 }
