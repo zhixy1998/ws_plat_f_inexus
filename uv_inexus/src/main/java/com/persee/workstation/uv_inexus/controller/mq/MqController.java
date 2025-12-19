@@ -77,6 +77,7 @@ public class MqController {
             @ApiParam(value = "消息标签") @RequestParam(required = false) String tag,
             @ApiParam(value = "消息体(JSON)", required = true) @RequestBody String jsonBody) {
         boolean success = dynamicMqProducerUtil.sendNormal(clusterId, topic, tag, jsonBody);
+        System.out.println("发送成功"+clusterId+",topic"+topic+",tag"+tag+",jsonBody"+jsonBody);
         if (success) {
             return Result.ok("发送成功");
         } else {
