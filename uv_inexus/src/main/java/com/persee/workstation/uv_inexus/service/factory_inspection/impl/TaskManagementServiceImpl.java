@@ -65,7 +65,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         wrapper.like(TaskManagement::getDetectName, queryDto.getQuery());
         Page<TaskManagement> managementPage = this.page(page, wrapper);
         managementPage.getRecords().forEach(task -> {
-            task.setTemplateCode(templateService.getById(task.getUseTemplate()).getTemplateCode());
+            ExcelTemplate excelTemplate = templateService.getById(task.getUseTemplate());
+            if (excelTemplate!=null){
+                task.setTemplateCode(excelTemplate.getTemplateCode());
+                task.setTemplateName(excelTemplate.getTemplateName());
+            }
         });
         return Result.ok(managementPage);
     }
