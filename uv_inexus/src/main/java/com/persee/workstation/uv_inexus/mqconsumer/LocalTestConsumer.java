@@ -6,15 +6,16 @@
 //
 //@Service
 //@RocketMQMessageListener(
-//        consumerGroup = "local_test_consumer_group",
-//        topic = "local_test_topic",
+//        consumerGroup = "test",
+//        topic = "test",
+////        selectorExpression = "test",
 //        nameServer = "127.0.0.1:9876"
 //)
 //public class LocalTestConsumer implements RocketMQListener<String> {
 //
 //    @Override
 //    public void onMessage(String message) {
-//        System.out.println("Received message from local_test_topic: " + message);
+//        System.out.println("Received message from test: " + message);
 //    }
 //}
 //
