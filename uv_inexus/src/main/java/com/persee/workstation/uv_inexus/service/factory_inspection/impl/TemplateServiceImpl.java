@@ -497,6 +497,9 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             if (StringUtils.equals(template.getCategory(), "1")) {
                 ExcelTemplate excelTemplate = getById(template.getParentId());
                 this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
+            }else {
+                ExcelTemplate excelTemplate = getById(template.getId());
+                this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
             }
             return Result.ok();
         } catch (IOException e) {
