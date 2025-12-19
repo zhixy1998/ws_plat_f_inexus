@@ -73,4 +73,7 @@ public class TaskManagement extends BasePO {
     @TableField("result_template")
     @ApiModelProperty(value = "结果模板")
     private String resultTemplate;
+    @TableField(exist = false)
+    @ApiModelProperty(value = "templateCode")
+    private String templateCode;
 }
