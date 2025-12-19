@@ -2215,43 +2215,65 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             String peakUrl = pythonPathConstant.getPeakSearching();
             String valleyUrl = pythonPathConstant.getValleySearching();
 
-            // 添加日志输出（调试用）
-            log.info("调用寻峰接口: " + peakUrl);
-            log.info("调用寻谷接口: " + valleyUrl);
-
-            // 关键修改：直接使用传入的y值（处理后的）进行峰谷分析
-            // 这样峰谷分析基于的数据与前端显示的数据一致
-            body.put("x_data", x);
-            body.put("y_data", y); // 使用处理后的Y值（校正或原始）
-            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
-            body.put("height", height);
-            body.put("distance", confVO.getPeakInterval());
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
-            Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
-
-            List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
-            List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
-            List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
-            List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
 
             List<FPeakValleyMarking> peakValleys = new ArrayList<>();
             List<FPeakValleyMarking> markings = new ArrayList<>();
+            try {
 
-            for (int i = 0; i < xDataFeng.size(); i++) {
-                FPeakValleyMarking marking = new FPeakValleyMarking();
-                marking.setX(xDataFeng.get(i).toString());
-                marking.setY(yDataFeng.get(i));
-                marking.setType("波峰");
-                peakValleys.add(marking);
+                // 添加日志输出（调试用）
+                log.info("调用寻峰接口: " + peakUrl);
+                log.info("调用寻谷接口: " + valleyUrl);
+
+                // 关键修改：直接使用传入的y值（处理后的）进行峰谷分析
+                // 这样峰谷分析基于的数据与前端显示的数据一致
+                body.put("x_data", x);
+                body.put("y_data", y); // 使用处理后的Y值（校正或原始）
+                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                body.put("height", height);
+                body.put("distance", confVO.getPeakInterval());
+
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+
+
+                List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
+                List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
+                for (int i = 0; i < xDataFeng.size(); i++) {
+                    FPeakValleyMarking marking = new FPeakValleyMarking();
+                    marking.setX(xDataFeng.get(i).toString());
+                    marking.setY(yDataFeng.get(i));
+                    marking.setType("波峰");
+                    peakValleys.add(marking);
+                }
+
+            } catch (Exception e) {
+                log.error("调用寻峰算法失败: {}", e.getMessage(), e);
             }
-            for (int i = 0; i < xDataGu.size(); i++) {
-                FPeakValleyMarking marking = new FPeakValleyMarking();
-                marking.setX(xDataGu.get(i).toString());
-                marking.setY(yDataGu.get(i));
-                marking.setType("波谷");
-                markings.add(marking);
+            try {
+                // 这样峰谷分析基于的数据与前端显示的数据一致
+                body.clear();
+                body.put("x_data", x);
+                body.put("y_data", y); // 使用处理后的Y值（校正或原始）
+                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                body.put("height", height);
+                body.put("distance", confVO.getPeakInterval());
+
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+
+                Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
+                List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
+                List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
+
+                for (int i = 0; i < xDataGu.size(); i++) {
+                    FPeakValleyMarking marking = new FPeakValleyMarking();
+                    marking.setX(xDataGu.get(i).toString());
+                    marking.setY(yDataGu.get(i));
+                    marking.setType("波谷");
+                    markings.add(marking);
+                }
+            } catch (Exception e) {
+                log.error("调用寻谷算法失败: {}", e.getMessage(), e);
             }
 
             // 关键修改：构建结果字符串，直接使用传入的y值（处理后的）

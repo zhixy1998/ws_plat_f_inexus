@@ -53,6 +53,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReport
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReport;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,6 +71,7 @@ import java.util.stream.Collectors;
 
 import static com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum.QUANTITATIVE_MEASUREMENT;
 
+@Slf4j
 @Service("ConciseCommonService")
 public class ConciseCommonServiceImpl implements ConciseCommonService {
 
@@ -1019,7 +1021,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 vo.setInstrumentName("紫外可见分光光度计");
                 vo.setInstrumentModel("T600");
             }
-
+            log.info("报表参数数据输出完毕,内容: {} ",vo);
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
             // 根据任务中的方法key查询方法
@@ -1469,7 +1471,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                         }
                     }
                 }
-
+                log.info("报表表格数据输出完毕,内容: {} ",vo);
                 return Result.ok(vo);
             }
             case "时间扫描": {

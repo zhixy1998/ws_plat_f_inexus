@@ -2649,37 +2649,58 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             String peakUrl = pythonPathConstant.getPeakSearching();
             String valleyUrl = pythonPathConstant.getValleySearching();
 
-            // 添加日志输出（调试用）
-            System.out.println("调用寻峰接口: " + peakUrl);
-            System.out.println("调用寻谷接口: " + valleyUrl);
-
-            body.put("x_data", x);
-            body.put("y_data", originalY);
-            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
-            body.put("height", height);
-            body.put("distance", confVO.getPeakInterval());
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
-            Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
-            List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
-            List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
-            List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
-            List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
             List<FPeakValleyMarking> peakValleys = new ArrayList<>();
             List<FPeakValleyMarking> markings = new ArrayList<>();
-            for (int i = 0; i < xDataFeng.size(); i++) {
-                FPeakValleyMarking marking = new FPeakValleyMarking();
-                marking.setX(xDataFeng.get(i).toString());
-                marking.setY(yDataFeng.get(i));
-                marking.setType("波峰");
-                peakValleys.add(marking);
+            try {
+                // 添加日志输出（调试用）
+                System.out.println("调用寻峰接口: " + peakUrl);
+                System.out.println("调用寻谷接口: " + valleyUrl);
+
+                body.put("x_data", x);
+                body.put("y_data", originalY);
+                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                body.put("height", height);
+                body.put("distance", confVO.getPeakInterval());
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+
+                Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+                List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
+                List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
+                for (int i = 0; i < xDataFeng.size(); i++) {
+                    FPeakValleyMarking marking = new FPeakValleyMarking();
+                    marking.setX(xDataFeng.get(i).toString());
+                    marking.setY(yDataFeng.get(i));
+                    marking.setType("波峰");
+                    peakValleys.add(marking);
+                }
+            }catch (Exception e) {
+                log.error("调用寻峰算法失败: {}", e.getMessage(), e);
             }
-            for (int i = 0; i < xDataGu.size(); i++) {
-                FPeakValleyMarking marking = new FPeakValleyMarking();
-                marking.setX(xDataGu.get(i).toString());
-                marking.setY(yDataGu.get(i));
-                marking.setType("波谷");
-                markings.add(marking);
+            try {
+                body.clear();
+                body.put("x_data", x);
+                body.put("y_data", originalY);
+                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                body.put("height", height);
+                body.put("distance", confVO.getPeakInterval());
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
+
+                List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
+                List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
+
+
+                for (int i = 0; i < xDataGu.size(); i++) {
+                    FPeakValleyMarking marking = new FPeakValleyMarking();
+                    marking.setX(xDataGu.get(i).toString());
+                    marking.setY(yDataGu.get(i));
+                    marking.setType("波谷");
+                    markings.add(marking);
+                }
+            }catch (Exception e) {
+                log.error("调用寻谷算法失败: {}", e.getMessage(), e);
+                // 失败时不处理，继续执行保存原始数据
             }
 
             // 构建结果字符串，存储时使用原始Y值
@@ -2728,8 +2749,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
                 analysisData.setAnalysisResult(JSON.toJSONString(result));
                 analysisData.setAnalysisType("5");
-                analysisData.setPeak(JSON.toJSONString(peakValleys));
-                analysisData.setGrain(JSON.toJSONString(markings));
+                if (peakValleys != null){
+                    analysisData.setPeak(JSON.toJSONString(peakValleys));
+                }
+                if (markings!=null){
+                    analysisData.setGrain(JSON.toJSONString(markings));
+                }
                 analysisData.setColor("#000000");
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
@@ -2761,8 +2786,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     traceDataService.updateById(measureData);
                     analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
                     analysisData.setAnalysisResult(JSON.toJSONString(result));
-                    analysisData.setPeak(JSON.toJSONString(peakValleys));
-                    analysisData.setGrain(JSON.toJSONString(markings));
+                    if (peakValleys != null) {
+                        analysisData.setPeak(JSON.toJSONString(peakValleys));
+                    }
+                    if (markings != null){
+                        analysisData.setGrain(JSON.toJSONString(markings));
+                    }
                     analysisData.setColor("#000000");
                     analysisData.setIsSave("1");
                     tMeasureAnalysisDataService.updateById(analysisData);
@@ -2788,8 +2817,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     analysis.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
                     analysis.setAnalysisResult(JSON.toJSONString(result));
                     analysis.setAnalysisType("5");
-                    analysis.setPeak(JSON.toJSONString(peakValleys));
-                    analysis.setGrain(JSON.toJSONString(markings));
+                    if (peakValleys!=null){
+                        analysis.setPeak(JSON.toJSONString(peakValleys));
+                    }
+                    if (markings!=null){
+                        analysis.setGrain(JSON.toJSONString(markings));
+                    }
                     analysis.setColor("#000000");
                     analysis.setIsDelete("0");
                     analysis.setIsSave("1");
