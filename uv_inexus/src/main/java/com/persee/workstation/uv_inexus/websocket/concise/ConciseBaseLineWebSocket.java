@@ -415,8 +415,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 //                    }
 //                }
                  try {
-                     Thread.sleep(1000);
-                     log.info("【等待完成】固定等待1秒完成, session: {}", sessionId);
+                     Thread.sleep(3000);
+                     log.info("【等待完成】固定等待3秒完成, session: {}", sessionId);
                  } catch (InterruptedException e) {
                      log.warn("【等待中断】等待被中断, session: {}", sessionId);
                      Thread.currentThread().interrupt();
