@@ -1321,6 +1321,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         // 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
         Constants.startTime = LocalDateTime.now();
+        isEndData=false;
 
         SessionState state = sessionStates.get(session.getId());
         if (state != null) {

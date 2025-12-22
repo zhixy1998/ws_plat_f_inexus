@@ -896,11 +896,11 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                                                    String ip,
                                                    Integer number) throws IOException {
 
-        String luminosity = getLuminosityType(spectrumParameter.getLuminosity());
 
         // 发送测量命令
         devMessageUtil.getMeasureData(command, ip);
         Constants.startTime = LocalDateTime.now();
+        isEndData = false;
 
         SessionState state = sessionStates.get(session.getId());
         if (state != null) {
