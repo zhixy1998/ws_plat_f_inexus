@@ -51,6 +51,11 @@ ehcache:
       offheap: 10 # 堆外内存大小，单位MB
       disk: 50   # 磁盘持久化大小，单位MB。必须大于offheap
       ttl: 30m    # 生存时间
+    mqIdempotentCache: # MQ幂等性缓存
+      heap: 1000  # 堆内存最多存储条目数
+      offheap: 10 # 堆外内存大小，单位MB
+      disk: 50  # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 10m  # 生存时间
 
 #服务器
 #  datasource:
@@ -137,7 +142,4 @@ python-code:
 
 staircase-elimination:
   data-count: 10
-
-
-
 
