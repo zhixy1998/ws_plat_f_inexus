@@ -31,6 +31,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -114,6 +115,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 template.setRemark(request.getRemark());
                 template.setId(IdGeneratorUtil.generateIdWithPrefix("template"));
                 template.setParentId(request.getTemplateCode());
+                template.setColumnConfig("{}");
                 // 保存到数据库
                 boolean saved = this.save(template);
                 LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
@@ -135,6 +137,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 }
                 excelDataAssetService.saveBatch(list);
 
+
+//                buildResultTemplate(template.getTemplateCode());
                 if (saved) {
                     return Result.ok("模板创建成功");
                 } else {
@@ -259,7 +263,9 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
      */
     public Result editExcel(String resultTemplate, ExcelTemplate template, Map<String, Set<String>> sheetRetainRows) throws IOException {
         System.out.println("88888888888888888888888888888888" + resultTemplate);
-        File file = new File(resultTemplate);
+//        File file = new File(resultTemplate);
+        ClassPathResource resource = new ClassPathResource(resultTemplate);
+        File file = resource.getFile();
         boolean b = file.getParentFile().mkdirs();// 创建父目录（如果不存在）
         InputStream is = Files.newInputStream(Paths.get(resultTemplate));
         Workbook workbook = WorkbookFactory.create(is);
@@ -495,7 +501,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             ExcelTemplate template = this.getOne(queryWrapper);
             // 如果是子模板，则获取父模板   Category=1是子模板
             if (StringUtils.equals(template.getCategory(), "1")) {
-                ExcelTemplate excelTemplate = getById(template.getParentId());
+//                ExcelTemplate excelTemplate = getById(template.getParentId());
+                ExcelTemplate excelTemplate = getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, template.getParentId()));
                 this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
             }else {
                 ExcelTemplate excelTemplate = getById(template.getId());

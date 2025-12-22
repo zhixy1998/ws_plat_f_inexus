@@ -25,6 +25,23 @@ spring:
           username: root
           password: px123456
           driver-class-name: com.mysql.cj.jdbc.Driver
+  cache:
+    type: jcache # 指定使用JSR-107标准缓存[3](@ref)[4](@ref)
+
+# 自定义Ehcache参数
+ehcache:
+  disk-store-path: ./data/cache # 磁盘持久化目录，确保应用有读写权限
+  caches:
+    calibrationCache: # 检定校准缓存
+      heap: 1000 # 堆内存最多存储条目数
+      offheap: 100 # 堆外内存大小，单位MB
+      disk: 500   # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 2h    # 生存时间  2小时
+    defaultCache: # 默认缓存
+      heap: 500 # 堆内存最多存储条目数
+      offheap: 10 # 堆外内存大小，单位MB
+      disk: 50   # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 30m    # 生存时间
 
 mybatis:
   mapper-locations:
@@ -40,7 +57,7 @@ device:
 # 鉴定校准Excel 文件保存路径配置
 excel:
   save:
-    path: factory_inspection/excel/
+    path: factory_inspection/
 sys-manage-default:
   defaultId: "00000000"
   userId: "11111111"

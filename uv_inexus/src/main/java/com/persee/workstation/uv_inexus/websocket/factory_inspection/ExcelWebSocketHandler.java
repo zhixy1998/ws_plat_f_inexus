@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
@@ -18,9 +19,11 @@ import com.persee.workstation.uv_inexus.util.ExcelCellComparator;
 import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
 import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
+import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
@@ -37,7 +40,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
@@ -449,7 +455,28 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         list.add(new Command("SetSlit1", new Object[]{2}));
         list.add(new Command("SetLampPos", new Object[]{1}));
         R<DatagramSocket> ans = messageUtil.getSocket();
-//        messageUtil.singleSendAndReceive(ans.getData(), "192.168.1.1", "SetPhotoMode", new byte[]{0x01, 0x02});
+        try {
+            String ip="169.254.193.253";
+            devMessageUtil.spectrumScanSet(list, ip);
+            Command command = new Command();
+            command.setCmdId(SetParamEnum.Scan.getComId());
+            command.setParams(new Object[]{});
+            devMessageUtil.getMeasureData(command,ip);
+            // 等待一段时间让数据接收完成
+            try {
+                Thread.sleep(5000); // 等待5秒
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+// 获取并处理数据
+            List<ChangeParam> measurementData = Constants.measurd_data;
+            for (ChangeParam param : measurementData) {
+                log.info("5555555555555555: " + param.toString());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private boolean shouldSaveToFile(String fileName) {
