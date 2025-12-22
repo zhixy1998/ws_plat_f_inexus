@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.factory_inspection;
 
+import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 /*
@@ -12,6 +13,8 @@ import lombok.Data;
  */
 @Data
 public class TaskCopyDto {
+    @ApiModelProperty("新任务名称")
     private String newTaskName;
+    @ApiModelProperty("当前任务id")
     private String currentTaskId;
 }

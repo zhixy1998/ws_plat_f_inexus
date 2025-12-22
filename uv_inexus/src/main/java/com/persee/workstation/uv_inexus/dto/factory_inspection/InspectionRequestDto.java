@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.factory_inspection;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 /*
@@ -12,6 +13,7 @@ import lombok.Data;
  */
 //单项检测请求
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class InspectionRequestDto {
     //检测项id
     private String itemId;

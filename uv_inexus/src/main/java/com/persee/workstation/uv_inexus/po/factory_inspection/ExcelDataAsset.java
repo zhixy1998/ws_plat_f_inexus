@@ -18,7 +18,6 @@ import java.util.Map;
 public class ExcelDataAsset extends BasePO {
     @TableId(value = "id", type = IdType.INPUT)
     @ApiModelProperty("主键id")
-    @TableField(value = "id")
     private String  id;
     @ApiModelProperty("模板编号")
     @TableField(value = "template_code")
