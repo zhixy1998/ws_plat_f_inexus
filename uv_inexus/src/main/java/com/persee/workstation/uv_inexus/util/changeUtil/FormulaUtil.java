@@ -102,12 +102,57 @@ public class FormulaUtil {
         return actualStep / 50;
     }
 
+
+    /**
+     * 根据步长计算波长2(光谱扫描基线/扫描调用)[修约小数位数10位]
+     *
+     * @param actualStep
+     * @param linearSegments
+     * @return
+     */
+    public Double calculateWavelengthTwo(double actualStep, List<LinearSegment> linearSegments) {
+        try {
+            if (CollectionUtils.isNotEmpty(linearSegments)) {
+                for (LinearSegment segment : linearSegments) {
+                    if (segment.containsActualStep(actualStep)) {
+                        return roundToOneDecimalTwo((segment.getK() * actualStep + segment.getB()) / 50);
+                    }
+                }
+                // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
+                LinearSegment firstSegment = linearSegments.get(0);
+                LinearSegment lastSegment = linearSegments.get(linearSegments.size() - 1);
+
+                // 如果小于最小线段的起始点，则使用最小线段计算
+                if (actualStep < firstSegment.getMinActualStep()) {
+                    return roundToOneDecimalTwo((firstSegment.getK() * actualStep + firstSegment.getB()) / 50);
+                }
+
+                // 如果大于最大线段的结束点，则使用最大线段计算
+                if (actualStep > lastSegment.getMaxActualStep()) {
+                    return roundToOneDecimalTwo((lastSegment.getK() * actualStep + lastSegment.getB()) / 50);
+                }
+            }
+        } catch (Exception e) {
+            return actualStep / 50;
+        }
+        return actualStep / 50;
+    }
+
     private Double roundToOneDecimal(Double value) {
         if (value == null) {
             return null;
         }
         BigDecimal bd = new BigDecimal(value.toString());
         bd = bd.setScale(1, RoundingMode.HALF_UP);
+        return bd.doubleValue();
+    }
+
+    private Double roundToOneDecimalTwo(Double value) {
+        if (value == null) {
+            return null;
+        }
+        BigDecimal bd = new BigDecimal(value.toString());
+        bd = bd.setScale(10, RoundingMode.HALF_UP);
         return bd.doubleValue();
     }
 

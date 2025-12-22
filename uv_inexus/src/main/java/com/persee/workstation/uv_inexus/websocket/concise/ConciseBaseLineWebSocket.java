@@ -75,6 +75,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
     // 设备占用锁，确保同一设备不会被多个会话同时占用
     private static final Map<String, String> deviceOccupiedBy = new ConcurrentHashMap<>();
 
+    private static ChangeParam lastChangeParam;
+
     @Autowired
     private SpectrumConciseService spectrumService;
 
@@ -390,33 +392,9 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
 
             log.info("【基线成功】基线测量成功完成, session: {}", sessionId);
             if (!state.stopCommandSent.get()) {
-//                log.info("【等待测量线程结束】开始等待数据接收线程结束, session: {}", sessionId);
-//                long waitStartTime = System.currentTimeMillis();
-//                final long MAX_WAIT_TIME_MS = 10000; // 最多等待10秒
-//                while (Constants.sendMeasureThread != null && Constants.sendMeasureThread.isAlive()) {
-//                    try {
-//                        // 检查是否超时
-//                        if (System.currentTimeMillis() - waitStartTime > MAX_WAIT_TIME_MS) {
-//                            log.warn("【等待超时】等待测量线程结束超时，强制继续执行, session: {}", sessionId);
-//                            break;
-//                        }
-//
-//                        // 短暂休眠，减少CPU占用
-//                        Thread.sleep(100);
-//
-//                        log.debug("【等待中】测量线程仍在运行，等待结束, session: {}, 线程状态: {}, 线程名: {}",
-//                                sessionId,
-//                                Constants.sendMeasureThread.getState(),
-//                                Constants.sendMeasureThread.getName());
-//                    } catch (InterruptedException e) {
-//                        log.warn("【等待中断】等待线程结束被中断, session: {}", sessionId);
-//                        Thread.currentThread().interrupt();
-//                        break;
-//                    }
-//                }
                  try {
-                     Thread.sleep(1000);
-                     log.info("【等待完成】固定等待1秒完成, session: {}", sessionId);
+                     Thread.sleep(3000);
+                     log.info("【等待完成】固定等待3秒完成, session: {}", sessionId);
                  } catch (InterruptedException e) {
                      log.warn("【等待中断】等待被中断, session: {}", sessionId);
                      Thread.currentThread().interrupt();
@@ -635,7 +613,8 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             final long NO_DATA_TIMEOUT_MS = 120 * 1000; // 120秒无数据超时（增加以处理换灯暂停）
             // Increased timeout to handle lamp change pauses
             long lastDataTime = System.currentTimeMillis();
-
+            int cont = 0;
+            boolean isEndData = false;
             while (true) {
                 checkInterrupted(session);
                 // 检查无数据超时
@@ -646,18 +625,40 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     return null;
                 }
 
-                boolean hasNewData = false;
-
                 // 处理测量数据
                 while (!Constants.measurd_data.isEmpty()) {
+                    cont++;
                     checkInterrupted(session);
-
                     ChangeParam changeParam = Constants.measurd_data.remove(0);
                     Double originalWavelength = Double.parseDouble(changeParam.getWl());
-                    Double correctedWavelength = formulaUtil.calculateWavelength(originalWavelength, linearSegment);
+                    // 步数转波长
+                    Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                    changeParam.setWl(correctedWavelength.toString());
+                    if (cont<=1){
+                        lastChangeParam = changeParam;
+                        continue;
+                    }
                     // 强制约束波长
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             wavelengthInterval, isDescending, sessionId);
+
+                    while (constrainedWavelength>correctedWavelength&&!isEndData){
+                        if (constrainedWavelength==endWl){
+                            isEndData = true;
+                        }
+                        // 计算拟合数据
+                        ChangeParam param1 = calculate(lastChangeParam, changeParam, constrainedWavelength);
+                        dataList.add(param1);
+                        // 推送单个数据点
+                        pushBaselineDataPoint(session, constrainedWavelength);
+                        constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                                wavelengthInterval, isDescending, sessionId);
+                    }
+                    if (constrainedWavelength<correctedWavelength&&constrainedWavelength!=endWl){
+                        Integer currentIndex = dataPointIndexMap.get(sessionId);
+                        dataPointIndexMap.put(sessionId, currentIndex - 1);
+                    }
+                    lastChangeParam=changeParam;
 
 
                     if (stopWaveLength.equals(constrainedWavelength)){
@@ -666,20 +667,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     }
 
                     if (constrainedWavelength != null) {
-                        hasNewData = true;
                         lastDataTime = System.currentTimeMillis();
-
-                        // 推送单个数据点
-                        pushBaselineDataPoint(session, constrainedWavelength);
-
-                        ChangeParam processedParam = new ChangeParam();
-                        processedParam.setWl(constrainedWavelength.toString());
-                        processedParam.setStep(changeParam.getWl());
-                        processedParam.setS(changeParam.getS());
-                        processedParam.setR(changeParam.getR());
-                        processedParam.setD(changeParam.getD());
-                        dataList.add(processedParam);
-
                         // 检查是否到达结束波长
                         if (isEndWavelengthReached(constrainedWavelength, endWl, isDescending)) {
                             consecutiveEndWavelengthCount++;
@@ -741,6 +729,43 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
             log.info("【数据收集中断】数据收集被中断, session: {}", sessionId);
             throw new UserInterruptedException("用户主动停止");
         }
+    }
+
+
+    /**
+     * 根据起始点和终止点，计算指定波长对应的ChangeParam
+     *
+     * @param start 起始点
+     * @param end 终止点
+     * @param targetWl 目标波长，支持字符串或数字
+     * @return 计算得到的ChangeParam
+     */
+    public static ChangeParam calculate(ChangeParam start, ChangeParam end, Double targetWl) {
+
+        // 解析参数
+        double startWl = Double.parseDouble(start.getWl());
+        double endWl = Double.parseDouble(end.getWl());
+        int startR = Integer.parseInt(start.getR());
+        int endR = Integer.parseInt(end.getR());
+        int startS = Integer.parseInt(start.getS());
+        int endS = Integer.parseInt(end.getS());
+        int dValue = Integer.parseInt(start.getD());
+
+        // 计算拟合曲线
+        double slopeR = (double)(endR - startR) / (endWl - startWl);
+        double interceptR = startR - slopeR * startWl;
+
+        double slopeS = (double)(endS - startS) / (endWl - startWl);
+        double interceptS = startS - slopeS * startWl;
+
+        // 计算r和s值
+        int r = (int)Math.round(slopeR * targetWl + interceptR);
+        int s = (int)Math.round(slopeS * targetWl + interceptS);
+
+        // 格式化wl字符串
+        String wlStr = String.valueOf(targetWl);
+
+        return new ChangeParam(wlStr, wlStr, String.valueOf(r), String.valueOf(s), String.valueOf(dValue));
     }
 
     /**

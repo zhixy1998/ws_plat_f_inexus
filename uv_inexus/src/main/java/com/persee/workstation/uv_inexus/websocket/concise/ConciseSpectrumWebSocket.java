@@ -76,6 +76,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     private static final Map<String, AtomicInteger> pendingStorages = new ConcurrentHashMap<>();
     private static final Map<String, CountDownLatch> storageLatches = new ConcurrentHashMap<>();
 
+    private static ChangeParam lastChangeParam;
+
     @Autowired
     private SpectrumConciseService spectrumService;
     @Autowired
@@ -259,6 +261,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             this.task = task;
         }
     }
+
     /**
      * 当WebSocket连接建立后调用此方法
      */
@@ -297,7 +300,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             sendClose(session, "缺少 deviceSerialNumber 参数");
             return;
         }
-        if (updateBy == null){
+        if (updateBy == null) {
             sendClose(session, "缺少 updateBy 参数");
             return;
         }
@@ -350,8 +353,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             return;
         }
 
-        String maxLocation= "";
-        if (configPO.getIsAutoChangePool()){
+        String maxLocation = "";
+        if (configPO.getIsAutoChangePool()) {
             List<String> sampleIds = newSampleData.stream().map(obj -> obj.getSpecimenKey()).collect(Collectors.toCollection(ArrayList::new));
             QueryWrapper<FMeasureSample> eq = new QueryWrapper<>();
             eq.in("id", sampleIds);
@@ -367,10 +370,10 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         }
 
         boolean poolStatus = false;
-        if (configPO.getIsAutoChangePool()){
+        if (configPO.getIsAutoChangePool()) {
             List<FSamplePoolStatus> poolStatuses = com.alibaba.fastjson.JSON.parseArray(configPO.getPoolInfo(), FSamplePoolStatus.class);
             for (FSamplePoolStatus status : poolStatuses) {
-                if (status.getPoolStatus()){
+                if (status.getPoolStatus()) {
                     poolStatus = true;
                     break;
                 }
@@ -383,10 +386,10 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         state.ip = ip;
 
         Command command = new Command();
-        if (spectrumParameter.getScanSpeed().equals("3")){
-            command = buildCommand(SetParamEnum.ScanFast,new Object[]{});
-        }else{
-            command = buildCommand(SetParamEnum.Scan,new Object[]{});
+        if (spectrumParameter.getScanSpeed().equals("3")) {
+            command = buildCommand(SetParamEnum.ScanFast, new Object[]{});
+        } else {
+            command = buildCommand(SetParamEnum.Scan, new Object[]{});
         }
 
         // 往前端推送数据的线程
@@ -409,12 +412,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
                         // 预留: 设置样品池位置
                         FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
-                        if (configPO.getIsAutoChangePool()){
-                            if (sample == null){
+                        if (configPO.getIsAutoChangePool()) {
+                            if (sample == null) {
                                 sendAndClose(session, "请先创建样品");
                                 return;
                             }
-                            if (finalPoolStatus){
+                            if (finalPoolStatus) {
                                 R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
                                 if (!stringR.getSuccess()) {
                                     sendAndClose(session, "设置出错");
@@ -422,7 +425,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                 }
                                 fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
                                 JSONObject object = new JSONObject();
-                                object.put("currentPoolNum",sample.getSampleLocation());
+                                object.put("currentPoolNum", sample.getSampleLocation());
                                 sendMessageSafe(session, object.toJSONString());
                             }
                         }
@@ -430,12 +433,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                         doOneMeasurementSerial(session, finalCommand, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), deviceSerialNumber, ip, 1);
                         newSampleData.get(i).setIsTested("1");
 
-                        if (configPO.getIsAutoChangePool().equals(true)){
-                            if ((i + 1) != newSampleData.size()&&!sample.getSampleLocation().equals(finalMaxLocation)) {
+                        if (configPO.getIsAutoChangePool().equals(true)) {
+                            if ((i + 1) != newSampleData.size() && !sample.getSampleLocation().equals(finalMaxLocation)) {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessageSafe(session, payload.toJSONString());
-                            }else {
+                            } else {
                                 sendMessageSafe(session, "扫描成功");
 
                                 // 全部完成后再告诉前端 finish
@@ -444,8 +447,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                 sendAndClose(session, payload.toJSONString());
                             }
                         } else {
-                            if (state.stopCommandSent.get()){
-                            }else{
+                            if (state.stopCommandSent.get()) {
+                            } else {
                                 sendMessageSafe(session, "扫描成功");
                             }
 
@@ -575,7 +578,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     }
                 }
 
-            }  catch (Exception e) {
+            } catch (Exception e) {
                 log.error("扫描任务执行异常", e);
                 sendMessageSafe(session, "执行异常: " + e.getMessage());
 
@@ -650,7 +653,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         log.info("收到消息: {} -> {}", session.getId(), message.getPayload());
 
-        if ("close".equals(message.getPayload())){
+        if ("close".equals(message.getPayload())) {
             String sessionId = session.getId();
             SessionState state = sessionStates.get(sessionId);
 
@@ -667,7 +670,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
             // 2. 发送停止命令给设备
             sendStopCommandIfNeeded(session);
-
 
 
             safeCloseWebSocket(session);
@@ -760,6 +762,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     sessionId, state.measurementStarted.get(), state.stopCommandSent.get());
         }
     }
+
     /**
      * 停止数据接收线程
      */
@@ -881,7 +884,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             stopDataReceivingThread();
 
 
-
             // 等待任务线程完全结束（包括数据保存）
             Thread thread = taskThreads.get(sessionId);
             if (thread != null && thread.isAlive()) {
@@ -983,9 +985,10 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
     /**
      * 等待线程退出
-     * @param thread 要等待的线程
+     *
+     * @param thread        要等待的线程
      * @param timeoutMillis 超时时间（毫秒）
-     * @param sessionId 会话ID（用于日志）
+     * @param sessionId     会话ID（用于日志）
      * @return true表示线程已退出，false表示超时
      */
     private boolean waitForThreadToExit(Thread thread, long timeoutMillis, String sessionId) {
@@ -1130,6 +1133,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
     /**
      * 设置默认参数
+     *
      * @param session
      * @param command
      * @param spectrumParameter
@@ -1153,6 +1157,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         String sessionId = session.getId();
         SessionState state = sessionStates.get(sessionId);
+
+        synchronized (originalYValues) {
+            // 清理当前session和sampleId的所有数据（不管number是多少）
+            String prefix = sessionId + "_" + sampleId + "_";
+            originalYValues.entrySet().removeIf(entry -> entry.getKey().startsWith(prefix));
+            log.info("清理原始Y值: sessionId={}, sampleId={}, 剩余keys: {}",
+                    sessionId, sampleId, originalYValues.keySet());
+        }
 
         // 标记当前测量开始
         if (state != null) {
@@ -1222,7 +1234,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             try {
                 Constants.MEASURE_LOCK.unlock();
                 log.info("测量锁已释放");
-            }  catch (Exception e) {
+            } catch (Exception e) {
                 log.error("测量过程中发生异常，session: {}", sessionId, e);
                 throw e;
             } finally {
@@ -1289,7 +1301,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                                    String ip,
                                                    Integer count) throws IOException {
         String luminosity = null;
-        switch (spectrumParameter.getLuminosity()){
+        switch (spectrumParameter.getLuminosity()) {
             case "1":
                 luminosity = "Abs";
                 break;
@@ -1327,7 +1339,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         if (isFastScan) {
             // 极快扫描模式：优化版本（保持不变）
             ProcessedData processedData = processAndPushFastScanData(session, spectrumParameter, x, y, count,
-                    task, sampleId, luminosity, spectrumParameter.getLadderCorrection(),deviceSerialNumber);
+                    task, sampleId, luminosity, spectrumParameter.getLadderCorrection(), deviceSerialNumber);
 
             // 立即完成测量
             Constants.endTime = LocalDateTime.now();
@@ -1379,20 +1391,10 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                             break;
                         }
 
-                        calcOnePoint(spectrumParameter, baselineCopy, x, y, deviceSerialNumber,session);
-
-                        if (x.size()>2){
-                            Double x_endOne = x.get(x.size() - 1);
-                            Double x_endTwo = x.get(x.size() - 2);
-                            if (x_endOne.equals(x_endTwo)) {
-                                x.remove(x.size() - 1);
-                                y.remove(y.size() - 1);
-                                endWaveLengthState = true;
-                            }
-                        }
+                        calcOnePoint(spectrumParameter, baselineCopy, x, y, deviceSerialNumber, session);
 
                         // 将新点添加到批次缓冲区，并检查是否达到批次大小
-                        if (!x.isEmpty() && !y.isEmpty() && !endWaveLengthState) {
+                        if (!x.isEmpty() && !y.isEmpty()) {
                             int currentIndex = x.size() - 1;
                             Double currentX = x.get(currentIndex);
                             Double currentY = y.get(currentIndex);
@@ -1504,23 +1506,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     log.info("跳过台阶消除");
                 }
 
-                // 根据是否开启阶梯校正来决定存储的数据
                 String key = batchData.sessionId + "_" + batchData.sampleId + "_" + batchData.count;
                 synchronized (originalYValues) {
-                    if (!originalYValues.containsKey(key)) {
-                        // 根据阶梯校正状态决定存储的数据
-                        originalYValues.put(key, new ArrayList<>(yForStorage));
-                    } else {
-                        List<Double> existingY = originalYValues.get(key);
-                        // 确保不重复添加
-                        if (existingY.size() < batchData.startIndex + yForStorage.size()) {
-                            for (int i = existingY.size(); i < batchData.startIndex; i++) {
-                                existingY.add(0.0); // 填充空缺
-                            }
-                            // 根据阶梯校正状态决定存储的数据
-                            existingY.addAll(yForStorage);
-                        }
+                    // 如果key已经存在，先清理旧数据
+                    if (originalYValues.containsKey(key)) {
+                        log.warn("发现重复的key，清理旧数据: {}", key);
                     }
+                    // 总是创建新的列表，避免追加到旧列表
+                    originalYValues.put(key, new ArrayList<>(yForStorage));
                 }
 
                 // 推送处理后的数据
@@ -1607,7 +1600,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Thread.currentThread().interrupt();
         }
     }
-
 
 
     /**
@@ -1722,7 +1714,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         point.put("xType", "nm");
         // 光度模式是1.Abs 2.T% 3.Es 4.Er
-        String luminosityType = luminosity.equals("1")?"Abs":luminosity.equals("2")?"T%":luminosity.equals("3")?"Es":"Er";
+        String luminosityType = luminosity.equals("1") ? "Abs" : luminosity.equals("2") ? "T%" : luminosity.equals("3") ? "Es" : "Er";
         point.put("yType", luminosityType);
         dataArray.add(point);
 
@@ -1881,7 +1873,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         // 关键修改：根据是否开启阶梯校正来决定存储的数据
         String key = session.getId() + "_" + sampleId + "_" + count;
-        originalYValues.put(key, new ArrayList<>(yForStorage));
+        synchronized (originalYValues) {
+            // 清理当前key的旧数据
+            if (originalYValues.containsKey(key)) {
+                log.warn("极快扫描模式：清理重复key的旧数据: {}", key);
+            }
+            // 根据阶梯校正状态决定存储的数据
+            originalYValues.put(key, new ArrayList<>(yForStorage));
+        }
 
         // 一次性推送所有数据 - 使用处理后的数据（校正或原始）
         pushAllDataAtOnce(session, processedX, processedY, count, sampleId, luminosity);
@@ -1889,6 +1888,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         log.info("极快扫描模式数据处理完成");
         return new ProcessedData(processedX, processedY);
     }
+
     /**
      * 计算期望的数据点数
      */
@@ -1917,7 +1917,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         if (measurdData.isEmpty()) return false;
 
         List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
-        ChangeParam currentData = measurdData.get(0);
+
 
         // 获取波长参数用于约束
         double startWl = Double.parseDouble(spectrumParameter.getStartWaveLength());
@@ -1926,113 +1926,207 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         boolean isDescending = startWl > endWl;
 
         try {
-            if (baselineCopy != null && !baselineCopy.isEmpty()) {
-                // 有基线校正的情况
-                ChangeParam baselineData = baselineCopy.get(0);
 
-                switch (spectrumParameter.getLuminosity()) {
-                    case "1": // Abs
-                        String s = DataCountUtil.countTPercent(baselineData, currentData, 1.0);
+            switch (spectrumParameter.getLuminosity()) {
+                case "1": // Abs
+                {
+                    if (lastChangeParam == null) {
+                        if (baselineCopy!=null&&baselineCopy.size()>0){
+                            baselineCopy.forEach(c -> {
+                                baselineMap.put(c.getWl(), c);
+                            });
+                        }
+                        ChangeParam remove = measurdData.remove(0);
+                        Double originalWavelength = Double.parseDouble(remove.getWl());
+                        // 步数转波长
+                        Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                        remove.setWl(correctedWavelength.toString());
+                        lastChangeParam = remove;
+                        return true;
+                    }
+                    ChangeParam changeParam = measurdData.get(0);
+                    Double originalWavelength = Double.parseDouble(changeParam.getWl());
+                    Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                    changeParam.setWl(correctedWavelength.toString());
+                    // 强制约束波长
+                    Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                            interval, isDescending, x.size());
+
+                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+
+                        if (constrainedWavelength == endWl) {
+                            isEndData = true;
+                        }
+                        // 计算拟合数据
+                        ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+                        String s;
+                        if (baselineMap != null && !baselineMap.isEmpty()) {
+                            s = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                        }else{
+                            s = DataCountUtil.countTPercent(null, param, 1.0);
+                        }
+
                         String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
-                        double parsedWl = Double.parseDouble(currentData.getWl());
-                        Double correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+                        Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                        double parsed = Double.parseDouble(param.getWl());
+                        synchronized (this) {
+                            Constants.originalCalculationData.add(parsed + "," + yy);
+                            x.add(parsed);
+                            y.add(Double.parseDouble(yy));
+                        }
 
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
-
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(yy));
-                        break;
-                    case "2": // T%
-                        s = DataCountUtil.countTPercent(baselineData, currentData, 1.0);
-                        parsedWl = Double.parseDouble(currentData.getWl());
-                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
-
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
-
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(s));
-                        break;
-                    case "3": // Es
-                        Double sData = Double.valueOf(currentData.getS());
-                        String esValue = String.valueOf((sData / 8388607) * 100);
-                        parsedWl = Double.parseDouble(currentData.getWl());
-                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
-
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
-
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(esValue));
-                        break;
-                    case "4": // Er
-                        Double rData = Double.valueOf(currentData.getR());
-                        String erValue = String.valueOf((rData / 8388607) * 100);
-                        parsedWl = Double.parseDouble(currentData.getWl());
-                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
-
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
-
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(erValue));
-                        break;
+                        constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                                interval, isDescending, x.size());
+                    }
+                    lastChangeParam = changeParam;
+                    break;
                 }
-                baselineCopy.remove(0);
-            } else {
-                // 无基线校正的情况
-                switch (spectrumParameter.getLuminosity()) {
-                    case "1": // Abs
-                        String s = DataCountUtil.countTPercent(null, currentData, 1.0);
-                        String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
-                        double parsedWl = Double.parseDouble(currentData.getWl());
-                        Double correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+                case "2": // T%
+                {
+                    if (lastChangeParam == null) {
+                        if (baselineCopy!=null&&baselineCopy.size()>0){
+                            baselineCopy.forEach(c -> {
+                                baselineMap.put(c.getWl(), c);
+                            });
+                        }
+                        ChangeParam remove = measurdData.remove(0);
+                        Double originalWavelength = Double.parseDouble(remove.getWl());
+                        // 步数转波长
+                        Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                        remove.setWl(correctedWavelength.toString());
+                        lastChangeParam = remove;
+                        return true;
+                    }
+                    ChangeParam changeParam = measurdData.get(0);
+                    Double originalWavelength = Double.parseDouble(changeParam.getWl());
+                    Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                    changeParam.setWl(correctedWavelength.toString());
+                    // 强制约束波长
+                    Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                            interval, isDescending, x.size());
 
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
+                    while (constrainedWavelength > correctedWavelength && !isEndData) {
 
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(yy));
-                        break;
-                    case "2": // T%
-                        s = DataCountUtil.countTPercent(null, currentData, 1.0);
-                        parsedWl = Double.parseDouble(currentData.getWl());
-                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+                        if (constrainedWavelength == endWl) {
+                            isEndData = true;
+                        }
+                        // 计算拟合数据
+                        ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+                        String yy;
+                        if (baselineMap != null && !baselineMap.isEmpty()) {
+                            yy = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                        }else{
+                            yy = DataCountUtil.countTPercent(null, param, 1.0);
+                        }
+                        Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                        double parsed = Double.parseDouble(param.getWl());
+                        synchronized (this) {
+                            Constants.originalCalculationData.add(parsed + "," + yy);
+                            x.add(parsed);
+                            y.add(Double.parseDouble(yy));
+                        }
 
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
+                        constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                                interval, isDescending, x.size());
+                    }
+                    lastChangeParam = changeParam;
+                    break;
+                }
+                case "3": // Es
+                {
+                    if (lastChangeParam == null) {
+                        if (baselineCopy!=null&&baselineCopy.size()>0){
+                            baselineCopy.forEach(c -> {
+                                baselineMap.put(c.getWl(), c);
+                            });
+                        }
+                        ChangeParam remove = measurdData.remove(0);
+                        Double originalWavelength = Double.parseDouble(remove.getWl());
+                        // 步数转波长
+                        Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                        remove.setWl(correctedWavelength.toString());
+                        lastChangeParam = remove;
+                        return true;
+                    }
+                    ChangeParam changeParam = measurdData.get(0);
+                    Double originalWavelength = Double.parseDouble(changeParam.getWl());
+                    Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                    changeParam.setWl(correctedWavelength.toString());
+                    // 强制约束波长
+                    Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                            interval, isDescending, x.size());
 
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(s));
-                        break;
-                    case "3": // Es
-                        Double sData = Double.valueOf(currentData.getS());
-                        String esValue = String.valueOf((sData / 8388607) * 100);
-                        parsedWl = Double.parseDouble(currentData.getWl());
-                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+                    while (constrainedWavelength > correctedWavelength && !isEndData) {
 
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
+                        if (constrainedWavelength == endWl) {
+                            isEndData = true;
+                        }
+                        // 计算拟合数据
+                        ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+                        Double sData = Double.valueOf(param.getS());
+                        String yy = String.valueOf((sData / 8388607) * 100);
+                        Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                        double parsed = Double.parseDouble(param.getWl());
+                        synchronized (this) {
+                            Constants.originalCalculationData.add(parsed + "," + yy);
+                            x.add(parsed);
+                            y.add(Double.parseDouble(yy));
+                        }
 
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(esValue));
-                        break;
-                    case "4": // Er
-                        Double rData = Double.valueOf(currentData.getR());
-                        String erValue = String.valueOf((rData / 8388607) * 100);
-                        parsedWl = Double.parseDouble(currentData.getWl());
-                        correctedWl = formulaUtil.calculateWavelength(parsedWl, linearSegment);
+                        constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                                interval, isDescending, x.size());
+                    }
+                    lastChangeParam = changeParam;
+                    break;
+                }
+                case "4": // Er
+                {
+                    if (lastChangeParam == null) {
+                        if (baselineCopy!=null&&baselineCopy.size()>0){
+                            baselineCopy.forEach(c -> {
+                                baselineMap.put(c.getWl(), c);
+                            });
+                        }
+                        ChangeParam remove = measurdData.remove(0);
+                        Double originalWavelength = Double.parseDouble(remove.getWl());
+                        // 步数转波长
+                        Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                        remove.setWl(correctedWavelength.toString());
+                        lastChangeParam = remove;
+                        return true;
+                    }
+                    ChangeParam changeParam = measurdData.get(0);
+                    Double originalWavelength = Double.parseDouble(changeParam.getWl());
+                    Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                    changeParam.setWl(correctedWavelength.toString());
+                    // 强制约束波长
+                    Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                            interval, isDescending, x.size());
 
-                        // 添加波长约束 - 强制修约
-                        correctedWl = forceConstrainWavelength(correctedWl, startWl, endWl, interval, isDescending, x.size());
+                    while (constrainedWavelength > correctedWavelength && !isEndData) {
 
-                        x.add(correctedWl);
-                        y.add(Double.parseDouble(erValue));
-                        break;
+                        if (constrainedWavelength == endWl) {
+                            isEndData = true;
+                        }
+                        // 计算拟合数据
+                        ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+                        Double rData = Double.valueOf(param.getR());
+                        String yy = String.valueOf((rData / 8388607) * 100);
+                        Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                        double parsed = Double.parseDouble(param.getWl());
+                        synchronized (this) {
+                            Constants.originalCalculationData.add(parsed + "," + yy);
+                            x.add(parsed);
+                            y.add(Double.parseDouble(yy));
+                        }
+
+                        constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                                interval, isDescending, x.size());
+                    }
+                    lastChangeParam = changeParam;
+                    break;
                 }
             }
-
             measurdData.remove(0);
             return true;
         } catch (Exception e) {
@@ -2301,7 +2395,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Double value = DataCountUtil.formatValue(state.digit, y.get(i));
             String valueY = DataCountUtil.addZero(value, state.digit);
             point.put("y", y.get(i));
-            point.put("roundOffY",valueY);
+            point.put("roundOffY", valueY);
             point.put("xType", "nm");
 
             // 光度模式
@@ -2347,6 +2441,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     }
 
 
+    private static boolean isEndData = false;
+    private static Map<String, ChangeParam> baselineMap = new HashMap<>();
 
     /**
      * 计算光度模式的Abs/T%
@@ -2366,129 +2462,238 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         boolean isDescending = startWl > endWl;
         Double stopWaveLength = endWl + (interval * 3);
 
-        if (baselineCopy != null && !baselineCopy.isEmpty()) {
-            if (spectrumParameter.getLuminosity().equals("1")) {
-                String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
-                Constants.originalCalculationData.add(baselineCopy.get(0).getWl() + "," + yy);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("2")) {
-                String s = DataCountUtil.countTPercent(baselineCopy.get(0), Constants.measurd_data.get(0), 1.0);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + s);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(s));
-            } else if (spectrumParameter.getLuminosity().equals("3")) {
-                Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                String yy = String.valueOf((sData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("4")) {
-                Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                String yy = String.valueOf((rData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            }
-            Constants.measurd_data.remove(0);
-            baselineCopy.remove(0);
-        } else {
-            if (spectrumParameter.getLuminosity().equals("1")) {
-                String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
-                String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("2")) {
-                String s = DataCountUtil.countTPercent(null, Constants.measurd_data.get(0), 1.0);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + s);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(s));
-            } else if (spectrumParameter.getLuminosity().equals("3")) {
-                Double sData = Double.valueOf(Constants.measurd_data.get(0).getS());
-                String yy = String.valueOf((sData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                double vlaue = parsed / 50;
-                System.out.println("Wl/50得到的值: "+parsed/50);
-                if ((int) vlaue == 656){
-                    System.out.println("");
+        if (spectrumParameter.getLuminosity().equals("1")) {
+            if (lastChangeParam == null) {
+                if (baselineCopy!=null&&baselineCopy.size()>0){
+                    baselineCopy.forEach(c -> {
+                        baselineMap.put(c.getWl(), c);
+                    });
                 }
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-                System.err.println(linearSegment);
-//                Double v =vlaue;
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
-            } else if (spectrumParameter.getLuminosity().equals("4")) {
-                Double rData = Double.valueOf(Constants.measurd_data.get(0).getR());
-                String yy = String.valueOf((rData / 8388607) * 100);
-                double parsed = Double.parseDouble(Constants.measurd_data.get(0).getWl());
-                Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
-
-                // 添加波长约束 - 强制修约
-                v = forceConstrainWavelength(v, startWl, endWl, interval, isDescending, x.size());
-                calcOnePoint(stopWaveLength, v, sessionId);
-
-                Constants.originalCalculationData.add(v + "," + yy);
-                x.add(Double.parseDouble(v.toString()));
-                y.add(Double.parseDouble(yy));
+                ChangeParam remove = Constants.measurd_data.remove(0);
+                Double originalWavelength = Double.parseDouble(remove.getWl());
+                // 步数转波长
+                Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                remove.setWl(correctedWavelength.toString());
+                lastChangeParam = remove;
+                return;
             }
-            Constants.measurd_data.remove(0);
+            ChangeParam changeParam = Constants.measurd_data.get(0);
+            Double originalWavelength = Double.parseDouble(changeParam.getWl());
+            Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+            changeParam.setWl(correctedWavelength.toString());
+            // 强制约束波长
+            Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                    interval, isDescending, x.size());
+
+            while (constrainedWavelength > correctedWavelength && !isEndData) {
+
+                if (constrainedWavelength == endWl) {
+                    isEndData = true;
+                }
+                // 计算拟合数据
+                ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+                String s;
+                if (baselineMap != null && !baselineMap.isEmpty()) {
+                    s = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                }else{
+                    s = DataCountUtil.countTPercent(null, param, 1.0);
+                }
+
+                String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
+                Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                double parsed = Double.parseDouble(param.getWl());
+                synchronized (this) {
+                    calcOnePoint(stopWaveLength, parsed, sessionId);
+
+                    Constants.originalCalculationData.add(parsed + "," + yy);
+                    x.add(parsed);
+                    y.add(Double.parseDouble(yy));
+                }
+                constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                        interval, isDescending, x.size());
+            }
+            lastChangeParam = changeParam;
+        } else if (spectrumParameter.getLuminosity().equals("2")) {
+            if (lastChangeParam == null) {
+                if (baselineCopy!=null&&baselineCopy.size()>0){
+                    baselineCopy.forEach(c -> {
+                        baselineMap.put(c.getWl(), c);
+                    });
+                }
+                ChangeParam remove = Constants.measurd_data.remove(0);
+                Double originalWavelength = Double.parseDouble(remove.getWl());
+                // 步数转波长
+                Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                remove.setWl(correctedWavelength.toString());
+                lastChangeParam = remove;
+                return;
+            }
+            ChangeParam changeParam = Constants.measurd_data.get(0);
+            Double originalWavelength = Double.parseDouble(changeParam.getWl());
+            Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+            changeParam.setWl(correctedWavelength.toString());
+            // 强制约束波长
+            Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                    interval, isDescending, x.size());
+
+            while (constrainedWavelength > correctedWavelength && !isEndData) {
+
+                if (constrainedWavelength == endWl) {
+                    isEndData = true;
+                }
+                // 计算拟合数据
+                ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+
+
+                String yy;
+                if (baselineMap != null && !baselineMap.isEmpty()) {
+                    yy = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                }else{
+                    yy = DataCountUtil.countTPercent(null, param, 1.0);
+                }
+                Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                double parsed = Double.parseDouble(param.getWl());
+                synchronized (this) {
+                    calcOnePoint(stopWaveLength, parsed, sessionId);
+
+                    Constants.originalCalculationData.add(parsed + "," + yy);
+                    x.add(parsed);
+                    y.add(Double.parseDouble(yy));
+                }
+                constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                        interval, isDescending, x.size());
+            }
+            lastChangeParam = changeParam;
+        } else if (spectrumParameter.getLuminosity().equals("3")) {
+            if (lastChangeParam == null) {
+                ChangeParam remove = Constants.measurd_data.remove(0);
+                Double originalWavelength = Double.parseDouble(remove.getWl());
+                // 步数转波长
+                Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                remove.setWl(correctedWavelength.toString());
+                lastChangeParam = remove;
+                return;
+            }
+            ChangeParam changeParam = Constants.measurd_data.get(0);
+            Double originalWavelength = Double.parseDouble(changeParam.getWl());
+            Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+            changeParam.setWl(correctedWavelength.toString());
+            // 强制约束波长
+            Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                    interval, isDescending, x.size());
+
+            while (constrainedWavelength > correctedWavelength && !isEndData) {
+
+                if (constrainedWavelength == endWl) {
+                    isEndData = true;
+                }
+                // 计算拟合数据
+                ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+
+
+                Double sData = Double.valueOf(param.getS());
+                String yy = String.valueOf((sData / 8388607) * 100);
+                Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                double parsed = Double.parseDouble(param.getWl());
+                synchronized (this) {
+                    calcOnePoint(stopWaveLength, parsed, sessionId);
+
+                    Constants.originalCalculationData.add(parsed + "," + yy);
+                    x.add(parsed);
+                    y.add(Double.parseDouble(yy));
+                }
+                constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                        interval, isDescending, x.size());
+            }
+            lastChangeParam = changeParam;
+        } else if (spectrumParameter.getLuminosity().equals("4")) {
+            if (lastChangeParam == null) {
+                ChangeParam remove = Constants.measurd_data.remove(0);
+                Double originalWavelength = Double.parseDouble(remove.getWl());
+                // 步数转波长
+                Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+                remove.setWl(correctedWavelength.toString());
+                lastChangeParam = remove;
+                return;
+            }
+            ChangeParam changeParam = Constants.measurd_data.get(0);
+            Double originalWavelength = Double.parseDouble(changeParam.getWl());
+            Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, linearSegment);
+            changeParam.setWl(correctedWavelength.toString());
+            // 强制约束波长
+            Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                    interval, isDescending, x.size());
+
+            while (constrainedWavelength > correctedWavelength && !isEndData) {
+
+                if (constrainedWavelength == endWl) {
+                    isEndData = true;
+                }
+                // 计算拟合数据
+                ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
+
+
+                Double rData = Double.valueOf(param.getR());
+                String yy = String.valueOf((rData / 8388607) * 100);
+                Constants.originalCalculationData.add(param.getWl() + "," + yy);
+                double parsed = Double.parseDouble(param.getWl());
+                synchronized (this) {
+                    calcOnePoint(stopWaveLength, parsed, sessionId);
+
+                    Constants.originalCalculationData.add(parsed + "," + yy);
+                    x.add(parsed);
+                    y.add(Double.parseDouble(yy));
+                }
+                constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
+                        interval, isDescending, x.size());
+            }
+            lastChangeParam = changeParam;
         }
+        Constants.measurd_data.remove(0);
+
+    }
+
+
+    /**
+     * 根据起始点和终止点，计算指定波长对应的ChangeParam
+     *
+     * @param start    起始点
+     * @param end      终止点
+     * @param targetWl 目标波长，支持字符串或数字
+     * @return 计算得到的ChangeParam
+     */
+    public static ChangeParam calculate(ChangeParam start, ChangeParam end, Double targetWl) {
+
+        // 解析参数
+        double startWl = Double.parseDouble(start.getWl());
+        double endWl = Double.parseDouble(end.getWl());
+        int startR = Integer.parseInt(start.getR());
+        int endR = Integer.parseInt(end.getR());
+        int startS = Integer.parseInt(start.getS());
+        int endS = Integer.parseInt(end.getS());
+        int dValue = Integer.parseInt(start.getD());
+
+        // 计算拟合曲线
+        double slopeR = (double) (endR - startR) / (endWl - startWl);
+        double interceptR = startR - slopeR * startWl;
+
+        double slopeS = (double) (endS - startS) / (endWl - startWl);
+        double interceptS = startS - slopeS * startWl;
+
+        // 计算r和s值
+        int r = (int) Math.round(slopeR * targetWl + interceptR);
+        int s = (int) Math.round(slopeS * targetWl + interceptS);
+
+        // 格式化wl字符串
+        String wlStr = String.valueOf(targetWl);
+
+        return new ChangeParam(wlStr, wlStr, String.valueOf(r), String.valueOf(s), String.valueOf(dValue));
     }
 
     public void calcOnePoint(Double stopWaveLength,
                              Double constrainedWavelength,
                              String sessionId) {
-        if (stopWaveLength.equals(constrainedWavelength)){
+        if (stopWaveLength.equals(constrainedWavelength)) {
             log.info("【停止命令不会再发送】session: {}", sessionId);
             SessionState state = sessionStates.get(sessionId);
             state.stopCommandSent2.set(true);
@@ -2522,14 +2727,14 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
         try {
             /// 预留是否打开积分球的门限系数的校验
-            if (true){
+            if (true) {
                 // 判断光度模式
                 if ("1".equals(luminosityMode)) {
                     // Abs的台阶消除数值
                     if (confVO.getAbs() != null && !confVO.getAbs().trim().isEmpty()) {
                         threshold = Integer.valueOf(confVO.getAbs());
                     }
-                } else if ("2".equals(luminosityMode)){
+                } else if ("2".equals(luminosityMode)) {
                     // 透过率的台阶消除数值
                     if (confVO.getTransmittance() != null && !confVO.getTransmittance().trim().isEmpty()) {
                         threshold = Integer.valueOf(confVO.getTransmittance());
@@ -2605,6 +2810,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     }
 
     // 保存一次测量结果
+
     /**
      * 使用快照保存一次测量结果，避免与全局变量冲突
      */
@@ -2643,43 +2849,87 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             String key = session.getId() + "_" + sampleId + "_" + number;
             List<Double> originalY = originalYValues.get(key);
             if (originalY == null) {
+                log.warn("未找到原始Y值，使用处理后的Y值进行峰谷分析: key={}, x.size={}, y.size={}",
+                        key, x.size(), y.size());
                 originalY = y;
+            } else {
+                // 验证数据长度是否匹配
+                if (originalY.size() != x.size()) {
+                    log.error("原始Y值与X值长度不匹配: originalY.size={}, x.size={}, key={}",
+                            originalY.size(), x.size(), key);
+                    // 如果长度不匹配，使用处理后的Y值
+                    originalY = y;
+                } else {
+                    // 检查是否有0值
+                    int zeroCount = 0;
+                    for (Double value : originalY) {
+                        if (value == null || Math.abs(value) < 1e-10) {
+                            zeroCount++;
+                        }
+                    }
+                    if (zeroCount > x.size() * 0.5) { // 如果超过50%是0值
+                        log.error("原始Y值中有过多0值({}/{}), 使用处理后的Y值: key={}",
+                                zeroCount, x.size(), key);
+                        originalY = y;
+                    }
+                }
             }
 
             String peakUrl = pythonPathConstant.getPeakSearching();
             String valleyUrl = pythonPathConstant.getValleySearching();
 
-            // 添加日志输出（调试用）
-            System.out.println("调用寻峰接口: " + peakUrl);
-            System.out.println("调用寻谷接口: " + valleyUrl);
-
-            body.put("x_data", x);
-            body.put("y_data", originalY);
-            double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
-            body.put("height", height);
-            body.put("distance", confVO.getPeakInterval());
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
-            Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
-            List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
-            List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
-            List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
-            List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
             List<FPeakValleyMarking> peakValleys = new ArrayList<>();
             List<FPeakValleyMarking> markings = new ArrayList<>();
-            for (int i = 0; i < xDataFeng.size(); i++) {
-                FPeakValleyMarking marking = new FPeakValleyMarking();
-                marking.setX(xDataFeng.get(i).toString());
-                marking.setY(yDataFeng.get(i));
-                marking.setType("波峰");
-                peakValleys.add(marking);
+            try {
+                // 添加日志输出（调试用）
+                System.out.println("调用寻峰接口: " + peakUrl);
+                System.out.println("调用寻谷接口: " + valleyUrl);
+
+                body.put("x_data", x);
+                body.put("y_data", originalY);
+                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                body.put("height", height);
+                body.put("distance", confVO.getPeakInterval());
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+
+                Map<String, Object> resultMap = restTemplate.postForEntity(peakUrl, request, Map.class).getBody();
+                List<Double> xDataFeng = (List<Double>) resultMap.get("peak_x");
+                List<String> yDataFeng = (List<String>) resultMap.get("peak_y");
+                for (int i = 0; i < xDataFeng.size(); i++) {
+                    FPeakValleyMarking marking = new FPeakValleyMarking();
+                    marking.setX(xDataFeng.get(i).toString());
+                    marking.setY(yDataFeng.get(i));
+                    marking.setType("波峰");
+                    peakValleys.add(marking);
+                }
+            } catch (Exception e) {
+                log.error("调用寻峰算法失败: {}", e.getMessage(), e);
             }
-            for (int i = 0; i < xDataGu.size(); i++) {
-                FPeakValleyMarking marking = new FPeakValleyMarking();
-                marking.setX(xDataGu.get(i).toString());
-                marking.setY(yDataGu.get(i));
-                marking.setType("波谷");
-                markings.add(marking);
+            try {
+                body.clear();
+                body.put("x_data", x);
+                body.put("y_data", originalY);
+                double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                body.put("height", height);
+                body.put("distance", confVO.getPeakInterval());
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                Map<String, Object> resultMap1 = restTemplate.postForEntity(valleyUrl, request, Map.class).getBody();
+
+                List<Double> xDataGu = (List<Double>) resultMap1.get("valley_x");
+                List<String> yDataGu = (List<String>) resultMap1.get("valley_y");
+
+
+                for (int i = 0; i < xDataGu.size(); i++) {
+                    FPeakValleyMarking marking = new FPeakValleyMarking();
+                    marking.setX(xDataGu.get(i).toString());
+                    marking.setY(yDataGu.get(i));
+                    marking.setType("波谷");
+                    markings.add(marking);
+                }
+            } catch (Exception e) {
+                log.error("调用寻谷算法失败: {}", e.getMessage(), e);
+                // 失败时不处理，继续执行保存原始数据
             }
 
             // 构建结果字符串，存储时使用原始Y值
@@ -2690,7 +2940,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             }
 
             // 2. 保存测量数据
-            List<String> listData = new ArrayList<>(originalCalcSnapshot);
             List<FTaskSpecimen> sampleData = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
             FTaskSpecimen taskSpecimen = null;
             for (FTaskSpecimen data : sampleData) {
@@ -2728,8 +2977,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
                 analysisData.setAnalysisResult(JSON.toJSONString(result));
                 analysisData.setAnalysisType("5");
-                analysisData.setPeak(JSON.toJSONString(peakValleys));
-                analysisData.setGrain(JSON.toJSONString(markings));
+                if (peakValleys != null) {
+                    analysisData.setPeak(JSON.toJSONString(peakValleys));
+                }
+                if (markings != null) {
+                    analysisData.setGrain(JSON.toJSONString(markings));
+                }
                 analysisData.setColor("#000000");
                 analysisData.setIsDelete("0");
                 analysisData.setIsSave("1");
@@ -2761,8 +3014,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     traceDataService.updateById(measureData);
                     analysisData.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
                     analysisData.setAnalysisResult(JSON.toJSONString(result));
-                    analysisData.setPeak(JSON.toJSONString(peakValleys));
-                    analysisData.setGrain(JSON.toJSONString(markings));
+                    if (peakValleys != null) {
+                        analysisData.setPeak(JSON.toJSONString(peakValleys));
+                    }
+                    if (markings != null) {
+                        analysisData.setGrain(JSON.toJSONString(markings));
+                    }
                     analysisData.setColor("#000000");
                     analysisData.setIsSave("1");
                     tMeasureAnalysisDataService.updateById(analysisData);
@@ -2788,8 +3045,12 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     analysis.setAnalysisParam(JSON.toJSONString(instrumentSnapshot));
                     analysis.setAnalysisResult(JSON.toJSONString(result));
                     analysis.setAnalysisType("5");
-                    analysis.setPeak(JSON.toJSONString(peakValleys));
-                    analysis.setGrain(JSON.toJSONString(markings));
+                    if (peakValleys != null) {
+                        analysis.setPeak(JSON.toJSONString(peakValleys));
+                    }
+                    if (markings != null) {
+                        analysis.setGrain(JSON.toJSONString(markings));
+                    }
                     analysis.setColor("#000000");
                     analysis.setIsDelete("0");
                     analysis.setIsSave("1");
@@ -2802,7 +3063,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
             /// 更新任务状态
             List<FTaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-            if(spectrumParameter.getRepetitionPattern().equals("不重复")){
+            if (spectrumParameter.getRepetitionPattern().equals("不重复")) {
                 for (FTaskSpecimen taskSample : specimen) {
                     if (taskSample.getSpecimenKey().equals(sampleId)) {
                         taskSample.setIsTested("1");
@@ -2814,7 +3075,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
                 }
-            }else{
+            } else {
                 // 如果是重复模式的情况，需要判断是否全部测完
                 boolean success = false;
                 Integer repetitionCount = Integer.valueOf(spectrumParameter.getRepetitionTime());
@@ -2822,16 +3083,16 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     QueryWrapper<FMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                     queryWrapper.eq("task_id", taskId);
                     queryWrapper.eq("sample_key", sampleId);
-                    queryWrapper.eq("analysis_number", i+1);
+                    queryWrapper.eq("analysis_number", i + 1);
                     queryWrapper.eq("analysis_type", "5");
                     queryWrapper.last("limit 1");
                     FMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
-                    if(analysisData==null||analysisData.getAnalysisResult()==null){
-                        success=true;
+                    if (analysisData == null || analysisData.getAnalysisResult() == null) {
+                        success = true;
                         break;
                     }
                 }
-                if (!success){
+                if (!success) {
                     for (FTaskSpecimen taskSample : specimen) {
                         if (taskSample.getSpecimenKey().equals(sampleId)) {
                             taskSample.setIsTested("1");
@@ -2895,6 +3156,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         LocalDateTime endTime;
         List<String> instrumentSnapshot;
         List<String> originalCalcSnapshot;
+
         MeasurementResult(List<Double> x,
                           List<Double> y,
                           LocalDateTime startTime,

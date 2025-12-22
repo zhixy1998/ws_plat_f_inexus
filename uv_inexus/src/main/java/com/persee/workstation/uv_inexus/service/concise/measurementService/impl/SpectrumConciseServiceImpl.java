@@ -581,6 +581,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //起始波长不能小于等于停止波长
             return Result.fail(YamlMessageSource.getMessageStatic("00104015"));
         }
+        // 校验幻灯波长在330~390之间
+        double changeWavelength = Double.parseDouble(paramDto.getParameter().getChangeLampWaveLength());
+        if (changeWavelength < 330.0 || changeWavelength > 390.0){
+            return Result.fail("幻灯波长在330~390之间");
+        }
         if (paramDto.getParameter().getScanSpeed().equals("3")&&(start>1100||start<380)){
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
@@ -1442,12 +1447,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     queryWrapper.eq("task_id", task.getId());
                     queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
                     queryWrapper.eq("analysis_type", "5");
-                    if (type == null) {
-                        queryWrapper.eq("is_delete", "0");
-                    }
                     queryWrapper.eq("analysis_number", (i + 1));
                     queryWrapper.last("limit 1");
                     FMeasureAnalysisData measureData = fMeasureAnalysisDataService.getOne(queryWrapper);
+
                     if (measureData == null && taskSpeciman.getIsTested().equals("0")) {
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
                         vo.setAnalysisId(null);
@@ -1458,6 +1461,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setData(null);
                         vo.setDeleteType("0");
                     } else if (measureData != null) {
+                        if (measureData.getIsDelete().equals("1")&&type == null){
+                            continue;
+                        }
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
                         vo.setAnalysisId(measureData.getId());
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
@@ -1574,8 +1580,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             byId.setIsDelete("1");
             boolean update = fMeasureAnalysisDataService.updateById(byId);
             // 查询跟这个样品和任务id关联的分析数据
-            List<FMeasureAnalysisData> list = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId).eq("is_delete", "0"));
-            if (list.size() == 0) {
+            List<FMeasureAnalysisData> list = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>().eq("task_id", taskId).eq("sample_key", sampleId));
+            boolean flat = false;
+            for (FMeasureAnalysisData analysisData : list) {
+                if (analysisData.getIsDelete().equals("0")) {
+                    flat = true;
+                    break;
+                }
+            }
+            if (list.size() == 3&&!flat) {
                 // 循环遍历样品列表找到该样品
                 for (FTaskSpecimen taskSpecimen : taskSpecimenList) {
                     if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
