@@ -44,6 +44,10 @@ public class EhcacheConfig {
             switch (cacheName) {
                 case "calibrationCache":
                     cacheManagerBuilder = calibrationCacheConfig(cacheManagerBuilder, config);
+                    break;
+                case "mqIdempotentCache":
+                    cacheManagerBuilder = mqIdempotentCacheConfig(cacheManagerBuilder, config);
+                    break;
             }
         }
 
@@ -86,10 +90,30 @@ public class EhcacheConfig {
 
 
     /**
+     * 创建MQ幂等性缓存配置
+     */
+    public CacheManagerBuilder<PersistentCacheManager> mqIdempotentCacheConfig(CacheManagerBuilder<PersistentCacheManager> cacheManagerBuilder, EhcacheProperties.CacheConfig config) {
+        System.out.println("配置缓存: mqIdempotentCache");
+
+        ResourcePoolsBuilder resourcePoolsBuilder = ResourcePoolsBuilder.newResourcePoolsBuilder()
+                .heap(config.getHeap(), EntryUnit.ENTRIES)
+                .disk(config.getDisk(), MemoryUnit.MB, true);
+
+        CacheConfiguration<String, String> cacheConfiguration = CacheConfigurationBuilder
+                .newCacheConfigurationBuilder(String.class, String.class, resourcePoolsBuilder)
+                .withExpiry(parseTtl(config.getTtl()))
+                .build();
+
+        cacheManagerBuilder = cacheManagerBuilder.withCache("mqIdempotentCache", cacheConfiguration);
+
+        return cacheManagerBuilder;
+    }
+
+    /**
      * 解析TTL字符串，转换为Ehcache的过期策略。
      * 支持格式： 30s, 10m, 2h, 1d
      */
-    private ExpiryPolicy<?, ?> parseTtl(String ttlStr) {
+    private ExpiryPolicy<Object, Object> parseTtl(String ttlStr) {
         if (!StringUtils.hasText(ttlStr)) {
             return ExpiryPolicyBuilder.noExpiration();
         }
