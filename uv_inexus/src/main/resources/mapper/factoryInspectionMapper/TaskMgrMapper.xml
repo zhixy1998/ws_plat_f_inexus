@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ /**
+  ~  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
+  ~  * 本软件受商业机密法和版权法保护。
+  ~  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
+  ~  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
+  ~  */
+  -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper">
+
+
+    <select id="getMyPage" resultType="com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement">
+        SELECT a.id, a.detect_name, a.operation_instrument, a.use_template, a.content_category, a.start_time, a.completion_status,
+        a.completion_time, a.create_user, a.update_user, a.create_time, a.update_time, a.result_template, b.template_code, b.template_name
+        FROM task_management a left join excel_template b on a.use_template = b.id
+        <if test="query != null and query != ''">
+            where a.detect_name like concat('%',#{query},'%')
+            or a.operation_instrument like concat('%',#{query},'%')
+            or b.template_name like concat('%',#{query},'%')
+        </if>
+    </select>
+</mapper>

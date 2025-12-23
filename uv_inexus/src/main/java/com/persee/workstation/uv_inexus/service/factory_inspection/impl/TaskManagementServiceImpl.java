@@ -1,8 +1,11 @@
 package com.persee.workstation.uv_inexus.service.factory_inspection.impl;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper;
@@ -22,10 +25,12 @@ import org.springframework.util.ObjectUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
 
 /**
@@ -37,6 +42,7 @@ import static com.persee.workstation.uv_inexus.enums.factoryInspection.Calibrati
  */
 @Slf4j
 @Service
+@DS("factory_inspection")
 public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskManagement> implements TaskManagementService {
     @Autowired
     private TemplateService templateService;
@@ -54,24 +60,37 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     private CalStdCatsService catsService;
     @Autowired
     private WorkbookCacheManager workbookCacheManager;
+    @Autowired
+    private EhcacheUtil ehcacheUtil;
 
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
+        try {
 
-        log.info("查询任务管理列表");
-        log.info("查询条件：{}", queryDto);
-        Page<TaskManagement> page = new Page<>(queryDto.getPageNum(), queryDto.getPageSize());
-        LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-        wrapper.like(TaskManagement::getDetectName, queryDto.getQuery());
-        Page<TaskManagement> managementPage = this.page(page, wrapper);
-        managementPage.getRecords().forEach(task -> {
-            ExcelTemplate excelTemplate = templateService.getById(task.getUseTemplate());
-            if (excelTemplate!=null){
-                task.setTemplateCode(excelTemplate.getTemplateCode());
-                task.setTemplateName(excelTemplate.getTemplateName());
-            }
-        });
-        return Result.ok(managementPage);
+
+            log.info("查询任务管理列表");
+            log.info("查询条件：{}", queryDto);
+//        Page<TaskManagement> page = new Page<>(queryDto.getPageNum(), queryDto.getPageSize());
+            IPage<TaskManagement> page = new Page<>(queryDto.getPageNum(), queryDto.getPageSize());
+
+//        LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+//        wrapper.like(TaskManagement::getDetectName, queryDto.getQuery())
+//                .or().like(TaskManagement::getOperationInstrument, queryDto.getQuery())
+//                .or().like(TaskManagement::getUseTemplate, queryDto.getQuery());
+
+            IPage<TaskManagement> managementPage = taskMgrMapper.getMyPage(page, queryDto.getQuery());
+//        managementPage.getRecords().forEach(task -> {
+//            ExcelTemplate excelTemplate = templateService.getById(task.getUseTemplate());
+//            if (excelTemplate != null) {
+//                task.setTemplateCode(excelTemplate.getTemplateCode());
+//                task.setTemplateName(excelTemplate.getTemplateName());
+//            }
+//        });
+            return Result.ok(managementPage);
+        } catch (Exception e) {
+            log.error("查询任务管理列表失败", e);
+        }
+        return Result.fail("查询任务管理列表失败");
     }
 
     @Override
@@ -119,11 +138,35 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
     @Override
     public Result newTask(TaskAddDto task) {
-        TaskManagement management = new TaskManagement();
-        management.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
-        management.setCompletionStatus(NOT_STARTED.getCode());
-        BeanUtils.copyProperties(task, management);
-        return Result.ok(this.save(management));
+        try {
+
+            TaskManagement management = new TaskManagement();
+            management.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
+            management.setCompletionStatus(NOT_STARTED.getCode());
+            LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ExcelTemplate::getTemplateCode, task.getUseTemplate());
+            ExcelTemplate template = templateService.getOne(queryWrapper);
+            BeanUtils.copyProperties(task, management);
+            management.setUseTemplate(template.getId());
+            management.setOperationInstrument(task.getSerialNumber());
+            management.setResultTemplate(task.getUseTemplate());
+            boolean save = this.save(management);
+            if (!save) {
+                return Result.fail(null);
+            }
+            if (save) {
+                HashMap<String, String> map = new HashMap<>();
+
+//                ExcelTemplate template = templateService.getById(management.getUseTemplate());
+                map.put("taskId", management.getId());
+                map.put("templateCode", task.getUseTemplate());
+                return Result.ok(map);
+            }
+            return Result.ok(null);
+        }catch (Exception e){
+            log.error("新建任务失败", e);
+        }
+        return Result.fail(null);
     }
 
     //这个需要完整的复制
@@ -131,27 +174,43 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result newTaskByCurrent(TaskCopyDto taskCreateDto) {
-        TaskManagement management = taskMgrMapper.selectById(taskCreateDto.getCurrentTaskId());
-        TaskManagement task = new TaskManagement();
-        BeanUtils.copyProperties(management, task);
-        task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
-        task.setDetectName(taskCreateDto.getNewTaskName());
-        task.setCreated(LocalDateTime.now());
-        task.setUpdated(null);
-        int i = taskMgrMapper.insert(task);
-        //获取之前的关联关系
-        LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TaskExecutionDetail::getTaskId, taskCreateDto.getCurrentTaskId());
-        List<TaskExecutionDetail> detailList = taskExecutionDetailMapper.selectList(wrapper);
-        //构建新任务的关联关系
-        if (!CollectionUtils.isEmpty(detailList)) {
-            detailList.forEach(detail -> {
-                detail.setId(IdGeneratorUtil.generateId());
-                detail.setTaskId(task.getId());
-            });
+        try {
+
+
+            TaskManagement management = taskMgrMapper.selectById(taskCreateDto.getCurrentTaskId());
+            TaskManagement task = new TaskManagement();
+            BeanUtils.copyProperties(management, task);
+            task.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
+            task.setDetectName(taskCreateDto.getNewTaskName());
+            task.setCreated(LocalDateTime.now());
+            task.setUpdated(null);
+            task.setCompletionStatus(NOT_STARTED.getCode());
+            task.setStartTime(null);
+            int i = taskMgrMapper.insert(task);
+            //获取之前的关联关系
+            LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(TaskExecutionDetail::getTaskId, taskCreateDto.getCurrentTaskId());
+            List<TaskExecutionDetail> detailList = taskExecutionDetailMapper.selectList(wrapper);
+            //构建新任务的关联关系
+            if (!CollectionUtils.isEmpty(detailList)) {
+                detailList.forEach(detail -> {
+                    detail.setId(IdGeneratorUtil.generateId());
+                    detail.setTaskId(task.getId());
+                });
+            }
+
+            boolean b = taskExecutionDetailService.saveBatch(detailList);
+            if (b) {
+                HashMap<String, String> map = new HashMap<>();
+                ExcelTemplate template = templateService.getById(task.getUseTemplate());
+                map.put("taskId", task.getId());
+                map.put("templateCode", template.getTemplateCode());
+                return Result.ok(map);
+            }
+        } catch (Exception e) {
+            log.error("复制任务失败", e);
         }
-        boolean b = taskExecutionDetailService.saveBatch(detailList);
-        return Result.ok(b);
+        return Result.fail();
     }
 
     @Override
@@ -246,6 +305,61 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     public Result<Boolean> checkTaskUsage(TaskUsageDto dto) {
         return Result.ok(!workbookCacheManager.isTaskBeingEditedByOthers(dto.getTaskId(), dto.getUpdateBy()));
     }
+
+    @Override
+    public Result<List<TaskCheckItemDto.Standard>> standardMaterialList(String taskId) {
+        ArrayList<TaskCheckItemDto.Standard> standards = new ArrayList<>();
+        List<TaskExecutionDetail> list = taskExecutionDetailMapper.initTaskCal(taskId);
+        List<String> standardIds = list.stream()
+                .map(TaskExecutionDetail::getStandardId)
+                .distinct()
+                .collect(Collectors.toList());
+        List<CalStdCats> calStdCats = catsService.listByIds(standardIds);
+        if (CollectionUtils.isNotEmpty(calStdCats)) {
+            calStdCats.forEach(cal -> {
+                TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
+                standard.setStandardId(cal.getId());
+                standard.setStandardName(cal.getName());
+                standards.add(standard);
+            });
+        }
+        List<CalArtifacts> calArtifacts = calArtifactsService.listByIds(standardIds);
+        if (CollectionUtils.isNotEmpty(calArtifacts)) {
+            calArtifacts.forEach(cal -> {
+                TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
+                standard.setStandardId(cal.getId());
+                standard.setStandardName(cal.getName());
+                standards.add(standard);
+            });
+        }
+        return Result.ok(standards);
+    }
+
+    @Override
+    public Result<Boolean> setStandardMaterial(SetSamplePoolDto dto) {
+        try {
+            String taskId = dto.getTaskId();
+            // 使用 Object 类型获取缓存
+            Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), taskId, String.class, Object.class);
+
+            List<SetSamplePoolDto> dtoList;
+            if (cachedObject instanceof List) {
+                // 进行类型检查和转换
+                dtoList = (List<SetSamplePoolDto>) cachedObject;
+            } else {
+                dtoList = new ArrayList<>();
+            }
+
+            dtoList.add(dto);
+            // 使用 Object 类型存储
+            ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), taskId, dtoList, String.class, Object.class);
+            return Result.ok(true);
+        } catch (Exception e) {
+            log.error("设置标准物失败", e);
+            return Result.fail(false);
+        }
+    }
+
 
     //    private List<TaskCheckItemDto.CheckItem> buildCheckItems(List<TaskExecutionDetail> details, ExcelTemplate template) {
 //        ArrayList<TaskCheckItemDto.CheckItem> checkItems = new ArrayList<>();

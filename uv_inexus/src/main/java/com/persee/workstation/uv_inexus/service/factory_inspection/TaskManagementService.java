@@ -29,4 +29,8 @@ public interface TaskManagementService extends IService<TaskManagement> {
     Result saveCheckItem(TaskDetectionDTO dto);
 
     Result<Boolean> checkTaskUsage(TaskUsageDto dto);
+
+    Result<List<TaskCheckItemDto.Standard>> standardMaterialList(String taskId);
+
+    Result<Boolean> setStandardMaterial(SetSamplePoolDto dto);
 }

@@ -1,6 +1,8 @@
 package com.persee.workstation.uv_inexus.config;
 
 import com.persee.workstation.uv_inexus.dto.factory_inspection.SerializableWorkbook;
+import com.persee.workstation.uv_inexus.enums.Cache.CacheEnums;
+import lombok.extern.slf4j.Slf4j;
 import org.ehcache.CacheManager;
 import org.ehcache.PersistentCacheManager;
 import org.ehcache.config.CacheConfiguration;
@@ -21,6 +23,9 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.util.Map;
 
+import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.*;
+
+@Slf4j
 @Configuration
 @EnableCaching
 @ComponentScan(basePackages = "com.persee.workstation.uv_inexus.config") // 确保包扫描正确
@@ -40,24 +45,46 @@ public class EhcacheConfig {
         for (Map.Entry<String, EhcacheProperties.CacheConfig> entry : ehcacheProperties.getCaches().entrySet()) {
             String cacheName = entry.getKey();
             EhcacheProperties.CacheConfig config = entry.getValue();
-
-            switch (cacheName) {
-                case "calibrationCache":
-                    cacheManagerBuilder = calibrationCacheConfig(cacheManagerBuilder, config);
-                    break;
-                case "mqIdempotentCache":
-                    cacheManagerBuilder = mqIdempotentCacheConfig(cacheManagerBuilder, config);
-                    break;
+            CacheEnums cacheEnums = fromCacheName(cacheName);
+            if (cacheEnums!=null) {
+                switch (cacheEnums) {
+                    case CALIBRATION_CACHE:
+                        cacheManagerBuilder = calibrationCacheConfig(cacheManagerBuilder, config);
+                        break;
+                    case MQ_IDEMPOTENT_CACHE:
+                        cacheManagerBuilder = mqIdempotentCacheConfig(cacheManagerBuilder, config);
+                        break;
+                    case DEFAULT_CACHE:
+                        cacheManagerBuilder = defaultCacheConfig(cacheManagerBuilder, config);
+                        break;
+                }
             }
         }
 
         // 3. 构建并初始化CacheManager
         PersistentCacheManager cacheManager = cacheManagerBuilder.build(true);
-        System.out.println("创建的缓存数量: " + cacheManager.getRuntimeConfiguration().getCacheConfigurations().size());
+        log.info("创建的缓存数量: " + cacheManager.getRuntimeConfiguration().getCacheConfigurations().size());
         cacheManager.getRuntimeConfiguration().getCacheConfigurations().keySet()
-                .forEach(name -> System.out.println("已创建缓存: " + name));
+                .forEach(name -> log.info("已创建缓存: " + name));
 
         return cacheManager;
+    }
+
+    private CacheManagerBuilder<PersistentCacheManager> defaultCacheConfig(CacheManagerBuilder<PersistentCacheManager> cacheManagerBuilder, EhcacheProperties.CacheConfig config) {
+        log.info("配置缓存: " + DEFAULT_CACHE.getCacheName());
+
+        ResourcePoolsBuilder heapOnly = ResourcePoolsBuilder.newResourcePoolsBuilder()
+                .heap(config.getHeap(), EntryUnit.ENTRIES); // 只使用堆内存，不配置磁盘
+
+        CacheConfiguration<String, Object> cacheConfiguration = CacheConfigurationBuilder
+                .newCacheConfigurationBuilder(String.class, Object.class, heapOnly)
+                .build();
+
+
+        // 将缓存配置添加到CacheManager构建器中
+        cacheManagerBuilder = cacheManagerBuilder.withCache(DEFAULT_CACHE.getCacheName(), cacheConfiguration);
+
+        return cacheManagerBuilder;
     }
 
     /**
@@ -67,33 +94,30 @@ public class EhcacheConfig {
      * @param config
      */
     public CacheManagerBuilder<PersistentCacheManager> calibrationCacheConfig(CacheManagerBuilder<PersistentCacheManager> cacheManagerBuilder, EhcacheProperties.CacheConfig config) {
-        System.out.println("配置缓存: " + "calibrationCache");
+        log.info("配置缓存: " + CALIBRATION_CACHE.getCacheName());
 
         // 构建资源池（多级存储）
         ResourcePoolsBuilder resourcePoolsBuilder = ResourcePoolsBuilder.newResourcePoolsBuilder()
-                .heap(config.getHeap(),EntryUnit.ENTRIES) // 堆内按条目数
+                .heap(config.getHeap(), EntryUnit.ENTRIES) // 堆内按条目数
                 .disk(config.getDisk(), MemoryUnit.MB, true); // 磁盘持久化，true表示持久化到磁盘
 
         // 使用具体类型替代 Object.class
         CacheConfiguration<String, SerializableWorkbook> cacheConfiguration = CacheConfigurationBuilder
-                .newCacheConfigurationBuilder(String.class,SerializableWorkbook.class, resourcePoolsBuilder)
+                .newCacheConfigurationBuilder(String.class, SerializableWorkbook.class, resourcePoolsBuilder)
                 .build();
 
         // 将缓存配置添加到CacheManager构建器中
-        cacheManagerBuilder = cacheManagerBuilder.withCache("calibrationCache", cacheConfiguration);
+        cacheManagerBuilder = cacheManagerBuilder.withCache(CALIBRATION_CACHE.getCacheName(), cacheConfiguration);
 
         return cacheManagerBuilder;
     }
-
-
-
 
 
     /**
      * 创建MQ幂等性缓存配置
      */
     public CacheManagerBuilder<PersistentCacheManager> mqIdempotentCacheConfig(CacheManagerBuilder<PersistentCacheManager> cacheManagerBuilder, EhcacheProperties.CacheConfig config) {
-        System.out.println("配置缓存: mqIdempotentCache");
+        log.info("配置缓存: " + MQ_IDEMPOTENT_CACHE.getCacheName());
 
         ResourcePoolsBuilder resourcePoolsBuilder = ResourcePoolsBuilder.newResourcePoolsBuilder()
                 .heap(config.getHeap(), EntryUnit.ENTRIES)
@@ -104,7 +128,7 @@ public class EhcacheConfig {
                 .withExpiry(parseTtl(config.getTtl()))
                 .build();
 
-        cacheManagerBuilder = cacheManagerBuilder.withCache("mqIdempotentCache", cacheConfiguration);
+        cacheManagerBuilder = cacheManagerBuilder.withCache(MQ_IDEMPOTENT_CACHE.getCacheName(), cacheConfiguration);
 
         return cacheManagerBuilder;
     }
