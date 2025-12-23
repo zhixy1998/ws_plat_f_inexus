@@ -62,6 +62,12 @@ public enum CalibrationTypeEnum {
     TEMPLATE_BUILT_IN("0", "内置模板"),
     TEMPLATE_USER_DEFINED("1", "用户模板"),
 
+    //任务完成类型  未开始 未完成  已完成
+    TASK_NOT_STARTED("0", "未开始"),
+    TASK_IN_PROGRESS("1", "未完成"),
+    TASK_COMPLETED("2", "已完成"),
+
+
     //新建模板或者修改模板
     TEMPLATE_CREATE("0", "从源模板-新建模板"),
     TEMPLATE_UPDATE("1", "修改原模板");

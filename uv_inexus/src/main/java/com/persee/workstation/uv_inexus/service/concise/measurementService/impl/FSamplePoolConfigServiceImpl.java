@@ -28,6 +28,8 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamp
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
+import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
+import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -237,7 +239,7 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
         FSamplePoolInfoVO vo = new FSamplePoolInfoVO();
         BeanUtils.copyProperties(po, vo);
         List<FSamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), FSamplePoolStatus.class);
-        list.forEach(status-> status.setPoolName(status.getPoolNum() + "号"));
+        list.forEach(status -> status.setPoolName(status.getPoolNum() + "号"));
         vo.setPoolStatusList(list);
         return R.ok(vo);
     }
@@ -312,6 +314,26 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             //更新失败
             return R.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
+    }
+
+    @DS("concise")
+    @Override
+    public R<SamplePoolInfoVO> queryCalibrationSampleInfo(String deviceSerialNumber) {
+        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        FSamplePoolConfigPO po = dao.selectOne(query);
+        if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
+            //未找到该仪器附件配置
+            return R.fail(YamlMessageSource.getMessageStatic("00106001"));
+        }
+
+        SamplePoolInfoVO vo = new SamplePoolInfoVO();
+        BeanUtils.copyProperties(po, vo);
+        List<SamplePoolStatus> list = JSON.parseArray(po.getPoolInfo(), SamplePoolStatus.class);
+        list.forEach(status -> status.setPoolName(status.getPoolNum() + "号"));
+        vo.setPoolStatusList(list);
+        return R.ok(vo);
+
     }
 
 

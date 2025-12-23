@@ -59,7 +59,7 @@ public class TaskManagementController {
      * 根据当前任务新建任务，任务绑定的是模板的code值
      */
     @RequestMapping("/new-task-by-current")
-    public Result newTaskByCurrent(@RequestParam TaskCopyDto taskCreateDto) {
+    public Result newTaskByCurrent(@RequestBody TaskCopyDto taskCreateDto) {
         return taskManagementService.newTaskByCurrent(taskCreateDto);
     }
     /**
@@ -89,5 +89,26 @@ public class TaskManagementController {
     @RequestMapping("/save-check-item")
     public Result saveCheckItem(@RequestBody TaskDetectionDTO dto) {
         return taskManagementService.saveCheckItem(dto);
+    }
+    /**
+     * 删除任务
+     */
+    @RequestMapping("/delete-task")
+    public Result deleteTask(@RequestParam String taskId) {
+        return taskManagementService.removeById(taskId)?Result.ok():Result.fail();
+    }
+    /**
+     * 可选择的标准物
+     */
+    @RequestMapping("/standard-material-list")
+    public Result<List<TaskCheckItemDto.Standard>> standardMaterialList(@RequestParam String taskId) {
+        return taskManagementService.standardMaterialList(taskId);
+    }
+    /**
+     * 样品池设置标准物
+     */
+    @RequestMapping("/set-standard-material")
+    public Result<Boolean> setStandardMaterial(@RequestBody SetSamplePoolDto dto) {
+        return taskManagementService.setStandardMaterial(dto);
     }
 }

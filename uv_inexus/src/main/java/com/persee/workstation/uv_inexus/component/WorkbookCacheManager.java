@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -124,8 +126,27 @@ public class WorkbookCacheManager {
             return existingWorkbook;
         }
         ClassPathResource resource = new ClassPathResource(excelSavePath + fileName + ".xlsx");
-        try (InputStream fis = resource.getInputStream()) {
-            Workbook workbook = new XSSFWorkbook(fis);
+        //内置模板
+        if (resource.exists()) {
+            try (InputStream fis = resource.getInputStream()) {
+                Workbook workbook = new XSSFWorkbook(fis);
+
+                // 使用可序列化包装类存储工作簿
+                SerializableWorkbook serializableWorkbook = new SerializableWorkbook(workbook);
+                ehcacheUtil.put(WORKBOOK_CACHE, taskId, serializableWorkbook, String.class, SerializableWorkbook.class);
+
+                // 存储任务信息到内存Map
+                taskFileMap.put(taskId, fileName);
+                taskLastAccessTime.put(taskId, System.currentTimeMillis());
+
+                return workbook;
+            }
+        }
+        //自定义模板
+        if (!resource.exists()){
+//            File file = new File(excelSavePath + fileName + ".xlsx");
+            InputStream inputStream = Files.newInputStream(Paths.get(excelSavePath + fileName + ".xlsx"));
+            Workbook workbook = new XSSFWorkbook(inputStream);
 
             // 使用可序列化包装类存储工作簿
             SerializableWorkbook serializableWorkbook = new SerializableWorkbook(workbook);
@@ -137,6 +158,7 @@ public class WorkbookCacheManager {
 
             return workbook;
         }
+        return null;
     }
 
     /**

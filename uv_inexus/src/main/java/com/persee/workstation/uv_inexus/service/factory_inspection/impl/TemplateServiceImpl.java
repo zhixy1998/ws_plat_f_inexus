@@ -40,6 +40,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -138,7 +139,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 excelDataAssetService.saveBatch(list);
 
 
-//                buildResultTemplate(template.getTemplateCode());
+                buildResultTemplate(template.getTemplateCode());
                 if (saved) {
                     return Result.ok("模板创建成功");
                 } else {
@@ -266,8 +267,9 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 //        File file = new File(resultTemplate);
         ClassPathResource resource = new ClassPathResource(resultTemplate);
         File file = resource.getFile();
-        boolean b = file.getParentFile().mkdirs();// 创建父目录（如果不存在）
-        InputStream is = Files.newInputStream(Paths.get(resultTemplate));
+//        boolean b = file.getParentFile().mkdirs();// 创建父目录（如果不存在）
+//        InputStream is = Files.newInputStream(Paths.get(resultTemplate));
+        InputStream is = Files.newInputStream(file.toPath());
         Workbook workbook = WorkbookFactory.create(is);
 
         try {
@@ -408,6 +410,12 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
             b = excelDataAssetService.remove(wrapper);
+            Path path = Paths.get(excelSavePath+templateCode+".xlsx");
+            try {
+                Files.delete(path);
+            } catch (IOException e) {
+                log.error("文件删除失败", e);
+            }
         }
         return b ? Result.ok() : Result.fail("内置模板，不可删除");
     }

@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChange
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
+import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 
 import java.util.List;
 
@@ -33,4 +34,6 @@ public interface FSamplePoolConfigService  extends IService<FSamplePoolConfigPO>
     List<Integer> getUsefulLocation(String deviceSerialNumber);
 
     R<Boolean> setCurrentPool(String deviceSerialNumber, Integer poolNum, String updateBy);
+
+    R<SamplePoolInfoVO> queryCalibrationSampleInfo(String deviceSerialNumber);
 }
