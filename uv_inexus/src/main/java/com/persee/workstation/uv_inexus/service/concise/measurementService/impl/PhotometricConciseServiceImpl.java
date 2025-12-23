@@ -61,6 +61,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -117,6 +118,10 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Autowired
     FormulaUtil formulaUtil;
+
+    @Autowired
+    @Lazy
+    ConciseCommonService conciseCommonService;
 
     @Value("1")
     String deleteType;
@@ -405,6 +410,41 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             R<Boolean> r = checkParam(newMethodParam);
             if (!r.getSuccess()) {
                 return Result.fail(r.getMessage());
+            }
+
+            FPhotometricParameter paramToCheck = null;
+            if (checkDTO.getNewMethodParam() != null) {
+                paramToCheck = checkDTO.getNewMethodParam();
+            } else {
+                if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+                    FMeasureMethod newMethod = fMeasureMethodService.getById(checkDTO.getNewMethodId());
+                    if (newMethod != null && StringUtils.hasText(newMethod.getMeasurementParamInfo())) {
+                        paramToCheck = JSON.parseObject(newMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
+                    }
+                } else if (StringUtils.hasText(checkDTO.getCurrentMethodId())) {
+                    FMeasureMethod currentMethod = fMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+                    if (currentMethod != null && StringUtils.hasText(currentMethod.getMeasurementParamInfo())) {
+                        paramToCheck = JSON.parseObject(currentMethod.getMeasurementParamInfo(), FPhotometricParameter.class);
+                    }
+                }
+            }
+
+            if (paramToCheck != null && paramToCheck.getResultParams() != null && !paramToCheck.getResultParams().isEmpty()) {
+                List<FInputParam> inputParams = paramToCheck.getSampleInputParams();
+                List<FPreCountResultParam> resultParams = paramToCheck.getResultParams();
+                for (FPreCountResultParam resultParam : resultParams) {
+                    if (resultParam == null) {
+                        continue;
+                    }
+                    FCheckFormulaDto checkFormulaDto = new FCheckFormulaDto();
+                    checkFormulaDto.setInputParamList(inputParams);
+                    checkFormulaDto.setNewFormula(resultParam);
+                    checkFormulaDto.setMeasureType(checkDTO.getMeasureType());
+                    Result<Boolean> checkResult = conciseCommonService.checkFormula(checkFormulaDto);
+                    if (checkResult.getCode() != 200 || !Boolean.TRUE.equals(checkResult.getData())) {
+                        return Result.fail(checkResult.getMessage());
+                    }
+                }
             }
 
             double minWaveLength = 190.0;
