@@ -19,18 +19,25 @@ import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateUpdateReq
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelDataAssetService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TaskExecutionDetailService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
 import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
 import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import com.persee.workstation.uv_inexus.util.ExcelUpdateNotifier;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +76,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     private ExcelUpdateNotifier excelUpdateNotifier;
     @Autowired
     private WorkbookCacheManager workbookCacheManager;
+    @Autowired
+    private TaskExecutionDetailService detailService;
+    @Autowired
+    @Lazy
+    private TaskManagementService taskManagementService;
     private final Map<String, Integer> operationCount = new ConcurrentHashMap<>();
 
 
@@ -122,9 +134,22 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(ExcelDataAsset::getTemplateCode, request.getTemplateCode());
 
-                List<Map<String, Object>> selectedRows = request.getSelectedRows().values().stream()
-                        .flatMap(List::stream)
-                        .collect(Collectors.toList());
+                List<Map<String, Object>> selectedRows = new ArrayList<>();
+                request.getSelectedRows().entrySet()
+                        .forEach(entry -> {
+                            String key = entry.getKey(); // 这里可以获取到 key
+                            List<Map<String, Object>> valueList = entry.getValue();
+                            for (Map<String, Object> dataMap : valueList) {
+                                // 如果需要在数据中添加 key 信息
+                                dataMap.put("id", key); // 可选：将 key 作为数据的一部分
+                                selectedRows.add(dataMap);
+                            }
+                        });
+
+
+//                List<Map<String, Object>> selectedRows = request.getSelectedRows().values().stream()
+//                        .flatMap(List::stream)
+//                        .collect(Collectors.toList());
                 int rowIndex = 1; // 从第1行开始计数（跳过表头）
                 ArrayList<ExcelDataAsset> list = new ArrayList<>();
                 for (Map<String, Object> dataMap : selectedRows) {
@@ -134,12 +159,25 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     asset.setBatchNo(String.valueOf(rowIndex++));
                     asset.setStructuredData(JSON.toJSONString(dataMap));
                     asset.setImportStatus("SUCCESS");
+                    LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(TaskExecutionDetail::getItemId, MapUtils.getString(dataMap, "id"))
+                                    .isNull(TaskExecutionDetail::getTaskId);
+                    //这块查出来是两个，一个校零，一个测量
+                    List<TaskExecutionDetail> detailList = detailService.list(queryWrapper);
+                    if (CollectionUtils.isNotEmpty(detailList)){
+                        for (TaskExecutionDetail detail : detailList) {
+                            detail.setItemId(asset.getId());
+                            detail.setId(IdGeneratorUtil.generateId());
+                        }
+                    }
+                    detailService.saveBatch(detailList);
                     list.add(asset);
                 }
                 excelDataAssetService.saveBatch(list);
 
 
                 buildResultTemplate(template.getTemplateCode());
+
                 if (saved) {
                     return Result.ok("模板创建成功");
                 } else {
@@ -400,17 +438,23 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     }
 
     @Override
-    public Result deleteTemplate(String templateCode) {
+    public Result<String > deleteTemplate(String templateCode) {
+        ExcelTemplate template = this.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, templateCode));
+        TaskManagement one = taskManagementService.getOne(new LambdaQueryWrapper<TaskManagement>().eq(TaskManagement::getUseTemplate, template.getId()));
+        if (one != null){
+            return Result.fail("此模板正在使用中，请先删除任务！！！");
+        }
+
         LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(ExcelTemplate::getTemplateCode, templateCode)
                 .notIn(ExcelTemplate::getCategory, TEMPLATE_BUILT_IN.getCode());
         int i = templateMapper.delete(queryWrapper);
         boolean b = i != 0;
-        if (b){
+        if (b) {
             LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
             b = excelDataAssetService.remove(wrapper);
-            Path path = Paths.get(excelSavePath+templateCode+".xlsx");
+            Path path = Paths.get(excelSavePath + templateCode + ".xlsx");
             try {
                 Files.delete(path);
             } catch (IOException e) {
@@ -512,7 +556,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 //                ExcelTemplate excelTemplate = getById(template.getParentId());
                 ExcelTemplate excelTemplate = getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, template.getParentId()));
                 this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
-            }else {
+            } else {
                 ExcelTemplate excelTemplate = getById(template.getId());
                 this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
             }

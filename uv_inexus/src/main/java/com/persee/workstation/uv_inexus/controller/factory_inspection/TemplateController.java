@@ -209,7 +209,7 @@ public class TemplateController {
     }
     @GetMapping("/template/delete")
     @ApiOperation("删除模板")
-    public Result deleteTemplate(@RequestParam("templateCode") String templateCode) {
+    public Result<String> deleteTemplate(@RequestParam("templateCode") String templateCode) {
         return templateService.deleteTemplate(templateCode);
     }
 

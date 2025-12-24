@@ -51,6 +51,7 @@ public enum CalibrationTypeEnum {
     TEST_CATEGORY("testCategory", "检测类别"),
     BLACK_BLOCK("blackBlock", "黑挡块"),
     AIR("air", "空气"),
+    MEASUREMENT_VALUE("measurementValue", "测量值"),
 
     CLOSE("close", "关闭"),
 
@@ -67,6 +68,14 @@ public enum CalibrationTypeEnum {
     TASK_IN_PROGRESS("1", "未完成"),
     TASK_COMPLETED("2", "已完成"),
 
+    //任务分类 内置任务  用户任务
+    TEMPLATE_BUILT_IN_TASK("0", "内置任务"),
+    TEMPLATE_USER_DEFINED_TASK("1", "用户任务"),
+
+    //重复次数
+    REPEAT_COUNT("repeatCount", "重复次数"),
+    //默认任务
+    DEFAULT_TASK("default", "默认任务"),
 
     //新建模板或者修改模板
     TEMPLATE_CREATE("0", "从源模板-新建模板"),

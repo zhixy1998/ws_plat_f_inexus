@@ -5,6 +5,7 @@ import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 
+import java.util.HashMap;
 import java.util.List;
 
 /*
@@ -20,7 +21,7 @@ public interface TaskManagementService extends IService<TaskManagement> {
 
     Result<TaskCheckItemDto> showTemplate(String id);
 
-    Result newTask(TaskAddDto task);
+    Result<HashMap<String, String>> newTask(TaskAddDto task);
 
     Result newTaskByCurrent(TaskCopyDto taskCreateDto);
 
@@ -33,4 +34,10 @@ public interface TaskManagementService extends IService<TaskManagement> {
     Result<List<TaskCheckItemDto.Standard>> standardMaterialList(String taskId);
 
     Result<Boolean> setStandardMaterial(SetSamplePoolDto dto);
+
+    Result<TaskManagement> getTaskDetail(String taskId);
+
+    Result<String> renameTask(TaskRenameDto dto);
+
+    Result<String> deleteTask(String taskId);
 }

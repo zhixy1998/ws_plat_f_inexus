@@ -1,5 +1,8 @@
 package com.persee.workstation.uv_inexus.websocket.factory_inspection;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
@@ -7,23 +10,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
-import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
-import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
-import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
-import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
+import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.factory_inspection.*;
-import com.persee.workstation.uv_inexus.util.ExcelCellComparator;
-import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
-import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
-import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.*;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.MessageUtil;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
@@ -39,11 +31,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.net.DatagramSocket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
@@ -103,6 +92,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private MessageUtil messageUtil;
     @Autowired
     private ExcelDataAssetService dataAssetService;
+    @Autowired
+    private TaskManagementService taskService;
 
     // 会话信息类
     @Data
@@ -156,6 +147,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             String fileName = getFileNameFromSession(session);
             String taskId = getTaskIdFromSession(session);
             String updateBy = getUpdateByFromUrl(session);
+            if (StringUtils.isBlank(fileName)) {
+                TaskManagement management = taskService.getOne(new LambdaQueryWrapper<>(TaskManagement.class).eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode()));
+//                TaskManagement management = taskService.getById(taskId);
+                fileName = management.getResultTemplate();
+            }
+            //初始进入检定页面
+            if (StringUtils.equals(taskId, DEFAULT_TASK.getCode())) {
+                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+                //这里查询出内置任务
+                TaskManagement one = taskService.getOne(wrapper);
+                taskId = one.getId();
+                fileName = one.getResultTemplate();
+            }
             boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
             System.out.println("564645151545" + b);
 
@@ -177,7 +182,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     String data = item.getStructuredData();
                     ObjectMapper mapper = new ObjectMapper();
                     //获取到检测项的所有数据
-                    Map<String, String> dataMap = mapper.readValue(data, new TypeReference<Map<String, String>>() {});
+                    Map<String, String> dataMap = mapper.readValue(data, new TypeReference<Map<String, String>>() {
+                    });
                     String groupName = MapUtils.getString(dataMap, "检测类别");
                     String itemName = MapUtils.getString(dataMap, "项目名称");
                     //得到标准物质实体，可以进行修改了
@@ -312,17 +318,18 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         JsonNode root = mapper.readTree(payload);
         String type = root.get("type").asText();
         String updateBy = root.get("updateBy").asText();
+        String taskId = root.get("taskId").asText();
 
         if (CLOSE.getCode().equals(type)) {
             log.info("收到关闭指令");
-            String taskId = root.get("taskId").asText();
+            taskId = root.get("taskId").asText();
             workbookCacheManager.cleanupTask(taskId, updateBy);
             session.close();
         }
         if (SINGLE_ITEM.getCode().equals(type)) {
             log.info("收到单项测试指令");
             InspectionRequestDto request = mapper.readValue(payload, InspectionRequestDto.class);
-            handleSingleItemInspection(session, request);
+            handleSingleItemInspection(session, request, taskId);
         }
         if (AUTO.getCode().equals(type)) {
             log.info("收到自动测试指令");
@@ -341,7 +348,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     mapper.readValue(payload, new TypeReference<WebSocketMessageDto<StdMaterialSelectionDto>>() {
                     });
             StdMaterialSelectionDto selectionDto = messageWrapper.getData();
-            String taskId = selectionDto.getTaskId();
+            taskId = selectionDto.getTaskId();
             String groupName = selectionDto.getGroupName();
             String itemName = selectionDto.getItemName();
             String standardId = selectionDto.getStandardId();
@@ -353,6 +360,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             boolean edited = workbookCacheManager.isTaskBeingEditedByOthers(taskId, updateBy);
             if (edited) {
                 session.sendMessage(new TextMessage("任务正在被编辑中"));
+            }
+            if (DEFAULT_TASK.getCode().equals(taskId)) {
+                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+                TaskManagement one = taskService.getOne(wrapper);
+                taskId = one.getId();
             }
             if (!edited) {
 
@@ -444,39 +457,131 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     }
 
-    private void handleSingleItemInspection(WebSocketSession session, InspectionRequestDto request) {
-        List<Command> list = new ArrayList<>();
-        list.add(new Command("SetPhotoMode", new Object[]{2}));
-        list.add(new Command("SetScanSpeed", new Object[]{2}));
-        list.add(new Command("SetStartWl", new Object[]{660}));
-        list.add(new Command("SetEndWl", new Object[]{650}));
-        list.add(new Command("SetScanWlInterval", new Object[]{0.02}));
-        list.add(new Command("SetGain", new Object[]{4}));
-        list.add(new Command("SetSlit1", new Object[]{2}));
-        list.add(new Command("SetLampPos", new Object[]{1}));
-        R<DatagramSocket> ans = messageUtil.getSocket();
+    private void handleSingleItemInspection(WebSocketSession session, InspectionRequestDto request, String taskId) {
+        //先做暗电流
+        //在做校零
+        //再做测量
         try {
-            String ip="169.254.193.253";
-            devMessageUtil.spectrumScanSet(list, ip);
-            Command command = new Command();
-            command.setCmdId(SetParamEnum.Scan.getComId());
-            command.setParams(new Object[]{});
-            devMessageUtil.getMeasureData(command,ip);
-            // 等待一段时间让数据接收完成
-            try {
-                Thread.sleep(5000); // 等待5秒
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            //获取检测项id
+            String itemId = request.getItemId();
+            ExcelDataAsset asset = dataAssetService.getById(itemId);
+            //获取检测项的具体内容
+            Map<String, Object> map = (Map<String, Object>) JSON.parse(asset.getStructuredData());
+            //重复检测次数
+            Integer repeatCount = MapUtils.getInteger(map, REPEAT_COUNT.getDescription());
+            //检测项类别
+            String category = MapUtils.getString(map, TEST_CATEGORY.getDescription());
+            //
+//            String measurementValue = MapUtils.getString(map,MEASUREMENT_VALUE.getDescription());
+            //项目名称
+            String projectName = MapUtils.getString(map,PROJECT_NAME.getDescription());
+            //时间扫描
+//            sendBatchDataPoints(session,"");
+            for (Integer i = 0; i < repeatCount; i++) {
+                //光谱扫描
+                sendBatchDataPoints(session, "spectrum");
+                Workbook workbook = workbookCacheManager.getTaskWorkbook(taskId);
+                //发送sheet图，也就是绘制一幅波形图就要发送一个测量值给前端
+                CellUpdDto cellUpdDto = new CellUpdDto();
+                Random random = new Random();
+                int result = random.nextInt(301) + 300; // 生成300-600的随机整数
+
+                cellUpdDto.setPosition(i);
+                cellUpdDto.setCellValue(String.valueOf(result));
+                cellUpdDto.setSheetName(category);
+                cellUpdDto.setValueType(MEASUREMENT_VALUE.getDescription());
+                cellUpdDto.setProjectName(projectName);
+                //修改工作簿
+                updateWorkbookCell(workbook, cellUpdDto);
+                //修改缓存中的工作簿
+                workbookCacheManager.updateTaskWorkbook(taskId, workbook);
+                //发送特定的sheet页
+                sendSheetUpdate(session,workbook.getSheet(category));
             }
 
-// 获取并处理数据
-            List<ChangeParam> measurementData = Constants.measurd_data;
-            for (ChangeParam param : measurementData) {
-                log.info("5555555555555555: " + param.toString());
-            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void sendDataPoint(WebSocketSession session, BigDecimal xValue, BigDecimal yValue,
+                               String sampleId, String waveLength, String yType, Integer digit) throws IOException {
+        JSONObject payload = new JSONObject();
+        JSONArray points = new JSONArray();
+        JSONObject point = new JSONObject();
+
+        point.put("x", xValue);
+
+        Double decimalY = yValue.doubleValue();
+        Double value = DataCountUtil.formatValue(digit, decimalY);
+        String valueY = DataCountUtil.addZero(value, digit);
+
+        point.put("y", decimalY);
+        point.put("roundOffY", valueY);
+        point.put("nm", waveLength);
+        point.put("xType", "s");
+        point.put("yType", yType);
+
+        points.add(point);
+        payload.put("data", points);
+        payload.put("sampleId", sampleId);
+        session.sendMessage(new TextMessage(payload.toJSONString()));
+    }
+
+    private void sendBatchDataPoints(WebSocketSession session, String scanType) throws IOException, InterruptedException {
+        int totalPoints = 500;
+        String xType = "s"; // 默认为时间扫描
+        String yType = "Es"; // 默认y类型
+        String waveLength = "660nm"; // 默认波长
+        Integer digit = 4; // 默认小数位数
+
+        // 根据扫描类型设置参数
+        if ("spectrum".equals(scanType)) {
+            xType = "nm";
+            yType = "Er";
+            waveLength = "496nm";
+        }
+
+        for (int i = 0; i < totalPoints; i++) {
+            // 生成模拟数据
+            BigDecimal xValue = new BigDecimal(i + 1); // 从1开始递增
+            BigDecimal yValue = generateSimulatedYValue(i); // 生成模拟y值
+
+            // 发送单个数据点
+            JSONObject payload = new JSONObject();
+            JSONArray points = new JSONArray();
+            JSONObject point = new JSONObject();
+
+            point.put("x", xValue);
+
+            Double decimalY = yValue.doubleValue();
+            Double value = DataCountUtil.formatValue(digit, decimalY);
+            String valueY = DataCountUtil.addZero(value, digit);
+
+            point.put("y", decimalY);
+            point.put("roundOffY", valueY);
+            point.put("nm", waveLength);
+            point.put("xType", xType);
+            point.put("yType", yType);
+
+            points.add(point);
+            payload.put("data", points);
+            payload.put("sampleId", "");
+
+            session.sendMessage(new TextMessage(payload.toJSONString()));
+
+            // 间隔1秒发送下一个数据点
+//            Thread.sleep(1000);
+        }
+    }
+
+    // 生成模拟Y值的方法
+    private BigDecimal generateSimulatedYValue(int index) {
+        // 使用正弦波生成模拟数据，模拟实际测量值
+        double baseValue = Math.sin(index * 0.1) * 10 + 50; // 基础正弦波
+        double noise = (Math.random() - 0.5) * 2; // 添加随机噪声
+        double finalValue = baseValue + noise;
+        return new BigDecimal(finalValue);
     }
 
     private boolean shouldSaveToFile(String fileName) {
