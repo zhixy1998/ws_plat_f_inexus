@@ -35,16 +35,14 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMa
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
 import com.persee.workstation.uv_inexus.util.DeviceMessageUtils;
 import com.persee.workstation.uv_inexus.util.changeUtil.*;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.*;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.LiveDetectionManyDevicesWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,7 +90,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     DeviceTypeInfoDAO deviceTypeInfoDAO;
 
     @Autowired
-    LiveDetectionWebSocket liveDetectionWebSocket;
+    LiveDetectionManyDevicesWebSocket liveDetectionWebSocket;
 
     @Autowired
     DevOperationUtilService operationUtilService;
@@ -999,14 +997,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<FindDeviceVO> connect(DevOperationInputParam param) {
+    public R<FindDeviceVO> connect(SearchInfo param) {
         Integer connectType = param.getConnectType();
-        SearchInfo searchInfo = param.getDeviceInfo();
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Connect.getType());
         inputParam.setConnectType(connectType);
-        inputParam.setDeviceInfo(searchInfo);
+        inputParam.setDeviceInfo(param);
 
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
@@ -1023,11 +1020,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             info.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
             info.setIsDevOpened(1);
 
-
             info.setDevicePort(data.getConnectPort());
             info.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
 
-            //TODO 根据仪器序列号，获取型号信息，还需要调整
             String deviceModel = vo.getDeviceSerialNumber().substring(3, 8);
             info.setDeviceModel(deviceModel);
 
@@ -1105,8 +1100,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
             vo.setLinearSegment(null);
 
-
             infoService.saveOrUpdateInfo(info);
+            if (info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                liveDetectionWebSocket.startMeasure(info.getDeviceSerialNumber());
+            }
 
             return R.ok(vo);
         }
@@ -1122,22 +1119,80 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail(operation.getMessage());
         } else {
             OperationResultEntity data = operation.getData();
+            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+            info.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+            info.setDeviceId("");
+            info.setConnectType(-1);
+            info.setIp("");
+            info.setIsInited(0);
+            info.setMachineIp("");
+            info.setDevicePort(-1);
+            infoService.saveOrUpdateInfo(info);
             return R.ok(true);
         }
     }
 
     @Override
-    public R<OperationResultEntity> initOneDevice(String deviceSerialNumber) {
+    public R<Boolean> startInitDevice(String deviceSerialNumber) {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setIsInitFromHead(true);
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
-            return R.fail(operation.getMessage());
+            log.info("初始化启动失败: {}", operation.getMessage());
+            return R.fail("初始化启动失败");
         } else {
-            OperationResultEntity data = operation.getData();
-            return R.ok(data);
+            liveDetectionWebSocket.startMeasure(deviceSerialNumber);
+            return R.ok(true);
         }
+    }
+
+    @Override
+    public R<Boolean> continueInitDevice(String deviceSerialNumber) {
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Init.getType());
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setIsInitFromHead(false);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            log.info("继续初始化启动失败: {}", operation.getMessage());
+            return R.fail("初始化启动失败");
+        } else {
+            return R.ok(true);
+        }
+    }
+
+    @Override
+    public R<String> getConnectDevice(String updateBy) {
+
+        LambdaQueryWrapper<DeviceInfoPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DeviceInfoPO::getConnectStatus, Constants.CONNECT_DEVICE_SUCCESS)
+                .eq(DeviceInfoPO::getUpdateBy, updateBy)
+                .orderByDesc(DeviceInfoPO::getUpdated);
+        //TODO 校验用户权限，是否可以连多个
+        int max = 1;
+        List<DeviceInfoPO> pos = deviceInfoDAO.selectList(queryWrapper);
+        if (pos != null && !pos.isEmpty()) {
+            DeviceInfoPO infoPO = pos.remove(0);
+
+            try {
+                pos.forEach(po -> disconnectDevice(po.getDeviceSerialNumber()));
+            } catch (Exception e) {
+                log.error("断开连接失败: {}", e.getMessage());
+            }
+
+            if (infoPO.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                DeviceConnectionManager connectionManager = DeviceConnectionManager.getInstance();
+                DeviceConnectInfo device = connectionManager.getDevice(infoPO.getDeviceId());
+                if (device != null) {
+                    liveDetectionWebSocket.startMeasure(infoPO.getDeviceSerialNumber());
+                }
+            }
+            return R.ok(infoPO.getDeviceSerialNumber());
+        }
+        return R.ok(null);
     }
 
 

@@ -43,6 +43,8 @@ public class UdpSendUtil {
 
     private final static DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
+    private final static UdpReceiveThread udpReceiveThread = UdpReceiveThread.getInstance();
+
     /**
      * 以太网查找设备
      */
@@ -61,7 +63,6 @@ public class UdpSendUtil {
         }
         try {
 
-            UdpReceiveThread udpReceiveThread = new UdpReceiveThread();
             udpReceiveThread.networkReceptionStart(receivePort, connectType);
             MessageStoreManager store = MessageStoreManager.getInstance();
 
@@ -242,10 +243,6 @@ public class UdpSendUtil {
         log.info("收到来自deviceId：{}, deviceIp: {} 的数据：{}", deviceId, ip, bytesToHex(bytes));
     }
 
-
-
-
-
     /**
      * 知道接收总数且全部接收后处理
      * @param deviceId  发送的机器ip
@@ -262,13 +259,31 @@ public class UdpSendUtil {
         }
 
         DatagramSocket socket;
-        if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
-            socket = connectUtil.getWifiSocket(wifiReceivePort);
-        } else {
-            socket = connectUtil.getEtherSocket(ethernetReceivePort);
-        }
+        int receivePort;
+        boolean isReceiveRunning;
 
         try {
+            if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
+                socket = connectUtil.getWifiSocket(wifiReceivePort);
+                if (socket == null) {
+                    return R.fail("请检查wifi连接！");
+                }
+                wifiReceivePort = connectUtil.getWifiPort();
+                receivePort = wifiReceivePort;
+                isReceiveRunning = udpReceiveThread.isWifiRunning();
+            } else {
+                socket = connectUtil.getEtherSocket(ethernetReceivePort);
+                if (socket == null) {
+                    return R.fail("请检查以太网连接！");
+                }
+                ethernetReceivePort = connectUtil.getEthernetPort();
+                receivePort = ethernetReceivePort;
+                isReceiveRunning = udpReceiveThread.isEthernetRunning();
+            }
+
+            if (!isReceiveRunning) {
+                udpReceiveThread.networkReceptionStart(receivePort, connectType);
+            }
 
             DeviceConnectInfo device = deviceManager.getDevice(deviceId);
             String sendIp = device.getConnectIdentity();

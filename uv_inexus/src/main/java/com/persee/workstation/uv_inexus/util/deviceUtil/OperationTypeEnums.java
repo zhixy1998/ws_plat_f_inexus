@@ -23,6 +23,7 @@ public enum OperationTypeEnums {
     Connect(2, "连接", "deviceIp,connectType", ""),
     Init(3, "初始化仪器", "deviceIp,connectType", ""),
     Measure(4, "测量", "deviceIp,connectType", ""),
+    LiveDetection(887, "实时检测", "deviceIp,connectType", ""),
     Disconnect(888, "断开连接", "deviceIp,connectType", ""),
     End(999, "枚举最后标志量，不做操作，方便添加", "deviceIp,connectType", "");
 

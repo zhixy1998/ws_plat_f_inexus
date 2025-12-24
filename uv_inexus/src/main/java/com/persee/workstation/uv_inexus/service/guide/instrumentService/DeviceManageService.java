@@ -16,8 +16,6 @@ import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO;
@@ -133,11 +131,14 @@ public interface DeviceManageService {
 
     R<List<SearchInfo>> searchDevice(Integer connectType);
 
-    R<FindDeviceVO> connect(DevOperationInputParam param);
+    R<FindDeviceVO> connect(SearchInfo param);
 
     R<Boolean> disconnectDevice(String deviceSerialNumber);
 
-    R<OperationResultEntity> initOneDevice(String deviceSerialNumber);
+    R<Boolean> startInitDevice(String deviceSerialNumber);
 
+    R<Boolean> continueInitDevice(String deviceSerialNumber);
+
+    R<String> getConnectDevice(String updateBy);
 
 }

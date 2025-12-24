@@ -9,9 +9,14 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil.param;
 
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -75,6 +80,51 @@ public class DeviceConnectInfo {
 
     // 缓存 identityKey 用于快速查找
     private String identityKey;
+
+    // ====== 新增：仪器状态（保留 Map 结构）=====
+    /**
+     * 仪器序列号
+     */
+    private String deviceSerialNumber;
+
+    /**
+     * 设备是否空闲
+     */
+    private Boolean isIdle = true; // 设备是否空闲
+    /**
+     * 校零结果
+     */
+    private Map<String, ChangeParam> zeroResult = new HashMap<>(); // 键: 波长, 值: 校零参数 (保留 Map 结构！)
+    /**
+     * 当前波长
+     */
+    private String zeroWavelength = ""; // 当前校零波长
+    /**
+     * 当前波长
+     */
+    private String currentWavelength = ""; // 当前波长
+    /**
+     * 光度模式
+     */
+    private String luminosityMode = "1"; // 光度模式
+    /**
+     * 仪器当前状态
+     */
+    private DetectionResponseInfoVO currentStatus;
+
+    // ====== 校零结果管理方法 ======
+    public void addZeroResult(String wavelength, ChangeParam changeParam) {
+        zeroResult.put(wavelength, changeParam);
+    }
+
+    public ChangeParam getZeroResult(String wavelength) {
+        return zeroResult.get(wavelength);
+    }
+
+    public Map<String, ChangeParam> getAllZeroResults() {
+        return Collections.unmodifiableMap(zeroResult);
+    }
+
 
     public DeviceConnectInfo() {
         this.messageCount = new AtomicInteger(0);

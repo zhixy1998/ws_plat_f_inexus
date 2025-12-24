@@ -9,7 +9,9 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -83,5 +85,47 @@ public class OperationResultEntity {
 
     @ApiModelProperty("计算公式")
     private String linearSegment;
+
+    /**
+     * 实时回显字段
+     */
+    @ApiModelProperty("仪器当前状态")
+    private String devCurrentStatus;
+
+    @ApiModelProperty("灯位置")
+    private String lampPos;
+
+    @ApiModelProperty("灯状态")
+    private List<DetectionLampStatus> dataList;
+
+    @ApiModelProperty("灯状态，0-关，1-开")
+    private Boolean lampStatus;
+
+    @ApiModelProperty("X坐标")
+    private String x;
+
+    @ApiModelProperty("Y坐标")
+    private String y;
+
+    @ApiModelProperty("样品池位置")
+    private String pos;
+
+    @ApiModelProperty("带宽")
+    private String bandwidth;
+
+    @ApiModelProperty("换灯波长")
+    private String changeLampWl;
+
+    @ApiModelProperty("响应时间")
+    private String time;
+
+    @ApiModelProperty("总池数")
+    private Integer totalPoolNum;
+
+    @ApiModelProperty("光度模式")
+    private String luminosity;
+
+    @ApiModelProperty("测量结果")
+    private ChangeParam measureResult;
 
 }

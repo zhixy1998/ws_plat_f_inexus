@@ -31,6 +31,26 @@ public class UdpReceiveThread {
     // 安全配置
     private static final int MAX_PACKET_SIZE = 1024; // 4KB
 
+    private static volatile UdpReceiveThread instance;
+
+    // 私有构造函数，防止外部创建实例
+    private UdpReceiveThread() {
+        // 初始化代码
+    }
+
+    // 获取单例实例
+    public static UdpReceiveThread getInstance() {
+        if (instance == null) {
+            synchronized (UdpReceiveThread.class) {
+                if (instance == null) {
+                    instance = new UdpReceiveThread();
+                }
+            }
+        }
+        return instance;
+    }
+
+
     public void networkReceptionStart(int port, int connectType) {
 
         if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(connectType)) {
@@ -151,24 +171,32 @@ public class UdpReceiveThread {
 
             ethernetReceiverThread.start();
         }
-
-
-
     }
+
+    public Boolean isEthernetRunning() {
+        return ethernetRunning;
+    }
+
+    public Boolean isWifiRunning() {
+        return wifiRunning;
+    }
+
 
     @PreDestroy
     public void stopEthernetReceive() {
-        ethernetRunning = false;
+
         if (ethernetReceiverThread != null) {
             ethernetReceiverThread.interrupt();
+            ethernetRunning = false;
         }
     }
 
     @PreDestroy
     public void stopWifiReceive() {
-        wifiRunning = false;
+
         if (wifiReceiverThread != null) {
             wifiReceiverThread.interrupt();
+            wifiRunning = false;
         }
     }
 
