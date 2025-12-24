@@ -10,10 +10,13 @@ import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDeleteDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
@@ -153,7 +156,6 @@ public class PermissionServiceImpl implements PermissionService {
                 return Result.fail("前端组件路径已存在");
             }
         }
-
         // 6. 转换并处理默认值
         SysPermissionPO po = new SysPermissionPO();
         BeanUtils.copyProperties(updateDTO, po);
@@ -172,6 +174,29 @@ public class PermissionServiceImpl implements PermissionService {
         sysPermissionMapper.updateById(po);
 
         return Result.ok("更新权限成功");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result<String> deletePermission(PermissionDeleteDTO deleteDTO) {
+        // 1. 检查记录是否存在
+        SysPermissionPO existingPo = sysPermissionMapper.selectById(deleteDTO.getId());
+        if (existingPo == null) {
+            return Result.fail("权限记录不存在");
+        }
+
+        // 2. 将子节点的 parentId 更新为 0 (变为根节点)
+        // 这样原先挂在被删节点下的子节点，现在会变成一级目录
+        // 而子节点的子节点（孙节点）依然挂在子节点下，结构保持不变
+        UpdateWrapper<SysPermissionPO> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("parent_id", deleteDTO.getId())
+                .set("parent_id", 0);
+        sysPermissionMapper.update(null, updateWrapper);
+
+        // 3. 删除当前节点
+        sysPermissionMapper.deleteById(deleteDTO.getId());
+
+        return Result.ok("删除权限成功");
     }
 
     private List<PermissionTreeDTO> buildPermissionTree(List<SysPermissionPO> permissions) {

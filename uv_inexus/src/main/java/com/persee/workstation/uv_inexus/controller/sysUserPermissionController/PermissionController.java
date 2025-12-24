@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDeleteDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionUpdateDTO;
@@ -42,5 +43,11 @@ public class PermissionController {
     @ApiOperation("更新权限")
     public Result<String> updatePermission(@RequestBody PermissionUpdateDTO updateDTO) {
         return permissionService.updatePermission(updateDTO);
+    }
+
+    @PostMapping("/delete")
+    @ApiOperation("删除权限")
+    public Result<String> deletePermission(@RequestBody PermissionDeleteDTO deleteDTO) {
+        return permissionService.deletePermission(deleteDTO);
     }
 }
