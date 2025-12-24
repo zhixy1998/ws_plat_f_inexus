@@ -1493,7 +1493,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -1546,7 +1546,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -1597,7 +1597,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -1644,7 +1644,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -2066,7 +2066,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;
@@ -2117,7 +2117,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;
@@ -2163,7 +2163,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;
@@ -2205,7 +2205,7 @@ public class ConciseSpectrumOneMeasureWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;

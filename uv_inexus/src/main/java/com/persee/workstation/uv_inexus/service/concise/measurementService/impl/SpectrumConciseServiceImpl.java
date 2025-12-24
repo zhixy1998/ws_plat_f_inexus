@@ -2341,19 +2341,32 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 }
             }
         } else {
-            for (FTaskSpecimen taskSpeciman : taskSpecimen) {
-                if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
+            for (FTaskSpecimen taskSpecimans : taskSpecimen) {
+                // 仅判断样品未删除（deleteType = "0"）
+                if (taskSpecimans.getDeleteType().equals("0")) {
                     List<FMeasureAnalysisData> measureDataList = fMeasureAnalysisDataService.list(new QueryWrapper<FMeasureAnalysisData>()
                             .eq("task_id", taskId)
-                            .eq("sample_key", taskSpeciman.getSpecimenKey())
+                            .eq("sample_key", taskSpecimans.getSpecimenKey())
+                            .eq("is_delete", "0")
                             .orderByAsc("analysis_number"));
-                    FMeasureSample byId = fMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-                    for (FMeasureAnalysisData tMeasureData : measureDataList) {
-                        if (tMeasureData.getAnalysisResult() != null) {
-                            Map<String, String> map = new HashMap<>();
-                            map.put("measureId", tMeasureData.getId());
-                            map.put("sampleName", byId.getSampleName() + "-" + tMeasureData.getAnalysisNumber());
-                            list.add(map);
+
+                    // 1. 判断查询结果列表不为空
+                    if (measureDataList != null && !measureDataList.isEmpty()) {
+                        FMeasureSample byId = fMeasureSampleService.getById(taskSpecimans.getSpecimenKey());
+
+                        for (FMeasureAnalysisData tMeasureData : measureDataList) {
+                            // 2. 判断 analysisResult 不为 null 且不是空数组（假设 analysisResult 是 List 类型）
+                            // 如果 analysisResult 是字符串，可替换为: !StringUtils.isEmpty(tMeasureData.getAnalysisResult())
+                            Object analysisResult = tMeasureData.getAnalysisResult();
+                            if (analysisResult != null &&
+                                    (analysisResult instanceof List && !((List<?>) analysisResult).isEmpty() ||
+                                            (analysisResult instanceof String && !((String) analysisResult).isEmpty()))) {
+
+                                Map<String, String> map = new HashMap<>();
+                                map.put("measureId", tMeasureData.getId());
+                                map.put("sampleName", byId.getSampleName() + "-" + tMeasureData.getAnalysisNumber());
+                                list.add(map);
+                            }
                         }
                     }
                 }
