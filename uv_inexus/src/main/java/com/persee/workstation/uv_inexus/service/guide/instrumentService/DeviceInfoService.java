@@ -37,8 +37,11 @@ public interface DeviceInfoService {
     //占用仪器
     R<Boolean> useDevice(String deviceSerialNumber, Integer status);
 
+    R<Boolean> newUseDevice(String deviceSerialNumber, Integer status);
+
     //释放仪器
     void releaseDevice(String deviceSerialNumber);
+    void newReleaseDevice(String deviceSerialNumber);
 
     //激活仪器
     void activeDevice(String deviceSerialNumber);
@@ -48,7 +51,7 @@ public interface DeviceInfoService {
     
     Boolean isNeedSetSit(String deviceSerialNumber);
 
-    List<DeviceInfoPO> getDeviceSerialNumberList();
+    List<DeviceInfoPO> getLastConnectDevice();
 
     void checkDeviceStatus();
 }

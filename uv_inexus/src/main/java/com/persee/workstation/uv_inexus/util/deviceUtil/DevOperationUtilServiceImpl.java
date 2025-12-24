@@ -15,6 +15,8 @@ import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoD
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKindEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreCommandEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
@@ -22,15 +24,16 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceModelInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.ProtocolItemUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.Transition;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.ConnectEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.DefaultStatusCmdEnum;
+import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.LiveDetectionCmdIdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionCmdEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
@@ -40,6 +43,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
+import java.beans.PropertyDescriptor;
+import java.net.DatagramSocket;
 import java.util.*;
 
 /**
@@ -81,7 +86,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     private volatile static int newIpEnd = 253;
 
     @Override
-    @PostConstruct
     public void initXml() {
 
         try {
@@ -99,10 +103,135 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     }
 
     @Override
-    public void initDevice() {
-//        infoService.activeDevice();
+    @PostConstruct
+    public void checkDeviceConnect() {
 
+        initXml();
+
+        List<DeviceInfoPO> lastConnectDevice = infoService.getLastConnectDevice();
+        if (lastConnectDevice == null || lastConnectDevice.isEmpty()) {
+            log.info("没有要恢复连接的仪器");
+            return;
+        }
+        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+
+        String cmdId = T600ComIdEnums.GetSn.getComId();
+
+        List<String> unConnectedDevice = new ArrayList<>();
+
+        Integer port = null;
+        String localIp = "";
+        for (DeviceInfoPO po : lastConnectDevice) {
+            String deviceSerialNumber = po.getDeviceSerialNumber();
+            String type = deviceModelInfoDAO.getDevTypeByDevModel(po.getDeviceModel());
+            Map<String, Transition> xmlInfo = xmlManage.getXmlInfo(type);
+
+            Transition transition = xmlInfo.get(cmdId);
+            int timeout = transition.getTimeout();
+            int replyNumber = transition.getReplyNumber();
+
+            Object[] param = new Object[]{};
+
+            byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+            Integer connectType = po.getConnectType();
+            if (connectType == null) {
+                //默认网口连接
+                connectType = 1;
+            }
+
+            if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+                //串口
+                log.info("串口连接！");
+
+            } else if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
+                //wifi
+                log.info("wifi连接！");
+                if (port == null) {
+                    DatagramSocket wifiSocket = connectUtil.getWifiSocket(po.getDevicePort());
+                    if (wifiSocket == null) {
+                        log.info("请检查wifi连接！");
+                        unConnectedDevice.add(deviceSerialNumber);
+                        continue;
+                    }
+                    port = connectUtil.getWifiPort();
+                    localIp = connectUtil.getWifiLocalIp();
+                }
+
+            } else {
+                //ethernet
+                log.info("ethernet连接！");
+                if (port == null) {
+                    DatagramSocket etherSocket = connectUtil.getEtherSocket(po.getDevicePort());
+                    if (etherSocket == null) {
+                        log.info("请检查以太网连接！");
+                        unConnectedDevice.add(deviceSerialNumber);
+                        continue;
+                    }
+                    port = connectUtil.getEthernetPort();
+                    localIp = connectUtil.getEthernetLocalIp();
+                }
+            }
+
+            //共有数据库的情况下，不修改非自己ip的设备信息
+            if (!po.getMachineIp().equals(localIp)) {
+                continue;
+            }
+
+            String deviceId = manager.getOrCreateDeviceId(po.getIp(), port, po.getConnectType());
+
+            R<Object> r = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType);
+            if (r.getSuccess()) {
+                OperationResultEntity result = (OperationResultEntity) r.getData();
+                String sn = result.getDeviceSerialNumber();
+
+                if (!sn.equals(deviceSerialNumber)) {
+                    log.info("当前ip的序列号以改变！");
+                    unConnectedDevice.add(deviceSerialNumber);
+                }
+
+                String s = manager.convertToPermanentByDeviceId(deviceId);
+                manager.updateDeviceInfo(s, true, "", type);
+                DeviceInfoPO newPO = new DeviceInfoPO();
+                newPO.setDevicePort(po.getDevicePort());
+                newPO.setIp(po.getIp());
+                newPO.setDeviceSerialNumber(sn);
+                newPO.setDeviceId(s);
+                newPO.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
+                newPO.setMachineIp(localIp);
+                newPO.setIsDevOpened(Constants.DEVICE_IS_OPEN);
+                newPO.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
+
+                deviceManager.updateDeviceInfo(deviceId, true, "", type);
+
+                deviceManager.setDeviceIdleStatus(deviceId, true);
+
+                xmlManage.setDevice(po.getIp(), type);
+
+                infoService.saveOrUpdateInfo(newPO);
+            } else {
+                log.error("获取SN失败！仪器未连接！");
+                manager.removeDevice(deviceId);
+                unConnectedDevice.add(deviceSerialNumber);
+            }
+        }
+
+        for (String deviceSerialNumber : unConnectedDevice) {
+            DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
+            if (po != null) {
+                po.setConnectStatus(Constants.CONNECT_DEVICE_NO);
+                po.setIp("");
+                po.setDeviceId("");
+                po.setMachineIp("");
+                po.setIsDevOpened(Constants.DEVICE_IS_NULL);
+                po.setIsInited(Constants.INIT_STATUS_NO);
+                po.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
+                Boolean b = infoService.saveOrUpdateInfo(po);
+                System.out.println( b);
+            }
+        }
     }
+
 
     @Override
     public R<OperationResultEntity> operation(DevOperationInputParam inputParam) {
@@ -132,7 +261,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 return R.fail("请先连接仪器！");
             }
 
-            R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_INIT);
+            R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, Constants.DEVICE_STATUS_INIT);
             if (!r.getSuccess()) {
                 return R.fail(r.getMessage());
             }
@@ -149,22 +278,22 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 break;
             case Init:
                 synchronized (this) {
-                    new Thread(() -> {
-                        initDevice(inputParam.getDeviceSerialNumber());
-                    }).start();
+                    new Thread(() -> initDevice(deviceSerialNumber, inputParam.getIsInitFromHead())).start();
                     release = false;
                 }
                 break;
             case Disconnect:
                 result =  disconnect(inputParam);
                 break;
+            case LiveDetection:
+                result = liveDetection(deviceSerialNumber);
             default:
-                infoService.releaseDevice(deviceSerialNumber);
+                infoService.newReleaseDevice(deviceSerialNumber);
                 break;
         }
         //释放仪器，部分操作自主释放
-        if (release) {
-            infoService.releaseDevice(deviceSerialNumber);
+        if (release && StringUtils.hasText(deviceSerialNumber)) {
+            infoService.newReleaseDevice(deviceSerialNumber);
         }
         return result;
     }
@@ -236,7 +365,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     deviceManager.updateDeviceInfo(info.getDeviceId(), true, info.getDeviceMac(), anEnum.getDevType());
 
                 }
-             }
+            }
         }
 
         operationResultEntity.setSearchInfo(allDevice);
@@ -252,7 +381,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         String localhostIp = "127.0.0.1";
 
         SearchInfo deviceInfo = inputParam.getDeviceInfo();
-        if (deviceInfo == null) {
+        if (deviceInfo == null || !StringUtils.hasText(deviceInfo.getDeviceId())) {
             return R.fail("请先查找仪器！");
         }
 
@@ -271,7 +400,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         OperationResultEntity result = new OperationResultEntity();
 
-        Integer connectType = inputParam.getConnectType();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceInfo.getDeviceId());
+        Integer connectType = device.getConnectType();
+
         if (connectType == null) {
             //默认网口连接
             connectType = 1;
@@ -400,7 +531,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (replyNumber < 0) {
                 r = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout, false, null, null);
             } else {
-                 r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, replyNumber, timeout, connectType);
+                r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, replyNumber, timeout, connectType);
 
             }
             if (!r.getSuccess()) {
@@ -414,6 +545,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 result.setDeviceId(s);
                 deviceId = s;
                 result.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
+                deviceManager.setDeviceIdleStatus(deviceId, true);
             }
 
             Object data = r.getData();
@@ -444,7 +576,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         return R.ok(result);
     }
 
-    private void initDevice(String deviceSerialNumber) {
+    private void initDevice(String deviceSerialNumber, Boolean isInitFromHead) {
 
 
 //        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
@@ -460,11 +592,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(deviceSerialNumber);
         Integer kind = attachmentInfo.getAttachmentKind();
 
-        if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
-            List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
-            initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), allInitEntry);
-        } else {
-            initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), initEntry);
+        if (isInitFromHead) {
+            if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
+                List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
+                initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), allInitEntry);
+            } else {
+                initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), initEntry);
+            }
         }
 
         log.info("自检开始");
@@ -478,11 +612,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         String xmlKey = device.getXmlKey();
         Map<String, Transition> xmlInfo = xmlManage.getXmlInfo(xmlKey);
 
-
         List<InitRecordPO> list = initRecordService.searchInitStatus(deviceSerialNumber, infoPO.getId());
         for (InitRecordPO recordPO : list) {
             updateRunning(recordPO);
             recordPO = initRecordService.selectById(recordPO.getId());
+            if (!isInitFromHead && recordPO.getInitStatus().equals(Constants.INIT_STATUS_SUCCESS)) {
+                continue;
+            }
 
             List<String> cmdIdList = recordPO.getInitCmdIdList();
 
@@ -497,39 +633,45 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     int replyNumber = transition.getReplyNumber();
 
                     //Todo 结束前缀
-                    byte[] endBytes = new byte[1];
+                    byte[] endBytes = new byte[4];
 
                     byte[] bytes = protocolItemUtil.calcSendBytes(command.getParams(), transition);
-                    R<Object> initDevice;
+                    R<Object> initDevice = new R<>();
                     if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(connectType)) {
                         log.info("串口初始化");
                         //Todo 串口初始化待做
                         initDevice = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout,false, deviceSerialNumber, endBytes);
                     } else {
-
-                        if (replyNumber < 0) {
+                        for (int j = 0; j < 3; j++) {
+                            if (replyNumber < 0) {
 //
-                            String[] readBytes = transition.getReadBytes();
-                            if (readBytes != null && readBytes.length > 0) {
-                                endBytes = new byte[4];
-                                String fullStr = readBytes[0];
-                                String[] parts = fullStr.split(":");
+                                String[] readBytes = transition.getReadBytes();
+                                if (readBytes != null && readBytes.length > 0) {
+                                    endBytes = new byte[4];
+                                    String fullStr = readBytes[0];
+                                    String[] parts = fullStr.split(":");
 
-                                for (int i = 0; i < 4 && i < parts.length; i++) {
-                                    String part = parts[i].trim();
-                                    // 跳过非数字部分（比如 "Check"）
-                                    if (!part.matches("\\d+")) {
-                                        break; // 或 continue，根据逻辑决定
+                                    for (int i = 0; i < 4 && i < parts.length; i++) {
+                                        String part = parts[i].trim();
+                                        // 跳过非数字部分（比如 "Check"）
+                                        if (!part.matches("\\d+")) {
+                                            break; // 或 continue，根据逻辑决定
+                                        }
+                                        int intValue = Integer.parseInt(part); // 解析为 int（支持 0~255）
+                                        endBytes[i] = (byte) (intValue & 0xFF); // 安全转为 byte（保留低8位）
+//                                        System.out.println(endBytes[i]);
                                     }
-                                    int intValue = Integer.parseInt(part); // 解析为 int（支持 0~255）
-                                    endBytes[i] = (byte) (intValue & 0xFF); // 安全转为 byte（保留低8位）
-                                    System.out.println(endBytes[i]);
                                 }
-                            }
 
-                            initDevice = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout,false, deviceSerialNumber, endBytes);
-                        } else {
-                            initDevice = udpSendUtil.knowTotalReceiveSend(deviceId,cmdId, bytes,replyNumber,timeout,connectType);
+                                initDevice = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout,false, deviceSerialNumber, endBytes);
+                            } else {
+                                initDevice = udpSendUtil.knowTotalReceiveSend(deviceId,cmdId, bytes,replyNumber,timeout,connectType);
+                            }
+                            if (initDevice.getSuccess()) {
+                                break;
+                            } else {
+                                log.info("{}指令初始化失败，正在重试", cmdId);
+                            }
                         }
                     }
 
@@ -557,12 +699,174 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
             log.info("{}成功", recordPO.getInitCmdName());
             updateSuccess(recordPO);
+
         }
         log.info("自检结束");
+        setInitStatus(deviceId, 1);
         R<Boolean> r = setDeviceDefaultStatus(deviceId, deviceSerialNumber);
 
         infoPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
         infoService.saveOrUpdateInfo(infoPO);
+        infoService.newReleaseDevice(deviceSerialNumber);
+
+    }
+
+    private R<OperationResultEntity> liveDetection(String deviceSerialNumber) {
+
+        OperationResultEntity resultEntity = new OperationResultEntity();
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+
+        Object[] param = new Object[]{};
+
+        for (LiveDetectionCmdIdEnum anEnum : LiveDetectionCmdIdEnum.values()) {
+            String comId = anEnum.getComId();
+            Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+            Transition transition = xml.get(comId);
+            int replyNumber = transition.getReplyNumber();
+            int timeout = transition.getTimeout();
+            byte[] endBytes = null;
+
+
+            byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+            R<Object> liveDetection = new R<>();
+            if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+
+            } else {
+
+                for (int j = 0; j < 3; j++) {
+                    if (replyNumber < 0) {
+                        String[] readBytes = transition.getReadBytes();
+                        if (readBytes != null && readBytes.length > 0) {
+                            endBytes = new byte[4];
+                            String fullStr = readBytes[0];
+                            String[] parts = fullStr.split(":");
+
+                            for (int i = 0; i < 4 && i < parts.length; i++) {
+                                String part = parts[i].trim();
+                                // 跳过非数字部分（比如 "Check"）
+                                if (!part.matches("\\d+")) {
+                                    break; // 或 continue，根据逻辑决定
+                                }
+                                int intValue = Integer.parseInt(part); // 解析为 int（支持 0~255）
+                                endBytes[i] = (byte) (intValue & 0xFF); // 安全转为 byte（保留低8位）
+                            }
+                        }
+                        liveDetection = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout,false, deviceSerialNumber, endBytes);
+                    } else {
+                        liveDetection = udpSendUtil.knowTotalReceiveSend(deviceId,comId, bytes,replyNumber,timeout,connectType);
+                    }
+                    if (!liveDetection.getSuccess()) {
+                        j++;
+                        log.info("{}指令执行失败，重试第{}次", comId, j);
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            if (!liveDetection.getSuccess()) {
+
+                log.error("{}指令执行失败", comId);
+                return R.fail(liveDetection.getMessage());
+            }
+
+            Object data = liveDetection.getData();
+
+            try {
+                OperationResultEntity entity = (OperationResultEntity) data;
+                if (!entity.getIsSuccess()) {
+                    log.error("指令[{}]解析出错，错误原因：{}", comId, entity.getErrorMsg());
+                    return R.fail("指令" + comId + "，解析出错！");
+                }
+                BeanUtils.copyProperties(entity, resultEntity, getNullPropertyNames(entity));
+
+                if (comId.equals(LiveDetectionCmdEnum.Measure.getComId())) {
+
+                    device = deviceManager.getDevice(deviceId);
+
+                    ChangeParam measureParam = entity.getMeasureResult();
+                    if (!Objects.isNull(measureParam)) {
+
+                        String luminosity = device.getLuminosityMode();
+                        if (!StringUtils.hasText(luminosity)) {
+                            luminosity = WaveLengthEnum.abs.getCode();
+                        }
+
+                        String wl = device.getCurrentWavelength();
+                        resultEntity.setX(wl + "nm");
+                        measureParam.setWl(wl);
+
+                        if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
+
+                            ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
+
+                            String s;
+                            if (!Objects.isNull(zeroParam)) {
+                                s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
+                            } else {
+                                s = DataCountUtil.countTPercent(null, measureParam, 1.0);
+                            }
+                            String abs = DataCountUtil.changeTPercentOrAbs(null, s);
+                            resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
+                        } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
+                            String s = DataCountUtil.countErOrEs(measureParam, luminosity);
+                            resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                        } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
+                            ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
+                            String s;
+                            if (!Objects.isNull(zeroParam)) {
+                                s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
+                            } else {
+                                s = DataCountUtil.countTPercent(null, measureParam, 1.0);
+                            }
+                            resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+                        }
+                    }
+
+                } else if (comId.equals(LiveDetectionCmdEnum.GetLampPos.getComId())) {
+
+                    resultEntity.setLampPos(EnergyLampEnums.getName(entity.getLampPos()));
+
+                } else if (comId.equals(LiveDetectionCmdEnum.GetPhotoMode.getComId())) {
+                    resultEntity.setLuminosity(WaveLengthEnum.getName(device.getLuminosityMode()));
+                } else if (comId.equals(LiveDetectionCmdEnum.GetChangeLampWl.getComId())) {
+                    Double v = formulaUtil.calculateWl(Double.parseDouble(entity.getChangeLampWl()), deviceSerialNumber);
+                    resultEntity.setChangeLampWl(String.valueOf(v));
+                } else if (comId.equals(LiveDetectionCmdEnum.GetDLampStatus.getComId())) {
+                    if (resultEntity.getDataList() == null) {
+                        resultEntity.setDataList(new ArrayList<>());
+                    }
+
+                    DetectionLampStatus status = new DetectionLampStatus();
+                    status.setLabel("氘灯");
+                    status.setValue(entity.getLampStatus() ? "亮" : "不亮");
+
+                    resultEntity.getDataList().add(status);
+                } else if (comId.equals(LiveDetectionCmdEnum.GetWLampStatus.getComId())) {
+                    if (resultEntity.getDataList() == null) {
+                        resultEntity.setDataList(new ArrayList<>());
+                    }
+
+                    DetectionLampStatus status = new DetectionLampStatus();
+                    status.setLabel("钨灯");
+                    status.setValue(entity.getLampStatus() ? "亮" : "不亮");
+
+                    resultEntity.getDataList().add(status);
+                }
+
+                param = new Object[]{};
+            } catch (Exception e) {
+                log.error("指令{}，操作过程中数据转换错误，错误信息：{}", comId, e.getMessage());
+                return R.fail("数据转换错误");
+            }
+        }
+        return R.ok(resultEntity);
 
     }
 
@@ -575,12 +879,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         Integer connectType = device.getConnectType();
         String xmlKey = device.getXmlKey();
 
-        String comId = "DisConnect";
+        String cmdId = "DisConnect";
 
         Object[] param = new Object[]{};
 
         Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
-        Transition transition = xml.get(comId);
+        Transition transition = xml.get(cmdId);
         int ReplyNumber = transition.getReplyNumber();
         int Timeout = transition.getTimeout();
 
@@ -591,18 +895,48 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             log.info("串口断开");
         } else {
             if (ReplyNumber < 0) {
-                disconnect = udpSendUtil.unknownReceive(deviceId, comId, bytes, Timeout, false, deviceSerialNumber, null);
+                disconnect = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, Timeout, false, deviceSerialNumber, null);
                 if (!disconnect.getSuccess()) {
                     return R.fail("断开失败！");
                 }
             } else {
-                disconnect = udpSendUtil.knowTotalReceiveSend(deviceId,comId, bytes,ReplyNumber,Timeout,connectType);
+                disconnect = udpSendUtil.knowTotalReceiveSend(deviceId,cmdId, bytes,ReplyNumber,Timeout,connectType);
                 if (!disconnect.getSuccess()) {
                     return R.fail("断开失败！");
                 }
             }
         }
+        MessageStoreManager.getInstance().clearDevice(deviceId);
+
+        deviceManager.removeDevice(deviceId);
+
         return R.ok();
+    }
+
+    private void setInitStatus(String deviceId, Integer initStatus) {
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        Integer connectType = device.getConnectType();
+        String xmlKey = device.getXmlKey();
+        String comId = T600ComIdEnums.SetInitStatus.getComId();
+
+        Object[] param = new Object[]{initStatus};
+
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+        Transition transition = xml.get(comId);
+        int ReplyNumber = transition.getReplyNumber();
+        int Timeout = transition.getTimeout();
+
+        byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+        if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+            log.info("串口默认");
+            //Todo 串口初始化待做
+
+        } else {
+            R<Object> r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, ReplyNumber, Timeout, connectType);
+
+        }
+
     }
 
     private R<Boolean> setDeviceDefaultStatus(String deviceId, String deviceSerialNumber) {
@@ -706,9 +1040,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
     private static String[] getNullPropertyNames(Object source) {
         final BeanWrapper src = new BeanWrapperImpl(source);
-        java.beans.PropertyDescriptor[] pds = src.getPropertyDescriptors();
+        PropertyDescriptor[] pds = src.getPropertyDescriptors();
         Set<String> emptyNames = new HashSet<>();
-        for (java.beans.PropertyDescriptor pd : pds) {
+        for (PropertyDescriptor pd : pds) {
             Object srcValue = src.getPropertyValue(pd.getName());
             if (srcValue == null) emptyNames.add(pd.getName());
         }

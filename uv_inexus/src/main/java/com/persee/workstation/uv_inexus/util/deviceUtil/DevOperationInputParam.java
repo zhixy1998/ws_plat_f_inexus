@@ -32,4 +32,7 @@ public class DevOperationInputParam {
     @ApiModelProperty("要连接的仪器")
     private SearchInfo deviceInfo;
 
+    @ApiModelProperty("初始化是否从头开始")
+    private Boolean isInitFromHead;
+
 }

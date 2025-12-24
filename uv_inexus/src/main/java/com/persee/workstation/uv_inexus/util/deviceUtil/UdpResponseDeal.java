@@ -147,17 +147,17 @@ public class UdpResponseDeal {
         }
     }
 
-    private static Object parseGetResponseTime(List<byte[]> responses) {
+    private static OperationResultEntity parseGetResponseTime(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
         byte[] lastResponse = responses.get(responses.size() - 1);
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
         float time = (lastResponse[4] & 0xFF) / 100.0f;
         String rawtime = String.valueOf(time);
@@ -170,15 +170,16 @@ public class UdpResponseDeal {
 
         long l1 = System.currentTimeMillis() - l;
         System.out.println("耗时：" + l1);
-        return true;
+        resultEntity.setTime(rawtime);
+        return resultEntity;
     }
 
 
-    private static Object parsePhotoMode(List<byte[]> responses) {
+    private static OperationResultEntity parsePhotoMode(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         for (int i = 0; i < responses.size(); i++) {
@@ -202,9 +203,11 @@ public class UdpResponseDeal {
                     String photomode = "Er";
                     MeasureController.addPhotoModeData(photomode);
                 }
+                resultEntity.setLuminosity(String.valueOf(mode));
             }
         }
-        return true;
+
+        return resultEntity;
     }
 
 
@@ -223,25 +226,25 @@ public class UdpResponseDeal {
         return false;
     }
 
-    private static Object parseChangeLampWl(List<byte[]> responses) {
+    private static OperationResultEntity parseChangeLampWl(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] lastResponse = responses.get(responses.size() - 1);
         if (lastResponse == null || lastResponse.length < 6) { // 至少要有6字节
             System.out.println("回应报文长度不足6字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         // 判断第3个字节（索引2）是否为 0x05
         if ((lastResponse[3] & 0xFF) != 0x05) {
             System.out.printf("最后一条报文第3位不是0x05（实际值: %02X），跳过解析\n", lastResponse[2]);
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         // 如果通过检查，则进行解析
@@ -252,7 +255,8 @@ public class UdpResponseDeal {
         System.out.printf("波长原始值=%d, 解析结果=%.2f\n", wl, ChangeLampWl);
 
         MeasureController.addWlData(rawchagelampwl);
-        return wl;
+        resultEntity.setChangeLampWl(rawchagelampwl);
+        return resultEntity;
     }
 
 
@@ -368,12 +372,12 @@ public class UdpResponseDeal {
 //
 //        return pos;
 //    }
-    private static Object parseLampPos(List<byte[]> responses) {
+    private static OperationResultEntity parseLampPos(List<byte[]> responses) {
         byte[] lastResponse = responses.get(responses.size() - 1);
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         int pos = (lastResponse[4] & 0xFF); // pos == 0 钨灯亮, pos ==1 氘灯亮
@@ -399,7 +403,8 @@ public class UdpResponseDeal {
         addLampPosData(lampData);
 
         System.out.println("解析灯状态完成，入队等待推送: " + lampData);
-        return pos;
+        resultEntity.setLampStatus(pos == 1);
+        return resultEntity;
     }
 
     private static Object parseWlList(List<byte[]> responses) {
@@ -476,13 +481,17 @@ public class UdpResponseDeal {
         return resultEntity;
     }
 
-    private static Boolean getLampStatus(List<byte[]> responses) {
+    private static OperationResultEntity getLampStatus(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] last = responses.get(responses.size() - 1);
-        return last.length >= 5 && (last[4] & 0xFF) == 1;
+
+        resultEntity.setLampStatus(last.length >= 5 && (last[4] & 0xFF) == 1);
+
+        return resultEntity;
     }
 
     private static OperationResultEntity parseSetCellPos(List<byte[]> responses, byte[] sendBytes) {
@@ -557,7 +566,7 @@ public class UdpResponseDeal {
     /**
      S、D、R解析
      */
-    public static ChangeParam parseZero(List<byte[]> responses) {
+    public static OperationResultEntity parseZero(List<byte[]> responses) {
         ChangeParam param = new ChangeParam();
 
         if (responses == null || responses.isEmpty()) {
@@ -630,10 +639,11 @@ public class UdpResponseDeal {
             System.out.println("Zero解析异常: " + e.getMessage());
             return null;
         }
-        return param;
+        resultEntity.setMeasureResult(param);
+        return resultEntity;
     }
 
-    public static ChangeParam measure(List<byte[]> responses){
+    public static OperationResultEntity measure(List<byte[]> responses){
         ChangeParam param = new ChangeParam();
 
         if (responses == null || responses.size() < 2) {
@@ -662,7 +672,8 @@ public class UdpResponseDeal {
             return null;
         }
 
-        return param;
+        resultEntity.setMeasureResult(param);
+        return resultEntity;
     }
 
     /*

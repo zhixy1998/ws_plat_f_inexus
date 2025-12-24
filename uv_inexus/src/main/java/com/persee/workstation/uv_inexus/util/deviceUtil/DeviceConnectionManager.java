@@ -12,6 +12,8 @@ package com.persee.workstation.uv_inexus.util.deviceUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceOverview;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceStatistics;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -218,6 +220,177 @@ public class DeviceConnectionManager {
         updateDeviceInfo(deviceId, false, null, null);
         logInfo("设备断开连接: %s", deviceId);
     }
+
+    /**
+     * 手动断开并立即移除指定设备的所有信息。
+     * 适用于用户主动断开、不再需要保留设备上下文的场景。
+     *
+     * @param deviceId 设备ID，不可为 null
+     * @return 是否成功移除
+     */
+    public boolean removeDevice(String deviceId) {
+        if (deviceId == null) {
+            logWarning("尝试移除 null 设备ID");
+            return false;
+        }
+
+        DeviceConnectInfo device = deviceMap.remove(deviceId);
+        if (device == null) {
+            logInfo("设备不存在，跳过移除: %s", deviceId);
+            return false;
+        }
+
+        // 清理 identityMap 映射
+        String identityKey = device.getConnectIdentity() + ":" + device.getPort();
+        identityMap.remove(identityKey, deviceId);
+
+        // 清理关联的消息存储（如果存在）
+        MessageStoreManager.getInstance().clearDevice(deviceId);
+
+        logInfo("手动移除设备: %s (%s:%s)", deviceId, device.getConnectIdentity(), device.getPort());
+        return true;
+    }
+
+
+    /**
+     * 部分更新currentStatus中的字段
+     *
+     * @param deviceId     设备ID
+     * @param statusUpdates 要更新的字段Map
+     * @return 是否成功
+     */
+    public boolean partialUpdateCurrentStatus(String deviceId,
+                                              Map<String, Object> statusUpdates) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null || statusUpdates == null || statusUpdates.isEmpty()) {
+            return false;
+        }
+
+        synchronized (device) {
+            DetectionResponseInfoVO currentStatus = device.getCurrentStatus();
+            if (currentStatus == null) {
+                currentStatus = new DetectionResponseInfoVO();
+                device.setCurrentStatus(currentStatus);
+            }
+
+            // 使用反射动态更新字段（或者为DetectionResponseInfoVO添加更新方法）
+            // 这里先提供简单的手动更新
+            for (Map.Entry<String, Object> entry : statusUpdates.entrySet()) {
+                switch (entry.getKey()) {
+                    case "connectStatus":
+                        currentStatus.setConnectStatus((String) entry.getValue());
+                        break;
+                    case "devCurrentStatus":
+                        currentStatus.setDevCurrentStatus((String) entry.getValue());
+                        break;
+                    case "lampPos":
+                        currentStatus.setLampPos((String) entry.getValue());
+                        break;
+                    case "dataList":
+                        currentStatus.setDataList((List<DetectionLampStatus>) entry.getValue());
+                        break;
+                    case "x":
+                        currentStatus.setX((String) entry.getValue());
+                        break;
+                    case "y":
+                        currentStatus.setY((String) entry.getValue());
+                        break;
+                    case "pos":
+                        currentStatus.setPos((String) entry.getValue());
+                        break;
+                    case "bandwidth":
+                        currentStatus.setBandwidth((String) entry.getValue());
+                        break;
+                    case "changeLampWl":
+                        currentStatus.setChangeLampWl((String) entry.getValue());
+                        break;
+                    case "time":
+                        currentStatus.setTime((String) entry.getValue());
+                        break;
+                    case "attachmentName":
+                        currentStatus.setAttachmentName((String) entry.getValue());
+                        break;
+                    case "attachmentKind":
+                        currentStatus.setAttachmentKind((Integer) entry.getValue());
+                        break;
+                    case "totalPoolNum":
+                        currentStatus.setTotalPoolNum((Integer) entry.getValue());
+                        break;
+                    case "luminosity":
+                        currentStatus.setLuminosity((String) entry.getValue());
+                        device.setLuminosityMode((String) entry.getValue()); // 同步更新
+                        break;
+                }
+            }
+
+            device.updateLastUseTime();
+        }
+
+        logInfo("部分更新设备状态: %s -> %s", deviceId, statusUpdates.keySet());
+        return true;
+    }
+
+    /**
+     * 获取仪器空闲状态
+     */
+    public boolean getDeviceIdleStatus(String deviceId) {
+        DeviceConnectInfo deviceConnectInfo = deviceMap.get(deviceId);
+        if (deviceConnectInfo != null && deviceConnectInfo.getConnectStatus()) {
+            return deviceConnectInfo.getIsIdle();
+        }
+        return false;
+    }
+
+    /**
+     * 修改仪器空闲状态
+     */
+    public void setDeviceIdleStatus(String deviceId, boolean idle) {
+        DeviceConnectInfo deviceConnectInfo = deviceMap.get(deviceId);
+        if (deviceConnectInfo != null && deviceConnectInfo.getConnectStatus()) {
+            deviceConnectInfo.setIsIdle(idle);
+        }
+        logInfo("修改设备空闲状态: %s -> %s", deviceId, idle);
+    }
+
+
+    /**
+     * 一次性取出currentStatus的所有字段内容
+     *
+     * @param deviceId 设备ID
+     * @return 包含所有字段的Map，如果设备不存在或currentStatus为null返回空Map
+     */
+    public Map<String, Object> getCurrentStatusAllFields(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            return Collections.emptyMap();
+        }
+
+        DetectionResponseInfoVO status = device.getCurrentStatus();
+        if (status == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Object> allFields = new LinkedHashMap<>();
+
+        allFields.put("connectStatus", status.getConnectStatus());
+        allFields.put("devCurrentStatus", status.getDevCurrentStatus());
+        allFields.put("lampPos", status.getLampPos());
+        allFields.put("dataList", status.getDataList() != null ?
+                Collections.unmodifiableList(status.getDataList()) : Collections.emptyList());
+        allFields.put("x", status.getX());
+        allFields.put("y", status.getY());
+        allFields.put("pos", status.getPos());
+        allFields.put("bandwidth", status.getBandwidth());
+        allFields.put("changeLampWl", status.getChangeLampWl());
+        allFields.put("time", status.getTime());
+        allFields.put("attachmentName", status.getAttachmentName());
+        allFields.put("attachmentKind", status.getAttachmentKind());
+        allFields.put("totalPoolNum", status.getTotalPoolNum());
+        allFields.put("luminosity", status.getLuminosity());
+
+        return Collections.unmodifiableMap(allFields);
+    }
+
 
     public Set<String> getAllDeviceIds() {
         return Collections.unmodifiableSet(new HashSet<>(deviceMap.keySet()));

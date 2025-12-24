@@ -15,12 +15,8 @@ public interface DevOperationUtilService {
 
     void initXml();
 
-    void initDevice();
+    void checkDeviceConnect();
 
     R<OperationResultEntity> operation(DevOperationInputParam inputParam);
-
-
-
-
 
 }
