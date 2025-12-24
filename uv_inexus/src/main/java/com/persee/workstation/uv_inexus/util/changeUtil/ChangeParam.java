@@ -12,8 +12,10 @@ package com.persee.workstation.uv_inexus.util.changeUtil;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Data
+@ToString
 @AllArgsConstructor
 @NoArgsConstructor
 public class ChangeParam {

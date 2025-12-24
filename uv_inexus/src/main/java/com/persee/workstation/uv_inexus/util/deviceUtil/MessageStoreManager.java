@@ -258,4 +258,19 @@ public class MessageStoreManager {
         }
         return total;
     }
+
+    public byte[] takeMessageBlocking(String deviceId, long timeoutMs)
+            throws InterruptedException {
+
+        BlockingQueue<byte[]> queue = deviceMessageMap.get(deviceId);
+        if (queue == null) return null;
+
+        byte[] data = queue.poll(timeoutMs, TimeUnit.MILLISECONDS);
+        if (data != null) {
+            totalMessagesProcessed.incrementAndGet();
+            lastActivityMap.put(deviceId, System.currentTimeMillis());
+        }
+        return data;
+    }
+
 }

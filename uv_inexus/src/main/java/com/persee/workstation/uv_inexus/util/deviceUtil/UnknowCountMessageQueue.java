@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
+
 public class UnknowCountMessageQueue {
 
     // 核心存储结构：仪器序列号 -> (指令 -> 消息队列)
@@ -30,6 +31,12 @@ public class UnknowCountMessageQueue {
         this.store = new ConcurrentHashMap<>();
         this.queueCapacity = queueCapacity;
     }
+
+    private static class Holder {
+        static final UnknowCountMessageQueue INSTANCE = new UnknowCountMessageQueue();
+    }
+    public static UnknowCountMessageQueue getInstance() { return UnknowCountMessageQueue.Holder.INSTANCE; }
+
 
     /**
      * 构造函数（默认容量1000）

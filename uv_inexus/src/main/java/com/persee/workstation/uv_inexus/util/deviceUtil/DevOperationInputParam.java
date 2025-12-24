@@ -9,7 +9,10 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.GetParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -35,4 +38,12 @@ public class DevOperationInputParam {
     @ApiModelProperty("初始化是否从头开始")
     private Boolean isInitFromHead;
 
+    @ApiModelProperty("设置参数命令")
+    private SetParam param;
+
+    @ApiModelProperty("操作命令")
+    private ActionCmdEnum action;
+
+    @ApiModelProperty("读取值")
+    private GetParam readValue;
 }
