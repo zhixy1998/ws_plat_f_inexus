@@ -14,5 +14,6 @@ import lombok.Data;
 public class WebSocketMessageDto<T> {
     private String type;
     private String updateBy;
+    private String taskId;
     private T data;
 }

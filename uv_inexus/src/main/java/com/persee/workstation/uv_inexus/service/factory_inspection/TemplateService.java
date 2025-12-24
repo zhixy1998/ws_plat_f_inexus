@@ -64,5 +64,5 @@ public interface TemplateService extends IService<ExcelTemplate> {
                          ExcelCellEditor excelCellEditor, String valueType,
                          String projectName, int positionIndex, String cellValue);
 
-    Result deleteTemplate(String templateCode);
+    Result<String> deleteTemplate(String templateCode);
 }

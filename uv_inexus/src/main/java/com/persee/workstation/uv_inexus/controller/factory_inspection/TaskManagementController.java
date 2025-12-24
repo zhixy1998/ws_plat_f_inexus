@@ -2,6 +2,7 @@ package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
 import io.swagger.annotations.Api;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
 
 /*
@@ -52,7 +54,7 @@ public class TaskManagementController {
      * 新建任务
      */
     @RequestMapping("/new-task")
-    public Result newTask(@RequestBody TaskAddDto task) {
+    public Result<HashMap<String, String>> newTask(@RequestBody TaskAddDto task) {
         return taskManagementService.newTask(task);
     }
     /**
@@ -94,8 +96,8 @@ public class TaskManagementController {
      * 删除任务
      */
     @RequestMapping("/delete-task")
-    public Result deleteTask(@RequestParam String taskId) {
-        return taskManagementService.removeById(taskId)?Result.ok():Result.fail();
+    public Result<String> deleteTask(@RequestParam String taskId) {
+       return taskManagementService.deleteTask(taskId);
     }
     /**
      * 可选择的标准物
@@ -110,5 +112,19 @@ public class TaskManagementController {
     @RequestMapping("/set-standard-material")
     public Result<Boolean> setStandardMaterial(@RequestBody SetSamplePoolDto dto) {
         return taskManagementService.setStandardMaterial(dto);
+    }
+    /**
+     * 获取任务详情
+     */
+    @RequestMapping("/get-task-detail")
+    public Result<TaskManagement> getTaskDetail(@RequestParam String taskId) {
+        return taskManagementService.getTaskDetail(taskId);
+    }
+    /**
+     * 任务重命名
+     */
+    @RequestMapping("/rename-task")
+    public Result<String> renameTask(@RequestBody TaskRenameDto dto) {
+        return taskManagementService.renameTask(dto);
     }
 }

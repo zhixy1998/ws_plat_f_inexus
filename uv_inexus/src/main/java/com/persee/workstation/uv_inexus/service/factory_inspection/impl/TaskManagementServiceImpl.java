@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.service.factory_inspection.impl;
 
+import com.alibaba.excel.util.StringUtils;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -96,10 +97,18 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Override
     public Result<TaskCheckItemDto> showTemplate(String id) {
         try {
+            TaskManagement management = null;
+            if (DEFAULT_TASK.getCode().equals(id)) {
+                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+                //这里查询出内置任务
+                management = this.getOne(wrapper);
+            } else {
+                management = this.getById(id);
+            }
 
 
             TaskCheckItemDto dto = new TaskCheckItemDto();
-            TaskManagement management = this.getById(id);
             if (management == null) {
                 return Result.fail("任务不存在");
             }
@@ -137,9 +146,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     }
 
     @Override
-    public Result newTask(TaskAddDto task) {
+    public Result<HashMap<String, String>> newTask(TaskAddDto task) {
         try {
-
+            log.info("新建任务");
             TaskManagement management = new TaskManagement();
             management.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
             management.setCompletionStatus(NOT_STARTED.getCode());
@@ -150,20 +159,20 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             management.setUseTemplate(template.getId());
             management.setOperationInstrument(task.getSerialNumber());
             management.setResultTemplate(task.getUseTemplate());
+            management.setContentCategory(TEMPLATE_USER_DEFINED_TASK.getCode());
             boolean save = this.save(management);
             if (!save) {
                 return Result.fail(null);
             }
             if (save) {
                 HashMap<String, String> map = new HashMap<>();
-
 //                ExcelTemplate template = templateService.getById(management.getUseTemplate());
                 map.put("taskId", management.getId());
                 map.put("templateCode", task.getUseTemplate());
                 return Result.ok(map);
             }
             return Result.ok(null);
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error("新建任务失败", e);
         }
         return Result.fail(null);
@@ -186,6 +195,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             task.setUpdated(null);
             task.setCompletionStatus(NOT_STARTED.getCode());
             task.setStartTime(null);
+            task.setOperationInstrument(taskCreateDto.getSerialNumber());
+            task.setContentCategory(TEMPLATE_USER_DEFINED_TASK.getCode());
             int i = taskMgrMapper.insert(task);
             //获取之前的关联关系
             LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
@@ -303,6 +314,13 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
     @Override
     public Result<Boolean> checkTaskUsage(TaskUsageDto dto) {
+        if (StringUtils.equals(dto.getTaskId(), DEFAULT_TASK.getCode())) {
+            LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+            //这里查询出内置任务
+            TaskManagement one = this.getOne(wrapper);
+            dto.setTaskId(one.getId());
+        }
         return Result.ok(!workbookCacheManager.isTaskBeingEditedByOthers(dto.getTaskId(), dto.getUpdateBy()));
     }
 
@@ -358,6 +376,75 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             log.error("设置标准物失败", e);
             return Result.fail(false);
         }
+    }
+
+    @Override
+    public Result<TaskManagement> getTaskDetail(String taskId) {
+        try {
+            if (DEFAULT_TASK.getCode().equals(taskId)) {
+                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
+                TaskManagement management = this.getOne(wrapper);
+                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                management.setTemplateName(excelTemplate.getTemplateName());
+                return Result.ok(management);
+            }
+            TaskManagement management = this.getById(taskId);
+            ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+            management.setTemplateName(excelTemplate.getTemplateName());
+            return Result.ok(management);
+        } catch (Exception e) {
+            log.error("获取任务详情失败", e);
+        }
+        return Result.fail(null);
+    }
+
+    @Override
+    public Result<String> renameTask(TaskRenameDto dto) {
+        try {
+            // 检查任务是否存在
+            TaskManagement task = this.getById(dto.getTaskId());
+            if (task == null) {
+                return Result.fail("任务不存在");
+            }
+            if (StringUtils.equals(dto.getTaskName(), task.getDetectName())) {
+                return Result.ok("任务名称未改变");
+            }
+            //看一下新的名字有没有重名
+            if (this.checkTaskName(dto.getTaskName())) {
+                return Result.fail("任务名称已存在");
+            }
+            task.setDetectName(dto.getTaskName());
+            this.updateById(task);
+            return Result.ok("修改成功");
+        } catch (Exception e) {
+            log.error("修改任务名称失败", e);
+            return Result.fail("修改任务名称失败");
+        }
+    }
+
+    @Override
+    public Result<String> deleteTask(String taskId) {
+        try {
+            TaskManagement task = this.getById(taskId);
+
+            if (task == null) {
+                return Result.fail("任务不存在");
+            }
+            if (TEMPLATE_BUILT_IN_TASK.getCode().equals(task.getContentCategory())) {
+                return Result.fail("内置任务不能删除");
+            }
+            this.removeById(taskId);
+            return Result.ok("删除成功");
+        } catch (Exception e) {
+            log.error("删除任务失败", e);
+            return Result.fail("删除任务失败");
+        }
+    }
+
+    private boolean checkTaskName(String taskName) {
+        //如果新的名字和已有的一样
+        return this.list(new LambdaQueryWrapper<TaskManagement>().eq(TaskManagement::getDetectName, taskName)).size() > 0;
     }
 
 

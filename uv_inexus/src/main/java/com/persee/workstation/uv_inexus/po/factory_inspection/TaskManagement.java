@@ -12,9 +12,9 @@ import java.util.Date;
 /**
  * 任务管理表(task_management)实体类
  *
- * @author 
+ * @author
+ * @description
  * @since 2025-12-09 18:55:53
- * @description 
  */
 @Data
 @TableName("task_management")
@@ -73,9 +73,11 @@ public class TaskManagement extends BasePO {
     @TableField("result_template")
     @ApiModelProperty(value = "结果模板")
     private String resultTemplate;
+
     @TableField(exist = false)
     @ApiModelProperty(value = "templateCode")
     private String templateCode;
+
     @TableField(exist = false)
     @ApiModelProperty(value = "模板名称")
     private String templateName;
