@@ -1171,7 +1171,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                 fittingReceiveInfo.setDegree(degree);
 
                 String variable = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "Abs":"C";
-                String Y = parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "C":"Abs";
+                String Y = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "C":"Abs";
                 StringBuilder formula = new StringBuilder();
                 formula.append(Y).append(" = ");
                 List<String> coefficientList = parameter.getCoefficientParams();
@@ -3914,16 +3914,21 @@ public class RationServiceConciseImpl implements RationConciseService {
         //采用3位小数来计算
         double minX = info.getMinX() == null ? -1 : info.getMinX();
         double maxX = info.getMaxX() == null ? 1 : info.getMaxX();
-        if(minX==maxX){
-            minX=minX-(minX/2);
-            maxX=maxX+(maxX/2);
-            if (minX==0){
-                minX=-1;
-                maxX=1;
+        if (minX == maxX) {
+            minX = minX - (minX / 2);
+            maxX = maxX + (maxX / 2);
+            if (minX == 0) {
+                minX = -1;
+                maxX = 1;
             }
         }
+        if (minX > maxX) {
+            double temp = minX;
+            minX = maxX;
+            maxX = temp;
+        }
 
-        step = (maxX - minX)/100;
+        step = (maxX - minX) / 100;
 
         double st = step * 3;
 
