@@ -24,7 +24,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
@@ -37,7 +36,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Controller
+//@Controller
 @Slf4j
 public class LiveDetectionManyDevicesWebSocket {
 
@@ -70,7 +69,7 @@ public class LiveDetectionManyDevicesWebSocket {
     // 添加会话和订阅映射
     private final Map<String, Set<String>> sessionSubscriptions = new ConcurrentHashMap<>();
 
-    @MessageMapping("/detection/start")
+//    @MessageMapping("/detection/start")
     public void startMeasure(String deviceSerialNumber) {
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
             messagingTemplate.convertAndSend(measureTopic,
