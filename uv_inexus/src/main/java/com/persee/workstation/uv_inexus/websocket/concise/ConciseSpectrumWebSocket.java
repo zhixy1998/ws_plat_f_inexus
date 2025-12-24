@@ -440,7 +440,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                                 sendMessageSafe(session, payload.toJSONString());
                             } else {
                                 sendMessageSafe(session, "扫描成功");
-
                                 // 全部完成后再告诉前端 finish
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
@@ -506,16 +505,6 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                         int repetitionTime = Integer.parseInt(spectrumParameter.getRepetitionTime());
                         int startIndex = 0;
                         // 根据样品id去分析数据表进行查询
-                        QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-                        eq.eq("sample_key", newSampleData.get(i).getSpecimenKey());
-                        List<FMeasureAnalysisData> list = tMeasureAnalysisDataService.list(eq);
-                        if (!list.isEmpty()) {
-                            // 统计分析结果不为空的数量
-                            long notNullCount = list.stream()
-                                    .filter(data -> data.getAnalysisResult() != null)
-                                    .count();
-                            startIndex = (int) notNullCount;
-                        }
 
                         for (int r = startIndex; r < repetitionTime; r++) {
 
@@ -557,6 +546,28 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                         // 如果停止请求，跳出外层循环
                         if (isStopRequested(session)) {
                             break;
+                        }
+                        if (configPO.getIsAutoChangePool().equals(true)) {
+                            if ((i + 1) != newSampleData.size() && !sample.getSampleLocation().equals(finalMaxLocation)) {
+                                JSONObject payload = new JSONObject();
+                                payload.put("result", "finish");
+                                sendMessageSafe(session, payload.toJSONString());
+                            } else {
+                                sendMessageSafe(session, "扫描成功");
+                                // 全部完成后再告诉前端 finish
+                                JSONObject payload = new JSONObject();
+                                payload.put("result", "finish");
+                                sendAndClose(session, payload.toJSONString());
+                            }
+                        } else {
+                            if (state.stopCommandSent.get()) {
+                            } else {
+                                sendMessageSafe(session, "扫描成功");
+                            }
+                            // 全部完成后再告诉前端 finish
+                            JSONObject payload = new JSONObject();
+                            payload.put("result", "finish");
+                            sendAndClose(session, payload.toJSONString());
                         }
                     }
                 }
@@ -1953,7 +1964,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -2006,7 +2017,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -2057,7 +2068,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -2104,7 +2115,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             interval, isDescending, x.size());
 
-                    while (constrainedWavelength > correctedWavelength && !isEndData) {
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                         if (constrainedWavelength == endWl) {
                             isEndData = true;
@@ -2486,7 +2497,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength >= correctedWavelength && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;
@@ -2537,7 +2548,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;
@@ -2583,7 +2594,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;
@@ -2625,7 +2636,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                     interval, isDescending, x.size());
 
-            while (constrainedWavelength > correctedWavelength && !isEndData) {
+            while (constrainedWavelength>=correctedWavelength&&!isEndData && !isEndData) {
 
                 if (constrainedWavelength == endWl) {
                     isEndData = true;

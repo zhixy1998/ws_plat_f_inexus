@@ -642,7 +642,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
                     Double constrainedWavelength = forceConstrainWavelength(correctedWavelength, startWl, endWl,
                             wavelengthInterval, isDescending, sessionId);
 
-                    while (constrainedWavelength>correctedWavelength&&!isEndData){
+                    while (constrainedWavelength>=correctedWavelength&&!isEndData){
                         if (constrainedWavelength==endWl){
                             isEndData = true;
                         }

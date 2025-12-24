@@ -14,43 +14,50 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
 
+
+#  datasource:
+#    dynamic:
+#      primary: guide #设置默认的数据源
+#      strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
+#      datasource:
+#        guide:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+#        concise:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+#        factory_inspection:
+#          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+#          username: root
+#          password: px123456
+#          driver-class-name: com.mysql.cj.jdbc.Driver
+
   datasource:
     dynamic:
       primary: guide #设置默认的数据源
       strict: false #设置严格模式，默认false的情况下，如果配置了数据源，但是没有对应的数据源，则使用默认的数据源
       datasource:
         guide:
-          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
+          url: jdbc:mysql://localhost:3306/t800_uv_inexus?useSSL=false&serverTimezone=UTC
           username: root
-          password: px123456
+          password: root
           driver-class-name: com.mysql.cj.jdbc.Driver
         concise:
-          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
+          url: jdbc:mysql://localhost:3306/t800_uv_inexus_concise?useSSL=false&serverTimezone=UTC
           username: root
-          password: px123456
+          password: root
           driver-class-name: com.mysql.cj.jdbc.Driver
         factory_inspection:
-          url: jdbc:mysql://192.168.61.82:3306/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+          url: jdbc:mysql://localhost:3306/t800_uv_inexus_factory_inspection?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
           username: root
-          password: px123456
+          password: root
           driver-class-name: com.mysql.cj.jdbc.Driver
-  cache:
-    type: jcache # 指定使用JSR-107标准缓存[3](@ref)[4](@ref)
 
-# 自定义Ehcache参数
-ehcache:
-  disk-store-path: ./data/cache # 磁盘持久化目录，确保应用有读写权限
-  caches:
-    calibrationCache: # 检定校准缓存
-      heap: 1000 # 堆内存最多存储条目数
-      offheap: 100 # 堆外内存大小，单位MB
-      disk: 500   # 磁盘持久化大小，单位MB。必须大于offheap
-      ttl: 2h    # 生存时间  2小时
-    defaultCache: # 默认缓存
-      heap: 500 # 堆内存最多存储条目数
-      offheap: 10 # 堆外内存大小，单位MB
-      disk: 50   # 磁盘持久化大小，单位MB。必须大于offheap
-      ttl: 30m    # 生存时间
+
     mqIdempotentCache: # MQ幂等性缓存
       heap: 1000  # 堆内存最多存储条目数
       offheap: 10 # 堆外内存大小，单位MB
@@ -108,7 +115,23 @@ ehcache:
 #          username: root
 #          password: px123456
 #          driver-class-name: com.mysql.cj.jdbc.Driver
+  cache:
+    type: jcache # 指定使用JSR-107标准缓存[3](@ref)[4](@ref)
 
+# 自定义Ehcache参数
+ehcache:
+  disk-store-path: ./data/cache # 磁盘持久化目录，确保应用有读写权限
+  caches:
+    calibrationCache: # 检定校准缓存
+      heap: 1000 # 堆内存最多存储条目数
+      offheap: 100 # 堆外内存大小，单位MB
+      disk: 500   # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 2h    # 生存时间  2小时
+    defaultCache: # 默认缓存
+      heap: 500 # 堆内存最多存储条目数
+      offheap: 10 # 堆外内存大小，单位MB
+      disk: 50   # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 30m    # 生存时间
 
 
 
@@ -135,6 +158,7 @@ remote-access:
   enabled: true
 python-code:
   baseUrl: http://192.168.61.82:8002/
+#  baseUrl: http://192.168.35.50:42082/
 #  baseUrl: http://192.168.61.46:8000/
 #  baseUrl: http://localhost:10029/
 #  baseUrl: http://192.168.61.82:42082/
