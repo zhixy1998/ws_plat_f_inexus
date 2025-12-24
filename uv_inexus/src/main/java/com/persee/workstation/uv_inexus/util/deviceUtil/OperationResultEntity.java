@@ -9,6 +9,8 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
@@ -21,6 +23,7 @@ import java.util.List;
 /**
  * 返回结果实体类，包含所有返回参数
  */
+
 
 @Data
 @EqualsAndHashCode
@@ -85,6 +88,12 @@ public class OperationResultEntity {
 
     @ApiModelProperty("计算公式")
     private String linearSegment;
+
+    @ApiModelProperty("当前测量点数据")
+    private R<ChangeParam> currentMeasure;
+
+    @ApiModelProperty("步进点列表")
+    private List<StepPoint> stepPoints;
 
     /**
      * 实时回显字段

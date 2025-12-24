@@ -42,7 +42,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.LiveDetectionManyDevicesWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,11 +89,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Autowired
     DeviceTypeInfoDAO deviceTypeInfoDAO;
 
-//    @Autowired
-//    LiveDetectionManyDevicesWebSocket liveDetectionWebSocket;
-
     @Autowired
-    LiveDetectionWebSocket liveDetectionWebSocket;
+    LiveDetectionManyDevicesWebSocket liveDetectionWebSocket;
+
+//    @Autowired
+//    LiveDetectionWebSocket liveDetectionWebSocket;
 
     @Autowired
     DevOperationUtilService operationUtilService;
@@ -1198,5 +1198,74 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok(null);
     }
 
+
+    @Override
+    public R<OperationResultEntity> setParamOneDevice(
+            DevOperationInputParam param
+    ) {
+
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+//        param.setDeviceSerialNumber(deviceSerialNumber);
+
+        R<OperationResultEntity> operation =
+                operationUtilService.operation(param);
+
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            return R.ok(operation.getData());
+        }
+    }
+
+    @Override
+    public R<OperationResultEntity> getParamOneDevice(
+            DevOperationInputParam param
+    ) {
+
+        // 1️⃣ 设置操作类型为“读取参数”
+        param.setOperationType(OperationTypeEnums.GetValue.getType());
+
+        // 2️⃣ 调用统一操作入口
+        R<OperationResultEntity> operation =
+                operationUtilService.operation(param);
+
+        // 3️⃣ 返回结果
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            return R.ok(operation.getData());
+        }
+    }
+
+
+
+    @Override
+    public R<OperationResultEntity> Action(
+            DevOperationInputParam param
+    ) {
+
+        // 明确这是 Action 类型
+        param.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
+
+        R<OperationResultEntity> operation =
+                operationUtilService.operation(param);
+
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            new Thread(() -> {
+                UnknowCountMessageQueue queue = UnknowCountMessageQueue.getInstance();
+                while (true) {
+                    if (queue.getQueueSize(param.getDeviceSerialNumber(), "Measure") <= 0) {
+                        continue;
+                    } else {
+                        Object scan = queue.pollMessage(param.getDeviceSerialNumber(), "Measure");
+                        System.out.println(scan.toString());
+                    }
+                }
+            }).start();
+            return R.ok(operation.getData());
+        }
+    }
 
 }

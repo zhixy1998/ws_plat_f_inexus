@@ -24,6 +24,9 @@ public enum OperationTypeEnums {
     Init(3, "初始化仪器", "deviceIp,connectType", ""),
     Measure(4, "测量", "deviceIp,connectType", ""),
     LiveDetection(887, "实时检测", "deviceIp,connectType", ""),
+    SetParam(5, "设置参数", "deviceIp,connectType,setParam", ""),
+    ActionCmdEnum(6, "执行命令", "deviceIp,connectType,InputParam", ""),
+    GetValue(7, "读取值", "deviceIp,connectType,InputParam", ""),
     Disconnect(888, "断开连接", "deviceIp,connectType", ""),
     End(999, "枚举最后标志量，不做操作，方便添加", "deviceIp,connectType", "");
 

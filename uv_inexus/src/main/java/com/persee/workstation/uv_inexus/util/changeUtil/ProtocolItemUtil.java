@@ -24,11 +24,6 @@ import java.util.*;
 public class ProtocolItemUtil {
 
     public Map<String, Transition> loadFromXml(String xmlPath) throws Exception {
-//        Map<String, Transition> map = new LinkedHashMap<>();
-//        File file = new File(xmlPath);
-//        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-//        Document doc = builder.parse(file);
-//        doc.getDocumentElement().normalize();
         Map<String, Transition> map = new LinkedHashMap<>();
 
         // 使用类加载器读取资源文件

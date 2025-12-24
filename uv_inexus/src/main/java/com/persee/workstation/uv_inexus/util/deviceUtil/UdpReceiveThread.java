@@ -135,6 +135,7 @@ public class UdpReceiveThread {
                             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                             socket.receive(packet);
 
+
                             // 安全检查
                             if (packet.getLength() <= 0 || packet.getLength() > MAX_PACKET_SIZE) {
                                 System.err.println("丢弃无效数据包，大小: " + packet.getLength());
@@ -150,6 +151,8 @@ public class UdpReceiveThread {
                                     packet.getOffset(),
                                     packet.getOffset() + packet.getLength()
                             );
+                            System.out.println("接收数据，来自: " + ip);
+                            System.out.println("接收数据：" + Arrays.toString(data));
 
                             store.addMessage(deviceId, data);
 

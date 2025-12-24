@@ -30,6 +30,8 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.ConnectEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.DefaultStatusCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums.LiveDetectionCmdIdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.GetParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.ParamCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
@@ -44,6 +46,7 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.beans.PropertyDescriptor;
+import java.lang.reflect.Method;
 import java.net.DatagramSocket;
 import java.util.*;
 
@@ -215,6 +218,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 unConnectedDevice.add(deviceSerialNumber);
             }
         }
+        connectUtil.closeAllSockets();
 
         for (String deviceSerialNumber : unConnectedDevice) {
             DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
@@ -282,11 +286,20 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     release = false;
                 }
                 break;
+            case SetParam:
+                result = setParam(inputParam);
+                break;
             case Disconnect:
-                result =  disconnect(inputParam);
+                result = disconnect(inputParam);
                 break;
             case LiveDetection:
                 result = liveDetection(deviceSerialNumber);
+            case ActionCmdEnum:
+                result = executeAction(inputParam);
+                break;
+            case GetValue:
+                result = getValue(inputParam);
+                break;
             default:
                 infoService.newReleaseDevice(deviceSerialNumber);
                 break;
@@ -296,6 +309,391 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             infoService.newReleaseDevice(deviceSerialNumber);
         }
         return result;
+    }
+
+    private R<OperationResultEntity> getValue(DevOperationInputParam inputParam) {
+
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
+        /* ================= 1. 设备上下文准备 ================= */
+
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        Integer connectType = device.getConnectType();
+        String xmlKey = device.getXmlKey();
+
+        // 默认连接方式：网口
+        if (inputParam.getConnectType() == null) {
+            inputParam.setConnectType(DeviceConnectTypeEnum.ETHERNET.getConnectType());
+        }
+
+        // 校验连接状态
+        String macAddress = "";
+        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
+            // 串口
+        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+            macAddress = connectUtil.getWifiMacAddress();
+            if (!StringUtils.hasText(macAddress)) {
+                return R.fail("请检查 WIFI 连接！");
+            }
+        } else {
+            macAddress = connectUtil.getEthernetMacAddress();
+            if (!StringUtils.hasText(macAddress)) {
+                return R.fail("请检查网线连接！");
+            }
+        }
+
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+
+        /* ================= 2. 参数 → Command 自动转换 ================= */
+
+        List<Command> commandList = new ArrayList<>();
+
+        for (GetParam e : GetParam.values()) {
+            Object value = getFieldValueByGetter(inputParam.getParam(), e.getParamField());
+//            Object value = getFieldValueByGetter(inputParam.getReadValue(), e.getParamField());
+            if (value != null) {
+
+                Object[] paramArray = new Object[]{value};
+                // 构造 Command
+                commandList.add(new Command(e.getCmdId(), paramArray));
+            }
+        }
+
+        if (commandList.isEmpty()) {
+            return R.fail("未传入任何可读取参数");
+        }
+
+
+        /* ================= 3. 顺序下发指令 ================= */
+
+        for (Command command : commandList) {
+
+            Transition transition = xml.get(command.getCmdId());
+            if (transition == null) {
+                return R.fail("未找到指令定义：" + command.getCmdId());
+            }
+
+            byte[] sendBytes = protocolItemUtil.calcSendBytes(
+                    command.getParams(), transition);
+
+            R<Object> result;
+            int replyNumber = transition.getReplyNumber();
+            int timeout = transition.getTimeout();
+
+            if (replyNumber < 0) {
+                result = udpSendUtil.unknownReceive(
+                        deviceId,
+                        command.getCmdId(),
+                        sendBytes,
+                        timeout,
+                        false,
+                        deviceSerialNumber,
+                        null
+                );
+            } else {
+                result = udpSendUtil.knowTotalReceiveSend(
+                        deviceId,
+                        command.getCmdId(),
+                        sendBytes,
+                        replyNumber,
+                        timeout,
+                        connectType
+                );
+            }
+
+            if (!result.getSuccess()) {
+                return R.fail("参数设置失败，指令：" + command.getCmdId());
+            }
+        }
+
+        resultEntity.setIsSuccess(true);
+        return R.ok(resultEntity);
+    }
+
+    private R<OperationResultEntity> executeAction(
+            DevOperationInputParam inputParam
+    ) {
+
+        boolean isDealOnTime = false;
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
+        /* ================= 1. 设备上下文准备（与 setParam 统一） ================= */
+
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        Integer connectType = device.getConnectType();
+        String xmlKey = device.getXmlKey();
+
+        if (inputParam.getConnectType() == null) {
+            inputParam.setConnectType(DeviceConnectTypeEnum.ETHERNET.getConnectType());
+        }
+
+        // 连接校验
+        if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+            if (!StringUtils.hasText(connectUtil.getWifiMacAddress())) {
+                return R.fail("请检查 WIFI 连接！");
+            }
+        } else if (DeviceConnectTypeEnum.ETHERNET.getConnectType().equals(inputParam.getConnectType())) {
+            if (!StringUtils.hasText(connectUtil.getEthernetMacAddress())) {
+                return R.fail("请检查网线连接！");
+            }
+        }
+
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+
+        /* ================= 2. 执行动作命令 ================= */
+
+        String cmdId = inputParam.getAction().getCmdId();
+
+        Transition transition = xml.get(cmdId);
+        if (transition == null) {
+            return R.fail("未找到指令定义：" + cmdId);
+        }
+
+        // 无参数动作
+        byte[] sendBytes = protocolItemUtil.calcSendBytes(
+                new Object[]{}, transition);
+
+        R<Object> result;
+        int replyNumber = transition.getReplyNumber();
+        int timeout = transition.getTimeout();
+
+        if (cmdId.equals("Scan") || cmdId.equals("BaseLine") || cmdId.equals("ScanFast") || cmdId.equals("BaseLineFast")){
+            isDealOnTime = true;
+        }
+
+        if ("Stop".equals(cmdId)) {
+
+            log.info("[STOP-SCAN] device={} request stop scan", deviceId);
+
+            //先停 Java 侧解析线程（最重要）
+            ScanSessionManager.stopScan(deviceId);
+
+            //清空缓存，避免残包
+            MessageStoreManager.getInstance()
+                    .clearDeviceMessages(deviceId);
+        }
+
+        if (replyNumber < 0) {
+            result = udpSendUtil.unknownReceive(
+                    deviceId,
+                    cmdId,
+                    sendBytes,
+                    timeout,
+                    isDealOnTime,
+                    deviceSerialNumber,
+                    null
+            );
+        } else {
+            result = udpSendUtil.knowTotalReceiveSend(
+                    deviceId,
+                    cmdId,
+                    sendBytes,
+                    replyNumber,
+                    timeout,
+                    connectType
+            );
+        }
+
+        resultEntity = (OperationResultEntity)result.getData();
+        return R.ok(resultEntity);
+    }
+
+
+
+//    private R<OperationResultEntity> SetParam(DevOperationInputParam inputParam, SetParam param) {
+//        String macAddress = "";
+//        OperationResultEntity operationResultEntity = new OperationResultEntity();
+//
+//        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+//        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+//        String deviceId = info.getDeviceId();
+//        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+//        Integer connectType = device.getConnectType();
+//        String xmlKey = device.getXmlKey();
+//
+//        if (inputParam.getConnectType() == null) {
+//            //默认网口连接
+//            inputParam.setConnectType(DeviceConnectTypeEnum.ETHERNET.getConnectType());
+//        }
+//
+//        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
+//            //串口
+//
+//        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+//            //wifi
+//            macAddress = connectUtil.getWifiMacAddress();
+//            if (!StringUtils.hasText(macAddress)) {
+//                return R.fail("请检查wifi连接！");
+//            }
+//
+//        } else {
+//
+//            macAddress = connectUtil.getEthernetMacAddress();
+//            if (!StringUtils.hasText(macAddress)) {
+//                return R.fail("请检查网线连接！");
+//            }
+//
+//        }
+//
+//        List<Command> commandList = Arrays.asList(
+//                new Command("SetPhotoMode", new Object[]{param.getPhotoMode()}),
+//                new Command("SetScanSpeed", new Object[]{param.getScanSpeed()}),
+//                new Command("SetStartWl", new Object[]{param.getStartWl()}),
+//                new Command("SetEndWl", new Object[]{param.getEndWl()}),
+//                new Command("SetScanWlInterval", new Object[]{param.getScanWlInterval()}),
+//                new Command("SetGain", new Object[]{param.getGain()}),
+//                new Command("SetSlit1", new Object[]{param.getSlit1()}),
+//                new Command("SetLampPos", new Object[]{param.getLampPos()})
+//                );
+//        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+//
+//        R<Object> result = null;
+//        for (Command cmdId : commandList){
+//            Transition transition = xml.get(cmdId);
+//            int ReplyNumber = transition.getReplyNumber();
+//            int Timeout = transition.getTimeout();
+//
+//            byte[] bytes = protocolItemUtil.calcSendBytes(cmdId.getParams(), transition);
+//
+//            if (ReplyNumber < 0) {
+//                 result = udpSendUtil.unknownReceive(deviceId, cmdId.getCmdId(), bytes, Timeout, false, deviceSerialNumber, null);
+//            } else {
+//                 result = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId.getCmdId(), bytes,ReplyNumber,Timeout,connectType);
+//            }
+//            if (!result.getSuccess()) {
+//                return R.fail("设置参数失败");
+//            }
+//        }
+//        return R.ok(operationResultEntity);
+//    }
+
+    private R<OperationResultEntity> setParam(
+            DevOperationInputParam inputParam
+    ) {
+
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
+        /* ================= 1. 设备上下文准备 ================= */
+
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        Integer connectType = device.getConnectType();
+        String xmlKey = device.getXmlKey();
+
+        // 默认连接方式：网口
+        if (inputParam.getConnectType() == null) {
+            inputParam.setConnectType(DeviceConnectTypeEnum.ETHERNET.getConnectType());
+        }
+
+        // 校验连接状态
+        String macAddress = "";
+        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
+            // 串口
+        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+            macAddress = connectUtil.getWifiMacAddress();
+            if (!StringUtils.hasText(macAddress)) {
+                return R.fail("请检查 WIFI 连接！");
+            }
+        } else {
+            macAddress = connectUtil.getEthernetMacAddress();
+            if (!StringUtils.hasText(macAddress)) {
+                return R.fail("请检查网线连接！");
+            }
+        }
+
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+
+        /* ================= 2. 参数 → Command 自动转换 ================= */
+
+        List<Command> commandList = new ArrayList<>();
+
+        for (ParamCmdEnum e : ParamCmdEnum.values()) {
+            Object value = getFieldValueByGetter(inputParam.getParam(), e.getParamField());
+            if (value != null) {
+
+                Object[] paramArray = new Object[]{value}; // 默认参数
+
+                // 针对特定字段做额外处理
+                if (e == ParamCmdEnum.START_WL
+                        || e == ParamCmdEnum.END_WL
+                        || e == ParamCmdEnum.Set_Wl
+                        || e == ParamCmdEnum.Change_LampWl) {
+
+                    try {
+                        // 假设 value 是数值类型，或者能转成 Double
+                        double doubleValue = Double.parseDouble(value.toString());
+                        double step = formulaUtil.calculateStep(doubleValue, deviceSerialNumber);
+
+                        // 替换参数
+                        paramArray = new Object[]{step};
+                    } catch (Exception ex) {
+                        log.warn("计算 step 失败，使用原始值: {}", value, ex);
+                        paramArray = new Object[]{value}; // 保底
+                    }
+                }
+
+                // 构造 Command
+                commandList.add(new Command(e.getCmdId(), paramArray));
+            }
+        }
+
+
+        if (commandList.isEmpty()) {
+            return R.fail("未传入任何可设置参数");
+        }
+
+        /* ================= 3. 顺序下发指令 ================= */
+
+        for (Command command : commandList) {
+
+            Transition transition = xml.get(command.getCmdId());
+            if (transition == null) {
+                return R.fail("未找到指令定义：" + command.getCmdId());
+            }
+
+            byte[] sendBytes = protocolItemUtil.calcSendBytes(
+                    command.getParams(), transition);
+
+            R<Object> result;
+            int replyNumber = transition.getReplyNumber();
+            int timeout = transition.getTimeout();
+
+            if (replyNumber < 0) {
+                result = udpSendUtil.unknownReceive(
+                        deviceId,
+                        command.getCmdId(),
+                        sendBytes,
+                        timeout,
+                        false,
+                        deviceSerialNumber,
+                        null
+                );
+            } else {
+                result = udpSendUtil.knowTotalReceiveSend(
+                        deviceId,
+                        command.getCmdId(),
+                        sendBytes,
+                        replyNumber,
+                        timeout,
+                        connectType
+                );
+            }
+
+            if (!result.getSuccess()) {
+                return R.fail("参数设置失败，指令：" + command.getCmdId());
+            }
+        }
+
+        resultEntity.setIsSuccess(true);
+        return R.ok(resultEntity);
     }
 
     private R<OperationResultEntity> find(DevOperationInputParam inputParam) {
@@ -1047,6 +1445,24 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (srcValue == null) emptyNames.add(pd.getName());
         }
         return emptyNames.toArray(new String[0]);
+    }
+
+    //方法
+    private static Object getFieldValueByGetter(Object obj, String fieldName) {
+        try {
+            String getterName = "get" +
+                    Character.toUpperCase(fieldName.charAt(0)) +
+                    fieldName.substring(1);
+
+            Method method = obj.getClass().getMethod(getterName);
+            return method.invoke(obj);
+
+        } catch (NoSuchMethodException e) {
+            // 没有 getter，直接返回 null
+            return null;
+        } catch (Exception e) {
+            throw new RuntimeException("读取属性失败: " + fieldName, e);
+        }
     }
 
 

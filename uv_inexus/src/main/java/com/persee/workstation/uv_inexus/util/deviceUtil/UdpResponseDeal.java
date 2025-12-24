@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
@@ -22,6 +23,7 @@ import static com.persee.workstation.uv_inexus.websocket.MeasureController.addLa
 /**
  * 报文解析类，负责解析收取的报文是否符合发送指令所需的结果，并解析成相应结构返回
  */
+
 
 @Slf4j
 public class UdpResponseDeal {
@@ -39,12 +41,12 @@ public class UdpResponseDeal {
             "3", "5", "T600镜面反射附件", "2"
     };
 
-    private static OperationResultEntity resultEntity;
+    static OperationResultEntity resultEntity;
 
     /**
      * 根据命令ID分发解析逻辑
      */
-    public static Object parse(String cmdId, List<byte[]> responses, byte[] sendBytes) {
+    public static OperationResultEntity parse(String cmdId, List<byte[]> responses, byte[] sendBytes, String deviceSerialNumber) {
         resultEntity = new OperationResultEntity();
         resultEntity.setIsSuccess(true);
         switch (cmdId) {
@@ -63,7 +65,6 @@ public class UdpResponseDeal {
             case "SetEndWl":
             case "SetFilter":
             case "SetGain":
-
             case "SetPadModeTrue":
             case "SetPadModeFalse":
             case "SetPCModeTrue":
@@ -72,6 +73,10 @@ public class UdpResponseDeal {
             case "SetProgrammeModeFalse":
             case "SetInitStatus":
                 return parseCompareBytes(responses, sendBytes);
+            case "SetSlit1":
+                return parseSlit1(responses, sendBytes);
+            case "GetInitStatus":
+                return getInitStatus(responses);
             case "SetPhotoMode":
                 return parseMode(responses, sendBytes);
             case "InitSampleCell":
@@ -92,53 +97,50 @@ public class UdpResponseDeal {
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
-                return measure(responses);
             case "Zero":
                 return parseZero(responses);
             case "ScanFast":
             case "Scan":
-                return parseScanFast(responses);
             case "BaseLine":
             case "BaseLineFast":
-                return parseBaseLine(responses);
+                return parseScan(responses, cmdId, deviceSerialNumber);
             case "GetWlList":
                 return parseWlList(responses);
-
-
-            case "SetResponseTime":
-                return parseResponseTime(responses, sendBytes);
-
-            case "GetChangeLampWl":
-                return parseChangeLampWl(responses);
-
+//            case "BaseLine":
+//            case "BaseLineFast":
+//                return parseBaseLine(responses);
+//
+//
+//            case "SetResponseTime":
+//                return parseResponseTime(responses, sendBytes);
+//
+//            case "GetChangeLampWl":
+//                return parseChangeLampWl(responses);
+//
 //            case "SetCellPos":
 //                return parseCellPos(responses, sendBytes);
-
-            case "SetSlit1":
-                return parseSlit1(responses, sendBytes);
-
-            case "GetCellPos":
-                return parseCellPos(responses, sendBytes);
-            case "GetWLampStatus":
-            case "GetDLampStatus":
-                return getLampStatus(responses);
-
-            case "GetInitStatus":
-                return getInitStatus(responses);
-            case "GetLampPos":
-                return parseLampPos(responses);
-
-            case "SearchAround":
-                return deviceIp(responses);
-            case "SearchInSameZoom":
-                return pareSearch(responses);
-            case "InitSlit1Moto1":
-                return parseInitSlit1Motor(responses, sendBytes);
-
-            case "GetPhotoMode":
-                return parsePhotoMode(responses);
-            case "GetResponseTime":
-                return parseGetResponseTime(responses);
+//
+//
+//            case "GetCellPos":
+//                return parseCellPos(responses, sendBytes);
+//            case "GetWLampStatus":
+//            case "GetDLampStatus":
+//                return getLampStatus(responses);
+//
+//            case "GetLampPos":
+//                return parseLampPos(responses);
+//
+//            case "SearchAround":
+//                return deviceIp(responses);
+//            case "SearchInSameZoom":
+//                return pareSearch(responses);
+//            case "InitSlit1Moto1":
+//                return parseInitSlit1Motor(responses, sendBytes);
+//
+//            case "GetPhotoMode":
+//                return parsePhotoMode(responses);
+//            case "GetResponseTime":
+//                return parseGetResponseTime(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
@@ -407,11 +409,14 @@ public class UdpResponseDeal {
         return resultEntity;
     }
 
-    private static Object parseWlList(List<byte[]> responses) {
+    private static OperationResultEntity parseWlList(List<byte[]> responses) {
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("回应列表为空");
+            return resultEntity;
         }
 
         ArrayList<StepPoint> resultList = new ArrayList<>();
@@ -431,24 +436,33 @@ public class UdpResponseDeal {
                     int n = resp[5] & 0xFF;
 
                     int theoryStep = ((resp[8] & 0xFF) << 8) | (resp[7] & 0xFF);
-
                     int actualStep = ((resp[10] & 0xFF) << 8) | (resp[9] & 0xFF);
 
                     resultList.add(new StepPoint(actualStep, theoryStep, n));
                 }
             }
 
-            System.out.println("WlList 解析结果：" + resultList);
+            if (resultList.isEmpty()) {
+                System.out.println("未解析到有效 StepPoint 数据");
+                resultEntity.setIsSuccess(false);
+                resultEntity.setErrorMsg("未解析到有效 StepPoint 数据");
+            } else {
+                System.out.println("WlList 解析结果：" + resultList);
+                resultEntity.setIsSuccess(true);
+                resultEntity.setErrorMsg(null);
+                resultEntity.setStepPoints(resultList);  // 使用新增字段 stepPoints
+            }
 
-            result = "true"; // 解析成功标记
-            return resultList; // 返回最终解析列表
+            return resultEntity;
 
         } catch (Exception e) {
             System.out.println("WlList 解析异常: " + e.getMessage());
-            result = "false";
-            return null;
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("解析异常: " + e.getMessage());
+            return resultEntity;
         }
     }
+
 
 
     /**
@@ -536,6 +550,7 @@ public class UdpResponseDeal {
 
         resultEntity.setDeviceSerialNumber(Sn);
 
+        System.out.println("设备序列号：" + Sn);
         return resultEntity; // 返回处理后的结果
     }
 
@@ -567,81 +582,233 @@ public class UdpResponseDeal {
      S、D、R解析
      */
     public static OperationResultEntity parseZero(List<byte[]> responses) {
-        ChangeParam param = new ChangeParam();
 
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应为空，无法解析 Zero");
             return null;
         }
 
+        ChangeParam param = new ChangeParam();
+        boolean hasWlS = false;
+        boolean hasDR  = false;
+
         try {
-            // 遍历所有回应，根据第3个字节判断类型
             for (byte[] resp : responses) {
+
                 if (resp == null || resp.length < 11) {
-                    continue; // 跳过无效报文
+                    continue;
                 }
 
-                int cmdType1 = resp[2] & 0xFF;
-                int cmdType = resp[3] & 0xFF; // 第3个字节
+                int cmdType1 = resp[2] & 0xFF; // 大类
+                int cmdType  = resp[3] & 0xFF; // 小类
 
-                // 0x03 或 0x05 => 解析 wl0 和 s0
-                if (cmdType == 0x03) {
-                    int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
-                    param.setS(String.valueOf(s0));
-                    param.setWl(String.valueOf(wl0)); // 可选：记录 wl0，方便计算
-                } else if (cmdType == 0x07 && cmdType1 == 0x13) {
-                    int wl0 = ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int s0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
-                    param.setS(String.valueOf(s0));
+                // 只处理 0x13
+                if (cmdType1 != 0x13) {
+                    continue;
+                }
+
+                // ---------- wl + s ----------
+                if (cmdType == 0x03 || cmdType == 0x05 || cmdType == 0x07) {
+
+                    int wl0 = ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int s0  = ((resp[7] & 0xFF) << 24)
+                            | ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
+
                     param.setWl(String.valueOf(wl0));
-                } else if (cmdType == 0x08 && cmdType1 == 0x13) {
-                    int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int r0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
-
-                    param.setD(String.valueOf(d0));
-                    param.setR(String.valueOf(r0));
-
-                    // 若之前解析到 wl0、s0，可计算并推送
-                    if (param.getWl() != null && param.getS() != null) {
-                        double wl0 = Double.parseDouble(param.getWl());
-                        double s0 = Double.parseDouble(param.getS());
-                        double result_x = wl0 / 50.0;
-                        double result_y = s0 / 8388607.0 * 100;
-
-                        String raw = result_x + "," + result_y;
-                        MeasureController.addData(raw); // 推送
-                    }
+                    param.setS(String.valueOf(s0));
+                    hasWlS = true;
                 }
 
-                // 0x04 或 0x06 => 解析 d0 和 r0，并计算结果
-                else if (cmdType == 0x04) {
-                    int d0 = ((resp[4] & 0xFF) << 16) | ((resp[5] & 0xFF) << 8) | (resp[6] & 0xFF);
-                    int r0 = ((resp[7] & 0xFF) << 24) | ((resp[8] & 0xFF) << 16) | ((resp[9] & 0xFF) << 8) | (resp[10] & 0xFF);
+                // ---------- d + r ----------
+                else if (cmdType == 0x04 || cmdType == 0x06 || cmdType == 0x08) {
+
+                    int d0 = ((resp[4] & 0xFF) << 16)
+                            | ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int r0 = ((resp[7] & 0xFF) << 24)
+                            | ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
 
                     param.setD(String.valueOf(d0));
                     param.setR(String.valueOf(r0));
+                    hasDR = true;
+                }
 
-                    // 若之前解析到 wl0、s0，可计算并推送
-                    if (param.getWl() != null && param.getS() != null) {
-                        double wl0 = Double.parseDouble(param.getWl());
-                        double s0 = Double.parseDouble(param.getS());
-                        double result_x = wl0 / 50.0;
-                        double result_y = s0 / 8388607.0 * 100;
-
-                        String raw = result_x + "," + result_y;
-                        MeasureController.addData(raw); // 推送
-                    }
+                // ---------- 一组数据齐了 ----------
+                if (hasWlS && hasDR) {
+                    break; // Zero 只需要一组
                 }
             }
+
+            OperationResultEntity result = new OperationResultEntity();
+
+            if (hasWlS || hasDR) {
+                result.setCurrentMeasure(R.ok(param));
+                result.setIsSuccess(true);
+            } else {
+                result.setCurrentMeasure(R.fail("未解析到 Zero 测量数据"));
+                result.setIsSuccess(false);
+            }
+
+            return result;
 
         } catch (Exception e) {
             System.out.println("Zero解析异常: " + e.getMessage());
             return null;
         }
-        resultEntity.setMeasureResult(param);
-        return resultEntity;
     }
+
+
+    public static OperationResultEntity parseScan(List<byte[]> responses, String cmdId, String deviceSerialNumber) {
+
+        ChangeParam param = new ChangeParam();
+
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应为空，无法解析 Scan");
+            return null;
+        }
+
+        try {
+            for (byte[] resp : responses) {
+
+                // 基本校验
+                if (resp == null || resp.length < 11) {
+                    continue;
+                }
+
+                int cmdType1 = resp[2] & 0xFF;
+                int cmdType  = resp[3] & 0xFF;
+
+                // 只处理 0x13 类型的报文
+                if (cmdType1 != 0x13) {
+                    continue;
+                }
+
+                // 0x01 / 0x05 → wl + s
+                if (cmdType == 0x01 || cmdType == 0x05 || cmdType == 0x09 || cmdType == 0x0B) {
+
+                    int wl0 = ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int s0  = ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
+
+                    param.setWl(String.valueOf(wl0));
+                    param.setS(String.valueOf(s0));
+                }
+                // 0x02 / 0x06 → d + r
+                else if (cmdType == 0x02 || cmdType == 0x06 || cmdType == 0x30) {
+
+                    int d0 = ((resp[4] & 0xFF) << 16)
+                            | ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int r0 = ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
+
+                    param.setD(String.valueOf(d0));
+                    param.setR(String.valueOf(r0));
+                }
+            }
+
+            if (param.isEmpty()) {
+                return null;
+            }
+
+            OperationResultEntity resultEntity = new OperationResultEntity();
+            resultEntity.setCurrentMeasure(R.ok(param));
+            resultEntity.setIsSuccess(true);
+
+            return resultEntity;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+//    public static OperationResultEntity parseScan(
+//            List<byte[]> responses,
+//            ChangeParam param   // 👈 新增：外部传入的“会话对象”
+//    ) {
+//
+//        if (responses == null || responses.isEmpty()) {
+//            return null;
+//        }
+//
+//        try {
+//            for (byte[] resp : responses) {
+//
+//                if (resp == null || resp.length < 11) {
+//                    continue;
+//                }
+//
+//                int cmdType1 = resp[2] & 0xFF;
+//                int cmdType  = resp[3] & 0xFF;
+//
+//                if (cmdType1 != 0x13) {
+//                    continue;
+//                }
+//
+//                // wl + s
+//                if (cmdType == 0x01 || cmdType == 0x05
+//                        || cmdType == 0x09 || cmdType == 0x0B) {
+//
+//                    int wl0 = ((resp[5] & 0xFF) << 8)
+//                            | (resp[6] & 0xFF);
+//
+//                    int s0  = ((resp[7] & 0xFF) << 24)
+//                            | ((resp[8] & 0xFF) << 16)
+//                            | ((resp[9] & 0xFF) << 8)
+//                            | (resp[10] & 0xFF);
+//
+//                    param.setWl(String.valueOf(wl0));
+//                    param.setS(String.valueOf(s0));
+//                }
+//                // r + d
+//                else if (cmdType == 0x02 || cmdType == 0x06 || cmdType == 0x30) {
+//
+//                    int d0 = ((resp[4] & 0xFF) << 16)
+//                            | ((resp[5] & 0xFF) << 8)
+//                            | (resp[6] & 0xFF);
+//
+//                    int r0 = ((resp[7] & 0xFF) << 24)
+//                            | ((resp[8] & 0xFF) << 16)
+//                            | ((resp[9] & 0xFF) << 8)
+//                            | (resp[10] & 0xFF);
+//
+//                    param.setD(String.valueOf(d0));
+//                    param.setR(String.valueOf(r0));
+//                }
+//            }
+//
+//            // 👇 只有“完整一次测量”才返回
+//            if (param.getWl() != null
+//                    && param.getS() != null
+//                    && param.getR() != null
+//                    && param.getD() != null) {
+//
+//                OperationResultEntity result = new OperationResultEntity();
+//                result.setCurrentMeasure(R.ok(param));
+//                result.setIsSuccess(true);
+//                return result;
+//            }
+//
+//            return null;
+//
+//        } catch (Exception e) {
+//            return null;
+//        }
+//    }
+
+
 
     public static OperationResultEntity measure(List<byte[]> responses){
         ChangeParam param = new ChangeParam();

@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -219,7 +220,7 @@ public class UdpSendUtil {
             }
 
             if (i == replyNumber) {
-                Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
+                Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes, null);
                 if (parse.equals("false")) {
                     return R.fail();
                 }
@@ -302,10 +303,16 @@ public class UdpSendUtil {
             }
             List<byte[]> responses = r.getData();
 
-            Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
+            OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes,  null);
 
-            if (parse.equals("false")) {
+
+            if (!parse.getIsSuccess()) {
                 return R.fail("解析失败！");
+            }
+
+            if (parse.getCurrentMeasure() != null){
+                ChangeParam changeParam = parse.getCurrentMeasure().getData();
+                System.out.println("测量值：" + changeParam);
             }
 
             return R.ok(parse);
@@ -319,7 +326,6 @@ public class UdpSendUtil {
     }
 
 
-
     /**
      * 未知数量的报文
      * @param deviceId 操作的仪器唯一
@@ -330,6 +336,114 @@ public class UdpSendUtil {
      * @param deviceSerialNumber  仪器序列号--用于数据存储
      *
      */
+
+//    public R<Object> unknownReceive(String deviceId, String cmdId, byte[] sendBytes, int timeout, Boolean isDealOnTime, String deviceSerialNumber, byte[] endBytes) {
+//
+//        DatagramSocket socket;
+//        try {
+//
+//            MessageStoreManager store = MessageStoreManager.getInstance();
+//
+//            DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+//            Integer connectType = device.getConnectType();
+//
+//            if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
+//                socket = connectUtil.getWifiSocket(wifiReceivePort);
+//            } else {
+//                socket = connectUtil.getEtherSocket(ethernetReceivePort);
+//            }
+//
+//            String sendIp = device.getConnectIdentity();
+//
+//            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
+//                    InetAddress.getByName(sendIp), sendPort);
+//            store.clearDeviceMessages(sendIp);
+////            store.clearDeviceMessages(deviceId);
+//
+//            socket.send(packet);
+//
+//            sendMessageLog(sendIp, cmdId, sendBytes);
+//
+//            if (isDealOnTime) {
+//                long startTime = System.currentTimeMillis();
+//                long currentTimeout = timeout;   // 第一条使用原 timeout
+//                int recvCount = 0;
+//
+//                while (System.currentTimeMillis() - startTime < currentTimeout) {
+//
+//                    if (store.getQueueSize(deviceId) == 0) {
+//                        Thread.sleep(5);
+//                        continue;
+//                    }
+//
+//                    log.info(
+//                            "[DEBUG] queueSizeBeforeGet={}",
+//                            store.getQueueSize(deviceId)
+//                    );
+//
+//
+//                    byte[] message = store.getMessage(deviceId);
+//                    if (message == null) {
+//                        continue;
+//                    }
+//                    recvCount++;
+//
+//                    // 第二条开始，启用 5s 滑动超时
+//                    if (recvCount >= 2) {
+//                        currentTimeout = 30000L;
+//                    }
+//                    startTime = System.currentTimeMillis();
+//
+//                    OperationResultEntity parsed =
+//                            UdpResponseDeal.parseScan(
+//                                    Collections.singletonList(message),
+//                                    cmdId,
+//                                    deviceSerialNumber
+//                            );
+//
+//                    if (parsed != null
+//                            && parsed.getCurrentMeasure() != null
+//                            && parsed.getCurrentMeasure().getData() != null) {
+//
+//                        ChangeParam data = parsed.getCurrentMeasure().getData();
+//
+//                        log.info(
+//                                "[SCAN-RECV] device={}, cmd={}, wl={}, s={}, r={}, d={}",
+//                                deviceSerialNumber,
+//                                cmdId,
+//                                data.getWl(),
+//                                data.getS(),
+//                                data.getR(),
+//                                data.getD()
+//                        );
+//
+//                        unknowCountMessageQueue.putMessage(
+//                                deviceSerialNumber,
+//                                cmdId,
+//                                data
+//                        );
+//                    }
+//                }
+//
+//                return R.ok();
+//            }
+//
+//            R<List<byte[]>> r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes);
+//            if (!r.getSuccess()) {
+//                return R.fail("报文接收不足！");
+//            }
+//            List<byte[]> responses = r.getData();
+//
+//            Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes, deviceSerialNumber);
+//            return R.ok(parse);
+//
+//        } catch (Exception e) {
+//            log.error("连接仪器出错：{}", e.getMessage());
+//        }
+//        return R.ok();
+//
+//    }
+
     public R<Object> unknownReceive(String deviceId, String cmdId, byte[] sendBytes, int timeout, Boolean isDealOnTime, String deviceSerialNumber, byte[] endBytes) {
 
         DatagramSocket socket;
@@ -341,7 +455,7 @@ public class UdpSendUtil {
             Integer connectType = device.getConnectType();
 
             if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
-                socket = connectUtil.getWifiSocket(ethernetReceivePort);
+                socket = connectUtil.getWifiSocket(wifiReceivePort);
             } else {
                 socket = connectUtil.getEtherSocket(ethernetReceivePort);
             }
@@ -351,20 +465,24 @@ public class UdpSendUtil {
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName(sendIp), sendPort);
             store.clearDeviceMessages(sendIp);
+
             socket.send(packet);
 
             sendMessageLog(sendIp, cmdId, sendBytes);
 
             if (isDealOnTime) {
-                //String cmdId, String deviceId, String deviceSerialNumber, byte[] sendBytes, String xmlKey
-                MessageOnTimeDeal.parse(cmdId, deviceId, deviceSerialNumber, sendBytes);
+                ScanSessionManager.startScan(deviceId);
+                MessageOnTimeDeal.parse(cmdId, deviceId, deviceSerialNumber, sendBytes, timeout);
                 return R.ok();
             }
 
             R<List<byte[]>> r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes);
+            if (!r.getSuccess()) {
+                return R.fail("报文接收不足！");
+            }
             List<byte[]> responses = r.getData();
 
-            Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
+            Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes, deviceSerialNumber);
             return R.ok(parse);
 
         } catch (Exception e) {
@@ -373,6 +491,7 @@ public class UdpSendUtil {
         return R.ok();
 
     }
+
 
 
     private R<List<byte[]>> messageDeal(String deviceId, Integer timeout, Integer totalByteNumber, byte[] endBytes) {

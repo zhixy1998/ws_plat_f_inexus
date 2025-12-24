@@ -21,6 +21,8 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAu
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMonitorService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import io.swagger.annotations.Api;
@@ -46,6 +48,58 @@ public class DeviceController {
 
     @Autowired
     private DeviceAutoInjectorService injectorService;
+
+    @PostMapping("/scan")
+    @ApiOperation("扫描测试")
+    @LogPoint(value = "扫描测试", module = "设备管理", recordParams = true, recordResult = true)
+    public Result<OperationResultEntity> scan(
+            @RequestBody DevOperationInputParam inputParam
+    ) {
+        R<OperationResultEntity> result =
+                deviceManageService.Action(inputParam);
+
+        if (!result.getSuccess()) {
+            return Result.fail(result.getMessage());
+        } else {
+            return Result.ok(result.getData());
+        }
+    }
+
+
+    @PostMapping("/setParam")
+    @ApiOperation("设置仪器参数")
+    @LogPoint(value = "设置仪器参数", module = "设备管理", recordParams = true, recordResult = true)
+    public Result<OperationResultEntity> setParam(
+            @RequestBody DevOperationInputParam inputParam
+    ) {
+
+        R<OperationResultEntity> result =
+                deviceManageService.setParamOneDevice(inputParam);
+
+        if (!result.getSuccess()) {
+            return Result.fail(result.getMessage());
+        } else {
+            return Result.ok(result.getData());
+        }
+    }
+
+    @PostMapping("/getValue")
+    @ApiOperation("获取仪器参数")
+    @LogPoint(value = "获取仪器参数", module = "设备管理", recordParams = true, recordResult = true)
+    public Result<OperationResultEntity> getValue(
+            @RequestBody DevOperationInputParam inputParam
+    ) {
+
+        R<OperationResultEntity> result =
+                deviceManageService.getParamOneDevice(inputParam);
+
+        if (!result.getSuccess()) {
+            return Result.fail(result.getMessage());
+        } else {
+            return Result.ok(result.getData());
+        }
+    }
+
 
     @GetMapping("/findDevice")
     @ApiOperation("查找仪器的接口")
@@ -343,7 +397,6 @@ public class DeviceController {
     public void test(){
         deviceManageService.test();
     }
-
 
 
 
