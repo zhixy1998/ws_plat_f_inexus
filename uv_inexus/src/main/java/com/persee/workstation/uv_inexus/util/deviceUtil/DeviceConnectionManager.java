@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceOverview;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceStatistics;
@@ -331,6 +332,125 @@ public class DeviceConnectionManager {
     }
 
     /**
+     * 设置设备序列号
+     *
+     * @param deviceId 设备ID
+     * @param serialNumber 序列号
+     * @return 是否成功
+     */
+    public boolean setDeviceSerialNumber(String deviceId, String serialNumber) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置序列号失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setDeviceSerialNumber(serialNumber);
+        device.updateLastUseTime();
+        logInfo("设置设备序列号: %s -> %s", deviceId, serialNumber);
+        return true;
+    }
+
+    /**
+     * 设置设备空闲状态
+     *
+     * @param deviceId 设备ID
+     * @param isIdle 是否空闲
+     * @return 是否成功
+     */
+    public boolean setDeviceIdleStatus(String deviceId, Boolean isIdle) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置空闲状态失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setIsIdle(isIdle);
+        device.updateLastUseTime();
+        logInfo("设置设备空闲状态: %s -> %s", deviceId, isIdle);
+        return true;
+    }
+
+    /**
+     * 添加或更新校零结果
+     *
+     * @param deviceId 设备ID
+     * @param wavelength 波长
+     * @param changeParam 校零参数
+     * @return 是否成功
+     */
+    public boolean addZeroResult(String deviceId, String wavelength, ChangeParam changeParam) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("添加校零结果失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.addZeroResult(wavelength, changeParam);
+        device.updateLastUseTime();
+        logInfo("添加校零结果: %s -> 波长 %s", deviceId, wavelength);
+        return true;
+    }
+
+
+    /**
+     * 设置当前校零波长
+     * @param deviceId 设备ID
+     * @param zeroWavelength 校零波长
+     * @return 是否成功
+     */
+    public boolean setZeroWavelength(String deviceId, String zeroWavelength) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置校零波长失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setZeroWavelength(zeroWavelength);
+        device.updateLastUseTime();
+        logInfo("设置校零波长: %s -> %s", deviceId, zeroWavelength);
+        return true;
+    }
+
+    /**
+     * 设置当前波长
+     * @param deviceId 设备ID
+     * @param currentWavelength 当前波长
+     * @return 是否成功
+     */
+    public boolean setCurrentWavelength(String deviceId, String currentWavelength) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置当前波长失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setCurrentWavelength(currentWavelength);
+        device.updateLastUseTime();
+        logInfo("设置当前波长: %s -> %s", deviceId, currentWavelength);
+        return true;
+    }
+
+    /**
+     * 设置光度模式
+     * @param deviceId 设备ID
+     * @param luminosityMode 光度模式
+     * @return 是否成功
+     */
+    public boolean setLuminosityMode(String deviceId, String luminosityMode) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置光度模式失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setLuminosityMode(luminosityMode);
+        device.updateLastUseTime();
+        logInfo("设置光度模式: %s -> %s", deviceId, luminosityMode);
+        return true;
+    }
+
+    /**
      * 获取仪器空闲状态
      */
     public boolean getDeviceIdleStatus(String deviceId) {
@@ -340,18 +460,6 @@ public class DeviceConnectionManager {
         }
         return false;
     }
-
-    /**
-     * 修改仪器空闲状态
-     */
-    public void setDeviceIdleStatus(String deviceId, boolean idle) {
-        DeviceConnectInfo deviceConnectInfo = deviceMap.get(deviceId);
-        if (deviceConnectInfo != null && deviceConnectInfo.getConnectStatus()) {
-            deviceConnectInfo.setIsIdle(idle);
-        }
-        logInfo("修改设备空闲状态: %s -> %s", deviceId, idle);
-    }
-
 
     /**
      * 一次性取出currentStatus的所有字段内容

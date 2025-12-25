@@ -13,7 +13,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesLampStatus;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -105,7 +105,7 @@ public class OperationResultEntity {
     private String lampPos;
 
     @ApiModelProperty("灯状态")
-    private List<DetectionLampStatus> dataList;
+    private List<DetectionManyDevicesLampStatus> dataList;
 
     @ApiModelProperty("灯状态，0-关，1-开")
     private Boolean lampStatus;

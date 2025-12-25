@@ -4055,7 +4055,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (!StringUtils.hasText(sampleId)) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment("31-U1704-01-0048");
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment("34-U1702-01-0002");
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         // 将任务中的校零参数取出
@@ -4084,6 +4084,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             params.remove(0);
             originData.remove(0);
         }
+
+        Double s = 12107.0;
+        Double ans = formulaUtil.calculateWl(s, "34-U1702-01-0002");
+        Double wavelength = formulaUtil.calculateWavelength(s, linearSegment);
+        System.out.println("---------------"+linearSegment.toString());
+        System.out.println("---------------"+ans);
+        System.out.println("++++++++++++++"+wavelength);
+
         return Result.ok(result);
 
     }

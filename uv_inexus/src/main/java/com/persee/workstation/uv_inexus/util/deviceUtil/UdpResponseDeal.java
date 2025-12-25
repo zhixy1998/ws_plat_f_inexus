@@ -41,12 +41,12 @@ public class UdpResponseDeal {
             "3", "5", "T600镜面反射附件", "2"
     };
 
-    static OperationResultEntity resultEntity;
+    private static OperationResultEntity resultEntity;
 
     /**
      * 根据命令ID分发解析逻辑
      */
-    public static OperationResultEntity parse(String cmdId, List<byte[]> responses, byte[] sendBytes, String deviceSerialNumber) {
+    public static OperationResultEntity parse(String cmdId, List<byte[]> responses, byte[] sendBytes) {
         resultEntity = new OperationResultEntity();
         resultEntity.setIsSuccess(true);
         switch (cmdId) {
@@ -75,8 +75,8 @@ public class UdpResponseDeal {
                 return parseCompareBytes(responses, sendBytes);
             case "SetSlit1":
                 return parseSlit1(responses, sendBytes);
-            case "GetInitStatus":
-                return getInitStatus(responses);
+//            case "GetInitStatus":
+//                return getInitStatus(responses);
             case "SetPhotoMode":
                 return parseMode(responses, sendBytes);
             case "InitSampleCell":
@@ -97,50 +97,53 @@ public class UdpResponseDeal {
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
+                return measure(responses);
             case "Zero":
                 return parseZero(responses);
-            case "ScanFast":
-            case "Scan":
-            case "BaseLine":
-            case "BaseLineFast":
-                return parseScan(responses, cmdId, deviceSerialNumber);
-            case "GetWlList":
-                return parseWlList(responses);
+//            case "ScanFast":
+//            case "Scan":
+//                return parseScanFast(responses);
 //            case "BaseLine":
 //            case "BaseLineFast":
 //                return parseBaseLine(responses);
-//
-//
-//            case "SetResponseTime":
-//                return parseResponseTime(responses, sendBytes);
-//
-//            case "GetChangeLampWl":
-//                return parseChangeLampWl(responses);
-//
+            case "GetWlList":
+                return parseWlList(responses);
+
+
+            case "SetResponseTime":
+                return parseResponseTime(responses, sendBytes);
+
+            case "GetChangeLampWl":
+                return parseChangeLampWl(responses);
+
 //            case "SetCellPos":
 //                return parseCellPos(responses, sendBytes);
-//
-//
-//            case "GetCellPos":
-//                return parseCellPos(responses, sendBytes);
-//            case "GetWLampStatus":
-//            case "GetDLampStatus":
-//                return getLampStatus(responses);
-//
-//            case "GetLampPos":
-//                return parseLampPos(responses);
-//
-//            case "SearchAround":
+
+//            case "SetSlit1":
+//                return parseSlit1(responses, sendBytes);
+
+            case "GetCellPos":
+                return parseCellPos(responses, sendBytes);
+            case "GetWLampStatus":
+            case "GetDLampStatus":
+                return getLampStatus(responses);
+
+            case "GetInitStatus":
+                return getInitStatus(responses);
+            case "GetLampPos":
+                return parseLampPos(responses);
+
+            case "SearchAround":
 //                return deviceIp(responses);
-//            case "SearchInSameZoom":
-//                return pareSearch(responses);
-//            case "InitSlit1Moto1":
-//                return parseInitSlit1Motor(responses, sendBytes);
-//
-//            case "GetPhotoMode":
-//                return parsePhotoMode(responses);
-//            case "GetResponseTime":
-//                return parseGetResponseTime(responses);
+            case "SearchInSameZoom":
+                return pareSearch(responses);
+            case "InitSlit1Moto1":
+                return parseInitSlit1Motor(responses, sendBytes);
+
+            case "GetPhotoMode":
+                return parsePhotoMode(responses);
+            case "GetResponseTime":
+                return parseGetResponseTime(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
@@ -213,19 +216,19 @@ public class UdpResponseDeal {
     }
 
 
-    private static Object parseInitSlit1Motor(List<byte[]> responses, byte[] sendBytes) {
+    private static OperationResultEntity parseInitSlit1Motor(List<byte[]> responses, byte[] sendBytes) {
         if (responses == null || responses.isEmpty()) {
-            result = "false"; // 设置全局变量
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] last = responses.get(responses.size() - 1);
-
+        boolean success = false;
         if ((last[3] & 0xFF) == 0x04) {
-            boolean success = last.length >= 5 && (last[4] & 0xFF) == 0;
-            result = success ? "true" : "false"; // 根据结果更新 result
+            success = last.length >= 5 && (last[4] & 0xFF) == 0;
         }
-        return false;
+        resultEntity.setIsSuccess(success);
+        return resultEntity;
     }
 
     private static OperationResultEntity parseChangeLampWl(List<byte[]> responses) {
@@ -262,24 +265,24 @@ public class UdpResponseDeal {
     }
 
 
-    private static Object parseResponseTime(List<byte[]> responses, byte[] sendBytes) {
+    private static OperationResultEntity parseResponseTime(List<byte[]> responses, byte[] sendBytes) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         if (sendBytes == null || sendBytes.length < 5) {
             System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] lastResponse = responses.get(responses.size() - 1);
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         boolean isEqual = lastResponse[2] == sendBytes[2] &&
@@ -291,7 +294,9 @@ public class UdpResponseDeal {
         float time = (lastResponse[4] & 0xFF) / 100.0f;
         String rawtime = String.valueOf(time);
         MeasureController.addTimeData(rawtime);
-        return isEqual;
+        resultEntity.setTime(rawtime);
+        resultEntity.setIsSuccess(isEqual);
+        return resultEntity;
     }
 
     private static OperationResultEntity parseSlit1(List<byte[]> responses, byte[] sendBytes) {
@@ -405,7 +410,7 @@ public class UdpResponseDeal {
         addLampPosData(lampData);
 
         System.out.println("解析灯状态完成，入队等待推送: " + lampData);
-        resultEntity.setLampStatus(pos == 1);
+        resultEntity.setLampPos(String.valueOf(pos));
         return resultEntity;
     }
 
@@ -809,38 +814,91 @@ public class UdpResponseDeal {
 //    }
 
 
+    /**
+     * S、D、R解析
+     */
+    public static OperationResultEntity measure(List<byte[]> responses) {
 
-    public static OperationResultEntity measure(List<byte[]> responses){
-        ChangeParam param = new ChangeParam();
-
-        if (responses == null || responses.size() < 2) {
-            System.out.println("回应数量不足，无法解析 Zero");
-            return null;
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应为空，无法解析 measure");
+            resultEntity.setErrorMsg("回应为空，无法解析 measure");
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
+
+        ChangeParam param = new ChangeParam();
+        boolean hasWlS = false;
+        boolean hasDR = false;
 
         try {
-            // 倒数第二条
-            byte[] secondLast = responses.get(responses.size() - 2);
-            int wl0 = (((secondLast[5] & 0xFF) << 8) | (secondLast[6] & 0xFF));
-            int s0 = ((secondLast[8] & 0xFF) << 16) | ((secondLast[9] & 0xFF) << 8) | (secondLast[10] & 0xFF);
-            param.setS(String.valueOf(s0));
+            for (byte[] resp : responses) {
 
-            // 倒数第一条
-            byte[] last = responses.get(responses.size() - 1);
-            int d0 = ((last[4] & 0xFF) << 16) | ((last[5] & 0xFF) << 8) | (last[6] & 0xFF);
-            int r0 = ((last[8] & 0xFF) << 16) | ((last[9] & 0xFF) << 8) | (last[10] & 0xFF);
+                if (resp == null || resp.length < 11) {
+                    continue;
+                }
 
-            param.setWl(String.valueOf(wl0));
-            param.setD(String.valueOf(d0));
-            param.setR(String.valueOf(r0));
+                int cmdType1 = resp[2] & 0xFF; // 大类
+                int cmdType = resp[3] & 0xFF; // 小类
+
+                // 只处理 0x13
+                if (cmdType1 != 0x13) {
+                    continue;
+                }
+
+                // ---------- wl + s ----------
+                if (cmdType == 0x03 || cmdType == 0x05 || cmdType == 0x07) {
+
+                    int step = ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int s0 = ((resp[7] & 0xFF) << 24)
+                            | ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
+
+                    param.setStep(String.valueOf(step));
+                    param.setS(String.valueOf(s0));
+                    hasWlS = true;
+                }
+
+                // ---------- d + r ----------
+                else if (cmdType == 0x04 || cmdType == 0x06 || cmdType == 0x08) {
+
+                    int d0 = ((resp[4] & 0xFF) << 16)
+                            | ((resp[5] & 0xFF) << 8)
+                            | (resp[6] & 0xFF);
+
+                    int r0 = ((resp[7] & 0xFF) << 24)
+                            | ((resp[8] & 0xFF) << 16)
+                            | ((resp[9] & 0xFF) << 8)
+                            | (resp[10] & 0xFF);
+
+                    param.setD(String.valueOf(d0));
+                    param.setR(String.valueOf(r0));
+                    hasDR = true;
+                }
+
+                // ---------- 一组数据齐了 ----------
+                if (hasWlS && hasDR) {
+                    break; // Zero 只需要一组
+                }
+            }
+
+
+
+            if (hasWlS || hasDR) {
+                resultEntity.setMeasureResult(param);
+            } else {
+                resultEntity.setErrorMsg("未解析到 measure 测量数据");
+                resultEntity.setIsSuccess(false);
+            }
+
+            return resultEntity;
 
         } catch (Exception e) {
-            System.out.println("Zero解析异常: " + e.getMessage());
+            System.out.println("measure解析异常: " + e.getMessage());
             return null;
         }
-
-        resultEntity.setMeasureResult(param);
-        return resultEntity;
     }
 
     /*
@@ -895,24 +953,24 @@ public class UdpResponseDeal {
         return result;
     }
 
-    private static Object parseCellPos(List<byte[]> responses, byte[] sendBytes) {
+    private static OperationResultEntity parseCellPos(List<byte[]> responses, byte[] sendBytes) {
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         if (sendBytes == null || sendBytes.length < 5) {
             System.out.println("发送报文长度不足5字节，实际长度: " + sendBytes.length);
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] lastResponse = responses.get(responses.size() - 1);
         if (lastResponse == null || lastResponse.length < 5) {
             System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
-            result = "false";
-            return false;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
 //        boolean isEqual = (lastResponse[4] & 0xFF)== 0;
@@ -1106,23 +1164,23 @@ public class UdpResponseDeal {
     }
 
     static List<Integer> deviceInfo = new ArrayList<>();
-    public static List<Integer> pareSearch(List<byte[]> responses) {
+    public static OperationResultEntity pareSearch(List<byte[]> responses) {
         deviceInfo.clear();
 
         if (responses == null || responses.isEmpty()) {
-            return deviceInfo; // 返回空列表
+            return resultEntity; // 返回空列表
         }
 
         byte[] last = responses.get(responses.size() - 1);
         if (last.length < 12) {
-            return deviceInfo; // 长度不足不处理
+            return resultEntity; // 长度不足不处理
         }
 
         for (int i = 9; i <= 14; i++) {
             deviceInfo.add(last[i] & 0xFF); // 转换为无符号十进制数
         }
 
-        return new ArrayList<>(deviceInfo); // 返回副本，避免外部修改
+        return resultEntity; // 返回副本，避免外部修改
     }
 
     public static String deviceIp(List<byte[]> responses) {

@@ -24,6 +24,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
@@ -36,7 +37,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-//@Controller
+@Controller
 @Slf4j
 public class LiveDetectionManyDevicesWebSocket {
 
@@ -69,7 +70,7 @@ public class LiveDetectionManyDevicesWebSocket {
     // 添加会话和订阅映射
     private final Map<String, Set<String>> sessionSubscriptions = new ConcurrentHashMap<>();
 
-//    @MessageMapping("/detection/start")
+    @MessageMapping("/detection/start")
     public void startMeasure(String deviceSerialNumber) {
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
             messagingTemplate.convertAndSend(measureTopic,
@@ -90,7 +91,7 @@ public class LiveDetectionManyDevicesWebSocket {
         Thread thread = liveThreads.get(deviceSerialNumber);
         if (thread != null && thread.isAlive()) {
             messagingTemplate.convertAndSend(measureTopic,
-                    "设备正在运行中: " + deviceSerialNumber);
+                    "开始测量: " + deviceSerialNumber);
             return;
         } else {
 
@@ -121,7 +122,10 @@ public class LiveDetectionManyDevicesWebSocket {
                 if (device == null) {
                     return R.fail("设备未连接");
                 }
-                while (device != null && device.getConnectStatus()) {
+
+                Integer isInited = info.getIsInited();
+
+                while (device != null && device.getConnectStatus() && isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
                     log.info("循环进入, 仪器状态{}", device.getIsIdle());
                     int timeout = 0;
 //                    while (activeSubscribers.get() <= 0 && sessionSubscriptions.isEmpty()) {
@@ -171,18 +175,24 @@ public class LiveDetectionManyDevicesWebSocket {
                     }
 
                     OperationResultEntity data = operation.getData();
-                    DetectionManyDevicesResponseInfoVO responseInfoVO = new DetectionManyDevicesResponseInfoVO();
-                    BeanUtils.copyProperties(data, responseInfoVO);
+                    DetectionManyDevicesResponseInfoVO vo = new DetectionManyDevicesResponseInfoVO();
+
+                    BeanUtils.copyProperties(data, vo);
 
                     device = deviceManager.getDevice(deviceId);
-                    BeanUtils.copyProperties(device, responseInfoVO);
+                    BeanUtils.copyProperties(device, vo);
 
-                    messagingTemplate.convertAndSend(topic, responseInfoVO);
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.putAll(vo.toMap());
+
+                    messagingTemplate.convertAndSend(topic, jsonObject);
 
                     // 休眠2秒
                     Thread.sleep(DetectionManyDevicesConstants.interval);
 
                     device = deviceManager.getDevice(deviceId);
+                    info = infoService.getInfo(deviceSerialNumber);
+                    isInited = info.getIsInited();
                 }
 
             } catch (Exception e) {
@@ -315,7 +325,8 @@ public class LiveDetectionManyDevicesWebSocket {
                 return;
             }
 
-            String topic = measureTopic + "/" + deviceSerialNumber;
+//            String topic = measureTopic + "/" + deviceSerialNumber;
+            String topic = measureTopic;
 
             Thread liveThread = new Thread(() -> {
                 startMeasureLoop(deviceSerialNumber, topic);

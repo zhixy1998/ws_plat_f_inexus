@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.util.deviceUtil;
 import javax.annotation.PreDestroy;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.SocketException;
 import java.util.Arrays;
 
 /**
@@ -32,6 +33,8 @@ public class UdpReceiveThread {
     private static final int MAX_PACKET_SIZE = 1024; // 4KB
 
     private static volatile UdpReceiveThread instance;
+
+    private final static ConnectUtil connectUtil = ConnectUtil.getInstance();
 
     // 私有构造函数，防止外部创建实例
     private UdpReceiveThread() {
@@ -61,7 +64,7 @@ public class UdpReceiveThread {
             wifiRunning= true;
             wifiReceiverThread = new Thread(() -> {
                 try {
-                    ConnectUtil connectUtil = ConnectUtil.getInstance();
+
                     DatagramSocket socket = connectUtil.getWifiSocket(port);
 
                     System.out.println("wifi接收线程启动，端口: " + port);
@@ -95,10 +98,22 @@ public class UdpReceiveThread {
 
                             store.addMessage(deviceId, data);
 
+                        } catch (SocketException e) {
+                            // Socket已关闭，这是正常关闭流程
+
+                            if (ethernetRunning) {
+                                // 如果不是我们主动关闭的，才打印错误
+                                System.err.println("以太网Socket异常关闭: " + e.getMessage());
+                            }
+                            if (socket.isClosed()) {
+                                return;
+                            }
                         } catch (Exception e) {
                             if (wifiRunning) {
                                 System.out.println(socket.getSoTimeout());
                                 System.err.println("接收异常: " + e.getMessage());
+                            } else {
+                                return;
                             }
                         }
                     }
@@ -121,7 +136,6 @@ public class UdpReceiveThread {
             ethernetRunning = true;
             ethernetReceiverThread = new Thread(() -> {
                 try {
-                    ConnectUtil connectUtil = ConnectUtil.getInstance();
                     DatagramSocket socket = connectUtil.getEtherSocket(port);
 
                     DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
@@ -156,17 +170,30 @@ public class UdpReceiveThread {
 
                             store.addMessage(deviceId, data);
 
+                        } catch (SocketException e) {
+                            // Socket已关闭，这是正常关闭流程
+
+                            if (ethernetRunning) {
+                                // 如果不是我们主动关闭的，才打印错误
+                                System.err.println("以太网Socket异常关闭: " + e.getMessage());
+                            }
+                            if (socket.isClosed()) {
+                                return;
+                            }
                         } catch (Exception e) {
                             if (ethernetRunning) {
                                 System.err.println("接收异常: " + e.getMessage());
+                            } else {
+                                return;
                             }
+
                         }
                     }
 
                     socket.close();
                     System.out.println("UDP接收线程停止");
 
-                } catch (Exception e) {
+                }catch (Exception e) {
                     System.err.println("启动失败: " + e.getMessage());
                     ethernetRunning = false;
                 }
@@ -184,24 +211,109 @@ public class UdpReceiveThread {
         return wifiRunning;
     }
 
+    public Boolean isRunning(Integer connectType) {
+        if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
+            return wifiRunning;
+        } else {
+            return ethernetRunning;
+        }
+    }
 
-    @PreDestroy
+
+//    @PreDestroy
+//    public void stopEthernetReceive() {
+//
+//        if (ethernetReceiverThread != null) {
+//            ethernetReceiverThread.interrupt();
+//            ethernetRunning = false;
+//        }
+//    }
+//
+//    @PreDestroy
+//    public void stopWifiReceive() {
+//
+//        if (wifiReceiverThread != null) {
+//            wifiReceiverThread.interrupt();
+//            wifiRunning = false;
+//        }
+//    }
+
+
+
+
+    /**
+     * 停止以太网接收线程（优雅关闭）
+     */
     public void stopEthernetReceive() {
-
-        if (ethernetReceiverThread != null) {
-            ethernetReceiverThread.interrupt();
+        if (ethernetRunning) {
+            System.out.println("正在停止以太网接收线程...");
             ethernetRunning = false;
+
+            // 先关闭Socket，使receive()方法返回
+            connectUtil.closeEthernetSocket();
+
+            // 给线程一点时间正常退出
+            if (ethernetReceiverThread != null && ethernetReceiverThread.isAlive()) {
+                try {
+                    ethernetReceiverThread.join(2000); // 等待2秒
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // 如果线程还在运行，强制中断
+                if (ethernetReceiverThread.isAlive()) {
+                    ethernetReceiverThread.interrupt();
+                }
+            }
+
+            ethernetReceiverThread = null;
+            System.out.println("以太网接收线程已停止");
         }
     }
 
-    @PreDestroy
+
+
+    /**
+     * 停止WiFi接收线程（优雅关闭）
+     */
     public void stopWifiReceive() {
-
-        if (wifiReceiverThread != null) {
-            wifiReceiverThread.interrupt();
+        if (wifiRunning) {
+            System.out.println("正在停止WiFi接收线程...");
             wifiRunning = false;
+
+            // 先关闭Socket，使receive()方法返回
+            connectUtil.closeWifiSocket();
+
+            // 给线程一点时间正常退出
+            if (wifiReceiverThread != null && wifiReceiverThread.isAlive()) {
+                try {
+                    wifiReceiverThread.join(2000); // 等待2秒
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // 如果线程还在运行，强制中断
+                if (wifiReceiverThread.isAlive()) {
+                    wifiReceiverThread.interrupt();
+                }
+            }
+
+            wifiReceiverThread = null;
+            System.out.println("WiFi接收线程已停止");
         }
     }
+
+    /**
+     * 停止所有接收线程
+     */
+    @PreDestroy
+    public void stopAll() {
+        System.out.println("正在停止所有UDP接收线程...");
+        stopEthernetReceive();
+        stopWifiReceive();
+        System.out.println("所有UDP接收线程已停止");
+    }
+
 
 
 }
