@@ -436,7 +436,34 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             excelCellEditor.setCellValue(sheet, position.getRow(), position.getCol(), cellValue);
         }
     }
+    @Override
+    /**
+     * 更新单元格值 - 支持通过项目名称和特征值定位
+     *
+     * @param sheet Excel工作表
+     * @param excelCellLocator 单元格定位器
+     * @param excelCellEditor 单元格编辑器
+     * @param valueType 表头名称
+     * @param projectName 项目名称（第一列）
+     * @param featureValue 特征值（第二列）
+     * @param cellValue 要设置的值
+     */
+    public void updateCellValue(Sheet sheet, ExcelCellLocator excelCellLocator,
+                                ExcelCellEditor excelCellEditor, String valueType,
+                                String projectName, String featureValue, String cellValue,int positionIndex) {
+        // 查找匹配的单元格位置
+        List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(
+                sheet, valueType, projectName, featureValue);
 
+        if (positions.isEmpty()) {
+            log.warn("未找到匹配的位置: {} - {} - {}", valueType, projectName, featureValue);
+            return;
+        }
+
+        // 设置第一个匹配的位置
+        ExcelCellLocator.CellPosition position = positions.get(positionIndex);
+        excelCellEditor.setCellValue(sheet, position.getRow(), position.getCol(), cellValue);
+    }
     @Override
     public Result<String > deleteTemplate(String templateCode) {
         ExcelTemplate template = this.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, templateCode));
@@ -461,6 +488,17 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 log.error("文件删除失败", e);
             }
         }
+        return b ? Result.ok() : Result.fail("内置模板，不可删除");
+    }
+
+    @Override
+    public Result<String> batchDeleteTemplate(List<String> list) {
+        LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(ExcelTemplate::getTemplateCode, list);
+
+        //批量删除模板，list是模板的templatecode
+
+        boolean b = this.remove(wrapper);
         return b ? Result.ok() : Result.fail("内置模板，不可删除");
     }
 

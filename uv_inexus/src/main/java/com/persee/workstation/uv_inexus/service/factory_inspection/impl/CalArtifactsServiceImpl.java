@@ -14,6 +14,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.CalArtifactsMapper;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.BatchDelDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalArtifactsSaveDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.StandardSubstanceDto;
@@ -21,10 +22,13 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
 import com.persee.workstation.uv_inexus.service.factory_inspection.CalArtifactsService;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.poi.util.StringUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.DELETED;
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.NOT_DELETED;
@@ -37,7 +41,7 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
 
 
     @Override
-    public Result addCalArtifacts(CalArtifactsSaveDto artifacts ) {
+    public Result addCalArtifacts(CalArtifactsSaveDto artifacts) {
         CalArtifacts calArtifacts = new CalArtifacts();
         BeanUtils.copyProperties(artifacts, calArtifacts);
         if (StringUtil.isBlank(calArtifacts.getId())) {
@@ -54,7 +58,7 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
         LambdaUpdateWrapper<CalArtifacts> wrapper1 = new LambdaUpdateWrapper<>();
         wrapper1.set(CalArtifacts::getIsDelete, DELETED.getCode())
                 .eq(CalArtifacts::getId, id);
-        return update(wrapper1) ;
+        return update(wrapper1);
     }
 
     // Service层代码
@@ -63,12 +67,31 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
         try {
 
 
-        // MyBatis-Plus会自动将pageNum和pageSize转换为offset和size
-        Page<StandardSubstanceDto> page = new Page<>(dto.getPageNum(), dto.getPageSize());
-        IPage<StandardSubstanceDto> result = calArtifactsMapper.selectCustomDtoPage(page, dto);
-        return Result.ok(result);
-        }catch (Exception e){
+            // MyBatis-Plus会自动将pageNum和pageSize转换为offset和size
+            Page<StandardSubstanceDto> page = new Page<>(dto.getPageNum(), dto.getPageSize());
+            IPage<StandardSubstanceDto> result = calArtifactsMapper.selectCustomDtoPage(page, dto);
+            return Result.ok(result);
+        } catch (Exception e) {
             System.out.println(e);
+        }
+        return null;
+    }
+
+    @Override
+    public Result<String> batchDelCalStdCats(BatchDelDto ids) {
+        try {
+            List<String> list = ids.getIds();
+            if (CollectionUtils.isEmpty(list)) {
+                return Result.warn("请选择要删除的记录");
+            }
+            boolean b = this.removeByIds(list);
+            if (b) {
+                return Result.ok("删除成功");
+            }else {
+                return Result.warn("删除失败");
+            }
+        } catch (Exception e) {
+            log.error("删除失败", e);
         }
         return null;
     }

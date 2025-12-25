@@ -13,10 +13,7 @@
 package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateQeqDto;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateResponseDto;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateUpdateRequest;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelImportService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
@@ -25,6 +22,7 @@ import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -211,6 +209,20 @@ public class TemplateController {
     @ApiOperation("删除模板")
     public Result<String> deleteTemplate(@RequestParam("templateCode") String templateCode) {
         return templateService.deleteTemplate(templateCode);
+    }
+    /**
+     * 批量删除模板
+     * @param
+     * @return
+     */
+    @PostMapping("/batch-delete")
+    @ApiOperation("批量删除模板")
+    public Result<String> batchDeleteTemplate(@RequestBody BatchDelDto batchDelDto) {
+        List<String> list = batchDelDto.getTemplateCodes();
+        if (CollectionUtils.isEmpty(list)){
+            return Result.fail("请选择要删除的模板");
+        }
+        return templateService.batchDeleteTemplate(list);
     }
 
 }

@@ -16,6 +16,7 @@ import java.util.Arrays;
 public enum CacheEnums {
     CALIBRATION_CACHE("calibrationCache", "检定校准缓存"),
     MQ_IDEMPOTENT_CACHE("mqIdempotentCache", "MQ幂等性缓存"),
+    WAVEFORM_DATA_CACHE("waveformDataCache", "波形数据缓存"),
     /**
      * 默认缓存支持多种数据类型，但不支持持久化
      */
