@@ -601,15 +601,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
 
         if (!StringUtils.hasText(newFormula.getResultName())) {
             //请输入显示标题!
-            return Result.fail(YamlMessageSource.getMessageStatic("00101016"));
+            return Result.fail(YamlMessageSource.getMessageStatic("00101017"));
         }
         if (!StringUtils.hasText(newFormula.getResultIdentity())) {
             //请输入结果标识！
-            return Result.fail(YamlMessageSource.getMessageStatic("00101017"));
+            return Result.fail(YamlMessageSource.getMessageStatic("00101018"));
         }
         if (!StringUtils.hasText(newFormula.getUnit())) {
             //请输入结果单位！
-            return Result.fail(YamlMessageSource.getMessageStatic("00101018"));
+            return Result.fail(YamlMessageSource.getMessageStatic("00101019"));
         }
         List<FInputParam> inputParamList = checkFormulaDto.getInputParamList();
         if (inputParamList == null || inputParamList.isEmpty()) {
