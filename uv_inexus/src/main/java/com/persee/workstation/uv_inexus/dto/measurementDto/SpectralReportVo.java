@@ -132,6 +132,9 @@ public class SpectralReportVo {
     private String changeLampWaveLength;
     // 多联池模式
     private String multiPoolMode;
-
+    // 是否重复
+    private Boolean isRepeat;
+    // 重复次数
+    private String repeatCount;
 
 }
