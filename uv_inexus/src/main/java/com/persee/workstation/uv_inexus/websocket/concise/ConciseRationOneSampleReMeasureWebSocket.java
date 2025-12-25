@@ -45,6 +45,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -65,6 +66,8 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
     private static volatile List<FRationSaveCountDataInfo> emptyDataList = new ArrayList<>();
     //存放空白样计算出的Abs的值
     private static volatile List<FRationCountDataInfo> emptyList = new ArrayList<>();
+
+    private static LocalDateTime repeatMiddleTime;
 
     @Autowired
     private FMeasureTaskService tMeasureTaskService;
@@ -619,7 +622,20 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
             session.sendMessage(new TextMessage(object.toJSONString()));
         }
         R<ChangeParam> res = null;
+
+        double timeInterval = Double.parseDouble(parameter.getTimeInterval());
+        timeInterval=timeInterval*1000;
+        int interval= (int) Math.floor(timeInterval/5);
         for (int i = 0; i < repeatCount; i++) {
+
+            while (repeatMiddleTime != null && ChronoUnit.MILLIS.between(repeatMiddleTime, LocalDateTime.now()) < interval) {
+                log.info("时间间隔未到");
+                try {
+                    Thread.sleep(interval);
+                } catch (InterruptedException e) {
+                    log.info("休眠异常");
+                }
+            }
             for (String waveLength : waveLengths) {
 
                 Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
