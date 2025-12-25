@@ -180,7 +180,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             //波长值数量必须在1-26个范围内
             return R.fail(YamlMessageSource.getMessageStatic("00103005"));
         }
-
+        if(!StringUtils.hasText(parameter.getChangeLampWaveLength())){
+            return R.fail("换灯波长不能为空");
+        }
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
             if (v < 330 || v > 390) {

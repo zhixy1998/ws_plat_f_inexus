@@ -420,6 +420,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         }
         //检查测量数据
         boolean b = checkMeasureParam(oldParam, methodParam);
+        System.out.println(b);
         if (!b) {
             log.info("测量参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.measure.getIdentity());
@@ -456,12 +457,18 @@ public class RationServiceConciseImpl implements RationConciseService {
             return false;
         }
 
-        return oldParam.getSpectralBandwidth().equals(newParam.getSpectralBandwidth()) &&
-                oldParam.getResponseTime().equals(newParam.getResponseTime()) &&
-                oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
-                oldParam.getTimeInterval().equals(newParam.getTimeInterval()) && 
-                oldParam.getRepeatMode().equals(newParam.getRepeatMode()) &&
-                oldParam.getRepeatCount().equals(newParam.getRepeatCount());
+        return Objects.equals( oldParam.getSpectralBandwidth(), newParam.getSpectralBandwidth())&&
+//                oldParam.getSpectralBandwidth().equals(newParam.getSpectralBandwidth()) &&
+                Objects.equals(oldParam.getResponseTime(), newParam.getResponseTime()) &&
+//                oldParam.getResponseTime().equals(newParam.getResponseTime()) &&
+                Objects.equals(oldParam.getChangeLampWaveLength(),newParam.getChangeLampWaveLength()) &&
+//                oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
+                Objects.equals(oldParam.getTimeInterval(),newParam.getTimeInterval())&&
+//                oldParam.getTimeInterval().equals(newParam.getTimeInterval()) &&
+                Objects.equals(oldParam.getRepeatMode(), newParam.getRepeatMode()) &&
+//                oldParam.getRepeatMode().equals(newParam.getRepeatMode()) &&
+                Objects.equals(oldParam.getRepeatCount(), newParam.getRepeatCount()) ;
+//                oldParam.getRepeatCount().equals(newParam.getRepeatCount());
     }
 
     //检查参数是否改变，true--未改变，false--改变了
@@ -525,7 +532,9 @@ public class RationServiceConciseImpl implements RationConciseService {
             //"波长值最多支持3个，当前数量：" + waveLengths.size()
             return R.fail(YamlMessageSource.getMessageStatic("00102004", waveLengths.size()));
         }
-
+        if(!StringUtils.hasText(parameter.getChangeLampWaveLength())){
+            return R.fail("换灯波长不能为空");
+        }
 
         if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
             double v = Double.parseDouble(parameter.getChangeLampWaveLength());
