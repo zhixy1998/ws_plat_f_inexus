@@ -40,4 +40,6 @@ public interface TaskManagementService extends IService<TaskManagement> {
     Result<String> renameTask(TaskRenameDto dto);
 
     Result<String> deleteTask(String taskId);
+
+    Result<String> batchDelete(BatchDelDto batchDelDto);
 }

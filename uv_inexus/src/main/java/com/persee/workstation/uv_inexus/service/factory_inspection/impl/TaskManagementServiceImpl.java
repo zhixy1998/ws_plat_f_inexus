@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.component.DefaultTaskManager;
 import com.persee.workstation.uv_inexus.component.EhcacheUtil;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
@@ -20,6 +21,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
@@ -64,6 +66,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     private EhcacheUtil ehcacheUtil;
 
+    @Autowired
+    @Lazy
+    private DefaultTaskManager defaultTaskManager;
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
         try {
@@ -99,10 +104,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         try {
             TaskManagement management = null;
             if (DEFAULT_TASK.getCode().equals(id)) {
-                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
-                //这里查询出内置任务
-                management = this.getOne(wrapper);
+                // 自动检查并确保默认任务存在
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId();
+                management = this.getById(defaultTaskId);
             } else {
                 management = this.getById(id);
             }
@@ -149,6 +153,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     public Result<HashMap<String, String>> newTask(TaskAddDto task) {
         try {
             log.info("新建任务");
+            //看一下新的名字有没有重名
+            if (this.checkTaskName(task.getDetectName())) {
+                return Result.fail("任务名称已存在");
+            }
             TaskManagement management = new TaskManagement();
             management.setId(IdGeneratorUtil.generateIdWithPrefix("task"));
             management.setCompletionStatus(NOT_STARTED.getCode());
@@ -184,7 +192,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Transactional(rollbackFor = Exception.class)
     public Result newTaskByCurrent(TaskCopyDto taskCreateDto) {
         try {
-
+//看一下新的名字有没有重名
+            if (this.checkTaskName(taskCreateDto.getNewTaskName())) {
+                return Result.fail("任务名称已存在");
+            }
 
             TaskManagement management = taskMgrMapper.selectById(taskCreateDto.getCurrentTaskId());
             TaskManagement task = new TaskManagement();
@@ -382,12 +393,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     public Result<TaskManagement> getTaskDetail(String taskId) {
         try {
             if (DEFAULT_TASK.getCode().equals(taskId)) {
-                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode());
-                TaskManagement management = this.getOne(wrapper);
-                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
-                management.setTemplateName(excelTemplate.getTemplateName());
-                return Result.ok(management);
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId();
+                return Result.ok(this.getById(defaultTaskId));
             }
             TaskManagement management = this.getById(taskId);
             ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
@@ -431,15 +438,33 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (task == null) {
                 return Result.fail("任务不存在");
             }
-            if (TEMPLATE_BUILT_IN_TASK.getCode().equals(task.getContentCategory())) {
-                return Result.fail("内置任务不能删除");
+//            if (TEMPLATE_BUILT_IN_TASK.getCode().equals(task.getContentCategory())) {
+//                return Result.fail("内置任务不能删除");
+//            }
+            if (this.removeById(taskId)) {
+                return Result.ok("删除成功");
+            }else {
+                return Result.fail("删除任务失败");
             }
-            this.removeById(taskId);
-            return Result.ok("删除成功");
         } catch (Exception e) {
             log.error("删除任务失败", e);
             return Result.fail("删除任务失败");
         }
+    }
+
+    @Override
+    public Result<String> batchDelete(BatchDelDto batchDelDto) {
+        try {
+            List<String> taskIds = batchDelDto.getTaskIds();
+            if (CollectionUtils.isEmpty(taskIds)) {
+                return Result.fail("请选择要删除的任务");
+            }
+            boolean b = this.removeBatchByIds(taskIds);
+            return b ? Result.ok("删除成功") : Result.fail("删除失败");
+        }catch (Exception e){
+            log.error("批量删除任务失败", e);
+        }
+        return null;
     }
 
     private boolean checkTaskName(String taskName) {

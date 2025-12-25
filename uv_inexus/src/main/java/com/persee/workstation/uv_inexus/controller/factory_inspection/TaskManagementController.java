@@ -100,6 +100,13 @@ public class TaskManagementController {
        return taskManagementService.deleteTask(taskId);
     }
     /**
+     * 批量删除任务
+     */
+    @RequestMapping("/batch-delete")
+    public Result<String> batchDelete(@RequestBody BatchDelDto batchDelDto) {
+       return taskManagementService.batchDelete(batchDelDto);
+    }
+    /**
      * 可选择的标准物
      */
     @RequestMapping("/standard-material-list")
