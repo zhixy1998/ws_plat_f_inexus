@@ -42,7 +42,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.PostConstruct;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.net.DatagramSocket;
@@ -104,7 +103,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     }
 
     @Override
-    @PostConstruct
+//    @PostConstruct
     public void checkDeviceConnect() {
 
         initXml();
