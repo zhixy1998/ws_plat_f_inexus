@@ -1630,7 +1630,7 @@
 <ProtocolItem>
 <ID>InitWlMotor</ID>
 <Describe>波长初始化</Describe>
-<Timeout>180000</Timeout>
+<Timeout>60000</Timeout>
 <ACK>Y</ACK>
 <InputString>
 <string/>
@@ -1668,7 +1668,7 @@
 <ProtocolItem>
 <ID>CheckWLamp</ID>
 <Describe>检查钨灯能量</Describe>
-<Timeout>180000</Timeout>
+<Timeout>60000</Timeout>
 <ACK>Y</ACK>
 <InputString>
 <string/>

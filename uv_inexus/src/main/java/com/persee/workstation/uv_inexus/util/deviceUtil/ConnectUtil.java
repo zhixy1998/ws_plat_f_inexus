@@ -64,39 +64,64 @@ public class ConnectUtil {
     /**
      * 获取以太网Socket（如果端口被占用会自动查找空闲端口）
      */
-//    public synchronized DatagramSocket getEtherSocket(int port) {
-//        if (port < 0 || port > 65535) {
-//            throw new IllegalArgumentException("端口号无效: " + port);
-//        }
-//
-//        // 如果Socket已存在且可用，直接返回
-//        if (isSocketAvailable() && ethernetPort == port) {
-//            return ethernetSocket;
-//        }
-//
-//        // 关闭旧的Socket
-//        closeEthernetSocket();
-//
-//        // 创建新Socket（带端口占用检测）
-//        return createEthernetSocket(port);
-//    }
-//
-//    public synchronized DatagramSocket getWifiSocket(int port) {
-//        if (port < 0 || port > 65535) {
-//            throw new IllegalArgumentException("端口号无效: " + port);
-//        }
-//
-//        // 如果Socket已存在且可用，直接返回
-//        if (isWifiSocketAvailable() && wifiPort == port) {
-//            return wifiSocket;
-//        }
-//
-//        // 关闭旧的Socket
-//        closeWifiSocket();
-//
-//        // 创建新Socket
-//        return createWifiSocket(port);
-//    }
+    public synchronized DatagramSocket getEtherSocket(int port) {
+        if (port < 0 || port > 65535) {
+            throw new IllegalArgumentException("端口号无效: " + port);
+        }
+
+        // 如果Socket已存在且可用，直接返回
+        if (isSocketAvailable()) {
+            return ethernetSocket;
+        }
+
+        // 关闭旧的Socket
+        closeEthernetSocket();
+
+        // 创建新Socket（带端口占用检测）
+        return createEthernetSocket(port);
+    }
+
+    public synchronized DatagramSocket getWifiSocket(int port) {
+        if (port < 0 || port > 65535) {
+            throw new IllegalArgumentException("端口号无效: " + port);
+        }
+
+        // 如果Socket已存在且可用，直接返回
+        if (isWifiSocketAvailable()) {
+            return wifiSocket;
+        }
+
+        // 关闭旧的Socket
+        closeWifiSocket();
+
+        // 创建新Socket
+        return createWifiSocket(port);
+    }
+
+    /**
+     * 获取socket
+     */
+    public synchronized DatagramSocket getSocket(Integer connectionType, Integer port) {
+
+        if (connectionType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
+            return getWifiSocket(port);
+        } else {
+            return getEtherSocket(port);
+        }
+    }
+
+    /**
+     * 查询socket端口
+     */
+    public synchronized Integer getSocketPort(Integer connectionType) {
+
+        if (connectionType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
+            return wifiPort;
+        } else {
+
+            return ethernetPort;
+        }
+    }
 
 
     /**
@@ -840,51 +865,51 @@ public class ConnectUtil {
         return ethernetSocket;
     }
 
-    public synchronized DatagramSocket getWifiSocket(int port) {
-        if (port < 0 || port > 65535) {
-            throw new IllegalArgumentException("端口号无效: " + port);
-        }
-
-        if (wifiSocket != null && !wifiSocket.isClosed() && wifiPort == port) {
-            return wifiSocket;
-        }
-
-        if (wifiSocket == null || wifiSocket.isClosed()) {
-            try {
-                wifiSocket = new DatagramSocket(port);
-            } catch (SocketException e) {
-                throw new RuntimeException("创建 WIFI socket 失败: " + e.getMessage(), e);
-            }
-            wifiPort = port;
-        } else if (wifiPort != port) {
-            throw new IllegalStateException("WIFI socket 已绑定端口 " + wifiPort + ", 不能再绑定 " + port);
-        }
-
-        return wifiSocket;
-    }
-
-    public synchronized DatagramSocket getEtherSocket(int port) {
-        if (port < 0 || port > 65535) {
-            throw new IllegalArgumentException("端口号无效: " + port);
-        }
-
-        if (ethernetSocket != null && !ethernetSocket.isClosed() && ethernetPort == port) {
-            return ethernetSocket;
-        }
-
-        if (ethernetSocket == null || ethernetSocket.isClosed()) {
-            try {
-                ethernetSocket = new DatagramSocket(port);
-            } catch (SocketException e) {
-                throw new RuntimeException("创建 Ethernet socket 失败: " + e.getMessage(), e);
-            }
-            ethernetPort = port;
-        } else if (ethernetPort != port) {
-            throw new IllegalStateException("Ethernet socket 已绑定端口 " + ethernetPort + ", 不能再绑定 " + port);
-        }
-
-        return ethernetSocket;
-    }
+//    public synchronized DatagramSocket getWifiSocket(int port) {
+//        if (port < 0 || port > 65535) {
+//            throw new IllegalArgumentException("端口号无效: " + port);
+//        }
+//
+//        if (wifiSocket != null && !wifiSocket.isClosed() && wifiPort == port) {
+//            return wifiSocket;
+//        }
+//
+//        if (wifiSocket == null || wifiSocket.isClosed()) {
+//            try {
+//                wifiSocket = new DatagramSocket(port);
+//            } catch (SocketException e) {
+//                throw new RuntimeException("创建 WIFI socket 失败: " + e.getMessage(), e);
+//            }
+//            wifiPort = port;
+//        } else if (wifiPort != port) {
+//            throw new IllegalStateException("WIFI socket 已绑定端口 " + wifiPort + ", 不能再绑定 " + port);
+//        }
+//
+//        return wifiSocket;
+//    }
+//
+//    public synchronized DatagramSocket getEtherSocket(int port) {
+//        if (port < 0 || port > 65535) {
+//            throw new IllegalArgumentException("端口号无效: " + port);
+//        }
+//
+//        if (ethernetSocket != null && !ethernetSocket.isClosed() && ethernetPort == port) {
+//            return ethernetSocket;
+//        }
+//
+//        if (ethernetSocket == null || ethernetSocket.isClosed()) {
+//            try {
+//                ethernetSocket = new DatagramSocket(port);
+//            } catch (SocketException e) {
+//                throw new RuntimeException("创建 Ethernet socket 失败: " + e.getMessage(), e);
+//            }
+//            ethernetPort = port;
+//        } else if (ethernetPort != port) {
+//            throw new IllegalStateException("Ethernet socket 已绑定端口 " + ethernetPort + ", 不能再绑定 " + port);
+//        }
+//
+//        return ethernetSocket;
+//    }
 
 
 }

@@ -53,16 +53,14 @@ public class UdpSendUtil {
 
         DatagramSocket socket;
         int receivePort;
-        if (connectType == DeviceConnectTypeEnum.WIFI.getConnectType()) {
-            socket = connectUtil.getWifiSocket(wifiReceivePort);
-            wifiReceivePort = connectUtil.getWifiPort();
-            receivePort = wifiReceivePort;
-        } else {
-            socket = connectUtil.getEtherSocket(ethernetReceivePort);
-            ethernetReceivePort = connectUtil.getEthernetPort();
-            receivePort = ethernetReceivePort;
-        }
+
         try {
+            socket = connectUtil.getSocket(connectType, ethernetReceivePort);
+
+            if (socket == null) {
+                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+            }
+            receivePort = connectUtil.getSocketPort(connectType);
 
             udpReceiveThread.networkReceptionStart(receivePort, connectType);
             MessageStoreManager store = MessageStoreManager.getInstance();
@@ -153,16 +151,15 @@ public class UdpSendUtil {
 
         DatagramSocket socket;
         int receivePort;
-        if (connectType == DeviceConnectTypeEnum.WIFI.getConnectType()) {
-            socket = connectUtil.getWifiSocket(ethernetReceivePort);
-            wifiReceivePort = connectUtil.getWifiPort();
-            receivePort = wifiReceivePort;
-        } else {
-            socket = connectUtil.getEtherSocket(ethernetReceivePort);
-            ethernetReceivePort = connectUtil.getEthernetPort();
-            receivePort = ethernetReceivePort;
-        }
         try {
+
+            socket = connectUtil.getSocket(connectType, ethernetReceivePort);
+
+            if (socket == null) {
+                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+            }
+            receivePort = connectUtil.getSocketPort(connectType);
+
 
             MessageStoreManager store = MessageStoreManager.getInstance();
 
@@ -220,7 +217,7 @@ public class UdpSendUtil {
             }
 
             if (i == replyNumber) {
-                Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes, null);
+                Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
                 if (parse.equals("false")) {
                     return R.fail();
                 }
@@ -264,23 +261,15 @@ public class UdpSendUtil {
         boolean isReceiveRunning;
 
         try {
-            if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
-                socket = connectUtil.getWifiSocket(wifiReceivePort);
-                if (socket == null) {
-                    return R.fail("请检查wifi连接！");
-                }
-                wifiReceivePort = connectUtil.getWifiPort();
-                receivePort = wifiReceivePort;
-                isReceiveRunning = udpReceiveThread.isWifiRunning();
-            } else {
-                socket = connectUtil.getEtherSocket(ethernetReceivePort);
-                if (socket == null) {
-                    return R.fail("请检查以太网连接！");
-                }
-                ethernetReceivePort = connectUtil.getEthernetPort();
-                receivePort = ethernetReceivePort;
-                isReceiveRunning = udpReceiveThread.isEthernetRunning();
+
+            socket = connectUtil.getSocket(connectType, ethernetReceivePort);
+
+            if (socket == null) {
+                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
             }
+            receivePort = connectUtil.getSocketPort(connectType);
+            isReceiveRunning = udpReceiveThread.isRunning(connectType);
+
 
             if (!isReceiveRunning) {
                 udpReceiveThread.networkReceptionStart(receivePort, connectType);
@@ -297,14 +286,22 @@ public class UdpSendUtil {
             socket.send(packet);
 
             sendMessageLog(sendIp, cmdId, sendBytes);
-            R<List<byte[]>> r = messageDeal(deviceId, timeout, replyNumber, null);
+            R<List<byte[]>> r = new R<>();
+            for (int i = 0; i < 3; i++) {
+                 r = messageDeal(deviceId, timeout, replyNumber, null);
+                 if (r.getSuccess()) {
+                     break;
+                 } else {
+                     log.info("报文接收不足！重试第{}次", i+1);
+                 }
+            }
+
             if (!r.getSuccess()) {
                 return R.fail("报文接收不足！");
             }
             List<byte[]> responses = r.getData();
 
-            OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes,  null);
-
+            OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
 
             if (!parse.getIsSuccess()) {
                 return R.fail("解析失败！");
@@ -448,16 +445,22 @@ public class UdpSendUtil {
 
         DatagramSocket socket;
         try {
-
+            boolean isReceiveRunning;
             MessageStoreManager store = MessageStoreManager.getInstance();
 
             DeviceConnectInfo device = deviceManager.getDevice(deviceId);
             Integer connectType = device.getConnectType();
 
-            if (connectType.equals(DeviceConnectTypeEnum.WIFI.getConnectType())) {
-                socket = connectUtil.getWifiSocket(wifiReceivePort);
-            } else {
-                socket = connectUtil.getEtherSocket(ethernetReceivePort);
+            socket = connectUtil.getSocket(connectType, ethernetReceivePort);
+
+            if (socket == null) {
+                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+            }
+            Integer receivePort = connectUtil.getSocketPort(connectType);
+            isReceiveRunning = udpReceiveThread.isRunning(connectType);
+
+            if (!isReceiveRunning) {
+                udpReceiveThread.networkReceptionStart(receivePort, connectType);
             }
 
             String sendIp = device.getConnectIdentity();
@@ -476,13 +479,26 @@ public class UdpSendUtil {
                 return R.ok();
             }
 
-            R<List<byte[]>> r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes);
+            R<List<byte[]>> r = new R<>();
+            for (int i = 0; i < 3; i++) {
+                r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes);
+                if (r.getSuccess()) {
+                    break;
+                } else {
+                    log.info("报文接收不足！重试第{}次", i+1);
+                }
+            }
+
             if (!r.getSuccess()) {
                 return R.fail("报文接收不足！");
             }
             List<byte[]> responses = r.getData();
 
-            Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes, deviceSerialNumber);
+//            Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
+            OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
+            if (!parse.getIsSuccess()){
+                return R.fail(parse.getErrorMsg());
+            }
             return R.ok(parse);
 
         } catch (Exception e) {
