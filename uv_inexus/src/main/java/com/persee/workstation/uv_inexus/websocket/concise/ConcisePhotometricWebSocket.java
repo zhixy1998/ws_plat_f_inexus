@@ -581,13 +581,16 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             }
 
             int repetitionTime = Integer.parseInt(parameter.getRepetitionTime());
-            int timeInterval = Integer.parseInt(parameter.getTimeInterval());
+            double timeInterval = Double.parseDouble(parameter.getTimeInterval());
+            timeInterval=timeInterval*1000;
+            int interval= (int) Math.floor(timeInterval/5);
+
             LocalDateTime samplingTime = LocalDateTime.now();
             LocalDateTime startTime = LocalDateTime.now();
             for (int i = 0; i < repetitionTime; i++) {
-                while (repeatMiddleTime != null && ChronoUnit.SECONDS.between(repeatMiddleTime, LocalDateTime.now()) < timeInterval) {
+                while (repeatMiddleTime != null && ChronoUnit.MILLIS.between(repeatMiddleTime, LocalDateTime.now()) < timeInterval) {
                     log.info("时间间隔未到");
-                    Thread.sleep(timeInterval / 5);
+                    Thread.sleep(interval);
                 }
                 LocalDateTime time = LocalDateTime.now();
                 JSONObject jsonObject = new JSONObject();

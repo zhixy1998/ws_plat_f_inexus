@@ -45,6 +45,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -65,6 +66,8 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
     private static volatile List<FRationSaveCountDataInfo> emptyDataList = new ArrayList<>();
     //存放空白样计算出的Abs的值
     private static volatile List<FRationCountDataInfo> emptyList = new ArrayList<>();
+
+    private static LocalDateTime repeatMiddleTime;
 
     @Autowired
     private FMeasureTaskService tMeasureTaskService;
@@ -1230,7 +1233,21 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(object.toJSONString()));
         }
 
+
+        double timeInterval = Double.parseDouble(parameter.getTimeInterval());
+        timeInterval=timeInterval*1000;
+        int interval= (int) Math.floor(timeInterval/5);
+        LocalDateTime samplingTime = LocalDateTime.now();
+
         for (int i = 0; i < repeatCount; i++) {
+            while (repeatMiddleTime != null && ChronoUnit.MILLIS.between(repeatMiddleTime, LocalDateTime.now()) < timeInterval) {
+                log.info("时间间隔未到");
+                try {
+                    Thread.sleep(interval);
+                } catch (InterruptedException e) {
+                    log.info("休眠异常");
+                }
+            }
 
             JSONObject object = new JSONObject();
             object.put("sampleId", sample.getId());
@@ -1267,6 +1284,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                     log.info("测量出错");
                     return R.fail("测量出错");
                 }
+                repeatMiddleTime = LocalDateTime.now();
                 ChangeParam response = res.getData();
                 response.setWl(waveLength + "-" + i);
                 machineData.add(response);
