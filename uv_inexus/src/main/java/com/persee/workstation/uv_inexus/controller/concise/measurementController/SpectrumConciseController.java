@@ -93,7 +93,7 @@ public class SpectrumConciseController {
                               BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .map(error -> error.getDefaultMessage())
                     .collect(Collectors.joining("; "));
             return Result.fail("参数校验失败: " + errorMsg);
         }

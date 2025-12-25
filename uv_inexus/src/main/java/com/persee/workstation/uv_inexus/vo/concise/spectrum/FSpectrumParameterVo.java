@@ -40,9 +40,9 @@ public class FSpectrumParameterVo {
     private String repetitionPattern;
     // 重复次数
     private String repetitionTime;
-    // 时间间隔
-    @NotNull(message = "时间间隔不能为空")
-    @Pattern(regexp = "^\\d+(\\.\\d+)?$", message = "时间间隔必须是数字")
+    // 扫描间隔
+    @NotNull(message = "扫描间隔不能为空")
+    @Pattern(regexp = "^\\d+(\\.\\d+)?$", message = "扫描间隔必须是数字")
     private String timeInterval;
     // 阶梯校正(false.不启用 true.启用)
     private Boolean ladderCorrection;

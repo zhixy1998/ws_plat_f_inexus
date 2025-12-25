@@ -979,7 +979,11 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
             // (0.慢速 1.中速 2.快速 3.极快)
             vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
-            vo.setTimeInterval(param.getTimeInterval());
+            if (vo.getRepetitionTime().equals("单池重复")){
+                vo.setTimeInterval(param.getTimeInterval());
+            }else{
+                vo.setTimeInterval(null);
+            }
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setRepetitionPattern(param.getRepetitionPattern());
             if (data != null) {
@@ -1002,7 +1006,6 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
                 vo.setGain(param.getGain());
             }
-//            vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
