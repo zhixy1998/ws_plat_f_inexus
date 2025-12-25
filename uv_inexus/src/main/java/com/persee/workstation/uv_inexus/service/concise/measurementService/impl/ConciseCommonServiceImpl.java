@@ -979,10 +979,14 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             vo.setEndWaveLength(param.getEndWaveLength() + "nm");
             // (0.慢速 1.中速 2.快速 3.极快)
             vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
-            if (vo.getRepetitionTime().equals("单池重复")){
+            if (param.getRepetitionPattern().equals("单池重复")){
                 vo.setTimeInterval(param.getTimeInterval());
+                vo.setIsRepeat(true);
+                vo.setRepeatCount(param.getRepetitionTime());
             }else{
                 vo.setTimeInterval(null);
+                vo.setIsRepeat(false);
+                vo.setRepeatCount(null);
             }
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
             vo.setRepetitionPattern(param.getRepetitionPattern());
