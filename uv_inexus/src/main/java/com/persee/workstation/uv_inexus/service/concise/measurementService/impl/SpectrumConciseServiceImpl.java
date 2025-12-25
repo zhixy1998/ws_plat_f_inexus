@@ -77,6 +77,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -183,7 +184,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         if (!Arrays.asList("1", "2", "3", "4").contains(luminosity)) {
             //"光度模式不合法（可选值：1-abs、2-T%、3-Es、4-Er），当前值：" + luminosity
-            return R.fail(YamlMessageSource.getMessageStatic("00104005",luminosity));
+            return R.fail(YamlMessageSource.getMessageStatic("00104005", luminosity));
         }
 
         // 3. 开始波长校验（190-900，数字且格式正确）
@@ -196,12 +197,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             double startVal = Double.parseDouble(startWave);
             if (startVal < 190 || startVal > 900) {
                 //开始波长需在190-900范围内，当前值：
-                return R.fail(YamlMessageSource.getMessageStatic("00104007",startVal));
+                return R.fail(YamlMessageSource.getMessageStatic("00104007", startVal));
             }
             // 校验小数点后位数（最多1位）
             if (startWave.contains(".") && startWave.split("\\.")[1].length() > 1) {
                 //开始波长小数点后最多保留1位，当前值：
-                return R.fail(YamlMessageSource.getMessageStatic("00104008",startWave));
+                return R.fail(YamlMessageSource.getMessageStatic("00104008", startWave));
             }
         } catch (NumberFormatException e) {
             //"开始波长格式错误（需为数字），当前值：" + startWave
@@ -218,22 +219,22 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             double endVal = Double.parseDouble(endWave);
             if (endVal < 190 || endVal > 900) {
                 //"结束波长需在190-900范围内，当前值：" + endVal
-                return R.fail(YamlMessageSource.getMessageStatic("0010400B",endVal));
+                return R.fail(YamlMessageSource.getMessageStatic("0010400B", endVal));
             }
             // 校验小数点后位数（最多1位）
             if (endWave.contains(".") && endWave.split("\\.")[1].length() > 1) {
                 //"结束波长小数点后最多保留1位，当前值：" + endWave
-                return R.fail(YamlMessageSource.getMessageStatic("0010400C",endWave));
+                return R.fail(YamlMessageSource.getMessageStatic("0010400C", endWave));
             }
             // 校验开始波长 > 结束波长
             double startVal = Double.parseDouble(startWave);
             if (startVal <= endVal) {
                 //"开始波长必须大于结束波长（开始：" + startVal + "，结束：" + endVal + "）"
-                return R.fail(YamlMessageSource.getMessageStatic("0010400D",startVal,endVal));
+                return R.fail(YamlMessageSource.getMessageStatic("0010400D", startVal, endVal));
             }
         } catch (NumberFormatException e) {
             //结束波长格式错误（需为数字），当前值：endWave
-            return R.fail(YamlMessageSource.getMessageStatic("0010400E",endWave));
+            return R.fail(YamlMessageSource.getMessageStatic("0010400E", endWave));
         }
 
         // 5. 波长间隔校验（枚举值：0.025,0.05,0.1,0.2,0.5,1.0,2.0,5.0）
@@ -245,7 +246,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         List<String> validIntervals = Arrays.asList("0.025", "0.05", "0.1", "0.2", "0.5", "1.0", "2.0", "5.0");
         if (!validIntervals.contains(waveInterval)) {
             //"波长间隔不合法（可选值：" + String.join("、", validIntervals) + "），当前值：" + waveInterval
-            return R.fail(YamlMessageSource.getMessageStatic("00104010",String.join("、", validIntervals) , waveInterval));
+            return R.fail(YamlMessageSource.getMessageStatic("00104010", String.join("、", validIntervals), waveInterval));
         }
 
         // 6. 重复模式校验（枚举值：0-不重复、1-单池重复）
@@ -256,7 +257,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         if (!Arrays.asList("0", "1").contains(repeatPattern)) {
             //"重复模式不合法（可选值：0-不重复、1-单池重复），当前值：" + repeatPattern
-            return R.fail(YamlMessageSource.getMessageStatic("00104011",repeatPattern));
+            return R.fail(YamlMessageSource.getMessageStatic("00104011", repeatPattern));
         }
 
         // 7. 单池重复（1）时的关联校验
@@ -271,11 +272,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 int repeatCount = Integer.parseInt(repeatTime);
                 if (repeatCount < 2 || repeatCount > 10) {
                     //重复次数需在2-10范围内，当前值：repeatCount
-                    return R.fail(YamlMessageSource.getMessageStatic("00102018",repeatCount));
+                    return R.fail(YamlMessageSource.getMessageStatic("00102018", repeatCount));
                 }
             } catch (NumberFormatException e) {
                 //重复次数格式错误（需为整数），当前值：repeatTime
-                return R.fail(YamlMessageSource.getMessageStatic("00102019",repeatTime));
+                return R.fail(YamlMessageSource.getMessageStatic("00102019", repeatTime));
             }
 
             // 7.2 时间间隔（0-60秒，保留1位小数）
@@ -288,16 +289,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 double intervalVal = Double.parseDouble(timeInterval);
                 if (intervalVal < 0 || intervalVal > 60) {
                     //时间间隔需在0-60秒范围内，当前值：intervalVal
-                    return R.fail(YamlMessageSource.getMessageStatic("0010201B",intervalVal));
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201B", intervalVal));
                 }
                 // 校验小数点后位数（最多1位）
                 if (timeInterval.contains(".") && timeInterval.split("\\.")[1].length() > 1) {
                     //"时间间隔小数点后最多保留1位，当前值：" + timeInterval
-                    return R.fail(YamlMessageSource.getMessageStatic("00104012",timeInterval));
+                    return R.fail(YamlMessageSource.getMessageStatic("00104012", timeInterval));
                 }
             } catch (NumberFormatException e) {
                 //时间间隔格式错误（需为数字），当前值：
-                return R.fail(YamlMessageSource.getMessageStatic("0010201D",timeInterval));
+                return R.fail(YamlMessageSource.getMessageStatic("0010201D", timeInterval));
             }
         }
 
@@ -309,13 +310,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         if (!Arrays.asList("0", "1", "2", "3").contains(scanSpeed)) {
             //"扫描速度不合法（可选值：0-慢速、1-中速、2-快速、3-极快），当前值：" + scanSpeed
-            return R.fail(YamlMessageSource.getMessageStatic("00104014",scanSpeed));
+            return R.fail(YamlMessageSource.getMessageStatic("00104014", scanSpeed));
         }
 
 
         // 所有校验通过
         return R.ok(true);
     }
+
     // 内部工具方法：判断字符串是否为空（适配JDK1.8）
     private boolean isBlank(String str) {
         return str == null || str.trim().isEmpty();
@@ -368,7 +370,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         QueryWrapper<FMeasureTask> taskWrapper = new QueryWrapper<>();
         taskWrapper.eq("method_key", method.getId());
         taskWrapper.eq("is_delete", "0");
-        taskWrapper.eq("user_id",id);
+        taskWrapper.eq("user_id", id);
         taskWrapper.orderByDesc("create_time");
         taskWrapper.last("LIMIT 1");
         FMeasureTask task = fMeasureTaskService.getOne(taskWrapper);
@@ -571,7 +573,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             paramDto.getParameter().setLadderCorrection(false);
         }
         boolean update1 = Double.parseDouble(paramDto.getParameter().getWaveLengthInterval()) < 1;
-        if (paramDto.getParameter().getScanSpeed().equals("3")&&update1){
+        if (paramDto.getParameter().getScanSpeed().equals("3") && update1) {
             return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
         }
         double start = Double.parseDouble(paramDto.getParameter().getStartWaveLength());
@@ -583,15 +585,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
         // 校验幻灯波长在330~390之间
         double changeWavelength = Double.parseDouble(paramDto.getParameter().getChangeLampWaveLength());
-        if (changeWavelength < 330.0 || changeWavelength > 390.0){
+        if (changeWavelength < 330.0 || changeWavelength > 390.0) {
             return Result.fail("幻灯波长在330~390之间");
         }
-        if (paramDto.getParameter().getScanSpeed().equals("3")&&(start>1100||start<380)){
+        if (paramDto.getParameter().getScanSpeed().equals("3") && (start > 1100 || start < 380)) {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
         // 下发参数
         Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-        if (result.getCode()!=200) {
+        if (result.getCode() != 200) {
             return result;
         }
 
@@ -1139,7 +1141,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         // 处理要删除的样品
         if (dto.getDelSampleIds() != null && !dto.getDelSampleIds().isEmpty()) {
             // 获取方法的重复模式（假设方法中有isRepeatMode字段，0-不重复，1-重复）
-            Integer repeatMode = parameter.getRepetitionPattern().equals("单池重复")?1:null; // 请根据实际情况调整字段名
+            Integer repeatMode = parameter.getRepetitionPattern().equals("单池重复") ? 1 : null; // 请根据实际情况调整字段名
 
             for (String delSampleId : dto.getDelSampleIds()) {
                 FTaskSpecimen specimen = oldMap.get(delSampleId);
@@ -1461,7 +1463,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                         vo.setData(null);
                         vo.setDeleteType("0");
                     } else if (measureData != null) {
-                        if (measureData.getIsDelete().equals("1")&&type == null){
+                        if (measureData.getIsDelete().equals("1") && type == null) {
                             continue;
                         }
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
@@ -1478,7 +1480,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                             vo.setOriginalData(getOriginalSampleData(measureData, digit));
                         }
                         vo.setDeleteType(measureData.getIsDelete());
-                    }else{
+                    } else {
                         continue;
                     }
                     vo.setType("0");
@@ -1588,7 +1590,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                     break;
                 }
             }
-            if (list.size() == 3&&!flat) {
+            if (list.size() == 3 && !flat) {
                 // 循环遍历样品列表找到该样品
                 for (FTaskSpecimen taskSpecimen : taskSpecimenList) {
                     if (taskSpecimen.getSpecimenKey().equals(sampleId)) {
@@ -1860,7 +1862,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             String normX = normalizeNumberString(xStr);
             if (!rawXSet.contains(normX)) {
                 //"波长 " + xStr + " 不存在，请重新选择"
-                return Result.fail(YamlMessageSource.getMessageStatic("00104004",xStr ));
+                return Result.fail(YamlMessageSource.getMessageStatic("00104004", xStr));
             }
         }
 
@@ -2011,7 +2013,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             //峰谷间距不可以小于1
             return Result.fail(YamlMessageSource.getMessageStatic("00100012"));
         }
-        if (paramDto.getHeight()>100){
+        if (paramDto.getHeight() > 100) {
             return Result.fail(YamlMessageSource.getMessageStatic("00100027"));
         }
         paramDto.setHeight(paramDto.getHeight() / 100);
@@ -2029,16 +2031,28 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             xList.add(split[0]);
             yList.add(split[1]);
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String, Object> body = new HashMap<>();
-        body.put("x_data", xList);
-        body.put("y_data", yList);
-        body.put("peak_height", paramDto.getHeight());
-        body.put("valley_height", paramDto.getHeight());
-        body.put("distance", paramDto.getDistance());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class).getBody();
+        ResponseEntity<Map> post;
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            Map<String, Object> body = new HashMap<>();
+            body.put("x_data", xList);
+            body.put("y_data", yList);
+            body.put("peak_height", paramDto.getHeight());
+            body.put("valley_height", paramDto.getHeight());
+            body.put("distance", paramDto.getDistance());
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            post = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class);
+        } catch (Exception e) {
+            return Result.fail("算法服务异常,请重启服务");
+        }
+
+        Map<String, Object> resultMap = post.getBody();
+        int code = (int) resultMap.get("code");
+        if (code != 200){
+            String message = resultMap.get("message").toString();
+            return Result.fail(message);
+        }
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
         List<String> yPeak = (List<String>) resultMap.get("peak_y");
@@ -2152,9 +2166,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Command com2 = new Command();
         com2.setCmdId(SetParamEnum.SetStartWl.getComId());
         double parsed = Double.parseDouble(scanParamInfo.getStartWaveLength());
-        if (linearSegment!=null&& !linearSegment.isEmpty()){
+        if (linearSegment != null && !linearSegment.isEmpty()) {
             double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
-            parsed=parsed+waveLengthInterval;
+            parsed = parsed + waveLengthInterval;
         }
         Double v = formulaUtil.calculateStep(parsed, deviceSerialNumber);
         com2.setParams(new Object[]{v});
@@ -2163,9 +2177,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Command com3 = new Command();
         com3.setCmdId(SetParamEnum.SetEndWl.getComId());
         double parsed2 = Double.parseDouble(scanParamInfo.getEndWaveLength());
-        if (linearSegment!=null&& !linearSegment.isEmpty()){
+        if (linearSegment != null && !linearSegment.isEmpty()) {
             double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
-            parsed2=parsed2-waveLengthInterval;
+            parsed2 = parsed2 - waveLengthInterval;
         }
         Double v2 = formulaUtil.calculateStep(parsed2, deviceSerialNumber);
         com3.setParams(new Object[]{v2});
@@ -2176,7 +2190,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
         commands.add(com4);
 
-        if (StringUtils.hasText(scanParamInfo.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+        if (StringUtils.hasText(scanParamInfo.getSpectralBandwidth()) && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
             // 光谱带宽
             Command com5 = new Command();
             com5.setCmdId(SetParamEnum.SetSlit1.getComId());
@@ -2445,6 +2459,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 yList2.add(split[1]);
             }
         }
+        ResponseEntity<Map> post;
         // 创建请求头
         HttpHeaders headers = new HttpHeaders();
         // 设置请求头类型为json
@@ -2456,13 +2471,23 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body.put("y1_data", yList1);
         body.put("y2_data", yList2);
         body.put("operation", paramDto.getArithmeticOperators());
-        // 创建请求对象
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        // 将请求结果转换成对象
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumFourOperation(), request, Map.class).getBody();
+        try {
+            // 创建请求对象
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            // 将请求结果转换成对象
+            post = restTemplate.postForEntity(pythonPathConstant.getSpectrumFourOperation(), request, Map.class);
+        } catch (Exception e) {
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        Map<String, Object> resultMap = post.getBody();
         if (resultMap == null) {
             //python接口调用失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        int code = (int) resultMap.get("code");
+        if (code != 200){
+            String message = resultMap.get("message").toString();
+            return Result.fail(message);
         }
         // 对结果进行寻峰计算
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
@@ -2474,10 +2499,39 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+
+        Map<String, Object> resultMap1;
+        Map<String, Object> resultMap2;
+        try {
+            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+            ResponseEntity<Map> post1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class);
+            resultMap1=post1.getBody();
+            // 直接拿寻峰数据进行一次寻谷
+            ResponseEntity<Map> post2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class);
+            resultMap2=post2.getBody();
+
+        }catch (Exception e){
+            return Result.fail("算法服务异常,请重启服务");
+        }
+
+        if (resultMap1 == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        if (resultMap2 == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        code = (int) resultMap1.get("code");
+        if (code != 200){
+            String message = resultMap1.get("message").toString();
+            return Result.fail(message);
+        }
+        code = (int) resultMap2.get("code");
+        if (code != 200){
+            String message = resultMap2.get("message").toString();
+            return Result.fail(message);
+        }
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2598,8 +2652,25 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
+
+        Map<String, Object> resultMap;
+        try {
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<Map> post = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class);
+            resultMap=post.getBody();
+        }catch (Exception e){
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        int code = (int) resultMap.get("code");
+        if (code != 200){
+            String message = resultMap.get("message").toString();
+            return Result.fail(message);
+        }
+
         body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2609,10 +2680,41 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+
+        Map<String, Object> resultMap1;
+        Map<String, Object> resultMap2;
+        try {
+            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+            ResponseEntity<Map> post1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class);
+            // 直接拿寻峰数据进行一次寻谷
+            ResponseEntity<Map> post2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class);
+            if (!post1.getStatusCode().is2xxSuccessful() || !post2.getStatusCode().is2xxSuccessful()) {
+                return Result.fail(YamlMessageSource.getMessageStatic("0000003E"));
+            }
+            resultMap1=post1.getBody();
+            resultMap2=post2.getBody();
+        }catch (Exception e){
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap2 == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        code = (int) resultMap1.get("code");
+        if (code != 200){
+            String message = resultMap1.get("message").toString();
+            return Result.fail(message);
+        }
+        if (resultMap2 == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        code = (int) resultMap2.get("code");
+        if (code != 200){
+            String message = resultMap2.get("message").toString();
+            return Result.fail(message);
+        }
+
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2719,8 +2821,26 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body.put("y_data", yList);
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSmoothed(), request, Map.class).getBody();
+
+        Map<String, Object> resultMap;
+        Map<String, Object> resultMap1;
+        Map<String, Object> resultMap2;
+        try {
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            resultMap = restTemplate.postForEntity(pythonPathConstant.getSmoothed(), request, Map.class).getBody();
+        }catch (Exception e){
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        int code = (int) resultMap.get("code");
+        if (code != 200){
+            String message = resultMap.get("message").toString();
+            return Result.fail(message);
+        }
+
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2730,9 +2850,32 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        try {
+            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+            resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
+            resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        }catch (Exception e){
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap1 == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        code = (int) resultMap1.get("code");
+        if (code != 200){
+            String message = resultMap1.get("message").toString();
+            return Result.fail(message);
+        }
+        if (resultMap2 == null) {
+            //python接口调用失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        code = (int) resultMap2.get("code");
+        if (code != 200){
+            String message = resultMap2.get("message").toString();
+            return Result.fail(message);
+        }
+
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2843,8 +2986,23 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
         body.put("deriv", paramDto.getDifferentialNum());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getDifferentiated(), request, Map.class).getBody();
+        Map<String, Object> resultMap;
+        Map<String, Object> resultMap1;
+        Map<String, Object> resultMap2;
+        try {
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            resultMap = restTemplate.postForEntity(pythonPathConstant.getDifferentiated(), request, Map.class).getBody();
+        }catch (Exception e){
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap == null){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        int code = (int) resultMap.get("message");
+        if (code != 200){
+            String message= resultMap.get("message").toString();
+            return Result.fail(message);
+        }
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2854,9 +3012,27 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        try {
+            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+            resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
+            resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        } catch (Exception e){
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap1 == null || resultMap2 == null){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        int code1 = (int) resultMap1.get("message");
+        if (code1 != 200){
+            String message= resultMap1.get("message").toString();
+            return Result.fail(message);
+        }
+        int code2 = (int) resultMap2.get("message");
+        if (code2 != 200){
+            String message= resultMap2.get("message").toString();
+            return Result.fail(message);
+        }
+
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2984,8 +3160,25 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", type);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
+
+        Map<String, Object> resultMap;
+        Map<String, Object> resultMap1;
+        Map<String, Object> resultMap2;
+
+        try {
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
+        } catch (Exception e) {
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap == null){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        int code = (int) resultMap.get("code");
+        if (code != 200) {
+            String message = (String) resultMap.get("message");
+            return Result.fail(message);
+        }
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
@@ -2995,8 +3188,25 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
         HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        try {
+            resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request1, Map.class).getBody();
+            resultMap2 = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request1, Map.class).getBody();
+        } catch (Exception e) {
+            return Result.fail("算法服务异常,请重启服务");
+        }
+        if (resultMap1 == null || resultMap2 == null){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        }
+        int code1 = (int) resultMap1.get("code");
+        if (code1 != 200) {
+            String message = (String) resultMap1.get("message");
+            return Result.fail(message);
+        }
+        int code2 = (int) resultMap2.get("code");
+        if (code2 != 200) {
+            String message = (String) resultMap2.get("message");
+            return Result.fail(message);
+        }
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -3085,7 +3295,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
                 // 如果样品信息不存在，则跳过当前id或返回错误
                 if (analysisData == null) {
-                    return Result.fail(YamlMessageSource.getMessageStatic("00104016: ",analysisId));
+                    return Result.fail(YamlMessageSource.getMessageStatic("00104016: ", analysisId));
                 }
                 if (analysisData.getSampleKey() != null) {
                     // 根据样品id查询样品
@@ -3775,7 +3985,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
             }
             //文件生成失败：
-            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
+            return R.fail(YamlMessageSource.getMessageStatic("00302006", e.getMessage()));
         } finally {
             // log.info("===== 导出流程结束 =====");
         }
@@ -3856,11 +4066,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 .eq("sample_key", sampleId));
         // 将测量数据中的原始数据转换为List<ChangeParam>
         List<ChangeParam> originData = JSON.parseArray(data.getGaugePoint(), ChangeParam.class);
-        List<Map<String,String>> result = new ArrayList<>();
-        while (params.size() > 0){
+        List<Map<String, String>> result = new ArrayList<>();
+        while (params.size() > 0) {
             Map<String, String> map = new HashMap<>();
             String s = DataCountUtil.countTPercent(params.get(0), originData.get(0), 1.0);
-            String yy = DataCountUtil.changeTPercentOrAbs2(null,s);
+            String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
             double parsed = Double.parseDouble(params.get(0).getWl());
             Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
             double parsed1 = Double.parseDouble(originData.get(0).getWl());
