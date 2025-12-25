@@ -632,18 +632,27 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
             return false;
         }
 
-        long intervalSeconds = Long.parseLong(timeIntervalStr);
+        double intervalSeconds;
+        try {
+            intervalSeconds = Double.parseDouble(timeIntervalStr.trim());
+        } catch (NumberFormatException e) {
+            log.warn("无效的时间间隔格式: '{}', 无法解析为数字", timeIntervalStr);
+            return false;
+        }
+
         if (intervalSeconds <= 0) {
             return false;
         }
 
-        log.info("重复模式：等待时间间隔 {} 秒", intervalSeconds);
+        // 转换为毫秒，保留整数毫秒（可四舍五入或向下取整）
+        long totalMillis = Math.max(1, Math.round(intervalSeconds * 1000)); // 至少等待1毫秒
 
-        long remainingMillis = intervalSeconds * 1000;
+        log.info("重复模式：等待时间间隔 {} 秒（{} 毫秒）", intervalSeconds, totalMillis);
+
+        long remainingMillis = totalMillis;
         long checkInterval = 500; // 每500ms检查一次
 
         while (remainingMillis > 0) {
-            // 检查停止请求
             if (isStopRequested(session)) {
                 return true;
             }

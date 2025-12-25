@@ -66,13 +66,13 @@ public class TimeSweepConciseController {
     }
 
 
-    @RequestMapping("applyMethod")
+    @PostMapping("applyMethod")
     @ApiOperation("应用接口")
     public Result applyMethod(@Valid @RequestBody TimeUseMethodDto paramDto, BindingResult bindingResult) {
         // 校验参数
         if (bindingResult.hasErrors()) {
             String errorMsg = bindingResult.getFieldErrors().stream()
-                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .map(error ->  error.getDefaultMessage())
                     .collect(Collectors.joining("; "));
             return Result.fail("参数校验失败: " + errorMsg);
         }
