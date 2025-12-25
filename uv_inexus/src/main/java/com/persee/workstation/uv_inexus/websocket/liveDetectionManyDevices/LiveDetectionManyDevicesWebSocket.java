@@ -70,7 +70,7 @@ public class LiveDetectionManyDevicesWebSocket {
     // 添加会话和订阅映射
     private final Map<String, Set<String>> sessionSubscriptions = new ConcurrentHashMap<>();
 
-    @MessageMapping("/detection/start")
+    @MessageMapping("/liveDetection/start")
     public void startMeasure(String deviceSerialNumber) {
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
             messagingTemplate.convertAndSend(measureTopic,
@@ -300,7 +300,7 @@ public class LiveDetectionManyDevicesWebSocket {
 //        }
 //    }
 
-    @MessageMapping("/detection/stop")
+    @MessageMapping("/liveDetection/stop")
     public void stopMeasure(String deviceSerialNumber) {
         // 减少活跃订阅者计数
 
