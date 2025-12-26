@@ -58,11 +58,6 @@ spring:
           driver-class-name: com.mysql.cj.jdbc.Driver
 
 
-    mqIdempotentCache: # MQ幂等性缓存
-      heap: 1000  # 堆内存最多存储条目数
-      offheap: 10 # 堆外内存大小，单位MB
-      disk: 50  # 磁盘持久化大小，单位MB。必须大于offheap
-      ttl: 10m  # 生存时间
 
 #服务器
 #  datasource:
@@ -132,7 +127,11 @@ ehcache:
       offheap: 10 # 堆外内存大小，单位MB
       disk: 50   # 磁盘持久化大小，单位MB。必须大于offheap
       ttl: 30m    # 生存时间
-
+    mqIdempotentCache: # MQ幂等性缓存
+      heap: 1000  # 堆内存最多存储条目数
+      offheap: 10 # 堆外内存大小，单位MB
+      disk: 50  # 磁盘持久化大小，单位MB。必须大于offheap
+      ttl: 10m  # 生存时间
 
 
 mybatis:
@@ -157,7 +156,7 @@ sys-manage-default:
 remote-access:
   enabled: true
 python-code:
-  baseUrl: http://192.168.61.82:8002/
+  baseUrl: http://192.168.61.12:42082/
 #  baseUrl: http://192.168.35.50:42082/
 #  baseUrl: http://192.168.61.46:8000/
 #  baseUrl: http://localhost:10029/
