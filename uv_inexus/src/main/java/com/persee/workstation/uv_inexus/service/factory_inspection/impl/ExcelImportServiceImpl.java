@@ -6,6 +6,7 @@ import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.listener.ReadListener;
 import com.alibaba.excel.read.metadata.ReadSheet;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -124,6 +125,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             Map<String, Map<String, Object>> standardMaterialsMap = new HashMap<>();
             // 保存数据资产
             int rowIndex = 1; // 从第1行开始计数（跳过表头）
+            ArrayList<ExcelDataAsset> list = new ArrayList<>();
             for (LinkedHashMap<String, Object> dataMap : dataList) {
                 String s = JSON.toJSONString(dataMap);
                 ExcelDataAsset asset = new ExcelDataAsset();
@@ -139,7 +141,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     type = TIME_SCAN.getCode();
                 }
                 asset.setImportStatus(type);
-                excelDataAssetService.save(asset);
+                list.add(asset);
 
                 String zeroMaterial = MapUtils.getString(dataMap, ZERO.getDescription());
                 String measurementMaterial = MapUtils.getString(dataMap, MEASUREMENT.getDescription());
@@ -158,6 +160,9 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                 standards.put(MEASUREMENT.getDescription(), measurementMaterial);
                 assetStandardsMap.put(asset.getId(), standards);
             }
+            // 创建 Map
+            Map<String, ExcelDataAsset> assetMap = list.stream()
+                    .collect(Collectors.toMap(ExcelDataAsset::getId, item -> item));
 
             // 批量保存标准物质种类
             List<CalStdCats> standardCategories = standardMaterials.stream()
@@ -176,6 +181,10 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     })
                     .collect(Collectors.toList());
 
+            Map<String, CalStdCats> standardCategoryMap = standardCategories.stream()
+                    .collect(Collectors.toMap(CalStdCats::getId, item -> item));
+
+
             if (CollectionUtils.isNotEmpty(standardCategories)) {
                 calStdCatsService.saveBatch(standardCategories);
             }
@@ -190,6 +199,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                 String assetId = entry.getKey();
                 Map<String, Object> standards = entry.getValue();
 
+
                 // 校零物质任务详情
                 String zeroMaterial = MapUtils.getString(standards, ZERO.getDescription());
                 if (zeroMaterial != null) {
@@ -199,6 +209,19 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     zeroDetail.setStandardId(materialNameToIdMap.get(zeroMaterial));
                     zeroDetail.setStandardType(ZERO.getCode());
                     taskDetails.add(zeroDetail);
+
+                    ExcelDataAsset excelDataAsset = assetMap.get(assetId);
+                    Map<String, Object> dataMap = excelDataAsset.getDataMap();
+                    String z = MapUtils.getString(dataMap, ZERO.getDescription());
+                    JSONObject js = new JSONObject();
+                    CalStdCats cats = standardCategoryMap.get(zeroDetail.getStandardId());
+                    js.put("id", zeroDetail.getStandardId());
+                    js.put("name", z);
+                    js.put("characteristicValue", cats.getCharacteristicValue());
+                    js.put("standardValue", cats.getStandardValue());
+                    dataMap.put(ZERO.getDescription(),js);
+                    excelDataAsset.setStructuredData(JSON.toJSONString(dataMap));
+                    assetMap.put(assetId, excelDataAsset);
                 }
 
                 // 测量物质任务详情
@@ -210,8 +233,24 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     measurementDetail.setStandardId(materialNameToIdMap.get(measurementMaterial));
                     measurementDetail.setStandardType(MEASUREMENT.getCode());
                     taskDetails.add(measurementDetail);
+
+                    ExcelDataAsset excelDataAsset = assetMap.get(assetId);
+                    Map<String, Object> dataMap = excelDataAsset.getDataMap();
+                    String z = MapUtils.getString(dataMap, MEASUREMENT.getDescription());
+                    JSONObject js = new JSONObject();
+                    CalStdCats cats = standardCategoryMap.get(measurementDetail.getStandardId());
+                    js.put("id", measurementDetail.getStandardId());
+                    js.put("name", z);
+                    js.put("characteristicValue", cats.getCharacteristicValue());
+                    js.put("standardValue", cats.getStandardValue());
+                    dataMap.put(MEASUREMENT.getDescription(),js);
+                    excelDataAsset.setStructuredData(JSON.toJSONString(dataMap));
+                    assetMap.put(assetId, excelDataAsset);
+
                 }
             }
+            List<ExcelDataAsset> collect = new ArrayList<>(assetMap.values());
+            excelDataAssetService.saveBatch(collect);
 
             // 批量插入任务执行详情
             if (CollectionUtils.isNotEmpty(taskDetails)) {

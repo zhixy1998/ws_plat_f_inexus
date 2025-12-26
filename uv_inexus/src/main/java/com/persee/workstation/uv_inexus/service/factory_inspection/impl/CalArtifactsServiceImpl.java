@@ -45,7 +45,7 @@ public class CalArtifactsServiceImpl extends ServiceImpl<CalArtifactsMapper, Cal
         CalArtifacts calArtifacts = new CalArtifacts();
         BeanUtils.copyProperties(artifacts, calArtifacts);
         if (StringUtil.isBlank(calArtifacts.getId())) {
-            calArtifacts.setId(IdGeneratorUtil.generateIdWithPrefix("cal"));
+            calArtifacts.setId(IdGeneratorUtil.generateIdWithPrefix("mat"));
             calArtifacts.setIsDelete(NOT_DELETED.getCode());
             int i = calArtifactsMapper.insert(calArtifacts);
             return i != 0 ? Result.ok() : Result.fail();
