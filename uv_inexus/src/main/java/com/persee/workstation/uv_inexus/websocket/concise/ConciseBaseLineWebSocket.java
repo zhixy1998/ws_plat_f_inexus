@@ -339,6 +339,7 @@ public class ConciseBaseLineWebSocket extends TextWebSocketHandler {
         String taskId = getQueryParam(query, "taskId");
         String methodId = getQueryParam(query, "methodId");
         String deviceSerialNumber = getQueryParam(query, "deviceSerialNumber");
+        lastChangeParam=null;
 
         log.info("【参数获取】session: {}, taskId: {}, methodId: {}, deviceSerialNumber: {}",
                 sessionId, taskId, methodId, deviceSerialNumber);
