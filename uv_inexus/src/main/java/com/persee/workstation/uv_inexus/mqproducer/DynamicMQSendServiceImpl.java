@@ -2,6 +2,8 @@ package com.persee.workstation.uv_inexus.mqproducer;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
+import com.persee.workstation.uv_inexus.util.AesUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.client.producer.SendStatus;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
@@ -16,6 +18,7 @@ import java.util.UUID;
  * 动态消息发送服务实现
  * 根据clusterId从注册表中获取模板并完成消息发送
  */
+@Slf4j
 @Service
 public class DynamicMQSendServiceImpl implements DynamicMQSendService {
     /** 生产者注册表，负责按clusterId查找模板 */
@@ -52,12 +55,14 @@ public class DynamicMQSendServiceImpl implements DynamicMQSendService {
     public boolean sendNormal(String clusterId, String topic, String tag, String jsonBody) {
         try {
             if (!isValidJson(jsonBody)) {
+                log.error("JSON校验异常");
                 return false;
             }
+            String encryptedBody = AesUtil.encrypt(jsonBody);
             String destination = tag != null && !tag.isEmpty() ? topic + ":" + tag : topic;
             String bizKey = UUID.randomUUID().toString();
             SendResult result = getNormalTemplate(clusterId)
-                    .syncSend(destination, MessageBuilder.withPayload(jsonBody).setHeader(RocketMQHeaders.KEYS, bizKey).build());
+                    .syncSend(destination, MessageBuilder.withPayload(encryptedBody).setHeader(RocketMQHeaders.KEYS, bizKey).build());
             SendStatus status = result.getSendStatus();
             return status == SendStatus.SEND_OK || status == SendStatus.SLAVE_NOT_AVAILABLE;
         } catch (Exception e) {
@@ -72,12 +77,14 @@ public class DynamicMQSendServiceImpl implements DynamicMQSendService {
     public boolean sendOrderly(String clusterId, String topic, String tag, String jsonBody, String hashKey) {
         try {
             if (!isValidJson(jsonBody)) {
+                log.error("JSON校验异常");
                 return false;
             }
+            String encryptedBody = AesUtil.encrypt(jsonBody);
             String destination = tag != null && !tag.isEmpty() ? topic + ":" + tag : topic;
             String bizKey = UUID.randomUUID().toString();
             SendResult result = getNormalTemplate(clusterId)
-                    .syncSendOrderly(destination, MessageBuilder.withPayload(jsonBody).setHeader(RocketMQHeaders.KEYS, bizKey).build(), hashKey);
+                    .syncSendOrderly(destination, MessageBuilder.withPayload(encryptedBody).setHeader(RocketMQHeaders.KEYS, bizKey).build(), hashKey);
             SendStatus status = result.getSendStatus();
             return status == SendStatus.SEND_OK || status == SendStatus.SLAVE_NOT_AVAILABLE;
         } catch (Exception e) {
@@ -92,14 +99,16 @@ public class DynamicMQSendServiceImpl implements DynamicMQSendService {
     public boolean sendDelay(String clusterId, String topic, String tag, String jsonBody, int delayLevel) {
         try {
             if (!isValidJson(jsonBody)) {
+                log.error("JSON校验异常");
                 return false;
             }
+            String encryptedBody = AesUtil.encrypt(jsonBody);
             String destination = tag != null && !tag.isEmpty() ? topic + ":" + tag : topic;
             String bizKey = UUID.randomUUID().toString();
             RocketMQTemplate template = getNormalTemplate(clusterId);
             SendResult result = template.syncSend(
                     destination,
-                    MessageBuilder.withPayload(jsonBody).setHeader(RocketMQHeaders.KEYS, bizKey).build(),
+                    MessageBuilder.withPayload(encryptedBody).setHeader(RocketMQHeaders.KEYS, bizKey).build(),
                     template.getProducer().getSendMsgTimeout(),
                     delayLevel
             );

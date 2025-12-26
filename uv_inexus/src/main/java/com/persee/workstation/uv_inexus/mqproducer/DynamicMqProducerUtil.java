@@ -1,6 +1,5 @@
 package com.persee.workstation.uv_inexus.mqproducer;
 
-import com.persee.workstation.uv_inexus.util.AesUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -41,23 +40,20 @@ public class DynamicMqProducerUtil {
      * 使用指定ID的生产者发送普通同步消息
      */
     public boolean sendNormal(String clusterId, String topic, String tag, String jsonBody) {
-        String encryptedBody = AesUtil.encrypt(jsonBody);
-        return dynamicMQSendService.sendNormal(clusterId, topic, tag, encryptedBody);
+        return dynamicMQSendService.sendNormal(clusterId, topic, tag, jsonBody);
     }
 
     /**
      * 使用指定ID的生产者发送顺序消息
      */
     public boolean sendOrderly(String clusterId, String topic, String tag, String jsonBody, String hashKey) {
-        String encryptedBody = AesUtil.encrypt(jsonBody);
-        return dynamicMQSendService.sendOrderly(clusterId, topic, tag, encryptedBody, hashKey);
+        return dynamicMQSendService.sendOrderly(clusterId, topic, tag, jsonBody, hashKey);
     }
 
     /**
      * 使用指定ID的生产者发送延时消息
      */
     public boolean sendDelay(String clusterId, String topic, String tag, String jsonBody, int delayLevel) {
-        String encryptedBody = AesUtil.encrypt(jsonBody);
-        return dynamicMQSendService.sendDelay(clusterId, topic, tag, encryptedBody, delayLevel);
+        return dynamicMQSendService.sendDelay(clusterId, topic, tag, jsonBody, delayLevel);
     }
 }
