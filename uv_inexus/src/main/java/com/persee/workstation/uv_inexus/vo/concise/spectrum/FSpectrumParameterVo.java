@@ -39,6 +39,8 @@ public class FSpectrumParameterVo {
     // 重复模式(0.不重复 1.单池重复)
     private String repetitionPattern;
     // 重复次数
+    @NotNull(message = "重复次数不能为空")
+    @Pattern(regexp = "^\\d+(\\.\\d+)?$", message = "重复次数必须是数字")
     private String repetitionTime;
     // 扫描间隔
     @NotNull(message = "扫描间隔不能为空")
