@@ -70,4 +70,6 @@ public interface TemplateService extends IService<ExcelTemplate> {
     Result<String> deleteTemplate(String templateCode);
 
     Result<String> batchDeleteTemplate(List<String> list);
+
+    Result<List<Map<String, String>>> getMaterialOptions(String id);
 }

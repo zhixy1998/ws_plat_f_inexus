@@ -22,6 +22,7 @@ public class TemplateCreationRequest extends BasePO {
     @NotNull(message = "选中行不能为空")
     @ApiModelProperty("选中行,其中key是每一项的id")
     private Map<String, List<Map<String, Object>>> selectedRows;
+    @ApiModelProperty("备注")
     private String remark;
     @ApiModelProperty("类型，新增为0 修改为 1")
     private String type;
