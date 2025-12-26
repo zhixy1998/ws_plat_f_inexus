@@ -2095,7 +2095,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2104,7 +2104,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2229,6 +2229,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
+        body.put("x_data", xList);
         Map<String, Object> resultMap;
         try {
             resultMap = callPythonService(
@@ -2238,7 +2239,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
         }
-        body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
@@ -2251,7 +2251,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2260,7 +2260,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2392,7 +2392,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2401,7 +2401,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2533,7 +2533,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2542,7 +2542,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2693,7 +2693,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2702,7 +2702,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -3951,6 +3951,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     }
 
 
+    /**
+     * 调用Python服务
+     * @param url
+     * @param requestBody
+     * @return
+     */
     private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) {
         try {
             HttpHeaders headers = new HttpHeaders();
