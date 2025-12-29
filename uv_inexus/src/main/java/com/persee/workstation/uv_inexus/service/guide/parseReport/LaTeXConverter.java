@@ -95,10 +95,7 @@ public class LaTeXConverter {
      */
     @Deprecated
     public String verifyAndConvert(List<String> paramList, String latexFormula) {
-        // ... (此方法内容保持不变，但不再被新逻辑调用) ...
-        // 为了代码整洁，这里省略了其实现，您可以根据需要决定是否删除。
-        // 如果保留，请确保其内部逻辑不与新方法冲突。
-        // 我们在这里简单调用新方法来模拟旧的“精确匹配”行为
+
         List<String> formulaList = Arrays.asList(latexFormula);
         R<String> result = verifyFormulasAgainstParamList(paramList, formulaList);
         if (result.getSuccess()) {
@@ -164,6 +161,7 @@ public class LaTeXConverter {
         expr = expr.replaceAll("\\\\right\\)", ")");
         // 清理剩余的反斜杠
         expr = expr.replaceAll("\\\\", "");
+        expr = expr.replace("E", "1");
         return expr;
     }
 
