@@ -29,4 +29,8 @@ public class CellUpdDto {
     private String valueType;
     //行名称
     private String projectName;
+    //特征值
+    private String featureValue;
+    //是否拥有多个特征值
+    private Boolean isMultiple=false;
 }

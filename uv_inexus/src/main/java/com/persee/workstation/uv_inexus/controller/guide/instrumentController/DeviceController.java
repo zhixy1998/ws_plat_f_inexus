@@ -115,7 +115,7 @@ public class DeviceController {
     }
 
     @GetMapping("/searchDevice")
-    @ApiOperation("新驱动-搜索仪器接口")
+    @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
     public Result<List<SearchInfo>> searchDevice(@RequestParam Integer connectType) throws Exception {
         R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
@@ -142,7 +142,7 @@ public class DeviceController {
     @GetMapping("/disconnectDevice")
     @ApiOperation("新驱动-断开连接")
     public Result<Boolean> disconnectDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
-        R<Boolean> r = deviceManageService.disconnectDevice(deviceSerialNumber);
+        R<Boolean> r = deviceManageService.disconnectDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
             return Result.ok(true);
         } else {
@@ -152,8 +152,8 @@ public class DeviceController {
 
     @GetMapping("/initOneDevice")
     @ApiOperation("新驱动-初始化")
-    public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber) {
-        R<Boolean> r = deviceManageService.startInitDevice(deviceSerialNumber);
+    public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        R<Boolean> r = deviceManageService.startInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
             return Result.ok(true);
         } else {
@@ -163,8 +163,8 @@ public class DeviceController {
 
     @GetMapping("/continueInit")
     @ApiOperation("新驱动-继续初始化")
-    public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber) {
-        R<Boolean> r = deviceManageService.continueInitDevice(deviceSerialNumber);
+    public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+        R<Boolean> r = deviceManageService.continueInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
             return Result.ok(true);
         } else {

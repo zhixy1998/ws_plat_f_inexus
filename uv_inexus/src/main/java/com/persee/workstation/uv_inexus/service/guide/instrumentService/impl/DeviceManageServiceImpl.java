@@ -43,7 +43,6 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
-import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.LiveDetectionManyDevicesWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -425,6 +424,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         devMessageUtil.disConnect(infoPO.getIp());
 
         infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+        infoPO.setUpdateBy(updateBy);
         infoService.saveOrUpdateInfo(infoPO);
         ResponseDeal.Sn = null;
         return true;
@@ -1084,6 +1084,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             samplePoolConfigService.saveSamplePoolInfo(dto);
 
             info.setAttachmentName(attachmentInfo.getAttachmentName());
+            info.setUpdateBy(param.getUpdateBy());
             infoService.saveOrUpdateInfo(info);
             boolean initRecord = true;
 
@@ -1104,7 +1105,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
             vo.setLinearSegment(null);
 
-            infoService.saveOrUpdateInfo(info);
             if (info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
                 liveDetectionWebSocket.startMeasure(info.getDeviceSerialNumber());
             }
@@ -1114,7 +1114,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<Boolean> disconnectDevice(String deviceSerialNumber) {
+    public R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy) {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.Disconnect.getType());
@@ -1131,37 +1131,72 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             info.setIsInited(0);
             info.setMachineIp("");
             info.setDevicePort(-1);
+            info.setUpdateBy(updateBy);
             infoService.saveOrUpdateInfo(info);
             return R.ok(true);
         }
     }
 
     @Override
-    public R<Boolean> startInitDevice(String deviceSerialNumber) {
+    public R<Boolean> startInitDevice(String deviceSerialNumber, String updateBy) {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setUpdateBy(updateBy);
         inputParam.setIsInitFromHead(true);
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        info.setIsInited(Constants.INIT_STATUS_RUNNING);
+
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
             log.info("初始化启动失败: {}", operation.getMessage());
+            info.setIsInited(Constants.INIT_STATUS_FALSE);
+            infoService.saveOrUpdateInfo(info);
             return R.fail("初始化启动失败");
         } else {
-            liveDetectionWebSocket.startMeasure(deviceSerialNumber);
+//            liveDetectionWebSocket.startMeasure(deviceSerialNumber);
+
+            synchronized (info) {
+                LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(DeviceModelInfoPO::getDevModel, info.getDeviceModel());
+                DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+
+                List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
+
+                DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(deviceSerialNumber);
+                Integer kind = attachmentInfo.getAttachmentKind();
+
+                if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
+                    List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
+                    initRecordService.initAllTask(deviceSerialNumber, info.getId(), allInitEntry);
+                } else {
+                    initRecordService.initAllTask(deviceSerialNumber, info.getId(), initEntry);
+                }
+
+                infoService.saveOrUpdateInfo(info);
+            }
+
             return R.ok(true);
         }
     }
 
     @Override
-    public R<Boolean> continueInitDevice(String deviceSerialNumber) {
+    public R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy) {
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setIsInitFromHead(false);
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        info.setIsInited(Constants.INIT_STATUS_RUNNING);
+        infoService.saveOrUpdateInfo(info);
+
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
             log.info("继续初始化启动失败: {}", operation.getMessage());
+
+            info.setIsInited(Constants.INIT_STATUS_FALSE);
+            infoService.saveOrUpdateInfo(info);
             return R.fail("初始化启动失败");
         } else {
             return R.ok(true);
@@ -1182,7 +1217,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceInfoPO infoPO = pos.remove(0);
 
             try {
-                pos.forEach(po -> disconnectDevice(po.getDeviceSerialNumber()));
+                pos.forEach(po -> disconnectDevice(po.getDeviceSerialNumber(), updateBy));
             } catch (Exception e) {
                 log.error("断开连接失败: {}", e.getMessage());
             }

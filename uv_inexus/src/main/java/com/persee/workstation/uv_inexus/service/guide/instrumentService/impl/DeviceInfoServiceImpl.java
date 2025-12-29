@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 
 
@@ -325,7 +326,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         return dao.selectList(query);
     }
 
-//    @PostConstruct
+    @PostConstruct
     @Override
     public void checkDeviceStatus() {
         log.info("[检查设备状态] 开始检查设备状态");

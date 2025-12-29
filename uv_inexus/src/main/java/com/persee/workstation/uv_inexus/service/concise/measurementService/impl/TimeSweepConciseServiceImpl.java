@@ -854,7 +854,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     @Override
     public Result addOrDeleteSamplePort(FAddOrDeleteSampleDTO dto) {
-
         if (!StringUtils.hasText(dto.getMethodId())) {
             //请先创建方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
@@ -863,16 +862,24 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             //至少需要一个表头
             return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
-
         if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
+
+        // 获取方法信息，用于判断重复模式
+        FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
+        if (method == null) {
+            // 方法不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        // 将方法参数用json解析出来
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             FMeasureTask newTask = new FMeasureTask();
 
-            FMeasureMethod method = fMeasureMethodService.getById(dto.getMethodId());
             SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
@@ -909,98 +916,26 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         List<FTaskSpecimen> taskSpecimen = new ArrayList<>();
         if (StringUtils.hasText(task.getSampleKey())) {
             taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
-            // 调试信息
-            log.info("从任务中解析的样品列表: {}", taskSpecimen);
-            if (taskSpecimen != null) {
-                log.info("样品数量: {}", taskSpecimen.size());
-                for (FTaskSpecimen specimen : taskSpecimen) {
-                    log.info("样品键: {}", specimen.getSpecimenKey());
-                }
-            }
-        }
-
-        // 调试信息
-        log.info("要删除的样品ID列表: {}", dto.getDelSampleIds());
-        if (dto.getDelSampleIds() != null) {
-            log.info("要删除的样品ID数量: {}", dto.getDelSampleIds().size());
-            for (String delId : dto.getDelSampleIds()) {
-                log.info("要删除的ID: {}", delId);
-            }
         }
 
         Map<String, FTaskSpecimen> oldMap = new HashMap<>();
+        for (FTaskSpecimen specimen : taskSpecimen) {
+            oldMap.put(specimen.getSpecimenKey(), specimen);
+        }
 
-        // 处理删除逻辑
+        // 处理要删除的样品
         if (dto.getDelSampleIds() != null && !dto.getDelSampleIds().isEmpty()) {
-            for (FTaskSpecimen specimen : taskSpecimen) {
-                String specimenKey = specimen.getSpecimenKey();
-
-                // 调试信息
-                log.info("正在比较样品键: {}", specimenKey);
-
-                // 首先检查是否为null
-                if (specimenKey == null) {
-                    log.warn("样品键为null，跳过处理");
-                    continue;
-                }
-
-                // 创建一个临时列表来存储要删除的ID，确保类型匹配
-                List<String> delIds = dto.getDelSampleIds().stream()
-                        .filter(Objects::nonNull)
-                        .map(String::trim)
-                        .collect(Collectors.toList());
-
-                String trimmedSpecimenKey = specimenKey.trim();
-
-                // 调试信息
-                log.info("修剪后的样品键: '{}'", trimmedSpecimenKey);
-                log.info("修剪后的待删除ID列表: {}", delIds);
-
-                // 使用多种方式进行比较
-                boolean shouldDelete = delIds.stream()
-                        .anyMatch(delId -> {
-                            boolean exactMatch = delId.equals(trimmedSpecimenKey);
-                            boolean containsMatch = delId.contains(trimmedSpecimenKey) || trimmedSpecimenKey.contains(delId);
-                            log.info("比较: delId='{}', specimenKey='{}', exactMatch={}, containsMatch={}",
-                                    delId, trimmedSpecimenKey, exactMatch, containsMatch);
-                            return exactMatch || containsMatch;
-                        });
-
-                // 备用方法：使用equals比较（如果上面的方法不工作）
-                boolean shouldDeleteAlt = delIds.contains(trimmedSpecimenKey);
-                log.info("备用比较方法结果: {}", shouldDeleteAlt);
-
-                // 使用contains方法直接比较
-                boolean shouldDeleteDirect = dto.getDelSampleIds().contains(specimenKey);
-                log.info("直接contains比较结果: {}", shouldDeleteDirect);
-
-                // 最终决定是否删除
-                if (shouldDelete || shouldDeleteAlt || shouldDeleteDirect) {
-                    log.info("找到要删除的样品，设置删除类型: {}", specimenKey);
+            for (String delSampleId : dto.getDelSampleIds()) {
+                FTaskSpecimen specimen = oldMap.get(delSampleId);
+                if (specimen != null) {
                     specimen.setDeleteType(deleteType);
 
-                    // 同时标记对应的测量数据为删除
-                    LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                    queryWrapper.eq(FMeasureData::getSampleKey, specimenKey)
-                            .eq(FMeasureData::getTaskId, task.getId())
-                            .orderByDesc(FMeasureData::getSerialNumber);
-                    List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
-                    if (list != null && !list.isEmpty()) {
-                        FMeasureData one = list.get(0);
-                        one.setIsDelete(deleteType);
-                        fMeasureDataService.updateById(one);
-                    }
+                    handleDeleteForNonRepeatMode(delSampleId, task.getId());
                 }
-
-                oldMap.putIfAbsent(specimenKey, specimen);
-            }
-        } else {
-            // 如果没有要删除的样品，直接放入oldMap
-            for (FTaskSpecimen specimen : taskSpecimen) {
-                oldMap.putIfAbsent(specimen.getSpecimenKey(), specimen);
             }
         }
 
+        // 更新任务表头信息
         com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot taskHeadSnapshot = new com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskHeadSnapshot();
 
         if (StringUtils.hasText(task.getTableInfo())) {
@@ -1013,21 +948,22 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
-        // 处理新增的样品
+        // 处理新增或更新的样品
         if (dto.getNewSamples() != null && !dto.getNewSamples().isEmpty()) {
             List<String> sampleNos = dto.getNewSamples().stream()
-                    .map(m -> m.get(SampleTableEnum.SAMPLE_NUMBER.getIdentity())) // 取出 sampleNo
+                    .map(m -> m.get(SampleTableEnum.SAMPLE_NUMBER.getIdentity()))
                     .filter(StringUtils::hasText)
                     .collect(Collectors.toList());
 
             if (sampleNos.size() < dto.getNewSamples().size()) {
                 return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
             }
+
             // 查重：找到重复的样品编号
             Set<String> duplicates = sampleNos.stream()
                     .filter(no -> Collections.frequency(sampleNos, no) > 1)
                     .collect(Collectors.toSet());
-            // 判断如果isTested为true，
+
             if (!duplicates.isEmpty()) {
                 //标准样品编号重复
                 return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
@@ -1056,6 +992,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                 }
 
                 if (StringUtils.hasText(newSample.getId())) {
+                    // 更新现有样品
                     fMeasureSampleService.updateById(newSample);
                     FTaskSpecimen specimen = oldMap.get(newSample.getId());
                     if (specimen != null) {
@@ -1063,6 +1000,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
                         oldMap.put(newSample.getId(), specimen);
                     }
                 } else {
+                    // 新增样品
                     FTaskSpecimen specimen = new FTaskSpecimen();
                     specimen.setDeleteType(createType);
                     specimen.setIsTested(noTested);
@@ -1076,18 +1014,15 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             }
         }
 
-        // 更新任务中的样品列表
-        String jsonString = JSONArray.toJSONString(new ArrayList<>(oldMap.values()));
+        // 更新任务中的样品信息
+        String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
-
-        // 调试信息
-        log.info("更新后的样品列表JSON: {}", jsonString);
-
         boolean b = fMeasureTaskService.updateById(task);
         if (!b) {
             return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
         }
 
+        // 处理样品池自动切换
         if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
             R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
             if (!poolInfo.getSuccess()) {
@@ -1101,6 +1036,44 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             }
         }
         return Result.ok();
+    }
+
+    /**
+     * 处理不重复模式下的删除逻辑
+     * 只删除最新的测量数据
+     */
+    private void handleDeleteForNonRepeatMode(String sampleId, String taskId) {
+        // 查询最新的未删除的测量数据
+        LambdaQueryWrapper<FMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(FMeasureData::getSampleKey, sampleId)
+                .eq(FMeasureData::getTaskId, taskId)
+                .eq(FMeasureData::getIsDelete, 0)
+                .last("LIMIT 1");
+
+        // 获取最新的一条
+        List<FMeasureData> list = fMeasureDataService.list(queryWrapper);
+        if (list != null && !list.isEmpty()) {
+            FMeasureData latestData = list.get(0);
+
+            // 标记测量数据为删除
+            latestData.setIsDelete(deleteType);
+            fMeasureDataService.updateById(latestData);
+
+            // 查询并标记相关的分析数据为删除
+            LambdaQueryWrapper<FMeasureAnalysisData> analysisQueryWrapper = new LambdaQueryWrapper<>();
+            analysisQueryWrapper.eq(FMeasureAnalysisData::getSampleKey, sampleId)
+                    .eq(FMeasureAnalysisData::getTaskId, taskId)
+                    .eq(FMeasureAnalysisData::getMeasureDataId, latestData.getId())
+                    .eq(FMeasureAnalysisData::getIsDelete, 0);
+            List<FMeasureAnalysisData> analysisDataList = fMeasureAnalysisDataService.list(analysisQueryWrapper);
+
+            if (analysisDataList != null && !analysisDataList.isEmpty()) {
+                for (FMeasureAnalysisData analysisData : analysisDataList) {
+                    analysisData.setIsDelete(deleteType);
+                    fMeasureAnalysisDataService.updateById(analysisData);
+                }
+            }
+        }
     }
 
     /**
@@ -2095,7 +2068,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2104,7 +2077,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2229,6 +2202,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
+        body.put("x_data", xList);
         Map<String, Object> resultMap;
         try {
             resultMap = callPythonService(
@@ -2238,7 +2212,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
         }
-        body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
@@ -2251,7 +2224,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2260,7 +2233,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2392,7 +2365,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2401,7 +2374,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2533,7 +2506,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2542,7 +2515,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2693,7 +2666,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap1 = callPythonService(
                     pythonPathConstant.getPeakSearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -2702,7 +2675,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         try {
             resultMap2 = callPythonService(
                     pythonPathConstant.getValleySearching(),
-                    body
+                    body1
             );
         } catch (RuntimeException e) {
             return Result.fail(e.getMessage());
@@ -3951,6 +3924,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     }
 
 
+    /**
+     * 调用Python服务
+     * @param url
+     * @param requestBody
+     * @return
+     */
     private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) {
         try {
             HttpHeaders headers = new HttpHeaders();

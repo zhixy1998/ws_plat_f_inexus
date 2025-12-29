@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.BatchDelDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalArtifactsSaveDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.StandardSubstanceDto;
@@ -51,6 +52,12 @@ public class CalArtifactsController {
     @PostMapping("/list")
     public Result<IPage<StandardSubstanceDto>> listCalArtifacts(@RequestBody QueryCalStdCatsDto dto) {
         return calArtifactsService.listCalArtifacts(dto);
+    }
+    //批量删除
+    @ApiOperation("批量删除标准物质")
+    @PostMapping("/batch-delCalStdCats")
+    public Result<String> batchDelCalStdCats(@RequestBody BatchDelDto ids) {
+        return calArtifactsService.batchDelCalStdCats(ids);
     }
 
 }

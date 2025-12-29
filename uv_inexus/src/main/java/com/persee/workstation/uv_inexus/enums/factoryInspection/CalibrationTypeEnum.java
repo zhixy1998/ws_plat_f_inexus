@@ -34,6 +34,7 @@ public enum CalibrationTypeEnum {
     SINGLE_ITEM("0", "单项检测"),
     AUTO("1", "自动检测"),
     SET_STANDARD("2", "设置标准物"),
+    HISTORY_WAVEFORM("3", "历史波形图"),
 
     //任务的执行状态
     NOT_STARTED("0", "未开始"),
@@ -68,8 +69,8 @@ public enum CalibrationTypeEnum {
     TASK_IN_PROGRESS("1", "未完成"),
     TASK_COMPLETED("2", "已完成"),
 
-    //任务分类 内置任务  用户任务
-    TEMPLATE_BUILT_IN_TASK("0", "内置任务"),
+    //任务分类 默认任务  用户任务
+    TEMPLATE_BUILT_IN_TASK("0", "默认任务"),
     TEMPLATE_USER_DEFINED_TASK("1", "用户任务"),
 
     //重复次数

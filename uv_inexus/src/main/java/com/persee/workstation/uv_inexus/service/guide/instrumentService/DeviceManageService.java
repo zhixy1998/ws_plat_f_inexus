@@ -141,11 +141,11 @@ public interface DeviceManageService {
 
     R<OperationResultEntity> Action(DevOperationInputParam param);
 
-    R<Boolean> disconnectDevice(String deviceSerialNumber);
+    R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy);
 
-    R<Boolean> startInitDevice(String deviceSerialNumber);
+    R<Boolean> startInitDevice(String deviceSerialNumber, String updateBy);
 
-    R<Boolean> continueInitDevice(String deviceSerialNumber);
+    R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy);
 
     R<String> getConnectDevice(String updateBy);
 

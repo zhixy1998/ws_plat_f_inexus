@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoDAO;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
@@ -20,7 +19,6 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceModelInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InitRecordPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
@@ -34,8 +32,8 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.GetParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ParamCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionCmdEnum;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesLampStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
@@ -44,7 +42,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.PostConstruct;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.net.DatagramSocket;
@@ -106,7 +103,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     }
 
     @Override
-    @PostConstruct
+//    @PostConstruct
     public void checkDeviceConnect() {
 
         initXml();
@@ -205,20 +202,23 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 newPO.setIsDevOpened(Constants.DEVICE_IS_OPEN);
                 newPO.setDeviceCurrentStatus(Constants.DEVICE_STATUS_IDLE);
 
-                deviceManager.updateDeviceInfo(deviceId, true, "", type);
+                deviceManager.updateDeviceInfo(s, true, "", type);
 
-                deviceManager.setDeviceIdleStatus(deviceId, true);
+                deviceManager.setDeviceIdleStatus(s, true);
 
                 xmlManage.setDevice(po.getIp(), type);
 
                 infoService.saveOrUpdateInfo(newPO);
+
+
+                setDeviceDefaultStatus(s, deviceSerialNumber);
             } else {
                 log.error("获取SN失败！仪器未连接！");
                 manager.removeDevice(deviceId);
                 unConnectedDevice.add(deviceSerialNumber);
             }
         }
-        connectUtil.closeAllSockets();
+//        connectUtil.closeAllSockets();
 
         for (String deviceSerialNumber : unConnectedDevice) {
             DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
@@ -265,7 +265,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 return R.fail("请先连接仪器！");
             }
 
-            R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, Constants.DEVICE_STATUS_INIT);
+            Integer connectStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
+
+            R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, connectStatus);
             if (!r.getSuccess()) {
                 return R.fail(r.getMessage());
             }
@@ -294,6 +296,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 break;
             case LiveDetection:
                 result = liveDetection(deviceSerialNumber);
+                break;
             case ActionCmdEnum:
                 result = executeAction(inputParam);
                 break;
@@ -710,6 +713,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
             //串口
+            log.info("串口连接");
+            return R.fail("串口连接暂不支持！");
 
         } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
             //wifi
@@ -799,6 +804,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         OperationResultEntity result = new OperationResultEntity();
 
         DeviceConnectInfo device = deviceManager.getDevice(deviceInfo.getDeviceId());
+        if (device == null) {
+            return R.fail("当前仪器已被连接！");
+        }
         Integer connectType = device.getConnectType();
 
         if (connectType == null) {
@@ -980,24 +988,32 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 //        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
 
         DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
-
-        LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(DeviceModelInfoPO::getDevModel, infoPO.getDeviceModel());
-        DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
-
-        List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
-
-        DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(deviceSerialNumber);
-        Integer kind = attachmentInfo.getAttachmentKind();
-
-        if (isInitFromHead) {
-            if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
-                List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
-                initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), allInitEntry);
-            } else {
-                initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), initEntry);
+        while (!infoPO.getIsInited().equals(Constants.INIT_STATUS_RUNNING)) {
+            try {
+                Thread.sleep(500);
+                infoPO = infoService.getInfo(deviceSerialNumber);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
+
+//        LambdaQueryWrapper<DeviceModelInfoPO> wrapper = new LambdaQueryWrapper<>();
+//        wrapper.eq(DeviceModelInfoPO::getDevModel, infoPO.getDeviceModel());
+//        DeviceModelInfoPO modelInfoPO = deviceModelInfoDAO.selectOne(wrapper);
+//
+//        List<DeviceInitEntryInfo> initEntry = modelInfoPO.getInitEntry();
+//
+//        DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(deviceSerialNumber);
+//        Integer kind = attachmentInfo.getAttachmentKind();
+//
+//        if (isInitFromHead) {
+//            if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
+//                List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
+//                initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), allInitEntry);
+//            } else {
+//                initRecordService.initAllTask(deviceSerialNumber, infoPO.getId(), initEntry);
+//            }
+//        }
 
         log.info("自检开始");
         String deviceId = infoPO.getDeviceId();
@@ -1012,11 +1028,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         List<InitRecordPO> list = initRecordService.searchInitStatus(deviceSerialNumber, infoPO.getId());
         for (InitRecordPO recordPO : list) {
-            updateRunning(recordPO);
-            recordPO = initRecordService.selectById(recordPO.getId());
-            if (!isInitFromHead && recordPO.getInitStatus().equals(Constants.INIT_STATUS_SUCCESS)) {
+
+            if (!isInitFromHead && recordPO.getInitStatus().equals(Constants.INIT_TASK_SUCCESS)) {
                 continue;
             }
+            updateRunning(recordPO);
+            recordPO = initRecordService.selectById(recordPO.getId());
 
             List<String> cmdIdList = recordPO.getInitCmdIdList();
 
@@ -1040,43 +1057,38 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         //Todo 串口初始化待做
                         initDevice = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout,false, deviceSerialNumber, endBytes);
                     } else {
-                        for (int j = 0; j < 3; j++) {
-                            if (replyNumber < 0) {
+                        if (replyNumber < 0) {
 //
-                                String[] readBytes = transition.getReadBytes();
-                                if (readBytes != null && readBytes.length > 0) {
-                                    endBytes = new byte[4];
-                                    String fullStr = readBytes[0];
-                                    String[] parts = fullStr.split(":");
+                            String[] readBytes = transition.getReadBytes();
+                            if (readBytes != null && readBytes.length > 0) {
+                                endBytes = new byte[4];
+                                String fullStr = readBytes[0];
+                                String[] parts = fullStr.split(":");
 
-                                    for (int i = 0; i < 4 && i < parts.length; i++) {
-                                        String part = parts[i].trim();
-                                        // 跳过非数字部分（比如 "Check"）
-                                        if (!part.matches("\\d+")) {
-                                            break; // 或 continue，根据逻辑决定
-                                        }
-                                        int intValue = Integer.parseInt(part); // 解析为 int（支持 0~255）
-                                        endBytes[i] = (byte) (intValue & 0xFF); // 安全转为 byte（保留低8位）
-//                                        System.out.println(endBytes[i]);
+                                for (int i = 0; i < 4 && i < parts.length; i++) {
+                                    String part = parts[i].trim();
+                                    // 跳过非数字部分（比如 "Check"）
+                                    if (!part.matches("\\d+")) {
+                                        break; // 或 continue，根据逻辑决定
                                     }
+                                    int intValue = Integer.parseInt(part); // 解析为 int（支持 0~255）
+                                    endBytes[i] = (byte) (intValue & 0xFF); // 安全转为 byte（保留低8位）
+//                                        System.out.println(endBytes[i]);
                                 }
+                            }
 
-                                initDevice = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout,false, deviceSerialNumber, endBytes);
-                            } else {
-                                initDevice = udpSendUtil.knowTotalReceiveSend(deviceId,cmdId, bytes,replyNumber,timeout,connectType);
-                            }
-                            if (initDevice.getSuccess()) {
-                                break;
-                            } else {
-                                log.info("{}指令初始化失败，正在重试", cmdId);
-                            }
+                            initDevice = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout,false, deviceSerialNumber, endBytes);
+                        } else {
+                            initDevice = udpSendUtil.knowTotalReceiveSend(deviceId,cmdId, bytes,replyNumber,timeout,connectType);
                         }
                     }
 
                     if (!initDevice.getSuccess()) {
                         log.info("{}指令初始化失败", cmdId);
                         failDeal(infoPO, recordPO);
-                        infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+                        setInitStatus(deviceId, 0);
+                        infoService.newReleaseDevice(deviceSerialNumber);
+
                         return;
                     }
                     count++;
@@ -1084,7 +1096,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 } catch (Exception e) {
                     log.info("{}指令初始化异常", cmdId);
                     failDeal(infoPO, recordPO);
-                    infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+                    infoService.newReleaseDevice(deviceSerialNumber);
                     return;
                 }
 
@@ -1092,7 +1104,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (count != cmdIdList.size()) {
                 log.info("自检已停止");
                 updateStop(recordPO, infoPO);
-                infoService.releaseDevice(infoPO.getDeviceSerialNumber());
+                infoService.newReleaseDevice(deviceSerialNumber);
                 return;
             }
             log.info("{}成功", recordPO.getInitCmdName());
@@ -1241,21 +1253,26 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         resultEntity.setDataList(new ArrayList<>());
                     }
 
-                    DetectionLampStatus status = new DetectionLampStatus();
+                    DetectionManyDevicesLampStatus status = new DetectionManyDevicesLampStatus();
                     status.setLabel("氘灯");
                     status.setValue(entity.getLampStatus() ? "亮" : "不亮");
 
-                    resultEntity.getDataList().add(status);
+                    List<DetectionManyDevicesLampStatus> dataList = resultEntity.getDataList();
+                    dataList.add(status);
+
+                    resultEntity.setDataList(dataList);
                 } else if (comId.equals(LiveDetectionCmdEnum.GetWLampStatus.getComId())) {
                     if (resultEntity.getDataList() == null) {
                         resultEntity.setDataList(new ArrayList<>());
                     }
 
-                    DetectionLampStatus status = new DetectionLampStatus();
+                    DetectionManyDevicesLampStatus status = new DetectionManyDevicesLampStatus();
                     status.setLabel("钨灯");
                     status.setValue(entity.getLampStatus() ? "亮" : "不亮");
+                    List<DetectionManyDevicesLampStatus> dataList = resultEntity.getDataList();
+                    dataList.add(status);
 
-                    resultEntity.getDataList().add(status);
+                    resultEntity.setDataList(dataList);
                 }
 
                 param = new Object[]{};
@@ -1263,6 +1280,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 log.error("指令{}，操作过程中数据转换错误，错误信息：{}", comId, e.getMessage());
                 return R.fail("数据转换错误");
             }
+        }
+        device = deviceManager.getDevice(deviceId);
+        resultEntity.setY(resultEntity.getY() + WaveLengthEnum.getName(device.getLuminosityMode()));
+        if (!StringUtils.hasText(resultEntity.getBandwidth())) {
+            resultEntity.setBandwidth("2.0");
         }
         return R.ok(resultEntity);
 
@@ -1373,6 +1395,12 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (!r.getSuccess()) {
                     return R.fail("处理失败！");
                 }
+            }
+            if (comId.equals(DefaultStatusCmdEnum.SetPhotoMode.getComId())) {
+                deviceManager.setLuminosityMode(deviceId, value);
+            }
+            if (comId.equals(DefaultStatusCmdEnum.SetWl.getComId())) {
+                deviceManager.setCurrentWavelength(deviceId, value);
             }
         }
         return R.ok();

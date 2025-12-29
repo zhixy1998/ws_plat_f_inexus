@@ -46,4 +46,7 @@ public class DevOperationInputParam {
 
     @ApiModelProperty("读取值")
     private GetParam readValue;
+    @ApiModelProperty("操作人")
+    private String updateBy;
+
 }

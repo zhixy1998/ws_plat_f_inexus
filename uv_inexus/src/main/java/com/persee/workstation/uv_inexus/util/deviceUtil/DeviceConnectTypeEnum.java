@@ -20,9 +20,9 @@ import java.util.Map;
 public enum DeviceConnectTypeEnum {
 
     //0-串口，1-网口，2-WIFI
-    SERIAL(0, "SERIAL"),
-    ETHERNET(1, "ETHERNET"),
-    WIFI(2, "WIFI");
+    SERIAL(0, "串口"),
+    ETHERNET(1, "网口"),
+    WIFI(2, "Wifi");
 
     // 连接类型
     private final Integer connectType;

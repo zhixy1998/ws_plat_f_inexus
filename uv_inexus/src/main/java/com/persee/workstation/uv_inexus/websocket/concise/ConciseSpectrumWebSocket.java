@@ -1342,6 +1342,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
         devMessageUtil.getMeasureData(command, ip);
         Constants.startTime = LocalDateTime.now();
         isEndData=false;
+        lastChangeParam=null;
 
         SessionState state = sessionStates.get(session.getId());
         if (state != null) {
@@ -1981,8 +1982,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                         // 计算拟合数据
                         ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
                         String s;
-                        if (baselineMap != null && !baselineMap.isEmpty()) {
-                            s = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                        if (baselineMap != null) {
+                            s = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength.toString()), param, 1.0);
                         }else{
                             s = DataCountUtil.countTPercent(null, param, 1.0);
                         }
@@ -2034,8 +2035,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                         // 计算拟合数据
                         ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
                         String yy;
-                        if (baselineMap != null && !baselineMap.isEmpty()) {
-                            yy = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                        if (baselineMap != null) {
+                            yy = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength.toString()), param, 1.0);
                         }else{
                             yy = DataCountUtil.countTPercent(null, param, 1.0);
                         }
@@ -2514,8 +2515,9 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
                 // 计算拟合数据
                 ChangeParam param = calculate(lastChangeParam, changeParam, constrainedWavelength);
                 String s;
-                if (baselineMap != null && !baselineMap.isEmpty()) {
-                    s = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                if (baselineMap != null) {
+                    ChangeParam original = baselineMap.get(constrainedWavelength.toString());
+                    s = DataCountUtil.countTPercent(original, param, 1.0);
                 }else{
                     s = DataCountUtil.countTPercent(null, param, 1.0);
                 }
@@ -2567,8 +2569,8 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
 
 
                 String yy;
-                if (baselineMap != null && !baselineMap.isEmpty()) {
-                    yy = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength), param, 1.0);
+                if (baselineMap != null) {
+                    yy = DataCountUtil.countTPercent(baselineMap.get(constrainedWavelength.toString()), param, 1.0);
                 }else{
                     yy = DataCountUtil.countTPercent(null, param, 1.0);
                 }

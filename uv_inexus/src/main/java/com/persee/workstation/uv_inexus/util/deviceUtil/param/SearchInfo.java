@@ -48,4 +48,7 @@ public class SearchInfo {
     @ApiModelProperty(value = "唯一标识")
     private String deviceId;
 
+    @ApiModelProperty(value = "用户")
+    private String updateBy;
+
 }

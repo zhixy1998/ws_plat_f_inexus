@@ -81,6 +81,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.*;
@@ -2031,27 +2034,20 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             xList.add(split[0]);
             yList.add(split[1]);
         }
-        ResponseEntity<Map> post;
+        Map<String, Object> body = new HashMap<>();
+        body.put("x_data", xList);
+        body.put("y_data", yList);
+        body.put("peak_height", paramDto.getHeight());
+        body.put("valley_height", paramDto.getHeight());
+        body.put("distance", paramDto.getDistance());
+        Map<String, Object> resultMap;
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            Map<String, Object> body = new HashMap<>();
-            body.put("x_data", xList);
-            body.put("y_data", yList);
-            body.put("peak_height", paramDto.getHeight());
-            body.put("valley_height", paramDto.getHeight());
-            body.put("distance", paramDto.getDistance());
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            post = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class);
-        } catch (Exception e) {
-            return Result.fail("算法服务异常,请重启服务");
-        }
-
-        Map<String, Object> resultMap = post.getBody();
-        int code = (int) resultMap.get("code");
-        if (code != 200){
-            String message = resultMap.get("message").toString();
-            return Result.fail(message);
+            resultMap = callPythonService(
+                    pythonPathConstant.getPeakSearchingAndValleySearching(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
@@ -2459,11 +2455,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
                 yList2.add(split[1]);
             }
         }
-        ResponseEntity<Map> post;
-        // 创建请求头
-        HttpHeaders headers = new HttpHeaders();
-        // 设置请求头类型为json
-        headers.setContentType(MediaType.APPLICATION_JSON);
         // 创建请求体
         Map<String, Object> body = new HashMap<>();
         // 将参数添加到请求体中
@@ -2471,23 +2462,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body.put("y1_data", yList1);
         body.put("y2_data", yList2);
         body.put("operation", paramDto.getArithmeticOperators());
+
+        Map<String, Object> resultMap;
         try {
-            // 创建请求对象
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            // 将请求结果转换成对象
-            post = restTemplate.postForEntity(pythonPathConstant.getSpectrumFourOperation(), request, Map.class);
-        } catch (Exception e) {
-            return Result.fail("算法服务异常,请重启服务");
-        }
-        Map<String, Object> resultMap = post.getBody();
-        if (resultMap == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        int code = (int) resultMap.get("code");
-        if (code != 200){
-            String message = resultMap.get("message").toString();
-            return Result.fail(message);
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumFourOperation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         // 对结果进行寻峰计算
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
@@ -2501,36 +2484,22 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body1.put("distance", confVO.getPeakInterval());
 
         Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         Map<String, Object> resultMap2;
         try {
-            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-            ResponseEntity<Map> post1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class);
-            resultMap1=post1.getBody();
-            // 直接拿寻峰数据进行一次寻谷
-            ResponseEntity<Map> post2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class);
-            resultMap2=post2.getBody();
-
-        }catch (Exception e){
-            return Result.fail("算法服务异常,请重启服务");
-        }
-
-        if (resultMap1 == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        if (resultMap2 == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        code = (int) resultMap1.get("code");
-        if (code != 200){
-            String message = resultMap1.get("message").toString();
-            return Result.fail(message);
-        }
-        code = (int) resultMap2.get("code");
-        if (code != 200){
-            String message = resultMap2.get("message").toString();
-            return Result.fail(message);
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
@@ -2652,26 +2621,16 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
-
+        body.put("x_data", xList);
         Map<String, Object> resultMap;
         try {
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> post = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class);
-            resultMap=post.getBody();
-        }catch (Exception e){
-            return Result.fail("算法服务异常,请重启服务");
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumTransformation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        if (resultMap == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        int code = (int) resultMap.get("code");
-        if (code != 200){
-            String message = resultMap.get("message").toString();
-            return Result.fail(message);
-        }
-
-        body.put("x_data", xList);
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
@@ -2680,41 +2639,24 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-
         Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         Map<String, Object> resultMap2;
         try {
-            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-            ResponseEntity<Map> post1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class);
-            // 直接拿寻峰数据进行一次寻谷
-            ResponseEntity<Map> post2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class);
-            if (!post1.getStatusCode().is2xxSuccessful() || !post2.getStatusCode().is2xxSuccessful()) {
-                return Result.fail(YamlMessageSource.getMessageStatic("0000003E"));
-            }
-            resultMap1=post1.getBody();
-            resultMap2=post2.getBody();
-        }catch (Exception e){
-            return Result.fail("算法服务异常,请重启服务");
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        if (resultMap2 == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        code = (int) resultMap1.get("code");
-        if (code != 200){
-            String message = resultMap1.get("message").toString();
-            return Result.fail(message);
-        }
-        if (resultMap2 == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        code = (int) resultMap2.get("code");
-        if (code != 200){
-            String message = resultMap2.get("message").toString();
-            return Result.fail(message);
-        }
-
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2821,26 +2763,15 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body.put("y_data", yList);
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
-
         Map<String, Object> resultMap;
-        Map<String, Object> resultMap1;
-        Map<String, Object> resultMap2;
         try {
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            resultMap = restTemplate.postForEntity(pythonPathConstant.getSmoothed(), request, Map.class).getBody();
-        }catch (Exception e){
-            return Result.fail("算法服务异常,请重启服务");
+            resultMap = callPythonService(
+                    pythonPathConstant.getSmoothed(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        if (resultMap == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        int code = (int) resultMap.get("code");
-        if (code != 200){
-            String message = resultMap.get("message").toString();
-            return Result.fail(message);
-        }
-
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2850,32 +2781,24 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
+        Map<String, Object> resultMap1;
         try {
-            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-            resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-            resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
-        }catch (Exception e){
-            return Result.fail("算法服务异常,请重启服务");
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        if (resultMap1 == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        code = (int) resultMap1.get("code");
-        if (code != 200){
-            String message = resultMap1.get("message").toString();
-            return Result.fail(message);
-        }
-        if (resultMap2 == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        code = (int) resultMap2.get("code");
-        if (code != 200){
-            String message = resultMap2.get("message").toString();
-            return Result.fail(message);
-        }
-
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2987,21 +2910,13 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         body.put("polyorder", paramDto.getCoefficient());
         body.put("deriv", paramDto.getDifferentialNum());
         Map<String, Object> resultMap;
-        Map<String, Object> resultMap1;
-        Map<String, Object> resultMap2;
         try {
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            resultMap = restTemplate.postForEntity(pythonPathConstant.getDifferentiated(), request, Map.class).getBody();
-        }catch (Exception e){
-            return Result.fail("算法服务异常,请重启服务");
-        }
-        if (resultMap == null){
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        int code = (int) resultMap.get("message");
-        if (code != 200){
-            String message= resultMap.get("message").toString();
-            return Result.fail(message);
+            resultMap = callPythonService(
+                    pythonPathConstant.getDifferentiated(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
@@ -3012,27 +2927,24 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
+        Map<String, Object> resultMap1;
         try {
-            HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-            resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-            resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
-        } catch (Exception e){
-            return Result.fail("算法服务异常,请重启服务");
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        if (resultMap1 == null || resultMap2 == null){
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        int code1 = (int) resultMap1.get("message");
-        if (code1 != 200){
-            String message= resultMap1.get("message").toString();
-            return Result.fail(message);
-        }
-        int code2 = (int) resultMap2.get("message");
-        if (code2 != 200){
-            String message= resultMap2.get("message").toString();
-            return Result.fail(message);
-        }
-
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -3160,24 +3072,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", type);
-
         Map<String, Object> resultMap;
-        Map<String, Object> resultMap1;
-        Map<String, Object> resultMap2;
-
         try {
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
-        } catch (Exception e) {
-            return Result.fail("算法服务异常,请重启服务");
-        }
-        if (resultMap == null){
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        int code = (int) resultMap.get("code");
-        if (code != 200) {
-            String message = (String) resultMap.get("message");
-            return Result.fail(message);
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumTransformation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -3187,25 +3089,23 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
+        Map<String, Object> resultMap1;
         try {
-            resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request1, Map.class).getBody();
-            resultMap2 = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request1, Map.class).getBody();
-        } catch (Exception e) {
-            return Result.fail("算法服务异常,请重启服务");
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        if (resultMap1 == null || resultMap2 == null){
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
-        }
-        int code1 = (int) resultMap1.get("code");
-        if (code1 != 200) {
-            String message = (String) resultMap1.get("message");
-            return Result.fail(message);
-        }
-        int code2 = (int) resultMap2.get("code");
-        if (code2 != 200) {
-            String message = (String) resultMap2.get("message");
-            return Result.fail(message);
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         List<FPeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
@@ -4055,7 +3955,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         if (!StringUtils.hasText(sampleId)) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment("31-U1704-01-0048");
+        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment("34-U1702-01-0002");
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         // 将任务中的校零参数取出
@@ -4084,6 +3984,14 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             params.remove(0);
             originData.remove(0);
         }
+
+        Double s = 12107.0;
+        Double ans = formulaUtil.calculateWl(s, "34-U1702-01-0002");
+        Double wavelength = formulaUtil.calculateWavelength(s, linearSegment);
+        System.out.println("---------------"+linearSegment.toString());
+        System.out.println("---------------"+ans);
+        System.out.println("++++++++++++++"+wavelength);
+
         return Result.ok(result);
 
     }
@@ -4499,6 +4407,45 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         }
 
         return Result.ok();
+    }
+
+    /**
+     * 调用Python服务
+     * @param url
+     * @param requestBody
+     * @return
+     */
+    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            Map<String, Object> responseBody = response.getBody();
+
+            // 检查响应体是否为空
+            if (responseBody == null) {
+                throw new RuntimeException(YamlMessageSource.getMessageStatic("00000032")); // "算法服务返回异常"
+            }
+
+            Integer code = (Integer) responseBody.get("code");
+            if (code == null || code != 200) {
+                String message = (String) responseBody.get("message");
+                String errorMsg = StringUtils.hasText(message) ? message : "未知错误";
+                throw new RuntimeException(errorMsg);
+            }
+
+            return responseBody;
+
+        } catch (ResourceAccessException ex) {
+            throw new RuntimeException("算法服务异常,请重启服务");
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            throw new RuntimeException("算法服务异常：" + ex.getStatusCode());
+        } catch (Exception e) {
+            // 兜底异常（包括上面 throw 的 RuntimeException）
+            throw e;
+        }
     }
 
 }

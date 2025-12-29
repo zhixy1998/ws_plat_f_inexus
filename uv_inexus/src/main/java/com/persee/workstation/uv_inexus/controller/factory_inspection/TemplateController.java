@@ -13,10 +13,8 @@
 package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateQeqDto;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateResponseDto;
-import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateUpdateRequest;
+import com.persee.workstation.uv_inexus.component.ExcelDynamicMerger;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelImportService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
@@ -25,6 +23,7 @@ import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,6 +47,8 @@ public class TemplateController {
     private ExcelCellLocator excelCellLocator;
     @Autowired
     private ExcelCellEditor excelCellEditor;
+    @Autowired
+    private ExcelDynamicMerger excelDynamicMerger;
 
     //    @Autowired
 //    private ExcelExportService excelExportService;
@@ -89,6 +90,7 @@ public class TemplateController {
             @RequestParam("groupByField") String groupByField) {
         return templateService.getGroupedData(templateCode, groupByField);
     }
+
     @GetMapping("/data/list")
     @ApiOperation("查看模板")
     public Result<Map<String, List<Map<String, Object>>>> getGroupedData(
@@ -127,7 +129,7 @@ public class TemplateController {
 //            }
 
             // 调用服务创建模板
-            Result<String > result = templateService.createTemplate(request);
+            Result<String> result = templateService.createTemplate(request);
 
             // 记录日志
             if (result.getCode() == 200) {
@@ -207,10 +209,45 @@ public class TemplateController {
     public Result<Page<TemplateResponseDto>> getTemplateList(@RequestBody TemplateQeqDto templateQeqDto) {
         return templateService.getTemplateList(templateQeqDto);
     }
+
     @GetMapping("/template/delete")
     @ApiOperation("删除模板")
     public Result<String> deleteTemplate(@RequestParam("templateCode") String templateCode) {
         return templateService.deleteTemplate(templateCode);
     }
+
+    /**
+     * 批量删除模板
+     *
+     * @param
+     * @return
+     */
+    @PostMapping("/batch-delete")
+    @ApiOperation("批量删除模板")
+    public Result<String> batchDeleteTemplate(@RequestBody BatchDelDto batchDelDto) {
+        List<String> list = batchDelDto.getTemplateCodes();
+        if (CollectionUtils.isEmpty(list)) {
+            return Result.fail("请选择要删除的模板");
+        }
+        return templateService.batchDeleteTemplate(list);
+    }
+
+    /**
+     * 下拉框列表
+     */
+    @GetMapping("/material/options")
+    @ApiOperation("下拉框列表")
+    public Result<List<Map<String, String>>> getMaterialOptions(@RequestParam String id) {
+        return templateService.getMaterialOptions(id);
+    }
+//    /**
+//     * 新增未知检测项，要知道是哪个检测类别的
+//     */
+//    public Result<String> addUnknownItem(@RequestBody UnknownItemDto unknownItemDto) {
+//        return templateService.addUnknownItem(unknownItemDto);
+//    }
+
+
+
 
 }

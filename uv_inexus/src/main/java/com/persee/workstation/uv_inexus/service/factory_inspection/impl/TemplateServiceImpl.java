@@ -17,14 +17,8 @@ import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateQeqDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateResponseDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateUpdateRequest;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
-import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
-import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
-import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
-import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelDataAssetService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.TaskExecutionDetailService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
+import com.persee.workstation.uv_inexus.po.factory_inspection.*;
+import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
 import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import com.persee.workstation.uv_inexus.util.ExcelUpdateNotifier;
@@ -81,6 +75,10 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     @Autowired
     @Lazy
     private TaskManagementService taskManagementService;
+    @Autowired
+    private CalArtifactsService calArtifactsService;
+    @Autowired
+    private CalStdCatsService calStdCatsService;
     private final Map<String, Integer> operationCount = new ConcurrentHashMap<>();
 
 
@@ -116,6 +114,14 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         if (StringUtils.equals(request.getType(), TEMPLATE_CREATE.getCode())) {
             log.info("创建模板开始");
             try {
+
+                // 验证模板名称是否重复
+                LambdaQueryWrapper<ExcelTemplate> wrapper1 = new LambdaQueryWrapper<>();
+                wrapper1.eq(ExcelTemplate::getTemplateName, request.getTemplateName());
+                ExcelTemplate one = this.getOne(wrapper1);
+                if (one != null) {
+                    return Result.fail("模板名称重复！！");
+                }
                 String templateCode = "TEMP_" + System.currentTimeMillis();
 
                 // 创建新模板
@@ -161,10 +167,10 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     asset.setImportStatus("SUCCESS");
                     LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
                     queryWrapper.eq(TaskExecutionDetail::getItemId, MapUtils.getString(dataMap, "id"))
-                                    .isNull(TaskExecutionDetail::getTaskId);
+                            .isNull(TaskExecutionDetail::getTaskId);
                     //这块查出来是两个，一个校零，一个测量
                     List<TaskExecutionDetail> detailList = detailService.list(queryWrapper);
-                    if (CollectionUtils.isNotEmpty(detailList)){
+                    if (CollectionUtils.isNotEmpty(detailList)) {
                         for (TaskExecutionDetail detail : detailList) {
                             detail.setItemId(asset.getId());
                             detail.setId(IdGeneratorUtil.generateId());
@@ -438,10 +444,39 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     }
 
     @Override
-    public Result<String > deleteTemplate(String templateCode) {
+    /**
+     * 更新单元格值 - 支持通过项目名称和特征值定位
+     *
+     * @param sheet Excel工作表
+     * @param excelCellLocator 单元格定位器
+     * @param excelCellEditor 单元格编辑器
+     * @param valueType 表头名称
+     * @param projectName 项目名称（第一列）
+     * @param featureValue 特征值（第二列）
+     * @param cellValue 要设置的值
+     */
+    public void updateCellValue(Sheet sheet, ExcelCellLocator excelCellLocator,
+                                ExcelCellEditor excelCellEditor, String valueType,
+                                String projectName, String featureValue, String cellValue, int positionIndex) {
+        // 查找匹配的单元格位置
+        List<ExcelCellLocator.CellPosition> positions = excelCellLocator.findCellPositions(
+                sheet, valueType, projectName, featureValue);
+
+        if (positions.isEmpty()) {
+            log.warn("未找到匹配的位置: {} - {} - {}", valueType, projectName, featureValue);
+            return;
+        }
+
+        // 设置第一个匹配的位置
+        ExcelCellLocator.CellPosition position = positions.get(positionIndex);
+        excelCellEditor.setCellValue(sheet, position.getRow(), position.getCol(), cellValue);
+    }
+
+    @Override
+    public Result<String> deleteTemplate(String templateCode) {
         ExcelTemplate template = this.getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, templateCode));
         TaskManagement one = taskManagementService.getOne(new LambdaQueryWrapper<TaskManagement>().eq(TaskManagement::getUseTemplate, template.getId()));
-        if (one != null){
+        if (one != null) {
             return Result.fail("此模板正在使用中，请先删除任务！！！");
         }
 
@@ -462,6 +497,79 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             }
         }
         return b ? Result.ok() : Result.fail("内置模板，不可删除");
+    }
+
+    @Override
+    public Result<String> batchDeleteTemplate(List<String> list) {
+        LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(ExcelTemplate::getTemplateCode, list);
+
+        //批量删除模板，list是模板的templatecode
+
+        boolean b = this.remove(wrapper);
+        return b ? Result.ok() : Result.fail("内置模板，不可删除");
+    }
+
+    @Override
+    public Result<List<Map<String, String>>> getMaterialOptions(String id) {
+        CalStdCats cats = calStdCatsService.getById(id);
+        if (cats != null) {
+            List<CalArtifacts> list = calArtifactsService.list(new LambdaQueryWrapper<CalArtifacts>().eq(CalArtifacts::getCategoryId, cats.getId()));
+            if (CollectionUtils.isNotEmpty(list)) {
+                List<Map<String, String>> collect = list.stream().map(c -> {
+                    Map<String, String> map = new HashMap<>();
+                    map.put("id", c.getId());
+                    map.put("name", c.getName());
+                    map.put("characteristicValue", c.getCharacteristicValue());
+                    map.put("standardValue", c.getStandardValue());
+                    return map;
+                }).collect(Collectors.toList());
+                Map<String, String> m = new HashMap<>();
+                m.put("id", cats.getId());
+                m.put("name", cats.getName());
+                m.put("characteristicValue", cats.getCharacteristicValue());
+                m.put("standardValue", cats.getStandardValue());
+                collect.add(m);
+                return Result.ok(collect);
+            }
+            if (CollectionUtils.isEmpty(list)) {
+                ArrayList<Map<String, String>> maps = new ArrayList<>();
+                HashMap<String, String> map = new HashMap<>();
+                map.put("id", cats.getId());
+                map.put("name", cats.getName());
+                map.put("characteristicValue", cats.getCharacteristicValue());
+                map.put("standardValue", cats.getStandardValue());
+                maps.add(map);
+                return Result.ok(maps);
+            }
+        }
+        if (cats == null) {
+            CalArtifacts calArtifacts = calArtifactsService.getById(id);
+            if (calArtifacts != null) {
+                ArrayList<Map<String, String>> maps = new ArrayList<>();
+                HashMap<String, String> map = new HashMap<>();
+                map.put("id", calArtifacts.getId());
+                map.put("name", calArtifacts.getName());
+                map.put("characteristicValue", calArtifacts.getCharacteristicValue());
+                map.put("standardValue", calArtifacts.getStandardValue());
+                maps.add(map);
+                LambdaQueryWrapper<CalArtifacts> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(CalArtifacts::getCategoryId, calArtifacts.getCategoryId());
+                List<CalArtifacts> list = calArtifactsService.list(wrapper);
+                if (CollectionUtils.isNotEmpty(list)) {
+                    for (CalArtifacts artifact : list) {
+                        HashMap<String, String> temp = new HashMap<>();
+                        temp.put("id", artifact.getId());
+                        temp.put("name", artifact.getName());
+                        temp.put("characteristicValue", artifact.getCharacteristicValue());
+                        temp.put("standardValue", artifact.getStandardValue());
+                        maps.add(temp);
+                    }
+                }
+                return Result.ok(maps);
+            }
+        }
+        return Result.fail(null);
     }
 
     @Override
@@ -967,6 +1075,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     @Override
     public Result<Map<String, List<Map<String, Object>>>> getGroupedData(String templateCode, String groupByField) {
         try {
+            LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
+            List<ExcelTemplate> list = this.list(wrapper);
+
+
             // 获取结构化数据
             Result<List<Map<String, Object>>> structuredDataResult = getStructuredData(templateCode);
             if (structuredDataResult.getCode() != 200) {
@@ -982,14 +1095,40 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                             LinkedHashMap::new,
                             Collectors.toList()
                     ));
-
-            return Result.ok(groupedData);
+            List<Map<String, Object>> maps = generateDropdownOptions();
+            groupedData.put("dropdownOptions", maps);
+            Result<Map<String, List<Map<String, Object>>>> result = new Result<>();
+            if (!list.isEmpty()) {
+                result.setObj(new Object[]{list.get(0)});
+            }
+            result.setData(groupedData);
+            result.setCode(200);
+            return result;
         } catch (Exception e) {
             log.error("获取分组数据失败", e);
             return Result.fail("获取分组数据失败: " + e.getMessage());
         }
     }
 
+    /**
+     * 生成下拉框选项
+     *
+     * @return 下拉选项列表
+     */
+    private List<Map<String, Object>> generateDropdownOptions() {
+        List<Map<String, Object>> options = new ArrayList<>();
+        Map<String, Object> dropdownMap = new HashMap<>();
+
+        // 配置下拉选项
+        dropdownMap.put("光度模式", Arrays.asList("T%", "Abs", "Es"));
+        dropdownMap.put("扫描速度", Arrays.asList("极慢", "慢速", "中速", "快速", "极快"));
+        dropdownMap.put("光谱带宽", Arrays.asList("0.5", "1.0", "2.0", "4.0"));
+        dropdownMap.put("响应时间", Arrays.asList("1", "2", "3"));
+        dropdownMap.put("是否为光谱扫描", Arrays.asList("是", "否"));
+        dropdownMap.put("分析方法", Arrays.asList("寻峰", "求平均", "多次测量", "最大最小值差", "求半峰宽", "求最大偏移量", "求漂移"));
+        options.add(dropdownMap);
+        return options;
+    }
 
     private boolean shouldSaveToFile(String fileName) {
         int count = operationCount.getOrDefault(fileName, 0) + 1;

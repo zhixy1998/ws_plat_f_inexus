@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.factory_inspection;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.persee.workstation.uv_inexus.dto.factory_inspection.BatchDelDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalArtifactsSaveDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.StandardSubstanceDto;
@@ -25,4 +26,6 @@ public interface CalArtifactsService extends IService<CalArtifacts> {
     boolean delCalArtifacts(String id);
 
     Result<IPage<StandardSubstanceDto>> listCalArtifacts(QueryCalStdCatsDto dto);
+
+    Result<String> batchDelCalStdCats(BatchDelDto ids);
 }
