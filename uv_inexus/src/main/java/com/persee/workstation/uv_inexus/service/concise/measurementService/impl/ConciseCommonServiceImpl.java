@@ -500,9 +500,15 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             //参数不能为空
             return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
         }
+        FMeasureMethod method1 = fMeasureMethodService.getById(updateMethodDto.getMethodId());
+        if(method1 == null){
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
         LambdaQueryWrapper<FMeasureMethod> wrapper = new LambdaQueryWrapper<>();
         wrapper.notIn(FMeasureMethod::getId, updateMethodDto.getMethodId())
-                .eq(FMeasureMethod::getMethodName, updateMethodDto.getMethodName());
+                .eq(FMeasureMethod::getMethodName, updateMethodDto.getMethodName())
+                .like(FMeasureMethod::getMeasurementType, method1.getMeasurementType());
         long count = fMeasureMethodService.count(wrapper);
         if (count > 0) {
             //方法名称重复
