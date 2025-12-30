@@ -2107,7 +2107,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             BeanUtils.copyProperties(param, countDataInfo);
             JSONObject resultJson = JSONObject.parseObject(result);
 
-            if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
+            if (!resultJson.get("code").equals("200") && !resultJson.get("code").equals(200)) {
                 return R.fail(YamlMessageSource.getMessageStatic("00300007",resultJson.get("message")));
             }
             countDataInfo.setCountValue(resultJson.get("result").toString());

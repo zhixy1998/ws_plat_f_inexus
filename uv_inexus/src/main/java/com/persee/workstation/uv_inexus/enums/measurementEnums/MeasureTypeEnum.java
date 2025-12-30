@@ -9,6 +9,9 @@
 
 package com.persee.workstation.uv_inexus.enums.measurementEnums;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public enum MeasureTypeEnum {
 
     PHOTOMETRIC_MEASUREMENT("光度测量"),
@@ -40,6 +43,16 @@ public enum MeasureTypeEnum {
             }
         }
         return null;
+    }
+
+    // 返回四个测量的描述集合
+    public static List<String> getMeasureTypeDescriptions() {
+        ArrayList<String> measureTypeEnums = new ArrayList<>();
+        measureTypeEnums.add(PHOTOMETRIC_MEASUREMENT.getDescription());
+        measureTypeEnums.add(QUANTITATIVE_MEASUREMENT.getDescription());
+        measureTypeEnums.add(SPECTRAL_SCAN.getDescription());
+        measureTypeEnums.add(TIME_SCAN.getDescription());
+        return measureTypeEnums;
     }
 
 
