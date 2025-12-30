@@ -1951,10 +1951,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 row.createCell(8).setCellValue(method.getMethodCreateTime() != null ?
                         method.getMethodCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
                 row.createCell(9).setCellValue(method.getMethodCreator());
-                row.createCell(10).setCellValue(method.getField2());
-                row.createCell(11).setCellValue(method.getField3());
-                row.createCell(12).setCellValue(method.getField4());
-                row.createCell(13).setCellValue(method.getField5());
+                row.createCell(10).setCellValue(method.getMethodUseTime());
             }
 
             // 自动调整列宽
@@ -2015,7 +2012,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     }
 
                     method.setMethodCreator(getCellValueAsString(row.getCell(9)));
-                    method.setField2(getCellValueAsString(row.getCell(10)));
+                    String useTimeStr = getCellValueAsString(row.getCell(10));
+                    if (useTimeStr != null && !useTimeStr.isEmpty()) {
+                        try {
+                            LocalDateTime useTime = LocalDateTime.parse(useTimeStr,
+                                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                            method.setMethodCreateTime(useTime);
+                        } catch (Exception e) {
+                            // 时间格式不正确，跳过设置
+                        }
+                    }
                     method.setField3(getCellValueAsString(row.getCell(11)));
                     method.setField4(getCellValueAsString(row.getCell(12)));
                     method.setField5(getCellValueAsString(row.getCell(13)));

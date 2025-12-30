@@ -66,10 +66,11 @@ public class TMeasureMethod {
     @TableField("method_creator")
     private String methodCreator;
 
-    // 预留字段2 ~ 预留字段5
-    @TableField("field2")
-    private String field2;
+    // 方法使用时间
+    @TableField("method_use_time")
+    private LocalDateTime methodUseTime;
 
+    // 预留字段3 ~ 预留字段5
     @TableField("field3")
     private String field3;
 

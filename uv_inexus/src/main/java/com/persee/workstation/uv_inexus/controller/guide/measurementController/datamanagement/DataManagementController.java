@@ -11,7 +11,6 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController.
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.Box;
-import com.persee.workstation.uv_inexus.dto.concise.common.CopyParam;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
@@ -20,8 +19,10 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.UnFinishTasksAndNum;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
-
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
+import com.persee.workstation.uv_inexus.vo.concise.common.MethodStatisticVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.ProjectStatisticVo;
+import com.persee.workstation.uv_inexus.vo.concise.common.TaskStatisticVo;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,18 +37,32 @@ public class DataManagementController {
     private DataManagementService dataManagementService;
 
 
-
-
     @PostMapping("Tasks")
     @ApiOperation("查询已完成和未完成任务")
     public Result<UnFinishTasksAndNum> unFinishTasksAndNum(@RequestBody UnFinishTasksAndNumParam unFinishTasksAndNumParam) {
         return dataManagementService.getTasks(unFinishTasksAndNumParam);
+    }
 
+    @PostMapping("/queryUserProjectStatistics")
+    @ApiOperation("查询用户项目统计")
+    public Result queryUserProjectStatistics(@RequestBody ProjectStatisticVo vo) {
+        return dataManagementService.queryUserProjectStatistics(vo);
+    }
 
+    @PostMapping("/queryUserTaskStatistics")
+    @ApiOperation("查询用户任务统计")
+    public Result queryUserTaskStatistics(@RequestBody TaskStatisticVo vo) {
+        return dataManagementService.queryUserTaskStatistics(vo);
+    }
+
+    @PostMapping("/queryUserMethodStatistics")
+    @ApiOperation("查询用户方法统计")
+    public Result queryUserMethodStatistics(@RequestBody MethodStatisticVo vo) {
+        return dataManagementService.queryUserMethodStatistics(vo);
     }
 
     @GetMapping("/methodsAndTasksNum")
-    @ApiOperation("总任务数，已完成任务数，已完成方法数，已完成任务数")
+    @ApiOperation("总任务数，已完成任务数，已完成方法数")
     public Result<MethodAndTasks> getMethodsAndTasksNum(@RequestParam("updateBy") String userKey) {
         return dataManagementService.getMethodsAndTasksNum(userKey);
     }

@@ -13,8 +13,14 @@ import lombok.Data;
 
 @Data
 public class UnFinishTasksAndNumParam {
+    // 搜索条件
     private String selectKey;
+    // 状态 (0:未完成, 1:已完成)
     private String status;
+    // 测量类型
     private String taskType;
+    // 显示条数
     private Integer needSelectNum;
+    // 用户id
+    private Integer systemIdentityId;
 }

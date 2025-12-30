@@ -2469,7 +2469,7 @@ public class ConciseSpectrumWebSocket extends TextWebSocketHandler {
     /**
      * 计算光度模式的Abs/T%
      */
-    private void calcOnePoint(FSpectrumParameter spectrumParameter,
+        private void calcOnePoint(FSpectrumParameter spectrumParameter,
                               List<ChangeParam> baselineCopy,
                               List<Double> x,
                               List<Double> y,

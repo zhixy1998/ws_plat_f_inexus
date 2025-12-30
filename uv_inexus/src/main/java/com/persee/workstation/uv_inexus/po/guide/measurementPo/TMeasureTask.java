@@ -83,9 +83,13 @@ public class TMeasureTask{
     @TableField(typeHandler = JacksonTypeHandler.class, value = "image_data")
     private String imageData;
 
-    // 是否删除
+    // 是否删除(0:未删除 1:已删除)
     @TableField("is_delete")
     private String isDelete;
+
+    // 是否保存(0:未保存 1:已保存)
+    @TableField("is_save")
+    private String isSave;
 
     // 表头信息
     @TableField("table_info")

@@ -54,13 +54,15 @@ public class TMeasureProject{
     @TableField("Last_updated_time")
     private LocalDateTime lastUpdatedTime;
 
-    // 预留字段3 ~ 预留字段5
-    @TableField("field3")
-    private String field3;
+    // 主责组
+    @TableField("owner_group_id")
+    private String ownerGroupId;
 
+    // 预留字段4
     @TableField("field4")
     private String field4;
 
+    // 预留字段5
     @TableField("field5")
     private String field5;
 
