@@ -278,6 +278,16 @@ public class RationServiceConciseImpl implements RationConciseService {
             if (StringUtils.hasText(oldTask.getZeroParam())){
                 task.setZeroParam(oldTask.getZeroParam());
             }
+
+            if (StringUtils.hasText(oldTask.getFittingParam())){
+
+                FMeasureMethod method = fMeasureMethodService.getById(methodId);
+                FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
+                if (parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+                    task.setFittingParam(oldTask.getFittingParam());
+                }
+
+            }
         }
 //        else {
 //            List<FHeadVO> standHead = fMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
