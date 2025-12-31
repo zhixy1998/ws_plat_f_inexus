@@ -18,20 +18,28 @@ import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelImportService;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.WorkbookDataService;
 import com.persee.workstation.uv_inexus.util.ExcelCellEditor;
 import com.persee.workstation.uv_inexus.util.ExcelCellLocator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Slf4j
 @RestController
@@ -49,6 +57,8 @@ public class TemplateController {
     private ExcelCellEditor excelCellEditor;
     @Autowired
     private ExcelDynamicMerger excelDynamicMerger;
+    @Autowired
+    private WorkbookDataService workbookDataService;
 
     //    @Autowired
 //    private ExcelExportService excelExportService;
@@ -64,7 +74,7 @@ public class TemplateController {
     @GetMapping("/buildResultTemplate")
     @ApiOperation("构建结果模板")
     Result buildResultTemplate(String templateCode) {
-        return templateService.buildResultTemplate(templateCode);
+        return templateService.buildResultTemplate(templateCode,null);
     }
 
     @GetMapping("/export")
@@ -247,7 +257,69 @@ public class TemplateController {
 //        return templateService.addUnknownItem(unknownItemDto);
 //    }
 
+    @GetMapping("/lll")
+    public ResponseEntity<String> exportExcel(HttpServletResponse response) {
+        Map<Integer, List<Object>> columnData = buildColumnData();
 
+        try (FileInputStream fis = new FileInputStream("D:\\exp333ile.xlsx")) {
+            Workbook workbook = new XSSFWorkbook(fis);
+            int lastRow = workbook.getSheet("波长示值误差与重复性校验").getLastRowNum();
+            // 在第10行插入数据（rowIndex=10）
+//            excelDynamicMerger.insertDynamicRowWithMerge(workbook, "波长示值误差与重复性校验", 10, columnData,mergeConfig);
+// Step 3：增强插入逻辑 (添加边界校验)
+            excelDynamicMerger.insertDynamicMergedRow(
+                    workbook,
+                    "波长示值误差与重复性校验",
+                    lastRow + 1,          // 插入行位置
+                    columnData
+            );
+            // 配置响应头
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=exported_file.xlsx");
+
+            // 写入响应流
+            try (OutputStream out = response.getOutputStream()) {
+                workbook.write(out);
+            }
+
+            return ResponseEntity.ok("导出成功");
+        } catch (Exception e) {
+            log.error("导出Excel文件时发生异常", e);
+        }
+        return null;
+    }
+
+    /**
+     * 构造列数据（键：Excel列索引，值：该列的所有单元格数据）
+     * 示例：第0列合并6行，值为"项目A"；第1列6个特征值...
+     */
+
+    // Step 2：完善列数据构建
+    private Map<Integer, List<Object>> buildColumnData() {
+        Map<Integer, List<Object>> data = new HashMap<>(12);
+
+        // 项目名称列 (跨6行合并)
+        data.put(0, Collections.singletonList("9595"));
+
+        // 特征值列 (6个字符串)
+        data.put(1, Arrays.asList("222.7", "333.8", "444.5", "555.0", "666.4", "777.0"));
+
+        // 空列处理 (使用nCopies保证行数一致)
+        IntStream.rangeClosed(2, 7).forEach(i ->
+                data.put(i, Collections.nCopies(6, ""))
+        );
+
+        // 动态转换数值类型
+        data.put(8, Arrays.asList(3, 4, 5, 6, 7, 3).stream()
+                .map(Object::toString)
+                .collect(Collectors.toList()));
+        data.put(9, Arrays.asList(2, 2, 2, 2, 2, 2).stream()
+                .map(Object::toString)
+                .collect(Collectors.toList()));
+// 空列处理 (使用nCopies保证行数一致)
+        data.put(10, Collections.nCopies(6, ""));
+        return data;
+    }
 
 
 }

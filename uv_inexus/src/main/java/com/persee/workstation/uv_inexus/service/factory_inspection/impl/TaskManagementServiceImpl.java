@@ -394,7 +394,11 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         try {
             if (DEFAULT_TASK.getCode().equals(taskId)) {
                 String defaultTaskId = defaultTaskManager.getDefaultTaskId();
-                return Result.ok(this.getById(defaultTaskId));
+                TaskManagement management = this.getById(defaultTaskId);
+                ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
+                management.setTemplateName(excelTemplate.getTemplateName());
+                management.setTemplateCode(excelTemplate.getTemplateCode());
+                return Result.ok(management);
             }
             TaskManagement management = this.getById(taskId);
             ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());

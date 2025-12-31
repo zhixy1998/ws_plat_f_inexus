@@ -29,7 +29,8 @@ public class ExcelDynamicMerger {
                                        Map<Integer, List<Object>> columnData) {
         Sheet sheet = workbook.getSheet(sheetName);
         if (sheet == null) return;
-
+// 在方法开始处添加标志位
+        boolean hasMerged = false;
         // 1. 确定最大行数（各列数据长度的最大值）
         int maxRows = columnData.values().stream().mapToInt(List::size).max().orElse(0);
 
@@ -41,7 +42,7 @@ public class ExcelDynamicMerger {
         for (int i = 0; i < maxRows; i++) {
             Row newRow = sheet.createRow(rowIndex + i);
             newRow.setRowStyle(templateStyle); // 继承模板行样式
-
+            boolean a=true;
             // 逐列处理
             for (Map.Entry<Integer, List<Object>> entry : columnData.entrySet()) {
                 int colIndex = entry.getKey();
@@ -57,14 +58,18 @@ public class ExcelDynamicMerger {
 //                setCellValueWithFormula(newCell, values, i, templateRow, rowIndex + i, colIndex);
                 // 处理合并单元格（仅当列数据长度为1时，合并当前列的所有行）
                 if (values.size() == 1) {
-                    mergeColumnCells(sheet, rowIndex, maxRows, colIndex); //  修正：合并 maxRows 行
+                    // 在循环中判断是否已合并
+                    if (!hasMerged) {
+                        mergeColumnCells(sheet, rowIndex, maxRows, colIndex);
+                        hasMerged = true;
+                    }
+//                        mergeColumnCells(sheet, rowIndex, maxRows, colIndex); //  修正：合并 maxRows 行
+
                     // 只在第一行设置值
                     if (i == 0) { // 第一行
                         setCellValueWithFormula(newCell, values, 0, templateRow, rowIndex, colIndex);
-                    } else {
-                        // 其他行不设值，保持空，让合并生效
-                        newCell.setCellStyle(templateStyle); // 继承样式即可
                     }
+
                 } else {
                     // 非合并列，正常设置值
                     setCellValueWithFormula(newCell, values, i, templateRow, rowIndex + i, colIndex);
@@ -73,7 +78,7 @@ public class ExcelDynamicMerger {
         }
 
         // 4. 调整已有合并区域（插入新行后，修复跨越新行的合并区域）
-        adjustExistingMergedRegions(sheet, rowIndex);
+//        adjustExistingMergedRegions(sheet, rowIndex);
         // 5. 计算所有公式
         workbook.setForceFormulaRecalculation(true);
     }
@@ -95,30 +100,90 @@ public class ExcelDynamicMerger {
         return null;
     }
 
+    private void removeEmptyRowsAndColumns(Sheet sheet, int maxDataRow, int maxDataCol) {
+        // 删除空行（从最后一行开始向前遍历）
+        for (int i = sheet.getLastRowNum(); i > maxDataRow; i--) {
+            Row row = sheet.getRow(i);
+            if (row == null || isRowEmpty(row)) {
+                sheet.removeRow(row);
+            }
+        }
+
+        // 删除空列（从最后一列开始向前遍历）
+        for (int j = sheet.getRow(0).getLastCellNum() - 1; j > maxDataCol; j--) {
+            if (isColumnEmpty(sheet, j)) {
+                for (Row row : sheet) {
+                    if (row != null) {
+                        Cell cell = row.getCell(j);
+                        if (cell != null) {
+                            row.removeCell(cell);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isRowEmpty(Row row) {
+        if (row == null) return true;
+        for (Cell cell : row) {
+            if (cell != null && cell.getCellType() != CellType.BLANK) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isColumnEmpty(Sheet sheet, int colIndex) {
+        for (Row row : sheet) {
+            if (row != null) {
+                Cell cell = row.getCell(colIndex);
+                if (cell != null && cell.getCellType() != CellType.BLANK) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /**
      * 合并列的所有行（生成 CellRangeAddress 并设置合并）
      */
     private void mergeColumnCells(Sheet sheet, int startRow, int rowCount, int colIndex) {
+        if (rowCount <= 1) return; // 只有一行不需要合并
+
+        int endRow = startRow + rowCount - 1;
+
         // 检查是否已存在相同区域的合并
-        boolean alreadyMerged = false;
-        for (CellRangeAddress region : sheet.getMergedRegions()) {
-            if (region.getFirstRow() == startRow &&
-                    region.getLastRow() == startRow + rowCount - 2 &&
-                    region.getFirstColumn() == colIndex &&
-                    region.getLastColumn() == colIndex) {
-                alreadyMerged = true;
-                break;
+//        for (int i = sheet.getNumMergedRegions() - 1; i >= 0; i--) {
+//            CellRangeAddress region = sheet.getMergedRegion(i);
+//            if (region.getFirstRow() == startRow &&
+//                    region.getLastRow() == endRow &&
+//                    region.getFirstColumn() == colIndex &&
+//                    region.getLastColumn() == colIndex) {
+//                return; // 已存在，无需重复合并
+//            }
+//        }
+        for (int i = sheet.getNumMergedRegions() - 1; i >= 0; i--) {
+            CellRangeAddress region = sheet.getMergedRegion(i);
+            if (region.getFirstColumn() == colIndex &&
+                    region.getFirstRow() <= startRow &&
+                    region.getLastRow() >= startRow + rowCount - 1) {
+                sheet.removeMergedRegion(i);
             }
         }
 
-        if (!alreadyMerged) {
-            CellRangeAddress mergeRegion = new CellRangeAddress(
-                    startRow, startRow + rowCount - 2, colIndex, colIndex
-            );
-            sheet.addMergedRegion(mergeRegion);
-            setMergedRegionBorderStyle(sheet, mergeRegion); // 合并区域边框
-        }
+        // 创建新的合并区域
+        CellRangeAddress mergeRegion = new CellRangeAddress(
+                startRow, endRow, colIndex, colIndex
+        );
+        sheet.addMergedRegion(mergeRegion);
+        //把这个sheet页作为Excel文件导出
+
+        // 设置合并区域的边框样式
+        setMergedRegionBorderStyle(sheet, mergeRegion);
     }
+
 
 
 
@@ -134,7 +199,18 @@ public class ExcelDynamicMerger {
             if (templateCell != null) {
                 // 1. 继承样式
                 cell.setCellStyle(templateCell.getCellStyle());
+/*          // 1. 继承样式，但不覆盖边框
+                CellStyle inheritedStyle = templateCell.getCellStyle();
+                CellStyle finalStyle = cell.getCellStyle(); // 获取当前样式
 
+                // 合并样式：保留现有边框，继承其他样式
+                finalStyle.cloneStyleFrom(inheritedStyle);
+                finalStyle.setBorderTop(BorderStyle.THIN);
+                finalStyle.setBorderBottom(BorderStyle.THIN);
+                finalStyle.setBorderLeft(BorderStyle.THIN);
+                finalStyle.setBorderRight(BorderStyle.THIN);
+
+                cell.setCellStyle(finalStyle);*/
                 // 2. 继承公式并调整行号
                 if (templateCell.getCellType() == CellType.FORMULA) {
                     String formula = templateCell.getCellFormula();
@@ -148,6 +224,7 @@ public class ExcelDynamicMerger {
         // 无公式/模板行无公式时，直接设值
         setCellValue(cell, value);
     }
+
 
     /**
      * 调整公式中的行引用（列引用不变，仅行号偏移）
@@ -185,6 +262,7 @@ public class ExcelDynamicMerger {
                 cell.setCellStyle(borderStyle);
             }
         }
+
     }
 
     /**

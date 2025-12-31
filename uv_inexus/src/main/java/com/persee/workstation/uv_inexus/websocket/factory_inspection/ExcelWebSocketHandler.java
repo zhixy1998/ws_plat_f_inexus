@@ -1,8 +1,8 @@
 package com.persee.workstation.uv_inexus.websocket.factory_inspection;
 
 import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.util.DateUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
@@ -108,6 +108,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private ThreadPoolTaskExecutor taskExecutor;
     @Autowired
     private EhcacheUtil ehcacheUtil;
+    //波形图持久化机制
+    @Autowired
+    private SpectrumDataService spectrumDataService;
     // 在类中添加缓存存储
     private final Map<String, List<JSONObject>> waveformCache = new ConcurrentHashMap<>();
 
@@ -115,8 +118,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> measurementStatusMap = new ConcurrentHashMap<>();
     // 测量任务对应的session  key taskid value session
     private final Map<String, WebSocketSession> sessionTaskMap = new ConcurrentHashMap<>();
-    //所有的任务和检测项的缓存
-    private static List<MultiLineSpectrumData> multiLineSpectrumDataList = new ArrayList<>();
+//    //所有的任务和检测项的缓存
+//    private static List<MultiLineSpectrumData> multiLineSpectrumDataList = new ArrayList<>();
 
     // 获取测量状态的方法
     public boolean isTaskMeasuring(String taskId) {
@@ -206,29 +209,27 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             String taskId = getTaskIdFromSession(session);
             String updateBy = getUpdateByFromUrl(session);
             if (StringUtils.isBlank(fileName)) {
-                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
-                        .eq(TaskManagement::getCompletionStatus, TASK_NOT_STARTED.getCode());
+//                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+//                wrapper.eq(TaskManagement::getId, taskId);
                 //这里查询出内置任务
-                List<TaskManagement> list = taskService.list(wrapper);
-                if(CollectionUtils.isNotEmpty(list)) {
-                    TaskManagement one = list.get(0);
-                    fileName = one.getResultTemplate();
+                TaskManagement management = taskService.getById(taskId);
+                if(management!=null) {
+                    fileName = management.getResultTemplate();
                 }
             }
             //初始进入检定页面
-            if (StringUtils.equals(taskId, DEFAULT_TASK.getCode())) {
-                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
-                        .eq(TaskManagement::getCompletionStatus, TASK_NOT_STARTED.getCode());
-                //这里查询出内置任务
-                List<TaskManagement> list = taskService.list(wrapper);
-                if(CollectionUtils.isNotEmpty(list)) {
-                    TaskManagement one = list.get(0);
-                    taskId = one.getId();
-                    fileName = one.getResultTemplate();
-                }
-            }
+//            if (StringUtils.equals(taskId, DEFAULT_TASK.getCode())) {
+//                LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+//                wrapper.eq(TaskManagement::getContentCategory, TEMPLATE_BUILT_IN_TASK.getCode())
+//                        .eq(TaskManagement::getCompletionStatus, TASK_NOT_STARTED.getCode());
+//                //这里查询出内置任务
+//                List<TaskManagement> list = taskService.list(wrapper);
+//                if(CollectionUtils.isNotEmpty(list)) {
+//                    TaskManagement one = list.get(0);
+//                    taskId = one.getId();
+//                    fileName = one.getResultTemplate();
+//                }
+//            }
             boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
             System.out.println("564645151545" + b);
 
@@ -255,7 +256,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     String data = item.getStructuredData();
                     ObjectMapper mapper = new ObjectMapper();
                     //获取到检测项的所有数据
-                    Map<String, String> dataMap = mapper.readValue(data, new TypeReference<Map<String, String>>() {
+                    Map<String, Object> dataMap = mapper.readValue(data, new TypeReference<Map<String, Object>>() {
                     });
                     String groupName = MapUtils.getString(dataMap, "检测类别");
                     String itemName = MapUtils.getString(dataMap, "项目名称");
@@ -334,7 +335,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            updateWorkbookCell(workbook, cellUpdDto);
 
             // 更新缓存
-            workbookCacheManager.updateTaskWorkbook(sessionId, workbook);
+//            workbookCacheManager.updateTaskWorkbook(sessionId, workbook);
 
 //            // 推送更新后的数据给前端
             Sheet sheet = workbook.getSheet(cellUpdDto.getSheetName());
@@ -412,7 +413,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //            management.set
             taskService.updateById(management);
             InspectionRequestDto request = mapper.readValue(payload, InspectionRequestDto.class);
-            handleSingleItemInspection(session, request, taskId);
+            handleSingleItemInspection(session, request, taskId, updateBy);
         }
         if (AUTO.getCode().equals(type)) {
             log.info("收到自动测试指令");
@@ -515,7 +516,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                        System.out.println(difference);
 //                    }
 //                }
-                    workbookCacheManager.updateTaskWorkbook(taskId, workbook);
+                    workbookCacheManager.updateTaskWorkbook(taskId, workbook,updateBy);
                     sendSheetUpdate(session, workbook.getSheet(groupName), taskId);
                 }
             }
@@ -529,15 +530,15 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     });
             StdMaterialSelectionDto selectionDto = messageWrapper.getData();
             taskId = selectionDto.getTaskId();
-            String groupName = selectionDto.getGroupName();
-            String itemName = selectionDto.getItemName();
-            String standardId = selectionDto.getStandardId();
-            String standardType = selectionDto.getStandardType();
             String itemId = selectionDto.getItemId();
 
-            String finalTaskId = taskId;
-            List<MultiLineSpectrumData> collect = multiLineSpectrumDataList.stream().filter(data -> data.getTaskId().equals(finalTaskId)).filter(data -> data.getItemId().equals(itemId)).collect(Collectors.toList());
-            String s = JSON.toJSONString(collect);
+//            String finalTaskId = taskId;
+//            List<MultiLineSpectrumData> collect = multiLineSpectrumDataList.stream().filter(data -> data.getTaskId().equals(finalTaskId)).filter(data -> data.getItemId().equals(itemId)).collect(Collectors.toList());
+//            String s = JSON.toJSONString(collect);
+//            session.sendMessage(new TextMessage(s));
+            // 从数据库查询历史数据
+            List<MultiLineSpectrumData> historyData = spectrumDataService.findByTaskIdAndItemId(taskId, itemId);
+            String s = JSON.toJSONString(historyData);
             session.sendMessage(new TextMessage(s));
         }
         //根据前端传输的内容进行处理  自动测试就按照模板进行测
@@ -570,9 +571,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         public void setData(List<List<JSONObject>> lines) {
             data.putIfAbsent(DateUtils.format(new Date(), "yyyy-MM-dd HH:mm:ss"), lines);
         }
+        public void setData(Map<String, List<List<JSONObject>>> data) {
+            this.data=data;
+        }
     }
 
-    private void handleSingleItemInspection(WebSocketSession session, InspectionRequestDto request, String taskId) {
+    private void handleSingleItemInspection(WebSocketSession session, InspectionRequestDto request, String taskId,String updateBy) {
         //先做暗电流
         //在做校零
         //再做测量
@@ -589,7 +593,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                 CalStdCats cats = calStdCatsService.getById(matId);
                 if (cats == null) {
                     CalArtifacts calArtifacts = calArtifactsService.getById(matId);
-                    characteristicValue = calArtifacts.getCharacteristicValue();
+                    if (calArtifacts!=null) {
+                        characteristicValue = calArtifacts.getCharacteristicValue();
+                    }
                 } else {
                     characteristicValue = cats.getCharacteristicValue();
                 }
@@ -653,7 +659,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
 
                             //修改缓存中的工作簿
-                            workbookCacheManager.updateTaskWorkbook(taskId, workbook);
+                            workbookCacheManager.updateTaskWorkbook(taskId, workbook,updateBy);
                             //发送特定的sheet页
 
                             sendSheetUpdate(session, workbook.getSheet(category), taskId);
@@ -690,7 +696,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             //修改工作簿
                             updateWorkbookCell(workbook, cellUpdDto);
                             //修改缓存中的工作簿
-                            workbookCacheManager.updateTaskWorkbook(taskId, workbook);
+                            workbookCacheManager.updateTaskWorkbook(taskId, workbook,updateBy);
                             //发送特定的sheet页
 
                             sendSheetUpdate(session, workbook.getSheet(category), taskId);
@@ -701,12 +707,22 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         }
                     }
                 }
+                // 修改数据存储部分
                 MultiLineSpectrumData data = new MultiLineSpectrumData();
                 data.setTaskId(taskId);
                 data.setItemId(itemId);
                 data.setData(lists);
-                multiLineSpectrumDataList.add(data);
-                System.out.println(multiLineSpectrumDataList.size() + " 999999999999999999999999999999");
+
+                // 将数据转换为数据库实体并保存
+                SpectrumData spectrumData = new SpectrumData();
+                spectrumData.setId(IdGeneratorUtil.generateIdWithPrefix("spec"));
+                spectrumData.setTaskId(taskId);
+                spectrumData.setItemId(itemId);
+                spectrumData.setSpectrumData(JSON.toJSONString(data.getData())); // 序列化数据
+                spectrumData.setMeasurementTime(new Date());
+                spectrumData.setCreateTime(new Date());
+
+                spectrumDataService.save(spectrumData);
                 setTaskMeasuring(taskId, false);
                 WebSocketSession webSocketSession = sessionTaskMap.get(taskId);
                 if (webSocketSession != null && webSocketSession.isOpen()) {
@@ -1150,6 +1166,11 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     }
 
     private void updateWorkbookCells(Workbook workbook, CellUpdDto cellUpdDto) {
+        // 在updateWorkbookCells方法开始处添加空值检查
+        if (workbook == null ) {
+            log.error("Workbook 为空");
+            return;
+        }
         Sheet sheet = workbook.getSheet(cellUpdDto.getSheetName());
 
         // 先更新单元格值

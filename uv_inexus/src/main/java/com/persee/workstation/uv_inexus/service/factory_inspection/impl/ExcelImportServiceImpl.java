@@ -14,20 +14,23 @@ import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
-import com.persee.workstation.uv_inexus.service.factory_inspection.CalStdCatsService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelDataAssetService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelImportService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -48,13 +51,17 @@ public class ExcelImportServiceImpl implements ExcelImportService {
     private CalStdCatsService calStdCatsService;
     @Autowired
     private TaskExecutionDetailMapper taskExecutionDetailMapper;
-    @Value("${excel.save.path}")
-    private String excelSavePath;
-
+    @Autowired
+    private WorkbookDataService workbookDataService;
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result importExcel(MultipartFile file) {
         try {
+            //先搞一个结果模板
+            List<String> sheetNames = Arrays.asList("波长示值误差与重复性校验", "透射比示值误差与重复性校验", "杂散光校验",
+                    "基线平直度检验","基线暗噪声检验","光谱带宽与仪器最小光谱带宽","噪声检验","波长边缘噪声","漂移检验");
+            Workbook workbook = extractSheetsToNewWorkbook(file, sheetNames);
+
 //            /*构建要在根目录创建的文件名，路径*/
 //            String projectRoot = System.getProperty("user.dir");
 //            // 生成唯一文件名并保存
@@ -67,7 +74,15 @@ public class ExcelImportServiceImpl implements ExcelImportService {
 
             /*保存模板信息*/
             // 生成模板编码
-            String templateCode = "TEMP_" + System.currentTimeMillis();
+            String templateCode = "TEMP_" + IdGeneratorUtil.generateShortId()+System.currentTimeMillis();
+            boolean b = workbookDataService.uploadExcel(workbook, templateCode);
+            if (!b) {
+                log.error("保存模板信息失败");
+            }
+            if (b){
+                log.info("保存模板信息成功");
+            }
+
             String sheeetName = "检测项信息";
             // 读取Excel文件，获取表头信息
             List<List<String>> headList = new ArrayList<>();
@@ -271,6 +286,106 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             return Result.fail("导入失败: " + e.getMessage());
         }
     }
+    /**
+     * 从原始Excel中提取指定Sheet并生成新工作簿
+     * @param file 原始Excel文件
+     * @param sheetNames 要提取的Sheet名称列表
+     * @return 新的工作簿对象
+     */
+    public Workbook extractSheetsToNewWorkbook(MultipartFile file, List<String> sheetNames)
+            throws IOException {
+        // 读取原始工作簿
+        Workbook sourceWorkbook = new XSSFWorkbook(file.getInputStream());
+
+        // 创建新的工作簿
+        Workbook newWorkbook = new XSSFWorkbook();
+
+        for (String sheetName : sheetNames) {
+            Sheet sourceSheet = sourceWorkbook.getSheet(sheetName);
+            if (sourceSheet != null) {
+                // 在新工作簿中创建同名Sheet
+                Sheet newSheet = newWorkbook.createSheet(sourceSheet.getSheetName());
+
+                // 复制Sheet内容
+                copySheetContent(sourceSheet, newSheet);
+            }
+        }
+
+        // 关闭原始工作簿，保留新工作簿供后续使用
+        sourceWorkbook.close();
+
+        return newWorkbook;
+    }
+
+    /**
+     * 复制Sheet的所有内容
+     */
+    /**
+     * 复制Sheet的所有内容
+     */
+    private void copySheetContent(Sheet sourceSheet, Sheet targetSheet) {
+        // 复制行和单元格
+        for (Row sourceRow : sourceSheet) {
+            Row targetRow = targetSheet.createRow(sourceRow.getRowNum());
+
+            for (Cell sourceCell : sourceRow) {
+                Cell targetCell = targetRow.createCell(sourceCell.getColumnIndex());
+
+                // 复制单元格值和类型
+                copyCellData(sourceCell, targetCell);
+            }
+        }
+
+        // 复制合并区域
+        copyMergedRegions(sourceSheet, targetSheet);
+
+        // 复制列宽
+        for (int i = 0; i < sourceSheet.getRow(0).getLastCellNum(); i++) {
+            targetSheet.setColumnWidth(i, sourceSheet.getColumnWidth(i));
+        }
+    }
+
+    /**
+     * 复制合并区域
+     */
+    private void copyMergedRegions(Sheet sourceSheet, Sheet targetSheet) {
+        for (int i = 0; i < sourceSheet.getNumMergedRegions(); i++) {
+            CellRangeAddress mergedRegion = sourceSheet.getMergedRegion(i);
+            targetSheet.addMergedRegion(mergedRegion);
+        }
+    }
+
+
+    /**
+     * 复制单元格数据
+     */
+    private void copyCellData(Cell sourceCell, Cell targetCell) {
+        if (sourceCell == null) {
+            return;
+        }
+
+        switch (sourceCell.getCellType()) {
+            case FORMULA:
+                targetCell.setCellFormula(sourceCell.getCellFormula());
+                break;
+            case STRING:
+                targetCell.setCellValue(sourceCell.getStringCellValue());
+                break;
+            case NUMERIC:
+                targetCell.setCellValue(sourceCell.getNumericCellValue());
+                break;
+            case BOOLEAN:
+                targetCell.setCellValue(sourceCell.getBooleanCellValue());
+                break;
+            case BLANK:
+                targetCell.setBlank();
+                break;
+            default:
+                targetCell.setCellType(sourceCell.getCellType());
+                break;
+        }
+    }
+
 
     /**
      * 表头读取监听器
