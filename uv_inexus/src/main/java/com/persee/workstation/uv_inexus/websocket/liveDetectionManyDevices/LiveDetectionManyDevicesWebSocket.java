@@ -95,16 +95,16 @@ public class LiveDetectionManyDevicesWebSocket {
             return;
         } else {
 
-            thread = new Thread(() -> {
-                startMeasureLoop(deviceSerialNumber, newTopic);
-            });
-            liveThreads.put(deviceSerialNumber, thread);
-            thread.start();
-
-            // 添加线程结束监听器
-            thread.setUncaughtExceptionHandler((Thread, exception) -> {
-                log.info("测量线程异常终止: {}", exception.getMessage());
-            });
+//            thread = new Thread(() -> {
+//                startMeasureLoop(deviceSerialNumber, newTopic);
+//            });
+//            liveThreads.put(deviceSerialNumber, thread);
+//            thread.start();
+//
+//            // 添加线程结束监听器
+//            thread.setUncaughtExceptionHandler((Thread, exception) -> {
+//                log.info("测量线程异常终止: {}", exception.getMessage());
+//            });
         }
         // 主动推送通知给前端
         messagingTemplate.convertAndSend(measureTopic,

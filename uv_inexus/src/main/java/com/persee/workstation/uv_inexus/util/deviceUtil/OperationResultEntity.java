@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -90,7 +89,7 @@ public class OperationResultEntity {
     private String linearSegment;
 
     @ApiModelProperty("当前测量点数据")
-    private R<ChangeParam> currentMeasure;
+    private ChangeParam currentMeasure;
 
     @ApiModelProperty("步进点列表")
     private List<StepPoint> stepPoints;

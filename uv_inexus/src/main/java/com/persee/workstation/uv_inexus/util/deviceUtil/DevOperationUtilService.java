@@ -17,6 +17,6 @@ public interface DevOperationUtilService {
 
     void checkDeviceConnect();
 
-    R<OperationResultEntity> operation(DevOperationInputParam inputParam);
+    R<OperationResultEntity> operation(DevOperationInputParam inputParam) throws InterruptedException;
 
 }

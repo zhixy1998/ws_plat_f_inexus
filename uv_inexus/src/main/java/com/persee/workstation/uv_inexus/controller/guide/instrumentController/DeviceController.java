@@ -54,7 +54,7 @@ public class DeviceController {
     @LogPoint(value = "扫描测试", module = "设备管理", recordParams = true, recordResult = true)
     public Result<OperationResultEntity> scan(
             @RequestBody DevOperationInputParam inputParam
-    ) {
+    ) throws InterruptedException {
         R<OperationResultEntity> result =
                 deviceManageService.Action(inputParam);
 
@@ -71,7 +71,7 @@ public class DeviceController {
     @LogPoint(value = "设置仪器参数", module = "设备管理", recordParams = true, recordResult = true)
     public Result<OperationResultEntity> setParam(
             @RequestBody DevOperationInputParam inputParam
-    ) {
+    ) throws InterruptedException {
 
         R<OperationResultEntity> result =
                 deviceManageService.setParamOneDevice(inputParam);
@@ -88,7 +88,7 @@ public class DeviceController {
     @LogPoint(value = "获取仪器参数", module = "设备管理", recordParams = true, recordResult = true)
     public Result<OperationResultEntity> getValue(
             @RequestBody DevOperationInputParam inputParam
-    ) {
+    ) throws InterruptedException {
 
         R<OperationResultEntity> result =
                 deviceManageService.getParamOneDevice(inputParam);
@@ -141,7 +141,7 @@ public class DeviceController {
 
     @GetMapping("/disconnectDevice")
     @ApiOperation("新驱动-断开连接")
-    public Result<Boolean> disconnectDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+    public Result<Boolean> disconnectDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.disconnectDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
             return Result.ok(true);
@@ -152,7 +152,7 @@ public class DeviceController {
 
     @GetMapping("/initOneDevice")
     @ApiOperation("新驱动-初始化")
-    public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+    public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.startInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
             return Result.ok(true);
@@ -163,7 +163,7 @@ public class DeviceController {
 
     @GetMapping("/continueInit")
     @ApiOperation("新驱动-继续初始化")
-    public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
+    public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.continueInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
             return Result.ok(true);

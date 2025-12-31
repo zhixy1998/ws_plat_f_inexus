@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil.param;
 
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.ScanWavelengthConfig;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
 import lombok.Data;
 
@@ -111,7 +112,25 @@ public class DeviceConnectInfo {
      * 仪器当前状态
      */
     private DetectionResponseInfoVO currentStatus;
+    /**
+     * 起始波长
+     */
+    private double startWavelength;
+    /**
+     * 终止波长
+     */
+    private double endWavelength;
+    /**
+     * 扫描间隔
+     */
+    private double interval;
+    /**
+     * 是否递减扫描
+     */
+    private boolean descending;
 
+    /** 当前扫描波长配置（前端下发） */
+    private volatile ScanWavelengthConfig scanWavelengthConfig;
     // ====== 校零结果管理方法 ======
     public void addZeroResult(String wavelength, ChangeParam changeParam) {
         zeroResult.put(wavelength, changeParam);
@@ -124,6 +143,7 @@ public class DeviceConnectInfo {
     public Map<String, ChangeParam> getAllZeroResults() {
         return Collections.unmodifiableMap(zeroResult);
     }
+
 
 
     public DeviceConnectInfo() {

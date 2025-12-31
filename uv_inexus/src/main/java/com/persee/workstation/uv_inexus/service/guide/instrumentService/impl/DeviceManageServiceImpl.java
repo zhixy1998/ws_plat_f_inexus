@@ -985,7 +985,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<List<SearchInfo>> searchDevice(Integer connectType) {
+    public R<List<SearchInfo>> searchDevice(Integer connectType) throws InterruptedException {
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Find.getType());
@@ -1001,7 +1001,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<FindDeviceVO> connect(SearchInfo param) {
+    public R<FindDeviceVO> connect(SearchInfo param) throws InterruptedException {
         Integer connectType = param.getConnectType();
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -1114,7 +1114,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy) {
+    public R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy) throws InterruptedException {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.Disconnect.getType());
@@ -1138,7 +1138,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<Boolean> startInitDevice(String deviceSerialNumber, String updateBy) {
+    public R<Boolean> startInitDevice(String deviceSerialNumber, String updateBy) throws InterruptedException {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -1181,7 +1181,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy) {
+    public R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy) throws InterruptedException {
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
@@ -1217,7 +1217,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceInfoPO infoPO = pos.remove(0);
 
             try {
-                pos.forEach(po -> disconnectDevice(po.getDeviceSerialNumber(), updateBy));
+                pos.forEach(po -> {
+                    try {
+                        disconnectDevice(po.getDeviceSerialNumber(), updateBy);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             } catch (Exception e) {
                 log.error("断开连接失败: {}", e.getMessage());
             }
@@ -1238,7 +1244,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<OperationResultEntity> setParamOneDevice(
             DevOperationInputParam param
-    ) {
+    ) throws InterruptedException {
 
         param.setOperationType(OperationTypeEnums.SetParam.getType());
 //        param.setDeviceSerialNumber(deviceSerialNumber);
@@ -1256,16 +1262,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<OperationResultEntity> getParamOneDevice(
             DevOperationInputParam param
-    ) {
+    ) throws InterruptedException {
 
-        // 1️⃣ 设置操作类型为“读取参数”
+        // 设置操作类型为“读取参数”
         param.setOperationType(OperationTypeEnums.GetValue.getType());
 
-        // 2️⃣ 调用统一操作入口
+        // 调用统一操作入口
         R<OperationResultEntity> operation =
                 operationUtilService.operation(param);
 
-        // 3️⃣ 返回结果
+        // 返回结果
         if (!operation.getSuccess()) {
             return R.fail(operation.getMessage());
         } else {
@@ -1278,7 +1284,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<OperationResultEntity> Action(
             DevOperationInputParam param
-    ) {
+    ) throws InterruptedException {
 
         // 明确这是 Action 类型
         param.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());

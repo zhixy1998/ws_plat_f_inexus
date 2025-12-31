@@ -308,7 +308,7 @@ public class UdpSendUtil {
             }
 
             if (parse.getCurrentMeasure() != null){
-                ChangeParam changeParam = parse.getCurrentMeasure().getData();
+                ChangeParam changeParam = parse.getCurrentMeasure();
                 System.out.println("测量值：" + changeParam);
             }
 

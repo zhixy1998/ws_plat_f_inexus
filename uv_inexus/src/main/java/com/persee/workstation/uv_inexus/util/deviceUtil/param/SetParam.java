@@ -12,10 +12,10 @@ import lombok.Data;
         private Integer scanSpeed;
 
         @ApiModelProperty("扫描 wavelength")
-        private Integer startWl;
+        private Double startWl;
 
         @ApiModelProperty("扫描 wavelength")
-        private Integer endWl;
+        private Double endWl;
 
         @ApiModelProperty("扫描间隔")
         private Double scanInterval;
@@ -24,7 +24,7 @@ import lombok.Data;
         private Integer gain;
 
         @ApiModelProperty("狭缝")
-        private Integer slit1;
+        private Double slit1;
 
         @ApiModelProperty("灯位置")
         private Integer lampPos;
@@ -39,13 +39,13 @@ import lombok.Data;
         private Integer DLampStatus;
 
         @ApiModelProperty("换灯波长")
-        private Integer changeLampWl;
+        private Double changeLampWl;
 
         @ApiModelProperty("波长列表")
         private String wlList;
 
         @ApiModelProperty("设置波长")
-        private Integer setWl;
+        private Double setWl;
 
         @ApiModelProperty("滤色片")
         private Integer filter;

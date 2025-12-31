@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.StepPoint;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.websocket.MeasureController;
@@ -97,15 +96,14 @@ public class UdpResponseDeal {
             case "GetAccessoryType":
                 return parseType(responses);
             case "Measure":
-                return measure(responses);
+//                return measure(responses);
             case "Zero":
                 return parseZero(responses);
-//            case "ScanFast":
-//            case "Scan":
-//                return parseScanFast(responses);
-//            case "BaseLine":
-//            case "BaseLineFast":
-//                return parseBaseLine(responses);
+            case "ScanFast":
+            case "Scan":
+            case "BaseLine":
+            case "BaseLineFast":
+                return parseScan(responses);
             case "GetWlList":
                 return parseWlList(responses);
 
@@ -587,15 +585,16 @@ public class UdpResponseDeal {
      S、D、R解析
      */
     public static OperationResultEntity parseZero(List<byte[]> responses) {
-
-        if (responses == null || responses.isEmpty()) {
-            System.out.println("回应为空，无法解析 Zero");
-            return null;
-        }
-
         ChangeParam param = new ChangeParam();
+
         boolean hasWlS = false;
         boolean hasDR  = false;
+
+        if (responses == null || responses.isEmpty()) {
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("回应为空，无法解析 Zero");
+            return resultEntity;
+        }
 
         try {
             for (byte[] resp : responses) {
@@ -645,44 +644,42 @@ public class UdpResponseDeal {
                     hasDR = true;
                 }
 
-                // ---------- 一组数据齐了 ----------
+                // ---------- Zero 只要一组 ----------
                 if (hasWlS && hasDR) {
-                    break; // Zero 只需要一组
+                    break;
                 }
             }
 
-            OperationResultEntity result = new OperationResultEntity();
-
-            if (hasWlS || hasDR) {
-                result.setCurrentMeasure(R.ok(param));
-                result.setIsSuccess(true);
-            } else {
-                result.setCurrentMeasure(R.fail("未解析到 Zero 测量数据"));
-                result.setIsSuccess(false);
+            if (!hasWlS && !hasDR) {
+                resultEntity.setIsSuccess(false);
+                resultEntity.setErrorMsg("未解析到 Zero 测量数据");
+                return resultEntity;
             }
 
-            return result;
+            resultEntity.setCurrentMeasure(param);
+            resultEntity.setIsSuccess(true);
+            return resultEntity;
 
         } catch (Exception e) {
-            System.out.println("Zero解析异常: " + e.getMessage());
-            return null;
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("Zero 解析异常：" + e.getMessage());
+            return resultEntity;
         }
     }
 
 
-    public static OperationResultEntity parseScan(List<byte[]> responses, String cmdId, String deviceSerialNumber) {
-
+    public static OperationResultEntity parseScan(List<byte[]> responses) {
         ChangeParam param = new ChangeParam();
 
         if (responses == null || responses.isEmpty()) {
-            System.out.println("回应为空，无法解析 Scan");
-            return null;
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("回应报文为空，无法解析 Scan");
+            return resultEntity;
         }
 
         try {
             for (byte[] resp : responses) {
 
-                // 基本校验
                 if (resp == null || resp.length < 11) {
                     continue;
                 }
@@ -690,25 +687,25 @@ public class UdpResponseDeal {
                 int cmdType1 = resp[2] & 0xFF;
                 int cmdType  = resp[3] & 0xFF;
 
-                // 只处理 0x13 类型的报文
+                // 只处理 0x13 类型
                 if (cmdType1 != 0x13) {
                     continue;
                 }
 
-                // 0x01 / 0x05 → wl + s
-                if (cmdType == 0x01 || cmdType == 0x05 || cmdType == 0x09 || cmdType == 0x0B) {
+                if (cmdType == 0x01 || cmdType == 0x05
+                        || cmdType == 0x09 || cmdType == 0x0B) {
 
                     int wl0 = ((resp[5] & 0xFF) << 8)
                             | (resp[6] & 0xFF);
 
-                    int s0  = ((resp[8] & 0xFF) << 16)
+                    int s0 = ((resp[8] & 0xFF) << 16)
                             | ((resp[9] & 0xFF) << 8)
                             | (resp[10] & 0xFF);
 
                     param.setWl(String.valueOf(wl0));
                     param.setS(String.valueOf(s0));
                 }
-                // 0x02 / 0x06 → d + r
+
                 else if (cmdType == 0x02 || cmdType == 0x06 || cmdType == 0x30) {
 
                     int d0 = ((resp[4] & 0xFF) << 16)
@@ -725,17 +722,19 @@ public class UdpResponseDeal {
             }
 
             if (param.isEmpty()) {
-                return null;
+                resultEntity.setIsSuccess(false);
+                resultEntity.setErrorMsg("未解析到有效 Scan 数据");
+                return resultEntity;
             }
 
-            OperationResultEntity resultEntity = new OperationResultEntity();
-            resultEntity.setCurrentMeasure(R.ok(param));
+            resultEntity.setCurrentMeasure(param);
             resultEntity.setIsSuccess(true);
-
             return resultEntity;
 
         } catch (Exception e) {
-            return null;
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("解析 Scan 报文异常：" + e.getMessage());
+            return resultEntity;
         }
     }
 
