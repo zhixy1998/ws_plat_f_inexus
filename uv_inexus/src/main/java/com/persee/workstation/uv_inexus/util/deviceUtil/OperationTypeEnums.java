@@ -26,6 +26,8 @@ public enum OperationTypeEnums {
     SetParam(5, "设置参数", "deviceIp,connectType,setParam", "", 4),
     ActionCmdEnum(6, "执行命令", "deviceIp,connectType,InputParam", "", 4),
     GetValue(7, "读取值", "deviceIp,connectType,InputParam", "", 4),
+    Zero(885, "零点校准", "deviceIp,connectType", "", 4),
+    Calibration(886, "校准", "deviceIp,connectType", "", 4),
     LiveDetection(887, "实时检测", "deviceIp,connectType", "", 3),
     Disconnect(888, "断开连接", "deviceIp,connectType", "", 4),
     End(999, "枚举最后标志量，不做操作，方便添加", "deviceIp,connectType", "", 999);

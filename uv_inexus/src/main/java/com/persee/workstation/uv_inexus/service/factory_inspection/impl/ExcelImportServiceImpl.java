@@ -8,26 +8,28 @@ import com.alibaba.excel.read.metadata.ReadSheet;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelDataAsset;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskExecutionDetail;
-import com.persee.workstation.uv_inexus.service.factory_inspection.CalStdCatsService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelDataAssetService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.ExcelImportService;
-import com.persee.workstation.uv_inexus.service.factory_inspection.TemplateService;
+import com.persee.workstation.uv_inexus.service.factory_inspection.*;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -48,13 +50,219 @@ public class ExcelImportServiceImpl implements ExcelImportService {
     private CalStdCatsService calStdCatsService;
     @Autowired
     private TaskExecutionDetailMapper taskExecutionDetailMapper;
-    @Value("${excel.save.path}")
-    private String excelSavePath;
+    @Autowired
+    private WorkbookDataService workbookDataService;
+
+    public static List<Map<String, Object>> extractDataWithHeaders(Sheet sheet, byte[] colorRgb) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        Row headerRow = sheet.getRow(0);
+        if (headerRow == null) return result;
+
+        // 获取黄色列索引
+        List<Integer> columnIndices = findHeaderColumnsByColor(sheet, colorRgb);
+
+        // 遍历数据行（从第1行开始）
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+
+            // 获取第一列值（处理合并单元格）
+            String firstColumnValue = getFirstColumnValue(row);
+
+            // 如果第一列为空，跳过
+            if (StringUtils.isBlank(firstColumnValue)) continue;
+
+            Map<String, Object> rowData = new HashMap<>();
+            rowData.put(PROJECT_NAME.getDescription(), firstColumnValue);
+
+            // 提取黄色列数据
+            for (int colIndex : columnIndices) {
+                Cell cell = row.getCell(colIndex);
+                String value = getCellValue(cell);
+                Cell headerCell = headerRow.getCell(colIndex);
+                String headerName = getCellValue(headerCell);
+                rowData.put(headerName, value);
+            }
+
+            result.add(rowData);
+        }
+        //这里的list做一下去重，有一样的项就去掉多余的，留一个
+// 按 "项目名称" 去重，保留第一个
+        result = new ArrayList<>(result.stream()
+                .filter(item -> item.get(PROJECT_NAME.getDescription()) != null)
+                .collect(Collectors.toMap(
+                        item -> (String) item.get(PROJECT_NAME.getDescription()),
+                        item -> item,
+                        (e1, e2) -> e1 // 保留第一个
+                ))
+                .values());
+        return result;
+    }
+
+    /**
+     * 获取第一列的值，支持合并单元格
+     *
+     * @param row 行对象
+     * @return 第一列的值
+     */
+    private static String getFirstColumnValue(Row row) {
+        Sheet sheet = row.getSheet();
+
+        // 查找合并区域中包含当前行的第一列
+        for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
+            CellRangeAddress mergedRegion = sheet.getMergedRegion(i);
+            if (mergedRegion.getFirstColumn() == 0 &&
+                    mergedRegion.getLastColumn() >= 0 &&
+                    mergedRegion.getFirstRow() <= row.getRowNum() &&
+                    mergedRegion.getLastRow() >= row.getRowNum()) {
+                // 找到合并区域，获取左上角单元格的值
+                Cell cell = sheet.getRow(mergedRegion.getFirstRow()).getCell(0);
+                return getCellValue(cell);
+            }
+        }
+
+        // 如果没有合并单元格，直接获取第一列的值
+        Cell cell = row.getCell(0);
+        return getCellValue(cell);
+    }
+
+
+    /**
+     * 查找表头中背景为指定颜色的列索引（支持RGB颜色匹配）
+     *
+     * @param sheet    工作表
+     * @param colorRgb 目标颜色的RGB值，格式为 [R, G, B]
+     * @return 指定颜色列的索引列表
+     */
+    private static List<Integer> findHeaderColumnsByColor(Sheet sheet, byte[] colorRgb) {
+        List<Integer> indices = new ArrayList<>();
+        Row headerRow = sheet.getRow(0);
+
+        if (headerRow != null) {
+            for (Cell cell : headerRow) {
+                CellStyle style = cell.getCellStyle();
+                Color fillForegroundColor = style.getFillForegroundColorColor();
+
+                if (fillForegroundColor != null &&
+                        fillForegroundColor instanceof XSSFColor) {
+                    XSSFColor xssfColor = (XSSFColor) fillForegroundColor;
+                    byte[] rgb = xssfColor.getRGB();
+
+                    if (rgb != null && rgb.length >= 3) {
+                        // 转换为无符号整数进行比较
+                        int r1 = rgb[0] & 0xFF;
+                        int g1 = rgb[1] & 0xFF;
+                        int b1 = rgb[2] & 0xFF;
+
+                        int r2 = colorRgb[0] & 0xFF;
+                        int g2 = colorRgb[1] & 0xFF;
+                        int b2 = colorRgb[2] & 0xFF;
+
+                        // 颜色相等判断
+                        if (r1 == r2 && g1 == g2 && b1 == b2) {
+                            indices.add(cell.getColumnIndex());
+                        }
+                    }
+                }
+            }
+        }
+
+        return indices;
+    }
+
+
+    /**
+     * 获取单元格的字符串值，支持公式、数值、文本、布尔、合并单元格等所有类型
+     *
+     * @param cell 单元格对象
+     * @return 字符串表示的单元格值
+     */
+    private static String getCellValue(Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                // 处理日期和常规数字
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue().toString();
+                } else {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                // 尝试获取公式的计算结果
+                try {
+                    return String.valueOf(cell.getNumericCellValue());
+                } catch (IllegalStateException e) {
+                    // 如果无法计算，返回公式本身
+                    return cell.getCellFormula();
+                }
+            case ERROR:
+                return "ERROR";
+            default:
+                return "";
+        }
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result importExcel(MultipartFile file) {
         try {
+            Workbook ww = new XSSFWorkbook(file.getInputStream());
+
+//
+//            // 看一下高亮的rgb是多少
+//            Cell cell = ss.getRow(0).getCell(8);
+//
+//            CellStyle style = cell.getCellStyle();
+//            Color fillForegroundColor = style.getFillForegroundColorColor();
+//
+//            if (fillForegroundColor != null) {
+//                byte[] rgb = null;
+//                XSSFColor xssfColor = (XSSFColor) fillForegroundColor;
+//                // 尝试使用 getRGB() 方法
+//                try {
+//                    rgb = xssfColor.getRGB();
+//                } catch (Exception e) {
+//                    // 如果 getRGB() 不可用，尝试其他方法
+//                    try {
+//                        // 获取 ARGB 值然后转换为 RGB
+//                        byte[] argb = xssfColor.getARGB(); // 修正：getARGB() 返回 byte[]
+//                        if (argb != null && argb.length >= 4) {
+//                            rgb = new byte[]{
+//                                    argb[1], // R (跳过alpha通道)
+//                                    argb[2], // G
+//                                    argb[3]  // B
+//                            };
+//                        }
+//                    } catch (Exception ex) {
+//                        log.warn("无法获取颜色RGB值: {}", ex.getMessage());
+//                    }
+//                }
+//
+//                if (rgb != null) {
+//                    log.info("RGB: {}", Arrays.toString(rgb));
+//                }
+//            }
+
+            //先搞一个结果模板
+            List<String> sheetNames = Arrays.asList(
+                    WAVELENGTH_CALIBRATION.getDescription(),
+                    TRANSMITTANCE_CALIBRATION.getDescription(),
+                    STRAY_LIGHT_CALIBRATION.getDescription(),
+                    BASELINE_STRAIGHTNESS_INSPECTION.getDescription(),
+                    BASELINE_DARK_NOISE_INSPECTION.getDescription(),
+                    SPECTRAL_BANDWIDTH_CALIBRATION.getDescription(),
+                    NOISE_INSPECTION.getDescription(),
+                    WAVELENGTH_EDGE_NOISE.getDescription(),
+                    DRIFT_INSPECTION.getDescription());
+            Workbook workbook = extractSheetsToNewWorkbook(file, sheetNames);
+
 //            /*构建要在根目录创建的文件名，路径*/
 //            String projectRoot = System.getProperty("user.dir");
 //            // 生成唯一文件名并保存
@@ -67,7 +275,15 @@ public class ExcelImportServiceImpl implements ExcelImportService {
 
             /*保存模板信息*/
             // 生成模板编码
-            String templateCode = "TEMP_" + System.currentTimeMillis();
+            String templateCode = "TEMP_" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis();
+            boolean b = workbookDataService.uploadExcel(workbook, templateCode);
+            if (!b) {
+                log.error("保存模板信息失败");
+            }
+            if (b) {
+                log.info("保存模板信息成功");
+            }
+
             String sheeetName = "检测项信息";
             // 读取Excel文件，获取表头信息
             List<List<String>> headList = new ArrayList<>();
@@ -169,10 +385,14 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     .filter(Objects::nonNull)
                     .map(material -> {
                         CalStdCats cat = new CalStdCats();
-                        if (standardMaterialsMap.containsKey(material) && !BLACK_BLOCK.getDescription().equals(material) && !AIR.getDescription().equals(material)) {
+                        if (standardMaterialsMap.containsKey(material) /*&& !BLACK_BLOCK.getDescription().equals(material) && !AIR.getDescription().equals(material)*/) {
                             Map<String, Object> map = standardMaterialsMap.get(material);
                             cat.setStandardValue(MapUtils.getString(map, "s"));
                             cat.setCharacteristicValue(MapUtils.getString(map, "c"));
+                        }
+                        if (BLACK_BLOCK.getDescription().equals(material) || AIR.getDescription().equals(material)) {
+                            cat.setStandardValue(null);
+                            cat.setCharacteristicValue(null);
                         }
                         cat.setId(IdGeneratorUtil.generateIdWithPrefix("cal"));
                         cat.setName(material);
@@ -217,9 +437,9 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     CalStdCats cats = standardCategoryMap.get(zeroDetail.getStandardId());
                     js.put("id", zeroDetail.getStandardId());
                     js.put("name", z);
-                    js.put("characteristicValue", cats.getCharacteristicValue());
-                    js.put("standardValue", cats.getStandardValue());
-                    dataMap.put(ZERO.getDescription(),js);
+                    js.put("characteristicValue", StringUtils.isBlank(cats.getCharacteristicValue()) ? "" : cats.getCharacteristicValue());
+                    js.put("standardValue", StringUtils.isBlank(cats.getStandardValue())? "" : cats.getStandardValue());
+                    dataMap.put(ZERO.getDescription(), js);
                     excelDataAsset.setStructuredData(JSON.toJSONString(dataMap));
                     assetMap.put(assetId, excelDataAsset);
                 }
@@ -241,16 +461,48 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     CalStdCats cats = standardCategoryMap.get(measurementDetail.getStandardId());
                     js.put("id", measurementDetail.getStandardId());
                     js.put("name", z);
-                    js.put("characteristicValue", cats.getCharacteristicValue());
-                    js.put("standardValue", cats.getStandardValue());
-                    dataMap.put(MEASUREMENT.getDescription(),js);
+                    js.put("characteristicValue", StringUtils.isBlank(cats.getCharacteristicValue()) ? "" : cats.getCharacteristicValue());
+                    js.put("standardValue", StringUtils.isBlank(cats.getStandardValue())? "" : cats.getStandardValue());
+                    dataMap.put(MEASUREMENT.getDescription(), js);
                     excelDataAsset.setStructuredData(JSON.toJSONString(dataMap));
                     assetMap.put(assetId, excelDataAsset);
 
                 }
             }
+            //高亮的rgb值
+            byte[] rgb = new byte[]{-1, -64, 0};
             List<ExcelDataAsset> collect = new ArrayList<>(assetMap.values());
-            excelDataAssetService.saveBatch(collect);
+            if (CollectionUtils.isNotEmpty(collect)) {
+                for (ExcelDataAsset asset : collect) {
+                    Map<String, Object> dataMap = asset.getDataMap();
+                    //检测类别
+                    String testCategory = MapUtils.getString(dataMap, TEST_CATEGORY.getDescription());
+                    //获取这个检测类别结果的 sheet
+                    Sheet wwSheet = ww.getSheet(testCategory);
+                    String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
+
+                    List<Map<String, Object>> maps = extractDataWithHeaders(wwSheet, rgb);
+                    if (CollectionUtils.isNotEmpty(maps)) {
+                        for (Map<String, Object> map : maps) {
+                            if (StringUtils.equals(MapUtils.getString(map, PROJECT_NAME.getDescription()), projectName)) {
+                                //把项目名称删除，只留下高亮部分的表头名
+                                Set<String> key = map.keySet();
+                                key.remove(PROJECT_NAME.getDescription());
+//                                JSONObject jsonObject = new JSONObject();
+                                if (CollectionUtils.isNotEmpty(key)) {
+                                    for (String s : key) {
+                                        dataMap.put(s, map.get(s));
+//                                    jsonObject.put(s, map.get(s));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    asset.setStructuredData(JSON.toJSONString(dataMap));
+                    //检测项名称
+                }
+                excelDataAssetService.saveBatch(collect);
+            }
 
             // 批量插入任务执行详情
             if (CollectionUtils.isNotEmpty(taskDetails)) {
@@ -271,6 +523,108 @@ public class ExcelImportServiceImpl implements ExcelImportService {
             return Result.fail("导入失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 从原始Excel中提取指定Sheet并生成新工作簿
+     *
+     * @param file       原始Excel文件
+     * @param sheetNames 要提取的Sheet名称列表
+     * @return 新的工作簿对象
+     */
+    public Workbook extractSheetsToNewWorkbook(MultipartFile file, List<String> sheetNames)
+            throws IOException {
+        // 读取原始工作簿
+        Workbook sourceWorkbook = new XSSFWorkbook(file.getInputStream());
+
+        // 创建新的工作簿
+        Workbook newWorkbook = new XSSFWorkbook();
+
+        for (String sheetName : sheetNames) {
+            Sheet sourceSheet = sourceWorkbook.getSheet(sheetName);
+            if (sourceSheet != null) {
+                // 在新工作簿中创建同名Sheet
+                Sheet newSheet = newWorkbook.createSheet(sourceSheet.getSheetName());
+
+                // 复制Sheet内容
+                copySheetContent(sourceSheet, newSheet);
+            }
+        }
+
+        // 关闭原始工作簿，保留新工作簿供后续使用
+        sourceWorkbook.close();
+
+        return newWorkbook;
+    }
+
+    /**
+     * 复制Sheet的所有内容
+     */
+    /**
+     * 复制Sheet的所有内容
+     */
+    private void copySheetContent(Sheet sourceSheet, Sheet targetSheet) {
+        // 复制行和单元格
+        for (Row sourceRow : sourceSheet) {
+            Row targetRow = targetSheet.createRow(sourceRow.getRowNum());
+
+            for (Cell sourceCell : sourceRow) {
+                Cell targetCell = targetRow.createCell(sourceCell.getColumnIndex());
+
+                // 复制单元格值和类型
+                copyCellData(sourceCell, targetCell);
+            }
+        }
+
+        // 复制合并区域
+        copyMergedRegions(sourceSheet, targetSheet);
+
+        // 复制列宽
+        for (int i = 0; i < sourceSheet.getRow(0).getLastCellNum(); i++) {
+            targetSheet.setColumnWidth(i, sourceSheet.getColumnWidth(i));
+        }
+    }
+
+    /**
+     * 复制合并区域
+     */
+    private void copyMergedRegions(Sheet sourceSheet, Sheet targetSheet) {
+        for (int i = 0; i < sourceSheet.getNumMergedRegions(); i++) {
+            CellRangeAddress mergedRegion = sourceSheet.getMergedRegion(i);
+            targetSheet.addMergedRegion(mergedRegion);
+        }
+    }
+
+
+    /**
+     * 复制单元格数据
+     */
+    private void copyCellData(Cell sourceCell, Cell targetCell) {
+        if (sourceCell == null) {
+            return;
+        }
+
+        switch (sourceCell.getCellType()) {
+            case FORMULA:
+                targetCell.setCellFormula(sourceCell.getCellFormula());
+                break;
+            case STRING:
+                targetCell.setCellValue(sourceCell.getStringCellValue());
+                break;
+            case NUMERIC:
+                targetCell.setCellValue(sourceCell.getNumericCellValue());
+                break;
+            case BOOLEAN:
+                targetCell.setCellValue(sourceCell.getBooleanCellValue());
+                break;
+            case BLANK:
+                targetCell.setBlank();
+                break;
+            default:
+                targetCell.setCellType(sourceCell.getCellType());
+                break;
+        }
+    }
+
 
     /**
      * 表头读取监听器

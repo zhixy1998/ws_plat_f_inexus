@@ -99,11 +99,11 @@ public class EhcacheConfig {
         // 构建资源池（多级存储）
         ResourcePoolsBuilder resourcePoolsBuilder = ResourcePoolsBuilder.newResourcePoolsBuilder()
                 .heap(config.getHeap(), EntryUnit.ENTRIES) // 堆内按条目数
-                .disk(config.getDisk(), MemoryUnit.MB, true); // 磁盘持久化，true表示持久化到磁盘
-
+                .offheap(config.getOffheap(), MemoryUnit.MB); // 堆外按内存大小
         // 使用具体类型替代 Object.class
         CacheConfiguration<String, SerializableWorkbook> cacheConfiguration = CacheConfigurationBuilder
                 .newCacheConfigurationBuilder(String.class, SerializableWorkbook.class, resourcePoolsBuilder)
+                .withExpiry(parseTtl(config.getTtl()))
                 .build();
 
         // 将缓存配置添加到CacheManager构建器中

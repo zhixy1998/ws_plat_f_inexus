@@ -9,12 +9,16 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceOverview;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceStatistics;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -25,6 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 最终版设备连接管理器
  * 基于外部DeviceConnectInfo类，管理仪器连接生命周期
  */
+@Slf4j
+@Component
 public class DeviceConnectionManager {
 
     private static final DeviceConnectionManager INSTANCE = new DeviceConnectionManager();
@@ -39,7 +45,7 @@ public class DeviceConnectionManager {
     }
 
     // ==================== 核心数据结构 ====================
-    private final ConcurrentMap<String, DeviceConnectInfo> deviceMap = new ConcurrentHashMap<>(512);
+    private static final ConcurrentMap<String, DeviceConnectInfo> deviceMap = new ConcurrentHashMap<>(512);
     private final ConcurrentMap<String, String> identityMap = new ConcurrentHashMap<>(512);
 
     // ==================== 统计辅助 ====================
@@ -195,11 +201,11 @@ public class DeviceConnectionManager {
         return permanentId;
     }
 
-    public void updateDeviceInfo(String deviceId, Boolean connectStatus, String macInfo, String xmlKey) {
+    public void updateDeviceInfo(String deviceId, Integer connectStatus, String macInfo, String xmlKey) {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) return;
 
-        boolean wasConnected = Boolean.TRUE.equals(device.getConnectStatus());
+//        boolean wasConnected = Boolean.TRUE.equals(device.getConnectStatus());
         device.setConnectStatus(connectStatus);
 
         if (macInfo != null) device.setMacInfo(macInfo);
@@ -218,7 +224,7 @@ public class DeviceConnectionManager {
     }
 
     public void disconnectDevice(String deviceId) {
-        updateDeviceInfo(deviceId, false, null, null);
+        updateDeviceInfo(deviceId, Constants.CONNECT_DEVICE_STOP, null, null);
         logInfo("设备断开连接: %s", deviceId);
     }
 
@@ -455,11 +461,61 @@ public class DeviceConnectionManager {
      */
     public boolean getDeviceIdleStatus(String deviceId) {
         DeviceConnectInfo deviceConnectInfo = deviceMap.get(deviceId);
-        if (deviceConnectInfo != null && deviceConnectInfo.getConnectStatus()) {
+        if (deviceConnectInfo != null && deviceConnectInfo.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
             return deviceConnectInfo.getIsIdle();
         }
         return false;
     }
+
+    /**
+     * 设置扫描波长参数
+     */
+    public static boolean setScanWavelengthConfig(
+            String deviceId,
+            double startWl,
+            double endWl,
+            double interval,
+            boolean descending
+    ) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置扫描波长失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        ScanWavelengthConfig config = new ScanWavelengthConfig();
+        device.setStartWavelength(startWl);
+        device.setEndWavelength(endWl);
+        device.setInterval(interval);
+        device.setDescending(descending);
+        BeanUtils.copyProperties(device,  config);
+        device.setScanWavelengthConfig(config);
+
+        device.updateLastUseTime();
+
+        logInfo("设置扫描波长: device=%s start=%s end=%s interval=%s",
+                deviceId, startWl, endWl, interval);
+
+        return true;
+    }
+
+    public ScanWavelengthConfig getScanWavelengthConfig(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            log.warn("获取扫描波长配置失败: 设备不存在 {}", deviceId);
+            return null;
+        }
+
+        ScanWavelengthConfig cfg = device.getScanWavelengthConfig();
+        if (cfg == null) {
+            log.warn("扫描波长配置未设置: deviceId={}", deviceId);
+            return null;
+        }
+
+        return cfg;
+    }
+
+
 
     /**
      * 一次性取出currentStatus的所有字段内容
@@ -575,7 +631,7 @@ public class DeviceConnectionManager {
             t.setDaemon(true);
             return t;
         });
-        cleanupService.scheduleWithFixedDelay(this::cleanupExpiredDevices, 5, 5, TimeUnit.MINUTES);
+//        cleanupService.scheduleWithFixedDelay(this::cleanupExpiredDevices, 5, 5, TimeUnit.MINUTES);
         logInfo("清理服务已启动");
     }
 
@@ -624,7 +680,7 @@ public class DeviceConnectionManager {
 
     public void triggerCleanup() {
         if (cleanupService != null) {
-            cleanupService.submit(this::cleanupExpiredDevices);
+//            cleanupService.submit(this::cleanupExpiredDevices);
         }
     }
 
@@ -680,13 +736,13 @@ public class DeviceConnectionManager {
 
     // ==================== 日志 ====================
 
-    private void logInfo(String format, Object... args) {
+    private static void logInfo(String format, Object... args) {
         String msg = String.format(format, args);
         String time = LocalDateTime.now().toString().substring(11, 19);
         System.out.printf("[%s][DeviceManager] %s%n", time, msg);
     }
 
-    private void logWarning(String format, Object... args) {
+    private static void logWarning(String format, Object... args) {
         String msg = String.format(format, args);
         String time = LocalDateTime.now().toString().substring(11, 19);
         System.out.printf("[%s][DeviceManager][WARN] %s%n", time, msg);

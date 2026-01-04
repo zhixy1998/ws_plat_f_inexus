@@ -27,7 +27,7 @@ public interface TemplateService extends IService<ExcelTemplate> {
 
     Result updateTemplate(TemplateUpdateRequest request);
     Result editExcel(MultipartFile file, Map<String, Set<String>> sheetRetainRows) throws IOException;
-    Result buildResultTemplate(String templateCode);
+    Result buildResultTemplate(String templateCode,List<Map<String, Object>> rowsNotInTemplate);
 
     /**
      * 导出Excel文件

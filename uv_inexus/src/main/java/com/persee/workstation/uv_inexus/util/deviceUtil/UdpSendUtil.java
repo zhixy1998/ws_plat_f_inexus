@@ -107,7 +107,7 @@ public class UdpSendUtil {
                 int size = store.getQueueSize(deviceId);
                 if (size > 0) {
                     for (int i = 0; i < size; i++) {
-                        byte[] message = store.getMessage(deviceId);
+                        byte[] message = store.takeMessageBlocking(deviceId, timeout);
 
                         messageGetLog(deviceId, device.getConnectIdentity(), message);
 
@@ -126,6 +126,7 @@ public class UdpSendUtil {
                             }
                             searchInfo.setDeviceMac(deviceMac.deleteCharAt(deviceMac.length()-1).toString());
                             ans.add(searchInfo);
+                            break;
                         }
                     }
                 }
@@ -178,29 +179,37 @@ public class UdpSendUtil {
 
             List<byte[]> responses = new ArrayList<>();
 
+
             while (i < replyNumber && System.currentTimeMillis() - lastReceiveTime < timeout) {
                 if (store.getQueueSize(deviceId) == 0) {
                     Thread.sleep(10);
                     continue;
                 }
-                byte[] message = store.getMessage(deviceId);
+                byte[] bytes = store.peekMessage(deviceId);
 
-                if (message == null) continue;
-                i += message.length;
-                responses.add(message);
+                if (bytes == null) continue;
+                i += bytes.length;
+
 
                 String receiveIp = deviceManager.getIpByDeviceId(deviceId);
 
-                messageGetLog(deviceId, receiveIp, message);
+                messageGetLog(deviceId, receiveIp, bytes);
 
                 if (i < 12) {
                     continue;
                 }
 
-                if (isStartMessage(responses)) {
+                if (isNewIpStartMessage(bytes)) {
                     log.info("07回应报文，开始接收");
-                    start = true;
+                    start = !start;
+
+                    if (!start) {
+                        log.info("多收07报文！退出");
+                        return R.fail("报文不足!");
+                    }
+                    byte[] message = store.getMessage(deviceId);
                     responses.add(message);
+                    i += message.length;
                     store.transferQueueMerge(deviceId, newDeviceId);
                     deviceId = newDeviceId;
                     continue;
@@ -208,17 +217,20 @@ public class UdpSendUtil {
                     if (!start) {
                         log.info("该报文丢弃！");
                         i = 0;
-                        responses.clear();
                         continue;
                     }
+
+                    byte[] message = store.getMessage(deviceId);
+                    responses.add(message);
+                    i += message.length;
                 }
 
                 lastReceiveTime = System.currentTimeMillis();
             }
 
-            if (i == replyNumber) {
-                Object parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
-                if (parse.equals("false")) {
+            if (i >= replyNumber) {
+                OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
+                if (!parse.getIsSuccess()) {
                     return R.fail();
                 }
                 return R.ok(newDeviceId);
@@ -293,11 +305,15 @@ public class UdpSendUtil {
                      break;
                  } else {
                      log.info("报文接收不足！重试第{}次", i+1);
+                     store.clearDeviceMessages(deviceId);
+                     socket.send(packet);
+
+                     sendMessageLog(sendIp, cmdId, sendBytes);
                  }
             }
 
             if (!r.getSuccess()) {
-                return R.fail("报文接收不足！");
+                return R.fail(DeviceConstants.unCountResponse);
             }
             List<byte[]> responses = r.getData();
 
@@ -308,7 +324,7 @@ public class UdpSendUtil {
             }
 
             if (parse.getCurrentMeasure() != null){
-                ChangeParam changeParam = parse.getCurrentMeasure().getData();
+                ChangeParam changeParam = parse.getCurrentMeasure();
                 System.out.println("测量值：" + changeParam);
             }
 
@@ -486,11 +502,14 @@ public class UdpSendUtil {
                     break;
                 } else {
                     log.info("报文接收不足！重试第{}次", i+1);
+                    store.clearDeviceMessages(sendIp);
+                    socket.send(packet);
+                    sendMessageLog(sendIp, cmdId, sendBytes);
                 }
             }
 
             if (!r.getSuccess()) {
-                return R.fail("报文接收不足！");
+                return R.fail(DeviceConstants.unCountResponse);
             }
             List<byte[]> responses = r.getData();
 
@@ -575,8 +594,13 @@ public class UdpSendUtil {
 
                 lastReceiveTime = System.currentTimeMillis();
             }
+            if (i < totalByteNumber && totalByteNumber != Integer.MAX_VALUE) {
+                log.info("报文不足！");
+                return R.fail("报文不足!");
+            }
         } catch (Exception e) {
             log.info("处理消息出错：{}", e.getMessage());
+            return R.fail("处理消息出错！");
         }
         return R.ok(responses);
 
@@ -610,37 +634,9 @@ public class UdpSendUtil {
                 reply[3] == SEARCH_DEVICE_HEADER2;
     }
 
-    private boolean isStartMessage(List<byte[]> responses) {
+    private boolean isNewIpStartMessage(byte[] firstBytes) {
 
-        // 2. 从前往后收集前12字节（从第一条响应开始）
-        int needed = 12;
-        byte[] firstBytes = new byte[12];
-        int index = 0; // 从firstBytes开头填充
 
-        // 从第一条响应开始向前遍历
-        for (int i = 0; i < responses.size() && needed > 0; i++) {
-            byte[] response = responses.get(i);
-            int len = response.length;
-
-            // 当前响应长度足够
-            if (len >= needed) {
-                // 从当前响应开头取所需字节
-                System.arraycopy(response, 0, firstBytes, index, needed);
-                break;
-            }
-            // 当前响应长度不足
-            else {
-                // 复制整个响应
-                System.arraycopy(response, 0, firstBytes, index, len);
-                needed -= len;
-                index += len;
-            }
-        }
-
-        // 3. 检查是否收集到12字节
-        if (needed > 0) {
-            return false; // 不足12字节
-        }
 
         // 4. 验证报文开头（关键修正：从前往后匹配）
         return firstBytes[0] == (byte) 0xFE &&

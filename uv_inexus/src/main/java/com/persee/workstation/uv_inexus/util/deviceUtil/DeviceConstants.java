@@ -16,4 +16,6 @@ public class DeviceConstants {
 
     public static volatile Map<String, Boolean> isStopInit = new ConcurrentHashMap<>();
 
+    public final static String unCountResponse = "unResponseEnoughCount";
+
 }

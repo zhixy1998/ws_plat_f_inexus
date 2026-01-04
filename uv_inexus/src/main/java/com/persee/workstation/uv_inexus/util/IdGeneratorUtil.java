@@ -37,10 +37,10 @@ public class IdGeneratorUtil {
     }
 
     /**
-     * 生成短格式ID（15位）
-     * @return 15位字符串形式的主键ID
+     * 生成短格式ID（6位）
+     * @return 6位字符串形式的主键ID
      */
     public static String generateShortId() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 15);
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 6);
     }
 }

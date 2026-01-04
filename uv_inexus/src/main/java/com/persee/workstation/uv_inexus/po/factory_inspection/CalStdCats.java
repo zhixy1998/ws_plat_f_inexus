@@ -21,7 +21,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @ApiModel("标准物质分类")
@@ -34,58 +33,58 @@ public class CalStdCats extends BasePO {
      * 标准物质ID
      */
     @TableId(value = "id", type = IdType.INPUT)
-    @ApiModelProperty(value="标准物质ID")
+    @ApiModelProperty(value = "标准物质ID")
     private String id;
 
     /**
      * 标准物质名称
      */
     @TableField(value = "substance_name")
-    @ApiModelProperty(value="标准物质名称")
+    @ApiModelProperty(value = "标准物质名称")
     private String name;
 
     /**
      * 标准物质描述
      */
     @TableField(value = "remark")
-    @ApiModelProperty(value="标准物质描述")
-    private String remark ;
+    @ApiModelProperty(value = "标准物质描述")
+    private String remark;
     /**
      * 是否删除
      */
     @TableField(value = "is_delete")
-    @ApiModelProperty(value="是否删除")
+    @ApiModelProperty(value = "是否删除")
     private String isDelete;
 
     // 在 CalStdCats 类中添加标准物质类型字段
     @TableField(value = "material_type")
-    @ApiModelProperty(value="标准物质类型")
+    @ApiModelProperty(value = "标准物质类型")
     private String materialType;
 
     /**
      * 特征值
      */
     @TableField(value = "characteristic_value")
-    @ApiModelProperty(value="特征值")
+    @ApiModelProperty(value = "特征值")
     private String characteristicValue;
 
     /**
      * 标准值
      */
     @TableField(value = "standard_value")
-    @ApiModelProperty(value="标准值")
+    @ApiModelProperty(value = "标准值")
     private String standardValue;
 
     /**
      * 层级
      */
     @TableField(exist = false)
-    @ApiModelProperty(value="层级")
+    @ApiModelProperty(value = "层级")
     private Integer level = 1;
     /**
      * 子级的标准物实体
      */
     @TableField(exist = false)
-    @ApiModelProperty(value="标准物实体")
+    @ApiModelProperty(value = "标准物实体")
     private List<CalArtifacts> children;
 }

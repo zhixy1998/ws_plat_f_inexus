@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.component.ExcelDynamicMerger;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TemplateMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.TemplateCreationRequest;
@@ -29,10 +30,9 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,9 +40,6 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLEncoder;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,8 +57,8 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     private TemplateMapper templateMapper;
     @Autowired
     private ExcelDataAssetService excelDataAssetService;
-    @Value("${excel.save.path}")
-    private String excelSavePath;
+    /*@Value("${excel.save.path}")
+    private String excelSavePath;*/
     @Autowired
     private ExcelCellLocator excelCellLocator;
     @Autowired
@@ -79,6 +76,10 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     private CalArtifactsService calArtifactsService;
     @Autowired
     private CalStdCatsService calStdCatsService;
+    @Autowired
+    private WorkbookDataService workbookDataService;
+    @Autowired
+    private ExcelDynamicMerger excelDynamicMerger;
     private final Map<String, Integer> operationCount = new ConcurrentHashMap<>();
 
 
@@ -107,6 +108,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         }
     }
 
+
     @Override
     @DS("factory_inspection")
     @Transactional(rollbackFor = Exception.class)
@@ -122,7 +124,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 if (one != null) {
                     return Result.fail("模板名称重复！！");
                 }
-                String templateCode = "TEMP_" + System.currentTimeMillis();
+                String templateCode = "TEMP_" + IdGeneratorUtil.generateShortId() + System.currentTimeMillis();
 
                 // 创建新模板
                 ExcelTemplate template = new ExcelTemplate();
@@ -143,13 +145,11 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 List<Map<String, Object>> selectedRows = new ArrayList<>();
                 request.getSelectedRows().entrySet()
                         .forEach(entry -> {
-                            String key = entry.getKey(); // 这里可以获取到 key
+//                            String key = entry.getKey(); // 这里可以获取到 key
                             List<Map<String, Object>> valueList = entry.getValue();
-                            for (Map<String, Object> dataMap : valueList) {
-                                // 如果需要在数据中添加 key 信息
-                                dataMap.put("id", key); // 可选：将 key 作为数据的一部分
-                                selectedRows.add(dataMap);
-                            }
+                            // 如果需要在数据中添加 key 信息
+                            //                                dataMap.put("id", key); // 可选：将 key 作为数据的一部分
+                            selectedRows.addAll(valueList);
                         });
 
 
@@ -163,6 +163,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     asset.setId(IdGeneratorUtil.generateIdWithPrefix("asset"));
                     asset.setTemplateCode(templateCode);
                     asset.setBatchNo(String.valueOf(rowIndex++));
+                    dataMap.put("id", asset.getId());
                     asset.setStructuredData(JSON.toJSONString(dataMap));
                     asset.setImportStatus("SUCCESS");
                     LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
@@ -180,9 +181,18 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     list.add(asset);
                 }
                 excelDataAssetService.saveBatch(list);
+                //不存在的检测项
+                List<Map<String, Object>> rowsNotInTemplate = new ArrayList<>();
 
 
-                buildResultTemplate(template.getTemplateCode());
+                // 从request.getSelectedRows()中筛选key以"new"开头的条目
+                Map<String, List<Map<String, Object>>> filteredRows = request.getSelectedRows().entrySet().stream()
+                        .filter(entry -> entry.getKey().startsWith("new"))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+                // 将筛选后的数据添加到rowsNotInTemplate列表中
+                filteredRows.values().forEach(rowsNotInTemplate::addAll);
+                buildResultTemplate(template.getTemplateCode(), rowsNotInTemplate);
 
                 if (saved) {
                     return Result.ok("模板创建成功");
@@ -301,20 +311,21 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     /**
      * 根据原始结果模板生成定制结果模板
      *
-     * @param resultTemplate
+     * @param
      * @param sheetRetainRows
+     * @param rowsNotInTemplate
      * @return
      * @throws IOException
      */
-    public Result editExcel(String resultTemplate, ExcelTemplate template, Map<String, Set<String>> sheetRetainRows) throws IOException {
-        System.out.println("88888888888888888888888888888888" + resultTemplate);
-//        File file = new File(resultTemplate);
-        ClassPathResource resource = new ClassPathResource(resultTemplate);
-        File file = resource.getFile();
-//        boolean b = file.getParentFile().mkdirs();// 创建父目录（如果不存在）
-//        InputStream is = Files.newInputStream(Paths.get(resultTemplate));
-        InputStream is = Files.newInputStream(file.toPath());
-        Workbook workbook = WorkbookFactory.create(is);
+    public Result editExcel(Workbook workbook, ExcelTemplate template, Map<String, Set<String>> sheetRetainRows, List<Map<String, Object>> rowsNotInTemplate) throws IOException {
+//        System.out.println("88888888888888888888888888888888" + resultTemplate);
+////        File file = new File(resultTemplate);
+//        ClassPathResource resource = new ClassPathResource(resultTemplate);
+//        File file = resource.getFile();
+////        boolean b = file.getParentFile().mkdirs();// 创建父目录（如果不存在）
+////        InputStream is = Files.newInputStream(Paths.get(resultTemplate));
+//        InputStream is = Files.newInputStream(file.toPath());
+//        Workbook workbook = WorkbookFactory.create(is);
 
         try {
             // 1. 删除未指定的Sheet
@@ -375,21 +386,51 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                 }
             }
 
-
+            //新增不存在的检测项赋值
+            if (CollectionUtils.isNotEmpty(rowsNotInTemplate)) {
+                log.info("新增不存在的检测项赋值: {}", rowsNotInTemplate);
+                //需要给这个检测项和标准物来个关联关系，目前没有关联关系
+                for (Map<String, Object> row : rowsNotInTemplate) {
+                    //找检测类别，获取对应的Sheet
+                    String sheetName = MapUtils.getString(row, TEST_CATEGORY.getDescription());
+                    Sheet sheet = workbook.getSheet(sheetName);
+                    //获取这个sheet页的表头
+                    Row headerRow = sheet.getRow(0);
+                    //
+                    // 创建表头映射
+                    Map<String, List<Integer>> headerColumns = parseHeaderStructureWithMergedCells(sheet);
+                    /*
+                    {项目名称=[0], 判定结果=[10], 平均值（nm）=[5], 波长重复性=[9], 误差值（nm）=[6],
+                    特征值（nm）=[1], 重复性（nm）=[7], 测量值（nm）=[2, 3, 4], 波长示值误差(nm)=[8]}
+                    */
+                    //在最后一行插入新的检测项
+                    int lastRow = sheet.getLastRowNum();
+                    Map<Integer, List<Object>> columnData = this.buildColumnData(row, headerColumns);
+                    log.info("列数据: {}", columnData);
+                    System.out.println("855555555555555555555555555"+row);
+                    excelDynamicMerger.insertDynamicMergedRow(workbook,sheetName,lastRow+1,columnData);
+                    log.info("表头映射: {}", headerColumns);
+                }
+            }
             processWorkbookCells(workbook);
 
             // 返回编辑后的文件
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            workbook.write(out);
-            String excelPath = excelSavePath + template.getTemplateCode() + ".xlsx";
-
-            File excelFile = new File(excelPath);
-            excelFile.getParentFile().mkdirs(); // 创建父目录（如果不存在）
-
-            try (FileOutputStream fos = new FileOutputStream(excelPath)) {
-                out.writeTo(fos);  // 将输出流内容写入文件
+            //生成新模板入库
+            boolean b = workbookDataService.uploadExcel(workbook, template.getTemplateCode());
+            if (b) {
+                log.info("模板更新成功");
             }
-            out.close();
+//            ByteArrayOutputStream out = new ByteArrayOutputStream();
+//            workbook.write(out);
+//            String excelPath = excelSavePath + template.getTemplateCode() + ".xlsx";
+//
+//            File excelFile = new File(excelPath);
+//            excelFile.getParentFile().mkdirs(); // 创建父目录（如果不存在）
+//
+//            try (FileOutputStream fos = new FileOutputStream(excelPath)) {
+//                out.writeTo(fos);  // 将输出流内容写入文件
+//            }
+//            out.close();
             return Result.ok();
         } catch (Exception e) {
             log.error("文件处理失败", e);
@@ -397,6 +438,208 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             IOUtils.closeQuietly(workbook);
         }
         return Result.fail("文件处理失败");
+    }
+    private Map<Integer, List<Object>> buildColumnData(Map<String, Object> row, Map<String, List<Integer>> headerColumns) {
+        if (MapUtils.isEmpty(headerColumns)) {
+            return new HashMap<>();
+        }
+// 获取字符串列表
+        List<String> stringList = row.values().stream()
+                .map(Object::toString)
+                .collect(Collectors.toList());
+
+// 找出最多逗号数
+        int maxCommaCount = stringList.stream()
+                .mapToInt(str -> (int) str.chars().filter(ch -> ch == ',').count())
+                .max()
+                .orElse(0);
+
+        Map<Integer, List<Object>> data = new HashMap<>();
+
+        for (Map.Entry<String, List<Integer>> entry : headerColumns.entrySet()) {
+            String headerName = entry.getKey();
+            List<Integer> columnIndices = entry.getValue();
+            int rowNum = 1;
+            // 从 row 中获取对应的值，测量值就是空，所以就要赋空，行数按照最大行，也就是特征值数
+//            Object cellValueObj = row.get(headerName);
+            Object cellValueObj = findFlexibleValue(row, headerName);
+            if (Objects.isNull(cellValueObj)){
+                for (Integer columnIndex : columnIndices) {
+                    if (maxCommaCount>0){
+                        rowNum = maxCommaCount+1;
+                    }
+                    //最大有几行
+                    data.put(columnIndex, Collections.nCopies(rowNum, ""));
+                }
+            }
+            if (!Objects.isNull(cellValueObj)) {
+                // 处理值，将其转换为 List<Object>
+                List<Object> cellValues = convertToValueList(cellValueObj);
+                log.info("特征值设置: {}", cellValues);
+                // 为每个列索引设置对应的值列表
+                for (Integer columnIndex : columnIndices) {
+                    data.put(columnIndex, cellValues);
+                }
+            }
+        }
+
+        return data;
+    }
+
+    /**
+     * 从输入的行中，根据给定的列名，尝试从行中获取最匹配的值。
+     * @param row
+     * @param headerName
+     * @return
+     */
+    private Object findFlexibleValue(Map<String, Object> row, String headerName) {
+        // 1. 精确匹配
+        if (row.containsKey(headerName)) {
+            return row.get(headerName);
+        }
+
+        // 2. 移除后缀后匹配
+        String baseName = extractBaseName(headerName);
+        if (baseName != null) {
+            // 先尝试直接匹配基础名称
+            if (row.containsKey(baseName)) {
+                return row.get(baseName);
+            }
+
+            // 再尝试反向匹配（row中的键可能有后缀）
+            for (Map.Entry<String, Object> entry : row.entrySet()) {
+                String rowKey = entry.getKey();
+                String rowBaseName = extractBaseName(rowKey);
+                if (baseName.equals(rowBaseName)) {
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private String extractBaseName(String key) {
+        if (key == null) return null;
+        // 移除括号后缀，支持英文()和中文（）括号
+        return key.replaceAll("\\s*\\([^)]*\\)\\s*$", "")
+                .replaceAll("\\s*（[^）]*）\\s*$", "")
+                .trim();
+    }
+
+    /**
+     * 将对象值转换为 List<Object>
+     */
+    private List<Object> convertToValueList(Object value) {
+        if (value == null) {
+            return Collections.singletonList("");
+        }
+
+        String stringValue = value.toString().trim();
+
+        if (stringValue.contains(",")) {
+            // 按逗号分割字符串
+            return Arrays.stream(stringValue.split(","))
+                    .map(String::trim)
+                    .collect(Collectors.toList());
+        } else {
+            // 单个值
+            return Collections.singletonList(stringValue);
+        }
+    }
+
+    /*private Map<Integer, List<Object>> buildColumnData(Map<String, Object> row, Map<String, List<Integer>> headerColumns) {
+        if (MapUtils.isNotEmpty(headerColumns)){
+            int size = headerColumns.values().size();
+            //搞一个新的行
+            Map<Integer, List<Object>> data = new HashMap<>(size);
+            for (Map.Entry<String, List<Integer>> entry : headerColumns.entrySet()) {
+                String key = entry.getKey();
+                //这一步获取到的是单元格要填充的值
+                String cellValue = MapUtils.getString(row, key);
+                //这是列的索引
+                List<Integer> value = entry.getValue();
+                if (CollectionUtils.isNotEmpty(value)) {
+                    //一般是一次循环，有的是测量值测量多次，会有三次
+                    for (Integer i : value) {
+                        data.put(i,Arrays.asList(value));
+                    }
+                }
+            }
+        }
+
+        // 项目名称列 (跨6行合并)
+        data.put(0, Collections.singletonList("9595"));
+
+        // 特征值列 (6个字符串)
+        data.put(1, Arrays.asList("222.7", "333.8", "444.5", "555.0", "666.4", "777.0"));
+
+        // 空列处理 (使用nCopies保证行数一致)
+        IntStream.rangeClosed(2, 7).forEach(i ->
+                data.put(i, Collections.nCopies(6, ""))
+        );
+
+        // 动态转换数值类型
+        data.put(8, Arrays.asList(3, 4, 5, 6, 7, 3).stream()
+                .map(Object::toString)
+                .collect(Collectors.toList()));
+        data.put(9, Arrays.asList(2, 2, 2, 2, 2, 2).stream()
+                .map(Object::toString)
+                .collect(Collectors.toList()));
+// 空列处理 (使用nCopies保证行数一致)
+        data.put(10, Collections.nCopies(6, ""));
+        return data;
+    }*/
+    /**
+     * 解析表头结构，包含合并单元格处理
+     */
+    private Map<String, List<Integer>> parseHeaderStructureWithMergedCells(Sheet sheet) {
+        Map<String, List<Integer>> headerColumns = new HashMap<>();
+        Row headerRow = sheet.getRow(0);
+
+        if (headerRow == null) return headerColumns;
+
+        // 首先处理合并区域
+        for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
+            CellRangeAddress mergedRegion = sheet.getMergedRegion(i);
+
+            // 检查是否为表头行的合并区域
+            if (mergedRegion.getFirstRow() == 0) { // 表头行
+                String headerName = getCellValueAsString(
+                        headerRow.getCell(mergedRegion.getFirstColumn())
+                );
+
+                // 将合并区域的所有列都映射到该表头名称
+                for (int col = mergedRegion.getFirstColumn();
+                     col <= mergedRegion.getLastColumn(); col++) {
+                    headerColumns.computeIfAbsent(headerName, k -> new ArrayList<>()).add(col);
+                }
+            }
+        }
+
+        // 处理非合并单元格
+        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+            // 检查当前列是否已在合并区域中处理过
+            boolean isMerged = false;
+            for (int j = 0; j < sheet.getNumMergedRegions(); j++) {
+                CellRangeAddress merged = sheet.getMergedRegion(j);
+                if (merged.getFirstRow() == 0 &&
+                        i >= merged.getFirstColumn() && i <= merged.getLastColumn()) {
+                    isMerged = true;
+                    break;
+                }
+            }
+
+            if (!isMerged) {
+                Cell cell = headerRow.getCell(i);
+                String headerName = getCellValueAsString(cell);
+                if (!headerName.isEmpty()) { // 只处理非空表头
+                    headerColumns.computeIfAbsent(headerName, k -> new ArrayList<>()).add(i);
+                }
+            }
+        }
+
+        return headerColumns;
     }
 
     /**
@@ -489,11 +732,19 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(ExcelDataAsset::getTemplateCode, templateCode);
             b = excelDataAssetService.remove(wrapper);
-            Path path = Paths.get(excelSavePath + templateCode + ".xlsx");
-            try {
-                Files.delete(path);
-            } catch (IOException e) {
-                log.error("文件删除失败", e);
+//            Path path = Paths.get(excelSavePath + templateCode + ".xlsx");
+//            try {
+//                Files.delete(path);
+//            } catch (IOException e) {
+//                log.error("文件删除失败", e);
+//            }
+            //这里是删除模板，calibration_workbook_data表中，模板code和taskid相同的就是模板
+            //不同的就是各自任务所属的workbook
+            LambdaQueryWrapper<WorkbookData> wrapper1 = new LambdaQueryWrapper<>();
+            wrapper1.eq(WorkbookData::getTaskId, templateCode);
+            boolean remove = workbookDataService.remove(wrapper1);
+            if (remove) {
+                log.info("删除模板成功");
             }
         }
         return b ? Result.ok() : Result.fail("内置模板，不可删除");
@@ -512,64 +763,80 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 
     @Override
     public Result<List<Map<String, String>>> getMaterialOptions(String id) {
-        CalStdCats cats = calStdCatsService.getById(id);
-        if (cats != null) {
-            List<CalArtifacts> list = calArtifactsService.list(new LambdaQueryWrapper<CalArtifacts>().eq(CalArtifacts::getCategoryId, cats.getId()));
-            if (CollectionUtils.isNotEmpty(list)) {
-                List<Map<String, String>> collect = list.stream().map(c -> {
-                    Map<String, String> map = new HashMap<>();
-                    map.put("id", c.getId());
-                    map.put("name", c.getName());
-                    map.put("characteristicValue", c.getCharacteristicValue());
-                    map.put("standardValue", c.getStandardValue());
-                    return map;
-                }).collect(Collectors.toList());
-                Map<String, String> m = new HashMap<>();
-                m.put("id", cats.getId());
-                m.put("name", cats.getName());
-                m.put("characteristicValue", cats.getCharacteristicValue());
-                m.put("standardValue", cats.getStandardValue());
-                collect.add(m);
-                return Result.ok(collect);
-            }
-            if (CollectionUtils.isEmpty(list)) {
-                ArrayList<Map<String, String>> maps = new ArrayList<>();
-                HashMap<String, String> map = new HashMap<>();
-                map.put("id", cats.getId());
-                map.put("name", cats.getName());
-                map.put("characteristicValue", cats.getCharacteristicValue());
-                map.put("standardValue", cats.getStandardValue());
-                maps.add(map);
-                return Result.ok(maps);
-            }
+//        if (StringUtils.isBlank(id)){
+        log.info("选择标准物质");
+        List<CalStdCats> list = calStdCatsService.list();
+        if (CollectionUtils.isNotEmpty(list)) {
+            List<Map<String, String>> collect = list.stream().map(c -> {
+                Map<String, String> map = new HashMap<>();
+                map.put("id", c.getId());
+                map.put("name", c.getName());
+                map.put("characteristicValue", c.getCharacteristicValue());
+                map.put("standardValue", c.getStandardValue());
+                return map;
+            }).collect(Collectors.toList());
+            return Result.ok(collect);
         }
-        if (cats == null) {
-            CalArtifacts calArtifacts = calArtifactsService.getById(id);
-            if (calArtifacts != null) {
-                ArrayList<Map<String, String>> maps = new ArrayList<>();
-                HashMap<String, String> map = new HashMap<>();
-                map.put("id", calArtifacts.getId());
-                map.put("name", calArtifacts.getName());
-                map.put("characteristicValue", calArtifacts.getCharacteristicValue());
-                map.put("standardValue", calArtifacts.getStandardValue());
-                maps.add(map);
-                LambdaQueryWrapper<CalArtifacts> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(CalArtifacts::getCategoryId, calArtifacts.getCategoryId());
-                List<CalArtifacts> list = calArtifactsService.list(wrapper);
-                if (CollectionUtils.isNotEmpty(list)) {
-                    for (CalArtifacts artifact : list) {
-                        HashMap<String, String> temp = new HashMap<>();
-                        temp.put("id", artifact.getId());
-                        temp.put("name", artifact.getName());
-                        temp.put("characteristicValue", artifact.getCharacteristicValue());
-                        temp.put("standardValue", artifact.getStandardValue());
-                        maps.add(temp);
-                    }
-                }
-                return Result.ok(maps);
-            }
-        }
-        return Result.fail(null);
+        return Result.ok();
+//        }
+//        CalStdCats cats = calStdCatsService.getById(id);
+//        if (cats != null) {
+//            List<CalArtifacts> list = calArtifactsService.list(new LambdaQueryWrapper<CalArtifacts>().eq(CalArtifacts::getCategoryId, cats.getId()));
+//            if (CollectionUtils.isNotEmpty(list)) {
+//                List<Map<String, String>> collect = list.stream().map(c -> {
+//                    Map<String, String> map = new HashMap<>();
+//                    map.put("id", c.getId());
+//                    map.put("name", c.getName());
+//                    map.put("characteristicValue", c.getCharacteristicValue());
+//                    map.put("standardValue", c.getStandardValue());
+//                    return map;
+//                }).collect(Collectors.toList());
+//                Map<String, String> m = new HashMap<>();
+//                m.put("id", cats.getId());
+//                m.put("name", cats.getName());
+//                m.put("characteristicValue", cats.getCharacteristicValue());
+//                m.put("standardValue", cats.getStandardValue());
+//                collect.add(m);
+//                return Result.ok(collect);
+//            }
+//            if (CollectionUtils.isEmpty(list)) {
+//                ArrayList<Map<String, String>> maps = new ArrayList<>();
+//                HashMap<String, String> map = new HashMap<>();
+//                map.put("id", cats.getId());
+//                map.put("name", cats.getName());
+//                map.put("characteristicValue", cats.getCharacteristicValue());
+//                map.put("standardValue", cats.getStandardValue());
+//                maps.add(map);
+//                return Result.ok(maps);
+//            }
+//        }
+//        if (cats == null) {
+//            CalArtifacts calArtifacts = calArtifactsService.getById(id);
+//            if (calArtifacts != null) {
+//                ArrayList<Map<String, String>> maps = new ArrayList<>();
+//                HashMap<String, String> map = new HashMap<>();
+//                map.put("id", calArtifacts.getId());
+//                map.put("name", calArtifacts.getName());
+//                map.put("characteristicValue", calArtifacts.getCharacteristicValue());
+//                map.put("standardValue", calArtifacts.getStandardValue());
+//                maps.add(map);
+//                LambdaQueryWrapper<CalArtifacts> wrapper = new LambdaQueryWrapper<>();
+//                wrapper.eq(CalArtifacts::getCategoryId, calArtifacts.getCategoryId());
+//                List<CalArtifacts> list = calArtifactsService.list(wrapper);
+//                if (CollectionUtils.isNotEmpty(list)) {
+//                    for (CalArtifacts artifact : list) {
+//                        HashMap<String, String> temp = new HashMap<>();
+//                        temp.put("id", artifact.getId());
+//                        temp.put("name", artifact.getName());
+//                        temp.put("characteristicValue", artifact.getCharacteristicValue());
+//                        temp.put("standardValue", artifact.getStandardValue());
+//                        maps.add(temp);
+//                    }
+//                }
+//                return Result.ok(maps);
+//            }
+//        }
+//        return Result.fail(null);
     }
 
     @Override
@@ -609,7 +876,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             workbook.write(out);
             // 获取项目资源目录路径
             String s = IdGeneratorUtil.generateId();
-            String excelPath = excelSavePath + "excel" + s + ".xlsx";
+            String excelPath = /*excelSavePath + */"excel" + s + ".xlsx";
 //            String xmlPath = xmlSavePath + "xml" + s + ".xml";
 
             File excelFile = new File(excelPath);
@@ -633,7 +900,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     }
 
     @Override
-    public Result buildResultTemplate(String templateCode) {
+    public Result buildResultTemplate(String templateCode, List<Map<String, Object>> rowsNotInTemplate) {
         try {
             //找出新模板的数据
             LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
@@ -663,13 +930,44 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             if (StringUtils.equals(template.getCategory(), "1")) {
 //                ExcelTemplate excelTemplate = getById(template.getParentId());
                 ExcelTemplate excelTemplate = getOne(new LambdaQueryWrapper<ExcelTemplate>().eq(ExcelTemplate::getTemplateCode, template.getParentId()));
-                this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
+                LambdaQueryWrapper<WorkbookData> wrapper1 = new LambdaQueryWrapper<>();
+                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode());
+                List<WorkbookData> list1 = workbookDataService.list(wrapper1);
+                if (CollectionUtils.isNotEmpty(list1)) {
+                    byte[] data = list1.get(0).getWorkbookData();
+                    if (data != null) {
+                        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
+                            Workbook workbook = new XSSFWorkbook(inputStream);
+                            //把父模板传过去
+                            this.editExcel(workbook, template, sheetRetainRows, rowsNotInTemplate);
+                            // 现在可以使用workbook对象进行操作
+                        } catch (IOException e) {
+                            log.error("转换字节数组到Workbook失败", e);
+                        }
+                    }
+                }
             } else {
                 ExcelTemplate excelTemplate = getById(template.getId());
-                this.editExcel(excelSavePath + excelTemplate.getTemplateCode() + ".xlsx", template, sheetRetainRows);
+                LambdaQueryWrapper<WorkbookData> wrapper1 = new LambdaQueryWrapper<>();
+                wrapper1.eq(WorkbookData::getTemplateCode, excelTemplate.getTemplateCode());
+                List<WorkbookData> list1 = workbookDataService.list(wrapper1);
+                if (CollectionUtils.isNotEmpty(list1)) {
+                    byte[] data = list1.get(0).getWorkbookData();
+                    if (data != null) {
+                        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
+                            Workbook workbook1 = new XSSFWorkbook(inputStream);
+                            //把父模板传过去
+                            this.editExcel(workbook1, template, sheetRetainRows, rowsNotInTemplate);
+
+                            // 现在可以使用workbook对象进行操作
+                        } catch (IOException e) {
+                            log.error("转换字节数组到Workbook失败", e);
+                        }
+                    }
+                }
             }
             return Result.ok();
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("文件处理失败", e);
             return Result.fail();
         }

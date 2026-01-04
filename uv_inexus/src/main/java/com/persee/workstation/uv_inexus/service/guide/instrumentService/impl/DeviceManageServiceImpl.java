@@ -43,6 +43,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.LiveDetectionManyDevicesWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,8 +90,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Autowired
     DeviceTypeInfoDAO deviceTypeInfoDAO;
 
-//    @Autowired
-//    LiveDetectionManyDevicesWebSocket liveDetectionWebSocket;
+    @Autowired
+    LiveDetectionManyDevicesWebSocket liveDetectionManyDevicesWebSocket;
 
     @Autowired
     LiveDetectionWebSocket liveDetectionWebSocket;
@@ -613,13 +614,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             vo.setAnnexSetting(1);
             vo.setBandWidth(2.0);
             vo.setAnnexSettingChange(false);
-            vo.setMessagePortChange(false);
+            vo.setMessagePortChange(true);
         } else{
             vo.setMessagePort(po.getMessagePort());
             vo.setAnnexSetting(po.getAnnexSetting());
             vo.setBandWidth(po.getBandWidth());
             vo.setAnnexSettingChange(false);
-            vo.setMessagePortChange(false);
+            vo.setMessagePortChange(true);
         }
 
         return R.ok(vo);
@@ -650,11 +651,11 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 //        if (po.getRestoreFactorySetting()) {
 //            log.info("恢复出厂设置");
 //        }
-        if (!StringUtils.hasText(po.getDeviceSerialNumber())) {
-            log.info("设置系统配置--缺少序列号");
-            //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
-        }
+//        if (!StringUtils.hasText(po.getDeviceSerialNumber())) {
+//            log.info("设置系统配置--缺少序列号");
+//            //缺少序列号
+//            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+//        }
         log.info("设置仪器配置");
 
 
@@ -1001,6 +1002,29 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
+    public R<List<SearchInfo>> searchDevice() {
+
+        Integer connectType = 2;
+        R<QueryDeviceConfigVO> r = queryDeviceConfig("");
+        if (r.getSuccess()) {
+            QueryDeviceConfigVO data = r.getData();
+            connectType = data.getMessagePort();
+        }
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Find.getType());
+        inputParam.setConnectType(connectType);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            OperationResultEntity data = operation.getData();
+            List<SearchInfo> searchInfo = data.getSearchInfo();
+            return R.ok(searchInfo);
+        }
+    }
+
+    @Override
     public R<FindDeviceVO> connect(SearchInfo param) {
         Integer connectType = param.getConnectType();
 
@@ -1105,9 +1129,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             vo.setAttachmentKind(attachmentInfo.getAttachmentKind());
             vo.setLinearSegment(null);
 
-            if (info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
-                liveDetectionWebSocket.startMeasure(info.getDeviceSerialNumber());
-            }
+//            if (info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+//                liveDetectionManyDevicesWebSocket.startMeasure(info.getDeviceSerialNumber());
+//            }
 
             return R.ok(vo);
         }
@@ -1181,7 +1205,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy) {
+    public R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy){
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
@@ -1217,7 +1241,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceInfoPO infoPO = pos.remove(0);
 
             try {
-                pos.forEach(po -> disconnectDevice(po.getDeviceSerialNumber(), updateBy));
+                pos.forEach(po -> {
+                    try {
+                        disconnectDevice(po.getDeviceSerialNumber(), updateBy);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             } catch (Exception e) {
                 log.error("断开连接失败: {}", e.getMessage());
             }
@@ -1225,9 +1255,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             if (infoPO.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
                 DeviceConnectionManager connectionManager = DeviceConnectionManager.getInstance();
                 DeviceConnectInfo device = connectionManager.getDevice(infoPO.getDeviceId());
-                if (device != null) {
-                    liveDetectionWebSocket.startMeasure(infoPO.getDeviceSerialNumber());
-                }
+//                if (device != null) {
+//                    liveDetectionManyDevicesWebSocket.startMeasure(infoPO.getDeviceSerialNumber());
+//                }
             }
             return R.ok(infoPO.getDeviceSerialNumber());
         }
@@ -1258,14 +1288,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DevOperationInputParam param
     ) {
 
-        // 1️⃣ 设置操作类型为“读取参数”
+        // 设置操作类型为“读取参数”
         param.setOperationType(OperationTypeEnums.GetValue.getType());
 
-        // 2️⃣ 调用统一操作入口
+        // 调用统一操作入口
         R<OperationResultEntity> operation =
                 operationUtilService.operation(param);
 
-        // 3️⃣ 返回结果
+        // 返回结果
         if (!operation.getSuccess()) {
             return R.fail(operation.getMessage());
         } else {
@@ -1302,6 +1332,86 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }).start();
             return R.ok(operation.getData());
         }
+    }
+
+    @Override
+    public R<Boolean> newStopInit(String deviceSerialNumber, String updateBy) {
+        DeviceConstants.isStopInit.put(deviceSerialNumber, true);
+
+        return R.ok();
+    }
+
+    @Override
+    public R<Boolean> deviceNewCalibration(DeviceCalibrationDTO dto) {
+
+        if (!StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            log.info("缺少序列号");
+            //缺少序列号
+            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
+        }
+
+        if (dto.getCalibrationType() == null || DeviceCalibrationInfoEnum.getComId(dto.getCalibrationType()) == null) {
+            log.info("缺少校准类型");
+            //缺少校准类型
+            return R.fail(YamlMessageSource.getMessageStatic("00203004"));
+        }
+
+        String ip = infoService.getIp(dto.getDeviceSerialNumber());
+        log.info("调用校准");
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setOperationType(OperationTypeEnums.Calibration.getType());
+        inputParam.setCalibrationType(dto.getCalibrationType());
+        inputParam.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+        inputParam.setUpdateBy(dto.getUpdateBy());
+        if (dto.getData() != null) {
+            inputParam.setCalibrationData(dto.getData());
+        }
+
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        }
+        log.info("校准成功");
+        LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+
+        List<CalibrationTempPO> poList = tempDao.selectList(queryWrapper);
+        if (poList.isEmpty()) {
+            for (DataNameValue data : dto.getData()) {
+                CalibrationTempPO po = new CalibrationTempPO();
+                po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+                po.setCreateBy(dto.getUpdateBy());
+                po.setCalibrationType(dto.getCalibrationType());
+                po.setParam(data.getDataKey());
+                po.setParamValue(data.getDataValue());
+                tempDao.insert(po);
+            }
+        } else {
+            for (DataNameValue data : dto.getData()) {
+                LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, dto.getDeviceSerialNumber())
+                        .eq(CalibrationTempPO::getCalibrationType, dto.getCalibrationType());
+
+                wrapper.eq(CalibrationTempPO::getParam, data.getDataKey());
+                CalibrationTempPO calibrationTempPO = tempDao.selectOne(wrapper);
+                if (calibrationTempPO == null) {
+                    CalibrationTempPO po = new CalibrationTempPO();
+                    po.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+                    po.setCreateBy(dto.getUpdateBy());
+                    po.setCalibrationType(dto.getCalibrationType());
+                    po.setParam(data.getDataKey());
+                    po.setParamValue(data.getDataValue());
+                    tempDao.insert(po);
+                } else {
+                    calibrationTempPO.setUpdateBy(dto.getUpdateBy());
+                    calibrationTempPO.setParamValue(data.getDataValue());
+                    tempDao.update(calibrationTempPO, wrapper);
+                }
+            }
+        }
+        return R.ok();
     }
 
 }

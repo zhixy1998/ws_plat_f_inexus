@@ -78,6 +78,23 @@ public enum CalibrationTypeEnum {
     //默认任务
     DEFAULT_TASK("default", "默认任务"),
 
+
+
+
+    // 校准检定工作表名称枚举
+    WAVELENGTH_CALIBRATION("wavelength_accuracy_repeatability", "波长示值误差与重复性校验"),
+    TRANSMITTANCE_CALIBRATION("transmittance_accuracy_repeatability", "透射比示值误差与重复性校验"),
+    STRAY_LIGHT_CALIBRATION("stray_light", "杂散光校验"),
+    BASELINE_STRAIGHTNESS_INSPECTION("baseline_straightness", "基线平直度检验"),
+    BASELINE_DARK_NOISE_INSPECTION("baseline_dark_noise", "基线暗噪声检验"),
+    SPECTRAL_BANDWIDTH_CALIBRATION("spectral_bandwidth", "光谱带宽与仪器最小光谱带宽"),
+    NOISE_INSPECTION("noise", "噪声检验"),
+    WAVELENGTH_EDGE_NOISE("wavelength_edge_noise", "波长边缘噪声"),
+    DRIFT_INSPECTION("drift", "漂移检验"),
+
+
+
+
     //新建模板或者修改模板
     TEMPLATE_CREATE("0", "从源模板-新建模板"),
     TEMPLATE_UPDATE("1", "修改原模板");

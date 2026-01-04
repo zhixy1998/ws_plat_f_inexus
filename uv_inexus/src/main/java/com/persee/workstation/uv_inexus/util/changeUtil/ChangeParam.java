@@ -37,4 +37,5 @@ public class ChangeParam {
     public boolean isEmpty() {
         return this.r == null && this.s == null && this.d == null;
     }
+
 }

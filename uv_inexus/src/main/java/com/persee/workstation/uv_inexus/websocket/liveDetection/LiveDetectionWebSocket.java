@@ -92,7 +92,7 @@ public class LiveDetectionWebSocket {
     // 添加会话和订阅映射
     private final Map<String, Set<String>> sessionSubscriptions = new ConcurrentHashMap<>();
 
-    @MessageMapping("/detection/start")
+//    @MessageMapping("/detection/start")
     public void startMeasure(String deviceSerialNumber) {
         if (deviceSerialNumber == null || deviceSerialNumber.isEmpty()) {
             messagingTemplate.convertAndSend(measureTopic,
@@ -501,7 +501,7 @@ public class LiveDetectionWebSocket {
         messagingTemplate.convertAndSend(measureTopic, "停止测量");
     }
 
-    @EventListener
+//    @EventListener
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();

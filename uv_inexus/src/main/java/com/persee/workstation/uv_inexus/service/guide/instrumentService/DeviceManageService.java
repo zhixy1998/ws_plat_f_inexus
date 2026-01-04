@@ -132,6 +132,7 @@ public interface DeviceManageService {
     void test();
 
     R<List<SearchInfo>> searchDevice(Integer connectType);
+    R<List<SearchInfo>> searchDevice();
 
     R<FindDeviceVO> connect(SearchInfo param);
 
@@ -148,5 +149,9 @@ public interface DeviceManageService {
     R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy);
 
     R<String> getConnectDevice(String updateBy);
+
+    R<Boolean> newStopInit(String deviceSerialNumber, String updateBy);
+
+    R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
 
 }
