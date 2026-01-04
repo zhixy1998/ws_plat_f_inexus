@@ -13,8 +13,11 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.GetParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.DataNameValue;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+
+import java.util.List;
 
 /**
  * 设备操作输入参数
@@ -46,6 +49,15 @@ public class DevOperationInputParam {
 
     @ApiModelProperty("读取值")
     private GetParam readValue;
+
+    @ApiModelProperty("校正方式")
+    private Integer calibrationType;
+
+    @ApiModelProperty("校准参数")
+    private List<DataNameValue> calibrationData;
+
+    @ApiModelProperty("波长信息")
+    private List<String> wavelength;
 
     @ApiModelProperty("操作人")
     private String updateBy;

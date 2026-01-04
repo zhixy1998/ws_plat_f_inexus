@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceOverview;
@@ -16,6 +17,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceStatistics;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampStatus;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -199,11 +201,11 @@ public class DeviceConnectionManager {
         return permanentId;
     }
 
-    public void updateDeviceInfo(String deviceId, Boolean connectStatus, String macInfo, String xmlKey) {
+    public void updateDeviceInfo(String deviceId, Integer connectStatus, String macInfo, String xmlKey) {
         DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) return;
 
-        boolean wasConnected = Boolean.TRUE.equals(device.getConnectStatus());
+//        boolean wasConnected = Boolean.TRUE.equals(device.getConnectStatus());
         device.setConnectStatus(connectStatus);
 
         if (macInfo != null) device.setMacInfo(macInfo);
@@ -222,7 +224,7 @@ public class DeviceConnectionManager {
     }
 
     public void disconnectDevice(String deviceId) {
-        updateDeviceInfo(deviceId, false, null, null);
+        updateDeviceInfo(deviceId, Constants.CONNECT_DEVICE_STOP, null, null);
         logInfo("设备断开连接: %s", deviceId);
     }
 
@@ -459,7 +461,7 @@ public class DeviceConnectionManager {
      */
     public boolean getDeviceIdleStatus(String deviceId) {
         DeviceConnectInfo deviceConnectInfo = deviceMap.get(deviceId);
-        if (deviceConnectInfo != null && deviceConnectInfo.getConnectStatus()) {
+        if (deviceConnectInfo != null && deviceConnectInfo.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
             return deviceConnectInfo.getIsIdle();
         }
         return false;
@@ -469,29 +471,30 @@ public class DeviceConnectionManager {
      * 设置扫描波长参数
      */
     public static boolean setScanWavelengthConfig(
-            String deviceSerialNumber,
+            String deviceId,
             double startWl,
             double endWl,
             double interval,
             boolean descending
     ) {
-        DeviceConnectInfo device = deviceMap.get(deviceSerialNumber);
+        DeviceConnectInfo device = deviceMap.get(deviceId);
         if (device == null) {
-            logWarning("设置扫描波长失败: 设备不存在 %s", deviceSerialNumber);
+            logWarning("设置扫描波长失败: 设备不存在 %s", deviceId);
             return false;
         }
 
         ScanWavelengthConfig config = new ScanWavelengthConfig();
-        config.setStartWavelength(startWl);
-        config.setEndWavelength(endWl);
-        config.setInterval(interval);
-        config.setDescending(descending);
-
+        device.setStartWavelength(startWl);
+        device.setEndWavelength(endWl);
+        device.setInterval(interval);
+        device.setDescending(descending);
+        BeanUtils.copyProperties(device,  config);
         device.setScanWavelengthConfig(config);
+
         device.updateLastUseTime();
 
         logInfo("设置扫描波长: device=%s start=%s end=%s interval=%s",
-                deviceSerialNumber, startWl, endWl, interval);
+                deviceId, startWl, endWl, interval);
 
         return true;
     }
@@ -628,7 +631,7 @@ public class DeviceConnectionManager {
             t.setDaemon(true);
             return t;
         });
-        cleanupService.scheduleWithFixedDelay(this::cleanupExpiredDevices, 5, 5, TimeUnit.MINUTES);
+//        cleanupService.scheduleWithFixedDelay(this::cleanupExpiredDevices, 5, 5, TimeUnit.MINUTES);
         logInfo("清理服务已启动");
     }
 
@@ -677,7 +680,7 @@ public class DeviceConnectionManager {
 
     public void triggerCleanup() {
         if (cleanupService != null) {
-            cleanupService.submit(this::cleanupExpiredDevices);
+//            cleanupService.submit(this::cleanupExpiredDevices);
         }
     }
 

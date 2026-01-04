@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
@@ -25,6 +26,7 @@ import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -40,6 +42,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
     @Autowired
     DeviceModelInfoDAO deviceModelInfoDAO;
+    @Autowired
+    SimpMessagingTemplate messagingTemplate;
 
     DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
@@ -212,12 +216,12 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return R.fail(YamlMessageSource.getMessageStatic("00202001"));
         }
 
-        Integer connectStatus = info.getDeviceCurrentStatus();
-        if (connectStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
+        Integer currentStatus = info.getDeviceCurrentStatus();
+        if (currentStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
             //设备正在初始化，请等待
             return R.fail(YamlMessageSource.getMessageStatic("00202002"));
         }
-        if (connectStatus.equals(Constants.DEVICE_STATUS_MEASURE) && !DetectionConstants.isDeviceIdle){
+        if (currentStatus.equals(Constants.DEVICE_STATUS_MEASURE) && !DetectionConstants.isDeviceIdle){
             //设备正在测量，请等待
             return R.fail(YamlMessageSource.getMessageStatic("00202003"));
         }
@@ -345,5 +349,13 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         }
     }
 
+    @Override
+    public void sendMessage(String topic, JSONObject message, SimpMessagingTemplate template) {
+        template.convertAndSend(topic, message);
+    }
 
+    @Override
+    public void sendMessage(String topic, JSONObject message) {
+        messagingTemplate.convertAndSend(topic, message);
+    }
 }

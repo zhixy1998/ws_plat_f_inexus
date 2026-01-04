@@ -133,7 +133,13 @@ public class OperationResultEntity {
     @ApiModelProperty("光度模式")
     private String luminosity;
 
-    @ApiModelProperty("测量结果")
+    @ApiModelProperty("实时回显测量结果")
     private ChangeParam measureResult;
+
+    @ApiModelProperty("校零结果")
+    private List<ChangeParam> zeroResult;
+
+    @ApiModelProperty("测量原始结果")
+    private List<ChangeParam> originalMeasureResult;
 
 }

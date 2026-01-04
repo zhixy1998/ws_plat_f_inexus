@@ -1909,7 +1909,7 @@
 <ReadBytes>
 <string>254:181:240:2:0:0:0:Check</string>
 </ReadBytes>
-    <ReplyNumber>24</ReplyNumber>
+    <ReplyNumber>20</ReplyNumber>
 </ProtocolItem>
 <ProtocolItem>
 <ID>DisConnectIAP</ID>
@@ -2000,7 +2000,7 @@
 <ReadBytes>
 <string>254:181:241:1:AJ79:255:0:Check</string>
 </ReadBytes>
-    <ReplyNumber>24</ReplyNumber>
+    <ReplyNumber>20</ReplyNumber>
 </ProtocolItem>
 <ProtocolItem>
 <ID>ConnectIAP</ID>
@@ -2058,7 +2058,7 @@
 <ReadBytes>
 <string>254:181:241:1:0:255:0:164:Check</string>
 </ReadBytes>
-    <ReplyNumber>24</ReplyNumber>
+    <ReplyNumber>21</ReplyNumber>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetPressCover</ID>

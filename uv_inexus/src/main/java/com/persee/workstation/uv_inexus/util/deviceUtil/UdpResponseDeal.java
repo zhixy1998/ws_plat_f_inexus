@@ -98,7 +98,8 @@ public class UdpResponseDeal {
             case "Measure":
 //                return measure(responses);
             case "Zero":
-                return parseZero(responses);
+                return measure(responses);
+//                return parseZero(responses);
             case "ScanFast":
             case "Scan":
             case "BaseLine":
@@ -990,26 +991,29 @@ public class UdpResponseDeal {
     }
 
     // 处理 NewIP 指令
-    private static String parseNewIP(List<byte[]> responses) {
+    private static OperationResultEntity parseNewIP(List<byte[]> responses) {
 
 
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");
-            return null;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] lastResponse = responses.get(responses.size() - 1);
         if (lastResponse == null || lastResponse.length < 12) {
             System.out.println("回应报文长度不足12字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
-            return null;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         int b1 = lastResponse[15] & 0xFF;
         int b2 = lastResponse[16] & 0xFF;
         int b3 = lastResponse[17] & 0xFF;
         int b4 = lastResponse[18] & 0xFF;
+        resultEntity.setIp(b1 + "." + b2 + "." + b3 + "." + b4);
 
-        return b1 + "." + b2 + "." + b3 + "." + b4;
+        return resultEntity;
     }
 
     private static OperationResultEntity parseCompareBytes(List<byte[]> responses, byte[] sendBytes) {

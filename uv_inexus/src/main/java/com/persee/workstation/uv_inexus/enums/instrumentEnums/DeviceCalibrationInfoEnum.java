@@ -26,31 +26,43 @@ import java.util.Map;
 @Getter
 public enum DeviceCalibrationInfoEnum {
 
-    Wavelength(1,"CorrectWl"),
-    Dark(2, "Dark");
+    Wavelength(1,"CorrectWl", "波长校正"),
+    Dark(2, "Dark", "暗电流校正");
 
 
     private final Integer type;
 
     private final String comId;
 
-    private static final Map<Integer, String> map = new HashMap<>();
+    private final String description;
+
+    private static final Map<Integer, DeviceCalibrationInfoEnum> map = new HashMap<>();
 
     static {
         for(DeviceCalibrationInfoEnum e : DeviceCalibrationInfoEnum.values()) {
-            map.put(e.type,e.comId);
+            map.put(e.type,e);
         }
     }
 
-    private DeviceCalibrationInfoEnum(Integer type, String comId){
+    DeviceCalibrationInfoEnum(Integer type, String comId, String description){
         this.type = type;
         this.comId = comId;
+        this.description = description;
     }
 
 
     public static String getComId(Integer type) {
         if(map.containsKey(type)) {
-            return map.get(type);
+
+            return map.get(type).getComId();
+        }
+        throw new IllegalArgumentException("Invalid key: " + type);
+    }
+
+    public static String getDescription(Integer type) {
+        if(map.containsKey(type)) {
+
+            return map.get(type).getDescription();
         }
         throw new IllegalArgumentException("Invalid key: " + type);
     }

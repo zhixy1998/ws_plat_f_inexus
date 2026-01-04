@@ -131,22 +131,27 @@ public interface DeviceManageService {
 
     void test();
 
-    R<List<SearchInfo>> searchDevice(Integer connectType) throws InterruptedException;
+    R<List<SearchInfo>> searchDevice(Integer connectType);
+    R<List<SearchInfo>> searchDevice();
 
-    R<FindDeviceVO> connect(SearchInfo param) throws InterruptedException;
+    R<FindDeviceVO> connect(SearchInfo param);
 
-    R<OperationResultEntity> setParamOneDevice(DevOperationInputParam param) throws InterruptedException;
+    R<OperationResultEntity> setParamOneDevice(DevOperationInputParam param);
 
-    R<OperationResultEntity> getParamOneDevice(DevOperationInputParam param) throws InterruptedException;
+    R<OperationResultEntity> getParamOneDevice(DevOperationInputParam param);
 
-    R<OperationResultEntity> Action(DevOperationInputParam param) throws InterruptedException;
+    R<OperationResultEntity> Action(DevOperationInputParam param);
 
-    R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy) throws InterruptedException;
+    R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy);
 
-    R<Boolean> startInitDevice(String deviceSerialNumber, String updateBy) throws InterruptedException;
+    R<Boolean> startInitDevice(String deviceSerialNumber, String updateBy);
 
-    R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy) throws InterruptedException;
+    R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy);
 
     R<String> getConnectDevice(String updateBy);
+
+    R<Boolean> newStopInit(String deviceSerialNumber, String updateBy);
+
+    R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
 
 }

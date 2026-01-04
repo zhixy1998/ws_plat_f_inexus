@@ -41,6 +41,11 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
@@ -122,6 +127,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Autowired
     @Lazy
     ConciseCommonService conciseCommonService;
+
+    @Autowired
+    DevOperationUtilService devOperationUtilService;
 
     @Value("1")
     String deleteType;
@@ -2969,6 +2977,111 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
         fMeasureTaskService.updateById(task);
         deviceInfoService.releaseDevice(deviceSerialNumber);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("waveLength", wave + "nm");
+        return Result.ok(jsonObject);
+    }
+
+
+    /**
+     * 零点校零
+     * @param deviceSerialNumber
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result zero1(String deviceSerialNumber, String methodId, String taskId,String updateBy) {
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            //未连接仪器
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001D"));
+        }
+
+        FMeasureMethod method = fMeasureMethodService.getById(methodId);
+        if (method == null) {
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+
+        if (!StringUtils.hasText(taskId)){
+            //创建任务
+
+            //创建任务
+            FMeasureTask newTask = new FMeasureTask();
+
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+            newTask.setUserId(po.getId());
+            newTask.setProjectItemKey(method.getProjectItemKey());
+            newTask.setMethodKey(method.getId());
+            newTask.setMeasureType(method.getMeasurementType());
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            String collect = new Random().ints(8, 0, chars.length())
+                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                    .collect(Collectors.joining());
+
+            newTask.setTaskName(method.getMeasurementType() + "task_" + collect);
+            newTask.setCreateTime(LocalDateTime.now());
+            boolean save = false;
+            for (int i = 0; i < 3; i++) {
+                if (fMeasureTaskService.save(newTask)) {
+                    save = true;
+                    break;
+                }
+            }
+            if (!save) {
+                //系统出错
+                return Result.fail(YamlMessageSource.getMessageStatic("00000014"));
+            }
+            taskId = newTask.getId();
+        }
+
+        FMeasureTask task = fMeasureTaskService.getById(taskId);
+        FPhotometricParameter photometricParameter = JSON.parseObject(method.getMeasurementParamInfo(), FPhotometricParameter.class);
+        if (photometricParameter.getWaveLength() == null || photometricParameter.getWaveLength().isEmpty()) {
+            //缺少波长
+            return Result.fail(YamlMessageSource.getMessageStatic("0000001E"));
+        }
+        List<String> waveLength = photometricParameter.getWaveLength();
+        // 通过序列号获取ip
+
+
+        String wave = "--";
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam param = new SetParam();
+
+        param.setPhotoMode(Integer.valueOf(photometricParameter.getLuminosity()));
+        param.setResponseTime(Double.valueOf(photometricParameter.getResponseTime()));
+
+        if (photometricParameter.getGain() != null) {
+            param.setGain(photometricParameter.getGain());
+        }
+        if (StringUtils.hasText(photometricParameter.getEnergyLamp())) {
+            param.setLampPos(Integer.valueOf(photometricParameter.getEnergyLamp()));
+        }
+        param.setSlit1(Double.valueOf(photometricParameter.getSpectralBandwidth()));
+        inputParam.setParam(param);
+
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
+
+        inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+        inputParam.setWavelength(waveLength);
+        R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
+        if (!zero.getSuccess()) {
+            return Result.fail(zero.getMessage());
+        }
+        OperationResultEntity data = zero.getData();
+        List<ChangeParam> zeroResult = data.getZeroResult();
+
+        task.setZeroParam(JSON.toJSONString(zeroResult));
+
+        fMeasureTaskService.updateById(task);
+
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("waveLength", wave + "nm");
         return Result.ok(jsonObject);

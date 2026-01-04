@@ -9,15 +9,22 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
+@Service
 public class MessageOnTimeDeal {
+
+    @Autowired
+    static DeviceInfoService infoService;
 
     static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
     public static Object parse(String cmdId, String deviceId, String deviceSerialNumber, byte[] sendBytes, int timeout) {
@@ -108,6 +115,7 @@ public class MessageOnTimeDeal {
             } finally {
                 store.clearDeviceMessages(deviceId);
                 log.info("[SCAN-END] device={} scan stopped", deviceId);
+                infoService.newReleaseDevice(deviceSerialNumber);
             }
         }).start();
 

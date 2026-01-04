@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil.param;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.ScanWavelengthConfig;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
@@ -57,7 +58,7 @@ public class DeviceConnectInfo {
     /**
      * 仪器连接状态
      */
-    private Boolean connectStatus;
+    private Integer connectStatus;
 
     /**
      * 仪器连接时间
@@ -115,19 +116,19 @@ public class DeviceConnectInfo {
     /**
      * 起始波长
      */
-    private double startWavelength;
+    private Double startWavelength;
     /**
      * 终止波长
      */
-    private double endWavelength;
+    private Double endWavelength;
     /**
      * 扫描间隔
      */
-    private double interval;
+    private Double interval;
     /**
      * 是否递减扫描
      */
-    private boolean descending;
+    private Boolean descending;
 
     /** 当前扫描波长配置（前端下发） */
     private volatile ScanWavelengthConfig scanWavelengthConfig;
@@ -149,7 +150,8 @@ public class DeviceConnectInfo {
     public DeviceConnectInfo() {
         this.messageCount = new AtomicInteger(0);
         this.createTime = LocalDateTime.now();
-        this.connectStatus = false;
+//        this.connectStatus = false;
+        this.connectStatus = Constants.CONNECT_DEVICE_NO;
         this.identityKey = null; // only used in full constructor
     }
 
@@ -180,14 +182,14 @@ public class DeviceConnectInfo {
         this.lastUseTime = LocalDateTime.now();
     }
 
-    public synchronized void setConnectStatus(Boolean connectStatus) {
+    public synchronized void setConnectStatus(Integer connectStatus) {
         this.connectStatus = connectStatus;
-        if (Boolean.TRUE.equals(connectStatus) && this.connectTime == null) {
+        if (connectStatus.equals(Constants.CONNECT_DEVICE_SUCCESS) && this.connectTime == null) {
             this.connectTime = LocalDateTime.now();
         }
     }
 
-    public synchronized Boolean getConnectStatus() {
+    public synchronized Integer getConnectStatus() {
         return connectStatus;
     }
 
@@ -204,7 +206,7 @@ public class DeviceConnectInfo {
         if (isTemporary()) {
             String uuid = UUID.randomUUID().toString().replace("-", "");
             this.id = uuid;
-            this.connectStatus = true;
+            this.connectStatus = Constants.CONNECT_DEVICE_SUCCESS;
             if (this.connectTime == null) {
                 this.connectTime = LocalDateTime.now();
             }

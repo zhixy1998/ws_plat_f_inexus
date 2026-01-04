@@ -133,6 +133,7 @@ public interface PhotometricConciseService {
      * 校零
      */
     Result zero(String deviceSerialNumber, String methodId, String taskId,String updateBy);
+    Result zero1(String deviceSerialNumber, String methodId, String taskId,String updateBy);
 
     /**
      * 保存按钮

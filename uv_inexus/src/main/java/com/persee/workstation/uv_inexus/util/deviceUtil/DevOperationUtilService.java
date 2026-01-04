@@ -15,8 +15,7 @@ public interface DevOperationUtilService {
 
     void initXml();
 
-    void checkDeviceConnect();
 
-    R<OperationResultEntity> operation(DevOperationInputParam inputParam) throws InterruptedException;
+    R<OperationResultEntity> operation(DevOperationInputParam inputParam);
 
 }

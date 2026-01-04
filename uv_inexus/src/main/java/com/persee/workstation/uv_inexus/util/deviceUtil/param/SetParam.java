@@ -51,7 +51,7 @@ import lombok.Data;
         private Integer filter;
 
         @ApiModelProperty("响应时间")
-        private Integer responseTime;
+        private Double responseTime;
 
         @ApiModelProperty("样品池位置")
         private Integer cellPos;

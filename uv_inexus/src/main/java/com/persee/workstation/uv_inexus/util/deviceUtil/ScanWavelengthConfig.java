@@ -6,14 +6,14 @@ import lombok.Data;
 public class ScanWavelengthConfig {
 
     /** 起始波长 */
-    private double startWavelength;
+    private Double startWavelength;
 
     /** 终止波长 */
-    private double endWavelength;
+    private Double endWavelength;
 
     /** 扫描间隔 */
-    private double interval;
+    private Double interval;
 
     /** 是否递减扫描 */
-    private boolean descending;
+    private Boolean descending;
 }

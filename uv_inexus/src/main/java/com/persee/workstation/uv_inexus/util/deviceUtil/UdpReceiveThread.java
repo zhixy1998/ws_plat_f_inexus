@@ -86,8 +86,6 @@ public class UdpReceiveThread {
 
                             // 处理数据
                             String ip = packet.getAddress().getHostAddress();
-                            System.out.println("接收数据，来自: " + ip);
-
                             String deviceId = deviceManager.getOrCreateDeviceId(ip, port, connectType);
 
                             byte[] data = Arrays.copyOfRange(
@@ -95,6 +93,8 @@ public class UdpReceiveThread {
                                     packet.getOffset(),
                                     packet.getOffset() + packet.getLength()
                             );
+                            System.out.println("接收数据，来自: " + ip);
+                            System.out.println("接收数据：" + Arrays.toString(data));
 
                             store.addMessage(deviceId, data);
 

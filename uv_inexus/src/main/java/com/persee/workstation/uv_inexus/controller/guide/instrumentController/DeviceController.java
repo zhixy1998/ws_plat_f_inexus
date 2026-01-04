@@ -114,11 +114,23 @@ public class DeviceController {
 
     }
 
+//    @GetMapping("/searchDevice")
+//    @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
+//    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
+//    public Result<List<SearchInfo>> searchDevice(@RequestParam Integer connectType) throws Exception {
+//        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
+//        if (!r.getSuccess()) {
+//            return Result.fail(r.getMessage());
+//        } else {
+//            return Result.ok(r.getData());
+//        }
+//    }
+
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
-    public Result<List<SearchInfo>> searchDevice(@RequestParam Integer connectType) throws Exception {
-        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
+    public Result<List<SearchInfo>> searchDevice() throws Exception {
+        R<List<SearchInfo>> r = deviceManageService.searchDevice();
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {
@@ -373,16 +385,27 @@ public class DeviceController {
 
     }
 
+//    @PostMapping("/calibration")
+//    @ApiOperation("仪器校准")
+//    public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
+//        R<Boolean> r = deviceManageService.deviceCalibration(dto);
+//        if (r.getSuccess()) {
+//            return Result.ok(r.getData());
+//        } else {
+//            return Result.fail(r.getMessage());
+//        }
+//    }
     @PostMapping("/calibration")
     @ApiOperation("仪器校准")
     public Result<Boolean> deviceCalibration(@RequestBody DeviceCalibrationDTO dto){
-        R<Boolean> r = deviceManageService.deviceCalibration(dto);
+        R<Boolean> r = deviceManageService.deviceNewCalibration(dto);
         if (r.getSuccess()) {
             return Result.ok(r.getData());
         } else {
             return Result.fail(r.getMessage());
         }
     }
+
 
     @GetMapping("/usageStatistics")
     @ApiOperation("使用情况统计")
