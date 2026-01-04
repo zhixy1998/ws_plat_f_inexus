@@ -58,9 +58,9 @@ public class TMeasureProject{
     @TableField("owner_group_id")
     private String ownerGroupId;
 
-    // 预留字段4
-    @TableField("field4")
-    private String field4;
+    // 是否删除(0:未删除 1:已删除)
+    @TableField("is_delete")
+    private String isDelete;
 
     // 预留字段5
     @TableField("field5")

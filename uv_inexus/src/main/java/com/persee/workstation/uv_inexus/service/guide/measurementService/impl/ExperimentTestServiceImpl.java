@@ -2022,7 +2022,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                             // 时间格式不正确，跳过设置
                         }
                     }
-                    method.setField3(getCellValueAsString(row.getCell(11)));
+                    method.setIsDelete(getCellValueAsString(row.getCell(11)));
                     method.setField4(getCellValueAsString(row.getCell(12)));
                     method.setField5(getCellValueAsString(row.getCell(13)));
 
