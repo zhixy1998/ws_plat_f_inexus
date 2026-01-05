@@ -1004,7 +1004,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<List<SearchInfo>> searchDevice() {
 
-        Integer connectType = 2;
+        Integer connectType = 1;
         R<QueryDeviceConfigVO> r = queryDeviceConfig("");
         if (r.getSuccess()) {
             QueryDeviceConfigVO data = r.getData();

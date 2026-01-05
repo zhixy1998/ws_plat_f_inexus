@@ -64,4 +64,7 @@ import lombok.Data;
 
         @ApiModelProperty("读取序列号")
         private String sn;
+
+        @ApiModelProperty("暗电流")
+        private Integer dark;
     }
