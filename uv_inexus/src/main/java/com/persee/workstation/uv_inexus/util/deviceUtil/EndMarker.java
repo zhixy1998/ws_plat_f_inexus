@@ -24,11 +24,8 @@ public final class EndMarker {
         return new EndMarker(sn, cmd, Reason.TIMEOUT);
     }
 
-    public static EndMarker stop(String sn, String cmd) {
-        return new EndMarker(sn, cmd, Reason.STOP);
-    }
-
     public static EndMarker normal(String sn, String cmd) {
         return new EndMarker(sn, cmd, Reason.NORMAL);
     }
 }
+
