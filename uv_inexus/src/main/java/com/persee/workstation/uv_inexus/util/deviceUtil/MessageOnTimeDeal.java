@@ -386,10 +386,16 @@ public class MessageOnTimeDeal {
                             log.info("[光谱测试] 超时退出 device={}", deviceSerialNumber);
                             break;
                         }
+
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
+                    unknowCountMessageQueue.putMessage(
+                            deviceSerialNumber,
+                            cmdId,
+                            EndMarker.timeout(deviceSerialNumber, cmdId)
+                    );
                     spectrumProcessorMap.remove(deviceSerialNumber);
                     if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
                     else baselineProcessorThreadMap.remove(deviceSerialNumber);
