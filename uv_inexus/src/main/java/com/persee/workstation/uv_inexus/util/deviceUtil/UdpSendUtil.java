@@ -14,6 +14,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -45,6 +46,9 @@ public class UdpSendUtil {
     private final static DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
     private final static UdpReceiveThread udpReceiveThread = UdpReceiveThread.getInstance();
+
+    @Autowired
+    MessageOnTimeDeal messageOnTimeDeal;
 
     /**
      * 以太网查找设备
@@ -491,7 +495,7 @@ public class UdpSendUtil {
 
             if (isDealOnTime) {
                 ScanSessionManager.startScan(deviceId);
-                MessageOnTimeDeal.parse(cmdId, deviceId, deviceSerialNumber, sendBytes, timeout);
+                messageOnTimeDeal.parse(cmdId, deviceId, deviceSerialNumber, sendBytes, timeout);
                 return R.ok();
             }
 

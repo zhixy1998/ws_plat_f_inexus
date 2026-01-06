@@ -21,6 +21,7 @@ public enum ParamCmdEnum {
     Filter("filter", "SetFilter"),
     Response_Time("responseTime", "SetResponseTime"),
     Cell_Pos("cellPos", "SetCellPos"),
+    Dark("dark", "Dark"),
     Init_Status("initStatus", "SetInitStatus");
 
     private final String paramField;

@@ -267,10 +267,12 @@ public class DataManagementServiceImpl implements DataManagementService {
         result.setProjectNum((long) projects.size());
         result.setTaskNum(taskNums);
         result.setMethodNum(methodNums);
+        result.setProjectDataNum(dataNumList);
         result.setTotal(projectPage.getTotal()); // 总记录数
         result.setPageNum(pageNum);
         result.setPageSize(pageSize);
         result.setPages(projectPage.getPages()); // 总页数
+        result.setProjectList(dataSumList);
         return Result.ok(result);
     }
 

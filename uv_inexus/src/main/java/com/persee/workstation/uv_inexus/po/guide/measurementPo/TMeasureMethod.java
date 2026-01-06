@@ -70,13 +70,15 @@ public class TMeasureMethod {
     @TableField("method_use_time")
     private LocalDateTime methodUseTime;
 
-    // 预留字段3 ~ 预留字段5
-    @TableField("field3")
-    private String field3;
+    // 是否删除(0:未删除 1:已删除)
+    @TableField("is_delete")
+    private String isDelete;
 
+    // 预留字段4
     @TableField("field4")
     private String field4;
 
+    // 预留字段5
     @TableField("field5")
     private String field5;
 }

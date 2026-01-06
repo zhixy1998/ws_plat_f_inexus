@@ -24,7 +24,6 @@ import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -551,7 +550,7 @@ public class LiveDetectionWebSocket {
     }
 
     // 监听STOMP订阅事件
-    @EventListener
+//    @EventListener
     public void handleStompSubscribeEvent(SessionSubscribeEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
@@ -573,7 +572,7 @@ public class LiveDetectionWebSocket {
         }
     }
 
-    @EventListener
+//    @EventListener
     public void handleStompUnsubscribeEvent(SessionUnsubscribeEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
@@ -598,7 +597,7 @@ public class LiveDetectionWebSocket {
     }
 
     // 监听WebSocket断开事件
-    @EventListener
+//    @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();

@@ -49,6 +49,17 @@ public class DeviceController {
     @Autowired
     private DeviceAutoInjectorService injectorService;
 
+    @GetMapping("/stop")
+    @ApiOperation("新驱动-停止扫描")
+    public Result<Boolean> stop (@RequestParam String deviceSerialNumber) throws InterruptedException {
+        Boolean r = deviceManageService.stop(deviceSerialNumber).getSuccess();
+        if (r) {
+            return Result.ok(true);
+        } else {
+            return Result.fail(false);
+        }
+    }
+
     @PostMapping("/scan")
     @ApiOperation("扫描测试")
     @LogPoint(value = "扫描测试", module = "设备管理", recordParams = true, recordResult = true)

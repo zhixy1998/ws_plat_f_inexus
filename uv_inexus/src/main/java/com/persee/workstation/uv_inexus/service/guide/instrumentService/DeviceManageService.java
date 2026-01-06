@@ -59,6 +59,10 @@ public interface DeviceManageService {
      */
     Boolean disConnect(String deviceSerialNumber, String updateBy);
 
+    /**
+     * 停止扫描
+     */
+
 
     R<List<FindDeviceVO>> findDevice() throws Exception;
 
@@ -136,6 +140,10 @@ public interface DeviceManageService {
 
     R<FindDeviceVO> connect(SearchInfo param);
 
+    R<Boolean> stop(
+            String deviceSerialNumber
+    );
+
     R<OperationResultEntity> setParamOneDevice(DevOperationInputParam param);
 
     R<OperationResultEntity> getParamOneDevice(DevOperationInputParam param);
@@ -154,4 +162,5 @@ public interface DeviceManageService {
 
     R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
 
+//    R<Boolean> stop (String deviceSerialNumber);
 }

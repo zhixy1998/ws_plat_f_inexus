@@ -21,6 +21,13 @@ public class SpectrumPoint {
 
     private ChangeParam measureRsd;
 
+    private SpectrumCalcResult absResult;
+    private SpectrumCalcResult tResult;
+    private SpectrumCalcResult esResult;
+    private SpectrumCalcResult erResult;
+
+
+
     public SpectrumPoint(double wavelength) {
         this.wavelength = wavelength;
     }

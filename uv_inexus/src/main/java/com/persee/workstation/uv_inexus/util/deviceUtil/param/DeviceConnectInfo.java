@@ -131,7 +131,7 @@ public class DeviceConnectInfo {
     private Boolean descending;
 
     /** 当前扫描波长配置（前端下发） */
-    private volatile ScanWavelengthConfig scanWavelengthConfig;
+    private ScanWavelengthConfig scanWavelengthConfig;
     // ====== 校零结果管理方法 ======
     public void addZeroResult(String wavelength, ChangeParam changeParam) {
         zeroResult.put(wavelength, changeParam);
@@ -242,5 +242,6 @@ public class DeviceConnectInfo {
                 id, connectIdentity, port, connectStatus, isTemporary(), getMessageCount()
         );
     }
+
 
 }
