@@ -25,6 +25,8 @@ import java.util.regex.Pattern;
 
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -181,6 +183,67 @@ public class FileCryptoController {
         return ResponseEntity.ok(Result.ok(resultData).message(YamlMessageSource.getMessageStatic("00901003")));
     }
 
+
+    /**
+     * 接口3：制作加密升级包（一个TXT + 一个Excel）
+     * @param txtFile 版本说明TXT文件
+     * @param excelFile 数据Excel文件
+     * @param version 目标版本号（如 v2.1.3）
+     * @param key 加密密钥（可选）
+     */
+    @PostMapping("/generatePackage")
+    @ApiOperation("制作加密升级包")
+    public ResponseEntity<byte[]> generatePackage(
+            @RequestParam("txtFile") MultipartFile txtFile,
+            @RequestParam("excelFile") MultipartFile excelFile,
+            @RequestParam("version") String version,
+            @RequestParam(value = "key", required = false) String key) throws Exception {
+
+        if (txtFile == null || txtFile.isEmpty()) {
+            throw new IllegalArgumentException("TXT文件不能为空");
+        }
+        if (excelFile == null || excelFile.isEmpty()) {
+            throw new IllegalArgumentException("Excel文件不能为空");
+        }
+        if (version == null || version.isEmpty() || !VERSION_PATTERN.matcher(version).matches()) {
+            throw new IllegalArgumentException("版本号格式不正确（应为vX.X.X）");
+        }
+
+        String txtName = txtFile.getOriginalFilename();
+        String excelName = excelFile.getOriginalFilename();
+        if (txtName == null || !txtName.toLowerCase().endsWith(TXT_EXTENSION)) {
+            throw new IllegalArgumentException("TXT文件后缀必须为" + TXT_EXTENSION);
+        }
+        if (excelName == null || !excelName.toLowerCase().endsWith(EXCEL_EXTENSION)) {
+            throw new IllegalArgumentException("Excel文件后缀必须为" + EXCEL_EXTENSION);
+        }
+
+        String usedKey = (key != null && !key.isEmpty()) ? key : FIXED_KEY;
+
+        Map<String, byte[]> filesToZip = new HashMap<>();
+
+        byte[] txtBytes = txtFile.getBytes();
+        String txtEncryptedBase64 = AESEncryptionUtil.encryptToBase64(usedKey, txtBytes);
+        byte[] txtStoredBytes = txtEncryptedBase64.getBytes(StandardCharsets.UTF_8);
+        filesToZip.put(txtName, txtStoredBytes);
+
+        byte[] excelBytes = excelFile.getBytes();
+        String excelEncryptedBase64 = AESEncryptionUtil.encryptToBase64(usedKey, excelBytes);
+        byte[] excelStoredBytes = excelEncryptedBase64.getBytes(StandardCharsets.UTF_8);
+        filesToZip.put(excelName, excelStoredBytes);
+
+        byte[] zipBytes = ZipFileUtil.zip(filesToZip);
+
+        String downloadFileName = "upgrade_" + version + ".enc";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData("attachment", downloadFileName);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(zipBytes);
+    }
 
     /**
      * 辅助方法：从文件名中解析版本号
