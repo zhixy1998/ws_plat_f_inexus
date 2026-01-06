@@ -27,5 +27,9 @@ public final class EndMarker {
     public static EndMarker normal(String sn, String cmd) {
         return new EndMarker(sn, cmd, Reason.NORMAL);
     }
+
+    public static EndMarker stop (String sn, String cmd) {
+        return new EndMarker(sn, cmd, Reason.NORMAL);
+    }
 }
 

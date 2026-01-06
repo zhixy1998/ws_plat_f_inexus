@@ -143,12 +143,28 @@ public class UdpResponseDeal {
                 return parsePhotoMode(responses);
             case "GetResponseTime":
                 return parseGetResponseTime(responses);
+            case "Stop":
+                return parseStop(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
             default:
                 return resultEntity;
         }
+    }
+
+    private static OperationResultEntity parseStop(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            result = "false"; // 设置全局变量
+            resultEntity.setIsSuccess(false);
+            resultEntity.setErrorMsg("回应报文为空！");
+            return resultEntity;
+        }
+
+        byte[] last = responses.get(responses.size() - 1);
+        boolean success = last.length >= 5 && (last[2] & 0xFF) == 0 && (last[3] & 0xFF) == 0;
+        resultEntity.setIsSuccess(success);
+        return resultEntity;
     }
 
     private static OperationResultEntity parseGetResponseTime(List<byte[]> responses) {
