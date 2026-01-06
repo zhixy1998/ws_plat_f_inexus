@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
@@ -38,6 +39,7 @@ import com.persee.workstation.uv_inexus.service.guide.measurementService.Photome
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
 
@@ -57,6 +59,12 @@ public class PhotometricController {
     @ApiOperation("方法参数修改接口")
     public Result updateMethodParameter(@RequestBody PhotometricMethodParameterDto methodDto) {
         return photometricService.updateMethodParameter(methodDto);
+    }
+
+    @PostMapping("checkParam")
+    @ApiOperation("检查参数接口")
+    public Result<MethodChangeVO> checkParam(@RequestBody PhotometricMethodParamCheckDTO methodParam) {
+        return photometricService.checkMethodParam(methodParam);
     }
     @PostMapping
     @ApiOperation("新增样品输入参数")
@@ -144,24 +152,25 @@ public class PhotometricController {
     }
 
     @GetMapping("downloadDoc")
-    @ApiOperation("多格式文件下载接口（支持word/excel/txt）")
+    @ApiOperation("多格式文件下载接口（支持word/excel/txt）- 集成children和option数据")
     public ResponseEntity<?> downloadDoc(
             @ApiParam("任务ID") @RequestParam String taskId,
             @ApiParam("是否显示全部数据") @RequestParam Boolean allDisplay,
-            @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType) throws Exception {
-        
-        // 调用 Service 层的多格式导出方法
-        R<File> result = photometricService.downloadFile(taskId, allDisplay, fileType);
-        
+            @ApiParam("导出格式（word/excel/txt）") @RequestParam(required = false) String fileType,
+            @ApiParam(value = "数字参数（说明digit的业务含义，如：XX编号）", required = false)
+            @RequestParam(value = "digit", required = false) Integer digit,
+            @ApiParam(value = "选项参数（对应queryData的option）", required = false)
+            @RequestParam(value = "option", required = false) java.util.List<String> option) throws Exception {
+
+        R<File> result = photometricService.downloadFileWithChildren(taskId, allDisplay, fileType, digit, option);
+
         if (result.getSuccess()) {
             File file = result.getData();
             FileInputStream fis = new FileInputStream(file);
             InputStreamResource resource = new InputStreamResource(fis);
 
-            // 编码文件名（避免中文乱码）
             String fileName = URLEncoder.encode(file.getName(), "UTF-8");
-            
-            // 异步删除临时文件（10秒后）
+
             new Thread(() -> {
                 try {
                     Thread.sleep(10000);
@@ -172,15 +181,13 @@ public class PhotometricController {
                 }
             }).start();
 
-            // 构造响应头，指定下载和文件类型
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName)
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(resource);
         }
-        
-        // 导出失败时，返回错误信息
-        return ResponseEntity.badRequest().body("导出失败：" );
+
+        return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }
 
     @GetMapping("queryNewMethodTaskInfo")

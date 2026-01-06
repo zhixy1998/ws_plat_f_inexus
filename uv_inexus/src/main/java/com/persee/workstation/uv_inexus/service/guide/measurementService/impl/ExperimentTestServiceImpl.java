@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -31,6 +32,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
@@ -72,7 +74,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureProjectService tMeasureProjectService;
     @Autowired
-    private SystemUserManageDAO userConfigDAO;
+    private SysUserMapper userConfigDAO;
     @Autowired
     private TMeasureTaskService tMeasureTaskService;
     @Autowired
@@ -144,7 +146,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public Result recentlyAccomplishTask(String updateBy,String measureType) {
         // 根据用户名查询用户id
-        SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        SysUserPO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         if (user == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
@@ -209,7 +211,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
          * 	    }
          * }
          */
-        SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        SysUserPO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         // 项目数量
         long countProject = tMeasureProjectService.count(
                 Wrappers.lambdaQuery(TMeasureProject.class)
@@ -324,7 +326,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 根据项目id查询项目
         TMeasureProject project = tMeasureProjectService.getById(paramDto.getProjectId());
         //根据项目中的用户名称查询用户
-        SystemUserManagePO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, project.getCreatorKey()));
+        SysUserPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, project.getCreatorKey()));
         // 创建任务类
         TMeasureTask tMeasureTask = new TMeasureTask();
         tMeasureTask.setUserId(userConfigPO.getId());
@@ -493,15 +495,21 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         wrapper.eq("measure_type", queryTask.getMeasurementType());
         Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
-        if (page==null||page.getRecords().size() == 0){
+        if (page == null) {
             return Result.ok(page);
         }
-        page.getRecords().forEach(task -> {
+        List<TMeasureTask> records = page.getRecords();
+        System.out.println(records);
+        if (records == null || records.isEmpty()) {
+            return Result.ok(page);
+        }
+        records.forEach(task -> {
             // 根据任务中的用户id查询用户
-            SystemUserManagePO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getId, task.getUserId()));
-            task.setUserId(userConfigPO.getUserName());
-            task.setIsDelete(task.getCreateTime().format(formatter));
+            SysUserPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getId, task.getUserId()));
+            task.setUserId(userConfigPO.getId());
+            task.setIsDelete("0");
         });
+        System.out.println(records);
         return Result.ok(page);
     }
 
@@ -1163,7 +1171,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Override
     public Result recentlyCreatedTasks(String updateBy, String measureType) {
         // 根据用户名查询用户id
-        SystemUserManagePO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        SysUserPO user = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         if (user == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
@@ -1232,7 +1240,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
             SpectralReportVo vo = new SpectralReportVo();
             TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+            SysUserPO user = userConfigDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
 
@@ -1319,7 +1327,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
 
             vo.setProject(project.getProjectName());
-            vo.setDetector(user.getUserName());
+            vo.setDetector(user.getUsername());
             vo.setEnergyLight(methodparam.getEnergyLamp());
             vo.setMethodName(method.getMethodName());
 
@@ -1330,7 +1338,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
             SpectralReportVo vo = new SpectralReportVo();
             TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+            SysUserPO user = userConfigDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
 
@@ -1456,7 +1464,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setColorPlateWavelength("1");
 
             vo.setProject(project.getProjectName());
-            vo.setDetector(user.getUserName());
+            vo.setDetector(user.getUsername());
             vo.setEnergyLight(parameter.getEnergyLamp());
             vo.setMethodName(method.getMethodName());
             return Result.ok(vo);

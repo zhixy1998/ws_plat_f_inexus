@@ -14,11 +14,13 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -29,18 +31,28 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamM
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
+import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -73,13 +85,15 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Autowired
     TMeasureSampleService tMeasureSampleService;
     @Autowired
-    SystemUserManageDAO userManageDAO;
+    SysUserMapper userManageDAO;
     @Autowired
     TMeasureTaskMapper tMeasureTaskMapper;
     @Autowired
     TMeasureMethodService tMeasureMethodService;
     @Autowired
     TMeasureDataService tMeasureDataService;
+    @Autowired
+    DevOperationUtilService devOperationUtilService;
 
     @Autowired
     TMeasureAnalysisDataService tMeasureAnalysisDataService;
@@ -97,10 +111,16 @@ public class PhotometricServiceImpl implements PhotometricService {
     DeviceInfoService deviceInfoService;
 
     @Autowired
+    DeviceManageService manageService;
+
+    @Autowired
     DevMessageUtil devMessageUtil;
 
     @Autowired
     RestUtil restUtil;
+
+    @Autowired
+    LaTeXConverter latexConverter;
 
     @Value("1")
     String deleteType;
@@ -113,6 +133,182 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Value("1")
     String tested;
+
+    private R<Boolean> checkParam(PhotometricParameter parameter) {
+        if (parameter.getLuminosity() == null || parameter.getLuminosity().trim().isEmpty()) {
+            return R.fail(YamlMessageSource.getMessageStatic("00105001"));
+        }
+        if (parameter.getLuminosity().equals(WaveLengthEnum.es.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.er.getCode())) {
+            String energyLamp = parameter.getEnergyLamp();
+            Integer gain = parameter.getGain();
+            if (!StringUtils.hasText(energyLamp)) {
+                return R.fail(YamlMessageSource.getMessageStatic("00103002", WaveLengthEnum.getName(parameter.getLuminosity())));
+            }
+            if (gain == null) {
+                return R.fail(YamlMessageSource.getMessageStatic("00103003", WaveLengthEnum.getName(parameter.getLuminosity())));
+            }
+        }
+        if (WaveLengthEnum.getName(parameter.getLuminosity()) == null) {
+            return R.fail(YamlMessageSource.getMessageStatic("00103004"));
+        }
+        if (parameter.getWaveLength() == null || parameter.getWaveLength().isEmpty()) {
+            return R.fail(YamlMessageSource.getMessageStatic("00105003"));
+        }
+        if (parameter.getWaveLength().size() > 26) {
+            return R.fail(YamlMessageSource.getMessageStatic("00103005"));
+        }
+        if (!StringUtils.hasText(parameter.getChangeLampWaveLength())) {
+            return R.fail("换灯波长不能为空");
+        }
+        if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
+            double v = Double.parseDouble(parameter.getChangeLampWaveLength());
+            if (v < 330 || v > 390) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A", v));
+            }
+            if (parameter.getWaveLength().contains(parameter.getChangeLampWaveLength())) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010202B"));
+            }
+        }
+        if (parameter.getRepetitionPattern() == null || parameter.getRepetitionPattern().trim().isEmpty()) {
+            return R.fail(YamlMessageSource.getMessageStatic("00103007"));
+        }
+        if (!java.util.Arrays.asList("单池重复", "不重复").contains(parameter.getRepetitionPattern())) {
+            return R.fail(YamlMessageSource.getMessageStatic("00103008"));
+        }
+        if ("单池重复".equals(parameter.getRepetitionPattern())) {
+            if (parameter.getRepetitionTime() == null || parameter.getRepetitionTime().trim().isEmpty()) {
+                return R.fail(YamlMessageSource.getMessageStatic("00103009"));
+            }
+            try {
+                int repetitionTime = Integer.parseInt(parameter.getRepetitionTime());
+                if (repetitionTime < 2 || repetitionTime > 10) {
+                    return R.fail(YamlMessageSource.getMessageStatic("0010300A"));
+                }
+            } catch (NumberFormatException e) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010300B"));
+            }
+        }
+        if ("单池重复".equals(parameter.getRepetitionPattern())) {
+            if (parameter.getTimeInterval() == null || parameter.getTimeInterval().trim().isEmpty()) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010300C"));
+            }
+            try {
+                double timeInterval = Double.parseDouble(parameter.getTimeInterval());
+                if (timeInterval < 0 || timeInterval > 60) {
+                    return R.fail(YamlMessageSource.getMessageStatic("0010300D"));
+                }
+                String[] parts = parameter.getTimeInterval().split("\\.");
+                if (parts.length > 1 && parts[1].length() > 1) {
+                    return R.fail(YamlMessageSource.getMessageStatic("0010500F"));
+                }
+            } catch (NumberFormatException e) {
+                return R.fail(YamlMessageSource.getMessageStatic("00105010"));
+            }
+        }
+        if (parameter.getSampleInputParams() != null && parameter.getSampleInputParams().size() > 10) {
+            return R.fail(YamlMessageSource.getMessageStatic("0010300E"));
+        }
+        if (parameter.getResultParams() != null && parameter.getResultParams().size() > 5) {
+            return R.fail(YamlMessageSource.getMessageStatic("0010300F"));
+        }
+        java.util.List<RoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams != null && !approxParams.isEmpty()) {
+            if (approxParams.size() > 10) {
+                return R.fail(YamlMessageSource.getMessageStatic("00103010", approxParams.size()));
+            }
+            for (RoundingVO approxParam : approxParams) {
+                if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00103011", approxParam.getResultIdentity()));
+                }
+                if (approxParam.getRoundingParams().size() > 10) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00103012", approxParam.getResultIdentity()));
+                }
+                R<Boolean> r = checkApproximateRange(approxParam);
+                if (!r.getSuccess()) {
+                    return r;
+                }
+            }
+        }
+        if (parameter.getQcParams() != null && parameter.getQcParams().size() > 10) {
+            return R.fail(YamlMessageSource.getMessageStatic("00103013"));
+        }
+        return R.ok(true);
+    }
+
+    private R<Boolean> checkApproximateRange(RoundingVO vo) {
+        java.util.List<RoundingParamVO> params = vo.getRoundingParams();
+        if (params == null || params.isEmpty()) {
+            return R.fail(YamlMessageSource.getMessageStatic("00100023"));
+        }
+        for (RoundingParamVO param : params) {
+            Double lowerLimit = param.getLowerLimit();
+            Double upperLimit = param.getUpperLimit();
+            if (lowerLimit == null && Boolean.TRUE.equals(param.getIsLowerLimitIncluded())) {
+                return R.fail(YamlMessageSource.getMessageStatic("00100026"));
+            }
+            if (upperLimit == null && Boolean.TRUE.equals(param.getIsUpperLimitIncluded())) {
+                return R.fail(YamlMessageSource.getMessageStatic("00100026"));
+            }
+            if (lowerLimit == null && upperLimit == null && params.size() != 1) {
+                return R.fail(YamlMessageSource.getMessageStatic("00100023"));
+            }
+            if (lowerLimit != null && upperLimit != null) {
+                if (lowerLimit > upperLimit) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00100020"));
+                }
+                if (lowerLimit.equals(upperLimit)) {
+                    if (Boolean.TRUE.equals(param.getIsLowerLimitIncluded()) && Boolean.TRUE.equals(param.getIsUpperLimitIncluded())) {
+                        return R.ok(true);
+                    } else {
+                        return R.fail(YamlMessageSource.getMessageStatic("00100021"));
+                    }
+                }
+            }
+        }
+        java.util.List<RoundingParamVO> validParams = params.stream()
+                .filter(p -> p.getLowerLimit() != null || p.getUpperLimit() != null)
+                .sorted((p1, p2) -> {
+                    if (p1.getLowerLimit() == null) {
+                        return -1;
+                    }
+                    if (p2.getLowerLimit() == null) {
+                        return 1;
+                    }
+                    return p1.getLowerLimit().compareTo(p2.getLowerLimit());
+                })
+                .collect(java.util.stream.Collectors.toList());
+        if (validParams.isEmpty()) {
+            if (params.size() == 1 && params.get(0).getLowerLimit() == null && params.get(0).getUpperLimit() == null) {
+                return R.ok(true);
+            } else {
+                return R.fail(YamlMessageSource.getMessageStatic("00100024"));
+            }
+        }
+        if (validParams.get(0).getLowerLimit() != null ||
+                validParams.get(validParams.size() - 1).getUpperLimit() != null) {
+            return R.fail(YamlMessageSource.getMessageStatic("00100024"));
+        }
+        for (int i = 0; i < validParams.size() - 1; i++) {
+            RoundingParamVO current = validParams.get(i);
+            RoundingParamVO next = validParams.get(i + 1);
+            Double upper1 = current.getUpperLimit();
+            Double lower2 = next.getLowerLimit();
+            if (upper1 == null || lower2 == null) {
+                return R.fail(YamlMessageSource.getMessageStatic("00100025"));
+            }
+            if (upper1 > lower2) {
+                return R.fail(YamlMessageSource.getMessageStatic("00100022"));
+            }
+            if (upper1.equals(lower2)) {
+                boolean includeUpper = Boolean.TRUE.equals(current.getIsUpperLimitIncluded());
+                boolean includeLower = Boolean.TRUE.equals(next.getIsLowerLimitIncluded());
+                if (!(includeUpper ^ includeLower)) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00100022"));
+                }
+            }
+        }
+        return R.ok(true);
+    }
 
 
     @Override
@@ -172,32 +368,219 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
+    public Result<MethodChangeVO> checkMethodParam(PhotometricMethodParamCheckDTO checkDTO) {
+        if (java.util.Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00103014"));
+        }
+        if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
+            PhotometricParameter newMethodParam = checkDTO.getNewMethodParam();
+            R<Boolean> r = checkParam(newMethodParam);
+            if (!r.getSuccess()) {
+                return Result.fail(r.getMessage());
+            }
+            PhotometricParameter paramToCheck = null;
+            if (checkDTO.getNewMethodParam() != null) {
+                paramToCheck = checkDTO.getNewMethodParam();
+            } else {
+                if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+                    TMeasureMethod newMethod = tMeasureMethodService.getById(checkDTO.getNewMethodId());
+                    if (newMethod != null && StringUtils.hasText(newMethod.getMeasurementParamInfo())) {
+                        paramToCheck = JSON.parseObject(newMethod.getMeasurementParamInfo(), PhotometricParameter.class);
+                    }
+                } else if (StringUtils.hasText(checkDTO.getCurrentMethodId())) {
+                    TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+                    if (currentMethod != null && StringUtils.hasText(currentMethod.getMeasurementParamInfo())) {
+                        paramToCheck = JSON.parseObject(currentMethod.getMeasurementParamInfo(), PhotometricParameter.class);
+                    }
+                }
+            }
+            if (paramToCheck != null && paramToCheck.getResultParams() != null && !paramToCheck.getResultParams().isEmpty()) {
+                java.util.List<InputParam> inputParams = paramToCheck.getSampleInputParams();
+                java.util.List<PreCountResultParam> resultParams = paramToCheck.getResultParams();
+                for (PreCountResultParam resultParam : resultParams) {
+                    if (resultParam == null) {
+                        continue;
+                    }
+                    Result<Boolean> checkResult = checkFormula(inputParams, resultParam, checkDTO.getMeasureType());
+                    if (checkResult.getCode() != 200 || !java.lang.Boolean.TRUE.equals(checkResult.getData())) {
+                        return Result.fail(checkResult.getMessage());
+                    }
+                }
+            }
+            double minWaveLength = 190.0;
+            double maxWaveLength = 1100.0;
+            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+                R<DeviceMeasureVO> typeInfo = manageService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+                }
+            }
+            for (String waveStr : newMethodParam.getWaveLength()) {
+                if (waveStr == null || waveStr.trim().isEmpty()) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("00103006"));
+                }
+                try {
+                    double waveLength = Double.parseDouble(waveStr);
+                    if (waveLength < minWaveLength || waveLength > maxWaveLength) {
+                        return Result.fail(YamlMessageSource.getMessageStatic("00105004", waveStr, minWaveLength, maxWaveLength));
+                    }
+                    String[] parts = waveStr.split("\\.");
+                    if (parts.length > 1 && parts[1].length() > 1) {
+                        return Result.fail(YamlMessageSource.getMessageStatic("00105005", waveStr));
+                    }
+                } catch (NumberFormatException e) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("00105006", waveStr));
+                }
+            }
+        }
+        MethodChangeVO vo = new MethodChangeVO();
+        vo.setCurrentMethodId(checkDTO.getCurrentMethodId());
+        vo.setParamChange(false);
+        vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity());
+        vo.setMessage(PhotoMetricChangeMethodTypeEnum.noChange.getMessage());
+        if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
+            log.info("生成新方法");
+            vo.setParamChange(true);
+            vo.setMessage(PhotoMetricChangeMethodTypeEnum.newMethod.getMessage());
+            vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.newMethod.getIdentity());
+            return Result.ok(vo);
+        }
+        if (!StringUtils.hasText(checkDTO.getCurrentTaskId())) {
+            log.info("没有任务存在，将使用该方法生成数据");
+            vo.setParamChange(true);
+            vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.noData.getIdentity());
+            return Result.ok(vo);
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+        PhotometricParameter oldParam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+        PhotometricParameter methodParam;
+        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+            TMeasureMethod newMethod = tMeasureMethodService.getById(checkDTO.getNewMethodId());
+            methodParam = JSON.parseObject(newMethod.getMeasurementParamInfo(), PhotometricParameter.class);
+        } else {
+            methodParam = checkDTO.getNewMethodParam();
+        }
+        String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(methodParam, SerializerFeature.SortField);
+        if (dbJson.equals(frontJson)) {
+            vo.setParamChange(false);
+            vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+            vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
+            return Result.ok(vo);
+        }
+        boolean b = checkMeasureParam(oldParam, methodParam);
+        if (!b) {
+            log.info("测量参数有改变，要清理所有数据");
+            vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.measure.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(PhotoMetricChangeMethodTypeEnum.measure.getMessage());
+            return Result.ok(vo);
+        }
+        boolean analyze = checkAnalyzeParam(oldParam, methodParam);
+        if (!analyze) {
+            log.info("分析参数有改变，要清理分析数据");
+            vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.analyze.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(PhotoMetricChangeMethodTypeEnum.analyze.getMessage());
+        }
+        return Result.ok(vo);
+    }
+
+    private boolean checkMeasureParam(PhotometricParameter oldParam, PhotometricParameter newParam) {
+        java.util.List<String> oldWave = oldParam.getWaveLength();
+        java.util.List<String> newWave = newParam.getWaveLength();
+        if (!java.util.Objects.equals(oldWave, newWave)) {
+            return false;
+        }
+        if (!java.util.Objects.equals(oldParam.getLuminosity(), newParam.getLuminosity())) {
+            return false;
+        }
+        if (!java.util.Objects.equals(oldParam.getEnergyLamp(), newParam.getEnergyLamp())) {
+            return false;
+        }
+        if (!java.util.Objects.equals(oldParam.getGain(), newParam.getGain())) {
+            return false;
+        }
+        return java.util.Objects.equals(oldParam.getSpectralBandwidth(), newParam.getSpectralBandwidth()) &&
+                java.util.Objects.equals(oldParam.getResponseTime(), newParam.getResponseTime()) &&
+                java.util.Objects.equals(oldParam.getChangeLampWaveLength(), newParam.getChangeLampWaveLength()) &&
+                java.util.Objects.equals(oldParam.getRepetitionPattern(), newParam.getRepetitionPattern()) &&
+                java.util.Objects.equals(oldParam.getRepetitionTime(), newParam.getRepetitionTime()) &&
+                java.util.Objects.equals(oldParam.getTimeInterval(), newParam.getTimeInterval());
+    }
+
+    private boolean checkAnalyzeParam(PhotometricParameter oldParam, PhotometricParameter newParam) {
+        return java.util.Objects.equals(oldParam.getSampleInputParams(), newParam.getSampleInputParams()) &&
+                java.util.Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
+                java.util.Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
+                java.util.Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
+    }
+
+    private Result<Boolean> checkFormula(java.util.List<InputParam> inputParamList, PreCountResultParam newFormula, String measureType) {
+        if (newFormula == null || !StringUtils.hasText(newFormula.getFormulaText())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100C"));
+        }
+        if (!StringUtils.hasText(newFormula.getResultName())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00101017"));
+        }
+        if (!StringUtils.hasText(newFormula.getResultIdentity())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00101018"));
+        }
+        if (!StringUtils.hasText(newFormula.getUnit())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00101019"));
+        }
+        if (inputParamList == null || inputParamList.isEmpty()) {
+            return Result.fail(YamlMessageSource.getMessageStatic("0010100D"));
+        }
+        java.util.List<String> paramList = new java.util.ArrayList<>();
+        for (InputParam param : inputParamList) {
+            paramList.add(param.getResultIdentity());
+        }
+        java.util.List<String> formulaList = new java.util.ArrayList<>();
+        formulaList.add(newFormula.getFormulaText());
+        R<String> verified = latexConverter.verifyFormulasAgainstParamList(paramList, formulaList);
+        if (!verified.getSuccess()) {
+            return Result.fail(verified.getMessage());
+        }
+        return Result.ok(true);
+    }
+
+    @Override
     public Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType) {
 
-        SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
 
         LambdaQueryWrapper<TMeasureTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TMeasureTask::getUserId, id)
                 .eq(TMeasureTask::getMeasureType, measureType)
+                .eq(TMeasureTask::getIsDelete, createType)
                 .orderByDesc(TMeasureTask::getCreateTime);
 
         List<TMeasureTask> taskList = tMeasureTaskService.list(wrapper);
         if (taskList != null && !taskList.isEmpty()) {
-            TMeasureTask task = taskList.get(0);
-            String projectItemKey = task.getProjectItemKey();
-            String methodKey = task.getMethodKey();
-
-            TMeasureProject project = tMeasureProjectService.getById(projectItemKey);
-            TMeasureMethod method = tMeasureMethodService.getById(methodKey);
-            MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
-            vo.setTaskId(task.getId());
-            vo.setTaskName(task.getTaskName());
-            vo.setMethodId(method.getId());
-            vo.setMethodName(method.getMethodName());
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
-            return Result.ok(vo);
+            for (TMeasureTask task : taskList) {
+                String projectItemKey = task.getProjectItemKey();
+                String methodKey = task.getMethodKey();
+                TMeasureMethod method = tMeasureMethodService.getById(methodKey);
+                if (method == null) {
+                    tMeasureTaskService.removeById(task.getId());
+                    continue;
+                }
+                TMeasureProject project = tMeasureProjectService.getById(projectItemKey);
+                MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
+                vo.setTaskId(task.getId());
+                vo.setTaskName(task.getTaskName());
+                vo.setMethodId(method.getId());
+                vo.setMethodName(method.getMethodName());
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+                return Result.ok(vo);
+            }
         }
         MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
 
@@ -214,6 +597,13 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (projectList == null || projectList.isEmpty()) {
                 return Result.ok(vo);
             }
+            queryWrapper.clear();
+            queryWrapper.eq(TMeasureMethod::getProjectItemKey, projectList.get(0).getId())
+                            .eq(TMeasureMethod::getMeasurementType,measureType)
+                                    .last("limit 1");
+            TMeasureMethod one = tMeasureMethodService.getOne(queryWrapper);
+            vo.setMethodId(one.getId());
+            vo.setMethodName(one.getMethodName());
             vo.setProjectName(projectList.get(0).getProjectName());
             vo.setProjectId(projectList.get(0).getId());
 
@@ -226,6 +616,20 @@ public class PhotometricServiceImpl implements PhotometricService {
             vo.setProjectId(tMeasureProject.getId());
             vo.setProjectName(tMeasureProject.getProjectName());
         }
+        TMeasureTask task=new TMeasureTask();
+        task.setUserId(id);
+
+        task.setCreateTime(LocalDateTime.now());
+        task.setStartTime(LocalDateTime.now());
+        task.setMethodKey(vo.getMethodId());
+        task.setMeasureType(measureType);
+        task.setProjectItemKey(vo.getProjectId());
+        task.setIsSave("0");
+        task.setIsDelete("0");
+        task.setTaskName("defaultName");
+        tMeasureTaskService.save(task);
+        vo.setTaskId(task.getId());
+        vo.setTaskName(task.getTaskName());
         return Result.ok(vo);
 
     }
@@ -251,7 +655,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             TMeasureTask newTask = new TMeasureTask();
 
             TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());
@@ -286,6 +690,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
         for (TaskSpecimen specimen : taskSpecimen) {
             if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);
@@ -314,6 +721,23 @@ public class PhotometricServiceImpl implements PhotometricService {
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
+        List<String> sampleNos = dto.getNewSamples().stream()
+                .map(m -> m.get(SampleTableEnum.SAMPLE_NUMBER.getIdentity()))
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
+
+        if (sampleNos.size() < dto.getNewSamples().size()) {
+            return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+        }
+        // 查重：找到重复的样品编号
+        Set<String> duplicates = sampleNos.stream()
+                .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!duplicates.isEmpty()) {
+            //标准样品编号重复
+            return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
+        }
 
         for (Map<String, String> map : dto.getNewSamples()) {
             String jsonString = JSON.toJSONString(map);
@@ -627,6 +1051,11 @@ public class PhotometricServiceImpl implements PhotometricService {
 
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
             for (TaskSpecimen specimen : taskSpecimen) {
+                //过滤掉已删除的内容
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (StringUtils.hasText(measureSample.getHeads())){
                     List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
@@ -925,7 +1354,32 @@ public class PhotometricServiceImpl implements PhotometricService {
             } else {
                 if (data != null) {
                     if (StringUtils.hasText(data.getOriginalCalculationData())){
-                        Map<String, Map<String, String>> childrenList = new HashMap<>();
+                        // 原先childrenList使用HashMap，子项无序
+                        // Map<String, Map<String, String>> childrenList = new HashMap<>();
+
+                        // 改为使用TreeMap并按identity分段排序
+                        Map<String, Map<String, String>> childrenList = new TreeMap<>((key1, key2) -> {
+                            String[] parts1 = key1.split("-");
+                            String[] parts2 = key2.split("-");
+
+                            for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+                                if (isNumeric(parts1[i]) && isNumeric(parts2[i])) {
+                                    int num1 = Integer.parseInt(parts1[i]);
+                                    int num2 = Integer.parseInt(parts2[i]);
+                                    int compare = Integer.compare(num1, num2);
+                                    if (compare != 0) {
+                                        return compare;
+                                    }
+                                } else {
+                                    int compare = parts1[i].compareTo(parts2[i]);
+                                    if (compare != 0) {
+                                        return compare;
+                                    }
+                                }
+                            }
+
+                            return Integer.compare(parts1.length, parts2.length);
+                        });
 
                         List<Map<String, String>> middle = new ArrayList<>();
                         List<PhotometricOriginDataInfo> wlDataList = JSON.parseArray(data.getOriginalCalculationData(), PhotometricOriginDataInfo.class);
@@ -945,21 +1399,16 @@ public class PhotometricServiceImpl implements PhotometricService {
                                         Map<String, String> value = entry.getValue();
 
                                         if (childrenList.containsKey(key)) {
-                                            // 如果键已存在，将新值中的键值对合并到现有Map中
                                             Map<String, String> existingMap = childrenList.get(key);
-                                            // 将value中的所有键值对放入existingMap中（相同键会覆盖，新键会添加）
                                             existingMap.putAll(value);
                                         } else {
-                                            // 如果键不存在，直接添加（创建副本以避免引用问题）
                                             childrenList.put(key, new HashMap<>(value));
                                         }
                                     }
                                 }
                             } else {
                                 Map<String, String> originData = wlData.getData();
-                                // 创建一个新的Map来存储格式化后的数据
                                 Map<String, String> formattedData = new HashMap<>();
-                                // 使用现有的工具类 DataCountUtil.formatValueWithBigDecimal 进行格式化
                                 for (Map.Entry<String, String> entry : originData.entrySet()) {
                                     String formattedValue = DataCountUtil.formatValueWithBigDecimal(digit, entry.getValue());
                                     formattedData.put(entry.getKey(), formattedValue);
@@ -967,10 +1416,11 @@ public class PhotometricServiceImpl implements PhotometricService {
 
                                 Map<String, String> children = new HashMap<>(formattedData);
                                 String[] split = wlData.getIdentity().split("-");
-                                children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                                String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
+                                children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + split[split.length - 1]);
                                 children.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), wlData.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
-                                childrenList.putIfAbsent(wlData.getIdentity(), children);
+                                childrenList.computeIfAbsent(wlData.getIdentity(), k -> new HashMap<>()).putAll(children);
                             }
                         }
                         map.put("samplingTime", data.getSamplingTime());
@@ -1027,6 +1477,13 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
         }
         return map;
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        return str.matches("-?\\d+");
     }
 
     private PhotometricOriginDataInfo reCountData(List<PhotometricOriginDataInfo> wlDataList, Integer digit) {
@@ -1203,11 +1660,12 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result saveDataInfo(SaveDataVO vo) {
         if (!StringUtils.hasText(vo.getTaskId())) {
-            //缺少任务id
-            return Result.fail(YamlMessageSource.getMessageStatic("00000019"));
+            //请创建任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00100016"));
         }
 
         if (!StringUtils.hasText(vo.getSampleId())) {
+            //缺少样品id
             return Result.fail(YamlMessageSource.getMessageStatic("0000001C"));
         }
 
@@ -1264,7 +1722,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
 
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
             newTask.setUserId(po.getId());
             newTask.setProjectItemKey(method.getProjectItemKey());
             newTask.setMethodKey(method.getId());
@@ -1298,32 +1756,71 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
         List<String> waveLength = photometricParameter.getWaveLength();
         // 通过序列号获取ip
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        List<ChangeParam> list = new ArrayList<>();
-        for (String s : waveLength) {
 
-            double v = Double.parseDouble(s);
-            Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
-            devMessageUtil.wavelengthLocate(command, ip);
+        String wave = "--";
 
-            command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-            R<ChangeParam> zero = null;
-            try {
-                zero = devMessageUtil.zero(command, ip);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            if (!zero.getSuccess()) {
-                return Result.fail(zero.getMessage());
-            }
-            ChangeParam changeParam = zero.getData();
-            changeParam.setWl(s);
-            list.add(changeParam);
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam param = new SetParam();
+
+        param.setPhotoMode(Integer.valueOf(photometricParameter.getLuminosity()));
+        param.setResponseTime(Double.valueOf(photometricParameter.getResponseTime()));
+
+        if (photometricParameter.getGain() != null) {
+            param.setGain(photometricParameter.getGain());
         }
-        task.setZeroParam(JSON.toJSONString(list));
+        if (StringUtils.hasText(photometricParameter.getEnergyLamp())) {
+            param.setLampPos(Integer.valueOf(photometricParameter.getEnergyLamp()));
+        }
+        param.setSlit1(Double.valueOf(photometricParameter.getSpectralBandwidth()));
+        inputParam.setParam(param);
 
-        boolean update = tMeasureTaskService.updateById(task);
-        return update ? Result.ok() : Result.fail();
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
+
+        inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+        inputParam.setWavelength(waveLength);
+        R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
+        if (!zero.getSuccess()) {
+            return Result.fail(zero.getMessage());
+        }
+        OperationResultEntity data = zero.getData();
+        List<ChangeParam> zeroResult = data.getZeroResult();
+
+        task.setZeroParam(JSON.toJSONString(zeroResult));
+        tMeasureTaskService.updateById(task);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("waveLength", wave + "nm");
+        return Result.ok(jsonObject);
+//        String ip = deviceInfoService.getIp(deviceSerialNumber);
+//        List<ChangeParam> list = new ArrayList<>();
+//        for (String s : waveLength) {
+//
+//            double v = Double.parseDouble(s);
+//            Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
+//            devMessageUtil.wavelengthLocate(command, ip);
+//
+//            command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
+//            R<ChangeParam> zero = null;
+//            try {
+//                zero = devMessageUtil.zero(command, ip);
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//            if (!zero.getSuccess()) {
+//                return Result.fail(zero.getMessage());
+//            }
+//            ChangeParam changeParam = zero.getData();
+//            changeParam.setWl(s);
+//            list.add(changeParam);
+//        }
+//        task.setZeroParam(JSON.toJSONString(list));
+//
+//        boolean update = tMeasureTaskService.updateById(task);
+//        return update ? Result.ok() : Result.fail();
     }
 
     @Override
@@ -1337,7 +1834,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
-        SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
         task.setUserId(id);
         task.setIsDelete("1");
@@ -1358,11 +1855,111 @@ public class PhotometricServiceImpl implements PhotometricService {
         measurementCurrentInfoVO.setMethodId(task.getMethodKey());
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         measurementCurrentInfoVO.setMethodName(method.getMethodName());
-        measurementCurrentInfoVO.setProjectId(task.getProjectItemKey());
+//        measurementCurrentInfoVO.setProjectId(task.getProjectItemKey());
         TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-        measurementCurrentInfoVO.setProjectName(project.getProjectName());
+//        measurementCurrentInfoVO.setProjectName(project.getProjectName());
 
         return Result.ok(measurementCurrentInfoVO);
+    }
+
+    @Override
+    public R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, List<String> option) {
+        log.info("开始导出（集成children和option），taskId: {}, fileType: {}, option: {}", taskId, fileType, option);
+        if (!StringUtils.hasText(taskId)) {
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            log.error("导出失败：任务不存在，taskId: {}", taskId);
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        if (!StringUtils.hasText(fileType)) {
+            fileType = "word";
+        } else {
+            fileType = fileType.toLowerCase();
+        }
+        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
+            return R.fail(YamlMessageSource.getMessageStatic("00300001"));
+        }
+        if (allDisplay == null) {
+            allDisplay = true;
+        }
+
+        String methodId = task.getMethodKey();
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null) {
+            return R.fail(YamlMessageSource.getMessageStatic("00300009"));
+        }
+
+        List<HeadVO> heads = new ArrayList<>();
+        List<HeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
+        heads.addAll(vos);
+        heads.add(0, new HeadVO("序号", "serialNumber"));
+
+        QueryDataDTO queryDataDTO = new QueryDataDTO();
+        queryDataDTO.setOption(option != null ? option : new ArrayList<>());
+        queryDataDTO.setTaskId(taskId);
+        queryDataDTO.setAllDisplay(allDisplay);
+        queryDataDTO.setDigit(digit);
+        List<Map<String, Object>> data = queryData(queryDataDTO).getData();
+
+        List<Map<String, Object>> expandedData = new ArrayList<>();
+        if (data != null && !data.isEmpty()) {
+            for (Map<String, Object> item : data) {
+                expandedData.add(item);
+                Object childrenObj = item.get("children");
+                if (childrenObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+                    for (Map<String, Object> child : children) {
+                        Map<String, Object> childRow = new HashMap<>(child);
+                        childRow.put("isChildData", true);
+                        expandedData.add(childRow);
+                    }
+                }
+            }
+        }
+
+        if (expandedData.isEmpty()) {
+            log.warn("无实际数据，构造空行导出，taskId: {}", taskId);
+            Map<String, Object> emptyRow = new HashMap<>();
+            emptyRow.put("serialNumber", 1);
+            for (HeadVO head : vos) {
+                if (head != null && StringUtils.hasText(head.getIdentity())) {
+                    emptyRow.put(head.getIdentity(), "");
+                }
+            }
+            expandedData.add(emptyRow);
+        } else {
+            for (int i = 0; i < expandedData.size(); i++) {
+                expandedData.get(i).put("serialNumber", i + 1);
+            }
+        }
+
+        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
+        File file = new File(fileName);
+        try {
+            switch (fileType) {
+                case "word":
+                    generateWordFile(file, task, method, heads, expandedData, vos.size());
+                    break;
+                case "txt":
+                    generateTxtFile(file, heads, expandedData);
+                    break;
+                case "xlsx":
+                    generateExcelFile(file, heads, expandedData);
+                    break;
+                default:
+                    break;
+            }
+            return R.ok(file);
+        } catch (Exception e) {
+            log.error("文件生成失败", e);
+            if (file.exists()) {
+                file.delete();
+            }
+            return R.fail(YamlMessageSource.getMessageStatic("00302006", e.getMessage()));
+        }
     }
 
     /**

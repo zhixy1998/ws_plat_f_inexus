@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.alibaba.fastjson.JSONObject;
+import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
@@ -31,6 +32,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataIn
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodChangeVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MethodParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.PhotometricReportDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
@@ -45,6 +47,8 @@ public interface PhotometricService {
      * 方法参数修改接口
      */
     Result<String> updateMethodParameter(PhotometricMethodParameterDto methodDto);
+
+    Result<MethodChangeVO> checkMethodParam(PhotometricMethodParamCheckDTO checkDTO);
 
     /**
      * 获取当前信息
@@ -125,6 +129,11 @@ public interface PhotometricService {
      * 导出到word
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType);
+
+    /**
+     * 多格式文件导出（集成children和option数据）
+     */
+    R<File> downloadFileWithChildren(String taskId, Boolean allDisplay, String fileType, Integer digit, java.util.List<String> option);
 
     /**
      * 查询可绑定的方法参数

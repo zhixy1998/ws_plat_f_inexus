@@ -99,7 +99,10 @@ public class ExperimentTestController {
 
     @GetMapping("queryMethodProt")
     @ApiOperation("查找方法接口")
-    public Result queryMethodProt(@RequestParam String projectId,@RequestParam String measureType,@RequestParam("pageNum") Integer pageNum,@RequestParam("pageSize") Integer pageSize) {
+    public Result queryMethodProt(@RequestParam String projectId,
+                                  @RequestParam String measureType,
+                                  @RequestParam("pageNum") Integer pageNum,
+                                  @RequestParam("pageSize") Integer pageSize) {
         return experimentTestService.queryMethodProt(projectId,measureType,pageNum,pageSize);
     }
 
