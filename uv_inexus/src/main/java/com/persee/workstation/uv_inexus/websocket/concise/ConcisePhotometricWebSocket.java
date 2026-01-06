@@ -29,6 +29,11 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
@@ -95,6 +100,9 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
     @Autowired
     DeviceInfoService infoService;
+
+    @Autowired
+    private DevOperationUtilService operationUtilService;
 
     @Autowired
     FormulaUtil formulaUtil;
@@ -179,12 +187,12 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
             digit = Constants.DEFAULT_DECIMAL_NUM;
         }
 
-        //占用仪器
-        R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
-        if (!r.getSuccess()) {
-            sendAndClose(session, r.getMessage());
-            return;
-        }
+//        //占用仪器
+//        R<Boolean> r = infoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+//        if (!r.getSuccess()) {
+//            sendAndClose(session, r.getMessage());
+//            return;
+//        }
 
         if (sampleId != null) {
 
@@ -238,6 +246,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
                     measureSample.setSampleLocation(currentPoolNum.toString());
                     tMeasureSampleService.updateById(measureSample);
                 }
+
 
                 R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
                 if (!setParams.getSuccess()) {
@@ -469,73 +478,127 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
         List<String> waveLengths = parameter.getWaveLength();
 
+
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        SetParam param = new SetParam();
+        R<OperationResultEntity> operation = new R<>();
         if (StringUtils.hasText(sample.getSampleLocation())) {
-            list.add(new Command(T600ComIdEnums.SetCellPos.getComId(), new Object[]{sample.getSampleLocation()}));
+            param.setCellPos(Integer.valueOf(sample.getSampleLocation()));
             JSONObject object = new JSONObject();
             object.put("currentPoolNum", sample.getSampleLocation());
             session.sendMessage(new TextMessage(object.toJSONString()));
+
+            inputParam.setParam(param);
+
+            operation = operationUtilService.operation(inputParam);
+
+            if (!operation.getSuccess()) {
+                log.info("设置样品池位置出错");
+                return R.fail("设置样品池位置出错！");
+            }
         }
 
-        JSONObject object = new JSONObject();
-        object.put("currentPoolNum", sample.getSampleLocation());
-        session.sendMessage(new TextMessage(object.toJSONString()));
 
+        inputParam.setOperationType(OperationTypeEnums.Measure.getType());
+        inputParam.setWavelength(waveLengths);
         LocalDateTime startTime = LocalDateTime.now();
-        R<ChangeParam> res = null;
-        String ip = infoService.getIp(deviceSerialNumber);
-        for (String waveLength : waveLengths) {
+        operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            log.info("测量出错");
+            return R.fail("测量出错！");
+        }
+        OperationResultEntity data = operation.getData();
+        List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
 
-            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+        for (ChangeParam changeParam : originalMeasureResult) {
 
-            list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
-            try {
-                res = devMessageUtil.photometricAndRationMeasurement(list, ip);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            if (!res.getSuccess()) {
-                log.info("设置波长出错");
-                return R.fail("设置波长出错！");
-            }
+            String waveLength = changeParam.getWl();
 
-            DetectionConstants.currentWavelength = waveLength;
-            list.clear();
-
-            list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
-
-            try {
-                res = devMessageUtil.photometricAndRationMeasurement(list, ip);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            if (!res.getSuccess()) {
-                log.info("测量出错");
-                return R.fail("测量出错");
-            }
-
-            ChangeParam response = res.getData();
-            machineData.add(response);
+            machineData.add(changeParam);
             ChangeParam originRsd = new ChangeParam();
             List<ChangeParam> params = new ArrayList<>();
             if (StringUtils.hasText(task.getZeroParam())) {
                 params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
                 if (params != null) {
-                    for (ChangeParam param : params) {
-                        if (param.getWl().equals(waveLength)) {
-                            BeanUtils.copyProperties(param, originRsd);
+                    for (ChangeParam zero : params) {
+                        if (zero.getWl().equals(waveLength)) {
+                            BeanUtils.copyProperties(zero, originRsd);
                             break;
                         }
                     }
                 }
             }
-
             //处理数据
-            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), response, params, null, sample.getSampleNumber());
+            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, null, sample.getSampleNumber());
             dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
 
             originDataList.add(dataInfo);
-            list.clear();
         }
+
+
+//        JSONObject object = new JSONObject();
+//        object.put("currentPoolNum", sample.getSampleLocation());
+//        session.sendMessage(new TextMessage(object.toJSONString()));
+//
+
+//        R<ChangeParam> res = null;
+//        String ip = infoService.getIp(deviceSerialNumber);
+//        for (String waveLength : waveLengths) {
+//
+//            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
+//
+//            param.setWlList(String.valueOf(step));
+//
+//
+//            if (!operation.getSuccess()) {
+//                log.info("设置波长出错");
+//                return R.fail("设置波长出错！");
+//            }
+//
+//
+//            inputParam.setOperationType(OperationTypeEnums.Measure.getType());
+//
+//
+//
+//            list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
+//
+//            try {
+//                res = devMessageUtil.photometricAndRationMeasurement(list, ip);
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//            if (!res.getSuccess()) {
+//                log.info("测量出错");
+//                return R.fail("测量出错");
+//            }
+//
+//            ChangeParam response = res.getData();
+//            machineData.add(response);
+//            ChangeParam originRsd = new ChangeParam();
+//            List<ChangeParam> params = new ArrayList<>();
+//            if (StringUtils.hasText(task.getZeroParam())) {
+//                params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+//                if (params != null) {
+//                    for (ChangeParam param : params) {
+//                        if (param.getWl().equals(waveLength)) {
+//                            BeanUtils.copyProperties(param, originRsd);
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+//
+//            //处理数据
+//            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(session, waveLength, sampleKey, parameter.getLuminosity(), response, params, null, sample.getSampleNumber());
+//            dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
+//
+//            originDataList.add(dataInfo);
+//            list.clear();
+//        }
         if (session.isOpen()) {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("sampleId", sampleKey);
@@ -769,32 +832,29 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
 
     private R<Boolean> setPreMeasureParams(String deviceSerialNumber, FPhotometricParameter parameter) {
 
-        List<Command> list = new ArrayList<>();
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
 
-        list.add(new Command(T600ComIdEnums.SetPhotoMode.getComId(), new Object[]{parameter.getLuminosity()}));
+        SetParam param = new SetParam();
+        param.setPhotoMode(Integer.valueOf(parameter.getLuminosity()));
+        Double v = formulaUtil.calculateStep(Double.parseDouble(parameter.getChangeLampWaveLength()), deviceSerialNumber);
 
-        String changeLampWaveLength = parameter.getChangeLampWaveLength();
-        Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
-        list.add(new Command(T600ComIdEnums.SetChangeLampWl.getComId(), new Object[]{v1}));
-
+        param.setChangeLampWl(v);
         if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
-            list.add(new Command(T600ComIdEnums.SetSlit1.getComId(), new Object[]{parameter.getSpectralBandwidth()}));
+            param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
         }
 
         if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
-            list.add(new Command(T600ComIdEnums.SetLampPos.getComId(), new Object[]{parameter.getEnergyLamp()}));
-            list.add(new Command(T600ComIdEnums.SetGain.getComId(), new Object[]{parameter.getGain()}));
-        }
-        list.add(new Command(T600ComIdEnums.SetResponseTime.getComId(), new Object[]{parameter.getResponseTime()}));
 
-        String ip = infoService.getIp(deviceSerialNumber);
-        R<ChangeParam> res;
-        try {
-            res = devMessageUtil.photometricAndRationMeasurement(list, ip);
-            if (!res.getSuccess()) {
-                return R.fail("参数设置出错！");
-            }
-        } catch (Exception e) {
+            param.setLampPos(Integer.valueOf(parameter.getEnergyLamp()));
+            param.setGain(parameter.getGain());
+        }
+        param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+        inputParam.setParam(param);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+
+        if (!operation.getSuccess()) {
             return R.fail("参数设置出错！");
         }
 

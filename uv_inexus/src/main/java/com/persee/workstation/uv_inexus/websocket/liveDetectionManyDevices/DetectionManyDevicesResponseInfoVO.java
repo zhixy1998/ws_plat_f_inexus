@@ -33,7 +33,7 @@ public class DetectionManyDevicesResponseInfoVO {
     private String connectStatus;
 
     @ApiModelProperty("仪器当前状态")
-    private String devCurrentStatus;
+    private Integer devCurrentStatus;
 
     @ApiModelProperty("灯位置")
     private String lampPos;

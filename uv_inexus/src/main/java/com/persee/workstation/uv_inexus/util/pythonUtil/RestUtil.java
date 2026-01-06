@@ -16,6 +16,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,7 +31,16 @@ public class RestUtil {
 //    private static final String baseUrl = "http://192.168.51.38:8002/";
 
     public String sum(String formula, String identity, String values) {
-        RestTemplate restTemplate = new RestTemplate();
+
+        // 创建带有超时设置的 RestTemplate
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+
+        // 设置连接超时（单位：毫秒）
+        factory.setConnectTimeout(3000);    // 5秒连接超时
+        factory.setReadTimeout(5000);       // 10秒读取超时
+
+        RestTemplate restTemplate = new RestTemplate(factory);
+
         String url = baseUrl + "algebraic_operations";
 
         JSONObject jsonObject = new JSONObject();
@@ -47,7 +57,7 @@ public class RestUtil {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return response.getBody();
         } catch (Exception e) {
-            log.info("计算和异常：{}", e.getMessage());
+            log.info("计算异常：{}", e.getMessage());
             JSONObject error = new JSONObject();
             error.put("code", "404");
 

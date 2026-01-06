@@ -51,7 +51,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums.Stop;
+
 
 /**
  * 仪器操作工具类，定义所有的仪器操作，根据业务层传参来组装发送报文，然后 从队列里取接收报文并处理
@@ -295,10 +295,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 return R.fail("请先连接仪器！");
             }
 
-            Integer connectStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
+            Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
 
-            if(anEnum != Stop){
-                R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, connectStatus);
+            if(anEnum != OperationTypeEnums.Stop){
+                R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
                 if (!r.getSuccess()) {
                     return R.fail(r.getMessage());
                 }
@@ -554,33 +554,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             isDealOnTime = true;
         }
 
-        /* ================= Stop 指令直接处理 ================= */
-        if ("Stop".equals(cmdId)) {
-
-            udpSendUtil.unknownReceive(
-                    deviceId,
-                    cmdId,
-                    sendBytes,
-                    timeout,
-                    isDealOnTime,
-                    deviceSerialNumber,
-                    null
-            );
-
-            log.info("[STOP] device={} request stop", deviceId);
-
-            // 停扫描状态
-            ScanSessionManager.stopScan(deviceId);
-
-            // 中断解析线程
-            messageOnTimeDeal.stop(deviceSerialNumber, deviceId);
-
-            // 清空缓存
-            MessageStoreManager.getInstance().clearDeviceMessages(deviceId);
-
-            return R.ok();
-        }
-
+//        if ("Stop".equals(cmdId)) {
+//
+//            log.info("[STOP-SCAN] device={} request stop scan", deviceId);
+//
+//            //先停 Java 侧解析线程（最重要）
+//            ScanSessionManager.stopScan(deviceId);
+//
+//            //清空缓存，避免残包
+//            MessageStoreManager.getInstance()
+//                    .clearDeviceMessages(deviceId);
+//        }
         if (replyNumber < 0) {
             result = udpSendUtil.unknownReceive(
                     deviceId,
@@ -609,6 +593,161 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         // ================= 先取解析结果（关键） =================
         OperationResultEntity resultEntity =
                 (OperationResultEntity) result.getData();
+
+        //------------------测试------------------
+//        if (cfg == null) {
+//            log.warn("[光谱测试] scanWavelengthConfig 未设置，跳过光谱处理");
+//        } else {
+//            // 根据操作类型选择对应的线程映射
+//            Map<String, Thread> targetThreadMap = isScan ? scanProcessorThreadMap : baselineProcessorThreadMap;
+//
+//            targetThreadMap.compute(deviceSerialNumber, (k, existingThread) -> {
+//                // 如果已有线程在运行，先停止旧线程
+//                if (existingThread != null && existingThread.isAlive()) {
+//                    log.info("[光谱测试] 停止旧线程，重新创建，device={}, cmdId={}", deviceSerialNumber, cmdId);
+//                    existingThread.interrupt();
+//                    try {
+//                        existingThread.join(1000); // 等待最多1秒让旧线程结束
+//                    } catch (InterruptedException e) {
+//                        Thread.currentThread().interrupt();
+//                    }
+//                }
+//
+//                Thread t = new Thread(() -> {
+//                    log.info("[光谱测试] 开始处理光谱数据，设备={}，操作类型={}",
+//                            deviceSerialNumber, isScan ? "Scan" : "BaseLine");
+//
+//                    SpectrumDataProcessor spectrumDataProcessor =
+//                            new SpectrumDataProcessor(formulaUtil, device);
+//
+//                    // 只在真正启动新线程时 reset
+//                    spectrumDataProcessor.reset();
+//
+//                    SpectrumPointStore pointStore =
+//                            spectrumPointStoreMap.computeIfAbsent(deviceSerialNumber, deviceKey  -> new SpectrumPointStore());
+//
+//                    spectrumProcessorMap.put(deviceSerialNumber, spectrumDataProcessor);
+//
+//                    try {
+//                        while (ScanSessionManager.isRunning(deviceId)) {
+//                            ChangeParam param =
+//                                    (ChangeParam) unknowCountMessageQueue
+//                                            .takeMessage(deviceSerialNumber, cmdId);
+//
+//                            if (param == null) {
+//                                Thread.sleep(5);
+//                                continue;
+//                            }
+//
+//                            // 处理光谱数据
+//                            spectrumDataProcessor.processStepAndPrintWavelength(
+//                                    param, deviceSerialNumber
+//                            );
+//
+//                            double constrainedWl =
+//                                    spectrumDataProcessor.getConstrainedWavelength();
+//
+//                            SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
+//
+//                            if (isScan) {
+//                                sp.setScanRsd(param);
+//
+//                                SpectrumCalcResult absResult =
+//                                        SpectrumResultCalculator.calculate(1, sp, RANGE);
+//                                SpectrumCalcResult tResult =
+//                                        SpectrumResultCalculator.calculate(2, sp, RANGE);
+//                                SpectrumCalcResult esResult =
+//                                        SpectrumResultCalculator.calculate(3, sp, RANGE);
+//                                SpectrumCalcResult erResult =
+//                                        SpectrumResultCalculator.calculate(4, sp, RANGE);
+//
+//                                log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",
+//                                        sp.getWavelength(),
+//                                        absResult != null ? absResult.getAbs() : "-",
+//                                        tResult != null ? tResult.getTPercent() : "-",
+//                                        esResult != null ? esResult.getEs() : "-",
+//                                        erResult != null ? erResult.getEr() : "-"
+//                                );
+//                            } else {
+//                                sp.setBaselineRsd(param);
+//                            }
+//                        }
+//
+//                    } catch (InterruptedException e) {
+//                        Thread.currentThread().interrupt();
+//                    } finally {
+//                        spectrumProcessorMap.remove(deviceSerialNumber);
+//                        // 从正确的映射中移除
+//                        if (isScan) {
+//                            scanProcessorThreadMap.remove(deviceSerialNumber);
+//                        } else {
+//                            baselineProcessorThreadMap.remove(deviceSerialNumber);
+//                        }
+//                        infoService.newReleaseDevice(deviceSerialNumber);
+//
+//                        log.info("[光谱测试] 停止处理光谱数据，设备={}，操作类型={}",
+//                                deviceSerialNumber, isScan ? "Scan" : "BaseLine");
+//                    }
+//                });
+//
+//                t.start();
+//                return t;
+//            });
+//        }
+
+//        if ("Zero".equals(cmdId)) {
+//
+//            ChangeParam zero = resultEntity.getMeasureResult();
+//            if (zero != null) {
+//                SpectrumPointStore store =
+//                        spectrumPointStoreMap.computeIfAbsent(
+//                                deviceSerialNumber, k -> new SpectrumPointStore());
+//
+//                SpectrumPoint sp = store.getOrCreate(Double.parseDouble(zero.getStep()));
+//                sp.setZeroRsd(zero);
+//
+//                log.info("[ZERO] 保存 Zero RSD, wl={}, r={}, s={}, d={}",
+//                        zero.getStep(), zero.getR(), zero.getS(), zero.getD());
+//            }
+//        }
+//
+//        if ("Measure".equals(cmdId)) {
+//
+//            ChangeParam measure = resultEntity.getMeasureResult();
+//            if (measure != null) {
+//
+//                SpectrumPointStore store =
+//                        spectrumPointStoreMap.computeIfAbsent(
+//                                deviceSerialNumber, k -> new SpectrumPointStore());
+//
+//                SpectrumPoint sp = store.getOrCreate(Double.parseDouble(measure.getStep()));
+//                sp.setMeasureRsd(measure);
+//
+//                SpectrumCalcResult abs =
+//                        SpectrumResultCalculator.calculate(1, sp, SpectrumSourceType.SINGLE);
+//                SpectrumCalcResult t =
+//                        SpectrumResultCalculator.calculate(2, sp, SpectrumSourceType.SINGLE);
+//                SpectrumCalcResult es =
+//                        SpectrumResultCalculator.calculate(3, sp, SpectrumSourceType.SINGLE);
+//                SpectrumCalcResult er =
+//                        SpectrumResultCalculator.calculate(4, sp, SpectrumSourceType.SINGLE);
+//
+//                sp.setAbsResult(abs);
+//                sp.setTResult(t);
+//                sp.setEsResult(es);
+//                sp.setErResult(er);
+//
+//                log.info("[MEASURE] wl={}, Abs={}, T%={}, Es={}, Er={}",
+//                        sp.getWavelength(),
+//                        abs != null ? abs.getAbs() : "-",
+//                        t != null ? t.getTPercent() : "-",
+//                        es != null ? es.getEs() : "-",
+//                        er != null ? er.getEr() : "-"
+//                );
+//
+//                unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
+//            }
+//        }
 
         resultEntity = (OperationResultEntity)result.getData();
         return R.ok(resultEntity);
@@ -1221,7 +1360,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             } else {
 
-
                 if (replyNumber < 0) {
                     String[] readBytes = transition.getReadBytes();
                     if (readBytes != null && readBytes.length > 0) {
@@ -1266,59 +1404,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 }
                 BeanUtils.copyProperties(entity, resultEntity, getNullPropertyNames(entity));
 
-                if (comId.equals(LiveDetectionCmdEnum.Measure.getComId())) {
-
-                    device = deviceManager.getDevice(deviceId);
-
-                    ChangeParam measureParam = entity.getMeasureResult();
-                    if (!Objects.isNull(measureParam)) {
-
-                        String luminosity = device.getLuminosityMode();
-                        if (!StringUtils.hasText(luminosity)) {
-                            luminosity = WaveLengthEnum.abs.getCode();
-                        }
-
-                        String wl = device.getCurrentWavelength();
-                        resultEntity.setX(wl + "nm");
-                        measureParam.setWl(wl);
-
-                        if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
-
-                            ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
-
-                            String s;
-                            if (!Objects.isNull(zeroParam)) {
-                                s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
-                            } else {
-                                s = DataCountUtil.countTPercent(null, measureParam, 1.0);
-                            }
-                            String abs = DataCountUtil.changeTPercentOrAbs(null, s);
-                            resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
-                        } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
-                            String s = DataCountUtil.countErOrEs(measureParam, luminosity);
-                            resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
-                        } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
-                            ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
-                            String s;
-                            if (!Objects.isNull(zeroParam)) {
-                                s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
-                            } else {
-                                s = DataCountUtil.countTPercent(null, measureParam, 1.0);
-                            }
-                            resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
-                        }
-                    }
-
-                } else if (comId.equals(LiveDetectionCmdEnum.GetLampPos.getComId())) {
-
-                    resultEntity.setLampPos(EnergyLampEnums.getName(entity.getLampPos()));
-
-                } else if (comId.equals(LiveDetectionCmdEnum.GetPhotoMode.getComId())) {
-                    resultEntity.setLuminosity(WaveLengthEnum.getName(device.getLuminosityMode()));
-                } else if (comId.equals(LiveDetectionCmdEnum.GetChangeLampWl.getComId())) {
-                    Double v = formulaUtil.calculateWl(Double.parseDouble(entity.getChangeLampWl()), deviceSerialNumber);
-                    resultEntity.setChangeLampWl(String.valueOf(v));
-                } else if (comId.equals(LiveDetectionCmdEnum.GetDLampStatus.getComId())) {
+                if (comId.equals(LiveDetectionCmdEnum.GetDLampStatus.getComId())) {
                     if (resultEntity.getDataList() == null) {
                         resultEntity.setDataList(new ArrayList<>());
                     }
@@ -1351,6 +1437,59 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 return R.fail("数据转换错误");
             }
         }
+
+        device = deviceManager.getDevice(deviceId);
+
+        ChangeParam measureParam = resultEntity.getMeasureResult();
+        if (!Objects.isNull(measureParam)) {
+
+            String luminosity = device.getLuminosityMode();
+            if (!StringUtils.hasText(luminosity)) {
+                luminosity = WaveLengthEnum.abs.getCode();
+            }
+
+            String wl = device.getCurrentWavelength();
+            resultEntity.setX(wl + "nm");
+            measureParam.setWl(wl);
+
+            if (luminosity.equals(WaveLengthEnum.abs.getCode())) {
+
+                ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
+
+                String s;
+                if (!Objects.isNull(zeroParam)) {
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
+                } else {
+                    s = DataCountUtil.countTPercent(null, measureParam, 1.0);
+                }
+                String abs = DataCountUtil.changeTPercentOrAbs(null, s);
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, abs));
+            } else if (luminosity.equals(WaveLengthEnum.es.getCode()) || luminosity.equals(WaveLengthEnum.er.getCode())) {
+                String s = DataCountUtil.countErOrEs(measureParam, luminosity);
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+            } else if (luminosity.equals(WaveLengthEnum.tPercent.getCode())) {
+                ChangeParam zeroParam = device.getZeroResult(measureParam.getWl());
+                String s;
+                if (!Objects.isNull(zeroParam)) {
+                    s = DataCountUtil.countTPercent(zeroParam, measureParam, 1.0);
+                } else {
+                    s = DataCountUtil.countTPercent(null, measureParam, 1.0);
+                }
+                resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
+            }
+        }
+
+        resultEntity.setLampPos(EnergyLampEnums.getName(resultEntity.getLampPos()));
+
+        resultEntity.setLuminosity(WaveLengthEnum.getName(device.getLuminosityMode()));
+
+        Double v = formulaUtil.calculateWl(Double.parseDouble(resultEntity.getChangeLampWl()), deviceSerialNumber);
+        resultEntity.setChangeLampWl(String.valueOf(v));
+
+        if (resultEntity.getDataList() == null) {
+            resultEntity.setDataList(new ArrayList<>());
+        }
+
         device = deviceManager.getDevice(deviceId);
         resultEntity.setY(resultEntity.getY() + WaveLengthEnum.getName(device.getLuminosityMode()));
         if (!StringUtils.hasText(resultEntity.getBandwidth())) {

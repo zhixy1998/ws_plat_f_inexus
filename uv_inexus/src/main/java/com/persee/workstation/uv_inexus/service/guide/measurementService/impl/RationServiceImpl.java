@@ -260,6 +260,7 @@ public class RationServiceImpl implements RationService {
         tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(rationParameter));
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if ( save){
             //创建成功

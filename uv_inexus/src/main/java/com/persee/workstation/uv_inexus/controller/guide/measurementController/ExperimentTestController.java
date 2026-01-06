@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.MethodExportRequest;
 import com.persee.workstation.uv_inexus.model.R;
@@ -34,7 +33,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -120,7 +118,7 @@ public class ExperimentTestController {
 
     @GetMapping("assignMethodPort")
     @ApiOperation("指定方法接口")
-    public Result assignMethodPort(@RequestParam String methodType,@RequestParam String projectId ){
+    public Result assignMethodPort(@RequestParam String methodType,@RequestParam String projectId){
         return experimentTestService.assignMethodPort(methodType,projectId);
     }
 

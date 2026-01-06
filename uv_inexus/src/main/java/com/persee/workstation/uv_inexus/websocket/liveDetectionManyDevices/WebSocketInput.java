@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices;
 
+import com.alibaba.fastjson.JSONObject;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -22,6 +23,6 @@ public class WebSocketInput {
     private String operation;
 
     @ApiModelProperty(value = "数据")
-    private String data;
+    private JSONObject data;
 
 }

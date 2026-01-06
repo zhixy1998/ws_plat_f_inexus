@@ -13,6 +13,7 @@ package com.persee.workstation.uv_inexus.service.guide.dataManagementService.imp
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -113,9 +114,11 @@ public class DataManagementServiceImpl implements DataManagementService {
         String selectKey = unFinishTasksAndNumParam.getSelectKey();
         LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureTask::getMeasureType, taskType);
-        queryWrapper.eq(TMeasureTask::getIsDelete, status);
+        queryWrapper.eq(TMeasureTask::getIsSave, status);
         queryWrapper.eq(TMeasureTask::getUserId, unFinishTasksAndNumParam.getSystemIdentityId());
-        queryWrapper.like(TMeasureTask::getTaskName, selectKey);
+        if (selectKey!=null&&!selectKey.isEmpty()){
+            queryWrapper.like(TMeasureTask::getTaskName, selectKey);
+        }
         List<TMeasureTask> tMeasureTasks = taskManagementMapper.selectList(queryWrapper);
 
         UnFinishTasksAndNum unFinishTasksAndNum = new UnFinishTasksAndNum();
@@ -199,19 +202,26 @@ public class DataManagementServiceImpl implements DataManagementService {
         }
         // 根据查询到的组id条件查询协作组中所有的组内的协作项目id
         List<TMeasureProjectCollaboratorGroup> projectList = collaboratorGroupService.list(new QueryWrapper<TMeasureProjectCollaboratorGroup>().eq("group_id", userGroupPO.getGroupId()));
-
-        // 根据项目id以及用户id以及用户组id查询所有的项目
         QueryWrapper<TMeasureProject> wrapper = new QueryWrapper<>();
-        wrapper.eq("creator_key", vo.getUpdateBy());
+        List<String> collects;
         if (projectList != null && projectList.size() > 0){
-            List<String> collect = projectList.stream().map(TMeasureProjectCollaboratorGroup::getProjectId).collect(Collectors.toList());
-            wrapper.or().in("id", collect);
-        }
-        wrapper.or().eq("owner_group_id", userGroupPO.getGroupId());
-        if (vo.getPageNum() != null){
-            wrapper.like("project_name", vo.getProjectName());
+            collects=projectList.stream().map(TMeasureProjectCollaboratorGroup::getProjectId).collect(Collectors.toList());
+        } else {
+            collects = new ArrayList<>();
         }
 
+        wrapper.and(qw -> {
+            // 第一个条件：创建者匹配
+            qw.eq("creator_key", vo.getUpdateBy());
+
+            // 第二个条件：协作者项目列表（动态判断）
+            if (CollectionUtils.isNotEmpty(collects)) {
+                qw.or().in("id", collects);
+            }
+
+            // 第三个条件：用户组匹配
+            qw.or().eq("owner_group_id", userGroupPO.getGroupId());
+        });
 
         List<TMeasureProject> projects = projectManagementMapper.selectList(wrapper);
 
@@ -234,8 +244,12 @@ public class DataManagementServiceImpl implements DataManagementService {
         Long methodNums = methodManagementMapper.selectCount(new QueryWrapper<TMeasureMethod>().in("project_item_key", collect));
         ArrayList<ProjectDataNumDto> dataNumList = new ArrayList<>();
         ArrayList<ProjectSumListDto> dataSumList = new ArrayList<>();
-        // 根据projects中的项目id查询所有包含这个项目的任务和方法
-        for (TMeasureProject allProject : projects) {
+        if (vo.getPageNum() != null){
+            wrapper.like("project_name", vo.getProjectName());
+        }
+        List<TMeasureProject> projects1 = projectManagementMapper.selectList(wrapper);
+        // 根据projects1中的项目id查询所有包含这个项目的任务和方法
+        for (TMeasureProject allProject : projects1) {
             ProjectDataNumDto numDto = new ProjectDataNumDto();
             // 根据项目id查询所有包含这个项目的任务
             Long projectItemKey = taskManagementMapper.selectCount(new QueryWrapper<TMeasureTask>().eq("project_item_key", allProject.getId()));
@@ -247,7 +261,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             dataNumList.add(numDto);
         }
 
-        // 执行分页查询，projects 现在是分页后的结果
+        // 执行分页查询，projects1 现在是分页后的结果
         Page<TMeasureProject> projectPage = projectManagementMapper.selectPage(page, wrapper);
         List<TMeasureProject> pageProjects = projectPage.getRecords();
         for (TMeasureProject pageProject : pageProjects) {
@@ -297,7 +311,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             return Result.fail("用户不存在");
         }
         // 根据用户id查询所有任务
-        List<TMeasureTask> tasks = taskManagementMapper.selectList(new QueryWrapper<TMeasureTask>().eq("creator_key", user.getUsername()).eq("is_delete","0"));
+        List<TMeasureTask> tasks = taskManagementMapper.selectList(new QueryWrapper<TMeasureTask>().eq("user_id", user.getId()).eq("is_delete","0"));
         TaskStatisticDto result = new TaskStatisticDto();
         if (tasks == null || tasks.size() == 0){
             result.setTaskTotal(0L);
@@ -313,7 +327,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         // 构建查询条件（分页查询用）
         QueryWrapper<TMeasureTask> pageWrapper = new QueryWrapper<>();
-        pageWrapper.eq("creator_key", user.getUsername());
+        pageWrapper.eq("user_id", user.getId());
 
         // 根据测量模式筛选
         if (StringUtils.isNotBlank(vo.getMeasureMode())) {
@@ -341,7 +355,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             taskSumListDto.setMethodName(method.getMethodName());
             taskSumListDto.setProjectName(project.getProjectName());
             taskSumListDto.setMeasureMode(task.getMeasureType());
-            taskSumListDto.setTaskStatus(task.getIsSave().equals("0")?"未完成":"完成");
+            taskSumListDto.setTaskStatus("0".equals(task.getIsSave())?"未完成":"完成");
             taskSumListDto.setSampleNum((long) specimen.size());
             taskSumListDto.setMeasureStartTime(task.getStartTime());
             taskSumList.add(taskSumListDto);
@@ -369,7 +383,11 @@ public class DataManagementServiceImpl implements DataManagementService {
         timeStatistics.add(getCompletedTaskCount(null,null,user.getId(),"所有时间"));
         result.setTaskDataNum(timeStatistics);
 
-        List<TMeasureTask> collect = tasks.stream().filter(task -> task.getIsSave().equals("1")).collect(Collectors.toList());
+        List<TMeasureTask> collect = (tasks == null ? new ArrayList<TMeasureTask>() : tasks)
+                .stream()
+                .filter(task -> task != null && "1".equals(task.getIsSave()))
+                .collect(Collectors.toList());
+
         result.setTaskTotal((long) tasks.size());
         result.setTaskCompleteNum((long) collect.size());
         result.setTotal(taskPage.getTotal()); // 总记录数
@@ -403,7 +421,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         /// 1. 查询当前用户创建的所有方法,以及使用方法任务测量后保存状态为1的个数
         // 根据用户名称查询方法
         QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
-        wrapper.eq("creator_key", user.getUsername());
+        wrapper.eq("method_creator", user.getUsername());
         List<TMeasureMethod> methods = methodManagementMapper.selectList(wrapper);
         MethodStatisticDto result = new MethodStatisticDto();
         if (methods == null || methods.size() == 0){
@@ -443,8 +461,12 @@ public class DataManagementServiceImpl implements DataManagementService {
             methodWrapper.eq("measure_type", measureTypeDescription);
             List<TMeasureMethod> collect = methods.stream().filter(method -> method.getMeasurementType().equals(measureTypeDescription)).collect(Collectors.toList());
             methodDataNumDto.setMethodNum((long) collect.size());
+            methodDataNum.add(methodDataNumDto);
         }
         result.setMethodDataNum(methodDataNum);
+        if (vo.getMethodName() != null){
+            wrapper.like("method_name", vo.getMethodName());
+        }
         // 分页查询满足当前用户的方法
         Page<TMeasureMethod> methodPage = methodManagementMapper.selectPage(page, wrapper);
         List<TMeasureMethod> methodList = methodPage.getRecords();
