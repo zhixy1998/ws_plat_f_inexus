@@ -43,7 +43,7 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
-import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.LiveDetectionManyDevicesWebSocket;
+import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.LiveDetectionDevicesWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,7 +91,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     DeviceTypeInfoDAO deviceTypeInfoDAO;
 
     @Autowired
-    LiveDetectionManyDevicesWebSocket liveDetectionManyDevicesWebSocket;
+    LiveDetectionDevicesWebSocket liveDetectionManyDevicesWebSocket;
 
     @Autowired
     LiveDetectionWebSocket liveDetectionWebSocket;

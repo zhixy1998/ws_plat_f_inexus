@@ -177,7 +177,7 @@ public class PhotometricNewWebSocket{
             digit = Constants.DEFAULT_DECIMAL_NUM;
         }
 
-        if (sampleId != null) {
+        if (StringUtils.hasText(sampleId)) {
 
             for (TaskSpecimen specimen : taskSpecimen) {
                 if (!specimen.getSpecimenKey().equals(sampleId)) {

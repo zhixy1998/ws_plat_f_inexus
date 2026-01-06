@@ -170,7 +170,7 @@ public class PhotometricConciseController {
                        @RequestParam String methodId,
                             @RequestParam String taskId,
                             @RequestParam String updateBy) {
-        return fPhotometricService.zero(deviceSerialNumber,methodId, taskId,updateBy);
+        return fPhotometricService.zero1(deviceSerialNumber,methodId, taskId,updateBy);
     }
 
     @GetMapping("saveTask")
