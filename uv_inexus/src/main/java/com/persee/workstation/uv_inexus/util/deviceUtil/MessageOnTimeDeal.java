@@ -386,16 +386,10 @@ public class MessageOnTimeDeal {
                             log.info("[光谱测试] 超时退出 device={}", deviceSerialNumber);
                             break;
                         }
-
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
-                    unknowCountMessageQueue.putMessage(
-                            deviceSerialNumber,
-                            cmdId,
-                            EndMarker.timeout(deviceSerialNumber, cmdId)
-                    );
                     spectrumProcessorMap.remove(deviceSerialNumber);
                     if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
                     else baselineProcessorThreadMap.remove(deviceSerialNumber);
@@ -411,26 +405,6 @@ public class MessageOnTimeDeal {
             return t;
         });
     }
-
-    public void stop(String deviceSerialNumber, String deviceId) {
-
-        // 中断 scan / baseline 线程
-        Thread scanThread = scanProcessorThreadMap.remove(deviceSerialNumber);
-        if (scanThread != null) {
-            scanThread.interrupt();
-        }
-
-        Thread baselineThread = baselineProcessorThreadMap.remove(deviceSerialNumber);
-        if (baselineThread != null) {
-            baselineThread.interrupt();
-        }
-
-        // 再次确保状态关闭
-        ScanSessionManager.stopScan(deviceId);
-
-        log.info("[ON-TIME] stop parser thread, device={}", deviceSerialNumber);
-    }
-
 }
 
 

@@ -49,6 +49,15 @@ public class Constants {
     public final static Integer INIT_TASK_STOP = 4;
 
     /**
+     * 表字段参数
+     */
+    public final static String PARAM_ZERO = "0";
+    public final static String PARAM_ONE = "1";
+    public final static String PARAM_TWO = "2";
+    public final static String PARAM_THREE = "3";
+    public final static String PARAM_FOUR = "4";
+
+    /**
      * 开机状态：0-未开机，1-开机，2-软关机
      */
     public final static Integer DEVICE_IS_NULL = 0;

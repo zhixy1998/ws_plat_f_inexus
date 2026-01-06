@@ -52,8 +52,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Slf4j
 @Service
@@ -108,8 +106,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     Integer receivePort;
 
     private static volatile Map<String, Boolean> stopInit = new HashMap<>();
-
-    private final ExecutorService actionExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     public R<DeviceInfoVO> queryDeviceInfo(String deviceSerialNumber, String updateBy) {
@@ -1268,21 +1264,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok(null);
     }
 
-    @Override
-    public R<Boolean> stop(
-            String deviceSerialNumber
-    ) {
-
-        DevOperationInputParam inputParam = new DevOperationInputParam();
-        inputParam.setDeviceSerialNumber(deviceSerialNumber);
-        inputParam.setOperationType(OperationTypeEnums.Stop.getType());
-        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
-        if (!operation.getSuccess()) {
-            return R.fail(operation.getMessage());
-        } else {
-            return R.ok(true);
-        }
-    }
 
     @Override
     public R<OperationResultEntity> setParamOneDevice(
@@ -1290,6 +1271,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     ) {
 
         param.setOperationType(OperationTypeEnums.SetParam.getType());
+//        param.setDeviceSerialNumber(deviceSerialNumber);
 
         R<OperationResultEntity> operation =
                 operationUtilService.operation(param);

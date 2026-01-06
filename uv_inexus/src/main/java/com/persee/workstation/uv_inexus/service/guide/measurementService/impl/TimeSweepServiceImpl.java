@@ -17,6 +17,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -193,6 +194,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(timeSweepParamter));
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if ( save){
             //创建成功

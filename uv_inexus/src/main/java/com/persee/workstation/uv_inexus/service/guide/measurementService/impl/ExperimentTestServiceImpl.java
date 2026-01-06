@@ -19,6 +19,8 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -31,6 +33,8 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecime
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardDetection;
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
@@ -118,6 +122,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureAnalysisImageService tMeasureAnalysisImageService;
 
+    @Autowired
+    private SysUserGroupMapper sysUserGroupMapper;
+
+    @Autowired
+    private SysUserMapper sysUserMapper;
+
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -129,6 +139,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //该项目已存在
             return Result.fail(YamlMessageSource.getMessageStatic("00301001"));
         }
+        // 根据用户名称查询用户
+        SysUserPO user = sysUserMapper.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername,paramDto.getUpdateBy()));
+        // 根据用户id查询组id
+        SysUserGroupPO userGroupPO = sysUserGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()));
         // 创建项目表
         TMeasureProject tMeasureProject = new TMeasureProject();
         tMeasureProject.setProjectName(paramDto.getProjectName());
@@ -137,6 +151,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureProject.setCreateTime(LocalDateTime.now());
         tMeasureProject.setLastUpdatedBy(paramDto.getUpdateBy());
         tMeasureProject.setLastUpdatedTime(LocalDateTime.now());
+        tMeasureProject.setOwnerGroupId(userGroupPO.getGroupId());
+        tMeasureProject.setIsDelete("0");
         boolean save = tMeasureProjectService.save(tMeasureProject);
         return Result.ok(save);
     }

@@ -18,6 +18,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -470,6 +471,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
         tMeasureMethod.setMethodCreator(updateBy);
+        tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if (save) {
             //创建成功

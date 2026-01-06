@@ -131,6 +131,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(photometricParameter));
         tMeasureMethod.setMethodCreator(updateBy);
         tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
         boolean save = tMeasureMethodService.save(tMeasureMethod);
         if (save) {
             //创建成功
