@@ -45,6 +45,7 @@ import javax.annotation.PostConstruct;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.net.DatagramSocket;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -289,6 +290,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 return R.fail("请先连接仪器！");
             }
         } else {
+
             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
             if (info == null) {
                 return R.fail("请先连接仪器！");
@@ -296,7 +298,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
 
-            if(anEnum != OperationTypeEnums.Stop){
+            if(anEnum != OperationTypeEnums.Stop && anEnum != OperationTypeEnums.Disconnect){
                 R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
                 if (!r.getSuccess()) {
                     return R.fail(r.getMessage());
@@ -1224,7 +1226,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     }
                     liveDetection = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout,false, deviceSerialNumber, endBytes);
                 } else {
+                    log.info("+++{}", LocalDateTime.now());
                     liveDetection = udpSendUtil.knowTotalReceiveSend(deviceId,comId, bytes,replyNumber,timeout,connectType);
+                    log.info("+++{}", LocalDateTime.now());
                 }
             }
 

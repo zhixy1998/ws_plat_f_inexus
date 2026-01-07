@@ -12,6 +12,8 @@ package com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -39,10 +41,10 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Controller
 @Slf4j
@@ -73,7 +75,7 @@ public class LiveDetectionDevicesWebSocket {
     private String deviceTopic;
 
 
-    @Value("${websocket.measurement.interval:2500}")
+    @Value("${websocket.measurement.interval:2000}")
     private long measurementInterval;
 
     @Value("${websocket.status.interval:500}")
@@ -89,11 +91,11 @@ public class LiveDetectionDevicesWebSocket {
     // 状态任务管理（按设备序列号）
     private final Map<String, StatusTaskInfo> statusTasks = new ConcurrentHashMap<>();
 
-    // 设备订阅计数
-    private final Map<String, AtomicInteger> deviceSubscriptions = new ConcurrentHashMap<>();
-
     // 会话订阅关系（会话ID -> 设备序列号集合）
     private final Map<String, Set<String>> sessionSubscriptions = new ConcurrentHashMap<>();
+
+    // 设备订阅关系（设备序列号 -> 订阅的会话集合）
+    private final Map<String, Set<String>> deviceSessionSubscriptions = new ConcurrentHashMap<>();
 
     // ==================== 线程池配置 ====================
     private ScheduledExecutorService taskScheduler;
@@ -157,26 +159,98 @@ public class LiveDetectionDevicesWebSocket {
             }
             switch (anEnum) {
                 case LiveDetection:
-//                    handleSubscribe(deviceSerialNumber);
                     startMeasurement(deviceSerialNumber);
                     break;
-                case PhotoMetric:
+                case DeviceStatus:
+                    deviceStatusStart(deviceSerialNumber);
+                    break;
+                case ConcisePhotoMetric:
                     JSONObject data = input.getData();
                     PhotometricWebsocketParam param = data.toJavaObject(PhotometricWebsocketParam.class);
                     photometricNewWebSocket.measureTask(param);
                     break;
-                case DeviceStatus:
-                    deviceStatusStart(deviceSerialNumber);
+                case ConciseRationMeasure:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseRationMeasure.getOperation());
+                    break;
+                case ConciseBaseLine:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseBaseLine.getOperation());
+                    break;
+                case ConciseSpectrum:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseSpectrum.getOperation());
+                    break;
+                case ConciseTimeMeasure:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseTimeMeasure.getOperation());
+                    break;
+                case PhotoMetric:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation());
+                    break;
+                case RationMeasure:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.RationMeasure.getOperation());
+                    break;
+                case Spectrum:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.Spectrum.getOperation());
+                    break;
+                case BaseLine:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.BaseLine.getOperation());
+                    break;
+                case TimeMeasure:
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.TimeMeasure.getOperation());
+                    break;
                 default:
                     webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "未知操作类型: " + operation);
-                    return;
             }
-
 
         } catch (Exception e) {
             log.error("测量操作请求解析失败", e);
         }
     }
+
+    /**
+     * 假测试数据，前端测试用，后续测量调试好之后，相应类型做替换
+     */
+    private void Measure(String deviceSerialNumber, String operation) {
+        JSONObject jsonObject = new JSONObject();
+        WebSocketResponseVO vo = new WebSocketResponseVO();
+        vo.setOperation(operation);
+        for (int i = 0; i < 10; i++) {
+
+            jsonObject.put("sampleId", i);
+            jsonObject.put("key", "samplingTime");
+            jsonObject.put("value", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            jsonObject.put("currentPoolNum", i<5?i+1:i-4);
+            vo.setData(jsonObject);
+            webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+
+            jsonObject.put("key", SampleTableEnum.SAMPLE_NUMBER.getIdentity());
+            jsonObject.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
+            jsonObject.put("value",  "sample-" + (i + 1));
+            vo.setData(jsonObject);
+            webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+
+            jsonObject.put("key", "abs-1");
+            jsonObject.put("identity", DataIdentityEnums.avg.getIdentity() + "-" + (1+i));
+            jsonObject.put("value", i*i);
+
+            vo.setData(jsonObject);
+            webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+                log.error("线程休眠异常", e);
+            }
+
+        }
+        jsonObject.clear();
+
+        jsonObject.put("success", "测量完成，请更换样品继续测量。");
+        jsonObject.put("result", "finish");
+        vo.setData(jsonObject);
+
+        webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
+    }
+
+
 
     // ==================== 核心业务逻辑（减少方法跳转） ====================
 
@@ -190,12 +264,16 @@ public class LiveDetectionDevicesWebSocket {
             return;
         }
 
-        // 更新设备订阅计数
-        AtomicInteger count = deviceSubscriptions.computeIfAbsent(deviceSerialNumber,
-                k -> new AtomicInteger(0));
-        int newCount = count.incrementAndGet();
-        log.info("设备订阅增加: 设备={}, 当前订阅数={}", deviceSerialNumber, newCount);
+        int subscriptionCount = getDeviceSubscriptionCount(deviceSerialNumber);
+        log.info("设备订阅数更新: 设备={}, 当前订阅会话数={}", deviceSerialNumber, subscriptionCount);
+        if (subscriptionCount > 0 && info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+            deviceStatusStart(deviceSerialNumber);
 
+            if (info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                startMeasurement(deviceSerialNumber);
+            }
+
+        }
 
 
         log.info("设备订阅成功: {}", deviceSerialNumber);
@@ -245,6 +323,7 @@ public class LiveDetectionDevicesWebSocket {
                     WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();
                     webSocketResponseVO.setData(statusInfo);
                     webSocketResponseVO.setOperation(WebSocketOperationEnum.DeviceStatus.getOperation());
+                    log.info("--------------推送设备状态: {}", LocalDateTime.now());
                     webSocketSendUtil.sendMessage(deviceSerialNumber, webSocketResponseVO);
 
                 } catch (Exception e) {
@@ -264,23 +343,27 @@ public class LiveDetectionDevicesWebSocket {
      * 处理取消订阅（直接业务逻辑，减少跳转）
      */
     private void handleUnsubscribe(String deviceSerialNumber) {
-        // 更新设备订阅计数
-        AtomicInteger count = deviceSubscriptions.get(deviceSerialNumber);
-        if (count != null) {
-            int newCount = count.decrementAndGet();
-            if (newCount <= 0) {
-                deviceSubscriptions.remove(deviceSerialNumber);
-                log.debug("设备订阅清零: 设备={}", deviceSerialNumber);
 
-                // 如果没有订阅者，暂停相关任务
-                pauseMeasurementTask(deviceSerialNumber);
-                pauseStatusTask(deviceSerialNumber);
-            } else {
-                log.debug("设备订阅减少: 设备={}, 当前订阅数={}", deviceSerialNumber, newCount);
-            }
+        // 获取设备的实际订阅会话数
+        int subscriptionCount = getDeviceSubscriptionCount(deviceSerialNumber);
+        log.info("设备订阅数更新: 设备={}, 当前订阅会话数={}", deviceSerialNumber, subscriptionCount);
+
+        // 如果没有订阅者了，停止所有任务
+        if (subscriptionCount <= 0) {
+            stopMeasurement(deviceSerialNumber);
+            pauseStatusTask(deviceSerialNumber);
+            log.info("设备无订阅者，停止所有任务: {}", deviceSerialNumber);
         }
 
         log.info("设备取消订阅: {}", deviceSerialNumber);
+    }
+
+    /**
+     * 获取设备的实际订阅会话数
+     */
+    private int getDeviceSubscriptionCount(String deviceSerialNumber) {
+        Set<String> sessions = deviceSessionSubscriptions.get(deviceSerialNumber);
+        return sessions != null ? sessions.size() : 0;
     }
 
     /**
@@ -523,8 +606,7 @@ public class LiveDetectionDevicesWebSocket {
      * 检查是否有订阅者
      */
     private boolean hasSubscribers(String deviceSerialNumber) {
-        AtomicInteger count = deviceSubscriptions.get(deviceSerialNumber);
-        return count != null && count.get() > 0;
+        return getDeviceSubscriptionCount(deviceSerialNumber) > 0;
     }
 
     // ==================== WebSocket事件监听 ====================
@@ -541,11 +623,40 @@ public class LiveDetectionDevicesWebSocket {
             String[] split = destination.split("/");
             String deviceSerialNumber = split[split.length - 1];
 
-            // 记录会话与设备的映射关系
-            sessionSubscriptions.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet())
-                    .add(deviceSerialNumber);
-            handleSubscribe(deviceSerialNumber);
+            // 检查此会话是否已经订阅了此设备
+            boolean isNewSubscription = addSubscription(sessionId, deviceSerialNumber);
+
+            if (isNewSubscription) {
+                log.info("新增订阅: 会话={} -> 设备={}", sessionId, deviceSerialNumber);
+                handleSubscribe(deviceSerialNumber);
+            } else {
+                log.debug("重复订阅忽略: 会话={} -> 设备={}", sessionId, deviceSerialNumber);
+            }
         }
+    }
+
+    /**
+     * 添加订阅关系，返回是否是新订阅
+     */
+    private synchronized boolean addSubscription(String sessionId, String deviceSerialNumber) {
+        // 检查会话是否已订阅此设备
+        Set<String> devices = sessionSubscriptions.computeIfAbsent(sessionId,
+                k -> ConcurrentHashMap.newKeySet());
+
+        // 如果已经订阅过，返回 false
+        if (devices.contains(deviceSerialNumber)) {
+            return false;
+        }
+
+        // 添加订阅关系
+        devices.add(deviceSerialNumber);
+
+        // 更新设备被哪些会话订阅
+        Set<String> sessions = deviceSessionSubscriptions.computeIfAbsent(deviceSerialNumber,
+                k -> ConcurrentHashMap.newKeySet());
+        sessions.add(sessionId);
+
+        return true;
     }
 
     @EventListener
@@ -560,18 +671,42 @@ public class LiveDetectionDevicesWebSocket {
             String[] split = destination.split("/");
             String deviceSerialNumber = split[split.length - 1];
 
-            // 清理会话与设备的映射关系
-            Set<String> devices = sessionSubscriptions.get(sessionId);
-            if (devices != null) {
-                devices.remove(deviceSerialNumber);
+            boolean removed = removeSubscription(sessionId, deviceSerialNumber);
+            if (removed) {
+                log.info("移除订阅: 会话={} -> 设备={}", sessionId, deviceSerialNumber);
+                handleUnsubscribe(deviceSerialNumber);
+            }
+        }
+    }
+
+    /**
+     * 移除订阅关系，返回是否真正移除了订阅
+     */
+    private synchronized boolean removeSubscription(String sessionId, String deviceSerialNumber) {
+        // 从会话的设备集合中移除
+        Set<String> devices = sessionSubscriptions.get(sessionId);
+        if (devices != null) {
+            boolean removed = devices.remove(deviceSerialNumber);
+            if (removed) {
+                // 清理空集合
                 if (devices.isEmpty()) {
                     sessionSubscriptions.remove(sessionId);
                 }
+
+                // 从设备的会话集合中移除
+                Set<String> sessions = deviceSessionSubscriptions.get(deviceSerialNumber);
+                if (sessions != null) {
+                    sessions.remove(sessionId);
+                    // 如果设备没有订阅者了，清理集合
+                    if (sessions.isEmpty()) {
+                        deviceSessionSubscriptions.remove(deviceSerialNumber);
+                    }
+                }
+
+                return true;
             }
-            handleUnsubscribe(deviceSerialNumber);
         }
-
-
+        return false;
     }
 
     @EventListener
@@ -593,9 +728,17 @@ public class LiveDetectionDevicesWebSocket {
         if (deviceSubs != null && !deviceSubs.isEmpty()) {
             log.info("清理断开连接的会话订阅: 会话={}, 设备数={}", sessionId, deviceSubs.size());
 
+            // 更新每个设备的订阅关系
             for (String deviceSerialNumber : deviceSubs) {
-                // 减少设备订阅计数
-                handleUnsubscribe(deviceSerialNumber);
+                Set<String> sessions = deviceSessionSubscriptions.get(deviceSerialNumber);
+                if (sessions != null) {
+                    sessions.remove(sessionId);
+                    if (sessions.isEmpty()) {
+                        deviceSessionSubscriptions.remove(deviceSerialNumber);
+                        // 设备没有订阅者了，停止所有任务
+                        handleUnsubscribe(deviceSerialNumber);
+                    }
+                }
             }
         }
     }
@@ -688,8 +831,9 @@ public class LiveDetectionDevicesWebSocket {
         }
 
         // 清理其他资源
-        deviceSubscriptions.clear();
+        deviceSessionSubscriptions.clear();
         sessionSubscriptions.clear();
+
 
         log.info("WebSocket控制器资源清理完成");
     }
