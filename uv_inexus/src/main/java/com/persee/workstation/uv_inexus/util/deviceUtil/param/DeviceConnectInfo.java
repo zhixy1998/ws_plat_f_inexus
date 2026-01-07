@@ -93,6 +93,11 @@ public class DeviceConnectInfo {
      * 设备是否空闲
      */
     private Boolean isIdle = true; // 设备是否空闲
+
+    /**
+     * 仪器具体状态
+     */
+    private Integer devCurrentStatus = 0;
     /**
      * 校零结果
      */

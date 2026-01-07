@@ -162,13 +162,35 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     public R<Integer> queryDeviceStatus(String deviceSerialNumber) {
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-        if (info == null || info.getDeviceCurrentStatus() == null) {
+        if (info == null || info.getDeviceCurrentStatus() == null || !StringUtils.hasText(info.getDeviceId())) {
             log.info("未找到连接仪器信息！");
             //未查找到仪器信息
             return R.fail(YamlMessageSource.getMessageStatic("00203001"));
         }
-//        log.info("查询仪器状态");
-        return R.ok(info.getDeviceCurrentStatus());
+
+        DeviceConnectionManager manager = DeviceConnectionManager.getInstance();
+        Integer first = null;
+        Integer two = null;
+        first = manager.getDevCurrentStatus(info.getDeviceId());
+
+        try {
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            log.error("查询仪器状态异常！", e);
+        }
+        two = manager.getDevCurrentStatus(info.getDeviceId());
+
+        boolean flag = first.equals(Constants.DEVICE_STATUS_IDLE) || first.equals(Constants.DEVICE_STATUS_ECHO);
+        boolean flag2 = two.equals(Constants.DEVICE_STATUS_IDLE) || two.equals(Constants.DEVICE_STATUS_ECHO);
+
+
+        if (flag && flag2 && !info.getDeviceCurrentStatus().equals(Constants.DEVICE_STATUS_IDLE)) {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+            return R.ok(Constants.DEVICE_STATUS_IDLE);
+        } else {
+            return R.ok(info.getDeviceCurrentStatus());
+        }
+
     }
 
     @Override

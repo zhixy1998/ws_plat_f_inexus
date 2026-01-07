@@ -157,6 +157,7 @@ public class LiveDetectionDevicesWebSocket {
                 webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "未知操作类型: " + operation);
                 return;
             }
+            JSONObject data = input.getData();
             switch (anEnum) {
                 case LiveDetection:
                     startMeasurement(deviceSerialNumber);
@@ -165,7 +166,7 @@ public class LiveDetectionDevicesWebSocket {
                     deviceStatusStart(deviceSerialNumber);
                     break;
                 case ConcisePhotoMetric:
-                    JSONObject data = input.getData();
+
                     PhotometricWebsocketParam param = data.toJavaObject(PhotometricWebsocketParam.class);
                     photometricNewWebSocket.measureTask(param);
                     break;

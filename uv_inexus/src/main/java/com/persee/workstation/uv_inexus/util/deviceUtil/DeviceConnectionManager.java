@@ -457,6 +457,39 @@ public class DeviceConnectionManager {
     }
 
     /**
+     * 设置当前状态
+     * @param deviceId 设备ID
+     * @param status 当前状态值
+     * @return 是否成功
+     */
+    public boolean setDevCurrentStatus(String deviceId, Integer status) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置状态值失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setDevCurrentStatus(status);
+        device.updateLastUseTime();
+        logInfo("设置当前状态值: %s -> %s", deviceId, status);
+        return true;
+    }
+
+    /**
+     * 获取当前状态值
+     * @param deviceId 设备ID
+     * @return 当前状态值
+     */
+    public Integer getDevCurrentStatus(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置状态值失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+        return device.getDevCurrentStatus();
+    }
+
+    /**
      * 获取仪器空闲状态
      */
     public boolean getDeviceIdleStatus(String deviceId) {

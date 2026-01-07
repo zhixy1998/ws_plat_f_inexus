@@ -143,7 +143,8 @@ public class PhotometricNewWebSocket{
         isAvg = param.getIsAvg() != null && param.getIsAvg();
         isSd = param.getIsSd() != null && param.getIsSd();
         isRsd = param.getIsRsd() != null && param.getIsRsd();
-        
+
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
 
         if (taskId == null) {
             sendError(deviceSerialNumber, "请创建任务");
@@ -399,6 +400,7 @@ public class PhotometricNewWebSocket{
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("result", "finish");
         sendMessage(deviceSerialNumber, jsonObject);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         status = 0;
     }
 
@@ -1038,6 +1040,8 @@ public class PhotometricNewWebSocket{
     private void sendError(String deviceSerialNumber, String message) {
 
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), message);
+
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("result", "finish");
