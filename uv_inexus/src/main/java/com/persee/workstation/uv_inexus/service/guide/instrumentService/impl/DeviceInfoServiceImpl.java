@@ -216,16 +216,6 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return R.fail(YamlMessageSource.getMessageStatic("00202001"));
         }
 
-        Integer currentStatus = info.getDeviceCurrentStatus();
-        if (currentStatus.equals(Constants.DEVICE_STATUS_INIT) && !DetectionConstants.isDeviceIdle){
-            //设备正在初始化，请等待
-            return R.fail(YamlMessageSource.getMessageStatic("00202002"));
-        }
-        if (currentStatus.equals(Constants.DEVICE_STATUS_MEASURE) && !DetectionConstants.isDeviceIdle){
-            //设备正在测量，请等待
-            return R.fail(YamlMessageSource.getMessageStatic("00202003"));
-        }
-
         if (!status.equals(Constants.DEVICE_STATUS_INIT)) {
             if (isInited == null || isInited == 0) {
                 log.info("未初始化");
@@ -238,10 +228,25 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             }
         }
 
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+
+        Integer currentStatus = device.getDevCurrentStatus();
+        Boolean isIdle = device.getIsIdle();
+
+        if (currentStatus.equals(Constants.DEVICE_STATUS_INIT)){
+            //设备正在初始化，请等待
+            return R.fail(YamlMessageSource.getMessageStatic("00202002"));
+        }
+        if (currentStatus.equals(Constants.DEVICE_STATUS_MEASURE)){
+            //设备正在测量，请等待
+            return R.fail(YamlMessageSource.getMessageStatic("00202003"));
+        }
+
+
         int count = 0;
         while (count < 40) {
 
-            DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+            device = deviceManager.getDevice(deviceId);
 
             if (device.getIsIdle()){
                 deviceManager.setDeviceIdleStatus(deviceId, false);
