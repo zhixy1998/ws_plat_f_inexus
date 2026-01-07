@@ -245,7 +245,8 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
             if (device.getIsIdle()){
                 deviceManager.setDeviceIdleStatus(deviceId, false);
-                updateDeviceCurrentStatus(deviceSerialNumber, status);
+                deviceManager.setDevCurrentStatus(deviceId, status);
+//
                 log.info("[通知线程] 成功抢占线程!!!");
                 return R.ok();
             }
@@ -278,9 +279,7 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         DeviceInfoPO info = getInfo(deviceSerialNumber);
         String deviceId = info.getDeviceId();
         deviceManager.setDeviceIdleStatus(deviceId, true);
-
-        updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
-
+        deviceManager.setDevCurrentStatus(deviceId, Constants.DEVICE_STATUS_IDLE);
     }
 
 
