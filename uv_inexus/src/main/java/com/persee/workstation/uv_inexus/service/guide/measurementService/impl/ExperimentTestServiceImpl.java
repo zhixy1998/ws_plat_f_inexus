@@ -47,6 +47,7 @@ import com.persee.workstation.uv_inexus.service.guide.standardService.TReportSta
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.SaveStateVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectralReport;
@@ -2281,7 +2282,33 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
     }
 
-
+    @Override
+    public Result querySaveState(String taskId) {
+        if (taskId == null) {
+            //任务id不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+        }
+        SaveStateVo vo = new SaveStateVo();
+        QueryWrapper<TMeasureTask> wrapper= new QueryWrapper<>();
+        wrapper.eq("id", taskId)
+                .eq("is_delete", "0");
+        TMeasureTask task = tMeasureTaskService.getOne(wrapper);
+        if (task == null) {
+            //草稿不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00101004"));
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        vo.setTaskName(task.getTaskName());
+        vo.setMethodName(method.getMethodName());
+        List<TMeasureData> measureDataList = tMeasureDataService.list(new QueryWrapper<TMeasureData>().eq("task_id", taskId));
+        List<TMeasureAnalysisData> analysisDataList = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("task_id", taskId).eq("is_save", "1"));
+        if (!measureDataList.isEmpty() || !analysisDataList.isEmpty()) {
+            vo.setSaveState(false);
+            return Result.ok(vo);
+        }
+        vo.setSaveState(true);
+        return Result.ok(vo);
+    }
 
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {

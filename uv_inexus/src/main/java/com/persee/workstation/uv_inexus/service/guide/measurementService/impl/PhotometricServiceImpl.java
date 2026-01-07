@@ -26,6 +26,9 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPreCountResultParam;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
@@ -50,6 +53,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
@@ -66,6 +70,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -94,7 +99,11 @@ public class PhotometricServiceImpl implements PhotometricService {
     TMeasureDataService tMeasureDataService;
     @Autowired
     DevOperationUtilService devOperationUtilService;
+    @Autowired
+    PublicUtilService publicUtilService;
 
+    @Autowired
+    TSamplePoolConfigService tSamplePoolConfigService;
     @Autowired
     TMeasureAnalysisDataService tMeasureAnalysisDataService;
 
@@ -2376,6 +2385,229 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail();
         }
         return Result.ok(methodParameter);
+    }
+
+    @Override
+    public List<PhotometricCountDataInfo> dataRounding(List<PhotometricCountDataInfo> dataVO, PhotometricParameter parameter) {
+        List<RoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams == null || approxParams.isEmpty()) {
+            log.info("没有设置修约参数");
+            return dataVO;
+        }
+        List<PreCountResultParam> resultParams = parameter.getResultParams();
+        if (resultParams == null || resultParams.isEmpty()) {
+            log.info("没有设置待计算结果参数，不做修约处理");
+            return dataVO;
+        }
+
+        if (dataVO == null || dataVO.isEmpty()) {
+            log.info("没有待修约的数据");
+            return dataVO;
+        }
+        Map<String, String> map = new HashMap<>();
+        for (PreCountResultParam param:resultParams){
+            map.put(param.getResultIdentity(), param.getResultIdentity() + "-" + param.getFormulaText());
+        }
+        Map<String, List<RoundingParamVO>> roundingInfo = new HashMap<>();
+        for (RoundingVO param : approxParams){
+            String identity = param.getResultIdentity();
+            if (map.containsKey(identity)) {
+                String key = map.get(identity);
+                roundingInfo.put(key, param.getRoundingParams());
+            }
+        }
+        for (PhotometricCountDataInfo count : dataVO){
+            String resultIdentity = count.getResultIdentity() + "-" + count.getFormulaText();
+            List<RoundingParamVO> list = roundingInfo.get(resultIdentity);
+            if (roundingInfo.containsKey(resultIdentity) && list != null) {
+                String s = roundData(count.getCountValue(), list);
+                count.setCountValue(s);
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    @Override
+    public R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber) {
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
+        }
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+        Result<List<HeadVO>> listResult=querySampleHeads(taskId);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+            return R.fail(listResult.getMessage());
+        }
+        List<HeadVO> heads = listResult.getData();
+        List<HeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+                dynamicHeads.add(head);
+            }
+        });
+
+        Boolean isAutoChangePool = false;
+        R<TSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.queryCalibrationSampleInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            TSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+        }
+        if (taskSpecimen.isEmpty()) {
+            TMeasureSample newSample = new TMeasureSample();
+
+            sampleAutoNum = 1;
+            newSample.setSampleName("默认样品" + 1);
+            newSample.setSampleNumber("default-" + 1);
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save=tMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+            taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+        }else {
+            boolean hasNoTested = false;
+            List<String> sampleNumList = new ArrayList<>();
+            for (TaskSpecimen specimen : taskSpecimen){
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
+                if (specimen.getIsTested().equals(noTested)) {
+                    hasNoTested = true;
+                    break;
+                }
+
+                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                    sampleNumList.add(measureSample.getSampleNumber());
+                }
+            }
+            if (hasNoTested) {
+                return R.ok(true);
+            }
+            TMeasureSample newSample = new TMeasureSample();
+            sampleAutoNum = sampleAutoNum + 1;
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                sampleAutoNum += 1;
+            }
+
+            int number = sampleAutoNum;
+
+            newSample.setSampleNumber("default-"+ number);
+            newSample.setSampleName("默认样品" + number);
+
+            sampleNumList.add("default-" + number);
+            List<Integer> usefulLocation=tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            int all=usefulLocation.size();
+
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = tMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+
+            taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+            if (isAutoChangePool) {
+                for (int i = 1; i < all; i++) {
+                    newSample.setId(null);
+                    while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                        sampleAutoNum += 1;
+                    }
+
+                    int newNum = sampleAutoNum;
+                    sampleNumList.add("default-" + newNum);
+                    newSample.setSampleNumber("default-" + newNum);
+                    newSample.setSampleName("默认样品" + newNum);
+
+                    save = tMeasureSampleService.save(newSample);
+                    if (!save) {
+                        //保存失败
+                        return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                    }
+                    taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+                }
+            }
+        }
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setSampleAutoNum(sampleAutoNum);
+        boolean update = tMeasureTaskService.updateById(task);
+        if (!update) {
+            //更新失败
+            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
+        }
+        if (isAutoChangePool) {
+            List<Integer> usefulLocation =tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            publicUtilService.changeSampleLocation(task.getId(),usefulLocation);
+
+        }
+        return R.ok(true);
+    }
+
+    private String roundData(String value, List<RoundingParamVO> roundingParams) {
+        double middle = Double.parseDouble(value);
+        String  ans = value;
+        for (RoundingParamVO param : roundingParams){
+            Double lowerLimit = param.getLowerLimit();
+
+            Double upperLimit = param.getUpperLimit();
+
+            // 检查下限
+            boolean lowerCheck = true;
+            if (lowerLimit != null) {
+                if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+                    // 包含下限
+                    lowerCheck = middle >= lowerLimit;
+                } else {
+                    // 不包含下限
+                    lowerCheck = middle > lowerLimit;
+                }
+            }
+
+            // 检查上限
+            boolean upperCheck = true;
+            if (upperLimit != null) {
+                if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+                    // 包含上限
+                    upperCheck = middle <= upperLimit;
+                } else {
+                    // 不包含上限
+                    upperCheck = middle < upperLimit;
+                }
+            }
+
+            if (lowerCheck && upperCheck) {
+                String roundingType = param.getRoundingType();
+
+                if (roundingType == null) {
+                    return value;
+                }
+
+                if (roundingType.equals(RoundingTypeEnums.SIGNIFICANT_FIGURES.getCode())) {
+                    ans = DataCountUtil.formatToSignificantDigits(param.getDecimalPlaces(), BigDecimal.valueOf(middle));
+                } else {
+                    ans = DataCountUtil.addZero(DataCountUtil.formatValue(param.getDecimalPlaces(), middle), param.getDecimalPlaces());
+                }
+                return ans;
+            }
+        }
+        return value;
     }
 
 

@@ -151,4 +151,8 @@ public interface PhotometricService {
     R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO taskHeadSnapshot);
 
     Result<InputParam> insertMethodParameter(InputParam methodParameterDto);
+
+    List<PhotometricCountDataInfo> dataRounding(List<PhotometricCountDataInfo> dataVO, PhotometricParameter parameter);
+
+    R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber);
 }

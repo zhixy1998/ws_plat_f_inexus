@@ -96,4 +96,5 @@ public interface ExperimentTestService {
     // 清除方法
     Result clearMethod(String methodId);
 
+    Result querySaveState(String taskId);
 }

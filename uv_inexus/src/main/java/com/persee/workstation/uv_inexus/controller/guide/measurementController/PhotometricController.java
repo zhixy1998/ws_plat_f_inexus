@@ -73,6 +73,20 @@ public class PhotometricController {
 
     }
 
+    @GetMapping("createSample")
+    @ApiOperation("创建样本接口")
+    public Result<Boolean> createSample(@RequestParam String taskId,
+                                        @RequestParam String updateBy,
+                                        @RequestParam String deviceSerialNumber) {
+        R<Boolean> r =photometricService.createSample(taskId, updateBy, deviceSerialNumber);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok();
+        }
+
+    }
+
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")
     public Result<MethodParam> queryMethodParam(@RequestParam String methodId) {

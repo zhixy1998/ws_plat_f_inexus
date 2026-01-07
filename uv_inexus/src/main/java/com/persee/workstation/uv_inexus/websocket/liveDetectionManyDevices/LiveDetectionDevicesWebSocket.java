@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
+import com.persee.workstation.uv_inexus.websocket.guide.GuidePhotometricWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.PhotometricNewWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.PhotometricWebsocketParam;
 import lombok.Data;
@@ -64,6 +65,9 @@ public class LiveDetectionDevicesWebSocket {
 
     @Autowired
     PhotometricNewWebSocket photometricNewWebSocket;
+
+    @Autowired
+    GuidePhotometricWebSocket guidePhotometricWebSocket;
 
     private static final DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
@@ -183,7 +187,10 @@ public class LiveDetectionDevicesWebSocket {
                     Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseTimeMeasure.getOperation());
                     break;
                 case PhotoMetric:
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation());
+                    JSONObject photometricdata = input.getData();
+                    PhotometricWebsocketParam photometricparam = photometricdata.toJavaObject(PhotometricWebsocketParam.class);
+                    guidePhotometricWebSocket.measureTask(photometricparam);
+//                    Measure(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation());
                     break;
                 case RationMeasure:
                     Measure(deviceSerialNumber, WebSocketOperationEnum.RationMeasure.getOperation());

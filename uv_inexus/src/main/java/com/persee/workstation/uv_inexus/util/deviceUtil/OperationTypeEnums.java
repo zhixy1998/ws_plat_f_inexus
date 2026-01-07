@@ -23,7 +23,7 @@ public enum OperationTypeEnums {
     Connect(2, "连接", "deviceIp,connectType", "",4),
     Init(3, "初始化仪器", "deviceIp,connectType", "", 1),
     Measure(4, "测量", "deviceIp,connectType", "",2),
-    SetParam(5, "设置参数", "deviceIp,connectType,setParam", "", 2),
+    SetParam(5, "设置参数", "deviceIp,connectType,setParam", "", 4),
     ActionCmdEnum(6, "执行命令", "deviceIp,connectType,InputParam", "", 4),
     GetValue(7, "读取值", "deviceIp,connectType,InputParam", "", 4),
     Stop(8, "停止测量", "deviceIp,connectType", "", 4),
