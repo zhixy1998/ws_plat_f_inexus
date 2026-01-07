@@ -23,6 +23,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 报文发送工具类，负责发送报文，然后从队列取报文并解析后返给操作工具类
@@ -303,17 +304,20 @@ public class UdpSendUtil {
 
             sendMessageLog(sendIp, cmdId, sendBytes);
             R<List<byte[]>> r = new R<>();
-            for (int i = 0; i < 3; i++) {
-                 r = messageDeal(deviceId, timeout, replyNumber, null);
-                 if (r.getSuccess()) {
-                     break;
-                 } else {
-                     log.info("报文接收不足！重试第{}次", i+1);
-                     store.clearDeviceMessages(deviceId);
-                     socket.send(packet);
 
-                     sendMessageLog(sendIp, cmdId, sendBytes);
-                 }
+            if (!Objects.equals(cmdId, "Stop")) {
+                for (int i = 0; i < 3; i++) {
+                    r = messageDeal(deviceId, timeout, replyNumber, null);
+                    if (r.getSuccess()) {
+                        break;
+                    } else {
+                        log.info("报文接收不足！重试第{}次", i+1);
+                        store.clearDeviceMessages(deviceId);
+                        socket.send(packet);
+
+                        sendMessageLog(sendIp, cmdId, sendBytes);
+                    }
+                }
             }
 
             if (!r.getSuccess()) {

@@ -45,12 +45,12 @@ import javax.annotation.PostConstruct;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.net.DatagramSocket;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 
 
 /**
@@ -290,6 +290,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 return R.fail("请先连接仪器！");
             }
         } else {
+
             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
             if (info == null) {
                 return R.fail("请先连接仪器！");
@@ -297,7 +298,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
 
-            if(anEnum != OperationTypeEnums.Stop){
+            if(anEnum != OperationTypeEnums.Stop && anEnum != OperationTypeEnums.Disconnect){
                 R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
                 if (!r.getSuccess()) {
                     return R.fail(r.getMessage());
@@ -593,161 +594,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         // ================= 先取解析结果（关键） =================
         OperationResultEntity resultEntity =
                 (OperationResultEntity) result.getData();
-
-        //------------------测试------------------
-//        if (cfg == null) {
-//            log.warn("[光谱测试] scanWavelengthConfig 未设置，跳过光谱处理");
-//        } else {
-//            // 根据操作类型选择对应的线程映射
-//            Map<String, Thread> targetThreadMap = isScan ? scanProcessorThreadMap : baselineProcessorThreadMap;
-//
-//            targetThreadMap.compute(deviceSerialNumber, (k, existingThread) -> {
-//                // 如果已有线程在运行，先停止旧线程
-//                if (existingThread != null && existingThread.isAlive()) {
-//                    log.info("[光谱测试] 停止旧线程，重新创建，device={}, cmdId={}", deviceSerialNumber, cmdId);
-//                    existingThread.interrupt();
-//                    try {
-//                        existingThread.join(1000); // 等待最多1秒让旧线程结束
-//                    } catch (InterruptedException e) {
-//                        Thread.currentThread().interrupt();
-//                    }
-//                }
-//
-//                Thread t = new Thread(() -> {
-//                    log.info("[光谱测试] 开始处理光谱数据，设备={}，操作类型={}",
-//                            deviceSerialNumber, isScan ? "Scan" : "BaseLine");
-//
-//                    SpectrumDataProcessor spectrumDataProcessor =
-//                            new SpectrumDataProcessor(formulaUtil, device);
-//
-//                    // 只在真正启动新线程时 reset
-//                    spectrumDataProcessor.reset();
-//
-//                    SpectrumPointStore pointStore =
-//                            spectrumPointStoreMap.computeIfAbsent(deviceSerialNumber, deviceKey  -> new SpectrumPointStore());
-//
-//                    spectrumProcessorMap.put(deviceSerialNumber, spectrumDataProcessor);
-//
-//                    try {
-//                        while (ScanSessionManager.isRunning(deviceId)) {
-//                            ChangeParam param =
-//                                    (ChangeParam) unknowCountMessageQueue
-//                                            .takeMessage(deviceSerialNumber, cmdId);
-//
-//                            if (param == null) {
-//                                Thread.sleep(5);
-//                                continue;
-//                            }
-//
-//                            // 处理光谱数据
-//                            spectrumDataProcessor.processStepAndPrintWavelength(
-//                                    param, deviceSerialNumber
-//                            );
-//
-//                            double constrainedWl =
-//                                    spectrumDataProcessor.getConstrainedWavelength();
-//
-//                            SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
-//
-//                            if (isScan) {
-//                                sp.setScanRsd(param);
-//
-//                                SpectrumCalcResult absResult =
-//                                        SpectrumResultCalculator.calculate(1, sp, RANGE);
-//                                SpectrumCalcResult tResult =
-//                                        SpectrumResultCalculator.calculate(2, sp, RANGE);
-//                                SpectrumCalcResult esResult =
-//                                        SpectrumResultCalculator.calculate(3, sp, RANGE);
-//                                SpectrumCalcResult erResult =
-//                                        SpectrumResultCalculator.calculate(4, sp, RANGE);
-//
-//                                log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",
-//                                        sp.getWavelength(),
-//                                        absResult != null ? absResult.getAbs() : "-",
-//                                        tResult != null ? tResult.getTPercent() : "-",
-//                                        esResult != null ? esResult.getEs() : "-",
-//                                        erResult != null ? erResult.getEr() : "-"
-//                                );
-//                            } else {
-//                                sp.setBaselineRsd(param);
-//                            }
-//                        }
-//
-//                    } catch (InterruptedException e) {
-//                        Thread.currentThread().interrupt();
-//                    } finally {
-//                        spectrumProcessorMap.remove(deviceSerialNumber);
-//                        // 从正确的映射中移除
-//                        if (isScan) {
-//                            scanProcessorThreadMap.remove(deviceSerialNumber);
-//                        } else {
-//                            baselineProcessorThreadMap.remove(deviceSerialNumber);
-//                        }
-//                        infoService.newReleaseDevice(deviceSerialNumber);
-//
-//                        log.info("[光谱测试] 停止处理光谱数据，设备={}，操作类型={}",
-//                                deviceSerialNumber, isScan ? "Scan" : "BaseLine");
-//                    }
-//                });
-//
-//                t.start();
-//                return t;
-//            });
-//        }
-
-//        if ("Zero".equals(cmdId)) {
-//
-//            ChangeParam zero = resultEntity.getMeasureResult();
-//            if (zero != null) {
-//                SpectrumPointStore store =
-//                        spectrumPointStoreMap.computeIfAbsent(
-//                                deviceSerialNumber, k -> new SpectrumPointStore());
-//
-//                SpectrumPoint sp = store.getOrCreate(Double.parseDouble(zero.getStep()));
-//                sp.setZeroRsd(zero);
-//
-//                log.info("[ZERO] 保存 Zero RSD, wl={}, r={}, s={}, d={}",
-//                        zero.getStep(), zero.getR(), zero.getS(), zero.getD());
-//            }
-//        }
-//
-//        if ("Measure".equals(cmdId)) {
-//
-//            ChangeParam measure = resultEntity.getMeasureResult();
-//            if (measure != null) {
-//
-//                SpectrumPointStore store =
-//                        spectrumPointStoreMap.computeIfAbsent(
-//                                deviceSerialNumber, k -> new SpectrumPointStore());
-//
-//                SpectrumPoint sp = store.getOrCreate(Double.parseDouble(measure.getStep()));
-//                sp.setMeasureRsd(measure);
-//
-//                SpectrumCalcResult abs =
-//                        SpectrumResultCalculator.calculate(1, sp, SpectrumSourceType.SINGLE);
-//                SpectrumCalcResult t =
-//                        SpectrumResultCalculator.calculate(2, sp, SpectrumSourceType.SINGLE);
-//                SpectrumCalcResult es =
-//                        SpectrumResultCalculator.calculate(3, sp, SpectrumSourceType.SINGLE);
-//                SpectrumCalcResult er =
-//                        SpectrumResultCalculator.calculate(4, sp, SpectrumSourceType.SINGLE);
-//
-//                sp.setAbsResult(abs);
-//                sp.setTResult(t);
-//                sp.setEsResult(es);
-//                sp.setErResult(er);
-//
-//                log.info("[MEASURE] wl={}, Abs={}, T%={}, Es={}, Er={}",
-//                        sp.getWavelength(),
-//                        abs != null ? abs.getAbs() : "-",
-//                        t != null ? t.getTPercent() : "-",
-//                        es != null ? es.getEs() : "-",
-//                        er != null ? er.getEr() : "-"
-//                );
-//
-//                unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
-//            }
-//        }
 
         resultEntity = (OperationResultEntity)result.getData();
         return R.ok(resultEntity);
@@ -1360,6 +1206,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             } else {
 
+
                 if (replyNumber < 0) {
                     String[] readBytes = transition.getReadBytes();
                     if (readBytes != null && readBytes.length > 0) {
@@ -1379,7 +1226,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     }
                     liveDetection = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout,false, deviceSerialNumber, endBytes);
                 } else {
+                    log.info("+++{}", LocalDateTime.now());
                     liveDetection = udpSendUtil.knowTotalReceiveSend(deviceId,comId, bytes,replyNumber,timeout,connectType);
+                    log.info("+++{}", LocalDateTime.now());
                 }
             }
 

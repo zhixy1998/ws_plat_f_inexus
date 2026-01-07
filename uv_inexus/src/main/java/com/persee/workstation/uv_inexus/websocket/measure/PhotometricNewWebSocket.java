@@ -1029,7 +1029,7 @@ public class PhotometricNewWebSocket{
     private void sendMessage(String deviceSerialNumber,JSONObject object) {
         
         WebSocketResponseVO vo = new WebSocketResponseVO();
-        vo.setOperation(WebSocketOperationEnum.PhotoMetric.getOperation());
+        vo.setOperation(WebSocketOperationEnum.ConcisePhotoMetric.getOperation());
         vo.setData(object);
         
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
@@ -1037,7 +1037,15 @@ public class PhotometricNewWebSocket{
     
     private void sendError(String deviceSerialNumber, String message) {
 
-        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation(), message);
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConcisePhotoMetric.getOperation(), message);
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("result", "finish");
+
+        WebSocketResponseVO vo = new WebSocketResponseVO();
+        vo.setOperation(WebSocketOperationEnum.ConcisePhotoMetric.getOperation());
+        vo.setData(jsonObject);
+        webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
     }
 
 

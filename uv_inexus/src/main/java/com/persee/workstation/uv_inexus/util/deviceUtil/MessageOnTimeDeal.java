@@ -321,6 +321,15 @@ public class MessageOnTimeDeal {
                             Thread.sleep(5);
                             continue;
                         }
+                        if (message[2] == 0x00 && message[3] == 0x00 && message[4] == 0x00){
+                            store.clearDeviceMessages(deviceSerialNumber);
+                            unknowCountMessageQueue.putMessage(
+                                    deviceSerialNumber,
+                                    cmdId,
+                                    EndMarker.timeout(deviceSerialNumber, cmdId)
+                            );
+                            log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+                        }
 
                         recvCount++;
                         if (recvCount >= 2) currentTimeout = 5000L;
