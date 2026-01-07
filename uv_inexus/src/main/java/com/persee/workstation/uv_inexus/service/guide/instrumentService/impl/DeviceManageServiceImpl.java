@@ -90,8 +90,8 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Autowired
     DeviceTypeInfoDAO deviceTypeInfoDAO;
 
-    @Autowired
-    LiveDetectionDevicesWebSocket liveDetectionManyDevicesWebSocket;
+//    @Autowired
+//    LiveDetectionDevicesWebSocket liveDetectionManyDevicesWebSocket;
 
     @Autowired
     LiveDetectionWebSocket liveDetectionWebSocket;

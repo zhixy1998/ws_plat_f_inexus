@@ -259,6 +259,11 @@ public class ExperimentTestController {
         }
     }
 
+    @GetMapping("querySaveState")
+    @ApiOperation("查询保存状态")
+    public Result querySaveState(@RequestParam String taskId) {
+        return experimentTestService.querySaveState(taskId);
+    }
     @ApiOperation("删除样品模板")
     @GetMapping("deleteSampleTemplate")
     public Result<Boolean> deleteSampleTemplate(@RequestParam String templateId, @RequestParam String updateBy) {
