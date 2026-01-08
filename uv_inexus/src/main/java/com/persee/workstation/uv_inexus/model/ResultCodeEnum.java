@@ -37,6 +37,8 @@ public enum ResultCodeEnum {
     ACCOUNT_STOP( 218, "账号已停用"),
     NODE_ERROR( 219, "该节点下有子节点，不可以删除"),
 
+    DEVICE_DISCONNECT( 220, "设备已断开"),  //实时回显用
+
     TOKEN_ERROR(401, "Token过期或有误")
     ;
 

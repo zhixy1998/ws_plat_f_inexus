@@ -331,7 +331,6 @@ public class LiveDetectionDevicesWebSocket {
                     WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();
                     webSocketResponseVO.setData(statusInfo);
                     webSocketResponseVO.setOperation(WebSocketOperationEnum.DeviceStatus.getOperation());
-                    log.info("--------------推送设备状态: {}", LocalDateTime.now());
                     webSocketSendUtil.sendMessage(deviceSerialNumber, webSocketResponseVO);
 
                 } catch (Exception e) {
@@ -468,9 +467,17 @@ public class LiveDetectionDevicesWebSocket {
                         return;
                     }
 
+                    String deviceId = info.getDeviceId();
+                    DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+
                     if (!Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                         log.info("设备已断开，暂停测量: {}", deviceSerialNumber);
                         taskInfo.isRunning = false;
+
+                        webSocketSendUtil.sendDeviceDisConnectMessage(deviceSerialNumber);
+                        if (device != null) {
+                            deviceManager.removeDevice(deviceId);
+                        }
                         return;
                     }
 
@@ -481,8 +488,7 @@ public class LiveDetectionDevicesWebSocket {
                     }
 
                     // 2. 检查设备是否空闲
-                    String deviceId = info.getDeviceId();
-                    DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+
                     if (device != null && Boolean.FALSE.equals(device.getIsIdle())) {
                         log.debug("设备正忙，跳过本次测量: {}", deviceSerialNumber);
                         return;
@@ -493,21 +499,22 @@ public class LiveDetectionDevicesWebSocket {
                     inputParam.setDeviceSerialNumber(deviceSerialNumber);
                     inputParam.setOperationType(OperationTypeEnums.LiveDetection.getType());
 
-                    log.info("--------------{}", LocalDateTime.now());
                     R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
-                    log.info("--------------{}", LocalDateTime.now());
+
                     if (!operation.getSuccess()) {
-                        log.warn("设备测量失败: {}, 错误: {}", deviceSerialNumber, operation.getMessage());
+                        log.warn("实时回显测量失败: {}, 错误: {}", deviceSerialNumber, operation.getMessage());
                         taskInfo.consecutiveFailures++;
 
-                        // 连续失败过多，暂停任务
-                        if (taskInfo.consecutiveFailures >= maxRetryCount) {
-                            log.error("测量连续失败次数过多，暂停任务: {}", deviceSerialNumber);
-                            taskInfo.isRunning = false;
-                            webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "测量连续失败，已暂停任务");
-                            deviceManager.removeDevice(deviceId);
-                            return;
-                        }
+                        taskInfo.isRunning = false;
+
+                        DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
+                        infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+                        infoService.saveOrUpdateInfo(infoPO);
+
+                        webSocketSendUtil.sendDeviceDisConnectMessage(deviceSerialNumber);
+
+                        return;
+
                     } else {
                         // 测量成功
                         taskInfo.consecutiveFailures = 0;
