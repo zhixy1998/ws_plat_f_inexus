@@ -45,7 +45,8 @@ public class WorkbookCacheManager {
 
     /**
      * 尝试获取任务编辑权限
-     * @param taskId 任务ID
+     *
+     * @param taskId   任务ID
      * @param updateBy 操作用户
      * @return true表示获取成功，false表示已被占用
      */
@@ -55,7 +56,8 @@ public class WorkbookCacheManager {
 
     /**
      * 释放任务编辑权限
-     * @param taskId 任务ID
+     *
+     * @param taskId   任务ID
      * @param updateBy 操作用户
      * @return true表示释放成功，false表示不是持有者
      */
@@ -70,12 +72,13 @@ public class WorkbookCacheManager {
 
     /**
      * 检查任务是否正在被编辑
-     * @param taskId 任务ID
+     *
+     * @param taskId   任务ID
      * @param updateBy 操作用户
      * @return true表示正在被编辑
      */
     public boolean isTaskBeingEdited(String taskId, String updateBy) {
-        if (taskEditors.containsKey(taskId)){
+        if (taskEditors.containsKey(taskId)) {
             return taskEditors.get(taskId).equals(updateBy);
         }
         return false;
@@ -83,6 +86,7 @@ public class WorkbookCacheManager {
 
     /**
      * 获取当前编辑者
+     *
      * @param taskId 任务ID
      * @return 编辑者用户ID，null表示未被编辑
      */
@@ -92,7 +96,8 @@ public class WorkbookCacheManager {
 
     /**
      * 检查任务是否正在被其他用户编辑
-     * @param taskId 任务ID
+     *
+     * @param taskId      任务ID
      * @param currentUser 当前用户
      * @return true表示正在被其他用户编辑
      */
@@ -137,9 +142,10 @@ public class WorkbookCacheManager {
             return workbook;
         }
         LambdaQueryWrapper<WorkbookData> wrapper = new LambdaQueryWrapper<>();
+        //这里传递的是模板的模板code值
         wrapper.eq(WorkbookData::getTaskId, fileName);
         List<WorkbookData> list = workbookDataService.list(wrapper);
-        if (!CollectionUtils.isEmpty(list)){
+        if (!CollectionUtils.isEmpty(list)) {
             byte[] data = list.get(0).getWorkbookData();
             if (data != null) {
                 try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
@@ -232,7 +238,14 @@ public class WorkbookCacheManager {
      * 从数据库获取工作簿数据
      */
     private Workbook getWorkbookFromDB(String taskId) {
-        WorkbookData workbookData = workbookDataService.getById(taskId);
+        LambdaQueryWrapper<WorkbookData> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WorkbookData::getTaskId, taskId);
+        List<WorkbookData> list = workbookDataService.list(wrapper);
+        WorkbookData workbookData = new WorkbookData();
+
+        if (!CollectionUtils.isEmpty(list)) {
+            workbookData = list.get(0);
+        }
         if (workbookData != null && workbookData.getWorkbookData() != null) {
             try {
                 ByteArrayInputStream inputStream = new ByteArrayInputStream(workbookData.getWorkbookData());
@@ -261,7 +274,7 @@ public class WorkbookCacheManager {
         // 保存到缓存
         SerializableWorkbook serializableWorkbook = new SerializableWorkbook(workbook);
         ehcacheUtil.put(WORKBOOK_CACHE, taskId, serializableWorkbook, String.class, SerializableWorkbook.class);
-         // 存储任务信息到内存Map
+        // 存储任务信息到内存Map
         taskFileMap.put(taskId, fileName);
         taskLastAccessTime.put(taskId, System.currentTimeMillis());
         // 保存到数据库

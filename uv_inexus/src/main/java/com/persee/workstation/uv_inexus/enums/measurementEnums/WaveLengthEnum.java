@@ -29,6 +29,24 @@ public enum WaveLengthEnum {
         this.name = name;
     }
 
+
+    public static WaveLengthEnum getByName(String name) {
+        for (WaveLengthEnum c : WaveLengthEnum.values()) {
+            if (c.getName().equals(name)) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    public static String getCode(String name) {
+        for (WaveLengthEnum c : WaveLengthEnum.values()) {
+            if (c.getName().equals(name)) {
+                return c.code;
+            }
+        }
+        return null;
+    }
     public static String getName(String code) {
         for (WaveLengthEnum c : WaveLengthEnum.values()) {
             if (c.getCode().equals(code)) {

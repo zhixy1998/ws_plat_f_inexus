@@ -34,4 +34,8 @@ public class GlobalExceptionHandler {
                 .getDefaultMessage();
         return Result.fail(ex.getMessage());
     }
+    @ExceptionHandler(BusinessException.class)
+    public Result<String> handleBusinessException(BusinessException ex) {
+        return Result.fail(ex.getErrorMessage());
+    }
 }

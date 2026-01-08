@@ -46,6 +46,30 @@ public enum CalibrationTypeEnum {
     TIME_SCAN("1", "时间扫描"),
     PHOTOMETRIC_SCAN("2", "光度扫描"),
 
+    //是否为光谱扫描
+
+    SPECTRAL_SCAN_TYPE("spectralScan", "是否为光谱扫描"),
+
+    //扫描速度
+    SCAN_SPEED("scanSpeed", "扫描速度"),
+
+    //时间间隔
+    TIME_INTERVAL("timeInterval", "时间间隔"),
+    //起始波长
+    START_WAVELENGTH("startWavelength", "起始波长"),
+    //终止波长
+    END_WAVELENGTH("endWavelength", "终止波长"),
+    //扫描间隔
+    SCAN_INTERVAL("scanInterval", "扫描间隔"),
+    //增益
+    GAIN("gain", "增益"),
+    //是
+    YES("1", "是"),
+    NO("0", "否"),
+    //光谱带宽
+    SPECTRAL_BANDWIDTH("spectralBandwidth", "光谱带宽"),
+    //灯状态
+    LAMP_STATUS("lampStatus", "灯状态"),
     CHARACTERISTIC("characteristic", "特征值"),
     STANDARD("standard","标准值"),
     PROJECT_NAME("projectName", "项目名称"),
@@ -53,7 +77,14 @@ public enum CalibrationTypeEnum {
     BLACK_BLOCK("blackBlock", "黑挡块"),
     AIR("air", "空气"),
     MEASUREMENT_VALUE("measurementValue", "测量值"),
+    //扫描个数
+    SCAN_COUNT("scanCount", "扫描个数"),
+    //响应时间
+    RESPONSE_TIME("responseTime", "响应时间"),
 
+
+    //光度模式
+    LUMINOSITY_MODE("luminosityMode", "光度模式"),
     CLOSE("close", "关闭"),
 
     //标准物质的类型
@@ -79,6 +110,8 @@ public enum CalibrationTypeEnum {
     DEFAULT_TASK("default", "默认任务"),
 
 
+    //分析方法
+    METHOD_TYPE("methodType", "分析方法"),
 
 
     // 校准检定工作表名称枚举

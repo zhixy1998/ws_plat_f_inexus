@@ -158,7 +158,13 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
 //                        .collect(Collectors.toList());
                 int rowIndex = 1; // 从第1行开始计数（跳过表头）
                 ArrayList<ExcelDataAsset> list = new ArrayList<>();
-                for (Map<String, Object> dataMap : selectedRows) {
+
+                for (Map.Entry<String, List<Map<String, Object>>> entry : request.getSelectedRows().entrySet()) {
+                    String key = entry.getKey();
+                    Map<String, Object> dataMap = entry.getValue().get(0);
+//                }
+//
+//                for (Map<String, Object> dataMap : selectedRows) {
                     ExcelDataAsset asset = new ExcelDataAsset();
                     asset.setId(IdGeneratorUtil.generateIdWithPrefix("asset"));
                     asset.setTemplateCode(templateCode);
@@ -167,7 +173,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     asset.setStructuredData(JSON.toJSONString(dataMap));
                     asset.setImportStatus("SUCCESS");
                     LambdaQueryWrapper<TaskExecutionDetail> queryWrapper = new LambdaQueryWrapper<>();
-                    queryWrapper.eq(TaskExecutionDetail::getItemId, MapUtils.getString(dataMap, "id"))
+                    queryWrapper.eq(TaskExecutionDetail::getItemId, key)
                             .isNull(TaskExecutionDetail::getTaskId);
                     //这块查出来是两个，一个校零，一个测量
                     List<TaskExecutionDetail> detailList = detailService.list(queryWrapper);

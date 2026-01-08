@@ -28,6 +28,16 @@ public enum EnergyLampEnums {
         this.name = name;
     }
 
+
+    public static String getIdentityByName(String name) {
+        for (EnergyLampEnums c : EnergyLampEnums.values()) {
+            if (c.getName().equals(name)) {
+                return c.identity;
+            }
+        }
+        return null;
+    }
+
     public static String getName(String identity) {
         for (EnergyLampEnums c : EnergyLampEnums.values()) {
             if (c.getIdentity().equals(identity)) {
