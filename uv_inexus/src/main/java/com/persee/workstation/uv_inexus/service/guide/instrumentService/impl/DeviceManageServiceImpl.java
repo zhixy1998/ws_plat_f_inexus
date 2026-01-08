@@ -1161,6 +1161,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Override
     public R<Boolean> disconnectDevice(String deviceSerialNumber, String updateBy) {
+
+        DeviceInfoPO info1 = infoService.getInfo(deviceSerialNumber);
+        if (info1 == null || info1.getConnectStatus().equals(Constants.CONNECT_DEVICE_STOP)) {
+            log.info("仪器未连接");
+            return R.ok(true);
+        }
+
+        if (!StringUtils.hasText(info1.getDeviceId())) {
+            info1.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+            infoService.saveOrUpdateInfo(info1);
+            return R.ok(true);
+        }
+
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setOperationType(OperationTypeEnums.Disconnect.getType());

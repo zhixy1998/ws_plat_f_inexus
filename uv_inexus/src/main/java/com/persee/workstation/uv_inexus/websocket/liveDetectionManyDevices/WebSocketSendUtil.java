@@ -9,7 +9,9 @@
 
 package com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices;
 
+import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -77,13 +79,32 @@ public class WebSocketSendUtil {
             }
 
             error.setErrorMsg(errorMessage);
-            Result<WebSocketResponseVO> errorResult = Result.fail(error);
+            Result<WebSocketResponseVO> errorResult = Result.fail(errorMessage);
 
             messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber),
                     errorResult);
 
         } catch (Exception e) {
             log.error("发送消息失败: {} {}", deviceSerialNumber, errorMessage, e);
+        }
+    }
+
+    /**
+     * 发送错误消息
+     */
+    public void sendDeviceDisConnectMessage(String deviceSerialNumber) {
+        JSONObject errorMsg = new JSONObject();
+        try {
+
+            errorMsg.put("error", "仪器无响应！");
+            errorMsg.put("disconnect", "仪器无响应，请检查仪器状态和网线连接后，重新查找并联接仪器！");
+            Result<JSONObject> errorResult = Result.fail(ResultCodeEnum.DEVICE_DISCONNECT.getCode(), errorMsg.toString());
+
+            messagingTemplate.convertAndSend(getDeviceMessageTopic(deviceSerialNumber),
+                    errorResult);
+
+        } catch (Exception e) {
+            log.error("发送消息失败: {} {}", deviceSerialNumber, errorMsg, e);
         }
     }
 }

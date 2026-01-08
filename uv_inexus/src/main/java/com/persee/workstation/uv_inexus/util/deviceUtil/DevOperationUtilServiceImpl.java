@@ -292,13 +292,18 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         } else {
 
             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-            if (info == null) {
+            if (info == null || !StringUtils.hasText(info.getDeviceId())) {
+                return R.fail("请先连接仪器！");
+            }
+
+            DeviceConnectInfo device = deviceManager.getDevice(info.getDeviceId());
+            if (device == null) {
                 return R.fail("请先连接仪器！");
             }
 
             Integer devStatus = OperationTypeEnums.getEnum(inputParam.getOperationType()).getStatus();
 
-            if(anEnum != OperationTypeEnums.Stop && anEnum != OperationTypeEnums.Disconnect){
+            if(anEnum != OperationTypeEnums.Stop){
                 R<Boolean> r = infoService.newUseDevice(deviceSerialNumber, devStatus);
                 if (!r.getSuccess()) {
                     return R.fail(r.getMessage());
@@ -326,6 +331,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 break;
             case Disconnect:
                 result = disconnect(inputParam);
+                release = false;
                 break;
             case LiveDetection:
                 result = liveDetection(deviceSerialNumber);
