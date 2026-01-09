@@ -1249,7 +1249,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             BeanUtils.copyProperties(param, countDataInfo);
             JSONObject resultJson = JSONObject.parseObject(result);
 
-            if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(0)) {
+            if (!resultJson.get("code").equals("0") && !resultJson.get("code").equals(200)) {
                 //"公式计算出错！" + resultJson.get("message")！
                 return R.fail(YamlMessageSource.getMessageStatic("00300007",resultJson.get("message")));
             }
