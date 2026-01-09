@@ -22,13 +22,13 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.websocket.guide.GuidePhotometricWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.PhotometricNewWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.PhotometricWebsocketParam;
-import com.persee.workstation.uv_inexus.websocket.measure.TimeWebNewSocket;
+//import com.persee.workstation.uv_inexus.websocket.measure.TimeWebNewSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.ZeroCalibrationNewWebSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseTimeWebNewSocket;
+//import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseTimeWebNewSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseZeroCalibrationNewWebSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.param.FTimeWebNewSocketParam;
+//import com.persee.workstation.uv_inexus.websocket.measure.param.FTimeWebNewSocketParam;
 import com.persee.workstation.uv_inexus.websocket.measure.param.FZeroCalibrationWebSocketParam;
-import com.persee.workstation.uv_inexus.websocket.measure.param.TimeWebNewSocketParam;
+//import com.persee.workstation.uv_inexus.websocket.measure.param.TimeWebNewSocketParam;
 import com.persee.workstation.uv_inexus.websocket.measure.param.ZeroCalibrationWebSocketParam;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -80,11 +80,11 @@ public class LiveDetectionDevicesWebSocket {
     @Autowired
     ConciseZeroCalibrationNewWebSocket conciseZeroCalibrationNewWebSocket;
 
-    @Autowired
-    TimeWebNewSocket timeWebNewSocket;
-
-    @Autowired
-    ConciseTimeWebNewSocket conciseTimeWebNewSocket;
+//    @Autowired
+//    TimeWebNewSocket timeWebNewSocket;
+//
+//    @Autowired
+//    ConciseTimeWebNewSocket conciseTimeWebNewSocket;
 
     @Autowired
     GuidePhotometricWebSocket guidePhotometricWebSocket;
@@ -213,11 +213,11 @@ public class LiveDetectionDevicesWebSocket {
                     Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseSpectrum.getOperation());
                     break;
                 }
-                case ConciseTimeMeasure:{
-                    FTimeWebNewSocketParam param = data.toJavaObject(FTimeWebNewSocketParam.class);
-                    conciseTimeWebNewSocket.measureTask(param);
-                    break;
-                }
+//                case ConciseTimeMeasure:{
+//                    FTimeWebNewSocketParam param = data.toJavaObject(FTimeWebNewSocketParam.class);
+//                    conciseTimeWebNewSocket.measureTask(param);
+//                    break;
+//                }
                 case ZeroCalibration:{
                     ZeroCalibrationWebSocketParam param = data.toJavaObject(ZeroCalibrationWebSocketParam.class);
                     zeroCalibrationNewWebSocket.measureTask(param);
@@ -242,11 +242,11 @@ public class LiveDetectionDevicesWebSocket {
                     Measure(deviceSerialNumber, WebSocketOperationEnum.Spectrum.getOperation());
                     break;
                 }
-                case TimeMeasure:{
-                    TimeWebNewSocketParam param = new TimeWebNewSocketParam();
-                    timeWebNewSocket.measureTask(param);
-                    break;
-                }
+//                case TimeMeasure:{
+//                    TimeWebNewSocketParam param = new TimeWebNewSocketParam();
+//                    timeWebNewSocket.measureTask(param);
+//                    break;
+//                }
                 default:{
                     webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "未知操作类型: " + operation);
                     return;

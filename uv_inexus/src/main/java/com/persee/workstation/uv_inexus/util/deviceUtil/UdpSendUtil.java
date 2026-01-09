@@ -794,7 +794,7 @@ public class UdpSendUtil {
                 sendMessageLog(sendIp, cmdId, packet.getData());
 
                 long firstTimeMillis = System.currentTimeMillis();
-                receiveAndDeal(deviceId, firstTimeMillis, intervalMillis, replyNumber, cmdId);
+                receiveAndDeal(deviceId, firstTimeMillis, intervalMillis, replyNumber, cmdId, deviceSerialNumber);
 
             } catch (Exception e) {
                 log.error("时间扫描定时任务异常，立即停止", e);
@@ -813,7 +813,7 @@ public class UdpSendUtil {
         return scheduler;
     }
 
-    private void receiveAndDeal(String deviceId, long firstTimeMillis, long intervalTime, Integer replyNumber, String cmdId) {
+    private void receiveAndDeal(String deviceId, long firstTimeMillis, long intervalTime, Integer replyNumber, String cmdId, String deviceSerialNumber) {
 
         log.info("处理时间扫描报文，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
 
