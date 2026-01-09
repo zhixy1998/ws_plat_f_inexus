@@ -1,4 +1,4 @@
-/*
+package com.persee.workstation.uv_inexus.po.concise.measurementPo;/*
  * *
  *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
  *  * 本软件受商业机密法和版权法保护。
@@ -7,7 +7,6 @@
  *
  */
 
-package com.persee.workstation.uv_inexus.po.concise.measurementPo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -18,8 +17,8 @@ import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("f_t_sample_pool_config")
-public class FSamplePoolConfigPO extends BasePO {
+@TableName("t_sample_pool_config")
+public class SamplePoolConfigPO extends BasePO {
 
     @ApiModelProperty("设备序列号")
     @TableField(value = "device_serial_number")

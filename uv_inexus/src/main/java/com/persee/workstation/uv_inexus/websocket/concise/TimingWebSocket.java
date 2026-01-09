@@ -88,7 +88,7 @@ public class TimingWebSocket extends TextWebSocketHandler {
     @Autowired
     private SystemAlgorithmConfService systemAlgorithmConfService;
     @Autowired
-    private FSamplePoolConfigService fSamplePoolConfigService;
+    private SamplePoolConfigService fSamplePoolConfigService;
     @Autowired
     private DeviceInfoService deviceInfoService;
     @Autowired
@@ -179,9 +179,9 @@ public class TimingWebSocket extends TextWebSocketHandler {
         }
 
         // 根据序列号查询对应的附件配置表信息
-        QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+        QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
         wrapper.eq("device_serial_number", deviceSerialNumber);
-        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
         if (configPO == null) {
             sendAndClose(session, "没有找到对应的附件配置信息");
         }

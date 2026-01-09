@@ -119,7 +119,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     RestUtil restUtil;
 
     @Autowired
-    FSamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;

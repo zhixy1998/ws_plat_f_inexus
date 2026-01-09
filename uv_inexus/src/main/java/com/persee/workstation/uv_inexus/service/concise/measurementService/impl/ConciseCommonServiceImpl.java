@@ -106,7 +106,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     private RationConciseService rationService;
 
     @Autowired
-    private FSamplePoolConfigService fSamplePoolConfigService;
+    private SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     private FMeasureTaskMapper fMeasureTaskMapper;
@@ -1795,9 +1795,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         sample.setSampleNumber(String.valueOf(newSampleNumber));  // 设置新样品编号
 
         // 设置样品池位置
-        LambdaQueryWrapper<FSamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-        FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+        LambdaQueryWrapper<SamplePoolConfigPO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
         if (configPO == null) {
             //未找到样品池信息
             return Result.fail(YamlMessageSource.getMessageStatic("00101011"));

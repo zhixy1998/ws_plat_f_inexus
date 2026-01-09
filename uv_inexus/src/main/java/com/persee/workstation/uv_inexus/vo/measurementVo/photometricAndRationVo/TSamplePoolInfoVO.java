@@ -1,6 +1,5 @@
 package com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo;
 
-import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TSamplePoolStatus;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;

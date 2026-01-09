@@ -73,7 +73,7 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
     @Autowired private FMeasureDataService tMeasureDataService;
     @Autowired private FMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired private FMeasureAnalysisImageService tMeasureAnalysisImageService;
-    @Autowired private FSamplePoolConfigService fSamplePoolConfigService;
+    @Autowired private SamplePoolConfigService fSamplePoolConfigService;
     @Autowired private SystemAlgorithmConfService systemAlgorithmConfService;
     @Autowired private FMeasureSampleService tMeasureSampleService;
     @Autowired private DevMessageUtil devMessageUtil;
@@ -237,9 +237,9 @@ public class ConciseTimeOneMeasureWebSocket extends TextWebSocketHandler {
 
     private boolean setupSamplePool(WebSocketSession session, TimeOneMeasureContext context, String updateBy) {
         try {
-            QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+            QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
             wrapper.eq("device_serial_number", context.deviceSerialNumber);
-            FSamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
+            SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
 
             if (configPO == null || !configPO.getIsAutoChangePool()) {
                 return true;

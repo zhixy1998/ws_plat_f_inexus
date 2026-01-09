@@ -14,6 +14,7 @@ import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 
 import java.io.File;
@@ -129,5 +130,9 @@ public interface TimeSweepConciseService {
     // 查询表格数据接口
     List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits);
 
+    // 上传图片接口
     Result uploadImage(SpectrumImageUpload upload);
+
+    // 仪器设置参数
+    boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
 }

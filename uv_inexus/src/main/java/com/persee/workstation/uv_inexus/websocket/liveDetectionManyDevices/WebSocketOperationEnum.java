@@ -20,17 +20,20 @@ import java.util.Map;
 public enum WebSocketOperationEnum {
 
     LiveDetection("liveDetection", "实时回显测量结果"),
+    ConciseZeroCalibration("conciseZeroCalibration", "经典-零点校准"),
+    ConciseBaseLine("conciseBaseLine", "经典-基线测量"),
     ConcisePhotoMetric("concisePhotoMetric", "经典-光度测量"),
     ConciseRationMeasure("conciseRationMeasure", "经典-定量测定"),
-    ConciseBaseLine("conciseBaseLine", "经典-基线测量"),
     ConciseSpectrum("conciseSpectrum", "经典-光谱扫描"),
     ConciseTimeMeasure("conciseTimeMeasure", "经典-时间测量"),
-
+    ZeroCalibration("zeroCalibration", "向导-零点校准"),
+    BaseLine("baseLine", "向导-基线测量"),
     PhotoMetric("photoMetric", "向导-光度测量"),
     RationMeasure("rationMeasure", "向导-定量测定"),
     Spectrum("spectrum", "向导-光谱扫描"),
-    BaseLine("baseLine", "向导-基线测量"),
     TimeMeasure("timeMeasure", "向导-时间测量"),
+
+
     DeviceStatus("deviceStatus", "仪器实时状态值"),
     //通用
     Common("Common", "通用");

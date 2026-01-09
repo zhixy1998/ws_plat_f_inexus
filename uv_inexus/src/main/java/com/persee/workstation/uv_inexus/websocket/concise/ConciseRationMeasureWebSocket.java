@@ -99,7 +99,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
     FMeasureTaskAttachmentService attachmentService;
 
     @Autowired
-    FSamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;

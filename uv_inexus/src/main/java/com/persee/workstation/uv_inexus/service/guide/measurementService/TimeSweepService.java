@@ -13,6 +13,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 
 import javax.servlet.http.HttpServletResponse;
@@ -24,9 +25,6 @@ public interface TimeSweepService {
     // 查询项目任务方法接口
     Result queryProjectTaskMethod(String updateBy, String measureType);
 
-    // 创建方法
-    Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter);
-
     // 查询项目下的所有方法
     Result queryProjectAllMethods(String projectId, String measureForm);
 
@@ -36,7 +34,7 @@ public interface TimeSweepService {
     // 修改方法参数接口
     Result updateMethodParameter(TimeSweepMethodParameterDto params);
 
-    // 查询样品列表接口
+    // 获取样本列表接口
     Result sampleListPort(String taskId, String type,Integer  digit);
 
     // 删除样品列表接口
@@ -60,7 +58,7 @@ public interface TimeSweepService {
     // 获取样本按钮列表接口
     Result querySampleList(String taskId);
 
-    // 查询样品头接口
+    // 获取样本输入表头接口
     Result<List<HeadVO>> querySampleHeads(String taskId);
 
     // 添加或删除样本接口
@@ -69,22 +67,22 @@ public interface TimeSweepService {
     // 图片上传
     Result uploadImage(SpectrumImageUpload upload);
 
-    // 获取峰谷数据列表
+    // 查询峰谷数据列表接口
     Result queryPeakValleyDataList(String dataId,  Integer digit);
 
-    // 查询峰谷接口
+    // 寻峰寻谷接口
     Result seekingPeaksAndValleysPort(SeekingPeaksValleysDto paramDto);
 
     // 添加峰谷备注接口
     Result addPeakValleyRemarks(PeakValleyMarkingDto paramDto);
 
-    // 查询标记点数据列表
+    // 获取标记点数据列表
     Result queryGaugePointDataList(String dataId, Integer digit);
 
     // 添加标记点接口
     Result addGaugePoint(AddGaugePointDto paramDto);
 
-    // 添加标记点备注
+    // 添加标记点备注接口
     Result addGaugePointRemarks(PeakValleyMarkingDto paramDto);
 
     // 更新数据颜色接口
@@ -111,24 +109,27 @@ public interface TimeSweepService {
     // 微分接口
     Result differentialPort(DifferentialDto paramDto);
 
-    // 光度模式转换接口
+    // 光度模式转换
     Result luminanceModeConversionPort(LuminosityConversionDto paramDto);
 
     // 保存数据接口
     Result saveData(String taskId);
 
-    // 查询报告表格数据接口
-    List<PeakValleyMarking>queryReportFormData(String taskId,String sampleId);
-
-    /**
-     * 导出到word
-     */
+    // 多格式文件下载接口（支持word/excel/txt）
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
 
-    // 表格头接口
+    // 仪器设置参数
+    boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
+
+    // (实验测试)创建方法
+    Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter);
+
+    // (实验测试)查询报告表格数据接口
+    List<PeakValleyMarking>queryReportFormData(String taskId, String sampleId);
+
+    // (实验测试)表格头接口
     Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds);
 
-    // 查询表格数据接口
+    // (实验测试)查询表格数据接口
     List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
-
 }

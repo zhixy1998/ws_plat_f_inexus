@@ -20,7 +20,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -54,6 +53,11 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -63,7 +67,6 @@ import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumNearestMethodVo;
 import com.persee.workstation.uv_inexus.vo.concise.spectrum.SpectrumSearchMethodVo;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.*;
@@ -123,7 +126,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     @Autowired
     private FMeasureAnalysisImageService fMeasureAnalysisImageService;
     @Autowired
-    private FSamplePoolConfigService fSamplePoolConfigService;
+    private SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     private FMeasureTaskAttachmentService fMeasureTaskAttachmentService;
@@ -160,6 +163,9 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private DevOperationUtilService devOperationUtilService;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -595,9 +601,12 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
         }
         // 下发参数
-        Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-        if (result.getCode() != 200) {
-            return result;
+        SetParam setParam = new SetParam();
+        setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
+        setParam.setSetWl(Double.valueOf(paramDto.getParameter().getStartWaveLength()));
+        boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
+        if (b) {
+            return Result.fail("设置参数失败");
         }
 
         // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
@@ -2139,104 +2148,57 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
      */
     @Override
     public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
-        // 根据序列号查询设备ip
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
+        if (methodId == null || methodId.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
         // 根据methodId去方法表中查询数据
         FMeasureMethod tMeasureMethod = fMeasureMethodService.getOne(new QueryWrapper<FMeasureMethod>().eq("id", methodId).eq("measurement_type", "光谱扫描"));
         if (tMeasureMethod == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
-        List<LinearSegment> linearSegment = formulaUtil.getLinearSegment(deviceSerialNumber);
+        FSpectrumParameter spectrumParam = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), FSpectrumParameter.class);
+        double waveLengthInterval = Double.parseDouble(spectrumParam.getWaveLengthInterval());
 
-        FSpectrumParameter scanParamInfo = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), FSpectrumParameter.class);
-
-        List<Command> commands = new ArrayList<>();
-
-        // 光度模式
-        Command com1 = new Command();
-        com1.setCmdId(SetParamEnum.SetPhotoMode.getComId());
-        com1.setParams(new Object[]{scanParamInfo.getLuminosity()});
-        commands.add(com1);
-        // 开始波长
-        Command com2 = new Command();
-        com2.setCmdId(SetParamEnum.SetStartWl.getComId());
-        double parsed = Double.parseDouble(scanParamInfo.getStartWaveLength());
-        if (linearSegment != null && !linearSegment.isEmpty()) {
-            double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
-            parsed = parsed + waveLengthInterval;
+        // 设置参数
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam setParam = new SetParam();
+        param.setDeviceSerialNumber(deviceSerialNumber);
+        // 1. 光度模式
+        setParam.setPhotoMode(Integer.valueOf(spectrumParam.getLuminosity()));
+        // 2. 开始波长 (开始波长+1)
+        double parsed = Double.parseDouble(spectrumParam.getStartWaveLength());
+        parsed = parsed + waveLengthInterval;
+        setParam.setStartWl(parsed);
+        // 3. 结束波长 (结束波长-1)
+        double parsed2 = Double.parseDouble(spectrumParam.getEndWaveLength());
+        parsed2 = parsed2 - waveLengthInterval;
+        setParam.setEndWl(parsed2);
+        // 4. 扫描间隔
+        setParam.setScanWlInterval(Double.valueOf(spectrumParam.getWaveLengthInterval()));
+        // 5. 光谱带宽
+        if (StringUtils.hasText(spectrumParam.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            setParam.setSlit1(Double.valueOf(spectrumParam.getSpectralBandwidth()));
         }
-        Double v = formulaUtil.calculateStep(parsed, deviceSerialNumber);
-        com2.setParams(new Object[]{v});
-        commands.add(com2);
-        // 结束波长
-        Command com3 = new Command();
-        com3.setCmdId(SetParamEnum.SetEndWl.getComId());
-        double parsed2 = Double.parseDouble(scanParamInfo.getEndWaveLength());
-        if (linearSegment != null && !linearSegment.isEmpty()) {
-            double waveLengthInterval = Double.parseDouble(scanParamInfo.getWaveLengthInterval());
-            parsed2 = parsed2 - waveLengthInterval;
+        // 6. 扫描速度
+        setParam.setScanSpeed(Integer.valueOf(spectrumParam.getScanSpeed()));
+        // 7. 换灯波长
+        setParam.setChangeLampWl(Double.valueOf(spectrumParam.getChangeLampWaveLength()));
+        // 8. 设置波长
+        setParam.setSetWl(Double.valueOf(spectrumParam.getStartWaveLength()));
+        if (spectrumParam.getLuminosity().equals("3") || spectrumParam.getLuminosity().equals("4")) {
+            // 9. 能量灯
+            setParam.setLampPos(Integer.valueOf(spectrumParam.getEnergyLamp()));
+            // 10. 增益
+            setParam.setGain(Integer.valueOf(spectrumParam.getGain()));
         }
-        Double v2 = formulaUtil.calculateStep(parsed2, deviceSerialNumber);
-        com3.setParams(new Object[]{v2});
-        commands.add(com3);
-        // 扫描间隔
-        Command com4 = new Command();
-        com4.setCmdId(SetParamEnum.SetScanWlInterval.getComId());
-        com4.setParams(new Object[]{scanParamInfo.getWaveLengthInterval()});
-        commands.add(com4);
-
-        if (StringUtils.hasText(scanParamInfo.getSpectralBandwidth()) && deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
-            // 光谱带宽
-            Command com5 = new Command();
-            com5.setCmdId(SetParamEnum.SetSlit1.getComId());
-            com5.setParams(new Object[]{scanParamInfo.getSpectralBandwidth()});
-            commands.add(com5);
-        }
-
-        // 扫描速度
-        Command com6 = new Command();
-        com6.setCmdId(SetParamEnum.SetScanSpeed.getComId());
-        com6.setParams(new Object[]{scanParamInfo.getScanSpeed()});
-        commands.add(com6);
-        // 换灯波长
-        Command com7 = new Command();
-        com7.setCmdId(SetParamEnum.SetChangeLampWl.getComId());
-        double parsed3 = Double.parseDouble(scanParamInfo.getChangeLampWaveLength());
-        Double v3 = formulaUtil.calculateStep(parsed3, deviceSerialNumber);
-        com7.setParams(new Object[]{v3});
-        commands.add(com7);
-
-        // 波长
-        Command com10 = new Command();
-        com10.setCmdId(SetParamEnum.SetWl.getComId());
-        com10.setParams(new Object[]{scanParamInfo.getStartWaveLength()});
-        commands.add(com10);
-
-        if (scanParamInfo.getLuminosity().equals("3") || scanParamInfo.getLuminosity().equals("4")) {
-            // 能量灯
-            Command com8 = new Command();
-            com8.setCmdId(SetParamEnum.SetLampPos.getComId());
-            com8.setParams(new Object[]{scanParamInfo.getEnergyLamp()});
-            commands.add(com8);
-            // 增益
-            Command com9 = new Command();
-            com9.setCmdId(SetParamEnum.SetGain.getComId());
-            com9.setParams(new Object[]{scanParamInfo.getGain()});
-            commands.add(com9);
-        }
-
-        R<String> stringR = null;
-        try {
-            stringR = devMessageUtil.spectrumScanSet(commands, ip);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        if (stringR.getData().equals("true")) {
-            DetectionConstants.currentWavelength = scanParamInfo.getStartWaveLength();
+        param.setParam(setParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(param);
+        if (r.getSuccess()) {
             return Result.ok(true);
         } else {
-            return Result.fail(false);
+            return Result.fail(r.getMessage());
         }
     }
 
@@ -3996,6 +3958,27 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
     }
 
+    /**
+     * 设置方法参数
+     * @param deviceSerialNumber
+     * @param setParam
+     * @return
+     */
+    @Override
+    public boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam) {
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        param.setDeviceSerialNumber(deviceSerialNumber);
+        param.setParam(setParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(param);
+        if (r.getSuccess()) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
 
     // 保留原有的downloadWord方法，并适配新参数
     public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit) {
@@ -4320,42 +4303,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         BigDecimal decimal = value.setScale(digit, RoundingMode.HALF_UP);
         // 设置小数位数并进行舍入
         return DataCountUtil.addZero(valueOf(decimal.stripTrailingZeros().toPlainString()), digit);
-    }
-
-    /**
-     * 下发波长光度模式
-     *
-     * @param parameter
-     * @param deviceSerialNumber
-     * @return
-     */
-    public Result sendWavelengthLuminosityMode(FSpectrumParameterVo parameter, String deviceSerialNumber) {
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        String startWaveLength = parameter.getStartWaveLength();
-        double parsed = Double.parseDouble(startWaveLength);
-        Double value = formulaUtil.calculateStep(parsed, deviceSerialNumber);
-        List<Command> commands = new ArrayList<>();
-        commands.add(buildCommand(SetParamEnum.SetWl, value));
-        commands.add(buildCommand(SetParamEnum.SetPhotoMode, parameter.getLuminosity()));
-        try {
-            R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
-            if (!message.getSuccess()) {
-                // 返回具体的错误信息
-                return Result.fail("仪器占用失败: " + (message.getMessage() != null ? message.getMessage() : "未知原因"));
-            }
-            R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
-            if (stringR.getData().equals("true")) {
-                DetectionConstants.currentWavelength = startWaveLength;
-                return Result.ok(true);
-            } else {
-                // 返回具体的下发错误信息
-                return Result.fail("参数下发失败: " + (stringR.getMessage() != null ? stringR.getMessage() : "未知原因"));
-            }
-        } catch (Exception e) {
-            return Result.fail("参数下发异常: " + e.getMessage());
-        } finally {
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-        }
     }
 
     /**

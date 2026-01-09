@@ -15,6 +15,7 @@ import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FHeadVO;
 
 import java.io.File;
@@ -138,4 +139,7 @@ public interface SpectrumConciseService {
 
     // 计算数据接口
     Result calculateData(String taskId, String sampleId);
+
+    // 仪器设置参数
+    boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
 }

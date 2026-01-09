@@ -96,7 +96,7 @@ public class ConciseRationOneSampleReMeasureWebSocket extends TextWebSocketHandl
     FMeasureTaskAttachmentService attachmentService;
 
     @Autowired
-    FSamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;

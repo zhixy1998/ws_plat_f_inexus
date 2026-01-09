@@ -96,7 +96,7 @@ public class ConcisePhotometricWebSocket extends TextWebSocketHandler {
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Autowired
-    FSamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     DeviceInfoService infoService;

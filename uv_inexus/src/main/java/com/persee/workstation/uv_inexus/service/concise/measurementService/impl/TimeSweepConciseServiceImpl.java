@@ -20,7 +20,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -52,6 +51,11 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -123,7 +127,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     private FMeasureAnalysisImageService fMeasureAnalysisImageService;
 
     @Autowired
-    private FSamplePoolConfigService fSamplePoolConfigService;
+    private SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     private ConcisePublicUtilService concisePublicUtilService;
@@ -156,6 +160,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     // 注入PythonPathConstant
     @Autowired
     private PythonPathConstant pythonPathConstant;
+
+    @Autowired
+    private DevOperationUtilService devOperationUtilService;
 
 
     @Autowired
@@ -475,9 +482,12 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         if (response >= interval) {
             return Result.fail("响应时间必须小于时间间隔");
         }
-        Result result = sendWavelengthLuminosityMode(paramDto.getParameter(), paramDto.getDeviceSerialNumber());
-        if (result.getCode() != 200) {
-            return result;
+        SetParam setParam = new SetParam();
+        setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
+        setParam.setSetWl(Double.valueOf(paramDto.getParameter().getWaveLength()));
+        boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
+        if (!b) {
+            return Result.fail("设置参数失败");
         }
 
         // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
@@ -1787,59 +1797,47 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
      */
     @Override
     public Result setUpParametersPort(String methodId, String deviceSerialNumber) {
-        // 根据序列号查询设备ip
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        FMeasureMethod method = fMeasureMethodService.getOne(new QueryWrapper<FMeasureMethod>().eq("id", methodId).eq("measurement_type", "时间扫描"));
-        if (method == null) {
+        if (methodId == null || methodId.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+        // 根据methodId去方法表中查询数据
+        FMeasureMethod tMeasureMethod = fMeasureMethodService.getOne(new QueryWrapper<FMeasureMethod>().eq("id", methodId).eq("measurement_type", MeasureTypeEnum.TIME_SCAN.getDescription()));
+        if (tMeasureMethod == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
-        FTimeSweepParamter time = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
-        List<Command> commands = new ArrayList<>();
-        // 设置光度模式
-        commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getLuminosity()));
-        Double v2 = formulaUtil.calculateStep(Double.parseDouble(time.getChangeLampWaveLength()), deviceSerialNumber);
-        // 设置换灯波长
-        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, v2));
-        // 设置响应时间
-        commands.add(buildCommand(SetParamEnum.SetResponseTime, time.getResponseTime()));
-        Double v = formulaUtil.calculateStep(Double.parseDouble(time.getWaveLength()), deviceSerialNumber);
-        // 设置波长
-        commands.add(buildCommand(SetParamEnum.SetWl, v));
+        FTimeSweepParamter timeSweepParamter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), FTimeSweepParamter.class);
 
-        R<String> stringR = devMessageUtil.timeSweepSet(commands, ip);
-        if (stringR.getData().equals("true")) {
-            DetectionConstants.currentWavelength = time.getWaveLength();
-        } else {
-            return Result.fail(false);
+        // 设置参数
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam setParam = new SetParam();
+        param.setDeviceSerialNumber(deviceSerialNumber);
+
+        // 1. 光度模式
+        setParam.setPhotoMode(Integer.valueOf(timeSweepParamter.getLuminosity()));
+        // 2. 光谱带宽
+        setParam.setSlit1(Double.valueOf(timeSweepParamter.getSpectralBandwidth()));
+        // 3. 响应时间
+        setParam.setResponseTime(Double.valueOf(timeSweepParamter.getResponseTime()));
+        // 4. 设置波长
+        setParam.setSetWl(Double.valueOf(timeSweepParamter.getWaveLength()));
+        // 5. 换灯波长
+        setParam.setChangeLampWl(Double.valueOf(timeSweepParamter.getChangeLampWaveLength()));
+        if (timeSweepParamter.getLuminosity().equals("3") || timeSweepParamter.getLuminosity().equals("4")) {
+            // 6. 能量灯
+            setParam.setLampPos(Integer.valueOf(timeSweepParamter.getEnergyLamp()));
+            // 7. 增益
+            setParam.setGain(Integer.valueOf(timeSweepParamter.getGain()));
         }
-        commands.clear();
-
-        // 设置光谱带宽
-        if (StringUtils.hasText(time.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
-            commands.add(buildCommand(SetParamEnum.SetSlit1, time.getSpectralBandwidth()));
-        }
-
-        if (time.getLuminosity().equals("3") || time.getLuminosity().equals("4")) {
-            // 设置能量灯
-            commands.add(buildCommand(SetParamEnum.SetLampPos, time.getEnergyLamp()));
-            // 设置增益
-            commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
-        }
-
-        if (commands.isEmpty()) {
+        param.setParam(setParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(param);
+        if (r.getSuccess()) {
+            DetectionConstants.currentWavelength = timeSweepParamter.getWaveLength();
             return Result.ok(true);
         } else {
-            stringR = devMessageUtil.timeSweepSet(commands, ip);
-            if (stringR.getData().equals("true")) {
-                DetectionConstants.currentWavelength = time.getWaveLength();
-                return Result.ok(true);
-            } else {
-                return Result.fail(false);
-            }
+            return Result.fail(r.getMessage());
         }
-
-
     }
 
 //    /**
@@ -2902,43 +2900,6 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         }
     }
 
-    /**
-     * 下发波长光度模式
-     *
-     * @param parameter
-     * @param deviceSerialNumber
-     * @return
-     */
-    public Result sendWavelengthLuminosityMode(FTimeSweepParamterVo parameter, String deviceSerialNumber) {
-
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        String startWaveLength = parameter.getWaveLength();
-        double parsed = Double.parseDouble(startWaveLength);
-        Double value = formulaUtil.calculateStep(parsed, deviceSerialNumber);
-        List<Command> commands = new ArrayList<>();
-        commands.add(buildCommand(SetParamEnum.SetWl, value));
-        commands.add(buildCommand(SetParamEnum.SetPhotoMode, parameter.getLuminosity()));
-        try {
-            R<Boolean> message = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
-            if (!message.getSuccess()) {
-                // 返回具体的错误信息
-                return Result.fail("仪器占用失败: " + (message.getMessage() != null ? message.getMessage() : "未知原因"));
-            }
-            R<String> stringR = devMessageUtil.spectrumScanSet(commands, ip);
-            if (stringR.getData().equals("true")) {
-                DetectionConstants.currentWavelength = startWaveLength;
-                return Result.ok(true);
-            } else {
-                // 返回具体的下发错误信息
-                return Result.fail("参数下发失败: " + (stringR.getMessage() != null ? stringR.getMessage() : "未知原因"));
-            }
-        } catch (Exception e) {
-            return Result.fail("参数下发异常: " + e.getMessage());
-        } finally {
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-        }
-    }
-
 
     /**
      * 构建命令
@@ -3884,6 +3845,27 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             boolean update = fMeasureTaskAttachmentService.updateById(byId);
             return Result.ok(update);
         }
+    }
+
+    /**
+     * 设置方法参数
+     * @param deviceSerialNumber
+     * @param setParam
+     * @return
+     */
+    @Override
+    public boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam) {
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        param.setDeviceSerialNumber(deviceSerialNumber);
+        param.setParam(setParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(param);
+        if (r.getSuccess()) {
+            return true;
+        } else {
+            return false;
+        }
+
     }
 
     public void addLuminosityMode(List<FHeadVO> ans, String mode) {

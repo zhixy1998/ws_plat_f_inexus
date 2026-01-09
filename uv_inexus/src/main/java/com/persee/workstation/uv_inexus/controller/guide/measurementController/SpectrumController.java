@@ -257,18 +257,6 @@ public class SpectrumController {
         return spectrumService.luminanceModeConversionPort(paramDto);
     }
 
-    @GetMapping("testStart")
-    @ApiOperation("开始测试")
-    public void testStart() {
-        spectrumService.testStart();
-    }
-
-    @GetMapping("testPythonProt")
-    @ApiOperation("测试python接口")
-    public void testPythonProt() {
-        spectrumService.testPythonProt();
-    }
-
     @PostMapping("uploadImage")
     @ApiOperation("图片上传")
     public Result uploadImage(@RequestBody SpectrumImageUpload upload) {
@@ -280,17 +268,6 @@ public class SpectrumController {
     public Result queryTheTaskImage(@RequestParam String id,@RequestParam String type) {
         return spectrumService.queryTheTaskImage(id,type);
     }
-
-
-
-    @GetMapping("testScan")
-    @ApiOperation("测试扫描")
-    public void testScan() {
-        spectrumService.testScan();
-    }
-
-
-
 
 
     @GetMapping("queryPreprocessingOperation")

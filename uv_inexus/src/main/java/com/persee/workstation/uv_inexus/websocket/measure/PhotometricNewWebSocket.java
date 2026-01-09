@@ -94,7 +94,7 @@ public class PhotometricNewWebSocket{
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Autowired
-    FSamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     DeviceInfoService infoService;

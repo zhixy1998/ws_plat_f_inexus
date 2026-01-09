@@ -29,7 +29,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.*;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.InitRecordService;
@@ -43,7 +43,6 @@ import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
-import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.LiveDetectionDevicesWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,7 +81,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     FormulaUtil formulaUtil;
 
     @Autowired
-    FSamplePoolConfigService samplePoolConfigService;
+    SamplePoolConfigService samplePoolConfigService;
 
     @Autowired
     DeviceModelInfoDAO deviceModelInfoDAO;

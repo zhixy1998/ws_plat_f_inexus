@@ -14,7 +14,7 @@ import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FSamplePoolConfigDAO;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.SamplePoolConfigDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
@@ -22,9 +22,9 @@ import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceSamplePoolPu
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -41,12 +41,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service("FSamplePoolConfig")
-@DS("concise")
+@DS("guide")
 @Slf4j
-public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigDAO, FSamplePoolConfigPO> implements FSamplePoolConfigService {
+public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO, SamplePoolConfigPO> implements SamplePoolConfigService {
 
     @Autowired
-    FSamplePoolConfigDAO dao;
+    SamplePoolConfigDAO dao;
 
     @Autowired
     DeviceInfoDAO deviceInfoDAO;
@@ -67,11 +67,11 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             return false;
         }
 
-        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-        FSamplePoolConfigPO po = dao.selectOne(query);
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null) {
-            po = new FSamplePoolConfigPO();
+            po = new SamplePoolConfigPO();
             DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceSerialNumber);
             po.setAttachmentType(attachmentInfo.getAttachmentNum());
             po.setDeviceSerialNumber(deviceSerialNumber);
@@ -109,11 +109,11 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             return false;
         }
 
-        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, dto.getDeviceSerialNumber());
-        FSamplePoolConfigPO po = dao.selectOne(query);
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, dto.getDeviceSerialNumber());
+        SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null) {
-            po = new FSamplePoolConfigPO();
+            po = new SamplePoolConfigPO();
         }
         BeanUtils.copyProperties(dto, po);
 
@@ -145,9 +145,9 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             return R.fail(YamlMessageSource.getMessageStatic("00307004"));
         }
 
-        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, changeDto.getDeviceSerialNumber());
-        FSamplePoolConfigPO po = dao.selectOne(query);
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, changeDto.getDeviceSerialNumber());
+        SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null) {
             //未找到该仪器附件配置
             return R.fail(YamlMessageSource.getMessageStatic("00106001"));
@@ -228,9 +228,9 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
     @Override
     public R<FSamplePoolInfoVO> querySamplePoolInfo(String deviceSerialNumber) {
 
-        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-        FSamplePoolConfigPO po = dao.selectOne(query);
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
             //未找到该仪器附件配置
             return R.fail(YamlMessageSource.getMessageStatic("00106001"));
@@ -248,9 +248,9 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
     public List<Integer> getUsefulLocation(String deviceSerialNumber) {
         List<Integer> list = new ArrayList<>();
 
-        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-        FSamplePoolConfigPO po = dao.selectOne(query);
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
             return list;
         }
@@ -278,11 +278,11 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
             //请登录后操作
             return R.fail(YamlMessageSource.getMessageStatic("00307004"));
         }
-        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-        FSamplePoolConfigPO po = dao.selectOne(query);
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null) {
-            po = new FSamplePoolConfigPO();
+            po = new SamplePoolConfigPO();
             po.setCreateBy(updateBy);
             DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfo(deviceSerialNumber);
             po.setAttachmentType(attachmentInfo.getAttachmentNum());
@@ -319,9 +319,9 @@ public class FSamplePoolConfigServiceImpl extends ServiceImpl<FSamplePoolConfigD
     @DS("concise")
     @Override
     public R<SamplePoolInfoVO> queryCalibrationSampleInfo(String deviceSerialNumber) {
-        LambdaQueryWrapper<FSamplePoolConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(FSamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-        FSamplePoolConfigPO po = dao.selectOne(query);
+        LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();
+        query.eq(SamplePoolConfigPO::getDeviceSerialNumber, deviceSerialNumber);
+        SamplePoolConfigPO po = dao.selectOne(query);
         if (po == null || !StringUtils.hasText(po.getPoolInfo())) {
             //未找到该仪器附件配置
             return R.fail(YamlMessageSource.getMessageStatic("00106001"));

@@ -15,7 +15,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.ConciseCommonService;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FMethodListWithPageVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -36,7 +36,7 @@ public class ConciseCommonController {
     private ConciseCommonService conciseCommonService;
 
     @Autowired
-    FSamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService fSamplePoolConfigService;
 
 
     @GetMapping("queryDefaultParameters")

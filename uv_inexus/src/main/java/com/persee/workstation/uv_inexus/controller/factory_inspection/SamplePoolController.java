@@ -2,7 +2,7 @@ package com.persee.workstation.uv_inexus.controller.factory_inspection;
 
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.service.concise.measurementService.FSamplePoolConfigService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/com/persee/workstation/uv-inexus/factory-inspection/sample-pool")
 public class SamplePoolController {
     @Autowired
-    private FSamplePoolConfigService samplePoolConfigService;
+    private SamplePoolConfigService samplePoolConfigService;
 
     @GetMapping("querySampleAttachmentInfo")
     @ApiOperation("查询附件信息")

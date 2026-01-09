@@ -76,7 +76,7 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     @Autowired private FMeasureDataService tMeasureDataService;
     @Autowired private FMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired private FMeasureAnalysisImageService tMeasureAnalysisImageService;
-    @Autowired private FSamplePoolConfigService fSamplePoolConfigService;
+    @Autowired private SamplePoolConfigService fSamplePoolConfigService;
     @Autowired private FMeasureSampleService tMeasureSampleService;
     @Autowired private SystemAlgorithmConfService systemAlgorithmConfService;
     @Autowired private DevMessageUtil devMessageUtil;
@@ -253,9 +253,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
             }
 
             // 检查是否启用自动换池
-            QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+            QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
             wrapper.eq("device_serial_number", context.deviceSerialNumber);
-            FSamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
+            SamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
 
             if (config == null || !config.getIsAutoChangePool()) {
                 // 未启用自动换池，只测量第一个样品
@@ -304,9 +304,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private void configureSamplePool(WebSocketSession session, TimeScanContext context,
                                      List<FTaskSpecimen> samples, String updateBy) {
         try {
-            QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+            QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
             wrapper.eq("device_serial_number", context.deviceSerialNumber);
-            FSamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
+            SamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
 
             if (config == null || !config.getIsAutoChangePool()) {
                 return;
@@ -490,9 +490,9 @@ public class ConciseTimeWebSocket extends TextWebSocketHandler {
     private void setupSamplePoolIfNeeded(WebSocketSession session, TimeScanContext context,
                                          FTaskSpecimen sample, String updateBy) {
         try {
-            QueryWrapper<FSamplePoolConfigPO> wrapper = new QueryWrapper<>();
+            QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
             wrapper.eq("device_serial_number", context.deviceSerialNumber);
-            FSamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
+            SamplePoolConfigPO config = fSamplePoolConfigService.getOne(wrapper);
 
             // 检查是否启用自动换池
             if (config == null || !config.getIsAutoChangePool()) {

@@ -10,9 +10,9 @@
 package com.persee.workstation.uv_inexus.dao.concise.measurementDao;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 
-public interface FSamplePoolConfigDAO extends BaseMapper<FSamplePoolConfigPO> {
+public interface SamplePoolConfigDAO extends BaseMapper<SamplePoolConfigPO> {
 
 //    FDeviceSamplePool getSamplePoolNumInfo(String deviceSerialNumber);
 }

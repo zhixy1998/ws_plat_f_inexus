@@ -108,7 +108,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     DevMessageUtil devMessageUtil;
 
     @Autowired
-    FSamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService fSamplePoolConfigService;
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;

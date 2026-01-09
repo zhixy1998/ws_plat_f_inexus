@@ -38,6 +38,11 @@ import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
@@ -45,6 +50,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterV
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SampleVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.QueryTimeMethodParamterVo;
+import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.util.Units;
@@ -105,6 +111,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private RestTemplate restTemplate;
     @Autowired
     private PythonPathConstant pythonPathConstant;
+    @Autowired
+    private DevOperationUtilService devOperationUtilService;
 
     @Value("1")
     String deleteType;
@@ -170,43 +178,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
 
     /**
-     * 创建方法接口
-     * @param methodDto
-     * @param updateBy
-     * @param timeSweepParamter
-     * @return
-     */
-    @Override
-    public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter) {
-        if (updateBy.length()>=256){
-            //用户名过长！
-            return Result.fail(YamlMessageSource.getMessageStatic("00305001"));
-        }
-        if (methodDto.getMethodName().length()>=256){
-            //方法名称过长！
-            return Result.fail(YamlMessageSource.getMessageStatic("00305004"));
-        }
-        // 创建测量方法表
-        TMeasureMethod tMeasureMethod = new TMeasureMethod();
-        tMeasureMethod.setProjectItemKey(methodDto.getProjectId());
-        tMeasureMethod.setMethodName(methodDto.getMethodName());
-        tMeasureMethod.setMeasurementType(methodDto.getMethodType());
-        tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(timeSweepParamter));
-        tMeasureMethod.setMethodCreator(updateBy);
-        tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
-        tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
-        boolean save = tMeasureMethodService.save(tMeasureMethod);
-        if ( save){
-            //创建成功
-            return Result.ok(YamlMessageSource.getMessageStatic("0000000F"));
-        }else {
-            //创建失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
-        }
-    }
-
-    /**
-     * 查询项目下所有方法
+     * 查询项目下的所有方法
      * @param projectId
      * @param measureForm
      * @return
@@ -301,44 +273,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 查询样品列表头
-     * @param taskId
-     * @return
-     */
-    @Override
-    public Result<List<HeadVO>> querySampleHeads(String taskId) {
-        List<HeadVO> ans = new ArrayList<>();
-
-        if (!StringUtils.hasText(taskId)) {
-            return Result.ok(ans);
-        }
-
-
-
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task == null) {
-            //没有找到该任务
-            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
-        }
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(deleteType)) {
-                    continue;
-                }
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-
-                if (heads != null && !heads.equals(ans)) {
-                    ans.addAll(heads);
-                }
-            }
-        }
-        return Result.ok(ans);
-    }
-
-    /**
-     * 样品列表
+     * 获取样本列表接口
      * @param taskId
      * @param type
      * @return
@@ -369,12 +304,12 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
             if (taskSpeciman.getIsTested().equals("0")){
                 vo.setTitle(sample.getSampleName());
-                    vo.setSampleId(taskSpeciman.getSpecimenKey());
-                    vo.setAnalysisId(null);
-                    vo.setAnalysisNumber(1);
-                    vo.setColor(null);
-                    vo.setData(null);
-                    vo.setDeleteType("0");
+                vo.setSampleId(taskSpeciman.getSpecimenKey());
+                vo.setAnalysisId(null);
+                vo.setAnalysisNumber(1);
+                vo.setColor(null);
+                vo.setData(null);
+                vo.setDeleteType("0");
             }else{
                 QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                 queryWrapper.eq("task_id", taskId);
@@ -405,7 +340,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 删除样品列表中的一个测量数据
+     * 删除样品列表接口
      * @param sampleId
      * @param taskId
      * @return
@@ -453,7 +388,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 变换列表接口
+     * 获取变换列表接口
      * @param taskId
      * @param type
      * @return
@@ -539,7 +474,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 删除变换列表数据接口
+     * 删除变换列表接口
      * @param analysisId
      * @return
      */
@@ -562,7 +497,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 恢复删除的数据
+     * 恢复已删除数据接口
      */
     @Override
     public Result restoreDeletedListData(String taskId,String sampleId, String type,String analysisId) {
@@ -614,33 +549,60 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 设置方法参数
+     * 设置方法参数接口
      * @param methodId
      * @param deviceSerialNumber
      * @return
      */
     @Override
     public Result setMethodParameters(String methodId, String deviceSerialNumber) {
-
-        // 根据序列号查询设备ip
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("id", methodId).eq("measurement_type","时间扫描"));
-        if (method == null) {
+        if (methodId == null || methodId.equals("")){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+        // 根据methodId去方法表中查询数据
+        TMeasureMethod tMeasureMethod = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>().eq("id", methodId).eq("measurement_type", MeasureTypeEnum.TIME_SCAN.getDescription()));
+        if (tMeasureMethod == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
-        TimeSweepParamter time = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
-        List<Command> commands = new ArrayList<>();
-        commands.add(buildCommand(SetParamEnum.SetPhotoMode, time.getSpectralBandwidth()));
-        commands.add(buildCommand(SetParamEnum.SetChangeLampWl, time.getChangeLampWaveLength()));
-        commands.add(buildCommand(SetParamEnum.SetLampPos, time.getEnergyLamp()));
-        commands.add(buildCommand(SetParamEnum.SetGain, time.getGain()));
-        R<String> stringR = devMessageUtil.timeSweepSet(commands, ip);
-        return Result.ok(stringR.getData());
+        TimeSweepParamter timeSweepParamter = JSON.parseObject(tMeasureMethod.getMeasurementParamInfo(), TimeSweepParamter.class);
+
+        // 设置参数
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam setParam = new SetParam();
+        param.setDeviceSerialNumber(deviceSerialNumber);
+
+        // 1. 光度模式
+        setParam.setPhotoMode(Integer.valueOf(timeSweepParamter.getLuminosity()));
+        // 2. 光谱带宽
+        if (StringUtils.hasText(timeSweepParamter.getSpectralBandwidth())&&deviceInfoService.isNeedSetSit(deviceSerialNumber)) {
+            setParam.setSlit1(Double.valueOf(timeSweepParamter.getSpectralBandwidth()));
+        }
+        // 3. 响应时间
+        setParam.setResponseTime(Double.valueOf(timeSweepParamter.getResponseTime()));
+        // 4. 设置波长
+        setParam.setSetWl(Double.valueOf(timeSweepParamter.getWaveLength()));
+        // 5. 换灯波长
+        setParam.setChangeLampWl(Double.valueOf(timeSweepParamter.getChangeLampWaveLength()));
+        if (timeSweepParamter.getLuminosity().equals("3") || timeSweepParamter.getLuminosity().equals("4")) {
+            // 6. 能量灯
+            setParam.setLampPos(Integer.valueOf(timeSweepParamter.getEnergyLamp()));
+            // 7. 增益
+            setParam.setGain(Integer.valueOf(timeSweepParamter.getGain()));
+        }
+        param.setParam(setParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(param);
+        if (r.getSuccess()) {
+            DetectionConstants.currentWavelength = timeSweepParamter.getWaveLength();
+            return Result.ok(true);
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
     /**
-     * 零点校零
+     * 校零接口
      * @param taskId
      * @param serialNumber
      * @param methodId
@@ -722,7 +684,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 查询样品列表
+     * 获取样本按钮列表接口
      * @param taskId
      * @return
      */
@@ -790,7 +752,44 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 添加或删除样品
+     * 查询样品列表头
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result<List<HeadVO>> querySampleHeads(String taskId) {
+        List<HeadVO> ans = new ArrayList<>();
+
+        if (!StringUtils.hasText(taskId)) {
+            return Result.ok(ans);
+        }
+
+
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
+
+                if (heads != null && !heads.equals(ans)) {
+                    ans.addAll(heads);
+                }
+            }
+        }
+        return Result.ok(ans);
+    }
+
+    /**
+     * 添加或删除样本接口
      * @param paramDto
      * @return
      */
@@ -1032,7 +1031,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 上传图片
+     * 图片上传
      * @param upload
      * @return
      */
@@ -1088,7 +1087,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 获取峰谷数据列表
+     * 查询峰谷数据列表接口
      * @param dataId
      * @param digit
      * @return
@@ -1195,7 +1194,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 添加峰谷备注
+     * 添加峰谷备注接口
      * @param paramDto
      * @return
      */
@@ -1238,7 +1237,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 查询标记点数据列表
+     * 获取标记点数据列表
      * @param dataId
      * @param digit
      * @return
@@ -1266,10 +1265,8 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         return Result.ok(gaugePoints);
     }
 
-
-
     /**
-     * 添加标记点
+     * 添加标记点接口
      * @param paramDto
      * @return
      */
@@ -1340,7 +1337,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 添加标记点备注
+     * 添加标记点备注接口
      * @param paramDto
      * @return
      */
@@ -1374,7 +1371,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 更新数据颜色
+     * 更新数据颜色接口
      * @param paramDto
      * @return
      */
@@ -1412,7 +1409,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 导出到word
+     * 获取报表内容数据
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result gainStatementData(String taskId) {
+        return null;
+    }
+
+    /**
+     * 导出Word接口
      * @param taskId
      * @param response
      */
@@ -1446,7 +1453,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 查询算术源数据
+     * 查询运算源数据接口
      * @param taskId
      * @return
      */
@@ -1479,7 +1486,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 四则运算
+     * 四则运算接口
      * @param paramDto
      * @return
      */
@@ -1623,7 +1630,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 高级运算
+     * 高级运算接口
      * @param paramDto
      * @return
      */
@@ -1732,7 +1739,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 平滑
+     * 平滑接口
      * @param paramDto
      * @return
      */
@@ -1849,7 +1856,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 微分
+     * 微分接口
      * @param paramDto
      * @return
      */
@@ -1967,7 +1974,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 光度模式转化
+     * 光度模式转换
      * @param paramDto
      * @return
      */
@@ -2104,7 +2111,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 保存数据
+     * 保存数据接口
      * @param taskId
      * @return
      */
@@ -2127,7 +2134,339 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 查询报告表格数据
+     * 多格式文件下载接口（支持word/excel/txt）
+     * @param taskId 任务ID
+     * @param allDisplay 是否显示全部数据
+     * @param fileType 导出格式（word/txt/xlsx）
+     * @return 生成的文件对象
+     */
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds) {
+        // log.info("===== 导出流程开始 =====");
+        // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}",
+        // taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
+
+        // 1. 基础参数校验阶段（保持不变）
+        // log.info("【步骤1/5】开始基础参数校验");
+        if (!StringUtils.hasText(taskId)) {
+            // log.error("【步骤1/5】校验失败：缺少任务id");
+            //缺少任务id
+            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            // log.error("【步骤1/5】校验失败：任务不存在，taskId: {}", taskId);
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        // log.info("【步骤1/5】任务查询成功，任务名称：{}", task.getTaskName());
+
+        // 处理fileType（保持不变）
+        if (!StringUtils.hasText(fileType)) {
+            fileType = "word";
+            // log.info("【步骤1/5】未指定文件类型，默认使用：{}", fileType);
+        } else {
+            fileType = fileType.toLowerCase();
+            // log.info("【步骤1/5】指定文件类型：{}", fileType);
+        }
+
+        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
+            // log.error("【步骤1/5】校验失败：不支持的文件类型：{}", fileType);
+            //不支持的导出格式，仅支持word/txt/xlsx
+            return R.fail(YamlMessageSource.getMessageStatic("00300001"));
+        }
+
+        if (allDisplay == null) {
+            allDisplay = true;
+            // log.info("【步骤1/5】allDisplay未指定，默认使用：{}", allDisplay);
+        }
+        // log.info("【步骤1/5】基础参数校验通过");
+
+        // 2. 获取样品数据阶段（增加changeTheListPort数据处理和筛选）
+        // log.info("【步骤2/5】开始查询样品数据，taskId: {}", taskId);
+
+        // 2.1 获取两个来源的数据
+        List<SampleListVo> allSamples = new ArrayList<>();
+
+        // 处理sampleListPort数据
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null);
+        if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
+            // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
+            allSamples.addAll(sampleListResult.getData());
+        } else {
+            // log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
+        }
+
+        // 处理changeTheListPort数据（与sampleListPort逻辑相同）
+        Result<List<SampleListVo>> changeListResult = changeTheListPort(taskId, null, null);
+        if (changeListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && changeListResult.getData() != null) {
+            // log.info("【步骤2/5】changeTheListPort查询成功，返回样品数量：{}", changeListResult.getData().size());
+            allSamples.addAll(changeListResult.getData());
+        } else {
+            // log.warn("【步骤2/5】changeTheListPort查询异常：{}", changeListResult.getMessage());
+        }
+
+        // 2.2 根据analysisIds筛选数据
+        List<SampleListVo> filteredSamples = new ArrayList<>();
+        if (CollectionUtils.isEmpty(analysisIds)) {
+            // 无筛选条件，使用全部数据
+            filteredSamples = allSamples;
+            // log.info("【步骤2/5】未指定筛选条件，使用全部样品数据，总数量：{}", filteredSamples.size());
+        } else {
+            // 有筛选条件，匹配analysisId
+            for (SampleListVo sample : allSamples) {
+                // 假设SampleListVo有getAnalysisId()方法获取analysisId
+                String sampleAnalysisId = sample.getAnalysisId();
+                if (analysisIds.contains(sampleAnalysisId)) {
+                    filteredSamples.add(sample);
+                    // log.debug("【步骤2/5】样品{}的analysisId={}匹配筛选条件，已保留",
+                    // sample.getTitle(), sampleAnalysisId);
+                }
+            }
+            // log.info("【步骤2/5】筛选完成，原始样品数量：{}，匹配数量：{}",
+            //         allSamples.size(), filteredSamples.size());
+        }
+
+        // 2.3 打印样品数据信息
+        // log.info("【步骤2/5】最终使用的样品数量：{}", filteredSamples.size());
+        if (!filteredSamples.isEmpty()) {
+            int logCount = Math.min(3, filteredSamples.size());
+            for (int i = 0; i < logCount; i++) {
+                SampleListVo vo = filteredSamples.get(i);
+                // log.info("【步骤2/5】样品{}: title={}, analysisId={}, data是否为空={}",
+                //         i+1, vo.getTitle(), vo.getAnalysisId(),
+                //         vo.getData() == null || vo.getData().isEmpty());
+
+                // 打印第一个样品的前3条数据，确认x和y的值
+                if (i == 0 && vo.getData() != null && !vo.getData().isEmpty()) {
+                    int dataLogCount = Math.min(3, vo.getData().size());
+                    for (int j = 0; j < dataLogCount; j++) {
+                        Map<String, Object> data = vo.getData().get(j);
+                        // log.info("【步骤2/5】样品{}数据{}: x={}, y={}",
+                        //         i+1, j+1, data.get("x"), data.get("y"));
+                    }
+                }
+            }
+        } else {
+            // log.info("【步骤2/5】无符合条件的样品数据，后续将生成空文件");
+        }
+
+        // 3. 提取波长和样品数据阶段（逻辑不变，使用筛选后的样品）
+        // log.info("【步骤3/5】开始提取波长和样品数据");
+        List<String> wavelengths = new ArrayList<>(); // 存储x字段的值作为波长
+        Map<String, List<String>> sampleYMap = new LinkedHashMap<>(); // 存储各样品的y值
+
+        if (!filteredSamples.isEmpty()) {
+            for (SampleListVo vo : filteredSamples) {
+                String title = vo.getTitle();
+                List<Map<String, Object>> dataList = vo.getData();
+
+                if (CollectionUtils.isEmpty(dataList)) {
+                    // log.info("【步骤3/5】样品{}: 无数据，跳过", title);
+                    continue;
+                }
+
+                // 初始化当前样品的y值列表
+                sampleYMap.putIfAbsent(title, new ArrayList<>());
+                List<String> yList = sampleYMap.get(title);
+
+                // 遍历数据，提取x（波长）和y（数值）
+                for (Map<String, Object> data : dataList) {
+                    // 明确从data中获取"x"字段作为波长
+                    Object xObj = data.get("x");
+                    String x = (xObj != null) ? xObj.toString() : "-";
+
+                    // 明确从data中获取"y"字段作为数值
+                    Object yObj = data.get("y");
+                    String y = (yObj != null) ? yObj.toString() : "-";
+
+                    // 记录日志，确认x和y的取值
+                    // log.debug("【步骤3/5】样品{}: x={}, y={}", title, x, y);
+
+                    // 添加新波长（去重）
+                    if (!wavelengths.contains(x)) {
+                        wavelengths.add(x);
+                        // log.debug("【步骤3/5】新增波长: {}", x);
+                    }
+
+                    // 按波长顺序填充y值
+                    int index = wavelengths.indexOf(x);
+                    // 补全前面的空值
+                    while (yList.size() <= index) {
+                        yList.add("-");
+                    }
+                    // 设置当前波长对应的y值
+                    yList.set(index, y);
+                }
+            }
+        }
+
+        // log.info("【步骤3/5】数据提取完成，波长数量: {}, 有效样品数量: {}",
+        // wavelengths.size(), sampleYMap.size());
+
+        // 4. 构建表头和数据阶段（保持不变）
+        // log.info("【步骤4/5】开始构建导出表头和数据");
+        List<HeadVO> heads = new ArrayList<>();
+        heads.add(new HeadVO("波长nm", "wavelength")); // 波长列标题
+        sampleYMap.keySet().forEach(title -> heads.add(new HeadVO(title, title))); // 样品列标题
+
+        // log.info("【步骤4/5】表头构建完成，表头数量: {}", heads.size());
+
+        List<Map<String, Object>> exportData = new ArrayList<>();
+        if (!wavelengths.isEmpty()) {
+            for (int i = 0; i < wavelengths.size(); i++) {
+                final int index = i;
+                Map<String, Object> row = new LinkedHashMap<>();
+                // 波长列使用wavelengths中的值（即x字段的值）
+                row.put("wavelength", wavelengths.get(index));
+
+                // 样品列使用对应的y值
+                sampleYMap.forEach((title, yList) -> {
+                    row.put(title, index < yList.size() ? yList.get(index) : "-");
+                });
+
+                exportData.add(row);
+
+                // 打印前5行数据，确认波长列是否正确
+                // if (i < 5) {
+                //     log.info("【步骤4/5】数据行{}: 波长={}, 样品值={}",
+                //             i+1, row.get("wavelength"),
+                //             row.entrySet().stream()
+                //             .filter(e -> !"wavelength".equals(e.getKey()))
+                //             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                // }
+            }
+        } else {
+            // log.info("【步骤4/5】无波长数据，构建空数据列表");
+            Map<String, Object> emptyRow = new LinkedHashMap<>();
+            emptyRow.put("wavelength", "-");
+            sampleYMap.keySet().forEach(title -> emptyRow.put(title, "-"));
+            exportData.add(emptyRow);
+        }
+
+        // log.info("【步骤4/5】导出数据构建完成，数据行数: {}", exportData.size());
+
+        // 5. 生成文件阶段（保持不变）
+        // log.info("【步骤5/5】开始生成文件，类型: {}", fileType);
+        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
+        String filePath = System.getProperty("user.dir") + File.separator + fileName;
+        filePath = filePath.replaceAll("[\\\\/:*?\"<>|]", "_");
+        File file = new File(filePath);
+        // log.info("【步骤5/5】文件保存路径: {}", file.getAbsolutePath());
+
+        try {
+            switch (fileType) {
+                case "word":
+                    // log.info("【步骤5/5】开始生成Word文件");
+                    // 获取测量方法，避免空指针
+                    String methodKey = task.getMethodKey();
+                    TMeasureMethod method = null;
+                    if (StringUtils.hasText(methodKey)) {
+                        method = tMeasureMethodService.getById(methodKey);
+                        // log.info("【步骤5/5】查询到测量方法：{}", method != null ? method.getMethodName() : "未找到");
+                    }
+                    if (method == null) {
+                        // log.warn("【步骤5/5】测量方法不存在，使用默认值");
+                        method = new TMeasureMethod();
+                        method.setMethodName("未知测量方法");
+                    }
+                    generateWordFile(file, task, method, heads, exportData, 0);
+                    break;
+                case "txt":
+                    // log.info("【步骤5/5】开始生成TXT文件");
+                    generateTxtFile(file, heads, exportData);
+                    break;
+                case "xlsx":
+                    // log.info("【步骤5/5】开始生成Excel文件");
+                    generateExcelFile(file, heads, exportData);
+                    break;
+            }
+
+            if (file.exists()) {
+                if (file.length() > 0) {
+                    // log.info("【步骤5/5】文件生成成功，大小: {} bytes", file.length());
+                    return R.ok(file);
+                } else {
+                    // log.warn("【步骤5/5】文件生成成功，但文件为空");
+                    return R.ok(file);
+                }
+            } else {
+                // log.error("【步骤5/5】文件生成失败：文件不存在");
+                //文件生成失败：文件不存在
+                return R.fail(YamlMessageSource.getMessageStatic("0030400A"));
+            }
+        } catch (Exception e) {
+            // log.error("【步骤5/5】文件生成异常", e);
+            if (file.exists()) {
+                boolean deleted = file.delete();
+                // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
+            }
+            //"文件生成失败：" + e.getMessage()
+            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
+        } finally {
+            // log.info("===== 导出流程结束 =====");
+        }
+    }
+
+    /**
+     * 仪器设置参数
+     * @param deviceSerialNumber
+     * @param setParam
+     * @return
+     */
+    @Override
+    public boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam) {
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        param.setDeviceSerialNumber(deviceSerialNumber);
+        param.setParam(setParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(param);
+        if (r.getSuccess()) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+    /**
+     * (实验测试)创建方法
+     * @param methodDto
+     * @param updateBy
+     * @param timeSweepParamter
+     * @return
+     */
+    @Override
+    public Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, TimeSweepParamter timeSweepParamter) {
+        if (updateBy.length()>=256){
+            //用户名过长！
+            return Result.fail(YamlMessageSource.getMessageStatic("00305001"));
+        }
+        if (methodDto.getMethodName().length()>=256){
+            //方法名称过长！
+            return Result.fail(YamlMessageSource.getMessageStatic("00305004"));
+        }
+        // 创建测量方法表
+        TMeasureMethod tMeasureMethod = new TMeasureMethod();
+        tMeasureMethod.setProjectItemKey(methodDto.getProjectId());
+        tMeasureMethod.setMethodName(methodDto.getMethodName());
+        tMeasureMethod.setMeasurementType(methodDto.getMethodType());
+        tMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(timeSweepParamter));
+        tMeasureMethod.setMethodCreator(updateBy);
+        tMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        tMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
+        boolean save = tMeasureMethodService.save(tMeasureMethod);
+        if ( save){
+            //创建成功
+            return Result.ok(YamlMessageSource.getMessageStatic("0000000F"));
+        }else {
+            //创建失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
+        }
+    }
+
+    /**
+     * (实验测试)查询报告表格数据接口
      * @param taskId
      * @return
      */
@@ -2168,7 +2507,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 表格头
+     * (实验测试)表格头接口
      * @param taskId
      * @param methodId
      * @param sampleIds
@@ -2211,7 +2550,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     }
 
     /**
-     * 表格数据
+     * (实验测试)查询表格数据接口
      * @param taskId
      * @param sampleIds
      * @return
@@ -2416,12 +2755,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 //        }
 //        return arrayList;
     }
-
-    @Override
-    public Result gainStatementData(String taskId) {
-        return null;
-    }
-
 
     /**
      * 获取样品的详细数据
@@ -2657,281 +2990,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         return new BigDecimal(numStr)
                 .stripTrailingZeros()
                 .toPlainString();
-    }
-
-    /**
-     * 多格式文件导出（支持word/txt/xlsx）
-     * @param taskId 任务ID
-     * @param allDisplay 是否显示全部数据
-     * @param fileType 导出格式（word/txt/xlsx）
-     * @return 生成的文件对象
-     */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds) {
-        // log.info("===== 导出流程开始 =====");
-        // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}", 
-                // taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
-
-        // 1. 基础参数校验阶段（保持不变）
-        // log.info("【步骤1/5】开始基础参数校验");
-        if (!StringUtils.hasText(taskId)) {
-            // log.error("【步骤1/5】校验失败：缺少任务id");
-            //缺少任务id
-            return R.fail(YamlMessageSource.getMessageStatic("00000019"));
-        }
-        
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task == null) {
-            // log.error("【步骤1/5】校验失败：任务不存在，taskId: {}", taskId);
-            //没有找到该任务
-            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
-        }
-        // log.info("【步骤1/5】任务查询成功，任务名称：{}", task.getTaskName());
-
-        // 处理fileType（保持不变）
-        if (!StringUtils.hasText(fileType)) {
-            fileType = "word";
-            // log.info("【步骤1/5】未指定文件类型，默认使用：{}", fileType);
-        } else {
-            fileType = fileType.toLowerCase();
-            // log.info("【步骤1/5】指定文件类型：{}", fileType);
-        }
-        
-        if (!"word".equals(fileType) && !"txt".equals(fileType) && !"xlsx".equals(fileType)) {
-            // log.error("【步骤1/5】校验失败：不支持的文件类型：{}", fileType);
-            //不支持的导出格式，仅支持word/txt/xlsx
-            return R.fail(YamlMessageSource.getMessageStatic("00300001"));
-        }
-        
-        if (allDisplay == null) {
-            allDisplay = true;
-            // log.info("【步骤1/5】allDisplay未指定，默认使用：{}", allDisplay);
-        }
-        // log.info("【步骤1/5】基础参数校验通过");
-
-        // 2. 获取样品数据阶段（增加changeTheListPort数据处理和筛选）
-        // log.info("【步骤2/5】开始查询样品数据，taskId: {}", taskId);
-        
-        // 2.1 获取两个来源的数据
-        List<SampleListVo> allSamples = new ArrayList<>();
-        
-        // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null);
-        if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
-            // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
-            allSamples.addAll(sampleListResult.getData());
-        } else {
-            // log.warn("【步骤2/5】sampleListPort查询异常：{}", sampleListResult.getMessage());
-        }
-        
-        // 处理changeTheListPort数据（与sampleListPort逻辑相同）
-        Result<List<SampleListVo>> changeListResult = changeTheListPort(taskId, null, null);
-        if (changeListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && changeListResult.getData() != null) {
-            // log.info("【步骤2/5】changeTheListPort查询成功，返回样品数量：{}", changeListResult.getData().size());
-            allSamples.addAll(changeListResult.getData());
-        } else {
-            // log.warn("【步骤2/5】changeTheListPort查询异常：{}", changeListResult.getMessage());
-        }
-        
-        // 2.2 根据analysisIds筛选数据
-        List<SampleListVo> filteredSamples = new ArrayList<>();
-        if (CollectionUtils.isEmpty(analysisIds)) {
-            // 无筛选条件，使用全部数据
-            filteredSamples = allSamples;
-            // log.info("【步骤2/5】未指定筛选条件，使用全部样品数据，总数量：{}", filteredSamples.size());
-        } else {
-            // 有筛选条件，匹配analysisId
-            for (SampleListVo sample : allSamples) {
-                // 假设SampleListVo有getAnalysisId()方法获取analysisId
-                String sampleAnalysisId = sample.getAnalysisId();
-                if (analysisIds.contains(sampleAnalysisId)) {
-                    filteredSamples.add(sample);
-                    // log.debug("【步骤2/5】样品{}的analysisId={}匹配筛选条件，已保留", 
-                            // sample.getTitle(), sampleAnalysisId);
-                }
-            }
-            // log.info("【步骤2/5】筛选完成，原始样品数量：{}，匹配数量：{}", 
-            //         allSamples.size(), filteredSamples.size());
-        }
-        
-        // 2.3 打印样品数据信息
-        // log.info("【步骤2/5】最终使用的样品数量：{}", filteredSamples.size());
-        if (!filteredSamples.isEmpty()) {
-            int logCount = Math.min(3, filteredSamples.size());
-            for (int i = 0; i < logCount; i++) {
-                SampleListVo vo = filteredSamples.get(i);
-                // log.info("【步骤2/5】样品{}: title={}, analysisId={}, data是否为空={}", 
-                //         i+1, vo.getTitle(), vo.getAnalysisId(), 
-                //         vo.getData() == null || vo.getData().isEmpty());
-                
-                // 打印第一个样品的前3条数据，确认x和y的值
-                if (i == 0 && vo.getData() != null && !vo.getData().isEmpty()) {
-                    int dataLogCount = Math.min(3, vo.getData().size());
-                    for (int j = 0; j < dataLogCount; j++) {
-                        Map<String, Object> data = vo.getData().get(j);
-                        // log.info("【步骤2/5】样品{}数据{}: x={}, y={}", 
-                        //         i+1, j+1, data.get("x"), data.get("y"));
-                    }
-                }
-            }
-        } else {
-            // log.info("【步骤2/5】无符合条件的样品数据，后续将生成空文件");
-        }
-
-        // 3. 提取波长和样品数据阶段（逻辑不变，使用筛选后的样品）
-        // log.info("【步骤3/5】开始提取波长和样品数据");
-        List<String> wavelengths = new ArrayList<>(); // 存储x字段的值作为波长
-        Map<String, List<String>> sampleYMap = new LinkedHashMap<>(); // 存储各样品的y值
-
-        if (!filteredSamples.isEmpty()) {
-            for (SampleListVo vo : filteredSamples) {
-                String title = vo.getTitle();
-                List<Map<String, Object>> dataList = vo.getData();
-                
-                if (CollectionUtils.isEmpty(dataList)) {
-                    // log.info("【步骤3/5】样品{}: 无数据，跳过", title);
-                    continue;
-                }
-                
-                // 初始化当前样品的y值列表
-                sampleYMap.putIfAbsent(title, new ArrayList<>());
-                List<String> yList = sampleYMap.get(title);
-
-                // 遍历数据，提取x（波长）和y（数值）
-                for (Map<String, Object> data : dataList) {
-                    // 明确从data中获取"x"字段作为波长
-                    Object xObj = data.get("x");
-                    String x = (xObj != null) ? xObj.toString() : "-";
-                    
-                    // 明确从data中获取"y"字段作为数值
-                    Object yObj = data.get("y");
-                    String y = (yObj != null) ? yObj.toString() : "-";
-                    
-                    // 记录日志，确认x和y的取值
-                    // log.debug("【步骤3/5】样品{}: x={}, y={}", title, x, y);
-                    
-                    // 添加新波长（去重）
-                    if (!wavelengths.contains(x)) {
-                        wavelengths.add(x);
-                        // log.debug("【步骤3/5】新增波长: {}", x);
-                    }
-                    
-                    // 按波长顺序填充y值
-                    int index = wavelengths.indexOf(x);
-                    // 补全前面的空值
-                    while (yList.size() <= index) {
-                        yList.add("-");
-                    }
-                    // 设置当前波长对应的y值
-                    yList.set(index, y);
-                }
-            }
-        }
-
-        // log.info("【步骤3/5】数据提取完成，波长数量: {}, 有效样品数量: {}", 
-                // wavelengths.size(), sampleYMap.size());
-
-        // 4. 构建表头和数据阶段（保持不变）
-        // log.info("【步骤4/5】开始构建导出表头和数据");
-        List<HeadVO> heads = new ArrayList<>();
-        heads.add(new HeadVO("波长nm", "wavelength")); // 波长列标题
-        sampleYMap.keySet().forEach(title -> heads.add(new HeadVO(title, title))); // 样品列标题
-        
-        // log.info("【步骤4/5】表头构建完成，表头数量: {}", heads.size());
-        
-        List<Map<String, Object>> exportData = new ArrayList<>();
-        if (!wavelengths.isEmpty()) {
-            for (int i = 0; i < wavelengths.size(); i++) {
-                final int index = i;
-                Map<String, Object> row = new LinkedHashMap<>();
-                // 波长列使用wavelengths中的值（即x字段的值）
-                row.put("wavelength", wavelengths.get(index));
-                
-                // 样品列使用对应的y值
-                sampleYMap.forEach((title, yList) -> {
-                    row.put(title, index < yList.size() ? yList.get(index) : "-");
-                });
-                
-                exportData.add(row);
-                
-                // 打印前5行数据，确认波长列是否正确
-                // if (i < 5) {
-                //     log.info("【步骤4/5】数据行{}: 波长={}, 样品值={}", 
-                //             i+1, row.get("wavelength"), 
-                //             row.entrySet().stream()
-                //             .filter(e -> !"wavelength".equals(e.getKey()))
-                //             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-                // }
-            }
-        } else {
-            // log.info("【步骤4/5】无波长数据，构建空数据列表");
-            Map<String, Object> emptyRow = new LinkedHashMap<>();
-            emptyRow.put("wavelength", "-");
-            sampleYMap.keySet().forEach(title -> emptyRow.put(title, "-"));
-            exportData.add(emptyRow);
-        }
-        
-        // log.info("【步骤4/5】导出数据构建完成，数据行数: {}", exportData.size());
-
-        // 5. 生成文件阶段（保持不变）
-        // log.info("【步骤5/5】开始生成文件，类型: {}", fileType);
-        String fileName = task.getTaskName() + "." + getFileSuffix(fileType);
-        String filePath = System.getProperty("user.dir") + File.separator + fileName;
-        filePath = filePath.replaceAll("[\\\\/:*?\"<>|]", "_");
-        File file = new File(filePath);
-        // log.info("【步骤5/5】文件保存路径: {}", file.getAbsolutePath());
-
-        try {
-            switch (fileType) {
-                case "word":
-                    // log.info("【步骤5/5】开始生成Word文件");
-                    // 获取测量方法，避免空指针
-                    String methodKey = task.getMethodKey();
-                    TMeasureMethod method = null;
-                    if (StringUtils.hasText(methodKey)) {
-                        method = tMeasureMethodService.getById(methodKey);
-                        // log.info("【步骤5/5】查询到测量方法：{}", method != null ? method.getMethodName() : "未找到");
-                    }
-                    if (method == null) {
-                        // log.warn("【步骤5/5】测量方法不存在，使用默认值");
-                        method = new TMeasureMethod();
-                        method.setMethodName("未知测量方法");
-                    }
-                    generateWordFile(file, task, method, heads, exportData, 0);
-                    break;
-                case "txt":
-                    // log.info("【步骤5/5】开始生成TXT文件");
-                    generateTxtFile(file, heads, exportData);
-                    break;
-                case "xlsx":
-                    // log.info("【步骤5/5】开始生成Excel文件");
-                    generateExcelFile(file, heads, exportData);
-                    break;
-            }
-
-            if (file.exists()) {
-                if (file.length() > 0) {
-                    // log.info("【步骤5/5】文件生成成功，大小: {} bytes", file.length());
-                    return R.ok(file);
-                } else {
-                    // log.warn("【步骤5/5】文件生成成功，但文件为空");
-                    return R.ok(file);
-                }
-            } else {
-                // log.error("【步骤5/5】文件生成失败：文件不存在");
-                //文件生成失败：文件不存在
-                return R.fail(YamlMessageSource.getMessageStatic("0030400A"));
-            }
-        } catch (Exception e) {
-            // log.error("【步骤5/5】文件生成异常", e);
-            if (file.exists()) {
-                boolean deleted = file.delete();
-                // log.info("【步骤5/5】删除异常文件: {}", deleted ? "成功" : "失败");
-            }
-            //"文件生成失败：" + e.getMessage()
-            return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
-        } finally {
-            // log.info("===== 导出流程结束 =====");
-        }
     }
 
     // 保留原有的downloadWord方法，并适配新参数
@@ -3221,6 +3279,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
     }
 
+    /**
+     * 添加光度模式
+     * @param ans
+     * @param mode
+     */
     public void addLuminosityMode(List<HeadVO> ans, String mode) {
         switch (mode) {
             case "1":

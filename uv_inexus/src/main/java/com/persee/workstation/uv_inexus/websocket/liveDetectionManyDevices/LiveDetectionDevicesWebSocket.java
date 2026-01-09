@@ -22,6 +22,14 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.websocket.guide.GuidePhotometricWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.PhotometricNewWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.PhotometricWebsocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.TimeWebNewSocket;
+import com.persee.workstation.uv_inexus.websocket.measure.ZeroCalibrationNewWebSocket;
+import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseTimeWebNewSocket;
+import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseZeroCalibrationNewWebSocket;
+import com.persee.workstation.uv_inexus.websocket.measure.param.FTimeWebNewSocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.param.FZeroCalibrationWebSocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.param.TimeWebNewSocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.param.ZeroCalibrationWebSocketParam;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -65,6 +73,18 @@ public class LiveDetectionDevicesWebSocket {
 
     @Autowired
     PhotometricNewWebSocket photometricNewWebSocket;
+
+    @Autowired
+    ZeroCalibrationNewWebSocket zeroCalibrationNewWebSocket;
+
+    @Autowired
+    ConciseZeroCalibrationNewWebSocket conciseZeroCalibrationNewWebSocket;
+
+    @Autowired
+    TimeWebNewSocket timeWebNewSocket;
+
+    @Autowired
+    ConciseTimeWebNewSocket conciseTimeWebNewSocket;
 
     @Autowired
     GuidePhotometricWebSocket guidePhotometricWebSocket;
@@ -163,50 +183,76 @@ public class LiveDetectionDevicesWebSocket {
             }
             JSONObject data = input.getData();
             switch (anEnum) {
-                case LiveDetection:
+                case LiveDetection:{
                     startMeasurement(deviceSerialNumber);
                     break;
-                case DeviceStatus:
+                }
+                case DeviceStatus:{
                     deviceStatusStart(deviceSerialNumber);
                     break;
-                case ConcisePhotoMetric:
-
+                }
+                case ConciseZeroCalibration:{
+                    FZeroCalibrationWebSocketParam param = data.toJavaObject(FZeroCalibrationWebSocketParam.class);
+                    conciseZeroCalibrationNewWebSocket.measureTask(param);
+                    break;
+                }
+                case ConciseBaseLine:{
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseBaseLine.getOperation());
+                    break;
+                }
+                case ConcisePhotoMetric:{
                     PhotometricWebsocketParam param = data.toJavaObject(PhotometricWebsocketParam.class);
                     photometricNewWebSocket.measureTask(param);
                     break;
-                case ConciseRationMeasure:
+                }
+                case ConciseRationMeasure:{
                     Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseRationMeasure.getOperation());
                     break;
-                case ConciseBaseLine:
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseBaseLine.getOperation());
-                    break;
-                case ConciseSpectrum:
+                }
+                case ConciseSpectrum:{
                     Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseSpectrum.getOperation());
                     break;
-                case ConciseTimeMeasure:
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseTimeMeasure.getOperation());
+                }
+                case ConciseTimeMeasure:{
+                    FTimeWebNewSocketParam param = data.toJavaObject(FTimeWebNewSocketParam.class);
+                    conciseTimeWebNewSocket.measureTask(param);
                     break;
-                case PhotoMetric:
+                }
+                case ZeroCalibration:{
+                    ZeroCalibrationWebSocketParam param = data.toJavaObject(ZeroCalibrationWebSocketParam.class);
+                    zeroCalibrationNewWebSocket.measureTask(param);
+                    break;
+                }
+                case BaseLine:{
+                    Measure(deviceSerialNumber, WebSocketOperationEnum.BaseLine.getOperation());
+                    break;
+                }
+                case PhotoMetric:{
                     JSONObject photometricdata = input.getData();
                     PhotometricWebsocketParam photometricparam = photometricdata.toJavaObject(PhotometricWebsocketParam.class);
                     guidePhotometricWebSocket.measureTask(photometricparam);
 //                    Measure(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation());
                     break;
-                case RationMeasure:
+                }
+                case RationMeasure:{
                     Measure(deviceSerialNumber, WebSocketOperationEnum.RationMeasure.getOperation());
                     break;
-                case Spectrum:
+                }
+                case Spectrum:{
                     Measure(deviceSerialNumber, WebSocketOperationEnum.Spectrum.getOperation());
                     break;
-                case BaseLine:
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.BaseLine.getOperation());
+                }
+                case TimeMeasure:{
+                    TimeWebNewSocketParam param = new TimeWebNewSocketParam();
+                    timeWebNewSocket.measureTask(param);
                     break;
-                case TimeMeasure:
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.TimeMeasure.getOperation());
-                    break;
-                default:
+                }
+                default:{
                     webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "未知操作类型: " + operation);
+                    return;
             }
+            }
+
 
         } catch (Exception e) {
             log.error("测量操作请求解析失败", e);

@@ -663,8 +663,7 @@ public class ConnectUtil {
                     if (!isWireless && !isVirtual &&
                             (displayName.contains("ethernet") ||
                                     displayName.contains("以太网") ||
-                                    (displayName.contains("adapter") && !displayName.contains("wireless")))||
-                    displayName.equals("realtek pcie gbe family controller")) {
+                                    (displayName.contains("adapter") && !displayName.contains("wireless")))) {
 
                         Enumeration<InetAddress> addresses = ni.getInetAddresses();
                         while (addresses.hasMoreElements()) {

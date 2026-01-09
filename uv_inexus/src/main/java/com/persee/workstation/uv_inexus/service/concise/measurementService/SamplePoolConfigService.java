@@ -14,13 +14,13 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FSamplePoolConfigPO;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 
 import java.util.List;
 
-public interface FSamplePoolConfigService  extends IService<FSamplePoolConfigPO> {
+public interface SamplePoolConfigService  extends IService<SamplePoolConfigPO> {
 
     Boolean updateCurrentPoolNum(String deviceSerialNumber, Integer currentPoolNum, String updateBy);
 
