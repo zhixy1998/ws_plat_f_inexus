@@ -62,4 +62,10 @@ public class DevOperationInputParam {
     @ApiModelProperty("操作人")
     private String updateBy;
 
+    @ApiModelProperty("时间扫描间隔（秒）")
+    private Double intervalSeconds;
+
+    @ApiModelProperty("扫描总时间")
+    private Double totalTime;
+
 }

@@ -71,6 +71,24 @@ public class UnknowCountMessageQueue {
         return queue.offer(message);
     }
 
+    private boolean putMessageInternal(
+            ConcurrentHashMap<String, BlockingDeque<Object>> map,
+            String key,
+            Object message
+    ) {
+        if (key == null || message == null) {
+            return false;
+        }
+
+        BlockingDeque<Object> queue = map.computeIfAbsent(
+                key,
+                k -> new LinkedBlockingDeque<>(queueCapacity)
+        );
+
+        return queue.offer(message);
+    }
+
+
     /**
      * 存储消息（阻塞方式，队列满时等待）
      * @param deviceSerialNumber 仪器序列号

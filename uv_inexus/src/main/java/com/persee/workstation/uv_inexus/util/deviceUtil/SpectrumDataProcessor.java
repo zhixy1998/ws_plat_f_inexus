@@ -24,6 +24,13 @@ public class SpectrumDataProcessor {                 //计算RSD
     /** 当前扫描过程的数据点索引（从 0 开始） */
     private int dataPointIndex = 0;
 
+    /** 是否接近扫描结束点的标志（离结束小于10个点时为false） */
+    private static volatile boolean isNotNearEnd = true;
+
+    /** 预定义的接近结束的点数阈值 */
+    private static final int NEAR_END_THRESHOLD = 10;
+
+
     /** 测试阶段使用的固定波长起点、终点、间隔 */
 //    private final double startWl = 700.0;
 //    private final double endWl = 600.0;
@@ -43,6 +50,7 @@ public class SpectrumDataProcessor {                 //计算RSD
     /** 扫描开始前重置 index */
     public void reset() {
         dataPointIndex = 0;
+        isNotNearEnd = true;
 
         if (device.getScanWavelengthConfig() == null) {
             log.warn("[SPECTRUM] reset called but scan config not set");
@@ -169,6 +177,9 @@ public class SpectrumDataProcessor {                 //计算RSD
         if (isDescending && wl < endWl) wl = endWl;
         if (!isDescending && wl > endWl) wl = endWl;
 
+        //停止条件
+        updateNearEndFlag();
+
         int decimalPlaces = getDecimalPlaces(interval);
         return roundToPrecision(wl, decimalPlaces);
     }
@@ -223,5 +234,20 @@ public class SpectrumDataProcessor {                 //计算RSD
         return currentPoint;
     }
 
+    /**
+     * 更新是否接近结束的标志
+     * 当剩余点数小于阈值时，设置标志为 false
+     */
+    private void updateNearEndFlag() {
+        int maxIndex = getMaxIndex();
+        int remainingPoints = maxIndex - dataPointIndex;
+
+        // 当剩余点数小于等于阈值时，设置为 false
+        this.isNotNearEnd = remainingPoints > NEAR_END_THRESHOLD;
+    }
+
+    public static boolean isNotNearEnd() {
+        return isNotNearEnd;
+    }
 }
 

@@ -33,6 +33,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.*;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionCmdEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.DetectionManyDevicesLampStatus;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
@@ -47,8 +48,6 @@ import java.lang.reflect.Method;
 import java.net.DatagramSocket;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -85,26 +84,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     @Autowired
     UdpSendUtil udpSendUtil;
 
-    @Autowired
-    MessageOnTimeDeal messageOnTimeDeal;
-
-    @Autowired
-    private SpectrumThreadManager spectrumThreadManager;
-
-    private final Map<String, Thread> spectrumProcessorThreadMap = new ConcurrentHashMap<>();
-
-    // 在类的成员变量部分，替换原有的线程映射
-    private final Map<String, Thread> scanProcessorThreadMap = new ConcurrentHashMap<>();
-    private final Map<String, Thread> baselineProcessorThreadMap = new ConcurrentHashMap<>();
-
-    private final ConcurrentMap<String, SpectrumPointStore> spectrumPointStoreMap = new ConcurrentHashMap<>();
-
-
     private final static ConnectUtil connectUtil = ConnectUtil.getInstance();
 
     private final static String defaultIp = "255.255.255.255";
-
-    private final static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
 
     private final static DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
@@ -113,10 +95,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     private final ExecutorService actionExecutor = Executors.newSingleThreadExecutor();
 
     ScanWavelengthConfig cfg = new ScanWavelengthConfig();
-
-    private final Map<String, SpectrumDataProcessor> spectrumProcessorMap =
-            new ConcurrentHashMap<>();
-
     @Override
     public void initXml() {
 
@@ -354,7 +332,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 break;
             case Stop:
                 actionExecutor.submit(() -> stop(inputParam));
-//                result = stop(inputParam);
+                break;
+            case TimeMeasure:
+                actionExecutor.submit(() -> executeTimeMeasure(inputParam));
                 break;
             default:
                 infoService.newReleaseDevice(deviceSerialNumber);
@@ -389,6 +369,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         R<Object> stop;
 
+        boolean Stop = SpectrumDataProcessor.isNotNearEnd();
+        if (Stop){
             if (ReplyNumber < 0) {
                 stop = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, Timeout, false, deviceSerialNumber, null);
                 if (!stop.getSuccess()) {
@@ -400,7 +382,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     return R.fail("停止失败！");
                 }
             }
-
+        }
         return R.ok();
     }
 
@@ -498,7 +480,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             if (!result.getSuccess()) {
-                return R.fail("参数设置失败，指令：" + command.getCmdId());
+                return R.fail("，指令：" + command.getCmdId());
             }
         }
 
@@ -561,17 +543,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             isDealOnTime = true;
         }
 
-//        if ("Stop".equals(cmdId)) {
-//
-//            log.info("[STOP-SCAN] device={} request stop scan", deviceId);
-//
-//            //先停 Java 侧解析线程（最重要）
-//            ScanSessionManager.stopScan(deviceId);
-//
-//            //清空缓存，避免残包
-//            MessageStoreManager.getInstance()
-//                    .clearDeviceMessages(deviceId);
-//        }
         if (replyNumber < 0) {
             result = udpSendUtil.unknownReceive(
                     deviceId,
@@ -598,10 +569,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         }
 
         // ================= 先取解析结果（关键） =================
-        OperationResultEntity resultEntity =
-                (OperationResultEntity) result.getData();
 
-        resultEntity = (OperationResultEntity)result.getData();
+        OperationResultEntity resultEntity = (OperationResultEntity)result.getData();
         return R.ok(resultEntity);
     }
 
@@ -677,7 +646,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (setParam != null) {
                     Double startWl = setParam.getStartWl();
                     Double endWl = setParam.getEndWl();
-                    Double interval =  setParam.getScanWlInterval();
+                    Double interval = setParam.getScanWlInterval();
 
                     if (startWl != null && endWl != null && interval != null) {
                         // 直接操作 device 对象
@@ -1424,7 +1393,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         List<String> wavelength = inputParam.getWavelength();
 
         if (wavelength == null || wavelength.isEmpty()) {
-            return R.fail("请选择要零点的波长");
+//            return R.fail("请选择要零点的波长");
+            wavelength = Arrays.asList("660.0");
         }
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -1553,6 +1523,255 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         return R.ok(resultEntity);
     }
+
+//private R<OperationResultEntity> executeTimeMeasure(DevOperationInputParam inputParam) throws InterruptedException {
+//
+//    OperationResultEntity resultEntity = new OperationResultEntity();
+//
+//    String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+//    Double intervalSeconds = inputParam.getIntervalSeconds();
+//
+//    if (intervalSeconds == null || intervalSeconds <= 0) {
+//        return R.fail("时间间隔必须大于 0");
+//    }
+//
+//    long intervalMillis = (long) (intervalSeconds * 1000);
+//    long nextTime = System.currentTimeMillis();
+//
+//    DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+//    String deviceId = info.getDeviceId();
+//    DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+//    String xmlKey = device.getXmlKey();
+//    Integer connectType = device.getConnectType();
+//
+//    Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+//
+//    List<ChangeParam> resultList = new ArrayList<>();
+//
+//    if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+//        return R.fail("暂不支持串口");
+//    }
+//
+//    // 获取当前波长（假设时间扫描每次波长不变）
+//    String wl = deviceManager.getCurrentWavelength(deviceId);
+//    if (wl == null) {
+//        return R.fail("当前波长未设置，请先校零");
+//    }
+//
+//    // 获取对应 zeroRsd
+//    ChangeParam zeroRsd = deviceManager.getZeroResult(deviceId, wl);
+//    if (zeroRsd == null) {
+//        return R.fail("未找到波长 " + wl + " 的校零结果，请先执行 zero");
+//    }
+//
+//    /* ================= 2. 按时间循环 Measure ================= */
+//    Transition measureTransition = xml.get(T600ComIdEnums.Measure.getComId());
+//    byte[] measureBytes = protocolItemUtil.calcSendBytes(new Object[]{}, measureTransition);
+//
+//    while (!Thread.currentThread().isInterrupted()) {
+//
+//        nextTime += intervalMillis;
+//
+//        long start = System.currentTimeMillis();
+//
+//        R<Object> rsp = udpSendUtil.knowTotalReceiveSend(
+//                deviceId,
+//                T600ComIdEnums.Measure.getComId(),
+//                measureBytes,
+//                measureTransition.getReplyNumber(),
+//                measureTransition.getTimeout(),
+//                connectType
+//        );
+//
+//        if (!rsp.getSuccess()) {
+//            return R.fail("时间扫描测量失败");
+//        }
+//
+//        OperationResultEntity temp = (OperationResultEntity) rsp.getData();
+//        ChangeParam measureRsd = temp.getMeasureResult();
+//        measureRsd.setWl(wl);
+//        resultList.add(measureRsd);
+//
+//        // ========== 调用 SpectrumResultCalculator 计算 Abs/T%/Es/Er ==========
+//        SpectrumPoint point = new SpectrumPoint(Double.parseDouble(wl));
+//        point.setZeroRsd(zeroRsd);
+//        point.setMeasureRsd(measureRsd);
+//
+//        // ===== 统一结果对象 =====
+//        SpectrumCalcResult calcResult = new SpectrumCalcResult();
+//        calcResult.setWavelength(point.getWavelength());
+//
+//        SpectrumCalcResult absResult = SpectrumResultCalculator.calculate(1, point, SpectrumSourceType.SINGLE);
+//        SpectrumCalcResult tResult   = SpectrumResultCalculator.calculate(2, point, SpectrumSourceType.SINGLE);
+//        SpectrumCalcResult esResult  = SpectrumResultCalculator.calculate(3, point, SpectrumSourceType.SINGLE);
+//        SpectrumCalcResult erResult  = SpectrumResultCalculator.calculate(4, point, SpectrumSourceType.SINGLE);
+//
+//
+//        // 可选：把计算结果保存到 measureRsd 对应的对象中
+//        point.setAbsResult(absResult);
+//        point.setTResult(tResult);
+//        point.setEsResult(esResult);
+//        point.setErResult(erResult);
+//
+//
+//        point.setTimestamp(System.currentTimeMillis());
+//        log.info("[时间计算] wl={}, Abs={}, T%={}, Es={}, Er={}, time={}",
+//                point.getWavelength(),
+//                absResult != null ? absResult.getAbs() : "-",
+//                tResult != null ? tResult.getTPercent() : "-",
+//                esResult != null ? esResult.getEs() : "-",
+//                erResult != null ? erResult.getEr() : "-",
+//                point.getTimestamp());
+//
+//
+//        unknowCountMessageQueue.putMessage(deviceSerialNumber, "Measure", point);
+//        long cost = System.currentTimeMillis() - start;
+//        long sleep = nextTime - System.currentTimeMillis();
+//
+//        if (sleep > 0) {
+//            Thread.sleep(sleep);
+//        } else {
+//            log.warn("[时间测量] 已超时 {} ms，跳过 sleep", -sleep);
+//        }
+//        try {
+//            Thread.sleep(intervalMillis);
+//        } catch (InterruptedException e) {
+//            Thread.currentThread().interrupt();
+//            unknowCountMessageQueue.putMessage(
+//                    deviceSerialNumber,
+//                    "Measure",
+//                    EndMarker.timeout(deviceSerialNumber, "Measure")
+//            );
+//            infoService.newReleaseDevice(deviceSerialNumber);
+//            break;
+//        }
+//    }
+//
+//    resultEntity.setOriginalMeasureResult(resultList);
+//    return R.ok(resultEntity);
+//}
+
+    private R<OperationResultEntity> executeTimeMeasure(DevOperationInputParam inputParam) {
+
+        OperationResultEntity resultEntity = new OperationResultEntity();
+
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        Double intervalSeconds = inputParam.getIntervalSeconds();
+        Double totalTime = inputParam.getTotalTime();
+
+        if (intervalSeconds == null || intervalSeconds <= 0) {
+            return R.fail("时间间隔必须大于 0");
+        }
+
+        if (totalTime == null || totalTime <= 0) {
+            return R.fail("时间必须大于 0");
+        }
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+
+        // ========= 当前波长 & zero =========
+        String wl = deviceManager.getCurrentWavelength(deviceId);
+        if (wl == null) {
+            return R.fail("当前波长未设置，请先校零");
+        }
+
+        ChangeParam zeroRsd = deviceManager.getZeroResult(deviceId, wl);
+        if (zeroRsd == null) {
+            return R.fail("未找到波长 " + wl + " 的校零结果");
+        }
+
+        // 默认连接方式：网口
+        if (inputParam.getConnectType() == null) {
+            inputParam.setConnectType(DeviceConnectTypeEnum.ETHERNET.getConnectType());
+        }
+        // 校验连接状态
+        String macAddress = "";
+        if (DeviceConnectTypeEnum.SERIAL.getConnectType().equals(inputParam.getConnectType())) {
+            // 串口
+        } else if (DeviceConnectTypeEnum.WIFI.getConnectType().equals(inputParam.getConnectType())) {
+            macAddress = connectUtil.getWifiMacAddress();
+            if (!StringUtils.hasText(macAddress)) {
+                return R.fail("请检查 WIFI 连接！");
+            }
+        } else {
+            macAddress = connectUtil.getEthernetMacAddress();
+            if (!StringUtils.hasText(macAddress)) {
+                return R.fail("请检查网线连接！");
+            }
+        }
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+        Transition measureTransition = xml.get(T600ComIdEnums.Measure.getComId());
+        byte[] measureBytes = protocolItemUtil.calcSendBytes(new Object[]{}, measureTransition);
+
+        udpSendUtil.TimeMeasure(
+                        deviceId,
+                        T600ComIdEnums.Measure.getComId(),
+                        measureBytes,
+                        measureTransition.getReplyNumber(),
+                        measureTransition.getTimeout(),
+                        connectType,
+                        intervalSeconds,
+                        totalTime,
+                        deviceSerialNumber
+                );
+
+        // ================== 计算线程 ==================
+//        Thread calcThread = new Thread(() -> {
+//
+//            while (!Thread.currentThread().isInterrupted()) {
+//                try {
+//                    log.info("[计算线程] 等待队列数据...");
+//                    MeasurePacket packet = queue.take();
+//                    System.out.println("取到 packet: " + packet);
+//
+//                    if (packet.measureRsd == null || packet.wl == null) {
+//                        log.warn("[计算线程] measureRsd 或 wl 为空，跳过计算");
+//                        continue;
+//                    }
+//
+//                    double wlVal;
+//                    try {
+//                        wlVal = Double.parseDouble(packet.wl);
+//                    } catch (NumberFormatException e) {
+//                        log.error("[计算线程] 波长非法: {}", packet.wl);
+//                        continue;
+//                    }
+//
+//                    SpectrumPoint point = new SpectrumPoint(Double.parseDouble(packet.measureRsd.getWl()));
+//                    point.setZeroRsd(zeroRsd);
+//                    point.setMeasureRsd(packet.measureRsd);
+//                    point.setTimestamp(packet.timestamp);
+//
+//                    point.setAbsResult(SpectrumResultCalculator.calculate(1, point, SpectrumSourceType.SINGLE));
+//                    point.setTResult(SpectrumResultCalculator.calculate(2, point, SpectrumSourceType.SINGLE));
+//                    point.setEsResult(SpectrumResultCalculator.calculate(3, point, SpectrumSourceType.SINGLE));
+//                    point.setErResult(SpectrumResultCalculator.calculate(4, point, SpectrumSourceType.SINGLE));
+//
+//                    log.info("[时间计算] wl={}, Abs={}, T%={}, Es={}, Er={}, time={}",
+//                            point.getWavelength(),
+//                            point.getAbsResult() != null ? point.getAbsResult().getAbs() : "-",
+//                            point.getTResult() != null ? point.getTResult().getTPercent() : "-",
+//                            point.getEsResult() != null ? point.getEsResult().getEs() : "-",
+//                            point.getErResult() != null ? point.getErResult().getEr() : "-",
+//                            point.getTimestamp());
+//
+//                    unknowCountMessageQueue.putMessage(deviceSerialNumber, "Measure", point);
+//
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                } catch (Exception e) {
+//                    log.error("[计算线程异常]", e);
+//                }
+//            }
+//        }, "Measure-Calc-" + deviceSerialNumber);
+//        calcThread.start();
+        return R.ok(resultEntity);
+    }
+
 
     private R<OperationResultEntity> disconnect(DevOperationInputParam inputParam) {
 
@@ -1757,5 +1976,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         }
     }
 
+    @Data
+    static class MeasurePacket {
+        private ChangeParam measureRsd;
+        private long timestamp;
+        public String wl;
+
+        public MeasurePacket(ChangeParam measureRsd, long timestamp, String wl) {
+            this.measureRsd = measureRsd;
+            this.timestamp = timestamp;
+            this.wl = wl;
+        }
+    }
 
 }

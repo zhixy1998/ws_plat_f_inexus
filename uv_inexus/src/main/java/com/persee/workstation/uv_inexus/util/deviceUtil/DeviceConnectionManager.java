@@ -357,6 +357,19 @@ public class DeviceConnectionManager {
         return true;
     }
 
+    public String getDeviceSerialNumber(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取序列号失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+
+        device.updateLastUseTime();
+        String serialNumber = device.getDeviceSerialNumber();
+        logInfo("获取设备序列号: %s -> %s", deviceId, serialNumber);
+        return serialNumber;
+    }
+
     /**
      * 设置设备空闲状态
      *
@@ -398,6 +411,24 @@ public class DeviceConnectionManager {
         return true;
     }
 
+    public ChangeParam getZeroResult(String deviceId, String wavelength) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取校零结果失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+
+        ChangeParam zero = device.getZeroResult(wavelength);
+        if (zero == null) {
+            logWarning("未找到校零结果: %s -> 波长 %s", deviceId, wavelength);
+            return null;
+        }
+
+        device.updateLastUseTime();
+        return zero;
+    }
+
+
 
     /**
      * 设置当前校零波长
@@ -436,6 +467,21 @@ public class DeviceConnectionManager {
         logInfo("设置当前波长: %s -> %s", deviceId, currentWavelength);
         return true;
     }
+
+    public String getCurrentWavelength(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取当前波长失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+
+        device.updateLastUseTime();
+        String currentWavelength = device.getCurrentWavelength();
+
+        logInfo("获取当前波长: %s -> %s", deviceId, currentWavelength);
+        return currentWavelength;
+    }
+
 
     /**
      * 设置光度模式

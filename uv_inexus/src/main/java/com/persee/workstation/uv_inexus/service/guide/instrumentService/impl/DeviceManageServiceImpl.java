@@ -124,7 +124,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         if (initList.isEmpty()) {
             log.info("查询初始化状态异常");
             //查询初始化状态异常
-            return R.fail(false,YamlMessageSource.getMessageStatic("00203002"));
+            return R.fail(false, YamlMessageSource.getMessageStatic("00203002"));
         }
 
         vo.setIsInited(deviceInfoPO.getIsInited());
@@ -224,7 +224,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(initDTO.getDeviceSerialNumber());
         Integer kind = attachmentInfo.getAttachmentKind();
 
-        if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
+        if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType()) || kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())) {
             List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
             initRecordService.initAllTask(initDTO.getDeviceSerialNumber(), infoPO.getId(), allInitEntry);
         } else {
@@ -578,7 +578,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
             if (deviceVO.getIsInited() == 0 || !initRecord) {
-                if (attachmentInfo.getAttachmentKind().equals(1)){
+                if (attachmentInfo.getAttachmentKind().equals(1)) {
                     List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
                     initRecordService.initAllTask(deviceVO.getDeviceSerialNumber(), po.getId(), allInitEntry);
                 }
@@ -636,7 +636,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             vo.setBandWidth(2.0);
             vo.setAnnexSettingChange(false);
             vo.setMessagePortChange(true);
-        } else{
+        } else {
             vo.setMessagePort(po.getMessagePort());
             vo.setAnnexSetting(po.getAnnexSetting());
             vo.setBandWidth(po.getBandWidth());
@@ -732,7 +732,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
-            }finally {
+            } finally {
                 infoService.releaseDevice(dto.getDeviceSerialNumber());
             }
         } else if (dto.getCalibrationType() == 2) {
@@ -1139,7 +1139,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             }
 
             if (vo.getIsInited() == 0 || !initRecord) {
-                if (attachmentInfo.getAttachmentKind().equals(1)){
+                if (attachmentInfo.getAttachmentKind().equals(1)) {
                     List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
                     initRecordService.initAllTask(vo.getDeviceSerialNumber(), info.getId(), allInitEntry);
                 }
@@ -1224,7 +1224,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 DeviceAttachmentTypeVO attachmentInfo = infoService.getAttachmentInfo(deviceSerialNumber);
                 Integer kind = attachmentInfo.getAttachmentKind();
 
-                if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType())|| kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())){
+                if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType()) || kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())) {
                     List<DeviceInitEntryInfo> allInitEntry = addInitEntry(initEntry);
                     initRecordService.initAllTask(deviceSerialNumber, info.getId(), allInitEntry);
                 } else {
@@ -1239,7 +1239,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     }
 
     @Override
-    public R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy){
+    public R<Boolean> continueInitDevice(String deviceSerialNumber, String updateBy) {
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Init.getType());
@@ -1298,6 +1298,21 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok(null);
     }
 
+    @Override
+    public R<Boolean> stop(
+            String deviceSerialNumber
+    ) {
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.Stop.getType());
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            return R.ok(true);
+        }
+    }
 
     @Override
     public R<OperationResultEntity> setParamOneDevice(
@@ -1336,7 +1351,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.ok(operation.getData());
         }
     }
-
 
 
     @Override
@@ -1448,4 +1462,47 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
+    @Override
+    public R<OperationResultEntity> TimeMeasure(DevOperationInputParam param) {
+        param.setOperationType(OperationTypeEnums.TimeMeasure.getType());
+
+        R<OperationResultEntity> operation =
+                operationUtilService.operation(param);
+
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            new Thread(() -> {
+                UnknowCountMessageQueue queue = UnknowCountMessageQueue.getInstance();
+//                while (true) {
+//                    if (queue.getQueueSize(param.getDeviceSerialNumber(), "Measure") <= 0) {
+//                        continue;
+//                    } else {
+//                        Object scan = queue.pollMessage(param.getDeviceSerialNumber(), "Measure");
+//                        System.out.println(scan.toString());
+//                    }
+//                }
+            }).start();
+            return R.ok(operation.getData());
+        }
+    }
+
+
+    @Override
+    public R<Boolean> zero(
+            String deviceSerialNumber,
+            List<String> param
+    ) {
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setWavelength(param);
+        inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            return R.ok(true);
+        }
+    }
 }

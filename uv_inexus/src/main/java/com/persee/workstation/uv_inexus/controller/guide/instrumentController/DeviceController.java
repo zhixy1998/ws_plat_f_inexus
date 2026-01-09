@@ -49,6 +49,28 @@ public class DeviceController {
     @Autowired
     private DeviceAutoInjectorService injectorService;
 
+    @GetMapping("/stop")
+    @ApiOperation("新驱动-停止扫描")
+    public Result<Boolean> stop (@RequestParam String deviceSerialNumber) throws InterruptedException {
+        Boolean r = deviceManageService.stop(deviceSerialNumber).getSuccess();
+        if (r) {
+            return Result.ok(true);
+        } else {
+            return Result.fail(false);
+        }
+    }
+
+    @PostMapping("/zero")
+    @ApiOperation("新驱动-停止扫描")
+    public Result<Boolean> zero ( @RequestBody DevOperationInputParam inputParam) throws InterruptedException {
+        Boolean r = deviceManageService.zero(inputParam.getDeviceSerialNumber(),inputParam.getWavelength()).getSuccess();
+        if (r) {
+            return Result.ok(true);
+        } else {
+            return Result.fail(false);
+        }
+    }
+
     @PostMapping("/scan")
     @ApiOperation("扫描测试")
     @LogPoint(value = "扫描测试", module = "设备管理", recordParams = true, recordResult = true)
@@ -64,6 +86,23 @@ public class DeviceController {
             return Result.ok(result.getData());
         }
     }
+
+        @PostMapping("/TimeMeasure")
+    @ApiOperation("时间扫描测试")
+    @LogPoint(value = "扫描测试", module = "设备管理", recordParams = true, recordResult = true)
+    public Result<OperationResultEntity> TimeMeasure(
+            @RequestBody DevOperationInputParam inputParam
+    ) throws InterruptedException {
+        R<OperationResultEntity> result =
+                deviceManageService.TimeMeasure(inputParam);
+
+        if (!result.getSuccess()) {
+            return Result.fail(result.getMessage());
+        } else {
+            return Result.ok(result.getData());
+        }
+    }
+
 
 
     @PostMapping("/setParam")

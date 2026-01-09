@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -23,7 +24,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.*;
 
 /**
  * 报文发送工具类，负责发送报文，然后从队列取报文并解析后返给操作工具类
@@ -42,12 +45,21 @@ public class UdpSendUtil {
     @Value("${device.default.receivePort}")
     private Integer wifiReceivePort;
 
+    @Autowired
+    DeviceInfoService infoService;
+
     private final static ConnectUtil connectUtil = ConnectUtil.getInstance();
 
     private final static DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
     private final static UdpReceiveThread udpReceiveThread = UdpReceiveThread.getInstance();
 
+    //时间扫描线程测量是否结束，true-结束，false-未结束
+    private final ConcurrentMap<String, Boolean> timeMeasureIsStop = new ConcurrentHashMap<>();
+
+    private static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
+
+    private static long currentTime;
     @Autowired
     MessageOnTimeDeal messageOnTimeDeal;
 
@@ -300,6 +312,7 @@ public class UdpSendUtil {
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
                     InetAddress.getByName(sendIp), sendPort);
             store.clearDeviceMessages(deviceId);
+
             socket.send(packet);
 
             sendMessageLog(sendIp, cmdId, sendBytes);
@@ -379,7 +392,7 @@ public class UdpSendUtil {
 //            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
 //                    InetAddress.getByName(sendIp), sendPort);
 //            store.clearDeviceMessages(sendIp);
-////            store.clearDeviceMessages(deviceId);
+//            store.clearDeviceMessages(deviceId);
 //
 //            socket.send(packet);
 //
@@ -535,6 +548,61 @@ public class UdpSendUtil {
 
     }
 
+    public R<Object> TimeMeasure(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, Double intervalTime, Double totalTime,String deviceSerialNumber) {
+
+        if (replyNumber < 1) {
+            return R.fail("回应报文字节数大于 1 ！");
+        }
+
+        try {
+
+            DatagramSocket socket = connectUtil.getSocket(connectType, ethernetReceivePort);
+
+            if (socket == null) {
+                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+            }
+            int receivePort = connectUtil.getSocketPort(connectType);
+            boolean isReceiveRunning = udpReceiveThread.isRunning(connectType);
+
+
+            if (!isReceiveRunning) {
+                udpReceiveThread.networkReceptionStart(receivePort, connectType);
+            }
+
+            DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+            String sendIp = device.getConnectIdentity();
+
+            ScheduledExecutorService scheduler;
+
+            if (intervalTime != null && totalTime != null) {
+                scheduler = startTimeMeasureSender(
+                        socket,
+                        sendBytes,
+                        sendIp,
+                        cmdId,
+                        intervalTime,
+                        totalTime,
+                        deviceId,
+                        replyNumber,
+                        deviceSerialNumber
+                );
+            } else {
+                scheduler = null;
+                return R.fail("请选择测量间隔时间和测量总时间！");
+            }
+
+            /* ================= 4. 立即返回 ================= */
+
+            return R.ok("TimeMeasure 启动成功");
+
+
+        } catch (Exception e) {
+
+            log.info("仪器信息出错：{}", e.getMessage());
+            return R.fail("报文接收不足！");
+        }
+    }
+
 
 
     private R<List<byte[]>> messageDeal(String deviceId, Integer timeout, Integer totalByteNumber, byte[] endBytes) {
@@ -611,10 +679,7 @@ public class UdpSendUtil {
             return R.fail("处理消息出错！");
         }
         return R.ok(responses);
-
-
     }
-
 
     // 添加辅助方法用于将字节数组转换为十六进制字符串
     private String bytesToHex(byte[] bytes) {
@@ -669,4 +734,198 @@ public class UdpSendUtil {
                 && message[5] == (byte) 0x00 && message[6] == (byte) 0x00 && message[7] == (byte) 0x00
                 && message[8] == (byte) 0x00 && message[9] == (byte) 0x00 && message[10] == (byte) 0x00 && message[11] == (byte) 0xBA;
     }
+
+    //定时器工具
+    private ScheduledExecutorService startTimeMeasureSender(
+            DatagramSocket socket,
+            byte[] sendBytes,
+            String sendIp,
+            String cmdId,
+            Double intervalTime,
+            Double totalTime,
+            String deviceId,
+            Integer replyNumber,
+            String deviceSerialNumber
+    ) {
+
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+        long startTime = System.currentTimeMillis();
+        long intervalMillis = (long) (intervalTime * 1000);
+        long totalMillis = (long) (totalTime * 1000);
+
+        MessageStoreManager store = MessageStoreManager.getInstance();
+
+        DatagramPacket packet;
+        try {
+            packet = new DatagramPacket(
+                    sendBytes,
+                    sendBytes.length,
+                    InetAddress.getByName(sendIp),
+                    sendPort
+            );
+        } catch (Exception e) {
+            log.error("创建 DatagramPacket 失败", e);
+            return scheduler;
+        }
+
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                currentTime  = System.currentTimeMillis();
+
+                // ===== 总时长到，结束 =====
+                if (currentTime  - startTime >= totalMillis) {
+                    log.info("时间扫描完成，总时长 {} 秒", totalTime);
+
+                    unknowCountMessageQueue.putMessage(
+                            deviceSerialNumber,
+                            cmdId,
+                            EndMarker.stop(deviceSerialNumber, cmdId)
+                    );
+
+                    infoService.newReleaseDevice(deviceSerialNumber);
+                    scheduler.shutdown();
+                    return;
+                }
+
+                // ===== 正常一次采样 =====
+                store.clearDeviceMessages(deviceId);
+                socket.send(packet);
+                sendMessageLog(sendIp, cmdId, packet.getData());
+
+                long firstTimeMillis = System.currentTimeMillis();
+                receiveAndDeal(deviceId, firstTimeMillis, intervalMillis, replyNumber, cmdId);
+
+            } catch (Exception e) {
+                log.error("时间扫描定时任务异常，立即停止", e);
+                unknowCountMessageQueue.putMessage(
+                        deviceSerialNumber,
+                        cmdId,
+                        EndMarker.unNormal(deviceSerialNumber, cmdId)
+                );
+
+                infoService.newReleaseDevice(deviceSerialNumber);
+                scheduler.shutdown();
+            }
+
+        }, 0, intervalMillis, TimeUnit.MILLISECONDS);
+
+        return scheduler;
+    }
+
+    private void receiveAndDeal(String deviceId, long firstTimeMillis, long intervalTime, Integer replyNumber, String cmdId) {
+
+        log.info("处理时间扫描报文，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
+
+
+        MessageStoreManager store = MessageStoreManager.getInstance();
+        List<byte[]> responses = new ArrayList<>();
+        boolean start = false;
+        int i = 0;
+        while ((System.currentTimeMillis() - firstTimeMillis) < intervalTime && i < replyNumber) {
+            byte[] bytes = store.peekMessage(deviceId);
+            if (bytes == null || bytes.length == 0) {
+                continue;
+            }
+            log.info("开始接收，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
+            if (isStartMessage(bytes)) {
+                log.info("07回应报文");
+                start = !start;
+                if (!start) {
+                    log.info("多收07报文！退出");
+                    return;
+                }
+                byte[] message = store.getMessage(deviceId);
+                responses.add(message);
+                i += message.length;
+                continue;
+            } else {
+                if (!start) {
+                    log.info("错误报文丢弃！");
+                    store.getMessage(deviceId);
+                    continue;
+                }
+
+                byte[] message = store.getMessage(deviceId);
+                responses.add(message);
+                i += message.length;
+            }
+        }
+        log.info("接收完成，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
+
+        if (i < replyNumber) {
+            log.info("接收超时");
+            timeMeasureIsStop.put(deviceId, true);
+            return;
+        }
+        OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, null);
+        if (!parse.getIsSuccess()) {
+            log.info("时间扫描数据处理失败");
+            timeMeasureIsStop.put(deviceId, true);
+            return;
+        }
+        log.info("时间扫描数据处理成功");
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String currentWavelength = device.getCurrentWavelength() == null ? "" : device.getCurrentWavelength();
+        Map<String, ChangeParam> zeroResult = device.getZeroResult();
+        ChangeParam measureResult = parse.getMeasureResult();
+
+        double wl;
+        try {
+            wl = Double.parseDouble(currentWavelength);
+        } catch (Exception e) {
+            log.warn("波长格式非法: {}", currentWavelength);
+            return;
+        }
+
+        ChangeParam zeroRsd = zeroResult.get(currentWavelength);
+        if (zeroRsd == null) {
+            log.warn("未找到 zeroRsd, wl={}", currentWavelength);
+            return;
+        }
+
+        if (measureResult == null) {
+            log.warn("measureRsd 为空");
+            return;
+        }
+
+        SpectrumPoint point = new SpectrumPoint(wl);
+        point.setZeroRsd(zeroRsd);
+        point.setMeasureRsd(measureResult);
+        point.setTimestamp(System.currentTimeMillis());
+
+        SpectrumCalcResult absResult =
+                SpectrumResultCalculator.calculate(1, point, SpectrumSourceType.SINGLE);
+
+        SpectrumCalcResult tResult =
+                SpectrumResultCalculator.calculate(2, point, SpectrumSourceType.SINGLE);
+
+        SpectrumCalcResult esResult =
+                SpectrumResultCalculator.calculate(3, point, SpectrumSourceType.SINGLE);
+
+        SpectrumCalcResult erResult =
+                SpectrumResultCalculator.calculate(4, point, SpectrumSourceType.SINGLE);
+
+        point.setAbsResult(absResult);
+        point.setTResult(tResult);
+        point.setEsResult(esResult);
+        point.setErResult(erResult);
+        point.setTimestamp(currentTime);
+
+        log.info("[时间扫描计算结果] wl={}, Abs={}, T%={}, Es={}, Er={},time={}",
+                wl,
+                absResult != null ? absResult.getAbs() : "-",
+                tResult   != null ? tResult.getTPercent() : "-",
+                esResult  != null ? esResult.getEs() : "-",
+                erResult  != null ? erResult.getEr() : "-",
+                point.getTimestamp()
+        );
+
+        unknowCountMessageQueue.putMessage(device.getDeviceSerialNumber(), cmdId, point);
+
+        log.info("时间扫描单次结束");
+        log.info("执行完成，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
+
+    }
+
 }

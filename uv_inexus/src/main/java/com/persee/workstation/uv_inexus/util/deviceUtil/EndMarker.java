@@ -4,7 +4,7 @@ public final class EndMarker {
 
     public enum Reason {
         TIMEOUT,
-        STOP,
+        UN_NORMAL,
         NORMAL
     }
 
@@ -24,8 +24,8 @@ public final class EndMarker {
         return new EndMarker(sn, cmd, Reason.TIMEOUT);
     }
 
-    public static EndMarker normal(String sn, String cmd) {
-        return new EndMarker(sn, cmd, Reason.NORMAL);
+    public static EndMarker unNormal(String sn, String cmd) {
+        return new EndMarker(sn, cmd, Reason.UN_NORMAL);
     }
 
     public static EndMarker stop (String sn, String cmd) {

@@ -21,6 +21,9 @@ public class SpectrumPoint {
 
     private ChangeParam measureRsd;
 
+    //时间戳
+    private Long timestamp;
+
     private SpectrumCalcResult absResult;
     private SpectrumCalcResult tResult;
     private SpectrumCalcResult esResult;

@@ -136,6 +136,10 @@ public interface DeviceManageService {
 
     R<FindDeviceVO> connect(SearchInfo param);
 
+    R<Boolean> stop(
+            String deviceSerialNumber
+    );
+
     R<OperationResultEntity> setParamOneDevice(DevOperationInputParam param);
 
     R<OperationResultEntity> getParamOneDevice(DevOperationInputParam param);
@@ -153,5 +157,9 @@ public interface DeviceManageService {
     R<Boolean> newStopInit(String deviceSerialNumber, String updateBy);
 
     R<Boolean> deviceNewCalibration(DeviceCalibrationDTO calibrationDTO);
+
+    R<OperationResultEntity> TimeMeasure(DevOperationInputParam param);
+
+    R<Boolean> zero(String deviceSerialNumber, List<String> param);
 
 }
