@@ -338,7 +338,22 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Override
     public Result<List<TaskCheckItemDto.Standard>> standardMaterialList(String taskId) {
         ArrayList<TaskCheckItemDto.Standard> standards = new ArrayList<>();
-        List<TaskExecutionDetail> list = taskExecutionDetailMapper.initTaskCal(taskId);
+        List<TaskExecutionDetail> details = taskExecutionDetailMapper.initTaskCal(taskId);
+
+        TaskManagement management = this.getById(taskId);
+        String templateId = management.getUseTemplate();
+        ExcelTemplate excelTemplate = templateService.getById(templateId);
+        LambdaQueryWrapper<ExcelDataAsset> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExcelDataAsset::getTemplateCode, excelTemplate.getTemplateCode());
+        List<ExcelDataAsset> dataAssetList = dataAssetService.list(wrapper);
+        List<TaskExecutionDetail> list = new ArrayList<>();
+
+        // 使用stream的filter方法优化嵌套循环，提高性能
+        list = details.stream()
+                .filter(detail -> dataAssetList.stream()
+                        .anyMatch(asset -> StringUtils.equals(asset.getId(), detail.getItemId())))
+                .collect(Collectors.toList());
+
         List<String> standardIds = list.stream()
                 .map(TaskExecutionDetail::getStandardId)
                 .distinct()

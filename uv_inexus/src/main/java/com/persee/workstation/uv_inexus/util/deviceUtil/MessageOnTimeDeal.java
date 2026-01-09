@@ -35,7 +35,7 @@ public class MessageOnTimeDeal {
     @Autowired
     FormulaUtil formulaUtil;
 
-    private static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
+    public static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
 
     private final Map<String, Thread> scanProcessorThreadMap = new ConcurrentHashMap<>();
     private final Map<String, Thread> baselineProcessorThreadMap = new ConcurrentHashMap<>();
@@ -321,14 +321,20 @@ public class MessageOnTimeDeal {
                             Thread.sleep(5);
                             continue;
                         }
-                        if (message[2] == 0x00 && message[3] == 0x00 && message[4] == 0x00){
-                            store.clearDeviceMessages(deviceSerialNumber);
+                        if (message[2] == 0x00 && message[3] == 0x00 && message[4] == 0x00 && message[5] == 0x00){
                             unknowCountMessageQueue.putMessage(
                                     deviceSerialNumber,
                                     cmdId,
                                     EndMarker.timeout(deviceSerialNumber, cmdId)
                             );
+                            spectrumProcessorMap.remove(deviceSerialNumber);
+                            if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
+                            else baselineProcessorThreadMap.remove(deviceSerialNumber);
+
+                            store.clearDeviceMessages(deviceId);
+                            infoService.newReleaseDevice(deviceSerialNumber);
                             log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+                            return;
                         }
 
                         recvCount++;

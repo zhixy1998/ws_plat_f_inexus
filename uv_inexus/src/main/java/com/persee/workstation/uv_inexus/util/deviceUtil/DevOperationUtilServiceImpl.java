@@ -677,7 +677,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (setParam != null) {
                     Double startWl = setParam.getStartWl();
                     Double endWl = setParam.getEndWl();
-                    Double interval = setParam.getScanInterval() != null ? setParam.getScanInterval() : setParam.getScanWlInterval();
+                    Double interval =  setParam.getScanWlInterval();
 
                     if (startWl != null && endWl != null && interval != null) {
                         // 直接操作 device 对象

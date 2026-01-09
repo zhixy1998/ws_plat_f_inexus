@@ -17,8 +17,8 @@ import lombok.Data;
         @ApiModelProperty("扫描 wavelength")
         private Double endWl;
 
-        @ApiModelProperty("扫描间隔")
-        private Double scanInterval;
+//        @ApiModelProperty("扫描间隔")
+//        private Double scanInterval;
 
         @ApiModelProperty("增益")
         private Integer gain;
