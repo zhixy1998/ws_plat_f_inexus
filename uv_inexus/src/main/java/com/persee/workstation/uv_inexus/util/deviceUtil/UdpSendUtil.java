@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 报文发送工具类，负责发送报文，然后从队列取报文并解析后返给操作工具类
@@ -58,6 +59,8 @@ public class UdpSendUtil {
     private final ConcurrentMap<String, Boolean> timeMeasureIsStop = new ConcurrentHashMap<>();
 
     private static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
+
+    private final AtomicInteger scanResultIndex = new AtomicInteger(0);
 
     private static long currentTime;
     @Autowired
@@ -881,7 +884,7 @@ public class UdpSendUtil {
         ChangeParam zeroRsd = zeroResult.get(currentWavelength);
         if (zeroRsd == null) {
             log.warn("未找到 zeroRsd, wl={}", currentWavelength);
-            return;
+//            return;
         }
 
         if (measureResult == null) {
@@ -912,20 +915,20 @@ public class UdpSendUtil {
         point.setErResult(erResult);
         point.setTimestamp(currentTime);
 
-        log.info("[时间扫描计算结果] wl={}, Abs={}, T%={}, Es={}, Er={},time={}",
+        log.info("[时间扫描计算结果] wl={}, Abs={}, T%={}, Es={}, Er={},time={},index={}",
                 wl,
                 absResult != null ? absResult.getAbs() : "-",
                 tResult   != null ? tResult.getTPercent() : "-",
                 esResult  != null ? esResult.getEs() : "-",
                 erResult  != null ? erResult.getEr() : "-",
-                point.getTimestamp()
+                point.getTimestamp(),
+                scanResultIndex.incrementAndGet()
         );
 
-        unknowCountMessageQueue.putMessage(device.getDeviceSerialNumber(), cmdId, point);
+        unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, point);
 
         log.info("时间扫描单次结束");
         log.info("执行完成，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
-
     }
 
 }

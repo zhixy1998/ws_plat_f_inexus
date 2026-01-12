@@ -1706,9 +1706,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         }
 
         ChangeParam zeroRsd = deviceManager.getZeroResult(deviceId, wl);
-        if (zeroRsd == null) {
-            return R.fail("未找到波长 " + wl + " 的校零结果");
-        }
+//        if (zeroRsd == null) {
+//            return R.fail("未找到波长 " + wl + " 的校零结果");
+//        }
 
         // 默认连接方式：网口
         if (inputParam.getConnectType() == null) {

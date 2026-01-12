@@ -86,20 +86,21 @@ public class SpectrumDataProcessor {                 //计算RSD
         ChangeParam fittedParam = calculateByStep(lastStepParam, param, step);
 
         // ================= 4. 打印 =================
-        log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
-                dataPointIndex,
-                step,
-                realWavelength,
-                constrainedWl
-        );
+        //注释打印
+//        log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
+//                dataPointIndex,
+//                step,
+//                realWavelength,
+//                constrainedWl
+//        );
 
-        log.info("[SPECTRUM-FITTED] index={}, targetStep={}, r={}, s={}, d={}",
-                dataPointIndex,
-                step,
-                fittedParam.getR(),
-                fittedParam.getS(),
-                fittedParam.getD()
-        );
+//        log.info("[SPECTRUM-FITTED] index={}, targetStep={}, r={}, s={}, d={}",
+//                dataPointIndex,
+//                step,
+//                fittedParam.getR(),
+//                fittedParam.getS(),
+//                fittedParam.getD()
+//        );
 
         // 更新 lastStepParam
         lastStepParam = param;

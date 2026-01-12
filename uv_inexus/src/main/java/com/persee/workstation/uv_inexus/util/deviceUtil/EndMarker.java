@@ -1,5 +1,8 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import lombok.Getter;
+
+@Getter
 public final class EndMarker {
 
     public enum Reason {
