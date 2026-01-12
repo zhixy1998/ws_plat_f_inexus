@@ -215,6 +215,32 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 DevOperationUtilServiceImpl.deviceManager.setDeviceIdleStatus(s, true);
 
+                //判断初始状态
+                cmdId = T600ComIdEnums.GetInitStatus.getComId();
+
+                transition = xmlInfo.get(cmdId);
+                timeout = transition.getTimeout();
+                replyNumber = transition.getReplyNumber();
+
+                param = new Object[]{};
+
+                bytes = protocolItemUtil.calcSendBytes(param, transition);
+                r = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType);
+                if (r.getSuccess()) {
+
+                    result = (OperationResultEntity) r.getData();
+                    Integer isInited = result.getIsInited();
+                    if (isInited.equals(Constants.INIT_STATUS_SUCCESS)) {
+                        log.info("已初始化！");
+                        newPO.setIsInited(Constants.INIT_STATUS_SUCCESS);
+                    } else {
+                        log.info("未初始化！");
+                        newPO.setIsInited(Constants.INIT_STATUS_NO);
+                    }
+                } else {
+                    newPO.setIsInited(Constants.INIT_STATUS_FALSE);
+                }
+
                 xmlManage.setDevice(po.getIp(), type);
 
                 infoService.saveOrUpdateInfo(newPO);
