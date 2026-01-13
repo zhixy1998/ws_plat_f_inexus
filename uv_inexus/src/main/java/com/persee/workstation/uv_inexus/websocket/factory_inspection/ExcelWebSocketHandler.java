@@ -64,6 +64,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -181,7 +182,24 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> measurementStatusMap = new ConcurrentHashMap<>();
     // 测量任务对应的session  key taskid value session
     private final Map<String, WebSocketSession> sessionTaskMap = new ConcurrentHashMap<>();
-//    //所有的任务和检测项的缓存
+
+    // 心跳调度器
+    private final ScheduledExecutorService heartbeatScheduler =
+            Executors.newScheduledThreadPool(5, r -> {
+                Thread t = new Thread(r, "WebSocket-Heartbeat-Thread");
+                t.setDaemon(true);
+                return t;
+            });
+
+    // 记录每个连接的最后活动时间
+    private final Map<String, Long> lastActivityTime = new ConcurrentHashMap<>();
+    // 记录心跳任务
+    private final Map<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
+
+    private static final long HEARTBEAT_INTERVAL = 30000; // 30秒心跳间隔
+    private static final long HEARTBEAT_TIMEOUT = 60000;   // 60秒超时
+
+    //    //所有的任务和检测项的缓存
 //    private static List<MultiLineSpectrumData> multiLineSpectrumDataList = new ArrayList<>();
 
     // 获取测量状态的方法
@@ -294,11 +312,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                }
 //            }
             boolean b = workbookCacheManager.acquireEditLock(taskId, updateBy);
-            System.out.println("564645151545" + b);
+//            System.out.println("564645151545" + b);
 
             // 为会话创建专属Workbook
             Workbook workbook = workbookCacheManager.createTaskWorkbook(taskId, fileName);
             log.info("WebSocket连接建立，会话ID: {}, 文件: {}", sessionId, fileName);
+            //记录连接时间
+            lastActivityTime.put(sessionId, System.currentTimeMillis());
             //这个任务有存活的session
             sessionTaskMap.put(taskId, session);
             JSONObject statusMessage = new JSONObject();
@@ -359,9 +379,59 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(statusMessage.toString()));
             // 发送缓存的波形图数据给新会话
             sendCachedWaveformData(session, taskId);
+            // 启动心跳任务
+            startHeartbeatTask(session);
             super.afterConnectionEstablished(session);
         } catch (Exception e) {
             log.error("WebSocket连接建立失败", e);
+        }
+    }
+    private void startHeartbeatTask(WebSocketSession session) {
+        String sessionId = session.getId();
+
+        // 取消旧任务
+        ScheduledFuture<?> oldTask = heartbeatTasks.get(sessionId);
+        if (oldTask != null && !oldTask.isDone()) {
+            oldTask.cancel(false);
+        }
+
+        // 创建新心跳任务
+        ScheduledFuture<?> newTask = heartbeatScheduler.scheduleAtFixedRate(
+                () -> sendHeartbeat(session),
+                HEARTBEAT_INTERVAL,
+                HEARTBEAT_INTERVAL,
+                TimeUnit.MILLISECONDS
+        );
+
+        heartbeatTasks.put(sessionId, newTask);
+    }
+
+    private void sendHeartbeat(WebSocketSession session) {
+        try {
+            if (!session.isOpen()) {
+                cancelHeartbeatTask(session.getId());
+                return;
+            }
+
+            String sessionId = session.getId();
+            long currentTime = System.currentTimeMillis();
+            Long lastActivity = lastActivityTime.get(sessionId);
+
+            // 检查连接超时
+//            if (lastActivity != null && currentTime - lastActivity > HEARTBEAT_TIMEOUT) {
+//                session.close();
+//                cancelHeartbeatTask(sessionId);
+//                return;
+//            }
+
+            // 发送心跳包
+            session.sendMessage(new TextMessage("ping"));
+
+        } catch (IOException e) {
+            try {
+                session.close();
+            } catch (IOException ignored) {}
+            cancelHeartbeatTask(session.getId());
         }
     }
 
@@ -491,6 +561,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        // 更新最后活动时间
+        lastActivityTime.put(session.getId(), System.currentTimeMillis());
+
         String payload = message.getPayload();
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(payload);
@@ -889,8 +962,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             Map<String, List<JSONObject>> map = null;
                             try {
                                 Boolean needSetSit = deviceInfoService.isNeedSetSit(deviceSerialNumber);
+                                //狭缝，光谱带宽
+                                Double narrow = MapUtils.getDouble(dataMap, SPECTRAL_BANDWIDTH.getDescription());
+
                                 log.info("是否为可变狭缝：{}", needSetSit);
                                 log.info("开始进行扫描");
+                                if (!needSetSit) {
+                                    if (Double.compare(narrow, 2.0) != 0) {
+                                        JSONObject jsonObject = new JSONObject();
+                                        jsonObject.put("error", "仪器为固定狭缝，此项跳过");
+                                        sendToActiveSession(null, taskId,jsonObject);
+                                        setTaskMeasuring(taskId,false);
+                                        return futureResult;
+                                    }
+                                }
                                 map = sendBatchDataPoints(session, taskId, itemId, dataMap, updateBy, deviceSerialNumber, list);
                             } catch (Exception e) {
                                 setTaskMeasuring(taskId, false);
@@ -1090,6 +1175,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                         try {
                             sendToActiveSession(webSocketSession,taskId,statusMessage);
+
 //                            webSocketSession.sendMessage(new TextMessage(statusMessage.toJSONString()));
                         } catch (Exception e) {
                             log.error("发送测量状态失败", e);
@@ -2444,6 +2530,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         String methodType = MapUtils.getString(dataMap, METHOD_TYPE.getDescription());
         Map<String, List<JSONObject>> map = new HashMap<>();
         List<SpectrumPoint> spectrumPoints = new ArrayList<>();
+
         //如果是光谱扫描
         if (YES.getDescription().equals(res)) {
             log.info("光谱扫描>>>>>>>");
@@ -3947,9 +4034,31 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         log.info("ExcelWebSocketHandler连接关闭，会话ID: {}", session.getId());
-        String id = getTaskIdFromSession(session);
-        sessionTaskMap.remove(id);
+//        String id = getTaskIdFromSession(session);
+//        sessionTaskMap.remove(id);
+
+
+        String sessionId = session.getId();
+        String taskId = getTaskIdFromSession(session);
+
+        sessionTaskMap.remove(taskId);
+        lastActivityTime.remove(sessionId);
+        cancelHeartbeatTask(sessionId);
+
         super.afterConnectionClosed(session, status);
+    }
+    private void cancelHeartbeatTask(String sessionId) {
+        ScheduledFuture<?> task = heartbeatTasks.remove(sessionId);
+        if (task != null && !task.isDone()) {
+            task.cancel(false);
+        }
+    }
+
+    @PreDestroy
+    public void destroy() {
+        heartbeatTasks.values().forEach(task -> task.cancel(false));
+        heartbeatTasks.clear();
+        heartbeatScheduler.shutdown();
     }
 
     /**
