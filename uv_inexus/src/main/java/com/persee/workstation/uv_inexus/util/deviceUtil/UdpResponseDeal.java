@@ -504,13 +504,14 @@ public class UdpResponseDeal {
 
     private static OperationResultEntity getInitStatus(List<byte[]> responses) {
         if (responses == null || responses.isEmpty()) {
-            result = "false"; // 设置全局变量
-            return null;
+
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] last = responses.get(responses.size() - 1);
         boolean success = last.length >= 5 && (last[4] & 0xFF) == 1;
-        result = success ? "true" : "false"; // 根据结果更新 result
+
         resultEntity.setIsInited(success ? 1 : 0);
         return resultEntity;
     }

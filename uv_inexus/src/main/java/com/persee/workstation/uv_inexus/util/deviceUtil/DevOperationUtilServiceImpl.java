@@ -225,7 +225,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 param = new Object[]{};
 
                 bytes = protocolItemUtil.calcSendBytes(param, transition);
-                r = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType);
+                r = udpSendUtil.knowTotalReceiveSend(s, cmdId, bytes, replyNumber, timeout, connectType);
                 if (r.getSuccess()) {
 
                     result = (OperationResultEntity) r.getData();
