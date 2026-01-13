@@ -7,6 +7,7 @@ import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /*
  * *
@@ -42,4 +43,8 @@ public interface TaskManagementService extends IService<TaskManagement> {
     Result<String> deleteTask(String taskId);
 
     Result<String> batchDelete(BatchDelDto batchDelDto);
+
+    Result<Map<String, Object>> generateReport(String taskId);
+
+    Result<List<SetSamplePoolDto>> getStandardMaterial(String taskId);
 }

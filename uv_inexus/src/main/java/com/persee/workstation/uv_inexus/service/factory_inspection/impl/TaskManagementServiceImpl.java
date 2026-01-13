@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.component.DefaultTaskManager;
 import com.persee.workstation.uv_inexus.component.EhcacheUtil;
+import com.persee.workstation.uv_inexus.component.SmartExcelContentConverter;
 import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper;
@@ -19,6 +20,9 @@ import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -26,11 +30,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.persee.workstation.uv_inexus.enums.Cache.CacheEnums.DEFAULT_CACHE;
@@ -392,9 +395,22 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 dtoList = (List<SetSamplePoolDto>) cachedObject;
             } else {
                 dtoList = new ArrayList<>();
+                dtoList.add(dto);
             }
 
-            dtoList.add(dto);
+            if (CollectionUtils.isNotEmpty(dtoList)){
+                // 使用迭代器安全地修改集合
+                Iterator<SetSamplePoolDto> iterator = dtoList.iterator();
+                while (iterator.hasNext()) {
+                    SetSamplePoolDto existing = iterator.next();
+                    if (existing.getPoolNum().equals(dto.getPoolNum())) {
+                        iterator.remove(); // 先移除
+                        break;
+                    }
+                }
+                // 添加更新后的对象
+                dtoList.add(dto);
+            }
             // 使用 Object 类型存储
             ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), taskId, dtoList, String.class, Object.class);
             return Result.ok(true);
@@ -413,6 +429,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
                 management.setTemplateCode(excelTemplate.getTemplateCode());
+
                 return Result.ok(management);
             }
             TaskManagement management = this.getById(taskId);
@@ -484,6 +501,175 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             log.error("批量删除任务失败", e);
         }
         return null;
+    }
+
+    @Override
+    public Result<Map<String, Object>> generateReport(String taskId) {
+        Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
+        Map<String, Object> smartContent = SmartExcelContentConverter.convertToSmartContent(taskWorkbook);
+        return Result.ok(smartContent);
+    }
+
+    @Override
+    public Result<List<SetSamplePoolDto>> getStandardMaterial(String taskId) {
+        // 使用 Object 类型获取缓存
+        Object cachedObject = ehcacheUtil.get(DEFAULT_CACHE.getCacheName(), taskId, String.class, Object.class);
+
+        List<SetSamplePoolDto> dtoList;
+        if (cachedObject instanceof List) {
+            // 进行类型检查和转换
+            dtoList = (List<SetSamplePoolDto>) cachedObject;
+        } else {
+            dtoList = new ArrayList<>();
+        }
+        return Result.ok(dtoList);
+    }
+
+    /**
+     * 导出指定名称的 Sheet 页到文件，保留所有格式并计算公式
+     *
+     * @param workbook Excel 工作簿对象
+     * @param sheetName 要导出的 sheet 名称
+     * @param filePath 导出文件路径
+     */
+    public void exportSheetWithCompleteFormat(Workbook workbook, String sheetName, String filePath) {
+        if (workbook == null || StringUtils.isBlank(sheetName) || StringUtils.isBlank(filePath)) {
+            return;
+        }
+
+        try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
+            // 获取指定 sheet
+            Sheet sourceSheet = workbook.getSheet(sheetName);
+            if (sourceSheet == null) {
+                log.warn("未找到名为 {} 的 sheet", sheetName);
+                return;
+            }
+
+            // 创建新的工作簿，只包含目标 sheet
+            Workbook outputWorkbook = new XSSFWorkbook();
+            Sheet outputSheet = outputWorkbook.createSheet(sheetName);
+
+            // 计算最大列数
+            int maxColumnIndex = 0;
+            for (Row row : sourceSheet) {
+                if (row.getLastCellNum() > maxColumnIndex) {
+                    maxColumnIndex = row.getLastCellNum();
+                }
+            }
+
+            // 复制列宽
+            for (int i = 0; i < maxColumnIndex; i++) {
+                outputSheet.setColumnWidth(i, sourceSheet.getColumnWidth(i));
+            }
+
+            // 复制行数据并计算公式
+            for (Row row : sourceSheet) {
+                Row newRow = outputSheet.createRow(row.getRowNum());
+
+                // 复制行高
+                if (row.getHeight() > 0) {
+                    newRow.setHeight(row.getHeight());
+                }
+
+                for (Cell cell : row) {
+                    Cell newCell = newRow.createCell(cell.getColumnIndex());
+                    copyCellDataWithFormulaCalculation(cell, newCell, outputWorkbook); // 使用输出工作簿
+
+                    // ✅ 修复：在目标工作簿中创建新的样式
+                    // 替换第556行及后续相关代码
+                    // 修改第557-559行代码
+                    if (cell.getCellStyle() != null) {
+                        CellStyle newStyle = outputWorkbook.createCellStyle();
+
+                        // 修复：将short改为int或进行类型转换
+                        CellStyle sourceCellStyle = cell.getCellStyle();
+                        int fontIndex = sourceCellStyle.getFontIndex(); // 获取字体索引 - 改为int类型
+
+                        // 或者使用类型转换：short fontIndex = (short) sourceCellStyle.getFontIndex();
+
+                        Font sourceFont = sourceSheet.getWorkbook().getFontAt((short) fontIndex); // 使用时再转换为short
+
+                        // 在目标工作簿中创建新字体
+                        Font newFont = outputWorkbook.createFont();
+                        newFont.setFontName(sourceFont.getFontName());
+                        newFont.setFontHeightInPoints(sourceFont.getFontHeightInPoints());
+                        newFont.setBold(sourceFont.getBold());
+                        newFont.setColor(sourceFont.getColor());
+                        newFont.setItalic(sourceFont.getItalic());
+                        newFont.setUnderline(sourceFont.getUnderline());
+                        newFont.setTypeOffset(sourceFont.getTypeOffset());
+                        newFont.setStrikeout(sourceFont.getStrikeout());
+
+                        newStyle.setFont(newFont);
+
+                        // 复制其他样式属性
+                        newStyle.setAlignment(sourceCellStyle.getAlignment());
+                        newStyle.setVerticalAlignment(sourceCellStyle.getVerticalAlignment());
+                        newStyle.setFillPattern(sourceCellStyle.getFillPattern());
+                        newStyle.setFillForegroundColor(sourceCellStyle.getFillForegroundColor());
+                        newStyle.setFillBackgroundColor(sourceCellStyle.getFillBackgroundColor());
+                        newStyle.setBorderTop(sourceCellStyle.getBorderTop());
+                        newStyle.setTopBorderColor(sourceCellStyle.getTopBorderColor());
+                        newStyle.setBorderBottom(sourceCellStyle.getBorderBottom());
+                        newStyle.setBottomBorderColor(sourceCellStyle.getBottomBorderColor());
+                        newStyle.setBorderLeft(sourceCellStyle.getBorderLeft());
+                        newStyle.setLeftBorderColor(sourceCellStyle.getLeftBorderColor());
+                        newStyle.setBorderRight(sourceCellStyle.getBorderRight());
+                        newStyle.setRightBorderColor(sourceCellStyle.getRightBorderColor());
+                        newStyle.setDataFormat(sourceCellStyle.getDataFormat());
+                        newStyle.setWrapText(sourceCellStyle.getWrapText());
+
+                        newCell.setCellStyle(newStyle);
+                    }
+
+
+                }
+            }
+
+            // 复制合并单元格
+            for (CellRangeAddress range : sourceSheet.getMergedRegions()) {
+                outputSheet.addMergedRegion(range);
+            }
+
+            // 写入文件
+            outputWorkbook.write(fileOut);
+            log.info("成功导出 sheet {} 到文件: {}", sheetName, filePath);
+
+        } catch (IOException e) {
+            log.error("导出 sheet 失败", e);
+        }
+    }
+
+
+    /**
+     * 复制单元格数据，如果为公式则计算结果
+     *
+     * @param sourceCell 源单元格
+     * @param targetCell 目标单元格
+     * @param workbook 工作簿对象
+     */
+    private void copyCellDataWithFormulaCalculation(Cell sourceCell, Cell targetCell, Workbook workbook) {
+        switch (sourceCell.getCellType()) {
+            case STRING:
+                targetCell.setCellValue(sourceCell.getStringCellValue());
+                break;
+            case NUMERIC:
+                targetCell.setCellValue(sourceCell.getNumericCellValue());
+                break;
+            case BOOLEAN:
+                targetCell.setCellValue(sourceCell.getBooleanCellValue());
+                break;
+            case FORMULA:
+                // 计算公式结果
+                double result = sourceCell.getNumericCellValue(); // 这里会自动计算公式
+                targetCell.setCellValue(result);
+                break;
+            case ERROR:
+                targetCell.setCellErrorValue(sourceCell.getErrorCellValue());
+                break;
+            default:
+                break;
+        }
     }
 
     private boolean checkTaskName(String taskName) {

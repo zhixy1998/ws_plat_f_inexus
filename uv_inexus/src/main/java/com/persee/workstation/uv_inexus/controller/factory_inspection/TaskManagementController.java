@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /*
  * *
@@ -120,6 +121,11 @@ public class TaskManagementController {
     public Result<Boolean> setStandardMaterial(@RequestBody SetSamplePoolDto dto) {
         return taskManagementService.setStandardMaterial(dto);
     }
+    //先看一下选了哪些标准物
+    @RequestMapping("/get-standard-material")
+    public Result<List<SetSamplePoolDto>> getStandardMaterial(@RequestParam String taskId) {
+        return taskManagementService.getStandardMaterial(taskId);
+    }
     /**
      * 获取任务详情
      */
@@ -133,5 +139,12 @@ public class TaskManagementController {
     @RequestMapping("/rename-task")
     public Result<String> renameTask(@RequestBody TaskRenameDto dto) {
         return taskManagementService.renameTask(dto);
+    }
+    /**
+     * 生成报告
+     */
+    @RequestMapping("/generate-report")
+    public Result<Map<String, Object>> generateReport(@RequestParam String taskId) {
+        return taskManagementService.generateReport(taskId);
     }
 }

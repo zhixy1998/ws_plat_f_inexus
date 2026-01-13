@@ -260,7 +260,10 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     SPECTRAL_BANDWIDTH_CALIBRATION.getDescription(),
                     NOISE_INSPECTION.getDescription(),
                     WAVELENGTH_EDGE_NOISE.getDescription(),
-                    DRIFT_INSPECTION.getDescription());
+                    DRIFT_INSPECTION.getDescription()
+                    );
+//            sheetNames.add("Report");
+
             Workbook workbook = extractSheetsToNewWorkbook(file, sheetNames);
 
 //            /*构建要在根目录创建的文件名，路径*/
@@ -638,6 +641,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
 
         @Override
         public void invoke(Map<Integer, String> data, AnalysisContext context) {
+            log.info("表头: {}", data);
             List<String> headers = new ArrayList<>();
             Set<String> seenHeaders = new HashSet<>();
             for (int i = 0; i < data.size(); i++) {

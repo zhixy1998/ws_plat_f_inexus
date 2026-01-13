@@ -1,7 +1,6 @@
 package com.persee.workstation.uv_inexus.component;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.po.factory_inspection.ExcelTemplate;
 import com.persee.workstation.uv_inexus.po.factory_inspection.TaskManagement;
 import com.persee.workstation.uv_inexus.service.factory_inspection.TaskManagementService;
@@ -42,20 +41,31 @@ public class DefaultTaskManager {
 
     // 确保存在未开始的默认任务
     public void ensureDefaultTaskExists() {
-        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
-        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
-                .eq("content_category", TEMPLATE_BUILT_IN_TASK.getCode()); // 假设用名称标识默认任务
+//        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
+//        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
+//                .eq("content_category", TEMPLATE_BUILT_IN_TASK.getCode()); // 假设用名称标识默认任务
+//
+//        TaskManagement task = taskManagementService.getOne(wrapper);
+//
+//        if (task == null) {
+//
+            long count = taskManagementService.count();
+            if (count==0){
+                // 创建新默认任务
+                TaskManagement newTask = createDefaultTask();
+                taskManagementService.save(newTask);
+                this.defaultTaskId = newTask.getId();
+            }else {
+                //使用最新的任务，不管有没有使用过
+                TaskManagement task1 = taskManagementService.getOne(
+                        new LambdaQueryWrapper<TaskManagement>()
+                                .orderByDesc(TaskManagement::getCreated)  // 按创建时间降序
+                                .last("LIMIT 1")  // 只取最新的一条
+                );
+                this.defaultTaskId = task1.getId();
+            }
 
-        TaskManagement task = taskManagementService.getOne(wrapper);
 
-        if (task == null) {
-            // 创建新默认任务
-            TaskManagement newTask = createDefaultTask();
-            taskManagementService.save(newTask);
-            this.defaultTaskId = newTask.getId();
-        } else {
-            this.defaultTaskId = task.getId();
-        }
     }
 
     private TaskManagement createDefaultTask() {
