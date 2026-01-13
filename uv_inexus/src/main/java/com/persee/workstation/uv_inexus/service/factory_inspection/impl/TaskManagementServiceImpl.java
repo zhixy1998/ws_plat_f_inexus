@@ -393,24 +393,24 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (cachedObject instanceof List) {
                 // 进行类型检查和转换
                 dtoList = (List<SetSamplePoolDto>) cachedObject;
+                if (CollectionUtils.isNotEmpty(dtoList)){
+                    // 使用迭代器安全地修改集合
+                    Iterator<SetSamplePoolDto> iterator = dtoList.iterator();
+                    while (iterator.hasNext()) {
+                        SetSamplePoolDto existing = iterator.next();
+                        if (existing.getPoolNum().equals(dto.getPoolNum())) {
+                            iterator.remove(); // 先移除
+                            break;
+                        }
+                    }
+                    // 添加更新后的对象
+                    dtoList.add(dto);
+                }
             } else {
                 dtoList = new ArrayList<>();
                 dtoList.add(dto);
             }
 
-            if (CollectionUtils.isNotEmpty(dtoList)){
-                // 使用迭代器安全地修改集合
-                Iterator<SetSamplePoolDto> iterator = dtoList.iterator();
-                while (iterator.hasNext()) {
-                    SetSamplePoolDto existing = iterator.next();
-                    if (existing.getPoolNum().equals(dto.getPoolNum())) {
-                        iterator.remove(); // 先移除
-                        break;
-                    }
-                }
-                // 添加更新后的对象
-                dtoList.add(dto);
-            }
             // 使用 Object 类型存储
             ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), taskId, dtoList, String.class, Object.class);
             return Result.ok(true);
