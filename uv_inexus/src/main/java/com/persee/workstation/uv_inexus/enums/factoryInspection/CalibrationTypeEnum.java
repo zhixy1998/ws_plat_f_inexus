@@ -35,6 +35,7 @@ public enum CalibrationTypeEnum {
     AUTO("1", "自动检测"),
     SET_STANDARD("2", "设置标准物"),
     HISTORY_WAVEFORM("3", "历史波形图"),
+    RESUME("4", "用户动作，标准物放置后点击"),
 
     //任务的执行状态
     NOT_STARTED("0", "未开始"),
