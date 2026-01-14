@@ -780,6 +780,14 @@ public class UdpSendUtil {
                 if (timeMeasureIsStop.get(deviceId)==null || timeMeasureIsStop.get(deviceId)) {
                     log.info("时间扫描停止");
                     timeMeasureIsStop.remove(deviceId);
+                    unknowCountMessageQueue.putMessage(
+                            deviceSerialNumber,
+                            cmdId,
+                            EndMarker.stop(deviceSerialNumber, cmdId)
+                    );
+
+                    infoService.newReleaseDevice(deviceSerialNumber);
+                    scheduler.shutdown();
                     return;
                 }
 
