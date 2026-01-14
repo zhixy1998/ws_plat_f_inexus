@@ -1005,6 +1005,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 deviceId = s;
                 result.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
                 deviceManager.setDeviceIdleStatus(deviceId, true);
+                deviceManager.updateDeviceInfo(deviceId, Constants.DEVICE_STATUS_IDLE, macAddress, devType);
             }
 
             Object data = r.getData();
