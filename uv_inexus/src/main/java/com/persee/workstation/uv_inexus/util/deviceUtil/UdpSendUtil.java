@@ -56,7 +56,7 @@ public class UdpSendUtil {
     private final static UdpReceiveThread udpReceiveThread = UdpReceiveThread.getInstance();
 
     //时间扫描线程测量是否结束，true-结束，false-未结束
-    private final static ConcurrentMap<String, Boolean> timeMeasureIsStop = new ConcurrentHashMap<>();
+    public final static ConcurrentMap<String, Boolean> timeMeasureIsStop = new ConcurrentHashMap<>();
 
     private static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
 
@@ -783,7 +783,7 @@ public class UdpSendUtil {
                     unknowCountMessageQueue.putMessage(
                             deviceSerialNumber,
                             cmdId,
-                            EndMarker.stop(deviceSerialNumber, cmdId)
+                            EndMarker.timeStop(deviceSerialNumber, cmdId)
                     );
 
                     infoService.newReleaseDevice(deviceSerialNumber);
@@ -798,7 +798,7 @@ public class UdpSendUtil {
                     unknowCountMessageQueue.putMessage(
                             deviceSerialNumber,
                             cmdId,
-                            EndMarker.stop(deviceSerialNumber, cmdId)
+                            EndMarker.Normal(deviceSerialNumber, cmdId)
                     );
 
                     infoService.newReleaseDevice(deviceSerialNumber);
