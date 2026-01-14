@@ -56,7 +56,7 @@ public class UdpSendUtil {
     private final static UdpReceiveThread udpReceiveThread = UdpReceiveThread.getInstance();
 
     //时间扫描线程测量是否结束，true-结束，false-未结束
-    private final ConcurrentMap<String, Boolean> timeMeasureIsStop = new ConcurrentHashMap<>();
+    private final static ConcurrentMap<String, Boolean> timeMeasureIsStop = new ConcurrentHashMap<>();
 
     private static UnknowCountMessageQueue unknowCountMessageQueue = UnknowCountMessageQueue.getInstance();
 
@@ -575,10 +575,10 @@ public class UdpSendUtil {
             DeviceConnectInfo device = deviceManager.getDevice(deviceId);
             String sendIp = device.getConnectIdentity();
 
-            TimeMeasureTaskControl control;
+            ScheduledExecutorService scheduler;
 
             if (intervalTime != null && totalTime != null) {
-                control = startTimeMeasureSender(
+                scheduler = startTimeMeasureSender(
                         socket,
                         sendBytes,
                         sendIp,
@@ -590,7 +590,7 @@ public class UdpSendUtil {
                         deviceSerialNumber
                 );
             } else {
-                control = null;
+                scheduler = null;
                 return R.fail("请选择测量间隔时间和测量总时间！");
             }
 
@@ -739,7 +739,7 @@ public class UdpSendUtil {
     }
 
     //定时器工具
-    private TimeMeasureTaskControl  startTimeMeasureSender(
+    private ScheduledExecutorService startTimeMeasureSender(
             DatagramSocket socket,
             byte[] sendBytes,
             String sendIp,
@@ -751,11 +751,7 @@ public class UdpSendUtil {
             String deviceSerialNumber
     ) {
 
-        ScheduledExecutorService scheduler =
-                Executors.newSingleThreadScheduledExecutor();
-
-        TimeMeasureTaskControl control =
-                new TimeMeasureTaskControl(scheduler);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
         long startTime = System.currentTimeMillis();
         long intervalMillis = (long) (intervalTime * 1000);
@@ -771,24 +767,19 @@ public class UdpSendUtil {
                     InetAddress.getByName(sendIp),
                     sendPort
             );
+            timeMeasureIsStop.put(deviceId, false);
         } catch (Exception e) {
             log.error("创建 DatagramPacket 失败", e);
-            return control;
+            return scheduler;
         }
 
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 currentTime  = System.currentTimeMillis();
 
-                if (control.isStopped()) {
-                    log.info("时间扫描被业务停止 device={}", deviceSerialNumber);
-                    unknowCountMessageQueue.putMessage(
-                            deviceSerialNumber,
-                            cmdId,
-                            EndMarker.stop(deviceSerialNumber, cmdId)
-                    );
-                    infoService.newReleaseDevice(deviceSerialNumber);
-                    scheduler.shutdown();
+                if (timeMeasureIsStop.get(deviceId)==null || timeMeasureIsStop.get(deviceId)) {
+                    log.info("时间扫描停止");
+                    timeMeasureIsStop.remove(deviceId);
                     return;
                 }
 
@@ -829,7 +820,7 @@ public class UdpSendUtil {
 
         }, 0, intervalMillis, TimeUnit.MILLISECONDS);
 
-        return control;
+        return scheduler;
     }
 
     private void receiveAndDeal(String deviceId, long firstTimeMillis, long intervalTime, Integer replyNumber, String cmdId, String deviceSerialNumber) {
