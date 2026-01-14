@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,8 @@ public class TaskManagementController {
      * 新建任务
      */
     @RequestMapping("/new-task")
-    public Result<HashMap<String, String>> newTask(@RequestBody TaskAddDto task) {
+    public Result<HashMap<String, String>> newTask(@RequestBody@Valid TaskAddDto task) {
+        log.info("新建任务");
         return taskManagementService.newTask(task);
     }
     /**

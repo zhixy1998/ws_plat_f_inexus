@@ -9,16 +9,13 @@
 
 package com.persee.workstation.uv_inexus.dto.factory_inspection;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import javax.validation.constraints.Size;
 
 @ApiModel("标准物质实体表")
 @Data
@@ -35,6 +32,7 @@ public class CalArtifactsSaveDto  {
      * 标准实体物质名称
      */
     @ApiModelProperty(value="标准实体物质名称")
+    @Size(max = 32, message = "名称长度不能超过32个字符")
     private String name;
 
     /**

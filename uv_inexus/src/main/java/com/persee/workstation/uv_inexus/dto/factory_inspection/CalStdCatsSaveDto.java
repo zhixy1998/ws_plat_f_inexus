@@ -8,13 +8,14 @@
  */
 
 package com.persee.workstation.uv_inexus.dto.factory_inspection;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import javax.validation.constraints.Size;
 
 @ApiModel("标准物质分类")
 @Data
@@ -31,18 +32,21 @@ public class CalStdCatsSaveDto {
      * 标准物质名称
      */
     @ApiModelProperty(value="标准物质名称")
+    @Size(max = 32,message = "标准物质名称长度不能大于32")
     private String name;
 
     /**
      * 标准物质描述
      */
     @ApiModelProperty(value="标准物质描述")
+    @Size(max = 128,message = "标准物质描述长度不能大于128")
     private String remark ;
 
     /**
      * 特征值
      */
     @ApiModelProperty(value="特征值")
+    //增加校验字符串用,分隔开来，每一个都得是能转为数字
     private String characteristicValue;
 
     /**
