@@ -21,12 +21,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Result<String>> handleIllegalArgumentException(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Result.fail(ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.OK).body(Result.fail(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<String>> handleGeneralException(Exception ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Result.fail(ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.OK).body(Result.fail(ex.getMessage()));
     }
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Result<String>> handleValidationException(MethodArgumentNotValidException ex) {
@@ -35,10 +35,10 @@ public class GlobalExceptionHandler {
                 .get(0)
                 .getDefaultMessage();
         Result<String> fail = Result.fail(errorMessage);
-        return  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(fail);
+        return  ResponseEntity.status(HttpStatus.OK).body(fail);
     }
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<String>> handleBusinessException(BusinessException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Result.fail(ex.getErrorMessage()));
+        return ResponseEntity.status(HttpStatus.OK).body(Result.fail(ex.getErrorMessage()));
     }
 }
