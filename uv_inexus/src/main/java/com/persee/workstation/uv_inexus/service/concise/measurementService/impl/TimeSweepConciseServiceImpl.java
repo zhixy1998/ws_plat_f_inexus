@@ -2930,7 +2930,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     }
 
     /**
-     * 创建新的任务
+     * 创建新的方法
      */
     private FMeasureMethod createNewMethod(TimeUseMethodDto paramDto) {
         FMeasureMethod fMeasureMethod = new FMeasureMethod();

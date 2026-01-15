@@ -9,48 +9,31 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.List;
-
-import javax.servlet.http.HttpServletResponse;
-
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TimeSweepService;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddGaugePointDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.AdvancedOperationsDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.DifferentialDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.FourOperationsParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.LuminosityConversionDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.PeakValleyMarkingDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SeekingPeaksValleysDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SmoothnessDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepMethodParameterDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.UpdateDataColorDto;
-import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.model.Result;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TimeSweepService;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import lombok.extern.slf4j.Slf4j;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -82,7 +65,14 @@ public class TimeSweepController {
 
     @PostMapping("updateMethodParameter")
     @ApiOperation("修改方法参数接口")
-    public Result updateMethodParameter(@RequestBody TimeSweepMethodParameterDto params) {
+    public Result updateMethodParameter(@Valid @RequestBody TimeSweepMethodParameterDto params, BindingResult bindingResult) {
+        // 校验参数
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error ->  error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return timeSweepService.updateMethodParameter(params);
     }
 

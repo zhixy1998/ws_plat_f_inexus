@@ -24,14 +24,17 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -66,7 +69,14 @@ public class SpectrumController {
 
     @PostMapping("saveMethodParameter")
     @ApiOperation("方法参数修改接口")
-    public Result saveMethodParameter(@RequestBody SpectralMethodParameterDto methodDto) {
+    public Result saveMethodParameter(@Valid @RequestBody SpectralMethodParameterDto methodDto,
+                                      BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return spectrumService.updateMethodParameter(methodDto);
     }
 

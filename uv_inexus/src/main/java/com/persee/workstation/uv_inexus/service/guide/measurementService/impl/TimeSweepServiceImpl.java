@@ -13,6 +13,7 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
@@ -220,56 +221,115 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
     /**
      * 修改方法参数
-     * @param params
+     * @param paramDto
      * @return
      */
     @Override
-    public Result updateMethodParameter(TimeSweepMethodParameterDto params) {
-        // TODO 修改方法目前只覆盖,后续再续逻辑
-//        // 根据方法名称查询方法表中是否有此数据
-//        List<TMeasureMethod> list = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodName, params.getMethodName()));
-//        if (list.size() > 0) {
-//            return Result.fail("方法名称重复");
-//        }
-//        // 根据用户名称进行查询用户表数据
-//        SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<SystemUserManagePO>().eq("user_name", params.getUpdateBy()));
-//        TMeasureMethod measureMethod = new TMeasureMethod();
-//        if (params.getProjectId()==null||params.getProjectId().equals("")){
-//            measureMethod.setIsSharingMethod("1");
-//        }else{
-//            measureMethod.setIsSharingMethod("0");
-//            measureMethod.setProjectItemKey(params.getProjectId());
-//        }
-//        measureMethod.setMethodName(params.getMethodName());
-//        measureMethod.setMeasurementType("时间扫描");
-//        // 将前端传过来的值复制到SpectrumParameter类中
-//        SpectrumParameter spectrumParameter = new SpectrumParameter();
-//        BeanUtils.copyProperties(params, spectrumParameter);
-//        measureMethod.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
-//        measureMethod.setMethodCreateTime(LocalDateTime.now());
-//        measureMethod.setMethodCreator(user.getUserName());
-//        boolean save = tMeasureMethodService.save(measureMethod);
-//        if (!save) {
-//            return Result.fail("创建失败");
-//        }
-//        return Result.ok(measureMethod.getId());
+    public Result updateMethodParameter(TimeSweepMethodParameterDto paramDto) {
+        double response = Double.parseDouble(paramDto.getResponseTime());
+        double interval = Double.parseDouble(paramDto.getIntervalTime());
+        if (response >= interval) {
+            return Result.fail("响应时间必须小于时间间隔");
+        }
+        SetParam setParam = new SetParam();
+        setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
+        setParam.setSetWl(Double.valueOf(paramDto.getWaveLength()));
+        boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
+        if (!b) {
+            return Result.fail("设置参数失败");
+        }
 
-        // 根据方法id查询方法
-        TMeasureMethod measureMethod = tMeasureMethodService.getById(params.getMethodId());
-        if (measureMethod==null){
-            //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
+        if (paramDto.getMethodId() != null && (paramDto.getMethodId2() == null || paramDto.getMethodId().equals(paramDto.getMethodId2()))) {
+            TMeasureMethod currentMethod = tMeasureMethodService.getById(paramDto.getMethodId());
+            if (currentMethod != null) {
+                // 1. 获取数据库中的旧参数
+                TimeSweepParamter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), TimeSweepParamter.class);
+
+                // 2. 获取传入的新参数
+                TimeSweepParamter newParam = new TimeSweepParamter();
+                BeanUtils.copyProperties(paramDto, newParam);
+
+                // 3. 比较参数
+                if (compareParam(oldParam, newParam)) {
+                    // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("method", currentMethod);
+                    return Result.ok(map);
+                }
+            }
         }
-        // 将前端传过来的值复制到TimeSweepParamter类中
-        TimeSweepParamter timeSweepParamter = new TimeSweepParamter();
-        BeanUtils.copyProperties(params, timeSweepParamter);
-        measureMethod.setMeasurementParamInfo(JSON.toJSONString(timeSweepParamter));
-        measureMethod.setMethodName(params.getMethodName());
-        boolean update = tMeasureMethodService.updateById(measureMethod);
-        if (!update){
-            return Result.ok(new ArrayList<>());
+
+        Map<String, Object> map = new HashMap<>();
+        if (paramDto.getMethodId2() != null) {
+            TMeasureMethod method2 = tMeasureMethodService.getById(paramDto.getMethodId2());
+            if (method2 == null) {
+                //没有找到该方法
+                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            }
+            // 将方法的参数取出来
+            TimeSweepParamter parameter2 = JSON.parseObject(method2.getMeasurementParamInfo(), TimeSweepParamter.class);
+            TimeSweepParamter parameter = new TimeSweepParamter();
+            BeanUtils.copyProperties(paramDto, parameter);
+            boolean memberKeys = compareParam(parameter2, parameter);
+            if (memberKeys) {
+                if (method2.getId().equals(paramDto.getMethodId())) {
+                    //请勿重复使用
+                    return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
+                } else {
+                    method2.setMethodUseTime(LocalDateTime.now());
+                }
+            } else {
+                method2.setMethodUseTime(LocalDateTime.now());
+            }
+            boolean update = tMeasureMethodService.updateById(method2);
+            if (!update) {
+                //应用失败
+                return Result.fail(YamlMessageSource.getMessageStatic("00100002"));
+            }
+            map.put("method", method2);
+            return Result.ok(map);
         }
-        return Result.ok(measureMethod.getId());
+        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
+
+        TimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+
+        TimeSweepParamter newParam = new TimeSweepParamter();
+        // 将方法参数拷贝出来
+        BeanUtils.copyProperties(paramDto, newParam);
+
+        // 3. 参数比较
+        boolean sameParam = compareParam(parameter, newParam);
+
+
+        // 2. 查询历史方法
+        if (method == null) {
+            TMeasureMethod newMethod = createNewMethod(paramDto);
+            if (newMethod == null) {
+                //新建方法失败
+                return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
+            }
+            map.put("method", newMethod);
+            return Result.ok(map);
+        }
+
+        if (sameParam) {
+            if (method.getId().equals(paramDto.getMethodId())) {
+                //请勿重复使用
+                return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
+            } else {
+                map.put("method", method);
+                return Result.ok(map);
+            }
+        } else {
+            TMeasureMethod newMethod = createNewMethod(paramDto);
+            if (newMethod == null) {
+                //新建方法失败
+                return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
+            }
+            map.put("method", newMethod);
+            return Result.ok(map);
+        }
     }
 
     /**
@@ -308,7 +368,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 vo.setAnalysisId(null);
                 vo.setAnalysisNumber(1);
                 vo.setColor(null);
-                vo.setData(null);
+                vo.setOriginalData(null);
                 vo.setDeleteType("0");
             }else{
                 QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
@@ -330,7 +390,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 vo.setSampleId(taskSpeciman.getSpecimenKey());
                 vo.setAnalysisNumber(measureData.getAnalysisNumber());
                 vo.setColor(measureData.getColor());
-                vo.setData(getSampleData(measureData,digit));
+                vo.setOriginalData(getSampleData(measureData,digit));
                 vo.setDeleteType(measureData.getIsDelete());
             }
             vo.setType("0");
@@ -466,7 +526,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 }
                 resultList.add(map);
             }
-            vo.setData(resultList);
+            vo.setOriginalData(resultList);
             vo.setType("1");
             listVos.add(vo);
         }
@@ -2238,10 +2298,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 //         vo.getData() == null || vo.getData().isEmpty());
 
                 // 打印第一个样品的前3条数据，确认x和y的值
-                if (i == 0 && vo.getData() != null && !vo.getData().isEmpty()) {
-                    int dataLogCount = Math.min(3, vo.getData().size());
+                if (i == 0 && vo.getOriginalData() != null && !vo.getOriginalData().isEmpty()) {
+                    int dataLogCount = Math.min(3, vo.getOriginalData().size());
                     for (int j = 0; j < dataLogCount; j++) {
-                        Map<String, Object> data = vo.getData().get(j);
+                        Map<String, Object> data = vo.getOriginalData().get(j);
                         // log.info("【步骤2/5】样品{}数据{}: x={}, y={}",
                         //         i+1, j+1, data.get("x"), data.get("y"));
                     }
@@ -2259,7 +2319,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (!filteredSamples.isEmpty()) {
             for (SampleListVo vo : filteredSamples) {
                 String title = vo.getTitle();
-                List<Map<String, Object>> dataList = vo.getData();
+                List<Map<String, Object>> dataList = vo.getOriginalData();
 
                 if (CollectionUtils.isEmpty(dataList)) {
                     // log.info("【步骤3/5】样品{}: 无数据，跳过", title);
@@ -3042,7 +3102,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
             HeadVO head = heads.get(i);
             // 使用 getName() 获取表头显示文本（如"波长nm"）
-            String headName = head.getName(); 
+            String headName = head.getName();
             cell.setText(headName);
         }
 
@@ -3059,7 +3119,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             for (int i = 1; i < columnCount; i++) {
                 HeadVO head = heads.get(i);
                 // 使用 getIdentity() 获取数据中的键（如"样品1"）
-                String headKey = head.getIdentity(); 
+                String headKey = head.getIdentity();
                 String value = rowData.getOrDefault(headKey, "-").toString();
                 row.getCell(i).setText(value);
             }
@@ -3303,4 +3363,48 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 System.out.println("无效的光度模式: " + mode);
         }
     }
+
+    /**
+     * 比较参数
+     *
+     * @param method
+     * @param newParam
+     * @return
+     */
+    private boolean compareParam(TimeSweepParamter method, TimeSweepParamter newParam) {
+        String dbJson = JSON.toJSONString(method, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(newParam, SerializerFeature.SortField);
+
+        return dbJson.equals(frontJson);
+    }
+
+    /**
+     * 创建新的方法
+     */
+    private TMeasureMethod createNewMethod(TimeSweepMethodParameterDto paramDto) {
+        TMeasureMethod fMeasureMethod = new TMeasureMethod();
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        String collect = new Random().ints(8, 0, chars.length())
+                .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                .collect(Collectors.joining());
+
+        fMeasureMethod.setMethodName(paramDto.getMeasureType() + collect);
+
+        TimeSweepParamter parameter = new TimeSweepParamter();
+        // 将前端参数复制给数据库参数
+        BeanUtils.copyProperties(paramDto, parameter);
+        parameter.setEnergyLampName(paramDto.getEnergyLamp().equals("0") ? "钨灯" : paramDto.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+        fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
+        fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        fMeasureMethod.setMethodUseTime(LocalDateTime.now());
+        fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());
+        fMeasureMethod.setMeasurementType(paramDto.getMeasureType());
+        boolean save = tMeasureMethodService.save(fMeasureMethod);
+        if (save) {
+            return fMeasureMethod;
+        } else {
+            return null;
+        }
+    }
+
 }

@@ -38,7 +38,7 @@ public interface DataManagementService {
     Result queryUserTaskStatistics(TaskStatisticVo vo);
 
     //查询任务详情
-    Result<TaskDetailVO> queryTaskDetail(String taskId, String deviceNumber);
+    Result<TaskDetailVO> queryTaskDetail(String taskId);
 
     // 查询方法统计信息
     Result queryUserMethodStatistics(MethodStatisticVo vo);

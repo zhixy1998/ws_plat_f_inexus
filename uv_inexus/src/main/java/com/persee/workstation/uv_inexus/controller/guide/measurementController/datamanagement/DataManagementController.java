@@ -68,10 +68,9 @@ public class DataManagementController {
     @GetMapping("/queryTaskDetail")
     @ApiOperation("查询任务详情")
     public Result<TaskDetailVO> queryTaskDetail(
-            @RequestParam String taskId,
-            @RequestParam String deviceNumber
+            @RequestParam String taskId
     ) {
-        return dataManagementService.queryTaskDetail(taskId, deviceNumber);
+        return dataManagementService.queryTaskDetail(taskId);
     }
 
     @PostMapping("/queryUserMethodStatistics")

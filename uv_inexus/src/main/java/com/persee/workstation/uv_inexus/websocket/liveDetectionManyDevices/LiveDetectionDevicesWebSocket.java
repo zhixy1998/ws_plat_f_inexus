@@ -89,6 +89,9 @@ public class LiveDetectionDevicesWebSocket {
     private ConciseSpectrumNewWebSocket conciseSpectrumNewWebSocket;
 
     @Autowired
+    private SpectrumNewWebSocket spectrumWebSocket;
+
+    @Autowired
     GuidePhotometricWebSocket guidePhotometricWebSocket;
 
     @Autowired
@@ -250,7 +253,9 @@ public class LiveDetectionDevicesWebSocket {
                     break;
                 }
                 case Spectrum:{
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.Spectrum.getOperation());
+                    JSONObject photometricdata = input.getData();
+                    SpectrumNewWebSocketParam param = photometricdata.toJavaObject(SpectrumNewWebSocketParam.class);
+                    spectrumWebSocket.measureTask(param);
                     break;
                 }
                 case TimeMeasure:{

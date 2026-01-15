@@ -8,7 +8,7 @@ public class FBaseLineWebSocketParam {
     @ApiModelProperty(value = "任务ID")
     private String taskId;
     @ApiModelProperty(value = "方法ID")
-    private String measureId;
+    private String methodId;
     @ApiModelProperty(value = "设备序列号")
     private String deviceSerialNumber;
 }

@@ -10,20 +10,25 @@
 package com.persee.workstation.uv_inexus.dto.measurementDto;
 
 
+import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectrumParameterVo;
 import lombok.Data;
 
 @Data
-public class SpectralMethodParameterDto extends SpectrumParameter{
+public class SpectralMethodParameterDto extends SpectrumParameterVo {
     // 项目ID
     private String projectId;
     // 测量类型
     private String measureType;
     // 方法ID
     private String methodId;
+    // 方法id2
+    private String methodId2;
     // 方法名称
     private String methodName;
     // 用户名
     private String updateBy;
     // 是否共享
     private String isShare;
+    // 序列号
+    private String deviceSerialNumber;
 }

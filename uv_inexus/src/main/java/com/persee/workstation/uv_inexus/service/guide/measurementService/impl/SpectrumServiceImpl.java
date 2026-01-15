@@ -30,6 +30,7 @@ import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
@@ -51,6 +52,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.spectrum.FSpectrumParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
@@ -875,7 +877,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                     vo.setAnalysisId(null);
                     vo.setAnalysisNumber(1);
                     vo.setColor(null);
-                    vo.setData(null);
+                    vo.setOriginalData(null);
                 } else {
                     QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                     queryWrapper.eq("task_id", taskId);
@@ -893,7 +895,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(null);
                         vo.setColor(null);
-                        vo.setData(null);
+                        vo.setOriginalData(null);
                     } else {
                         vo.setTitle(sample.getSampleName());
                         vo.setAnalysisId(measureData.getId());
@@ -901,9 +903,9 @@ public class SpectrumServiceImpl implements SpectrumService {
                         vo.setAnalysisNumber(measureData.getAnalysisNumber());
                         vo.setColor(measureData.getColor());
                         if (measureData.getAnalysisResult() == null) {
-                            vo.setData(null);
+                            vo.setOriginalData(null);
                         } else {
-                            vo.setData(getSampleData(measureData, digit));
+                            vo.setOriginalData(getSampleData(measureData, digit));
                         }
                     }
                 }
@@ -948,7 +950,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                         vo.setSampleId(taskSpeciman.getSpecimenKey());
                         vo.setAnalysisNumber(i + 1);
                         vo.setColor(null);
-                        vo.setData(null);
+                        vo.setOriginalData(null);
                         vo.setDeleteType("0");
                     } else {
                         vo.setTitle(sample.getSampleName() + "-" + (i + 1));
@@ -957,9 +959,9 @@ public class SpectrumServiceImpl implements SpectrumService {
                         vo.setAnalysisNumber(measureData.getAnalysisNumber());
                         vo.setColor(measureData.getColor());
                         if (measureData.getAnalysisResult() == null) {
-                            vo.setData(null);
+                            vo.setOriginalData(null);
                         } else {
-                            vo.setData(getSampleData(measureData, digit));
+                            vo.setOriginalData(getSampleData(measureData, digit));
                         }
                         vo.setDeleteType(measureData.getIsDelete());
                     }
@@ -1143,7 +1145,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 }
                 resultList.add(map);
             }
-            vo.setData(resultList);
+            vo.setOriginalData(resultList);
             vo.setType("1");
             listVos.add(vo);
         }
@@ -2667,10 +2669,10 @@ public class SpectrumServiceImpl implements SpectrumService {
                 //         vo.getData() == null || vo.getData().isEmpty());
 
                 // 打印第一个样品的前3条数据，确认x和y的值
-                if (i == 0 && vo.getData() != null && !vo.getData().isEmpty()) {
-                    int dataLogCount = Math.min(3, vo.getData().size());
+                if (i == 0 && vo.getOriginalData() != null && !vo.getOriginalData().isEmpty()) {
+                    int dataLogCount = Math.min(3, vo.getOriginalData().size());
                     for (int j = 0; j < dataLogCount; j++) {
-                        Map<String, Object> data = vo.getData().get(j);
+                        Map<String, Object> data = vo.getOriginalData().get(j);
                         // log.info("【步骤2/5】样品{}数据{}: x={}, y={}",
                         //         i+1, j+1, data.get("x"), data.get("y"));
                     }
@@ -2688,7 +2690,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (!filteredSamples.isEmpty()) {
             for (SampleListVo vo : filteredSamples) {
                 String title = vo.getTitle();
-                List<Map<String, Object>> dataList = vo.getData();
+                List<Map<String, Object>> dataList = vo.getOriginalData();
 
                 if (CollectionUtils.isEmpty(dataList)) {
                     // log.info("【步骤3/5】样品{}: 无数据，跳过", title);
@@ -2839,56 +2841,133 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     /**
      * (实验测试)方法参数修改接口
-     * @param methodDto
+     * @param paramDto
      * @return
      */
     @Override
-    public Result updateMethodParameter(SpectralMethodParameterDto methodDto) {
-        // TODO 修改方法目前只覆盖,后续再续逻辑
-//        // 根据方法名称查询方法表中是否有此数据
-//        List<TMeasureMethod> list = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class).eq(TMeasureMethod::getMethodName, methodDto.getMethodName()));
-//        if (list.size() > 0) {
-//            return Result.fail("方法名称重复");
-//        }
-//        // 根据用户名称进行查询用户表数据
-//        SystemUserManagePO user = userConfigDAO.selectOne(new QueryWrapper<SystemUserManagePO>().eq("user_name", methodDto.getUpdateBy()));
-//        TMeasureMethod measureMethod = new TMeasureMethod();
-//        if (methodDto.getProjectId()==null||methodDto.getProjectId().equals("")){
-//            measureMethod.setIsSharingMethod("1");
-//        }else{
-//            measureMethod.setIsSharingMethod("0");
-//            measureMethod.setProjectItemKey(methodDto.getProjectId());
-//        }
-//        measureMethod.setMethodName(methodDto.getMethodName());
-//        measureMethod.setMeasurementType("光谱扫描");
-//        // 将前端传过来的值复制到SpectrumParameter类中
-//        SpectrumParameter spectrumParameter = new SpectrumParameter();
-//        BeanUtils.copyProperties(methodDto, spectrumParameter);
-//        measureMethod.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
-//        measureMethod.setMethodCreateTime(LocalDateTime.now());
-//        measureMethod.setMethodCreator(user.getUserName());
-//        boolean save = tMeasureMethodService.save(measureMethod);
-//        if (!save) {
-//            return Result.fail("创建失败");
-//        }
-//        return Result.ok(measureMethod.getId());
+    public Result updateMethodParameter(SpectralMethodParameterDto paramDto) {
+        if (paramDto.getLuminosity().equals("3") || paramDto.getLuminosity().equals("4")) {
+            paramDto.setLadderCorrection(false);
+        }
+        boolean update1 = Double.parseDouble(paramDto.getWaveLengthInterval()) < 1;
+        if (paramDto.getScanSpeed().equals("3") && update1) {
+            return Result.fail("极快扫描速度时,扫描间隔不能小于1秒");
+        }
+        double start = Double.parseDouble(paramDto.getStartWaveLength());
+        double end = Double.parseDouble(paramDto.getEndWaveLength());
+        // 校验方法参数中起始波长不能小于终止波长,小于则友好提示
+        if (start <= end) {
+            //起始波长不能小于等于停止波长
+            return Result.fail(YamlMessageSource.getMessageStatic("00104015"));
+        }
+        // 校验幻灯波长在330~390之间
+        double changeWavelength = Double.parseDouble(paramDto.getChangeLampWaveLength());
+        if (changeWavelength < 330.0 || changeWavelength > 390.0) {
+            return Result.fail("幻灯波长在330~390之间");
+        }
+        if (paramDto.getScanSpeed().equals("3") && (start > 1100 || start < 380)) {
+            return Result.fail("极快扫描速度时,波长区间应在1100.0~380.0");
+        }
+        // 下发参数
+        SetParam setParam = new SetParam();
+        setParam.setPhotoMode(Integer.valueOf(paramDto.getLuminosity()));
+        setParam.setSetWl(Double.valueOf(paramDto.getStartWaveLength()));
+        boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
+        if (b) {
+            return Result.fail("设置参数失败");
+        }
 
-        // 根据方法id查询方法
-        TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getMethodId());
-        if (measureMethod == null) {
-            //没有找到该方法
-            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
+        if (paramDto.getMethodId() != null && (paramDto.getMethodId2() == null || paramDto.getMethodId().equals(paramDto.getMethodId2()))) {
+            TMeasureMethod currentMethod = tMeasureMethodService.getById(paramDto.getMethodId());
+            if (currentMethod != null) {
+                // 1. 获取数据库中的旧参数
+                SpectrumParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), SpectrumParameter.class);
+
+                // 2. 获取传入的新参数
+                SpectrumParameter newParam = new SpectrumParameter();
+                BeanUtils.copyProperties(paramDto, newParam);
+
+                // 3. 比较参数
+                if (compareParam(oldParam, newParam)) {
+                    // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("method", currentMethod);
+                    return Result.ok(map);
+                }
+            }
         }
-        // 将前端传过来的值复制到SpectrumParameter类中
-        SpectrumParameter spectrumParameter = new SpectrumParameter();
-        BeanUtils.copyProperties(methodDto, spectrumParameter);
-        measureMethod.setMeasurementParamInfo(JSON.toJSONString(spectrumParameter));
-        measureMethod.setMethodName(methodDto.getMethodName());
-        boolean update = tMeasureMethodService.updateById(measureMethod);
-        if (!update) {
-            return Result.ok(new ArrayList<>());
+
+        Map<String, Object> map = new HashMap<>();
+        if (paramDto.getMethodId2() != null) {
+            TMeasureMethod method2 = tMeasureMethodService.getById(paramDto.getMethodId2());
+            if (method2 == null) {
+                //没有找到该方法
+                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+            }
+            // 将方法的参数取出来
+            SpectrumParameter parameter2 = JSON.parseObject(method2.getMeasurementParamInfo(), SpectrumParameter.class);
+            SpectrumParameter parameter = new SpectrumParameter();
+            BeanUtils.copyProperties(paramDto, parameter);
+            boolean memberKeys = compareParam(parameter2, parameter);
+            if (memberKeys) {
+                if (method2.getId().equals(paramDto.getMethodId())) {
+                    //请勿重复使用
+                    return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
+                } else {
+                    method2.setMethodUseTime(LocalDateTime.now());
+                }
+            } else {
+                method2.setMethodUseTime(LocalDateTime.now());
+            }
+            boolean update = tMeasureMethodService.updateById(method2);
+            if (!update) {
+                //应用失败
+                return Result.fail(YamlMessageSource.getMessageStatic("00100002"));
+            }
+            map.put("method", method2);
+            return Result.ok(map);
         }
-        return Result.ok(measureMethod.getId());
+
+        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
+
+        SpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+
+        SpectrumParameter newParam = new SpectrumParameter();
+        // 将方法参数拷贝出来
+        BeanUtils.copyProperties(paramDto, newParam);
+
+        // 3. 参数比较
+        boolean sameParam = compareParam(parameter, newParam);
+
+        // 2. 查询历史方法
+        if (method == null) {
+            TMeasureMethod newMethod = createNewMethod(paramDto);
+            if (newMethod == null) {
+                //新建方法失败
+                return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
+            }
+            map.put("method", newMethod);
+            return Result.ok(map);
+        }
+
+        if (sameParam) {
+            if (method.getId().equals(paramDto.getMethodId())) {
+                //请勿重复使用
+                return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
+            } else {
+                map.put("method", method);
+                return Result.ok(map);
+            }
+        } else {
+            TMeasureMethod newMethod = createNewMethod(paramDto);
+            if (newMethod == null) {
+                //新建方法失败
+                return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
+            }
+            map.put("method", newMethod);
+            return Result.ok(map);
+        }
     }
 
     /**
@@ -3165,7 +3244,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 map.put("x", split[0]);
                 map.put("y", split[1]);
             }
-            if (gauges != null && peaks.size() != 0) {
+            if (gauges != null && peaks!= null) {
                 for (PeakValleyMarking gauge : gauges) {
                     if (split[0].equals(gauge.getX())) {
                         map.put("marked", "1");
@@ -3756,5 +3835,110 @@ public class SpectrumServiceImpl implements SpectrumService {
                 System.out.println("无效的光度模式: " + mode);
         }
     }
+
+    /**
+     * 验证参数
+     * @param parameter
+     * @return
+     */
+    private Result validateSpectrumParam(FSpectrumParameterVo parameter) {
+        // 必填字段校验
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getLuminosity())) {
+            return Result.fail("光度模式不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getStartWaveLength())) {
+            return Result.fail("开始波长不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getEndWaveLength())) {
+            return Result.fail("结束波长不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getWaveLengthInterval())) {
+            return Result.fail("波长间隔不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getTimeInterval())) {
+            return Result.fail("时间间隔不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getScanSpeed())) {
+            return Result.fail("扫描速度不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getSpectralBandwidth())) {
+            return Result.fail("光谱带宽不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getChangeLampWaveLength())) {
+            return Result.fail("换灯波长不能为空");
+        }
+        if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getEnergyLamp())) {
+            return Result.fail("能量灯不能为空");
+        }
+        if (parameter.getGain() == null) {
+            return Result.fail("增益不能为空");
+        }
+
+        return Result.ok();
+    }
+
+    /**
+     * 设置方法参数
+     * @param deviceSerialNumber
+     * @param setParam
+     * @return
+     */
+    @Override
+    public boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam) {
+        DevOperationInputParam param = new DevOperationInputParam();
+        param.setOperationType(OperationTypeEnums.SetParam.getType());
+        param.setDeviceSerialNumber(deviceSerialNumber);
+        param.setParam(setParam);
+        R<OperationResultEntity> r = devOperationUtilService.operation(param);
+        if (r.getSuccess()) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+    /**
+     * 比较参数
+     *
+     * @param method
+     * @param newParam
+     * @return
+     */
+    private boolean compareParam(SpectrumParameter method, SpectrumParameter newParam) {
+        String dbJson = JSON.toJSONString(method, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(newParam, SerializerFeature.SortField);
+
+        return dbJson.equals(frontJson);
+    }
+
+    /**
+     * 创建新的方法
+     */
+    private TMeasureMethod createNewMethod(SpectralMethodParameterDto paramDto) {
+        TMeasureMethod fMeasureMethod = new TMeasureMethod();
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        String collect = new Random().ints(8, 0, chars.length())
+                .mapToObj(i -> String.valueOf(chars.charAt(i)))
+                .collect(Collectors.joining());
+
+        fMeasureMethod.setMethodName(paramDto.getMeasureType() + collect);
+
+        FSpectrumParameter parameter = new FSpectrumParameter();
+        // 将前端参数复制给数据库参数
+        BeanUtils.copyProperties(paramDto, parameter);
+        fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
+        fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        fMeasureMethod.setMethodUseTime(LocalDateTime.now());
+        fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());
+        fMeasureMethod.setMeasurementType(paramDto.getMeasureType());
+        boolean save = tMeasureMethodService.save(fMeasureMethod);
+        if (save) {
+            return fMeasureMethod;
+        } else {
+            return null;
+        }
+    }
+
 
 }

@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
 
 import javax.servlet.http.HttpServletResponse;
@@ -150,4 +151,7 @@ public interface SpectrumService {
 
     // (实验测试)查询表格数据
     List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
+
+    // 仪器设置参数
+    boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
 }

@@ -13,7 +13,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
@@ -32,7 +31,6 @@ import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
@@ -163,16 +161,9 @@ public class ConciseBaseLineNewWebSocket {
             log.info("【任务开始】创建任务线程, session: {}", sessionId);
             try {
                 runBusinessLogic(param);
-            } catch (UserInterruptedException e) {
-                log.info("【用户停止】用户主动停止任务, session: {}", sessionId);
-                // 不在这里发送停止成功，由 handleStopRequest 统一发送
             } catch (Exception e) {
                 log.error("【任务异常】基线任务执行异常, session: {}", sessionId, e);
-                sendError(deviceSerialNumber, "执行异常: " + e.getMessage());
-            } finally {
-                log.info("【任务结束】任务线程执行完成, session: {}", sessionId);
-                // 确保所有资源都被清理
-                cleanupResources(param.getDeviceSerialNumber());
+                sendErrorClose(deviceSerialNumber, "执行异常: " + e.getMessage());
             }
         });
 
@@ -190,7 +181,7 @@ public class ConciseBaseLineNewWebSocket {
 
         // 获取参数
         String taskId = param.getTaskId();
-        String methodId = param.getMeasureId();
+        String methodId = param.getMethodId();
         String deviceSerialNumber = param.getDeviceSerialNumber();
         lastChangeParam=null;
 
@@ -211,7 +202,7 @@ public class ConciseBaseLineNewWebSocket {
             // 获取方法参数
             FMeasureMethod method = tMeasureMethodService.getById(methodId);
             if (method == null) {
-                sendClose(deviceSerialNumber, "方法不存在");
+                sendErrorClose(deviceSerialNumber, "方法不存在");
                 return;
             }
             // 将方法中的参数转换为对象
@@ -240,47 +231,19 @@ public class ConciseBaseLineNewWebSocket {
             }
 
             log.info("【基线成功】基线测量成功完成, session: {}", sessionId);
-            if (!state.stopCommandSent.get()) {
-                try {
-                    Thread.sleep(3000);
-                    log.info("【等待完成】固定等待3秒完成, session: {}", sessionId);
-                } catch (InterruptedException e) {
-                    log.warn("【等待中断】等待被中断, session: {}", sessionId);
-                    Thread.currentThread().interrupt();
-                }
 
-                String ip = deviceInfoService.getIp(deviceSerialNumber);
-                log.info("【设置波长开始】开始设置波长, session: {}", sessionId);
-                double parsed = Double.parseDouble(methodParam.getStartWaveLength());
-                Double va = formulaUtil.calculateStep(parsed, deviceSerialNumber);
-                Command com = new Command(SetParamEnum.SetWl.getComId(), new Object[]{va});
-                devMessageUtil.SetOneCommand(com, ip);
-                DetectionConstants.currentWavelength = methodParam.getStartWaveLength();
-                log.info("【设置波长结束】结束设置波长, session: {}", sessionId);
+            JSONObject object = new JSONObject();
+            object.put("success", "基线成功");
+            sendClose(sessionId, object);
 
-                log.info("【零点校零开始】开始进行校零, session: {}", sessionId);
-                /// 基线结束之后横插一个校零
-                // 进行校零
-                Command command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-                R<ChangeParam> zero = devMessageUtil.zero(command, ip);
-                if (!zero.getSuccess()) {
-                    sendClose(sessionId, zero.getMessage());
-                    return;
-                }
-                ChangeParam zeroData = zero.getData();
-                Double v = formulaUtil.calculateWl(Double.parseDouble(zeroData.getWl()), deviceSerialNumber);
-                DetectionConstants.zeroResult.put(methodParam.getStartWaveLength(), zero.getData());
-                log.info("【零点校零成功】零点校零成功, session: {}", sessionId);
-            }
 
-            sendClose(sessionId, "基线成功");
 
         } catch (UserInterruptedException e) {
             // 用户主动停止，不处理，由 handleStopRequest 统一发送停止成功
             log.info("【用户中断】用户主动停止任务, session: {}", sessionId);
         } catch (Exception e) {
             log.error("【业务逻辑异常】基线任务执行异常, session: {}", sessionId, e);
-            sendClose(sessionId, "基线任务执行异常: " + e.getMessage());
+            sendErrorClose(deviceSerialNumber, "基线任务执行异常: " + e.getMessage());
         }
     }
 
@@ -289,13 +252,12 @@ public class ConciseBaseLineNewWebSocket {
      */
     private boolean validateParameters(String methodId, String deviceSerialNumber) {
         if (methodId == null || methodId.trim().isEmpty()) {
-            log.error("【参数验证失败】方法编号为空");
-            sendClose(deviceSerialNumber, "方法编号不能为空");
+            sendErrorClose(deviceSerialNumber, "方法编号不能为空");
             return false;
         }
         if (deviceSerialNumber == null || deviceSerialNumber.trim().isEmpty()) {
             log.error("【参数验证失败】设备编号为空");
-            sendClose(deviceSerialNumber, "设备编号不能为空");
+            sendErrorClose(deviceSerialNumber,  "设备编号不能为空");
             return false;
         }
         log.info("【参数验证成功】参数验证通过");
@@ -313,7 +275,7 @@ public class ConciseBaseLineNewWebSocket {
             if (result.getCode() != 200) {
                 log.error("【设置参数失败】设置参数服务返回失败 code: {}, message: {}",
                         result.getCode(), result.getMessage());
-                sendClose(deviceSerialNumber, "设置参数失败");
+                sendErrorClose(deviceSerialNumber,"设置参数失败" );
                 return false;
             }
 
@@ -334,7 +296,7 @@ public class ConciseBaseLineNewWebSocket {
             SessionState state = sessionStates.get(deviceSerialNumber);
             if (state == null) {
                 log.error("【开始测量失败】会话状态异常, session: {}", deviceSerialNumber);
-                sendClose(deviceSerialNumber, "会话状态异常");
+                sendErrorClose(deviceSerialNumber,"会话状态异常");
                 return false;
             }
 
@@ -342,7 +304,7 @@ public class ConciseBaseLineNewWebSocket {
             String ip = deviceInfoService.getIp(deviceSerialNumber);
             if (ip == null) {
                 log.error("【获取设备IP失败】无法获取设备IP, device: {}", deviceSerialNumber);
-                sendClose(deviceSerialNumber, "获取设备IP失败");
+                sendErrorClose(deviceSerialNumber,"获取设备IP失败");
                 return false;
             }
             log.info("【获取设备IP成功】设备IP: {}, session: {}", ip, deviceSerialNumber);
@@ -392,8 +354,6 @@ public class ConciseBaseLineNewWebSocket {
             double wavelengthInterval = Double.parseDouble(param.getWaveLengthInterval());
             double startWl = Double.parseDouble(param.getStartWaveLength());
             double endWl = Double.parseDouble(param.getEndWaveLength());
-            boolean isDescending = startWl > endWl;
-            Double stopWaveLength = endWl + (wavelengthInterval * 3);
 
             int expectedPoints = calculateExpectedDataPoints(startWl, endWl, wavelengthInterval);
             log.info("【数据点预期】期望数据点数: {}, 波长范围: {} - {}, 间隔: {}, session: {}",
@@ -402,7 +362,7 @@ public class ConciseBaseLineNewWebSocket {
             SessionState state = sessionStates.get(sessionId);
             if (state == null) {
                 log.error("【收集数据失败】会话状态异常, session: {}", sessionId);
-                sendClose(sessionId, "会话状态异常");
+                sendErrorClose(sessionId, "会话状态异常");
                 return null;
             }
 
@@ -410,14 +370,12 @@ public class ConciseBaseLineNewWebSocket {
             final int MAX_CONSECUTIVE_END_WAVELENGTH = 3;
             final long NO_DATA_TIMEOUT_MS = 120 * 1000; // 120秒无数据超时（增加以处理换灯暂停）
             long lastDataTime = System.currentTimeMillis();
-            int cont = 0;
-            boolean isEndData = false;
             while (true) {
                 // 检查无数据超时
                 if (System.currentTimeMillis() - lastDataTime > NO_DATA_TIMEOUT_MS) {
                     log.error("【无数据超时】长时间没有收到数据, session: {}, 最后数据时间: {}ms前",
                             sessionId, System.currentTimeMillis() - lastDataTime);
-                    sendClose(sessionId, "设备无响应");
+                    sendErrorClose(sessionId, "设备无响应");
                     return null;
                 }
 
@@ -486,7 +444,7 @@ public class ConciseBaseLineNewWebSocket {
 
             if (dataList.isEmpty()) {
                 log.error("【数据为空】基线数据为空，失败, session: {}", sessionId);
-                sendClose(deviceSerialNumber, "基线数据为空，失败");
+                sendErrorClose(deviceSerialNumber,"基线数据为空，失败" );
                 return null;
             }
 
@@ -512,7 +470,7 @@ public class ConciseBaseLineNewWebSocket {
                 task = tMeasureTaskService.getById(taskId);
                 if (task == null) {
                     log.error("【保存任务失败】任务不存在, session: {}, taskId: {}", sessionId, taskId);
-                    sendClose(sessionId, "任务不存在");
+                    sendErrorClose(sessionId,  "任务不存在");
                     return false;
                 }
             } else {
@@ -539,7 +497,7 @@ public class ConciseBaseLineNewWebSocket {
                 boolean save1 = tMeasureTaskService.save(task);
                 if (!save1) {
                     log.error("【保存任务失败】保存任务到数据库失败, session: {}", sessionId);
-                    sendClose(sessionId, "保存任务失败");
+                    sendErrorClose(sessionId, "保存任务失败");
                     return false;
                 }
 
@@ -548,7 +506,7 @@ public class ConciseBaseLineNewWebSocket {
                 boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
                 if (!save) {
                     log.error("【保存附件失败】保存任务附件失败, session: {}", sessionId);
-                    sendClose(sessionId, "保存任务附件失败");
+                    sendErrorClose(sessionId, "保存任务附件失败");
                     return false;
                 }
             }
@@ -558,7 +516,7 @@ public class ConciseBaseLineNewWebSocket {
             boolean update = tMeasureTaskService.updateById(task);
             if (!update) {
                 log.error("【更新任务失败】更新任务失败, session: {}", sessionId);
-                sendClose(sessionId, "更新任务失败");
+                sendErrorClose(sessionId, "更新任务失败");
                 return false;
             }
 
@@ -778,15 +736,17 @@ public class ConciseBaseLineNewWebSocket {
 
 
 
-    private void sendClose(String sessionId, String msg) {
+    private void sendClose(String sessionId, JSONObject msg) {
         log.info("【发送关闭】发送消息并关闭连接, session: {}, message: {}", sessionId, msg);
-        try {
-            sendMessage(sessionId, JSON.parseObject(msg));
-        } finally {
-            cleanupResources(sessionId);
-        }
+        sendMessage(sessionId, msg);
+        cleanupResources(sessionId);
     }
 
+    private void sendErrorClose(String sessionId, String msg) {
+        log.info("【发送关闭】发送消息并关闭连接, session: {}, message: {}", sessionId, msg);
+        sendError(sessionId, msg);
+        cleanupResources(sessionId);
+    }
 
 
     private Command buildCommand(SetParamEnum cmdEnum, Object value) {

@@ -18,6 +18,7 @@ import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.*;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
@@ -31,7 +32,6 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.TaskCount;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.TaskCountByTime;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TMeasureProjectCollaboratorGroup;
@@ -41,7 +41,6 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectCollaboratorGroupService;
-import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.vo.concise.common.MethodStatisticVo;
@@ -50,10 +49,8 @@ import com.persee.workstation.uv_inexus.vo.concise.common.TaskStatisticVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.TaskDetailVO;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.config.Task;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -119,7 +116,15 @@ public class DataManagementServiceImpl implements DataManagementService {
         String selectKey = unFinishTasksAndNumParam.getSelectKey();
         LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureTask::getMeasureType, taskType);
-        queryWrapper.eq(TMeasureTask::getIsSave, status);
+        // 如果status等于2的情况下则查询已完成的任务,如果小于2则查询未完成的任务
+        if (status.equals(Constants.PARAM_TWO)){
+            // 查询taskStatus为2（结束）的记录
+            queryWrapper.eq(TMeasureTask::getTaskStatus, 2);
+        } else {
+            // 查询taskStatus为0（未测）或1（已测）的记录
+            queryWrapper.in(TMeasureTask::getTaskStatus, Arrays.asList(0, 1));
+        }
+        queryWrapper.eq(TMeasureTask::getTaskStatus, status);
         queryWrapper.eq(TMeasureTask::getUserId, unFinishTasksAndNumParam.getSystemIdentityId());
         if (selectKey!=null&&!selectKey.isEmpty()){
             queryWrapper.like(TMeasureTask::getTaskName, selectKey);
@@ -388,7 +393,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             taskSumListDto.setMethodName(method.getMethodName());
             taskSumListDto.setProjectName(project.getProjectName());
             taskSumListDto.setMeasureMode(task.getMeasureType());
-            taskSumListDto.setTaskStatus("0".equals(task.getIsSave())?"未完成":"完成");
+            taskSumListDto.setTaskStatus(Constants.PARAM_ZERO.equals(task.getTaskStatus())?"未测":Constants.PARAM_ONE.equals(task.getTaskStatus())?"已测":"结束");
             taskSumListDto.setSampleNum((long) specimen.size());
             taskSumListDto.setMeasureStartTime(task.getStartTime());
             taskSumList.add(taskSumListDto);
@@ -418,7 +423,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         List<TMeasureTask> collect = (tasks == null ? new ArrayList<TMeasureTask>() : tasks)
                 .stream()
-                .filter(task -> task != null && "1".equals(task.getIsSave()))
+                .filter(task -> task != null && "2".equals(task.getTaskStatus()))
                 .collect(Collectors.toList());
 
         result.setTaskTotal((long) tasks.size());
@@ -437,9 +442,9 @@ public class DataManagementServiceImpl implements DataManagementService {
      * @return
      */
     @Override
-    public Result<TaskDetailVO> queryTaskDetail(String taskId, String deviceNumber) {
+    public Result<TaskDetailVO> queryTaskDetail(String taskId) {
         //  参数校验
-        if (StringUtils.isBlank(taskId) || StringUtils.isBlank(deviceNumber)) {
+        if (StringUtils.isBlank(taskId)) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
         }
 
@@ -503,7 +508,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
             vo.setTaskName(task.getTaskName());
             vo.setMeasurementType(task.getMeasureType());
-            vo.setInstrumentName(deviceNumber);
+            vo.setInstrumentName(task.getDeviceSerialNumber());
             vo.setSamples(sampleVOList);
 
             return Result.ok(vo);

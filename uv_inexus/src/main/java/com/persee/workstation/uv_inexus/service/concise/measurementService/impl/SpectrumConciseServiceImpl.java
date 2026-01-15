@@ -3976,7 +3976,6 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         } else {
             return false;
         }
-
     }
 
 
@@ -4320,6 +4319,11 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     }
 
 
+    /**
+     * 验证参数
+     * @param parameter
+     * @return
+     */
     private Result validateSpectrumParam(FSpectrumParameterVo parameter) {
         // 必填字段校验
         if (com.alibaba.excel.util.StringUtils.isBlank(parameter.getLuminosity())) {
