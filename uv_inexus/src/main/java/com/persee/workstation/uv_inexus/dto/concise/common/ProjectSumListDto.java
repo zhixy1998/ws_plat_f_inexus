@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 
 @Data
 public class ProjectSumListDto {
+
+    //项目ID
+    private String projectId;
     // 项目名称
     private String projectName;
     // 创建人

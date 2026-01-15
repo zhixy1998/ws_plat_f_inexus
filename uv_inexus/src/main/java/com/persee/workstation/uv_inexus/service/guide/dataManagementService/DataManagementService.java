@@ -17,12 +17,12 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.UnFinishTasksAndNum;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.MethodStatisticVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.ProjectStatisticVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.TaskStatisticVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.TaskDetailVO;
 
 public interface DataManagementService {
     // 查询未完成任务和已完成任务
@@ -31,12 +31,20 @@ public interface DataManagementService {
     // 查询项目统计信息
     Result queryUserProjectStatistics(ProjectStatisticVo vo);
 
+    //查询项目详情
+    Result queryProjectDetail(String projectId);
+
     // 查询任务统计信息
     Result queryUserTaskStatistics(TaskStatisticVo vo);
+
+    //查询任务详情
+    Result<TaskDetailVO> queryTaskDetail(String taskId, String deviceNumber);
 
     // 查询方法统计信息
     Result queryUserMethodStatistics(MethodStatisticVo vo);
 
+    //查询方法详情
+    Result<TMeasureMethod> queryMethodDetail(String methodId);
 
     Result<Page<TaskManagementDto>> getTasksManagementList(TaskQueryParam taskQueryParam);
 
@@ -56,7 +64,4 @@ public interface DataManagementService {
     Result<String> deleteMethod(Box deleteMethodIdList);
 
     Result<String> deleteProject(Box deleteProjectIdList);
-
-
-
 }

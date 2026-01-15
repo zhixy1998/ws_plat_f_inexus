@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 
 @Data
 public class MethodSumListDto {
+    // 方法id
+    private String methodId;
     // 方法名称
     private String methodName;
     // 创建人

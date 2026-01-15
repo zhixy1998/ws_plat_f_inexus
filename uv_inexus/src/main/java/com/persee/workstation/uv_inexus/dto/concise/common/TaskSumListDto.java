@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 
 @Data
 public class TaskSumListDto {
+    // 任务ID
+    private String taskId;
     // 方法名称
     private String methodName;
     // 所在项目

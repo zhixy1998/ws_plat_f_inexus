@@ -4,6 +4,9 @@ import lombok.Data;
 
 @Data
 public class TaskStatisticVo {
+
+    // 任务ID
+    private String taskId;
     // 用户名
     private String updateBy;
     // 项目名称

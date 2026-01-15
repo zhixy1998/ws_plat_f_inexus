@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.guide.dataManagementService.imp
 
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
@@ -30,6 +31,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.TaskCount;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.TaskCountByTime;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TMeasureProjectCollaboratorGroup;
@@ -39,20 +41,23 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectCollaboratorGroupService;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureProjectService;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.LaTeXConverter;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.vo.concise.common.MethodStatisticVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.ProjectStatisticVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.TaskStatisticVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.SampleInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.TaskDetailVO;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.config.Task;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -270,6 +275,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             Long projectItemKey = taskManagementMapper.selectCount(new QueryWrapper<TMeasureTask>().eq("project_item_key", pageProject.getId()));
             // 根据项目id查询所有包含这个项目的方法
             Long methodNum = methodManagementMapper.selectCount(new QueryWrapper<TMeasureMethod>().eq("project_item_key", pageProject.getId()));
+            sumListDto.setProjectId(pageProject.getId());
             sumListDto.setProjectName(pageProject.getProjectName());
             sumListDto.setCreateBy(pageProject.getCreatorKey());
             sumListDto.setCreateTime(pageProject.getCreateTime());
@@ -288,6 +294,32 @@ public class DataManagementServiceImpl implements DataManagementService {
         result.setPages(projectPage.getPages()); // 总页数
         result.setProjectList(dataSumList);
         return Result.ok(result);
+    }
+
+    /**
+     * 项目详情
+     * @param projectId
+     * @return
+     */
+    @Override
+    public Result queryProjectDetail(String projectId) {
+        // 校验入参
+        if (StringUtils.isBlank(projectId)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+        }
+
+        // 查询项目
+        TMeasureProject project = projectManagementMapper.selectById(projectId);
+        if (project == null || !"0".equals(project.getIsDelete())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+        }
+        // 组装返回数据
+        Map<String, String> map = new HashMap<>();
+        map.put("projectName", project.getProjectName());
+        map.put("remark", project.getRemark() != null ? project.getRemark() : "");
+        map.put("projectId",projectId);
+
+        return Result.ok(map);
     }
 
     /**
@@ -352,6 +384,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             // 根据任务中的项目id查询项目
             TMeasureProject project = projectManagementMapper.selectOne(new QueryWrapper<TMeasureProject>().eq("id", task.getProjectItemKey()));
             List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            taskSumListDto.setTaskId(task.getId());
             taskSumListDto.setMethodName(method.getMethodName());
             taskSumListDto.setProjectName(project.getProjectName());
             taskSumListDto.setMeasureMode(task.getMeasureType());
@@ -396,6 +429,87 @@ public class DataManagementServiceImpl implements DataManagementService {
         result.setPages(taskPage.getPages()); // 总页数
         result.setTaskList(taskSumList);
         return Result.ok(result);
+    }
+
+    /**
+     * 任务详情
+     * @param taskId, deviceNumber
+     * @return
+     */
+    @Override
+    public Result<TaskDetailVO> queryTaskDetail(String taskId, String deviceNumber) {
+        //  参数校验
+        if (StringUtils.isBlank(taskId) || StringUtils.isBlank(deviceNumber)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+        }
+
+        try {
+            // 查询任务基本信息
+            TMeasureTask task = taskManagementMapper.selectById(taskId);
+            if (task == null || "1".equals(task.getIsDelete())) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+            }
+            String projectId = "";
+            String projectName = "";
+            if (StringUtils.isNotBlank(task.getProjectItemKey())) {
+                TMeasureProject project = projectManagementMapper.selectById(task.getProjectItemKey());
+                if (project != null) {
+                    projectId = project.getId(); // 获取项目ID
+                    projectName = project.getProjectName();
+                }
+            }
+            String methodId = "";
+            String methodName = "";
+            if (StringUtils.isNotBlank(task.getMethodKey())) {
+                TMeasureMethod method = methodManagementMapper.selectById(task.getMethodKey());
+                if (method != null) {
+                    methodId = method.getId();
+                    methodName = method.getMethodName();
+                }
+            }
+
+
+            List<SampleInfoVO> sampleVOList = new ArrayList<>();
+            if (StringUtils.isNotBlank(task.getSampleKey())) {
+                try {
+                    List<TaskSpecimen> specimens = JSONObject.parseArray(task.getSampleKey(), TaskSpecimen.class);
+                    if (!CollectionUtils.isEmpty(specimens)) {
+                        for (TaskSpecimen specimen : specimens) {
+                            if ("0".equals(specimen.getDeleteType()) && specimen.getIsTested() != null){
+                                TMeasureSample sample = sampleManagementMapper.selectById(specimen.getSpecimenKey());
+                                if (sample != null) {
+                                    SampleInfoVO sampleVO = new SampleInfoVO();
+                                    sampleVO.setSampleId(sample.getId());
+                                    sampleVO.setSampleNumber(sample.getSampleNumber());
+                                    sampleVO.setSampleName(sample.getSampleName());
+                                    sampleVO.setSamplePosition(sample.getSampleLocation());
+                                    sampleVOList.add(sampleVO);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    sampleVOList = new ArrayList<>();
+                }
+            }
+
+            // 7. 组装VO
+            TaskDetailVO vo = new TaskDetailVO();
+            vo.setTaskId(task.getId());
+            vo.setProjectId(projectId);
+            vo.setProjectName(projectName);
+            vo.setMethodId(methodId);
+            vo.setMethodName(methodName);
+
+            vo.setTaskName(task.getTaskName());
+            vo.setMeasurementType(task.getMeasureType());
+            vo.setInstrumentName(deviceNumber);
+            vo.setSamples(sampleVOList);
+
+            return Result.ok(vo);
+        } catch (Exception e) {
+            return Result.fail("查询任务详情失败：" + e.getMessage());
+        }
     }
 
     /**
@@ -475,6 +589,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             // 根据项目id查询项目名称
             TMeasureProject project = projectManagementMapper.selectById(method.getProjectItemKey());
             MethodSumListDto methodSumListDto = new MethodSumListDto();
+            methodSumListDto.setMethodId(method.getId());
             methodSumListDto.setMethodName(method.getMethodName());
             methodSumListDto.setCreateBy(method.getMethodCreator());
             methodSumListDto.setCreateTime(method.getMethodCreateTime());
@@ -484,6 +599,52 @@ public class DataManagementServiceImpl implements DataManagementService {
         }
         result.setMethodList(methodSumList);
         return Result.ok(result);
+    }
+
+    /**
+     * 方法详情
+     * @param methodId
+     * @return
+     */
+    @Override
+    public Result queryMethodDetail(String methodId) {
+        // 判断 methodId 是否为空
+        if (StringUtils.isBlank(methodId)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+        }
+        TMeasureMethod method = methodManagementMapper.selectById(methodId);
+        if (method == null || !"0".equals(method.getIsDelete())) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+        // 构建返回结果容器
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("methodName", method.getMethodName());
+        resultMap.put("methodId", methodId);
+        resultMap.put("measurementType", method.getMeasurementType());
+
+        String projectName = "";
+        String projectId = "";
+        if (StringUtils.isNotBlank(method.getProjectItemKey())) {
+            TMeasureProject project = projectManagementMapper.selectById(method.getProjectItemKey());
+            if (project != null && !"1".equals(project.getIsDelete())) {
+                projectName = project.getProjectName();
+                projectId = project.getId();
+            }
+        }
+        resultMap.put("projectId", projectId);
+        resultMap.put("projectName", projectName);
+        if (StringUtils.isNotBlank(method.getMeasurementParamInfo())) {
+            try {
+                Map paramMap = JSON.parseObject(method.getMeasurementParamInfo(),Map.class);
+                resultMap.put("measurementParamInfo", paramMap);
+            } catch (Exception e) {
+                resultMap.put("measurementParamInfo", new HashMap<String, Object>());
+            }
+        } else {
+            resultMap.put("measurementParamInfo", new HashMap<String, Object>());
+        }
+
+        return Result.ok(resultMap);
     }
 
     private TaskDataNumDto getCompletedTaskCount(LocalDateTime oneWeekAgo, LocalDateTime now, String id,String daily) {
@@ -498,7 +659,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         Long count = taskManagementMapper.selectCount(wrapper);
         wrapper.eq("is_save", "1");
         Long completeCount = taskManagementMapper.selectCount(wrapper);
-        taskDataNumDto.setDaily( daily);
+        taskDataNumDto.setDaily(daily);
         taskDataNumDto.setTaskNum(count);
         taskDataNumDto.setCompleteNum(completeCount);
         return taskDataNumDto;
@@ -812,6 +973,9 @@ public class DataManagementServiceImpl implements DataManagementService {
         }
         return Result.ok();
     }
+
+
+
 
 //    public Result<String> formulaCheck(List<String> paramList, String latexFormula) {
 //        String res = converter.verifyAndConvert(paramList, latexFormula);

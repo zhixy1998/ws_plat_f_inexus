@@ -16,20 +16,22 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.TaskManagementDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.UnFinishTasksAndNumParam;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.MethodAndTasks;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.TaskQueryParam;
-import com.persee.workstation.uv_inexus.po.guide.measurementPo.UnFinishTasksAndNum;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
 import com.persee.workstation.uv_inexus.vo.concise.common.MethodStatisticVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.ProjectStatisticVo;
 import com.persee.workstation.uv_inexus.vo.concise.common.TaskStatisticVo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.TaskDetailVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Api("数据管理接口")
+
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
 public class DataManagementController {
 
@@ -49,16 +51,39 @@ public class DataManagementController {
         return dataManagementService.queryUserProjectStatistics(vo);
     }
 
+    @GetMapping("/queryProjectDetail")
+    @ApiOperation("查询项目详情")
+    public Result queryProjectDetail(@RequestParam String projectId) {
+        return dataManagementService.queryProjectDetail(projectId);
+    }
+
+
+
     @PostMapping("/queryUserTaskStatistics")
     @ApiOperation("查询用户任务统计")
     public Result queryUserTaskStatistics(@RequestBody TaskStatisticVo vo) {
         return dataManagementService.queryUserTaskStatistics(vo);
     }
 
+    @GetMapping("/queryTaskDetail")
+    @ApiOperation("查询任务详情")
+    public Result<TaskDetailVO> queryTaskDetail(
+            @RequestParam String taskId,
+            @RequestParam String deviceNumber
+    ) {
+        return dataManagementService.queryTaskDetail(taskId, deviceNumber);
+    }
+
     @PostMapping("/queryUserMethodStatistics")
     @ApiOperation("查询用户方法统计")
     public Result queryUserMethodStatistics(@RequestBody MethodStatisticVo vo) {
         return dataManagementService.queryUserMethodStatistics(vo);
+    }
+
+    @GetMapping("/queryMethodDetail")
+    @ApiOperation("查询方法详情")
+    public Result<TMeasureMethod> queryMethodDetail(@RequestParam String methodId) {
+        return dataManagementService.queryMethodDetail(methodId);
     }
 
     @GetMapping("/methodsAndTasksNum")
@@ -104,4 +129,6 @@ public class DataManagementController {
     public Result<String> deleteProject(@RequestBody Box deleteProjectIdList) {
         return dataManagementService.deleteProject(deleteProjectIdList);
     }
+
+
 }
