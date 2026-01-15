@@ -311,6 +311,7 @@ public class MessageOnTimeDeal {
                 long startTime = System.currentTimeMillis();
                 long currentTimeout = timeout;
                 int recvCount = 0;
+                int flag = 0;
 
                 try {
                     while (!Thread.currentThread().isInterrupted() && ScanSessionManager.isRunning(deviceId) && System.currentTimeMillis() - startTime < currentTimeout) {
@@ -325,7 +326,7 @@ public class MessageOnTimeDeal {
                             unknowCountMessageQueue.putMessage(
                                     deviceSerialNumber,
                                     cmdId,
-                                    EndMarker.timeout(deviceSerialNumber, cmdId)
+                                    EndMarker.Normal(deviceSerialNumber, cmdId)
                             );
                             spectrumProcessorMap.remove(deviceSerialNumber);
                             if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
@@ -399,17 +400,27 @@ public class MessageOnTimeDeal {
                         // ----------------- 6. 超时检查 -----------------
                         if (System.currentTimeMillis() - startTime > currentTimeout) {
                             log.info("[光谱测试] 超时退出 device={}", deviceSerialNumber);
+                            flag = 1;
                             break;
                         }
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    flag = 2;
                 } finally {
-                    unknowCountMessageQueue.putMessage(
-                            deviceSerialNumber,
-                            cmdId,
-                            EndMarker.timeout(deviceSerialNumber, cmdId)
-                    );
+                    if (flag == 1 || flag == 2){
+                        unknowCountMessageQueue.putMessage(
+                                deviceSerialNumber,
+                                cmdId,
+                                EndMarker.unNormal(deviceSerialNumber, cmdId)
+                        );
+                    }else{
+                        unknowCountMessageQueue.putMessage(
+                                deviceSerialNumber,
+                                cmdId,
+                                EndMarker.Normal(deviceSerialNumber, cmdId)
+                        );
+                    }
                     spectrumProcessorMap.remove(deviceSerialNumber);
                     if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
                     else baselineProcessorThreadMap.remove(deviceSerialNumber);
