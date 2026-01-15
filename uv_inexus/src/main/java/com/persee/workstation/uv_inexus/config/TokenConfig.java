@@ -43,6 +43,7 @@ public class TokenConfig implements WebMvcConfigurer {
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/obtainReportParameters");
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/reportDataQuery");
         excludePath.add("/com/persee/workstation/uv-inexus/experimenttest/sys/concise/queryReportTableData");
+        excludePath.add("/com/persee/workstation/uv-inexus/factory-inspection/task-manage/generate-report");
 
 
         registry.addInterceptor(tokenInterceptor)

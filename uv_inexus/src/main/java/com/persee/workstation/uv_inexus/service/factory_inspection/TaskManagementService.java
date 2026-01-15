@@ -26,7 +26,7 @@ public interface TaskManagementService extends IService<TaskManagement> {
 
     Result newTaskByCurrent(TaskCopyDto taskCreateDto);
 
-    Result<List<TaskStatsDto>> taskCount();
+    Result<List<TaskStatsDto>> taskCount(String updateBy);
 
     Result saveCheckItem(TaskDetectionDTO dto);
 
@@ -36,7 +36,7 @@ public interface TaskManagementService extends IService<TaskManagement> {
 
     Result<Boolean> setStandardMaterial(SetSamplePoolDto dto);
 
-    Result<TaskManagement> getTaskDetail(String taskId);
+    Result<TaskManagement> getTaskDetail(String taskId, String updateBy);
 
     Result<String> renameTask(TaskRenameDto dto);
 

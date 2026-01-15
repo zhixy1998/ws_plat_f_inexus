@@ -22,4 +22,5 @@ public class TaskCopyDto {
     private String currentTaskId;
     @ApiModelProperty("仪器序列号")
     private String serialNumber;
+    private String updateBy;
 }

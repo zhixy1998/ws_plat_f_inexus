@@ -13,9 +13,11 @@ import com.persee.workstation.uv_inexus.component.WorkbookCacheManager;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskExecutionDetailMapper;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.TaskMgrMapper;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.*;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.*;
 import com.persee.workstation.uv_inexus.service.factory_inspection.*;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -68,7 +70,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     private WorkbookCacheManager workbookCacheManager;
     @Autowired
     private EhcacheUtil ehcacheUtil;
-
+    @Autowired
+    private DeviceManageService deviceManageService;
     @Autowired
     @Lazy
     private DefaultTaskManager defaultTaskManager;
@@ -87,7 +90,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 //                .or().like(TaskManagement::getOperationInstrument, queryDto.getQuery())
 //                .or().like(TaskManagement::getUseTemplate, queryDto.getQuery());
 
-            IPage<TaskManagement> managementPage = taskMgrMapper.getMyPage(page, queryDto.getQuery());
+            IPage<TaskManagement> managementPage = taskMgrMapper.getMyPage(page, queryDto.getQuery(), queryDto.getUpdateBy());
 //        managementPage.getRecords().forEach(task -> {
 //            ExcelTemplate excelTemplate = templateService.getById(task.getUseTemplate());
 //            if (excelTemplate != null) {
@@ -106,13 +109,13 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     public Result<TaskCheckItemDto> showTemplate(String id) {
         try {
             TaskManagement management = null;
-            if (DEFAULT_TASK.getCode().equals(id)) {
-                // 自动检查并确保默认任务存在
-                String defaultTaskId = defaultTaskManager.getDefaultTaskId();
-                management = this.getById(defaultTaskId);
-            } else {
+//            if (DEFAULT_TASK.getCode().equals(id)) {
+//                // 自动检查并确保默认任务存在
+//                String defaultTaskId = defaultTaskManager.getDefaultTaskId();
+//                management = this.getById(defaultTaskId);
+//            } else {
                 management = this.getById(id);
-            }
+//            }
 
 
             TaskCheckItemDto dto = new TaskCheckItemDto();
@@ -155,6 +158,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Override
     public Result<HashMap<String, String>> newTask(TaskAddDto task) {
         try {
+            R<String> device = deviceManageService.getConnectDevice(task.getCreateBy());
             log.info("新建任务");
             //看一下新的名字有没有重名
             if (this.checkTaskName(task.getDetectName())) {
@@ -171,6 +175,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             management.setOperationInstrument(task.getSerialNumber());
             management.setResultTemplate(task.getUseTemplate());
             management.setContentCategory(TEMPLATE_USER_DEFINED_TASK.getCode());
+            management.setCreateBy(task.getCreateBy());
+            if (device.getData() != null){
+                management.setOperationInstrument(device.getData());
+            }
             boolean save = this.save(management);
             if (!save) {
                 return Result.fail(null);
@@ -200,6 +208,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 return Result.fail("任务名称已存在");
             }
 
+//            R<String> device = deviceManageService.getConnectDevice(taskCreateDto.getUpdateBy());
             TaskManagement management = taskMgrMapper.selectById(taskCreateDto.getCurrentTaskId());
             TaskManagement task = new TaskManagement();
             BeanUtils.copyProperties(management, task);
@@ -211,6 +220,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             task.setStartTime(null);
             task.setOperationInstrument(taskCreateDto.getSerialNumber());
             task.setContentCategory(TEMPLATE_USER_DEFINED_TASK.getCode());
+            task.setCreateBy(taskCreateDto.getUpdateBy());
             int i = taskMgrMapper.insert(task);
             //获取之前的关联关系
             LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
@@ -239,8 +249,9 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     }
 
     @Override
-    public Result<List<TaskStatsDto>> taskCount() {
+    public Result<List<TaskStatsDto>> taskCount(String updateBy) {
         LambdaQueryWrapper<TaskManagement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TaskManagement::getCreateBy, updateBy);
         wrapper.ge(TaskManagement::getCreated, LocalDateTime.now().minusMonths(6));
         ArrayList<TaskStatsDto> dtos = new ArrayList<>();
         //获取半年内创建的任务
@@ -421,10 +432,10 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     }
 
     @Override
-    public Result<TaskManagement> getTaskDetail(String taskId) {
+    public Result<TaskManagement> getTaskDetail(String taskId, String updateBy) {
         try {
             if (DEFAULT_TASK.getCode().equals(taskId)) {
-                String defaultTaskId = defaultTaskManager.getDefaultTaskId();
+                String defaultTaskId = defaultTaskManager.getDefaultTaskId(updateBy);
                 TaskManagement management = this.getById(defaultTaskId);
                 ExcelTemplate excelTemplate = templateService.getById(management.getUseTemplate());
                 management.setTemplateName(excelTemplate.getTemplateName());
@@ -506,7 +517,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Override
     public Result<Map<String, Object>> generateReport(String taskId) {
         Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
-        Map<String, Object> smartContent = SmartExcelContentConverter.convertToSmartContent(taskWorkbook);
+        Map<String, Object> smartContent = SmartExcelContentConverter.convertToSimpleStructure(taskWorkbook);
         return Result.ok(smartContent);
     }
 

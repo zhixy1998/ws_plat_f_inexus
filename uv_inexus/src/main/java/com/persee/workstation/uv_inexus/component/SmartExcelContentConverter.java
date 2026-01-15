@@ -12,31 +12,31 @@ package com.persee.workstation.uv_inexus.component;
 import org.apache.poi.hssf.usermodel.HSSFFormulaEvaluator;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * 完整版智能Excel内容转换器 - 完美处理合并单元格和公式计算
+ * 增强版Excel内容转换器 - 支持合并单元格处理（行和列）
  */
 public class SmartExcelContentConverter {
 
     /**
-     * 主转换方法 - 返回智能处理后的纯内容Map
+     * 主转换方法 - 返回扁平化的内容Map
      */
-    public static Map<String, Object> convertToSmartContent(Workbook workbook) {
+    public static Map<String, Object> convertToSimpleStructure(Workbook workbook) {
         FormulaEvaluator evaluator = createFormulaEvaluator(workbook);
         Map<String, Object> result = new LinkedHashMap<>();
 
+        List<Map<String, Object>> worksheets = new ArrayList<>();
+
         for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
             Sheet sheet = workbook.getSheetAt(i);
-            Object contentData = extractSheetContentIntelligently(sheet, evaluator);
-            result.put(sheet.getSheetName(), contentData);
+            worksheets.add(processSimpleSheet(sheet, evaluator));
         }
 
+        result.put("worksheets", worksheets);
         return result;
     }
 
@@ -54,49 +54,43 @@ public class SmartExcelContentConverter {
     }
 
     /**
-     * 智能提取Sheet内容 - 主入口
+     * 处理单个工作表为简化结构
      */
-    private static Object extractSheetContentIntelligently(Sheet sheet, FormulaEvaluator evaluator) {
-        // 分析Sheet结构
-        SheetStructure structure = analyzeSheetStructure(sheet);
+    private static Map<String, Object> processSimpleSheet(Sheet sheet, FormulaEvaluator evaluator) {
+        Map<String, Object> worksheet = new LinkedHashMap<>();
 
-        if (structure.isTableStructure) {
-            // 表格型数据
-            List<Map<String, String>> tableData = parseAsSmartTable(sheet, evaluator, structure);
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("type", "table");
-            result.put("headers", tableData.get(0).keySet().stream().collect(Collectors.toList()));            result.put("rows", tableData.subList(1, tableData.size()));
-            result.put("totalRecords", tableData.size() - 1);
-            result.put("hasFormulas", structure.hasFormulas);
-            result.put("mergedCellsCount", structure.mergedCells.size());
-            return result;
+        // 确定是否为表格结构
+        boolean isTableStructure = analyzeIfTableStructure(sheet);
+
+        if (isTableStructure) {
+            // 提取表头和数据
+            List<String> columns = extractHeaders(sheet, evaluator);
+            List<List<String>> rows = extractDataRowsWithMergedCells(sheet, evaluator, columns.size());
+
+            worksheet.put("name", sheet.getSheetName());
+            worksheet.put("columns", columns);
+            worksheet.put("rows", rows);
         } else {
-            // 结构化数据
-            List<Map<String, Object>> structuredData = parseAsSmartSections(sheet, evaluator, structure);
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("type", "structured");
-            result.put("sections", structuredData);
-            result.put("hasFormulas", structure.hasFormulas);
-            result.put("mergedCellsCount", structure.mergedCells.size());
-            return result;
+            // 非表格结构，返回原始数据
+            List<List<String>> rawRows = extractAllRows(sheet, evaluator);
+            worksheet.put("name", sheet.getSheetName());
+            worksheet.put("rows", rawRows);
         }
+
+        worksheet.put("hasMergedCells", sheet.getNumMergedRegions() > 0);
+
+        return worksheet;
     }
 
     /**
-     * 分析Sheet结构
+     * 分析是否为表格结构
      */
-    private static SheetStructure analyzeSheetStructure(Sheet sheet) {
-        SheetStructure structure = new SheetStructure();
-        structure.mergedCells = parseMergedCells(sheet);
-        structure.hasFormulas = hasFormulas(sheet);
-
-        // 分析是否为表格结构
-        int potentialHeaderRows = 0;
-        int dataRows = 0;
-        boolean consistentColumns = true;
+    private static boolean analyzeIfTableStructure(Sheet sheet) {
+        int nonEmptyRowCount = 0;
         int lastColCount = -1;
+        boolean consistentColumns = true;
 
-        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+        for (int i = 0; i <= Math.min(10, sheet.getLastRowNum()); i++) {
             Row row = sheet.getRow(i);
             if (row == null || isEmptyRow(row)) continue;
 
@@ -105,350 +99,161 @@ public class SmartExcelContentConverter {
                 consistentColumns = false;
             }
             lastColCount = colCount;
+            nonEmptyRowCount++;
 
-            if (i <= 3 && colCount >= 2) { // 前几行且有多列，可能是表头
-                potentialHeaderRows++;
-            }
-
-            if (i > 0 && colCount >= 2) { // 数据行
-                dataRows++;
+            if (nonEmptyRowCount >= 2 && consistentColumns) {
+                break;
             }
         }
 
-        structure.isTableStructure = potentialHeaderRows >= 1 && dataRows >= 1 && consistentColumns;
-        return structure;
+        return nonEmptyRowCount >= 2 && consistentColumns;
     }
 
     /**
-     * 智能表格解析 - 完美处理合并单元格
+     * 提取表头
      */
-    private static List<Map<String, String>> parseAsSmartTable(Sheet sheet, FormulaEvaluator evaluator,
-                                                               SheetStructure structure) {
-        List<Map<String, String>> table = new ArrayList<>();
+    private static List<String> extractHeaders(Sheet sheet, FormulaEvaluator evaluator) {
+        List<String> headers = new ArrayList<>();
 
-        // 找到表头行
-        int headerRowIndex = findBestHeaderRow(sheet, structure.mergedCells);
-        if (headerRowIndex == -1) return table;
-
-        // 构建智能表头映射
-        HeaderMapping headerMapping = buildHeaderMapping(sheet, headerRowIndex, structure.mergedCells);
-
-        // 提取数据行
-        List<Map<String, String>> dataRows = new ArrayList<>();
-        for (int i = headerRowIndex + 1; i <= sheet.getLastRowNum(); i++) {
-            Row dataRow = sheet.getRow(i);
-            if (dataRow == null || isEmptyRow(dataRow)) continue;
-
-            Map<String, String> rowData = extractRowWithHeaderMapping(dataRow, headerMapping, evaluator);
-            if (!rowData.isEmpty()) {
-                dataRows.add(rowData);
-            }
-        }
-
-        // 构建完整表格（表头 + 数据）
-        // 表头行
-        Map<String, String> headerRow = new LinkedHashMap<>();
-        for (String headerKey : headerMapping.getHeaders()) {
-            headerRow.put(headerKey, headerKey);
-        }
-        table.add(headerRow);
-
-        // 数据行
-        table.addAll(dataRows);
-
-        return table;
-    }
-
-    /**
-     * 构建智能表头映射
-     */
-    private static HeaderMapping buildHeaderMapping(Sheet sheet, int headerRowIndex,
-                                                    Map<String, MergedCellInfo> mergedCells) {
-        HeaderMapping mapping = new HeaderMapping();
-        Row headerRow = sheet.getRow(headerRowIndex);
-
-        // 先收集所有单元格的值和位置
-        Map<String, String> cellValues = new HashMap<>();
-        for (Cell cell : headerRow) {
-            if (cell != null) {
-                String value = getCellValueAsString(cell, null);
-                if (!value.trim().isEmpty()) {
-                    cellValues.put(cell.getColumnIndex() + "_" + headerRowIndex, value);
-                }
-            }
-        }
-
-        // 处理合并单元格，建立列名映射
-        Set<Integer> processedCols = new HashSet<>();
-
-        // 按列顺序处理
-        int maxCol = getMaxColumnIndex(headerRow);
-        for (int col = 0; col <= maxCol; col++) {
-            if (processedCols.contains(col)) continue;
-
-            String headerKey = null;
-
-            // 检查这个位置是否在合并单元格中
-            MergedCellInfo mergeInfo = findMergedCellContaining(col, headerRowIndex, mergedCells);
-            if (mergeInfo != null) {
-                // 这是合并单元格，使用主单元格的值
-                String masterKey = mergeInfo.firstCol + "_" + mergeInfo.firstRow;
-                headerKey = cellValues.get(masterKey);
-                if (headerKey == null) headerKey = "Column_" + (mapping.getHeaders().size() + 1);
-
-                // 标记这个合并区域的所有列为已处理
-                for (int c = mergeInfo.firstCol; c <= mergeInfo.lastCol; c++) {
-                    processedCols.add(c);
-                }
-
-                // 为合并区域的每一列都映射到同一个表头
-                for (int c = mergeInfo.firstCol; c <= mergeInfo.lastCol; c++) {
-                    mapping.addColumnMapping(c, headerKey);
-                }
-            } else {
-                // 普通单元格
-                String cellKey = col + "_" + headerRowIndex;
-                headerKey = cellValues.get(cellKey);
-                if (headerKey == null || headerKey.trim().isEmpty()) {
-                    headerKey = "Column_" + (mapping.getHeaders().size() + 1);
-                } else {
-                    processedCols.add(col);
-                }
-                mapping.addColumnMapping(col, headerKey);
-            }
-        }
-
-        return mapping;
-    }
-
-    /**
-     * 根据表头映射提取行数据
-     */
-    private static Map<String, String> extractRowWithHeaderMapping(Row row, HeaderMapping headerMapping,
-                                                                   FormulaEvaluator evaluator) {
-        Map<String, String> rowData = new LinkedHashMap<>();
-
-        for (int col = 0; col <= getMaxColumnIndex(row); col++) {
-            String headerKey = headerMapping.getHeaderForColumn(col);
-            if (headerKey == null) continue;
-
-            Cell cell = row.getCell(col);
-            String value = cell != null ? getCellValueAsString(cell, evaluator) : "";
-
-            // 如果已经有值，追加（处理合并单元格的延续行）
-            String existingValue = rowData.get(headerKey);
-            if (existingValue != null && !existingValue.isEmpty()) {
-                if (!value.isEmpty()) {
-                    rowData.put(headerKey, existingValue + " " + value);
-                }
-            } else {
-                rowData.put(headerKey, value);
-            }
-        }
-
-        return rowData;
-    }
-
-    /**
-     * 智能分块解析
-     */
-    private static List<Map<String, Object>> parseAsSmartSections(Sheet sheet, FormulaEvaluator evaluator,
-                                                                  SheetStructure structure) {
-        List<Map<String, Object>> sections = new ArrayList<>();
-
-        // 按空行分块
-        List<List<Row>> rowBlocks = splitIntoRowBlocks(sheet);
-
-        for (List<Row> block : rowBlocks) {
-            if (block.isEmpty()) continue;
-
-            Map<String, Object> section = new LinkedHashMap<>();
-            section.put("blockType", determineBlockType(block));
-
-            if (isSingleTitleBlock(block)) {
-                // 标题块
-                section.put("title", extractTitleFromBlock(block));
-                section.put("content", new ArrayList<>());
-            } else {
-                // 数据块
-                List<Map<String, String>> blockData = new ArrayList<>();
-                for (Row row : block) {
-                    Map<String, String> rowData = extractRowSimply(row, evaluator);
-                    if (!rowData.isEmpty()) {
-                        blockData.add(rowData);
+        // 寻找最佳表头行（通常是第一行）
+        for (int i = 0; i <= Math.min(5, sheet.getLastRowNum()); i++) {
+            Row row = sheet.getRow(i);
+            if (row != null && getNonEmptyCellCount(row) >= 2) {
+                String headerRowValue = "";
+                for (int j = row.getFirstCellNum(); j < row.getLastCellNum(); j++) {
+                    Cell cell = row.getCell(j);
+                    if (cell != null) {
+                        String value = getCellValueAsString(cell, evaluator);
+                        if (value.isEmpty()) {
+                            value = headerRowValue;
+                        }
+                        headers.add(value);
+                        headerRowValue = value;
                     }
                 }
-                section.put("content", blockData);
-                section.put("rowCount", blockData.size());
+                break; // 找到表头后退出
             }
-
-            sections.add(section);
         }
 
-        return sections;
+        return headers;
+    }
+
+    /**
+     * 提取数据行（支持合并单元格）
+     */
+    private static List<List<String>> extractDataRowsWithMergedCells(Sheet sheet, FormulaEvaluator evaluator, int expectedCols) {
+        List<List<String>> rows = new ArrayList<>();
+
+        // 从表头行之后开始提取数据
+        boolean foundHeader = false;
+
+        // 存储合并单元格信息
+        Map<String, String> mergedCellValues = new HashMap<>();
+
+        // 首先收集所有合并单元格的值
+        for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
+            CellRangeAddress region = sheet.getMergedRegion(i);
+            int firstRow = region.getFirstRow();
+            int firstCol = region.getFirstColumn();
+            int lastRow = region.getLastRow();
+            int lastCol = region.getLastColumn();
+
+            // 获取主单元格的值
+            Row row = sheet.getRow(firstRow);
+            if (row != null) {
+                Cell cell = row.getCell(firstCol);
+                if (cell != null) {
+                    String value = getCellValueAsString(cell, evaluator);
+                    // 为合并区域内的每个单元格存储相同的值
+                    for (int r = firstRow; r <= lastRow; r++) {
+                        for (int c = firstCol; c <= lastCol; c++) {
+                            mergedCellValues.put(r + "_" + c, value);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null || isEmptyRow(row)) continue;
+
+            if (!foundHeader && getNonEmptyCellCount(row) >= 2) {
+                foundHeader = true; // 跳过表头行
+                continue;
+            }
+
+            List<String> rowData = new ArrayList<>();
+            for (int j = 0; j < expectedCols; j++) {
+                String value = "";
+
+                // 检查是否在合并单元格中
+                String key = i + "_" + j;
+                if (mergedCellValues.containsKey(key)) {
+                    value = mergedCellValues.get(key);
+                } else {
+                    // 不是合并单元格，正常获取值
+                    Cell cell = row.getCell(j);
+                    if (cell != null) {
+                        value = getCellValueAsString(cell, evaluator);
+                    }
+                }
+
+                rowData.add(value);
+            }
+            rows.add(rowData);
+        }
+
+        return rows;
+    }
+
+    /**
+     * 提取所有行（用于非表格结构）
+     */
+    private static List<List<String>> extractAllRows(Sheet sheet, FormulaEvaluator evaluator) {
+        List<List<String>> rows = new ArrayList<>();
+
+        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+
+            List<String> rowData = new ArrayList<>();
+            for (int j = row.getFirstCellNum(); j < row.getLastCellNum(); j++) {
+                Cell cell = row.getCell(j);
+                String value = cell != null ? getCellValueAsString(cell, evaluator) : "";
+                rowData.add(value);
+            }
+            if (!rowData.isEmpty()) {
+                rows.add(rowData);
+            }
+        }
+
+        return rows;
     }
 
     // ==================== 工具方法 ====================
 
-    private static int findBestHeaderRow(Sheet sheet, Map<String, MergedCellInfo> mergedCells) {
-        for (int i = 0; i <= Math.min(5, sheet.getLastRowNum()); i++) {
-            Row row = sheet.getRow(i);
-            if (row != null && getNonEmptyCellCount(row) >= 2) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private static MergedCellInfo findMergedCellContaining(int col, int row,
-                                                           Map<String, MergedCellInfo> mergedCells) {
-        for (MergedCellInfo info : mergedCells.values()) {
-            if (info.firstRow <= row && info.lastRow >= row &&
-                    info.firstCol <= col && info.lastCol >= col) {
-                return info;
-            }
-        }
-        return null;
-    }
-
-    private static int getMaxColumnIndex(Row row) {
-        if (row == null) return 0;
-        int maxCol = 0;
-        for (Cell cell : row) {
-            if (cell != null && cell.getColumnIndex() > maxCol) {
-                maxCol = cell.getColumnIndex();
-            }
-        }
-        return Math.max(maxCol, 10); // 最小10列
-    }
-
     private static int getNonEmptyCellCount(Row row) {
         if (row == null) return 0;
         int count = 0;
-        for (Cell cell : row) {
-            if (cell != null && getCellValueAsString(cell, null).trim().length() > 0) {
+        for (int i = row.getFirstCellNum(); i < row.getLastCellNum(); i++) {
+            Cell cell = row.getCell(i);
+            if (cell != null && !getCellValueAsString(cell, null).trim().isEmpty()) {
                 count++;
             }
         }
         return count;
     }
 
-    private static List<List<Row>> splitIntoRowBlocks(Sheet sheet) {
-        List<List<Row>> blocks = new ArrayList<>();
-        List<Row> currentBlock = new ArrayList<>();
-
-        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
-            Row row = sheet.getRow(i);
-            if (row != null && !isEmptyRow(row)) {
-                currentBlock.add(row);
-            } else {
-                if (!currentBlock.isEmpty()) {
-                    blocks.add(new ArrayList<>(currentBlock));
-                    currentBlock.clear();
-                }
-            }
-        }
-
-        if (!currentBlock.isEmpty()) {
-            blocks.add(currentBlock);
-        }
-
-        return blocks;
-    }
-
-    private static boolean isSingleTitleBlock(List<Row> block) {
-        if (block.size() != 1) return false;
-        Row row = block.get(0);
-        int nonEmptyCount = getNonEmptyCellCount(row);
-        String firstValue = getFirstNonEmptyValue(row);
-        return nonEmptyCount <= 3 && firstValue != null && firstValue.length() > 5;
-    }
-
-    private static String getFirstNonEmptyValue(Row row) {
-        for (Cell cell : row) {
-            if (cell != null) {
-                String value = getCellValueAsString(cell, null);
-                if (!value.trim().isEmpty()) {
-                    return value;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static String extractTitleFromBlock(List<Row> block) {
-        Row row = block.get(0);
-        StringBuilder title = new StringBuilder();
-        for (Cell cell : row) {
-            if (cell != null) {
-                String value = getCellValueAsString(cell, null);
-                if (!value.trim().isEmpty()) {
-                    if (title.length() > 0) title.append(" ");
-                    title.append(value);
-                }
-            }
-        }
-        return title.toString();
-    }
-
-    private static String determineBlockType(List<Row> block) {
-        return isSingleTitleBlock(block) ? "title" : "data";
-    }
-
-    private static Map<String, String> extractRowSimply(Row row, FormulaEvaluator evaluator) {
-        Map<String, String> rowData = new LinkedHashMap<>();
-        if (row == null) return rowData;
-
-        for (Cell cell : row) {
-            if (cell != null) {
-                String colName = CellReference.convertNumToColString(cell.getColumnIndex());
-                String value = getCellValueAsString(cell, evaluator);
-                if (!value.trim().isEmpty()) {
-                    rowData.put(colName, value);
-                }
-            }
-        }
-        return rowData;
-    }
-
-    private static boolean hasFormulas(Sheet sheet) {
-        for (Row row : sheet) {
-            if (row != null) {
-                for (Cell cell : row) {
-                    if (cell != null && cell.getCellType() == CellType.FORMULA) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     private static boolean isEmptyRow(Row row) {
         if (row == null) return true;
-        for (Cell cell : row) {
-            if (cell != null && getCellValueAsString(cell, null).trim().length() > 0) {
+        for (int i = row.getFirstCellNum(); i < row.getLastCellNum(); i++) {
+            Cell cell = row.getCell(i);
+            if (cell != null && !getCellValueAsString(cell, null).trim().isEmpty()) {
                 return false;
             }
         }
         return true;
-    }
-
-    private static Map<String, MergedCellInfo> parseMergedCells(Sheet sheet) {
-        Map<String, MergedCellInfo> mergedCells = new HashMap<>();
-        for (CellRangeAddress region : sheet.getMergedRegions()) {
-            MergedCellInfo info = new MergedCellInfo();
-            info.firstRow = region.getFirstRow();
-            info.lastRow = region.getLastRow();
-            info.firstCol = region.getFirstColumn();
-            info.lastCol = region.getLastColumn();
-            mergedCells.put(generateMergeKey(info.firstRow, info.firstCol), info);
-        }
-        return mergedCells;
-    }
-
-    private static String generateMergeKey(int row, int col) {
-        return row + "_" + col;
     }
 
     private static String getCellValueAsString(Cell cell, FormulaEvaluator evaluator) {
@@ -456,8 +261,8 @@ public class SmartExcelContentConverter {
 
         if (cell.getCellType() == CellType.FORMULA) {
             try {
-                CellValue cellValue = evaluator.evaluate(cell);
-                return convertCellValueToString(cellValue);
+                CellValue cellValue = evaluator != null ? evaluator.evaluate(cell) : null;
+                return cellValue != null ? convertCellValueToString(cellValue) : "=" + cell.getCellFormula();
             } catch (Exception e) {
                 return "=" + cell.getCellFormula();
             }
@@ -467,8 +272,9 @@ public class SmartExcelContentConverter {
             case STRING:
                 return cell.getStringCellValue();
             case NUMERIC:
-                return DateUtil.isCellDateFormatted(cell) ?
-                        cell.getDateCellValue().toString() : formatNumber(cell.getNumericCellValue());
+                // 强制作为数值处理，避免误判为日期
+                double numericValue = cell.getNumericCellValue();
+                return formatNumber(numericValue);
             case BOOLEAN:
                 return String.valueOf(cell.getBooleanCellValue());
             case BLANK:
@@ -485,8 +291,12 @@ public class SmartExcelContentConverter {
             case STRING:
                 return cellValue.getStringValue();
             case NUMERIC:
-                return DateUtil.isValidExcelDate(cellValue.getNumberValue()) ?
-                        new Date((long) cellValue.getNumberValue()).toString() : formatNumber(cellValue.getNumberValue());
+//                if (DateUtil.isValidExcelDate(cellValue.getNumberValue())) {
+//                    // 正确处理日期
+//                    return new Date((long) (cellValue.getNumberValue() * 24 * 60 * 60 * 1000)).toString();
+//                } else {
+                return formatNumber(cellValue.getNumberValue());
+//                }
             case BOOLEAN:
                 return String.valueOf(cellValue.getBooleanValue());
             case ERROR:
@@ -496,7 +306,6 @@ public class SmartExcelContentConverter {
         }
     }
 
-
     private static String formatNumber(double number) {
         if (number == (long) number) {
             return String.valueOf((long) number);
@@ -504,39 +313,4 @@ public class SmartExcelContentConverter {
             return String.valueOf(number);
         }
     }
-
-
-
-    // ==================== 数据模型 ====================
-
-    private static class SheetStructure {
-        public boolean isTableStructure = false;
-        public boolean hasFormulas = false;
-        public Map<String, MergedCellInfo> mergedCells = new HashMap<>();
-    }
-
-    private static class MergedCellInfo {
-        public int firstRow, lastRow, firstCol, lastCol;
-    }
-
-    private static class HeaderMapping {
-        private final Map<Integer, String> columnMappings = new HashMap<>();
-        private final Map<String, Integer> headerUsage = new HashMap<>();
-
-        public void addColumnMapping(int columnIndex, String header) {
-            columnMappings.put(columnIndex, header);
-            headerUsage.put(header, headerUsage.getOrDefault(header, 0) + 1);
-        }
-
-        public String getHeaderForColumn(int columnIndex) {
-            return columnMappings.get(columnIndex);
-        }
-
-        public List<String> getHeaders() {
-            return new ArrayList<>(new LinkedHashSet<>(columnMappings.values()));
-        }
-    }
-
-
 }
-

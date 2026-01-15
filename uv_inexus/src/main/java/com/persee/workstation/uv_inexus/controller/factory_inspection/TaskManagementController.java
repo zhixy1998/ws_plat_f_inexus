@@ -33,8 +33,15 @@ public class TaskManagementController {
     @Autowired
     private TaskManagementService taskManagementService;
     @RequestMapping("/list")
-    public Result getList(TaskMgrQueryDto queryDto) {
-        return taskManagementService.getList(queryDto);
+    public Result getList(@RequestParam String query, @RequestParam String updateBy,@RequestParam Integer pageNum, @RequestParam Integer pageSize) {
+        TaskMgrQueryDto taskMgrQueryDto = new TaskMgrQueryDto();
+        taskMgrQueryDto.setQuery(query);
+        taskMgrQueryDto.setUpdateBy(updateBy);
+        taskMgrQueryDto.setPageNum(pageNum);
+        taskMgrQueryDto.setPageSize(pageSize);
+
+
+        return taskManagementService.getList(taskMgrQueryDto);
     }
     /**
      * 保存当前任务的标准物质信息
@@ -85,8 +92,8 @@ public class TaskManagementController {
      * 任务统计
      */
     @RequestMapping("/task-count")
-    public Result<List<TaskStatsDto>> taskCount() {
-        return taskManagementService.taskCount();
+    public Result<List<TaskStatsDto>> taskCount(@RequestParam String updateBy) {
+        return taskManagementService.taskCount(updateBy);
     }
     /**
      * 保存检测项配置
@@ -132,8 +139,9 @@ public class TaskManagementController {
      * 获取任务详情
      */
     @RequestMapping("/get-task-detail")
-    public Result<TaskManagement> getTaskDetail(@RequestParam String taskId) {
-        return taskManagementService.getTaskDetail(taskId);
+    public Result<TaskManagement> getTaskDetail(@RequestParam String taskId, @RequestParam String updateBy) {
+
+        return taskManagementService.getTaskDetail(taskId,updateBy);
     }
     /**
      * 任务重命名
