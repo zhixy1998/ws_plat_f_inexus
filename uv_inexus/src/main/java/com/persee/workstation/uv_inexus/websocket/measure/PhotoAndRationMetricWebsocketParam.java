@@ -13,7 +13,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 @Data
-public class PhotometricWebsocketParam {
+public class PhotoAndRationMetricWebsocketParam {
 
 
     @ApiModelProperty(value = "任务ID")
@@ -32,5 +32,7 @@ public class PhotometricWebsocketParam {
     private Boolean isSd;
     @ApiModelProperty(value = "是否RSD")
     private Boolean isRsd;
+    @ApiModelProperty(value = "样品类型-定量用")
+    private String sampleKind;
 
 }

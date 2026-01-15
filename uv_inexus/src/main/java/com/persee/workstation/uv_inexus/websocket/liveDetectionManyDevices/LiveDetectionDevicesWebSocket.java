@@ -20,10 +20,7 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceIn
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.websocket.guide.GuidePhotometricWebSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.PhotometricNewWebSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.PhotometricWebsocketParam;
-import com.persee.workstation.uv_inexus.websocket.measure.TimeWebNewSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.ZeroCalibrationNewWebSocket;
+import com.persee.workstation.uv_inexus.websocket.measure.*;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseBaseLineNewWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseSpectrumNewWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseTimeNewWebSocket;
@@ -93,6 +90,9 @@ public class LiveDetectionDevicesWebSocket {
 
     @Autowired
     GuidePhotometricWebSocket guidePhotometricWebSocket;
+
+    @Autowired
+    RationMeasureNewWebSocket rationMeasureNewWebSocket;
 
     private static final DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
@@ -207,7 +207,7 @@ public class LiveDetectionDevicesWebSocket {
                     break;
                 }
                 case ConcisePhotoMetric:{
-                    PhotometricWebsocketParam param = data.toJavaObject(PhotometricWebsocketParam.class);
+                    PhotoAndRationMetricWebsocketParam param = data.toJavaObject(PhotoAndRationMetricWebsocketParam.class);
                     photometricNewWebSocket.measureTask(param);
                     break;
                 }
@@ -236,13 +236,17 @@ public class LiveDetectionDevicesWebSocket {
                 }
                 case PhotoMetric:{
                     JSONObject photometricdata = input.getData();
-                    PhotometricWebsocketParam photometricparam = photometricdata.toJavaObject(PhotometricWebsocketParam.class);
+                    PhotoAndRationMetricWebsocketParam photometricparam = photometricdata.toJavaObject(PhotoAndRationMetricWebsocketParam.class);
                     guidePhotometricWebSocket.measureTask(photometricparam);
 //                    Measure(deviceSerialNumber, WebSocketOperationEnum.PhotoMetric.getOperation());
                     break;
                 }
                 case RationMeasure:{
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.RationMeasure.getOperation());
+//                    Measure(deviceSerialNumber, WebSocketOperationEnum.RationMeasure.getOperation());
+                    JSONObject rationData = input.getData();
+                    PhotoAndRationMetricWebsocketParam param = rationData.toJavaObject(PhotoAndRationMetricWebsocketParam.class);
+
+                    rationMeasureNewWebSocket.afterConnectionEstablished(param);
                     break;
                 }
                 case Spectrum:{

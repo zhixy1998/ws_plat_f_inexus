@@ -874,8 +874,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 StringBuilder param = new StringBuilder();
                 if (fittingReceiveInfo != null) {
 
-                    if (fittingReceiveInfo.getCoefficients() != null) {
-                        for (Double coefficient : fittingReceiveInfo.getCoefficients()) {
+                    if (fittingReceiveInfo.getRoundCoefficients() != null) {
+                        for (Double coefficient : fittingReceiveInfo.getRoundCoefficients()) {
                             param.append(coefficient).append(",");
                         }
                         param.deleteCharAt(param.length() - 1);
@@ -887,10 +887,10 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                     String[] split = curveConf.split(",");
                     for (int i = 0; i < split.length; i++) {
                         if (split[i].equals("1")) {
-                            vo.setR(fittingReceiveInfo.getR() == null ? "" : fittingReceiveInfo.getR());
+                            vo.setR(fittingReceiveInfo.getRoundR() == null ? "" : fittingReceiveInfo.getRoundR());
                         }
                         if (split[i].equals("2")) {
-                            vo.setR2(fittingReceiveInfo.getR2() == null ? "" : fittingReceiveInfo.getR2());
+                            vo.setR2(fittingReceiveInfo.getRoundR2() == null ? "" : fittingReceiveInfo.getRoundR2());
                         }
                     }
                     vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());

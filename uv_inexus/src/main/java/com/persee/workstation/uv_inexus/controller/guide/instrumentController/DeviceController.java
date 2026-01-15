@@ -230,18 +230,6 @@ public class DeviceController {
         return Result.ok(r.getData());
     }
 
-    @GetMapping("/disConnect")
-    @ApiOperation("断开连接")
-    @LogPoint(value = "断开连接", module = "设备管理", recordParams = true,recordResult = true)
-    public Result<Boolean> disConnect(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) {
-        Boolean r = deviceManageService.disConnect(deviceSerialNumber, updateBy);
-        if (r) {
-            return Result.ok(true);
-        } else {
-            return Result.fail(false);
-        }
-    }
-
     @GetMapping("/query")
     @ApiOperation("仪器管理查询接口")
     public Result<DeviceInfoVO> query(@RequestParam String deviceSerialNumber, @RequestParam String updateBy){

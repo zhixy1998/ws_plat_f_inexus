@@ -26,6 +26,11 @@ public class FittingReceiveInfo {
      */
     private String message;
     /**
+     * Coefficients，修约后所有系数列表，顺序为 k0, k1, ..., kn
+     */
+    private List<Double> roundCoefficients;
+
+    /**
      * Coefficients，所有系数列表，顺序为 k0, k1, ..., kn
      */
     private List<Double> coefficients;
@@ -34,6 +39,17 @@ public class FittingReceiveInfo {
      * 公式，拟合的曲线公式
      */
     private String equation;
+
+    /**
+     * 修约后，R，R值 （标准差, 代表拟合准确率）
+     */
+    private String roundR;
+
+
+    /**
+     * 修约后，R2，R2值 （决定系数, 代表拟合准确率）
+     */
+    private String roundR2;
 
     /**
      * R，R值 （标准差, 代表拟合准确率）

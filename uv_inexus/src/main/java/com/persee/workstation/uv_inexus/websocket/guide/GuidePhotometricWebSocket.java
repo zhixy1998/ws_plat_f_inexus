@@ -9,8 +9,6 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -25,10 +23,6 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
-import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricOriginDataInfo;
-import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricSampleAndDataVO;
-import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
-import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
@@ -37,7 +31,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
-import com.persee.workstation.uv_inexus.websocket.measure.PhotometricWebsocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -127,7 +121,7 @@ public class GuidePhotometricWebSocket {
    *
    * @param param 前端参数
    */
-    public void measureTask(PhotometricWebsocketParam param){
+    public void measureTask(PhotoAndRationMetricWebsocketParam param){
          initParams();
          String taskId = param.getTaskId();
          String sampleId = param.getSampleId();

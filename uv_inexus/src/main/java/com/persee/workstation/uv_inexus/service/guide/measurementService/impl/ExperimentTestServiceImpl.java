@@ -714,7 +714,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
         else if(reportName.equals("定量测量表格")){
             RationReportDataVO vo = new RationReportDataVO();
-            rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false);
+            rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), false,task.getDeviceSerialNumber());
 
             return Result.ok("暂未开放");
         } else if (reportName.equals("定量测定原始记录表格")) {
@@ -844,11 +844,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             }
             case "定量测定":  {
                 RationReportDataVO vo = new RationReportDataVO();
-                Result<List<HeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true);
+                Result<List<HeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true, null);
                 if (standHeads.getCode() == 200) {
                     vo.setStandHeadList(standHeads.getData());
                 }
-                Result<List<HeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), true);
+                Result<List<HeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), true, null);
                 if (unknowHeads.getCode() == 200) {
                     vo.setUnknowHeadList(unknowHeads.getData());
                 }
@@ -1415,13 +1415,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             if (StringUtils.hasText(task.getFittingParam())){
                 FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                 StringBuilder param = new StringBuilder();
-                for (Double coefficient : fittingReceiveInfo.getCoefficients()) {
+                for (Double coefficient : fittingReceiveInfo.getRoundCoefficients()) {
                     param.append(coefficient).append(",");
                 }
                 param.deleteCharAt(param.length() - 1);
                 vo.setCurveParams(param.toString());
-                vo.setR(fittingReceiveInfo.getR());
-                vo.setR2(fittingReceiveInfo.getR2());
+                vo.setR(fittingReceiveInfo.getRoundR());
+                vo.setR2(fittingReceiveInfo.getRoundR2());
                 vo.setCurveFormula(fittingReceiveInfo.getEquation());
                 vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree()));
             }

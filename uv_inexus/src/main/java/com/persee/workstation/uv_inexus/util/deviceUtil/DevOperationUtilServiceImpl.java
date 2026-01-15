@@ -1240,6 +1240,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     log.info("{}指令无响应", comId);
                     deviceManager.removeDevice(deviceId);
                 }
+                //TODO 实时回显指令出错需要另外处理
+                deviceManager.removeDevice(deviceId);
 
                 log.error("{}指令执行失败", comId);
                 return R.fail(liveDetection.getMessage());

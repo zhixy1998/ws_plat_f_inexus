@@ -224,7 +224,6 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         return R.ok();
     }
 
-    @DS("concise")
     @Override
     public R<FSamplePoolInfoVO> querySamplePoolInfo(String deviceSerialNumber) {
 

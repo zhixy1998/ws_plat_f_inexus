@@ -85,6 +85,12 @@ public class RationParameter extends MeasurePublicParameters{
     // 样品池方式(0: 单池重复后再移动 1: 依次移动并重复)
     @ApiModelProperty("样品池方式(0: 单池重复后再移动 1: 依次移动并重复)")
     private String samplePoolWay;
+    //推荐浓度
+    @ApiModelProperty("推荐浓度")
+    private List<String> curveCoefficient;
+    //单位
+    @ApiModelProperty("浓度单位")
+    private String unit;
     // 样品输入参数
     @ApiModelProperty("样品输入参数")
     private List<InputParam> sampleInputParams;

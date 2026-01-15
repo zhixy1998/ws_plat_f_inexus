@@ -9,11 +9,10 @@
 
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
-import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.List;
 
@@ -57,6 +56,6 @@ public interface DeviceInfoService {
 
     void checkDeviceStatus();
 
-    void sendMessage(String topic, JSONObject message, SimpMessagingTemplate messagingTemplate);
-    void sendMessage(String topic, JSONObject message);
+    R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
+
 }

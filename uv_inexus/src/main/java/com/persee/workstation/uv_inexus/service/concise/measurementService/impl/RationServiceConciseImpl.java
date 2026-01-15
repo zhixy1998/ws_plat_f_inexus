@@ -1248,7 +1248,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                     }
                 }
                 fittingReceiveInfo.setEquation(formula.toString());
-                fittingReceiveInfo.setCoefficients(paramList);
+                fittingReceiveInfo.setRoundCoefficients(paramList);
                 return fittingReceiveInfo;
 
             }
@@ -3286,9 +3286,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                         }
                     }
                 }
-
                 unknowSampleData.add(sampleData);
-
             } else {
                 log.info("类型出错");
             }
@@ -3826,6 +3824,7 @@ public class RationServiceConciseImpl implements RationConciseService {
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
         FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
         FittingReceiveInfo pointsFitting = null;
+
         if (StringUtils.hasText(parameter.getCoefficientMode()) && parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
 
             FittingReceiveInfo fittingInfo = createFittingInfo(methodId);
@@ -3861,10 +3860,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                 fittingParam.setMaxX(range.getMaxX());
             }
             resultVo = curveData(fittingParam);
-            if (StringUtils.hasText(fittingParam.getR())) {
+            if (StringUtils.hasText(fittingParam.getRoundR())) {
                 Double r = null;
                 try  {
-                     r = Double.valueOf(fittingParam.getR());
+                     r = Double.valueOf(fittingParam.getRoundR());
                 } catch (Exception ignored) {
                 }
                 if (r != null) {
@@ -3876,11 +3875,11 @@ public class RationServiceConciseImpl implements RationConciseService {
 
                 }
             }
-            if (StringUtils.hasText(fittingParam.getR2())) {
+            if (StringUtils.hasText(fittingParam.getRoundR2())) {
 
                 Double r2 = null;
                 try  {
-                    r2 = Double.valueOf(fittingParam.getR2());
+                    r2 = Double.valueOf(fittingParam.getRoundR2());
                 } catch (Exception ignored) {
                 }
                 if (r2 != null) {
@@ -3914,7 +3913,7 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Override
     public FRationFitCurveVO curveData(FittingReceiveInfo info) {
-        List<Double> list = info.getCoefficients().stream()
+        List<Double> list = info.getRoundCoefficients().stream()
                 .map(d -> BigDecimal.valueOf(d)
                         .setScale(3, RoundingMode.HALF_UP)
                         .doubleValue())
@@ -3999,10 +3998,10 @@ public class RationServiceConciseImpl implements RationConciseService {
         vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
 
-        if (StringUtils.hasText(info.getR())) {
+        if (StringUtils.hasText(info.getRoundR())) {
             Double r = null;
             try  {
-                r = Double.valueOf(info.getR());
+                r = Double.valueOf(info.getRoundR());
             } catch (Exception ignored) {
             }
             if (r != null) {
@@ -4013,10 +4012,10 @@ public class RationServiceConciseImpl implements RationConciseService {
                 }
             }
         }
-        if (StringUtils.hasText(info.getR2())) {
+        if (StringUtils.hasText(info.getRoundR2())) {
             Double r2 = null;
             try  {
-                r2 = Double.valueOf(info.getR2());
+                r2 = Double.valueOf(info.getRoundR2());
             } catch (Exception ignored) {
             }
 
@@ -4047,9 +4046,9 @@ public class RationServiceConciseImpl implements RationConciseService {
 
         try {
             if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-                s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
+                s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 1);
             } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-                s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+                s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 0);
             }
             if (StringUtils.hasText(s)) {
                 JSONObject jsonObject = JSON.parseObject(s);
@@ -4072,9 +4071,9 @@ public class RationServiceConciseImpl implements RationConciseService {
         String ans = null;
 
         if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 1);
         } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 0);
         }
         if (StringUtils.hasText(s)) {
             JSONObject jsonObject = JSON.parseObject(s);
@@ -4722,7 +4721,7 @@ public class RationServiceConciseImpl implements RationConciseService {
                  */
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
-                if (fitInfo != null && fitInfo.getCoefficients()!= null) {
+                if (fitInfo != null && fitInfo.getRoundCoefficients()!= null) {
                     String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
 
                     if (ans != null) {

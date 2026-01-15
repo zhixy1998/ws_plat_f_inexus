@@ -9,24 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
+import com.persee.workstation.uv_inexus.dto.concise.rationDto.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
@@ -36,15 +19,21 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.RationService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationMethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSampleDataVO;
-
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URLEncoder;
+import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/quantitativeMeasurement/")
@@ -97,35 +86,53 @@ public class RationController {
         return rationService.deleteSample(taskId, sampleId);
     }
 
-
     @GetMapping("revokeDel")
     @ApiOperation("撤销删除接口")
     public Result revokeDel(@RequestParam String taskId,@RequestParam String sampleId) {
         return rationService.revokeDel(taskId, sampleId);
     }
 
+    @GetMapping("checkAllSampleTestStatus")
+    @ApiOperation("检查标准样品是否都测量了")
+    public Result<Boolean> checkCreateNewSample(@RequestParam String taskId){
+        R<Boolean> r = rationService.checkStandAllSampleTest(taskId);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok(r.getData());
+        }
+    }
+
+    @PostMapping("createSample")
+    @ApiOperation("创建样品接口")
+    public Result createSample(GuideCreateSampleDTO dto) {
+        R<Boolean> r = rationService.createSample(dto);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        } else {
+            return Result.ok();
+        }
+    }
+
+
     @GetMapping("getStandTableHead")
     @ApiOperation("获取标准样品表头信息接口")
     public Result<List<HeadVO>> getTableHead(@RequestParam String taskId,
                                              @RequestParam String methodId,
-                                             @RequestParam Boolean allDisplay) {
-        return rationService.getStandSampleTableHead(taskId, methodId, allDisplay);
+                                             @RequestParam Boolean allDisplay,
+                                             @RequestParam String deviceSerialNumber) {
+        return rationService.getStandSampleTableHead(taskId, methodId, allDisplay, deviceSerialNumber);
     }
 
     @GetMapping("getUnknowTableHead")
     @ApiOperation("获取未知样品表头信息接口")
     public Result<List<HeadVO>> getUnknownSampleTableHead(@RequestParam String taskId,
                                                           @RequestParam String methodId,
-                                                          @RequestParam Boolean allDisplay) {
-        return rationService.getUnknownSampleTableHead(taskId, methodId, allDisplay);
+                                                          @RequestParam Boolean allDisplay,
+                                                          @RequestParam String deviceSerialNumber) {
+        return rationService.getUnknownSampleTableHead(taskId, methodId, allDisplay, deviceSerialNumber);
     }
 
-    @GetMapping("getStandSampleData")
-    @ApiOperation("获取标准样品数据接口")
-    public Result<List<Map<String, Object>>> getStandSampleData(@RequestParam String taskId,
-                                                                @RequestParam Boolean allDisplay) {
-        return rationService.queryStandSampleData(taskId, allDisplay);
-    }
 
     @PostMapping("querySampleData")
     @ApiOperation("查询样品数据接口")
@@ -133,12 +140,6 @@ public class RationController {
         return rationService.querySampleData(queryDataDTO);
     }
 
-    @GetMapping("getUnknowSampleData")
-    @ApiOperation("获取未知样品数据接口")
-    public Result<List<Map<String, Object>>> getUnknowSampleData(@RequestParam String taskId,
-                                                                 @RequestParam Boolean allDisplay) {
-        return rationService.queryUnknowSampleData(taskId, allDisplay);
-    }
 
     @GetMapping("getCurveInfo")
     @ApiOperation("获取曲线信息接口")
@@ -162,6 +163,16 @@ public class RationController {
                             @RequestParam String taskId,
                             @RequestParam String updateBy) {
         return rationService.zero2(deviceSerialNumber, methodId, taskId, updateBy);
+    }
+
+    @ApiOperation("测试")
+    @GetMapping("test")
+    public Result<String> test(@RequestParam String a,
+                               @RequestParam String b) {
+
+        rationService.test(a, b);
+
+        return Result.ok("测试成功");
     }
 
     @ApiOperation("查询可绑定的方法参数")

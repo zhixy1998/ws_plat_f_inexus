@@ -9,27 +9,36 @@
 
 package com.persee.workstation.uv_inexus.service.guide.instrumentService.impl;
 
-import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceModelInfoDAO;
+import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceTypeInfoDAO;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.ScanSpeedEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInitEntryInfo;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceModelInfoPO;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceTypeInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DeviceConnectionManager;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceConfParam;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceAttachmentTypeVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -42,8 +51,9 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
 
     @Autowired
     DeviceModelInfoDAO deviceModelInfoDAO;
+
     @Autowired
-    SimpMessagingTemplate messagingTemplate;
+    DeviceTypeInfoDAO deviceTypeInfoDAO;
 
     DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
@@ -354,12 +364,100 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
     }
 
     @Override
-    public void sendMessage(String topic, JSONObject message, SimpMessagingTemplate template) {
-        template.convertAndSend(topic, message);
+    public R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber) {
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            DeviceMeasureVO ans = new DeviceMeasureVO();
+            ans.setConnectMode(1);
+            ans.setMinWavelength("190");
+            ans.setMaxWavelength("1100");
+            ans.setBandWidth(Collections.singletonList("2"));
+            ans.setGain(Arrays.asList(1, 2, 3, 4));
+            ans.setScanInterval(Arrays.asList("0.1", "0.2", "0.5", "1.0", "2.0", "5.0"));
+            ans.setResponseTime(Arrays.asList("0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2"));
+            List<DeviceConfParam> list = new ArrayList<>();
+            list.add(new DeviceConfParam(WaveLengthEnum.abs.getName(), WaveLengthEnum.abs.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.tPercent.getName(), WaveLengthEnum.tPercent.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.es.getName(), WaveLengthEnum.es.getCode()));
+            list.add(new DeviceConfParam(WaveLengthEnum.er.getName(), WaveLengthEnum.er.getCode()));
+            ans.setLuminosity(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(EnergyLampEnums.Tungsten.getName(), EnergyLampEnums.Tungsten.getIdentity()));
+            list.add(new DeviceConfParam(EnergyLampEnums.Deuterium.getName(), EnergyLampEnums.Deuterium.getIdentity()));
+            ans.setLampType(list);
+            list = new ArrayList<>();
+            list.add(new DeviceConfParam(ScanSpeedEnum.SLOW.getName(), ScanSpeedEnum.SLOW.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.MEDIUM.getName(), ScanSpeedEnum.MEDIUM.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.FAST.getName(), ScanSpeedEnum.FAST.getCode()));
+            list.add(new DeviceConfParam(ScanSpeedEnum.SUPER_FAST.getName(), ScanSpeedEnum.SUPER_FAST.getCode()));
+            ans.setScanSpeed(list);
+            return R.ok(ans);
+        }
+
+        DeviceInfoPO info = getInfo(deviceSerialNumber);
+        if (info == null) {
+            //未找到该设备
+            return R.fail(YamlMessageSource.getMessageStatic("00203005"));
+        }
+
+        String devModel = deviceSerialNumber.substring(3, 8);
+
+        LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+        query.eq(DeviceModelInfoPO::getDevModel, devModel);
+
+        DeviceModelInfoPO deviceModelInfoPO = deviceModelInfoDAO.selectOne(query);
+        if (deviceModelInfoPO == null) {
+            //未识别该型号
+            return R.fail(YamlMessageSource.getMessageStatic("00203006"));
+        }
+
+        DeviceMeasureVO ans = new DeviceMeasureVO();
+
+        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth() == null ? null : deviceModelInfoPO.getSpacingWidth());
+
+        Integer devTypeId = deviceModelInfoPO.getDevTypeId();
+
+        DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
+        ans = changeType(deviceTypeInfoPO);
+        ans.setBandWidth(deviceModelInfoPO.getSpacingWidth());
+
+        return R.ok(ans);
     }
 
-    @Override
-    public void sendMessage(String topic, JSONObject message) {
-        messagingTemplate.convertAndSend(topic, message);
+    private DeviceMeasureVO changeType(DeviceTypeInfoPO po) {
+
+        DeviceMeasureVO ans = new DeviceMeasureVO();
+        List<DeviceConfParam> middle = new ArrayList<>();
+        BeanUtils.copyProperties(po, ans);
+        po.getLuminosity().forEach(i -> {
+            DeviceConfParam param = new DeviceConfParam();
+            param.setParamValue(String.valueOf(i + 1));
+            param.setParamName(WaveLengthEnum.getName(String.valueOf(i + 1)));
+            middle.add(param);
+        });
+        ans.setLuminosity(middle);
+
+        List<DeviceConfParam> lamp = new ArrayList<>();
+        po.getLampType().forEach(i -> {
+            DeviceConfParam param = new DeviceConfParam();
+            param.setParamValue(i.toString());
+            param.setParamName(EnergyLampEnums.getName(i.toString()));
+            lamp.add(param);
+        });
+        ans.setLampType(lamp);
+
+        List<DeviceConfParam> scanSpeed = new ArrayList<>();
+        po.getScanSpeed().forEach(i -> {
+            DeviceConfParam param = new DeviceConfParam();
+            param.setParamName(i);
+            param.setParamValue(ScanSpeedEnum.getCodeByName(i));
+            scanSpeed.add(param);
+        });
+        ans.setScanSpeed(scanSpeed);
+
+        return ans;
+
     }
+
+
+
 }

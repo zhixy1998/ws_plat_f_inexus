@@ -9,9 +9,11 @@
 
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskAttachmentMapper;
+import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
@@ -32,5 +34,20 @@ public class TMeasureTaskAttachmentServiceImpl extends ServiceImpl<TMeasureTaskA
         }
         //未找到记录
         return R.fail(YamlMessageSource.getMessageStatic("00100025"));
+    }
+
+    @Override
+    public Integer queryLastDigit(String taskId) {
+        LambdaQueryWrapper<TMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureTaskAttachment::getTaskId, taskId);
+        TMeasureTaskAttachment attachment = this.getOne(queryWrapper);
+
+        if (attachment != null && attachment.getDataParam() != null) {
+            FQueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+            if (dataDTO.getDigit() != null) {
+                return dataDTO.getDigit();
+            }
+        }
+        return null;
     }
 }

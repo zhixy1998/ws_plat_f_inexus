@@ -14,11 +14,13 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.concise.rationDto.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -29,20 +31,28 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.*;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
+import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
+import com.persee.workstation.uv_inexus.vo.concise.photometricAndRationVo.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PreCountResultParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody;
@@ -62,6 +72,7 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -70,7 +81,7 @@ import java.util.stream.Collectors;
 public class RationServiceImpl implements RationService {
 
     @Autowired
-    SystemUserManageDAO userManageDAO;
+    SysUserMapper userManageDAO;
     @Autowired
     TMeasureTaskMapper tMeasureTaskMapper;
     @Autowired
@@ -95,11 +106,31 @@ public class RationServiceImpl implements RationService {
     TMeasureTaskAttachmentService taskAttachmentService;
 
     @Autowired
+    SamplePoolConfigService fSamplePoolConfigService;
+
+    @Autowired
     DevMessageUtil devMessageUtil;
 
     @Autowired
     RestUtil restUtil;
 
+    @Autowired
+    GuidePublicUtilService guidePublicUtilService;
+
+    @Autowired
+    DevOperationUtilService devOperationUtilService;
+
+    @Autowired
+    SystemBusinessParamService businessParamService;
+
+    @Value("default")
+    String defaultMethodProjectName;
+
+    @Value("文件数据")
+    String newTaskName;
+
+    @Value("默认方法")
+    String defaultMethodName;
 
     @Value("1")
     private String deleteType;
@@ -118,6 +149,8 @@ public class RationServiceImpl implements RationService {
 
     @Value("1")
     String tested;
+
+    private static final DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
@@ -148,65 +181,75 @@ public class RationServiceImpl implements RationService {
                 }
             }
         }
+
+        R<Boolean> r = checkParam(methodDto);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
+
         // 测量类参数（定量测定）
         // 波长值：1-3个成员，数值190-900，保留1位小数
-        if (methodDto.getWaveLength() != null) {
-            if (methodDto.getWaveLength().isEmpty() || methodDto.getWaveLength().size() > 3) {
-                //波长个数需在1-3之间
-                return Result.fail(YamlMessageSource.getMessageStatic("00303004"));
-            }
-            for (String wl : methodDto.getWaveLength()) {
-                //波长超出范围(190-900)
-                try { double v = Double.parseDouble(wl); if (v < 190.0 || v > 900.0) return Result.fail(YamlMessageSource.getMessageStatic("00303005"));
-                    String s = String.format(java.util.Locale.ROOT, "%.1f", v);
-                    //波长需保留1位小数
-                    if (!s.equals(String.valueOf(v)) && !String.valueOf(v).matches("^\\d+\\.\\d$")) return Result.fail(YamlMessageSource.getMessageStatic("00303006"));
-                } catch (Exception e) {
-                    //波长格式错误
-                    return Result.fail(YamlMessageSource.getMessageStatic("00303007")); }
-            }
-        }
-        // 波长系数：1-3个成员
-        if (methodDto.getCoefficientParams() != null) {
-            if (methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 3) {
-                //波长系数个数需在1-3之间
-                return Result.fail(YamlMessageSource.getMessageStatic("00303018"));
-            }
-        }
-        // 曲线次数：1-4
-        if (org.springframework.util.StringUtils.hasText(methodDto.getCurveType())) {
-            //曲线次数范围应为1-4
-            try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail(YamlMessageSource.getMessageStatic("00303008"));
-            } catch (Exception ignored) {}
-        }
-        // 方程类型：枚举
-//        if (StringUtils.hasText(methodDto.getEquationType())) {
-//          Set<String> allow = new HashSet<>(Arrays.asList("qtCFA","qtAFC"));
-//            if (!allow.contains(methodDto.getEquationType()))
-//                return Result.fail("方程类型不合法");
+//        if (methodDto.getWaveLength() != null) {
+//            if (methodDto.getWaveLength().isEmpty() || methodDto.getWaveLength().size() > 3) {
+//                //波长个数需在1-3之间
+//                return Result.fail(YamlMessageSource.getMessageStatic("00303004"));
+//            }
+//            for (String wl : methodDto.getWaveLength()) {
+//                //波长超出范围(190-900)
+//                try { double v = Double.parseDouble(wl); if (v < 190.0 || v > 900.0) return Result.fail(YamlMessageSource.getMessageStatic("00303005"));
+//                    String s = String.format(java.util.Locale.ROOT, "%.1f", v);
+//                    //波长需保留1位小数
+//                    if (!s.equals(String.valueOf(v)) && !String.valueOf(v).matches("^\\d+\\.\\d$")) return Result.fail(YamlMessageSource.getMessageStatic("00303006"));
+//                } catch (Exception e) {
+//                    //波长格式错误
+//                    return Result.fail(YamlMessageSource.getMessageStatic("00303007")); }
+//            }
 //        }
-//        // 零点方式：字节，默认0 - 此处放宽，若提供需为0-255的整数
-//        // 曲线系数方式：枚举
-//        if (org.springframework.util.StringUtils.hasText(methodDto.getCoefficientMode())) {
-//            Set<String> allow = new HashSet<>(Arrays.asList("ctInput","ctCurve","0","1"));
-//            if (!allow.contains(methodDto.getCoefficientMode())) return Result.fail("曲线系数方式不合法");
+//        // 波长系数：1-3个成员
+//        if (methodDto.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+//            if (methodDto.getCoefficientParams() != null) {
+//                if (methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 3) {
+//                    //波长系数个数需在1-3之间
+//                    return Result.fail(YamlMessageSource.getMessageStatic("00303018"));
+//                }
+//            }
+//            // 曲线次数：1-4
+//            if (org.springframework.util.StringUtils.hasText(methodDto.getCurveType())) {
+//                //曲线次数范围应为1-4
+//                try { int n = Integer.parseInt(methodDto.getCurveType()); if (n < 1 || n > 4) return Result.fail(YamlMessageSource.getMessageStatic("00303008"));
+//                } catch (Exception ignored) {}
+//            }
+//            // 方程类型：枚举
+////        if (StringUtils.hasText(methodDto.getEquationType())) {
+////          Set<String> allow = new HashSet<>(Arrays.asList("qtCFA","qtAFC"));
+////            if (!allow.contains(methodDto.getEquationType()))
+////                return Result.fail("方程类型不合法");
+////        }
+////        // 零点方式：字节，默认0 - 此处放宽，若提供需为0-255的整数
+////        // 曲线系数方式：枚举
+////        if (org.springframework.util.StringUtils.hasText(methodDto.getCoefficientMode())) {
+////            Set<String> allow = new HashSet<>(Arrays.asList("ctInput","ctCurve","0","1"));
+////            if (!allow.contains(methodDto.getCoefficientMode())) return Result.fail("曲线系数方式不合法");
+////        }
+//            // 曲线系数数据：1-10 个成员
+//            if (methodDto.getCoefficientParams() == null || methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 10) {
+//                //曲线系数数据个数需在1-10之间
+//                return Result.fail(YamlMessageSource.getMessageStatic("00303009"));
+//            }
 //        }
-        // 曲线系数数据：1-10 个成员
-        if (methodDto.getCoefficientParams() == null || methodDto.getCoefficientParams().isEmpty() || methodDto.getCoefficientParams().size() > 10) {
-            //曲线系数数据个数需在1-10之间
-            return Result.fail(YamlMessageSource.getMessageStatic("00303009"));
-        }
-        // 拟合结果单位：1-10字符
-        // 该字段在定量分析结果中，若存在则校验
-        if (methodDto.getResultParams() != null) {
-            for (PreCountResultParam r : methodDto.getResultParams()) {
-                System.out.println(r.getUnit().length());
-                if (r.getUnit() == null || r.getUnit().isEmpty() || r.getUnit().length() > 10) {
-                    //结果单位长度应为1-10
-                    return Result.fail(YamlMessageSource.getMessageStatic("0030300A"));
-                }
-            }
-        }
+//
+//
+//        // 拟合结果单位：1-10字符
+//        // 该字段在定量分析结果中，若存在则校验
+//        if (methodDto.getResultParams() != null) {
+//            for (PreCountResultParam r : methodDto.getResultParams()) {
+//                System.out.println(r.getUnit().length());
+//                if (r.getUnit() == null || r.getUnit().isEmpty() || r.getUnit().length() > 10) {
+//                    //结果单位长度应为1-10
+//                    return Result.fail(YamlMessageSource.getMessageStatic("0030300A"));
+//                }
+//            }
+//        }
 
         // 根据方法id查询当前方法
         TMeasureMethod method = tMeasureMethodService.getById(methodDto.getMethodId());
@@ -274,12 +317,13 @@ public class RationServiceImpl implements RationService {
     @Override
     public Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType) {
 
-        SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
         String id = po.getId();
 
         LambdaQueryWrapper<TMeasureTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TMeasureTask::getUserId, id)
                 .eq(TMeasureTask::getMeasureType, measureType)
+                .eq(TMeasureTask::getIsDelete, createType)
                 .orderByDesc(TMeasureTask::getCreateTime);
         List<TMeasureTask> taskList = tMeasureTaskService.list(wrapper);
         if (taskList != null && !taskList.isEmpty()){
@@ -328,6 +372,490 @@ public class RationServiceImpl implements RationService {
         }
         return Result.ok(vo);
     }
+
+    @Override
+    public Result<MethodChangeCheckVO> checkMethodParam(RationMethodParamCheckDTO checkDTO) {
+
+        if (Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
+            //没有可应用的方法参数
+            return Result.fail(YamlMessageSource.getMessageStatic("00103014"));
+        }
+
+        if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
+
+            RationParameter methodParam = checkDTO.getNewMethodParam();
+
+            R<Boolean> r = checkParam(methodParam);
+            if (!r.getSuccess()) {
+                return Result.fail(r.getMessage());
+            }
+
+            double minWaveLength = 190.0;
+            double maxWaveLength = 1100.0;
+
+            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+                R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+                if (typeInfo.getSuccess()) {
+                    DeviceMeasureVO vo = typeInfo.getData();
+                    if (vo != null) {
+                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                    }
+
+                }
+            }
+
+            List<String> waveLengths = methodParam.getWaveLength();
+
+            for (int i = 0; i < waveLengths.size(); i++) {
+                String waveStr = waveLengths.get(i);
+                if (isBlank(waveStr)) {
+                    //"第" + (i + 1) + "个波长值不能为空字符串"
+                    return Result.fail(YamlMessageSource.getMessageStatic("00102005",(i + 1)));
+                }
+                try {
+                    double waveVal = Double.parseDouble(waveStr);
+                    if (waveVal < minWaveLength || waveVal > maxWaveLength) {
+                        //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
+                        return Result.fail(YamlMessageSource.getMessageStatic("00102006",(i + 1),waveVal, minWaveLength, maxWaveLength));
+                    }
+                    // 校验小数点后最多1位
+                    String[] parts = waveStr.split("\\.");
+                    if (parts.length > 1 && parts[1].length() > 1) {
+                        //"波长值" + waveStr + "小数点后最多保留1位"
+                        return Result.fail(YamlMessageSource.getMessageStatic("00105005",waveStr));
+                    }
+                } catch (NumberFormatException e) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("00102007",(i + 1) ,waveStr));
+                }
+            }
+
+        }
+
+        MethodChangeCheckVO vo = new MethodChangeCheckVO();
+        vo.setCurrentMethodId(checkDTO.getCurrentMethodId());
+        vo.setParamChange(false);
+        vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity());
+        vo.setMessage(PhotoMetricChangeMethodTypeEnum.noChange.getMessage());
+
+        if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
+            log.info("生成新方法");
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
+            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
+            return Result.ok(vo);
+        }
+
+        TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultMethodProjectName)) {
+            log.info("生成新方法");
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
+            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
+            return Result.ok(vo);
+        }
+
+        if (!StringUtils.hasText(checkDTO.getCurrentTaskId())) {
+            log.info("没有任务存在，将使用该方法生成数据");
+            vo.setParamChange(true);
+            vo.setClearDataRange(RationChangeMethodTypeEnums.noData.getIdentity());
+            return Result.ok(vo);
+        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+        RationParameter oldParam = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+
+        RationParameter methodParam = new RationParameter();
+        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
+            TMeasureMethod newMethod = tMeasureMethodService.getById(checkDTO.getNewMethodId());
+            methodParam = JSON.parseObject(newMethod.getMeasurementParamInfo(), RationParameter.class);
+        } else {
+            methodParam = checkDTO.getNewMethodParam();
+        }
+        String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(methodParam, SerializerFeature.SortField);
+
+        if (dbJson.equals(frontJson)) {
+            vo.setParamChange(false);
+            vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+            vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
+            return Result.ok(vo);
+        }
+        //检查测量数据
+        boolean b = checkMeasureParam(oldParam, methodParam);
+        System.out.println(b);
+        if (!b) {
+            log.info("测量参数有改变");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.measure.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.measure.getMessage());
+            return Result.ok(vo);
+        }
+
+        boolean curveParam = checkCurveParam(oldParam, methodParam);
+        if (!curveParam) {
+            log.info("曲线参数有改变");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.curve.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.curve.getMessage());
+        }
+
+        //检查分析参数
+        boolean analyze = checkAnalyzeParam(oldParam, methodParam);
+        if (!analyze) {
+            log.info("分析参数有改变");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
+        }
+        return Result.ok(vo);
+    }
+
+    //检查参数是否改变，true--未改变，false--改变了
+    private boolean checkMeasureParam(RationParameter oldParam, RationParameter newParam) {
+
+        List<String> oldWave = oldParam.getWaveLength();
+        List<String> newWave = newParam.getWaveLength();
+        if (!Objects.equals(oldWave, newWave)) {
+            return false;
+        }
+
+        return Objects.equals( oldParam.getSpectralBandwidth(), newParam.getSpectralBandwidth())&&
+//                oldParam.getSpectralBandwidth().equals(newParam.getSpectralBandwidth()) &&
+                Objects.equals(oldParam.getResponseTime(), newParam.getResponseTime()) &&
+//                oldParam.getResponseTime().equals(newParam.getResponseTime()) &&
+                Objects.equals(oldParam.getChangeLampWaveLength(),newParam.getChangeLampWaveLength()) &&
+//                oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
+                Objects.equals(oldParam.getTimeInterval(),newParam.getTimeInterval())&&
+//                oldParam.getTimeInterval().equals(newParam.getTimeInterval()) &&
+                Objects.equals(oldParam.getRepeatMode(), newParam.getRepeatMode()) &&
+//                oldParam.getRepeatMode().equals(newParam.getRepeatMode()) &&
+                Objects.equals(oldParam.getRepeatCount(), newParam.getRepeatCount()) ;
+//                oldParam.getRepeatCount().equals(newParam.getRepeatCount());
+    }
+
+    //检查参数是否改变，true--未改变，false--改变了
+    private boolean checkAnalyzeParam(RationParameter oldParam, RationParameter newParam) {
+
+        return Objects.equals(oldParam.getSampleInputParams(),newParam.getSampleInputParams()) &&
+                Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
+                Objects.equals(oldParam.getCurveCoefficient(), newParam.getCurveCoefficient()) &&
+                Objects.equals(oldParam.getUnit(), newParam.getUnit()) &&
+                Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
+                Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
+
+    }
+
+    /*
+     * 检查曲线参数是否改变，true--未改变，false--改变了
+     */
+    private boolean checkCurveParam(RationParameter oldParam, RationParameter newParam) {
+        List<String> oldLengthParam = oldParam.getWaveLengthParams();
+        List<String> newLengthParam = newParam.getWaveLengthParams();
+        if (!Objects.equals(oldLengthParam, newLengthParam)) {
+            return false;
+        }
+
+        List<String> oldZero = oldParam.getZeroMethod();
+        List<String> newZero = newParam.getZeroMethod();
+        if (!Objects.equals(oldZero, newZero)) {
+            return false;
+        }
+        if (!oldParam.getCoefficientMode().equals(newParam.getCoefficientMode())) {
+            return false;
+        }
+
+        List<String> oldCoefficient = oldParam.getCoefficientParams();
+        List<String> newCoefficient = newParam.getCoefficientParams();
+        if (!Objects.equals(oldCoefficient, newCoefficient)) {
+            return false;
+        }
+
+
+        return oldParam.getCurveType().equals(newParam.getCurveType()) &&
+                oldParam.getEquationType().equals(newParam.getEquationType());
+
+    }
+
+    private R<Boolean> checkParam(RationParameter parameter) {
+        // 1. 根对象非空校验
+        if (parameter == null) {
+            //定量测量参数对象不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("00102003"));
+        }
+
+        // 2. 波长相关参数校验
+        // 2.1 波长值校验（1-3个，数值范围190-900）
+        List<String> waveLengths = parameter.getWaveLength();
+        if (waveLengths == null || waveLengths.isEmpty()) {
+            //波长值不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("00105003"));
+        }
+        if (waveLengths.size() > 3) {
+            //"波长值最多支持3个，当前数量：" + waveLengths.size()
+            return R.fail(YamlMessageSource.getMessageStatic("00102004", waveLengths.size()));
+        }
+        if(!StringUtils.hasText(parameter.getChangeLampWaveLength())){
+            return R.fail("换灯波长不能为空");
+        }
+
+        if (StringUtils.hasText(parameter.getChangeLampWaveLength())) {
+            double v = Double.parseDouble(parameter.getChangeLampWaveLength());
+            if (v < 330 || v > 390) {
+                //"换灯波长要在（330-390）之间，当前值：" + v
+                return R.fail(YamlMessageSource.getMessageStatic("0010202A",v));
+            }
+
+            if (waveLengths.contains(parameter.getChangeLampWaveLength())) {
+                //换灯波长不能和测量波长一样。
+                return R.fail(YamlMessageSource.getMessageStatic("0010202B"));
+            }
+        }
+
+        // 2.2 波长参数校验（与波长值数量一致）
+        List<String> waveLengthParams = parameter.getWaveLengthParams();
+        if (waveLengthParams == null) {
+            //波长参数不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("00102008"));
+        }
+        if (waveLengthParams.size() != waveLengths.size()) {
+            //"波长参数数量需与波长值一致（当前参数数：" + waveLengthParams.size() + "，波长数：" + waveLengths.size() + "）"
+            return R.fail(YamlMessageSource.getMessageStatic("00102009",waveLengthParams.size(), waveLengths.size()));
+        }
+        for (int i = 0; i < waveLengthParams.size(); i++) {
+            if (isBlank(waveLengthParams.get(i))) {
+                return R.fail(YamlMessageSource.getMessageStatic("0010200A" , (i + 1)));
+            }
+        }
+
+        // 2.3 微分方式校验（枚举值）
+//        String differentialMode = parameter.getDifferentialMode();
+//        if (isBlank(differentialMode)) {
+//            return R.fail("微分方式不能为空");
+//        }
+//        List<String> validDiffModes = Arrays.asList(
+//                "single", "1st-der", "2nd-der", "3rd-der", "4th-der",
+//                "peak", "valley", "max", "min"
+//        );
+//        if (!validDiffModes.contains(differentialMode)) {
+//            return R.fail("微分方式不合法（可选值：" + String.join("、", validDiffModes) + "），当前值：" + differentialMode);
+//        }
+
+        // 3. 曲线与系数相关校验
+        // 3.1 曲线类型校验
+        if (isBlank(parameter.getCurveType())) {
+            //曲线类型不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("0010200B"));
+        }
+
+        // 3.2 方程类型校验（枚举值：qtCFA/qtAFC）
+        String equationType = parameter.getEquationType();
+        if (isBlank(equationType)) {
+            //方程类型不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("0010200C"));
+        }
+//        if (!Arrays.asList("qtCFA", "qtAFC").contains(equationType)) {
+//            return R.fail("方程类型不合法（可选值：qtCFA、qtAFC），当前值：" + equationType);
+//        }
+
+        // 3.3 系数方式校验（枚举值：0/1）
+        String coefficientMode = parameter.getCoefficientMode();
+        if (isBlank(coefficientMode)) {
+            //系数方式不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("0010200D"));
+        }
+        if (RationCurveParamEnums.getName(coefficientMode) == null) {
+            //系数方式不合法（可选值：直接系数法、标准曲线法）
+            return R.fail(YamlMessageSource.getMessageStatic("0010200E"));
+        }
+        if (RationCurveParamEnums.direct_coefficient.getIdentity().equals(coefficientMode)) {
+            // 3.4 系数参数校验（1-10个，数字且最多3位小数）
+            List<String> coefficientParams = parameter.getCoefficientParams();
+            if (coefficientParams == null || coefficientParams.isEmpty()) {
+                //系数参数不能为空
+                return R.fail(YamlMessageSource.getMessageStatic("0010200F"));
+            }
+            if (coefficientParams.size() > 10) {
+                //"系数参数最多支持10个，当前数量：" + coefficientParams.size()
+                return R.fail(YamlMessageSource.getMessageStatic("00102010",coefficientParams.size()));
+            }
+
+            int curveType = Integer.parseInt(parameter.getCurveType());
+            if (coefficientParams.size() < curveType + 1) {
+                //"系数参数数量不足，当前数量：" + coefficientParams.size() + "，所需数量：" + (curveType + 1)
+                return R.fail(YamlMessageSource.getMessageStatic("00102011",coefficientParams.size(),(curveType + 1)));
+            }
+
+            for (int i = 0; i < coefficientParams.size(); i++) {
+                String coeffStr = coefficientParams.get(i);
+                if (isBlank(coeffStr)) {
+                    //"第" + (i + 1) + "个系数参数不能为空字符串"
+                    return R.fail(YamlMessageSource.getMessageStatic("00102012",(i + 1)));
+                }
+                try {
+                    Double.parseDouble(coeffStr);
+                    if (coeffStr.contains(".") && coeffStr.split("\\.")[1].length() > 10) {
+                        //"第" + (i + 1) + "个系数参数小数位数不能超过10位，当前值：" + coeffStr
+                        return R.fail(YamlMessageSource.getMessageStatic("00102013",(i + 1),coeffStr));
+                    }
+                } catch (NumberFormatException e) {
+                    //"第" + (i + 1) + "个系数参数格式错误（需为数字），当前值：" + coeffStr
+                    return R.fail(YamlMessageSource.getMessageStatic("00102014",(i + 1),coeffStr));
+                }
+            }
+        }
+
+        // 3.5 零点方式校验
+        List<String> zeroMethod = parameter.getZeroMethod();
+//        if (zeroMethod == null || zeroMethod.isEmpty()) {
+//            return R.fail("零点方式不能为空");
+//        }
+        if (zeroMethod != null && !zeroMethod.isEmpty()) {
+            for (String zm : zeroMethod) {
+                if (RationCurveParamEnums.getName(zm) == null) {
+                    //零点方式不合法（可选值：过零点、插入零点）
+                    return R.fail(YamlMessageSource.getMessageStatic("00102015"));
+                }
+            }
+        }
+
+
+        // 4. 重复测量相关校验
+        // 4.1 重复模式校验（枚举值：rmNone/rmCR）
+        String repeatMode = parameter.getRepeatMode();
+        if (isBlank(repeatMode)) {
+            //重复模式不能为空
+            return R.fail(YamlMessageSource.getMessageStatic("00103007"));
+        }
+
+        if (RationCurveParamEnums.getName(repeatMode) == null) {
+            //重复模式不合法
+            return R.fail(YamlMessageSource.getMessageStatic("00102016" ));
+        }
+
+        // 4.2 单池重复（rmCR）时的关联校验
+        if ("单池重复".equals(repeatMode)) {
+            // 重复次数：2-10的整数
+            String repeatCountStr = parameter.getRepeatCount();
+            if (isBlank(repeatCountStr)) {
+                //单池重复模式下，重复次数不能为空
+                return R.fail(YamlMessageSource.getMessageStatic("00102017"));
+            }
+            try {
+                int repeatCount = Integer.parseInt(repeatCountStr);
+                if (repeatCount < 2 || repeatCount > 10) {
+                    //重复次数需在2-10范围内，当前值：repeatCount
+                    return R.fail(YamlMessageSource.getMessageStatic("00102018" ,repeatCount));
+                }
+            } catch (NumberFormatException e) {
+                //"重复次数格式错误（需为整数），当前值：" + repeatCountStr
+                return R.fail(YamlMessageSource.getMessageStatic("00102019",repeatCountStr));
+            }
+
+            // 时间间隔：0-60秒，保留1位小数
+            String timeIntervalStr = parameter.getTimeInterval();
+            if (isBlank(timeIntervalStr)) {
+                //单池重复模式下，时间间隔不能为空
+                return R.fail(YamlMessageSource.getMessageStatic("0010201A"));
+            }
+            try {
+                double timeInterval = Double.parseDouble(timeIntervalStr);
+                if (timeInterval < 0 || timeInterval > 60) {
+                    //"时间间隔需在0-60秒范围内，当前值：" + timeInterval
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201B",timeInterval));
+                }
+                if (timeIntervalStr.contains(".") && timeIntervalStr.split("\\.")[1].length() > 1) {
+                    //"时间间隔小数位数不能超过1位，当前值：" + timeIntervalStr
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201C",timeIntervalStr));
+                }
+            } catch (NumberFormatException e) {
+                //"时间间隔格式错误（需为数字），当前值：" + timeIntervalStr
+                return R.fail(YamlMessageSource.getMessageStatic("0010201D",timeIntervalStr));
+            }
+        }
+
+
+        // 6. 复杂结构参数校验
+        // 6.1 样品输入参数校验（最多10个）
+        List<InputParam> sampleInputParams = parameter.getSampleInputParams();
+        if (sampleInputParams != null && !sampleInputParams.isEmpty()) {
+            if (sampleInputParams.size() > 10) {
+                //"样品输入参数最多支持10个，当前数量：" + sampleInputParams.size()
+                return R.fail(YamlMessageSource.getMessageStatic("0010201E",sampleInputParams.size()));
+            }
+            for (int i = 0; i < sampleInputParams.size(); i++) {
+                InputParam inputParam = sampleInputParams.get(i);
+                if (inputParam == null || isBlank(inputParam.getParamName())) {
+                    //"第" + (i + 1) + "个样品输入参数标题不能为空"
+                    return R.fail(YamlMessageSource.getMessageStatic("0010201F",(i+1)));
+                }
+            }
+        }
+
+        // 6.2 待计算结果参数校验（最多5个）
+        List<PreCountResultParam> resultParams = parameter.getResultParams();
+        if (resultParams != null && !resultParams.isEmpty()) {
+            if (resultParams.size() > 5) {
+                return R.fail(YamlMessageSource.getMessageStatic("00102020",resultParams.size()));
+            }
+            for (int i = 0; i < resultParams.size(); i++) {
+                PreCountResultParam resultParam = resultParams.get(i);
+                if (resultParam == null || isBlank(resultParam.getResultName()) || isBlank(resultParam.getFormulaText())) {
+                    //"第" + (i + 1) + "个待计算结果参数标题或公式不能为空"
+                    return R.fail(YamlMessageSource.getMessageStatic("00102021",(i + 1)));
+                }
+            }
+        }
+
+        // 6.3 修约设置校验（最多10个）
+        List<RoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams != null && !approxParams.isEmpty()) {
+
+            if (approxParams.size() > 10) {
+                //"最多支持修约10个变量" + approxParams.size()
+                return R.fail(YamlMessageSource.getMessageStatic("00103010",approxParams.size()));
+            }
+            for (RoundingVO approxParam : approxParams) {
+
+                if (approxParam.getRoundingParams() == null || approxParam.getRoundingParams().isEmpty()) {
+                    //"修约设置" + approxParam.getResultIdentity() + "的修约条件不能为空"
+                    return R.fail(YamlMessageSource.getMessageStatic("00103011",approxParam.getResultIdentity()));
+                }
+                if (approxParam.getRoundingParams().size() > 10) {
+                    //"修约设置" + approxParam.getResultIdentity() + "的修约条件数量不能超过10个"
+                    return R.fail(YamlMessageSource.getMessageStatic("00103012",approxParam.getResultIdentity()));
+                }
+
+                R<Boolean> r = guidePublicUtilService.checkApproximateRange(approxParam);
+                if (!r.getSuccess()) {
+                    return r;
+                }
+            }
+        }
+
+
+        // 6.4 质控设置校验（最多10个，类型合法）
+        List<QualityConfVO> qcParams = parameter.getQcParams();
+        if (qcParams != null && !qcParams.isEmpty() && qcParams.size() > 10) {
+            //"质控设置最多支持10个规则，当前数量：" + qcParams.size()
+            return R.fail(YamlMessageSource.getMessageStatic("00102022",qcParams.size()));
+        }
+
+        // 7. 继承参数校验（方法名称等长度限制）
+        if (parameter.getEquationTypeName() != null && parameter.getEquationTypeName().length() > 256) {
+            //方法名称长度不能超过256字符
+            return R.fail(YamlMessageSource.getMessageStatic("00102023"));
+        }
+
+        return R.ok(true);
+    }
+
+
+    private boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
+
 
 
     @Override
@@ -429,16 +957,12 @@ public class RationServiceImpl implements RationService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000025"));
         }
 
-        if (dto.getStandHeads() == null || dto.getStandHeads().isEmpty()) {
-            //标准样品表头为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00000026"));
+        TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
+        if (method == null) {
+            //没有方法！
+            return Result.fail(YamlMessageSource.getMessageStatic("00000025"));
         }
-
-        if (dto.getUnknowHeads() == null || dto.getUnknowHeads().isEmpty()) {
-            //未知样品表头为空
-            return Result.fail(YamlMessageSource.getMessageStatic("00000027"));
-        }
-
+        
         if (dto.getStandHeads().size() > 10) {
             //标准样品表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
@@ -449,12 +973,68 @@ public class RationServiceImpl implements RationService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
         }
 
+        RationParameter rationParameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+
+        boolean standHas = false;
+        if (StringUtils.hasText(rationParameter.getCoefficientMode()) && rationParameter.getCoefficientMode().equals(RationCurveParamEnums.standard_curve.getIdentity())) {
+            standHas = true;
+            if (dto.getStandHeads() == null || dto.getStandHeads().isEmpty()) {
+                //标准样品表头为空
+                return Result.fail(YamlMessageSource.getMessageStatic("00000026"));
+            }
+
+            if (dto.getStandHeads().size() > 10) {
+                //标准样品表格新增列数不能超过10列
+                return Result.fail(YamlMessageSource.getMessageStatic("00000028"));
+            }
+            /// 校验是否有重复的样品编号
+            // 取出所有样品编号
+            List<String> sampleNos = dto.getNewStandSamples().stream()
+                    .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+//                    .filter(Objects::nonNull)    // 过滤掉空值
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.toList());
+
+            if (sampleNos.size() < dto.getNewStandSamples().size()) {
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+            }
+
+            // 查重：找到重复的样品编号
+            Set<String> duplicates = sampleNos.stream()
+                    .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                    .collect(Collectors.toSet());
+            // 判断如果isTested为true，
+            if (!duplicates.isEmpty()) {
+                //标准样品编号重复
+                return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
+            }
+        }
+
+        List<String> unknownSampleNos = dto.getNewUnknowSamples().stream()
+                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
+//                .filter(Objects::nonNull)    // 过滤掉空值
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
+
+        if (unknownSampleNos.size() < dto.getNewUnknowSamples().size()) {
+            return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
+        }
+        // 查重：找到重复的样品编号
+        Set<String> isDuplicates = unknownSampleNos.stream()
+                .filter(no -> Collections.frequency(unknownSampleNos, no) > 1)
+                .collect(Collectors.toSet());
+        // 判断如果isTested为true，
+        if (!isDuplicates.isEmpty()) {
+            //未知样品编号重复
+            return Result.fail(YamlMessageSource.getMessageStatic("00102002"));
+        }
+        
+
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
 
-            TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, dto.getUpdateBy()));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());
@@ -482,7 +1062,25 @@ public class RationServiceImpl implements RationService {
         }
 
         TMeasureTask task = tMeasureTaskService.getById(dto.getTaskId());
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+
+        List<TaskSpecimen> taskSpecimen = new ArrayList<>();
+
+
+        if (StringUtils.hasText(task.getSampleKey())) {
+            taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        }
+
+        if (taskSpecimen == null) {
+
+            taskSpecimen = new ArrayList<>();
+        }
+        Map<String, TaskSpecimen> oldMap = new HashMap<>();
+
         for (TaskSpecimen specimen : taskSpecimen) {
             if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
                 specimen.setDeleteType(deleteType);
@@ -492,9 +1090,11 @@ public class RationServiceImpl implements RationService {
                 TMeasureData one = tMeasureDataService.getOne(queryWrapper);
                 if (one != null) {
                     one.setIsDelete(deleteType);
+                    one.setIsSave(createType);
                     tMeasureDataService.updateById(one);
                 }
             }
+            oldMap.put(specimen.getSpecimenKey(), specimen);
         }
 
         RationTaskHeadSnapShot taskHeadSnapShot = new RationTaskHeadSnapShot();
@@ -505,15 +1105,20 @@ public class RationServiceImpl implements RationService {
         /*
         处理表头
          */
-        if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
-            TaskHeadSnapshot standHead = new TaskHeadSnapshot();
-            if (taskHeadSnapShot.getStandHead() != null) {
-                BeanUtils.copyProperties(taskHeadSnapShot.getStandHead(), standHead);
+
+        if (standHas) {
+            if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
+                TaskHeadSnapshot standHead = new TaskHeadSnapshot();
+                if (taskHeadSnapShot.getStandHead() != null) {
+                    BeanUtils.copyProperties(taskHeadSnapShot.getStandHead(), standHead);
+                }
+                standHead.setTaskId(task.getId());
+                standHead.setSampleHeads(dto.getStandHeads());
+                taskHeadSnapShot.setStandHead(standHead);
             }
-            standHead.setTaskId(task.getId());
-            standHead.setSampleHeads(dto.getStandHeads());
-            taskHeadSnapShot.setStandHead(standHead);
         }
+
+
 
         if (dto.getUnknowHeads() != null && !dto.getUnknowHeads().isEmpty()) {
             TaskHeadSnapshot unknownHead = new TaskHeadSnapshot();
@@ -525,44 +1130,54 @@ public class RationServiceImpl implements RationService {
             taskHeadSnapShot.setUnknownHead(unknownHead);
         }
         task.setTableInfo(JSON.toJSONString(taskHeadSnapShot));
+        tMeasureTaskService.updateById(task);
+        task = tMeasureTaskService.getById(task.getId());
+        Integer digit = taskAttachmentService.queryLastDigit(task.getId());
+        digit = digit == null ? Constants.DEFAULT_DECIMAL_NUM : digit;
 
+        if (standHas) {
+            for (Map<String, String> map : dto.getNewStandSamples()) {
 
-        for (Map<String, String> map : dto.getNewStandSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
 
-            String jsonString = JSON.toJSONString(map);
-            SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
+                TMeasureSample newSample = new TMeasureSample();
+                BeanUtils.copyProperties(sample, newSample);
+                newSample.setId(sample.getSampleId());
+                newSample.setSampleKind(stand);
+                if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
+                    JSONObject newColData = new JSONObject();
 
-            TMeasureSample newSample = new TMeasureSample();
-            BeanUtils.copyProperties(sample, newSample);
-            newSample.setId(sample.getSampleId());
-            newSample.setSampleKind(stand);
-            if (dto.getStandHeads() != null && !dto.getStandHeads().isEmpty()) {
-                JSONObject newColData = new JSONObject();
-
-                for (HeadVO head : dto.getStandHeads()) {
-                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
-                        continue;
+                    for (HeadVO head : dto.getStandHeads()) {
+                        if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                            continue;
+                        }
+                        String s = map.get(head.getIdentity());
+                        newColData.put(head.getIdentity(), s);
                     }
-                    String s = map.get(head.getIdentity());
-                    newColData.put(head.getIdentity(), s);
+
+                    newSample.setHeads(JSON.toJSONString(dto.getStandHeads()));
+                    newSample.setNewColData(JSON.toJSONString(newColData));
                 }
 
-                newSample.setHeads(JSON.toJSONString(dto.getStandHeads()));
-                newSample.setNewColData(JSON.toJSONString(newColData));
-            }
-
-            if (StringUtils.hasText(newSample.getId())) {
-                tMeasureSampleService.updateById(newSample);
-            } else {
-                TaskSpecimen specimen = new TaskSpecimen();
-                specimen.setDeleteType(createType);
-                specimen.setIsTested(noTested);
-                specimen.setSampleType(newSample.getSampleType());
-                specimen.setSampleKind(stand);
-                log.info("新增的标准样品：{}", newSample);
-                tMeasureSampleService.save(newSample);
-                specimen.setSpecimenKey(newSample.getId());
-                taskSpecimen.add(specimen);
+                if (StringUtils.hasText(newSample.getId())) {
+                    tMeasureSampleService.updateById(newSample);
+                    TaskSpecimen specimen = oldMap.get(newSample.getId());
+                    specimen.setSampleKind(stand);
+                    specimen.setSampleType(newSample.getSampleType());
+                    oldMap.put(newSample.getId(), specimen);
+                } else {
+                    TaskSpecimen specimen = new TaskSpecimen();
+                    specimen.setDeleteType(createType);
+                    specimen.setIsTested(noTested);
+                    specimen.setSampleType(newSample.getSampleType());
+                    specimen.setSampleKind(stand);
+                    log.info("新增的标准样品：{}", newSample);
+                    tMeasureSampleService.save(newSample);
+                    specimen.setSpecimenKey(newSample.getId());
+                    oldMap.put(newSample.getId(), specimen);
+                    taskSpecimen.add(specimen);
+                }
             }
         }
 
@@ -591,6 +1206,11 @@ public class RationServiceImpl implements RationService {
 
             if (StringUtils.hasText(newSample.getId())) {
                 tMeasureSampleService.updateById(newSample);
+
+                TaskSpecimen specimen = oldMap.get(newSample.getId());
+                specimen.setSampleKind(unknown);
+                specimen.setSampleType(newSample.getSampleType());
+                oldMap.put(newSample.getId(), specimen);
             } else {
                 TaskSpecimen specimen = new TaskSpecimen();
                 specimen.setDeleteType(createType);
@@ -600,12 +1220,41 @@ public class RationServiceImpl implements RationService {
                 log.info("新增的未知样品：{}", newSample);
                 tMeasureSampleService.save(newSample);
                 specimen.setSpecimenKey(newSample.getId());
+                oldMap.put(newSample.getId(), specimen);
                 taskSpecimen.add(specimen);
             }
         }
 
+        for (TaskSpecimen specimen : taskSpecimen) {
+            specimen = oldMap.get(specimen.getSpecimenKey()) == null ? specimen : oldMap.get(specimen.getSpecimenKey());
+        }
+
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
+        boolean b = tMeasureTaskService.updateById(task);
+
+        if (!b) {
+            //任务保存样品信息出错
+            return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
+        }
+        //重新分析
+        if (standHas) {
+            changeStandSampleDataDigit(task.getId(), digit);
+        }
+        changeUnknowSampleDigit(task.getId(), digit);
+
+        if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                return Result.ok();
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+                guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
+        }
 
         return Result.ok(tMeasureTaskService.updateById(task));
     }
@@ -643,6 +1292,25 @@ public class RationServiceImpl implements RationService {
         }
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
         tMeasureTaskService.updateById(task);
+
+        boolean b = tMeasureTaskService.updateById(task);
+        if (!b) {
+            //删除失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00100008"));
+        }
+
+        TMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
+
+        Integer i = taskAttachmentService.queryLastDigit(taskId);
+        Integer digit = i == null ? Constants.DEFAULT_DECIMAL_NUM : i;
+
+        if (measureSample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            changeStandSampleDataDigit(taskId, digit);
+            changeUnknowSampleDigit(taskId, digit);
+        } else {
+            changeUnknowSampleDigit(taskId, digit);
+        }
+
         return Result.ok(true);
     }
 
@@ -654,15 +1322,32 @@ public class RationServiceImpl implements RationService {
         RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(sampleKey, TaskSpecimen.class);
+        TMeasureSample newSample = tMeasureSampleService.getById(sampleId);
+        Boolean b = revokeDelSampleNumRepeat(taskSpecimen, newSample);
+        if (!b) {
+            //要恢复的样品编号重复，请处理重复编号后再恢复！
+            return Result.fail(YamlMessageSource.getMessageStatic("00100004"));
+        }
+
+
         for (TaskSpecimen specimen : taskSpecimen) {
             if (specimen.getSpecimenKey().equals(sampleId)) {
                 specimen.setDeleteType(createType);
-                TMeasureSample newSample = tMeasureSampleService.getById(sampleId);
-                if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
-                    newSample.setHeads(String.valueOf(shot.getUnknownHead().getSampleHeads()));
-                } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                    newSample.setHeads(String.valueOf(shot.getStandHead().getSampleHeads()));
+
+                if (shot != null && specimen.getSampleKind() != null) {
+
+                    if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+
+                        if (shot.getUnknownHead() != null && shot.getUnknownHead().getSampleHeads() != null) {
+                            newSample.setHeads(JSON.toJSONString(shot.getUnknownHead().getSampleHeads()));
+                        }
+                    } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        if (shot.getStandHead() != null && shot.getStandHead().getSampleHeads() != null) {
+                            newSample.setHeads(JSON.toJSONString(shot.getStandHead().getSampleHeads()));
+                        }
+                    }
                 }
+
                 tMeasureSampleService.updateById(newSample);
 
                 LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
@@ -679,7 +1364,47 @@ public class RationServiceImpl implements RationService {
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
 
-        return Result.ok(tMeasureTaskService.updateById(task));
+        tMeasureTaskService.updateById(task);
+
+        TMeasureSample measureSample = tMeasureSampleService.getById(sampleId);
+
+        Integer i = taskAttachmentService.queryLastDigit(taskId);
+        Integer digit = i == null ? Constants.DEFAULT_DECIMAL_NUM : i;
+
+        if (measureSample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+            changeStandSampleDataDigit(taskId, digit);
+            changeUnknowSampleDigit(taskId, digit);
+        } else {
+            changeUnknowSampleDigit(taskId, digit);
+        }
+
+        return Result.ok();
+
+    }
+
+    private Boolean revokeDelSampleNumRepeat(List<TaskSpecimen> taskSpecimen, TMeasureSample sample) {
+
+        String sampleKind = sample.getSampleKind();
+        List<String> sampleNumList = new ArrayList<>();
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+            if (!specimen.getSampleKind().equals(sampleKind)) {
+                continue;
+            }
+            if (specimen.getDeleteType().equals(deleteType) || specimen.getSpecimenKey().equals(sample.getId())) {
+                continue;
+            }
+            TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+            if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
+                sampleNumList.add(measureSample.getSampleNumber());
+            }
+
+        }
+        if (sampleNumList.contains(sample.getSampleNumber())) {
+            return false;
+        }
+        return true;
+
     }
 
     @Override
@@ -710,12 +1435,13 @@ public class RationServiceImpl implements RationService {
         param.setMethodId(method.getId());
         param.setMethodName(method.getMethodName());
         param.setMeasurementType(method.getMeasurementType());
+        param.setCoefficientModeName(RationCurveParamEnums.getName(param.getCoefficientMode()));
         return Result.ok(param);
     }
 
     //标准样品表头
     @Override
-    public Result<List<HeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay) {
+    public Result<List<HeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
@@ -744,31 +1470,6 @@ public class RationServiceImpl implements RationService {
             return Result.ok(new ArrayList<>(ans));
         }
 
-        boolean empty = false;
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-
-                if(sample == null || !SampleTypeEnum.kind_stand.getIdentity().equals(sample.getSampleKind())) {
-                    log.info("非标准样品，跳过");
-                    continue;
-                }
-
-                if (StringUtils.hasText(sample.getSampleType())) {
-                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())){
-                        empty = true;
-                    }
-                }
-                if (StringUtils.hasText(sample.getHeads())){
-                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
-                    if (heads != null && !heads.isEmpty()) {
-                        ans.addAll(heads);
-                    }
-                }
-            }
-        }
-
         if (StringUtils.hasText(task.getTableInfo())) {
             RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
             if (shot != null && shot.getStandHead() != null) {
@@ -784,12 +1485,43 @@ public class RationServiceImpl implements RationService {
             ans.addAll(preHead);
         }
 
-        List<HeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty);
-        return Result.ok(result);
+        boolean empty = false;
+        if (StringUtils.hasText(task.getSampleKey())) {
+            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            for (TaskSpecimen specimen : taskSpecimen) {
+
+                if (specimen.getDeleteType().equals(deleteType) || !specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                    continue;
+                }
+
+                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+                if (StringUtils.hasText(sample.getSampleType())) {
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())){
+                        empty = true;
+                    }
+                }
+                if (StringUtils.hasText(sample.getHeads())){
+                    List<HeadVO> heads = JSON.parseArray(sample.getHeads(), HeadVO.class);
+                    if (heads != null && !heads.isEmpty()) {
+                        ans.addAll(heads);
+                    }
+                }
+            }
+        }
+
+        List<HeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty, deviceSerialNumber);
+        List<HeadVO> a = new ArrayList<>();
+        for (HeadVO head : result) {
+            if (!head.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                a.add(head);
+            }
+        }
+        return Result.ok(a);
 
     }
 
-    private List<HeadVO> dealHeads(List<HeadVO> heads, RationParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty) {
+    private List<HeadVO> dealHeads(List<HeadVO> heads, RationParameter parameter, String sampleKind, Boolean allDisplay, Boolean empty, String deviceSerialNumber) {
         List<String> waveLength = parameter.getWaveLength();
         Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
 
@@ -798,6 +1530,10 @@ public class RationServiceImpl implements RationService {
         Map<String, HeadVO> analyzeMap = new HashMap<>();
 
         for (HeadVO head : heads) {
+            if (head.getIdentity().equals("remark")) {
+                head.setLocate(TableHeadILocateEnums.remark.getIdentity());
+            }
+
             headsMap.computeIfAbsent(head.getLocate(), k -> new ArrayList<>()).add(head);
             if (head.getLocate().equals(TableHeadILocateEnums.measure.getIdentity())) {
                 map.put(head.getIdentity(), head);
@@ -807,61 +1543,35 @@ public class RationServiceImpl implements RationService {
             }
         }
 
-        List<HeadVO> measureHeads = headsMap.get(TableHeadILocateEnums.measure.getIdentity());
-
         List<HeadVO> allMeasureHeads = new ArrayList<>();
 
-        if (measureHeads == null || measureHeads.isEmpty()) {
-            measureHeads = new ArrayList<>();
-            for (String s : waveLength) {
-                String identity = s + "-" + WaveLengthEnum.abs.getCode();
-                String tPercentIdentity = s + "-" + WaveLengthEnum.tPercent.getCode();
-                String absName = s + WaveLengthEnum.abs.getName();
-                String tPercentName = s + WaveLengthEnum.tPercent.getName();
+        for (String s : waveLength) {
+            String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
+            String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
+            String absName = WaveLengthEnum.abs.getName() +  "[" + s + "nm]";
+            String tPercentName = WaveLengthEnum.tPercent.getName() +  "[" + s + "nm]";
 
-                HeadVO absHead = new HeadVO(absName, identity, TableHeadILocateEnums.measure.getIdentity(), absName);
-                measureHeads.add(absHead);
-                map.put(identity, absHead);
+            HeadVO absHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
+            HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
 
-                if (allDisplay) {
-                    HeadVO tHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
-                    measureHeads.add(tHead);
-                    map.put(tPercentIdentity, tHead);
-                }
+            if (map.containsKey(absIdentity)) {
+                absHead = map.get(absIdentity);
             }
-            allMeasureHeads.addAll(measureHeads);
-        } else {
-            for (String s : waveLength) {
-                String identity = s + "-" + WaveLengthEnum.abs.getCode();
-                String tPercentIdentity = s + "-" + WaveLengthEnum.tPercent.getCode();
-                String absName = s + WaveLengthEnum.abs.getName();
-                String tPercentName = s + WaveLengthEnum.tPercent.getName();
+            allMeasureHeads.add(absHead);
 
-                HeadVO absHead;
-                if (map.containsKey(identity)) {
-                    absHead = map.get(identity);
-                } else {
-                    absHead = new HeadVO(absName, identity, TableHeadILocateEnums.measure.getIdentity(), absName);
+            if (allDisplay) {
+                if (map.containsKey(tPercentIdentity)) {
+                    tPercentHead = map.get(tPercentIdentity);
                 }
-                allMeasureHeads.add(absHead);
-                map.put(identity, absHead);
-
-                if (allDisplay) {
-                    HeadVO tHead;
-                    if (map.containsKey(tPercentIdentity)) {
-                        tHead = map.get(tPercentIdentity);
-                    } else {
-                        tHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
-                    }
-                    allMeasureHeads.add(tHead);
-                    map.put(tPercentIdentity, tHead);
-                }
+                allMeasureHeads.add(tPercentHead);
             }
         }
+
         String sumAbsIdentity = SampleTableEnum.SUM_Abs.getIdentity();
         String absIdentity = SampleTableEnum.Abs.getIdentity();
 
         HeadVO absHead = new HeadVO(SampleTableEnum.Abs.getName(), absIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.Abs.getName());
+        HeadVO sumAbsHead = new HeadVO(SampleTableEnum.SUM_Abs.getName(), sumAbsIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.SUM_Abs.getName());
 
         if (map.containsKey(absIdentity)) {
             absHead = map.get(absIdentity);
@@ -869,15 +1579,40 @@ public class RationServiceImpl implements RationService {
 
         allMeasureHeads.add(absHead);
         if (empty) {
-            HeadVO newHead = new HeadVO(SampleTableEnum.SUM_Abs.getName(), sumAbsIdentity, TableHeadILocateEnums.measure.getIdentity(), SampleTableEnum.SUM_Abs.getName());
             if (map.containsKey(sumAbsIdentity)) {
-                newHead = map.get(sumAbsIdentity);
+                sumAbsHead = map.get(sumAbsIdentity);
             }
-            allMeasureHeads.add(newHead);
+            allMeasureHeads.add(sumAbsHead);
         }
         List<HeadVO> ans = new ArrayList<>();
         List<HeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
         if (systemHeads !=null) ans.addAll(systemHeads);
+        for (HeadVO an : ans) {
+            if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                ans.remove(an);
+                break;
+            }
+
+            if (an.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity()) && StringUtils.hasText(parameter.getUnit())) {
+                an.setName(an.getName() + "(" + parameter.getUnit() + ")");
+                break;
+            }
+        }
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess()) {
+                FSamplePoolInfoVO data = poolInfo.getData();
+                if (data.getIsAutoChangePool() ) {
+                    String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
+                    String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
+                    HeadVO sampleLocation = new HeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
+                    ans.add(sampleLocation);
+                }
+            }
+        }
+
         List<HeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
         if (sampleHeads !=null) ans.addAll(sampleHeads);
         ans.addAll(allMeasureHeads);
@@ -885,9 +1620,28 @@ public class RationServiceImpl implements RationService {
         if (taskHeads !=null) ans.addAll(taskHeads);
 
         if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+
+            String fitConcentrationName = SampleTableEnum.FIT_CONCENTRATION.getName();
+            String fitConcentrationIdentity = SampleTableEnum.FIT_CONCENTRATION.getIdentity();
+
+            if (StringUtils.hasText(parameter.getUnit())) {
+                fitConcentrationName = fitConcentrationName + "(" + parameter.getUnit() + ")";
+            }
+
+            HeadVO fitHead = new HeadVO(fitConcentrationName, SampleTableEnum.FIT_CONCENTRATION.getIdentity(), TableHeadILocateEnums.analyze.getIdentity(), fitConcentrationName);
+            if (analyzeMap.containsKey(fitConcentrationIdentity)) {
+
+                HeadVO fHeadVO = analyzeMap.get(fitConcentrationIdentity);
+                fitHead.setPrintTitle(fHeadVO.getPrintTitle());
+            }
+            ans.add(fitHead);
+
             List<HeadVO> headAnalyze = new ArrayList<>();
 
             List<PreCountResultParam> resultParams = parameter.getResultParams();
+            if (resultParams == null) {
+                resultParams = new ArrayList<>();
+            }
 
             for (PreCountResultParam results : resultParams) {
                 //TODO 方法参数标识待定，后续再改动
@@ -909,19 +1663,23 @@ public class RationServiceImpl implements RationService {
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
             HeadVO samplingTimeHead = new HeadVO(SampleTableEnum.SAMPLING_TIME.getName(), SampleTableEnum.SAMPLING_TIME.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.SAMPLING_TIME.getName());
-            HeadVO remark = new HeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.REMARK.getName());
             other.add(samplingTimeHead);
-            other.add(remark);
         }
-
         ans.addAll(other);
+        List<HeadVO> remarks = headsMap.get(TableHeadILocateEnums.remark.getIdentity());
+        if (remarks == null || remarks.isEmpty()) {
+            remarks = new ArrayList<>();
+            HeadVO remark = new HeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.remark.getIdentity(), SampleTableEnum.REMARK.getName());
+            remarks.add(remark);
+        }
+        ans.addAll(remarks);
 
         return ans;
     }
 
     //未知样品表头
     @Override
-    public Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay) {
+    public Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay,String deviceSerialNumber) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
@@ -949,6 +1707,23 @@ public class RationServiceImpl implements RationService {
             ans.addAll(preHead);
             return Result.ok(new ArrayList<>(ans));
         }
+
+        if (StringUtils.hasText(task.getTableInfo())) {
+            RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
+            if (shot != null && shot.getUnknownHead() != null) {
+
+                if (shot.getUnknownHead().getTaskHeads() != null) {
+                    ans.addAll(shot.getUnknownHead().getTaskHeads());
+                }
+                if (shot.getUnknownHead().getSampleHeads() != null) {
+                    ans.addAll(shot.getUnknownHead().getSampleHeads());
+                }
+            }
+        }else {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(method.getMeasurementType(), SampleTypeEnum.kind_unknown.getIdentity());
+            ans.addAll(preHead);
+        }
+
         boolean empty = false;
         if (StringUtils.hasText(task.getSampleKey())) {
             List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -972,19 +1747,14 @@ public class RationServiceImpl implements RationService {
                 }
             }
         }
-        if (StringUtils.hasText(task.getTableInfo())) {
-            RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
-            if (shot != null && shot.getUnknownHead() != null) {
-                if (shot.getUnknownHead().getSampleHeads() != null) {
-                    ans.addAll(shot.getUnknownHead().getSampleHeads());
-                }
-                if (shot.getUnknownHead().getTaskHeads() != null) {
-                    ans.addAll(shot.getUnknownHead().getTaskHeads());
-                }
 
+        List<HeadVO> m = new ArrayList<>();
+        for (HeadVO an : ans) {
+            if (!an.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())){
+                m.add(an);
             }
         }
-        List<HeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty);
+        List<HeadVO> result = dealHeads(new ArrayList<>(m), parameter, SampleTypeEnum.kind_unknown.getIdentity(), allDisplay, empty, deviceSerialNumber);
         return Result.ok(result);
     }
 
@@ -1438,6 +2208,10 @@ public class RationServiceImpl implements RationService {
             changeStandSampleDataDigit(taskId, digit);
             changeUnknowSampleDigit(taskId, digit);
         }
+        List<Integer> usefulLocation = new ArrayList<>();
+        if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+            usefulLocation = fSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
+        }
         /*
         查询数据
         */
@@ -1470,6 +2244,20 @@ public class RationServiceImpl implements RationService {
             if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 Map<String, Object> singleSampleData = getSingleSampleData(task, sample, repeat, option, digit);
+                singleSampleData.put("deleteType", specimen.getDeleteType());
+
+                if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+
+                    if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
+                        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
+                        if (poolInfo.getSuccess()) {
+                            FSamplePoolInfoVO data = poolInfo.getData();
+                            if (data.getIsAutoChangePool()) {
+                                singleSampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                            }
+                        }
+                    }
+                }
 
                 standSampleData.add(singleSampleData);
             } else if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
@@ -1477,8 +2265,23 @@ public class RationServiceImpl implements RationService {
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
                 Map<String, Object> sampleData = getSingleSampleData(task, sample, repeat, option, digit);
+                sampleData.put("deleteType", specimen.getDeleteType());
+                if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
+
+                    if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
+                        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
+                        if (poolInfo.getSuccess()) {
+                            FSamplePoolInfoVO data = poolInfo.getData();
+                            if (data.getIsAutoChangePool()) {
+                                sampleData.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
+                            }
+                        }
+                    }
+                }
+                sampleData.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
 
                 unknowSampleData.add(sampleData);
+
 
             } else {
                 log.info("类型出错");
@@ -1496,29 +2299,31 @@ public class RationServiceImpl implements RationService {
 
         RepeatMeasureData absData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode());
         RepeatMeasureData tPercentData = wlData.getOtherData().get(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode());
+        String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
+
 
         if (option != null && !option.isEmpty()) {
             for (String s : option) {
                 Map<String, String> children = new HashMap<>();
                 if (DataIdentityEnums.avg.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.avg.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), wlData.getAbsValue());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(),wlData.getTPercentValue());
-                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.avg.getIdentity(), children);
+                    ans.putIfAbsent(pre + DataIdentityEnums.avg.getIdentity(), children);
                 }
                 if (DataIdentityEnums.sd.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.sd.getName());
 
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getSd());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getSd());
-                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.sd.getIdentity(), children);
+                    ans.putIfAbsent(pre + DataIdentityEnums.sd.getIdentity(), children);
                 }
                 if (DataIdentityEnums.rsd.getIdentity().equals(s)) {
-                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getName());
+                    children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + DataIdentityEnums.rsd.getName());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), absData.getRsd());
                     children.put(wlData.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tPercentData.getRsd());
-                    ans.putIfAbsent(sample.getSampleNumber() + "-" + DataIdentityEnums.rsd.getIdentity(), children);
+                    ans.putIfAbsent(pre + DataIdentityEnums.rsd.getIdentity(), children);
                 }
             }
         }
@@ -1537,7 +2342,6 @@ public class RationServiceImpl implements RationService {
         map.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber());
         map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
         map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
-        map.put(SampleTableEnum.SAMPLE_LOCATION.getIdentity(), "样品池"+sample.getSampleLocation());
 
         if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
             map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
@@ -1562,8 +2366,15 @@ public class RationServiceImpl implements RationService {
                 if (StringUtils.hasText(data.getOriginalCalculationData())) {
                     List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
                     for (RationWavelengthDataInfo dataInfo : list) {
-                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getAbsValue()));
-                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
+                        Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
+                        String s = DataCountUtil.addZero(v, digit);
+
+                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
+
+                        Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
+                        String tP = DataCountUtil.addZero(t, digit);
+
+                        map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
                     }
                 }
 
@@ -1580,7 +2391,10 @@ public class RationServiceImpl implements RationService {
                 if (one != null && one.getAnalysisResult() != null) {
                     List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
                     for (RationCountDataInfo countData : countDataList) {
-                        map.put(countData.getIdentity(), String.valueOf(countData.getColValue()));
+
+                        if (countData.getColValue() != null) {
+                            map.put(countData.getIdentity(), countData.getColValue());
+                        }
                     }
                 }
 
@@ -1591,15 +2405,55 @@ public class RationServiceImpl implements RationService {
                 map.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), data.getSamplingTime());
                 map.put(SampleTableEnum.REMARK.getIdentity(), data.getRemark());
                 if (StringUtils.hasText(data.getOriginalCalculationData())) {
-                    Map<String, Map<String, String>> childrenList = new HashMap<>();
+
+                    Map<String, Map<String, String>> childrenList = new TreeMap<>((key1, key2) -> {
+                        // 分割键，格式如 "default-1-1"
+                        String[] parts1 = key1.split("-");
+                        String[] parts2 = key2.split("-");
+
+                        // 按照各部分进行比较
+                        for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+
+                            // 如果都是数字，则按数值比较
+                            if (isNumeric(parts1[i]) && isNumeric(parts2[i])) {
+                                int num1 = Integer.parseInt(parts1[i]);
+                                int num2 = Integer.parseInt(parts2[i]);
+                                int compare = Integer.compare(num1, num2);
+                                if (compare != 0) {
+                                    return compare;
+                                }
+                            } else {
+                                // 否则按字符串比较
+                                int compare = parts1[i].compareTo(parts2[i]);
+                                if (compare != 0) {
+                                    return compare;
+                                }
+                            }
+                        }
+
+                        // 如果前缀都相同，长度短的排在前面
+                        return Integer.compare(parts1.length, parts2.length);
+                    });
+
+                    Map<String, Map<String, String>> resultChildrenList = new TreeMap<>();
                     List<Map<String, String>> middle = new ArrayList<>();
                     List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
                     for (RationWavelengthDataInfo dataInfo : list) {
                         Map<String, String> children = new HashMap<>();
 
+                        Double v = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getAbsValue()));
+                        String s = DataCountUtil.addZero(v, digit);
+
                         if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
-                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
-                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
+                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
+
+                            Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
+                            String tP = DataCountUtil.addZero(t, digit);
+
+                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
+
+//                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
+//                            map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit, dataInfo.getTPercentValue()));
 
                             Map<String, Map<String, String>> ch = extracted(option, dataInfo, sample);
                             if (!ch.isEmpty()) {
@@ -1607,49 +2461,78 @@ public class RationServiceImpl implements RationService {
                                     String key = entry.getKey();
                                     Map<String, String> value = entry.getValue();
 
-                                    if (childrenList.containsKey(key)) {
+                                    if (resultChildrenList.containsKey(key)) {
                                         // 如果键已存在，将新值中的键值对合并到现有Map中
-                                        Map<String, String> existingMap = childrenList.get(key);
+                                        Map<String, String> existingMap = resultChildrenList.get(key);
                                         // 将value中的所有键值对放入existingMap中（相同键会覆盖，新键会添加）
                                         existingMap.putAll(value);
                                     } else {
                                         // 如果键不存在，直接添加（创建副本以避免引用问题）
-                                        childrenList.put(key, new HashMap<>(value));
+                                        resultChildrenList.put(key, new HashMap<>(value));
                                     }
                                 }
                             }
 
                         } else {
 
-                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
-                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getTPercentValue()));
+                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
+
+                            Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
+                            String tP = DataCountUtil.addZero(t, digit);
+
+                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
+
+//                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getAbsValue()));
+//                            children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), DataCountUtil.formatValueWithBigDecimal(digit,dataInfo.getTPercentValue()));
                             String[] split = dataInfo.getIdentity().split("-");
-                            children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), sample.getSampleNumber() + "-" + split[split.length - 1]);
+                            String pre = StringUtils.hasText(sample.getSampleNumber()) ? sample.getSampleNumber() + "-" : "";
+                            children.put(SampleTableEnum.SAMPLE_NUMBER.getIdentity(), pre + split[split.length - 1]);
+                            String time = dataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                            children.put(SampleTableEnum.SAMPLING_TIME.getIdentity(), time);
                             childrenList.computeIfAbsent(dataInfo.getIdentity(), k -> new HashMap<>()).putAll(children);
                         }
                     }
                     childrenList.forEach((key, value) -> middle.add(value));
+                    resultChildrenList.forEach((key, value) -> middle.add(value));
                     map.put("children", middle);
                 }
-
-                LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-                analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
-                        .eq(TMeasureAnalysisData::getSampleKey, sampleId)
-                        .eq(TMeasureAnalysisData::getMeasureDataId, data.getId())
-                        .orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
-
-                TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-                if (one != null && one.getAnalysisResult() != null) {
-                    List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
-                    for (RationCountDataInfo countData : countDataList) {
-                        map.put(countData.getIdentity(), String.valueOf(countData.getColValue()));
-                    }
-                }
-
             }
+
+        }
+
+        LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+        analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId);
+        if (data != null) {
+            analysisDataQueryWrapper.eq(TMeasureAnalysisData::getMeasureDataId, data.getId());
+        }
+        analysisDataQueryWrapper.orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+
+        TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+        if (one != null && one.getAnalysisResult() != null) {
+            List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
+            for (RationCountDataInfo countData : countDataList) {
+                if (countData.getColValue() !=null) {
+                    map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                }
+            }
+        }
+        if (one != null && StringUtils.hasText(one.getAnalysisParam())) {
+            Map<String, String> jsonObject;
+            jsonObject = JSON.parseObject(one.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+
+            map.putAll(jsonObject);
         }
         return map;
     }
+
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        return str.matches("-?\\d+");
+    }
+
 
 
     @Override
@@ -1788,11 +2671,292 @@ public class RationServiceImpl implements RationService {
         return Result.ok(ans);
     }
 
+
+    /**
+     * 标样需要校验是否全测完了，为了前端弹窗提示输入浓度
+     */
+    @Override
+    public R<Boolean> checkStandAllSampleTest(String taskId) {
+
+         TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            return R.ok(true);
+        }
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null || taskSpecimen.isEmpty()) {
+            return R.ok(true);
+        }
+        boolean allTested = true;
+        for (TaskSpecimen specimen : taskSpecimen) {
+            if(specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                if (specimen.getIsTested().equals(noTested) && specimen.getDeleteType().equals(createType)) {
+                    allTested = false;
+                    break;
+                }
+            }
+        }
+
+        return R.ok(allTested);
+    }
+
+    /**
+     * 创建样品
+     */
+    @Override
+    public R<Boolean> createSample(GuideCreateSampleDTO dto) {
+
+        String taskId = dto.getTaskId();
+        String sampleKind = dto.getSampleKind();
+        String normalConcentration = dto.getNormalConcentration();
+        String updateBy = dto.getUpdateBy();
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+
+         TMeasureTask task = tMeasureTaskService.getById(taskId);
+
+        if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+
+            if (!StringUtils.hasText(normalConcentration)) {
+                //请输入标准浓度
+                return R.fail(YamlMessageSource.getMessageStatic("00102024"));
+            }
+            try {
+                double v = Double.parseDouble(normalConcentration);
+
+                if (v < 0) {
+                    // 输入提示：标准浓度必须是非负数
+                    return R.fail(YamlMessageSource.getMessageStatic("0010202D"));
+                }
+            } catch (Exception e) {
+                //请输入正确的标准浓度
+                return R.fail(YamlMessageSource.getMessageStatic("0010202D"));
+            }
+        }
+
+        if (task == null) {
+            //没有找到该任务
+            return R.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+        Result<List<HeadVO>> listResult = querySampleHeads(taskId, sampleKind);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())){
+            return R.fail(listResult.getMessage());
+        }
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
+        }
+
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer concentrationDigit = businessParamVO.getConcentrationDigits();
+
+        List<HeadVO> heads = listResult.getData();
+        //动态表头
+        List<HeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())){
+                dynamicHeads.add(head);
+            }
+        });
+        boolean isAutoChangePool = false;
+
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+
+        }
+
+        if (taskSpecimen.isEmpty()) {
+             TMeasureSample newSample = new  TMeasureSample();
+
+            sampleAutoNum = 1;
+            newSample.setSampleName("默认样品" + 1);
+            newSample.setSampleNumber("default-" + 1);
+
+            if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            } else {
+                newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+
+                String newNormalConcentration = DataCountUtil.addZero(Double.parseDouble(normalConcentration), concentrationDigit);
+
+                newSample.setNormalConcentration(newNormalConcentration);
+            }
+
+            newSample.setSampleKind(sampleKind);
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = tMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+
+            taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
+
+        } else {
+            boolean hasNoTested = false;
+            List<String> sampleNumList = new ArrayList<>();
+
+            double cou = 0;
+            double last = 0;
+
+            for (TaskSpecimen specimen : taskSpecimen) {
+                if (!specimen.getSampleKind().equals(sampleKind) || specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+                if (specimen.getIsTested().equals(noTested)) {
+                    hasNoTested = true;
+                    break;
+                }
+                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())){
+                    sampleNumList.add(measureSample.getSampleNumber());
+                    if (StringUtils.hasText(measureSample.getNormalConcentration())) {
+                        cou =  Double.parseDouble(measureSample.getNormalConcentration()) - last;
+                        last = Double.parseDouble(measureSample.getNormalConcentration());
+                    }
+                }
+            }
+            if (hasNoTested) {
+                return R.ok(true);
+            }
+
+             TMeasureSample newSample = new  TMeasureSample();
+            if (cou == 0) {
+                cou = 1;
+            }
+
+            sampleAutoNum = 1;
+            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                sampleAutoNum += 1;
+            }
+
+            int num = sampleAutoNum;
+
+            sampleNumList.add("default-" + num);
+            newSample.setSampleNumber("default-" + num);
+            newSample.setSampleName("默认样品" + num);
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            int all = usefulLocation.size();
+
+            if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            } else {
+                newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+
+                String newNormalConcentration = DataCountUtil.addZero(Double.parseDouble(normalConcentration), concentrationDigit);
+                newSample.setNormalConcentration(newNormalConcentration);
+            }
+            newSample.setSampleKind(sampleKind);
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = tMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+            taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
+
+
+            if (isAutoChangePool) {
+                for (int i = 1; i < all; i++) {
+                    newSample.setId(null);
+                    sampleAutoNum ++;
+
+                    while (sampleNumList.contains("default-"+ sampleAutoNum)) {
+                        sampleAutoNum += 1;
+                    }
+
+                    int newNum = sampleAutoNum;
+                    sampleNumList.add("default-" + newNum);
+                    newSample.setSampleNumber("default-" + newNum);
+                    newSample.setSampleName("默认样品" + newNum);
+
+                    if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                        normalConcentration = DataCountUtil.addZero((Double.parseDouble(normalConcentration) + cou), concentrationDigit);
+
+                        newSample.setNormalConcentration(normalConcentration);
+                    }
+                    save = tMeasureSampleService.save(newSample);
+                    if (!save) {
+                        //保存失败
+                        return R.fail(YamlMessageSource.getMessageStatic("00300008"));
+                    }
+                    taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), sampleKind));
+                }
+            }
+        }
+        task.setSampleAutoNum(sampleAutoNum);
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        boolean update = tMeasureTaskService.updateById(task);
+        if (!update) {
+            //更新失败
+            return R.fail(YamlMessageSource.getMessageStatic("00000048"));
+        }
+
+        if (isAutoChangePool) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+        }
+
+        return R.ok(true);
+    }
+
+
+
     @Override
     public R<FittingReceiveInfo> fittingCurve(List<RationCountDataInfo> countData, Boolean empty, String methodId, List<String> inputParam) {
         
         List<Double> data = new ArrayList<>();
         FittingParam param = new FittingParam();
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+
+        if (!StringUtils.hasText(parameter.getCurveType())){
+            //请选择曲线类型
+            return R.fail(YamlMessageSource.getMessageStatic("00102025"));
+        }
+        int minPointNum = Integer.MAX_VALUE;
+
+        switch (parameter.getCurveType()) {
+            case "1":
+                minPointNum = 2;
+                break;
+            case "2":
+                minPointNum = 3;
+                break;
+
+            case "3":
+                minPointNum = 4;
+                break;
+
+            case "4":
+                minPointNum = 5;
+                break;
+        }
+
+        if (parameter.getZeroMethod() != null && parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
+            minPointNum = minPointNum - 1;
+        }
+
+        if (inputParam.size() < minPointNum) {
+            log.info("数据点数不足，不进行曲线拟合");
+            //数据点数不足，不进行曲线拟合
+            return R.fail(YamlMessageSource.getMessageStatic("00102026"));
+        }
+
         if (empty) {
             for (RationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
@@ -1808,21 +2972,20 @@ public class RationServiceImpl implements RationService {
             }
         }
 
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
-
         List<String> zeroMethod = parameter.getZeroMethod();
 
         param.setForce_zero(0L);
 
-        for (String zero: zeroMethod) {
-            if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
-                data.add(0.00);
-                inputParam.add("0.0");
-            }
+        if (zeroMethod != null && !zeroMethod.isEmpty()) {
+            for (String zero: zeroMethod) {
+                if (zero.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+                    data.add(0.00);
+                    inputParam.add("0.0");
+                }
 
-            if (zero.equals(RationCurveParamEnums.force_zero.getIdentity())) {
-                param.setForce_zero(1L);
+                if (zero.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+                    param.setForce_zero(1L);
+                }
             }
         }
 
@@ -1847,17 +3010,51 @@ public class RationServiceImpl implements RationService {
             return R.fail(info.getMessage());
         }
 
-        String equation = info.getEquation();
-        if (equation == null) {
-            log.info("数据拟合失败");
-            //曲线拟合失败
-            return R.fail(YamlMessageSource.getMessageStatic("0030300F"));
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer kDigits = businessParamVO.getKDigits();
+        Integer rSquareDigits = businessParamVO.getRSquareDigits();
+        List<Double> kList = new ArrayList<>();
+
+        if (info.getCoefficients() != null && !info.getCoefficients().isEmpty()) {
+            for (Double coefficient : info.getCoefficients()) {
+                Double v = DataCountUtil.formatValue(kDigits, coefficient);
+                kList.add(v);
+            }
+            info.setRoundCoefficients(kList);
         }
 
+
+        if (info.getR() != null){
+
+            Double r = Double.parseDouble(info.getR());
+            if (!r.isNaN() && !r.isInfinite()) {
+                Double value = DataCountUtil.formatValue(rSquareDigits, r);
+                info.setRoundR(DataCountUtil.addZero(value, rSquareDigits));
+            } else {
+                info.setRoundR(String.valueOf(Double.NaN));
+            }
+        }
+
+        if (info.getR2() != null){
+
+            Double r = Double.parseDouble(info.getR2());
+            if (!r.isNaN() && !r.isInfinite()) {
+                Double value = DataCountUtil.formatValue(rSquareDigits, r);
+                info.setRoundR2(DataCountUtil.addZero(value, rSquareDigits));
+            } else {
+                info.setRoundR2(String.valueOf(Double.NaN));
+            }
+        }
+
+        String equation = "";
+
         if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
-            info.setEquation(equation.replace("x", "Abs").replace("y", "C"));
+
+            equation = rebuildFormula(kList, info.getDegree(), "Abs", "C");
+            info.setEquation(equation);
         } else {
-            info.setEquation(equation.replace("x", "C").replace("y", "Abs"));
+            equation = rebuildFormula(kList, info.getDegree(), "C", "Abs");
+            info.setEquation(equation);
         }
         Arrays.stream(param.getX_data()).min().ifPresent(info::setMinX);
         Arrays.stream(param.getX_data()).max().ifPresent(info::setMaxX);
@@ -1865,6 +3062,40 @@ public class RationServiceImpl implements RationService {
         return R.ok(info);
     }
 
+    public String rebuildFormula(List<Double> coefficientList, Integer degree, String x, String y) {
+
+        StringBuilder formula = new StringBuilder();
+        formula.append(y).append(" = ");
+
+        for (int i = 0; i <= degree; i++) {
+
+            // 设置系数字段（根据degree动态设置）
+            if(!coefficientList.get(degree - i).equals(0.0)){
+                double cuff = coefficientList.get(degree - i);
+                if (i==0){
+                    if (cuff < 0) {
+                        formula.append(" - ");
+                    }
+                }
+                if (i > 0) {
+                    if (cuff < 0) {
+                        formula.append(" - ");
+                    } else {
+                        formula.append(" + ");
+                    }
+                }
+                // 添加系数绝对值，如果是负数则取绝对值
+                formula.append(Math.abs(cuff));
+                if (degree - i > 0) {
+                    formula.append("*").append(x);
+                    if (degree - i > 1) {
+                        formula.append("^").append(degree - i);
+                    }
+                }
+            }
+        }
+        return formula.toString();
+    }
 
     @Override
     public Result<RationFitCurveVO> queryCurveInfo(String taskId, String methodId){
@@ -1886,91 +3117,88 @@ public class RationServiceImpl implements RationService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        int digit = Constants.DEFAULT_DECIMAL_NUM;
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        int rSquareDigits = businessParamVO.getRSquareDigits();
+
+//        R<TMeasureTaskAttachment> attachmentR = taskAttachmentService.queryByTaskId(taskId);
+//        if (attachmentR.getSuccess()) {
+//            TMeasureTaskAttachment data = attachmentR.getData();
+//            if (data != null && data.getDataParam() != null) {
+//                FQueryDataDTO dataDTO = JSON.parseObject(data.getDataParam(), FQueryDataDTO.class);
+//                if (dataDTO!=null && dataDTO.getDigit() != null) {
+//                    digit = dataDTO.getDigit();
+//                }
+//            }
+//        }
+
         RationFitCurveVO resultVo = new RationFitCurveVO();
 
-        if (StringUtils.hasText(task.getFittingParam())) {
-            FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
-            resultVo = curveData(fittingParam);
-        }
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
 
         if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            if (taskSpecimen != null) {
-                List<JSONObject> standPoints = new ArrayList<>();
-                List<JSONObject> unknownPoints = new ArrayList<>();
-                for (TaskSpecimen specimen : taskSpecimen) {
-                    if (specimen.getDeleteType().equals(deleteType)) {
-                        continue;
+            RationCurveDataInfo curveData = getCurveData(task, parameter, digit);
+
+            if (StringUtils.hasText(parameter.getCoefficientMode()) && parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+                FittingReceiveInfo fittingInfo = createFittingInfo(methodId);
+
+                if (fittingInfo != null) {
+                    fittingInfo.setMaxX(curveData.getMaxX());
+                    fittingInfo.setMinX(curveData.getMinX());
+
+                    resultVo = curveData(fittingInfo);
+                    resultVo.setUnknowPoints(curveData.getUnknowPoints());
+                    resultVo.setTaskId(taskId);
+                    resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
+                    resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
+                    return Result.ok(resultVo);
+                }
+            }
+
+            if (StringUtils.hasText(task.getFittingParam()) && !task.getFittingParam().equals("{}") && !task.getFittingParam().equals("null")){
+                FittingReceiveInfo fittingParam = JSONObject.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+
+
+                fittingParam.setMaxX(curveData.getMaxX());
+                fittingParam.setMinX(curveData.getMinX());
+                resultVo = curveData(fittingParam);
+                resultVo.setStandPoints(curveData.getStandPoints());
+                resultVo.setUnknowPoints(curveData.getUnknowPoints());
+
+                if (StringUtils.hasText(fittingParam.getRoundR())) {
+                    Double r = null;
+                    try  {
+                        r = Double.valueOf(fittingParam.getRoundR());
+                    } catch (Exception ignored) {
                     }
-
-                    if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                        continue;
-                    }
-                    JSONObject point = new JSONObject();
-
-                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-
-                    String abs = null;
-                    String sumAbs = null;
-                    String countValue = null;
-                    String measureValue;
-
-                    LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
-                    analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
-                            .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
-                            .orderByDesc(TMeasureAnalysisData::getDataVersion)
-                            .last("limit 1");
-                    TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
-                    if (analysisData == null) {
-                        analysisData = new TMeasureAnalysisData();
-                    }
-                    if (StringUtils.hasText(analysisData.getAnalysisResult())) {
-                        List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
-                        for (RationCountDataInfo dataInfo : countDataInfoList) {
-                            if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                                abs = dataInfo.getColValue().toString();
-                            }
-                            if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
-                                sumAbs = dataInfo.getColValue().toString();
-                            }
-                            if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
-                                countValue = dataInfo.getColValue().toString();
-                            }
+                    if (r != null) {
+                        if (!r.isNaN() && !r.isInfinite()) {
+                            resultVo.setR(DataCountUtil.addZero(r, rSquareDigits));
+                        } else {
+                            resultVo.setR(String.valueOf(r));
                         }
-                    }
 
-                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                        countValue = sample.getNormalConcentration();
-                    }
-
-                    if (StringUtils.hasText(sumAbs)) {
-                        measureValue = sumAbs;
-                    } else {
-                        measureValue = abs;
-                    }
-
-                    if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-                        point.put("y", countValue);
-                        point.put("x", measureValue);
-
-                    } else {
-                        point.put("y", measureValue);
-                        point.put("x", countValue);
-                    }
-
-                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-                        standPoints.add(point);
-                    } else {
-                        unknownPoints.add(point);
                     }
                 }
-                resultVo.setUnknowPoints(unknownPoints);
-                resultVo.setStandPoints(standPoints);
+                if (StringUtils.hasText(fittingParam.getRoundR2())) {
+
+                    Double r2 = null;
+                    try  {
+                        r2 = Double.valueOf(fittingParam.getRoundR2());
+                    } catch (Exception ignored) {
+                    }
+                    if (r2 != null) {
+                        if (!r2.isNaN() && !r2.isInfinite()) {
+                            resultVo.setR2(DataCountUtil.addZero(r2, rSquareDigits));
+                        } else {
+                            resultVo.setR2(String.valueOf(r2));
+                        }
+                    }
+                }
             }
         }
-
         resultVo.setTaskId(taskId);
         resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
         resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
@@ -1979,9 +3207,242 @@ public class RationServiceImpl implements RationService {
 
     }
 
+    private FittingReceiveInfo createFittingInfo(String methodId) {
+        FittingReceiveInfo fittingReceiveInfo = new FittingReceiveInfo();
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (StringUtils.hasText(method.getMeasurementParamInfo())) {
+            RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+            if (parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+                int degree = Integer.parseInt(parameter.getCurveType());
+                fittingReceiveInfo.setDegree(degree);
+
+                String variable = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "Abs":"C";
+                String Y = parameter.getEquationType().equals(RationCurveParamEnums.typeAbs.getIdentity())? "C":"Abs";
+                StringBuilder formula = new StringBuilder();
+                formula.append(Y).append(" = ");
+                List<String> coefficientList = parameter.getCoefficientParams();
+                List<Double> paramList = new ArrayList<>();
+                while (coefficientList.size() < degree + 1) {
+                    coefficientList.add("0");
+                }
+                for (int i = 0; i <= degree; i++) {
+
+                    // 系数索引：从高次到低次（第一个系数是最高次项）
+                    int coeffIndex = degree - i;
+                    double coeffValue = 0.0;
+                    paramList.add(Double.valueOf(coefficientList.get(i)));
+                    // 解析系数值
+                    if (coeffIndex < coefficientList.size()) {
+                        try {
+                            coeffValue = Double.parseDouble(coefficientList.get(coeffIndex));
+
+                        } catch (NumberFormatException ignored) {
+                            // 保持默认值0.0
+                        }
+                    }
+                    // 设置系数字段（根据degree动态设置）
+                    switch (degree - i) {
+                        case 0: fittingReceiveInfo.setK0(coeffValue); break;
+                        case 1: fittingReceiveInfo.setK1(coeffValue); break;
+                        case 2: fittingReceiveInfo.setK2(coeffValue); break;
+                        case 3: fittingReceiveInfo.setK3(coeffValue); break;
+                        case 4: fittingReceiveInfo.setK4(coeffValue); break;
+                    }
+                    if(!coefficientList.get(degree - i).equals("0")){
+                        double cuff = Double.parseDouble(coefficientList.get(degree - i));
+                        if (i==0){
+                            if (cuff < 0) {
+                                formula.append(" - ");
+                            }
+                        }
+                        if (i > 0) {
+                            if (cuff < 0) {
+                                formula.append(" - ");
+                            } else {
+                                formula.append(" + ");
+                            }
+                        }
+                        System.out.println(formula);
+                        System.out.println(cuff);
+                        // 添加系数绝对值，如果是负数则取绝对值
+                        formula.append(Math.abs(cuff));
+                        if (degree - i > 0) {
+                            formula.append("*").append(variable);
+                            if (degree - i > 1) {
+                                formula.append("^").append(degree - i);
+                            }
+                        }
+                    }
+                }
+                fittingReceiveInfo.setEquation(formula.toString());
+                fittingReceiveInfo.setRoundCoefficients(paramList);
+                return fittingReceiveInfo;
+
+            }
+
+        }
+        return null;
+    }
+
+
+    private RationCurveDataInfo getCurveData(TMeasureTask task, RationParameter parameter, Integer digit) {
+
+        //系数方式：直接系数法或其他
+        String coefficientMode = parameter.getCoefficientMode();
+        boolean isDirectCoefficient = coefficientMode.equals(RationCurveParamEnums.direct_coefficient.getIdentity());
+        String curveType = parameter.getCurveType();
+        String taskId = task.getId();
+
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+
+        boolean standEmpty = false;
+        boolean unKnowEmpty = false;
+
+        List<RationCurvePointsValue> standData = new ArrayList<>();
+        List<RationCurvePointsValue> unKnowData = new ArrayList<>();
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+            if (specimen.getDeleteType().equals(deleteType)) {
+                continue;
+            }
+
+            if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                if (specimen.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                    unKnowEmpty = true;
+                } else {
+                    standEmpty = true;
+                }
+                continue;
+            }
+
+            RationCurvePointsValue point = new RationCurvePointsValue();
+
+            TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+
+            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                    .eq(TMeasureData::getSampleKey, sample.getId())
+                    .orderByDesc(TMeasureData::getSerialNumber)
+                    .last("limit 1");
+            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+            if (data == null) {
+                continue;
+            }
+
+            LambdaQueryWrapper<TMeasureAnalysisData> analysisDataQueryWrapper = new LambdaQueryWrapper<>();
+            analysisDataQueryWrapper.eq(TMeasureAnalysisData::getTaskId, task.getId())
+                    .eq(TMeasureAnalysisData::getSampleKey, specimen.getSpecimenKey())
+                    .eq(TMeasureAnalysisData::getMeasureDataId, data.getId())
+                    .orderByDesc(TMeasureAnalysisData::getDataVersion)
+                    .last("limit 1");
+            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisDataQueryWrapper);
+            if (analysisData == null) {
+                continue;
+            }
+
+            if (StringUtils.hasText(analysisData.getAnalysisResult())) {
+                List<RationCountDataInfo> countDataInfoList = JSON.parseArray(analysisData.getAnalysisResult(), RationCountDataInfo.class);
+                for (RationCountDataInfo dataInfo : countDataInfoList) {
+                    if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                        point.setAbs(DataCountUtil.addZero(Double.valueOf(dataInfo.getColValue()), digit));
+                    }
+                    if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
+                        point.setSumAbs(DataCountUtil.addZero(Double.valueOf(dataInfo.getColValue()), digit));
+
+                    }
+                    if (dataInfo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                        point.setConcentration(DataCountUtil.addZero(Double.valueOf(dataInfo.getColValue()), digit));
+                    }
+                }
+            }
+
+            if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                point.setConcentration(sample.getNormalConcentration());
+                standData.add(point);
+            } else {
+                unKnowData.add(point);
+            }
+        }
+
+        RationCurveDataInfo result = new RationCurveDataInfo();
+        result.setMaxX(Double.MIN_VALUE);
+        result.setMinX(Double.MAX_VALUE);
+
+        if (!isDirectCoefficient && !standData.isEmpty()) {
+            List<JSONObject> standPoints = processPoints(standData, standEmpty, curveType, result);
+            result.setStandPoints(standPoints);
+        }
+        List<JSONObject> unknownPoints = processPoints(unKnowData, unKnowEmpty, curveType, result);
+        result.setUnknowPoints(unknownPoints);
+
+
+        if (result.getMaxX().equals(result.getMinX())) {
+            if (result.getMaxX() == 0.0) {
+                result.setMaxX(1.0);
+                result.setMinX(0.0);
+            } else {
+                double v = result.getMaxX() / 20;
+                result.setMaxX(result.getMaxX() + v);
+                result.setMinX(result.getMinX() - v);
+            }
+        } else if (result.getMaxX()==Double.MIN_VALUE || result.getMinX()==Double.MAX_VALUE) {
+                result.setMaxX(1.0);
+                result.setMinX(0.0);
+        }
+
+
+
+        return result;
+    }
+
+    private List<JSONObject> processPoints(List<RationCurvePointsValue> dataList, boolean useSumAbs,
+                                           String curveType, RationCurveDataInfo result) {
+        List<JSONObject> points = new ArrayList<>();
+
+        for (RationCurvePointsValue data : dataList) {
+            JSONObject point = new JSONObject();
+
+            if (RationCurveParamEnums.typeAbs.getIdentity().equals(curveType)) {
+                // 吸光度为X轴
+                String xValue = useSumAbs ? data.getSumAbs() : data.getAbs();
+                point.put("x", xValue);
+                updateMinMax(result, xValue);
+                point.put("y", data.getConcentration());
+            } else {
+                // 浓度为X轴
+                String xValue = data.getConcentration();
+                point.put("x", xValue);
+                updateMinMax(result, xValue);
+                point.put("y", useSumAbs ? data.getSumAbs() : data.getAbs());
+            }
+            points.add(point);
+        }
+
+        return points;
+    }
+
+    // 提取更新最小最大值的逻辑
+    private void updateMinMax(RationCurveDataInfo result, String value) {
+        if (StringUtils.hasText(value)) {
+            try {
+                double v = Double.parseDouble(value);
+                if (v > result.getMaxX()) {
+                    result.setMaxX(v);
+                }
+                if (v < result.getMinX()) {
+                    result.setMinX(v);
+                }
+            } catch (NumberFormatException e) {
+                // 处理数值转换异常，根据实际需求决定是否记录日志
+            }
+        }
+    }
+
+
     @Override
     public RationFitCurveVO curveData(FittingReceiveInfo info) {
-        List<Double> list = info.getCoefficients().stream()
+        List<Double> list = info.getRoundCoefficients().stream()
                 .map(d -> BigDecimal.valueOf(d)
                         .setScale(3, RoundingMode.HALF_UP)
                         .doubleValue())
@@ -1989,52 +3450,70 @@ public class RationServiceImpl implements RationService {
 
         List<JSONObject> dataList = new ArrayList<>();
 
-        double k0 = info.getK0() == null ? 0 : (double) Math.round(info.getK0() * 1000) / 1000;
-        double k1 = info.getK1() == null ? 0 : (double) Math.round(info.getK1() * 1000) / 1000;
-        double k2 = info.getK2() == null ? 0 : (double) Math.round(info.getK2() * 1000) / 1000;
-        double k3 = info.getK3() == null ? 0 : (double) Math.round(info.getK3() * 1000) / 1000;
-        double k4 = info.getK4() == null ? 0 : (double) Math.round(info.getK4() * 1000) / 1000;
+        double k0 = info.getK0() == null ? 0 : info.getK0();
+        double k1 = info.getK1() == null ? 0 : info.getK1();
+        double k2 = info.getK2() == null ? 0 : info.getK2();
+        double k3 = info.getK3() == null ? 0 : info.getK3();
+        double k4 = info.getK4() == null ? 0 : info.getK4();
 
-        double step = 0.1;
+        double step = 0.01;
+        int dataDigit = 8;
         //采用3位小数来计算
-        double minX = (double) Math.round(info.getMinX() * 1000) / 1000;
-        double maxX = (double) Math.round(info.getMaxX() * 1000) / 1000;
+        double minX = info.getMinX() == null ? -1 : info.getMinX();
+        double maxX = info.getMaxX() == null ? 1 : info.getMaxX();
+        if (minX == maxX) {
+            minX = minX - (minX / 2);
+            maxX = maxX + (maxX / 2);
+            if (minX == 0) {
+                minX = -1;
+                maxX = 1;
+            }
+        }
+        if (minX > maxX) {
+            double temp = minX;
+            minX = maxX;
+            maxX = temp;
+        }
+
+        step = (maxX - minX) / 100;
+
+        double st = step * 3;
 
         switch (info.getDegree()) {
             case 1:
-                for (double i = minX - 1; i < maxX + 1; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
                 }
                 break;
             case 2:
-                for (double i = minX - 1; i < maxX + 1; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i + k2 * i * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
                 }
                 break;
             case 3:
-                for (double i = minX - 1; i < maxX + 1; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
                 }
                 break;
 
             case 4:
-                for (double i = minX - 1; i < maxX + 1; i += step) {
+                for (double i = minX - st; i < maxX + st; i += step) {
                     double y = k0 + k1 * i + k2 * i * i + k3 * i * i * i + k4 * i * i * i * i;
                     JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("x", new BigDecimal(i).setScale(3, RoundingMode.HALF_UP).doubleValue());
-                    jsonObject.put("y", new BigDecimal(y).setScale(3, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("x", new BigDecimal(i).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
+                    jsonObject.put("y", new BigDecimal(y).setScale(dataDigit, RoundingMode.HALF_UP).doubleValue());
                     dataList.add(jsonObject);
 
                 }
@@ -2047,8 +3526,36 @@ public class RationServiceImpl implements RationService {
         vo.setDataList(dataList);
         vo.setEquation(info.getEquation());
         vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
-        vo.setR(info.getR());
-        vo.setR2(info.getR2());
+
+        if (StringUtils.hasText(info.getRoundR())) {
+            Double r = null;
+            try  {
+                r = Double.valueOf(info.getRoundR());
+            } catch (Exception ignored) {
+            }
+            if (r != null) {
+                if (!r.isNaN() && !r.isInfinite()) {
+                    vo.setR(DataCountUtil.addZero(r, dataDigit));
+                } else {
+                    vo.setR(String.valueOf(r));
+                }
+            }
+        }
+        if (StringUtils.hasText(info.getRoundR2())) {
+            Double r2 = null;
+            try  {
+                r2 = Double.valueOf(info.getRoundR2());
+            } catch (Exception ignored) {
+            }
+
+            if (r2 != null) {
+                if (!r2.isNaN() && !r2.isInfinite()) {
+                    vo.setR2(DataCountUtil.addZero(r2, dataDigit));
+                } else {
+                    vo.setR2(String.valueOf(r2));
+                }
+            }
+        }
         return vo;
     }
 
@@ -2067,9 +3574,9 @@ public class RationServiceImpl implements RationService {
         String ans = null;
 
         if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 1);
         } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 0);
         }
         if (StringUtils.hasText(s)) {
             JSONObject jsonObject = JSON.parseObject(s);
@@ -2087,9 +3594,9 @@ public class RationServiceImpl implements RationService {
         String ans = null;
 
         if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 1);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 1);
         } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getCoefficients(), value, 0);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 0);
         }
         if (StringUtils.hasText(s)) {
             JSONObject jsonObject = JSON.parseObject(s);
@@ -2207,6 +3714,13 @@ public class RationServiceImpl implements RationService {
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
         boolean repeat = parameter.getRepeatMode().equals("单池重复");
 
+        if (StringUtils.hasText(parameter.getCoefficientMode()) && parameter.getCoefficientMode().equals(RationCurveParamEnums.direct_coefficient.getIdentity())) {
+            FittingReceiveInfo fittingInfo = createFittingInfo(task.getMethodKey());
+            task.setFittingParam(JSON.toJSONString(fittingInfo));
+            tMeasureTaskService.updateById(task);
+            return R.ok();
+        }
+
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         boolean empty = false;
         boolean lastIsEmpty = false;
@@ -2311,7 +3825,7 @@ public class RationServiceImpl implements RationService {
                 RationCountDataInfo yAbs = new RationCountDataInfo();
                 yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
                 yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                yAbs.setColValue(0.0);
+                yAbs.setColValue(Double.parseDouble(DataCountUtil.addZero(0.0, digit)));
 
                 List<RationCountDataInfo> currentList = new ArrayList<>();
 
@@ -2338,8 +3852,12 @@ public class RationServiceImpl implements RationService {
                         for (RationCountDataInfo dataInfo : emList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
-                                yAbs.setColValue(dataInfo.getColValue() - minuend);
-                                newList.add(yAbs);
+
+                                RationCountDataInfo sumAbs = new RationCountDataInfo();
+                                BeanUtils.copyProperties(yAbs, sumAbs);
+
+                                sumAbs.setColValue(dataInfo.getColValue() - minuend);
+                                newList.add(sumAbs);
                             }
                         }
                         emptyData.setCountData(newList);
@@ -2688,7 +4206,7 @@ public class RationServiceImpl implements RationService {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
 
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
             newTask.setUserId(po.getId());
             newTask.setProjectItemKey(method.getProjectItemKey());
             newTask.setMethodKey(method.getId());
@@ -2721,30 +4239,43 @@ public class RationServiceImpl implements RationService {
             return Result.fail(YamlMessageSource.getMessageStatic("0000001E"));
         }
         List<String> waveLength = parameter.getWaveLength();
-        // 通过序列号获取ip
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        List<ChangeParam> list = new ArrayList<>();
-        for (String s : waveLength) {
 
-            double v = Double.parseDouble(s);
-            Command command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{v});
-            devMessageUtil.wavelengthLocate(command, ip);
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam param = new SetParam();
 
-            command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-            R<ChangeParam> zero = null;
-            try {
-                zero = devMessageUtil.zero(command, ip);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            if (!zero.getSuccess()) {
-                return Result.fail(zero.getMessage());
-            }
-            ChangeParam changeParam = zero.getData();
-            changeParam.setWl(s);
-            list.add(changeParam);
+        param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+        param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+
+        if (parameter.getGain() != null) {
+            param.setGain(parameter.getGain());
         }
-        task.setZeroParam(JSON.toJSONString(list));
+        if (StringUtils.hasText(parameter.getEnergyLamp())) {
+            param.setLampPos(Integer.valueOf(parameter.getEnergyLamp()));
+        }
+        Boolean needSetSit = deviceInfoService.isNeedSetSit(deviceSerialNumber);
+        if (needSetSit) {
+            param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
+        }
+
+        inputParam.setParam(param);
+
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
+
+        inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+        inputParam.setWavelength(waveLength);
+        R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
+        if (!zero.getSuccess()) {
+            return Result.fail(zero.getMessage());
+        }
+        OperationResultEntity data = zero.getData();
+        List<ChangeParam> zeroResult = data.getZeroResult();
+
+        task.setZeroParam(JSON.toJSONString(zeroResult));
 
         boolean update = tMeasureTaskService.updateById(task);
         return update ? Result.ok() : Result.fail();
@@ -2769,7 +4300,7 @@ public class RationServiceImpl implements RationService {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
 
-            SystemUserManagePO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, updateBy));
+            SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
             newTask.setUserId(po.getId());
             newTask.setProjectItemKey(method.getProjectItemKey());
             newTask.setMethodKey(method.getId());
@@ -3008,7 +4539,7 @@ public class RationServiceImpl implements RationService {
         // 构建表头（与原逻辑一致）
         List<HeadVO> heads = new ArrayList<>();
         // 添加动态表头
-        List<HeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay).getData();
+        List<HeadVO> vos = getStandSampleTableHead(taskId, methodId, allDisplay,task.getDeviceSerialNumber()).getData();
         heads.addAll(vos);
         // // 最前面加序号列（所有格式统一需要）
         heads.add(0, new HeadVO("序号", "serialNumber"));
@@ -3065,6 +4596,18 @@ public class RationServiceImpl implements RationService {
             //"文件生成失败：" + e.getMessage()
             return R.fail(YamlMessageSource.getMessageStatic("00302006",e.getMessage()));
         }
+    }
+
+    @Override
+    public void test(String a, String b) {
+
+        List<Double> list = new ArrayList<>();
+        list.add(1.0);
+        list.add(0.0);
+        list.add(2.0);
+
+        String s = rebuildFormula(list, 2, "Abs", "C");
+        System.out.println(s);
     }
 
     // ---------------------- 原有downloadWord方法（可保留或删除，建议用上面的downloadFile替代） ----------------------

@@ -22,4 +22,6 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttac
 public interface TMeasureTaskAttachmentService extends IService<TMeasureTaskAttachment> {
 
     R<TMeasureTaskAttachment> queryByTaskId(String taskId);
+
+    Integer queryLastDigit(String taskId);
 }

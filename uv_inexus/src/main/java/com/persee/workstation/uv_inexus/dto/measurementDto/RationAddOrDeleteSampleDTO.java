@@ -44,4 +44,7 @@ public class RationAddOrDeleteSampleDTO {
 
     @ApiModelProperty("删除的样本id")
     private List<String> delSampleIds;
+
+    @ApiModelProperty("仪器序列号")
+    private String deviceSerialNumber;
 }

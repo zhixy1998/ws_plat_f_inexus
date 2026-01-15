@@ -129,7 +129,7 @@ public class PhotometricNewWebSocket{
      * @param param 前端参数
      */
 
-    public void measureTask(PhotometricWebsocketParam param) {
+    public void measureTask(PhotoAndRationMetricWebsocketParam param) {
 
         initParams();
 
@@ -632,9 +632,6 @@ public class PhotometricNewWebSocket{
                 object.put("currentPoolNum", sample.getSampleLocation());
                 sendMessage(deviceSerialNumber, object);
             }
-
-
-
 
             int repetitionTime = Integer.parseInt(parameter.getRepetitionTime());
             double timeInterval = Double.parseDouble(parameter.getTimeInterval());

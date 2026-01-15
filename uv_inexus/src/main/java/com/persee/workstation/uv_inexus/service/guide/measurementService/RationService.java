@@ -9,17 +9,9 @@
 
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
-import java.io.File;
-import java.util.List;
-import java.util.Map;
-
 import com.alibaba.fastjson.JSONObject;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
-import com.persee.workstation.uv_inexus.dto.measurementDto.RationParameter;
-import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.dto.concise.rationDto.GuideCreateSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
@@ -27,15 +19,11 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.HeadVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationFitCurveVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationMethodParam;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSampleDataVO;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationSaveCountDataInfo;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RationWavelengthDataInfo;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
+
+import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 定量测定
@@ -48,6 +36,11 @@ public interface RationService {
      * 获取当前信息
      */
     Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType);
+
+    /**
+     * 检查方法参数
+     */
+    Result<MethodChangeCheckVO> checkMethodParam(RationMethodParamCheckDTO checkDTO);
     /**
      * 查询样品列表
      */
@@ -75,11 +68,11 @@ public interface RationService {
     /**
      *  查询表格头
      */
-    Result<List<HeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<HeadVO>> getStandSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
     /**
      * 查询未知样品的表头
      */
-    Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<HeadVO>> getUnknownSampleTableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
 
     R<String> saveRationSampleMeasureData(RationDataVO dataInfo);
     R<RationSaveCountDataInfo> saveSampleMeasureData(RationDataVO dataInfo);
@@ -96,6 +89,10 @@ public interface RationService {
 
 
     Result<List<Map<String, Object>>> queryUnknowSampleData(String taskId, Boolean allDisplay);
+
+    R<Boolean> checkStandAllSampleTest(String taskId);
+
+    R<Boolean> createSample(GuideCreateSampleDTO dto);
 
     /**
      * 拟合曲线
@@ -149,5 +146,6 @@ public interface RationService {
      */
     R<File> downloadFile(String taskId, Boolean allDisplay, String fileType);
 
+    void test(String a, String b);
 
 }
