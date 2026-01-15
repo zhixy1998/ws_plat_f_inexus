@@ -3,6 +3,8 @@ package com.persee.workstation.uv_inexus.dto.factory_inspection;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import javax.validation.constraints.Size;
+
 /*
  * *
  *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
@@ -14,6 +16,7 @@ import lombok.Data;
 @Data
 public class TaskCopyDto {
     @ApiModelProperty("新任务名称")
+    @Size(max = 32, message = "任务名称长度不能超过32")
     private String newTaskName;
     @ApiModelProperty("当前任务id")
     private String currentTaskId;

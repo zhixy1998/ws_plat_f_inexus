@@ -10,6 +10,8 @@
 package com.persee.workstation.uv_inexus.exception;
 
 import com.persee.workstation.uv_inexus.model.Result;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,24 +20,25 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public Result<String> handleIllegalArgumentException(IllegalArgumentException ex) {
-        return Result.fail(ex.getMessage());
+    public ResponseEntity<Result<String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.OK).body(Result.fail(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
-    public Result<String> handleGeneralException(Exception ex) {
-        return Result.fail(ex.getMessage());
+    public ResponseEntity<Result<String>> handleGeneralException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.OK).body(Result.fail(ex.getMessage()));
     }
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Result<Result> handleValidationException(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Result<String>> handleValidationException(MethodArgumentNotValidException ex) {
         String errorMessage = ex.getBindingResult()
                 .getFieldErrors()
                 .get(0)
                 .getDefaultMessage();
-        return Result.fail(ex.getMessage());
+        Result<String> fail = Result.fail(errorMessage);
+        return  ResponseEntity.status(HttpStatus.OK).body(fail);
     }
     @ExceptionHandler(BusinessException.class)
-    public Result<String> handleBusinessException(BusinessException ex) {
-        return Result.fail(ex.getErrorMessage());
+    public ResponseEntity<Result<String>> handleBusinessException(BusinessException ex) {
+        return ResponseEntity.status(HttpStatus.OK).body(Result.fail(ex.getErrorMessage()));
     }
 }

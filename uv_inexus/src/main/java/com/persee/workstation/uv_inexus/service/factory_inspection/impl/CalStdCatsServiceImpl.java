@@ -52,6 +52,29 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
 
     @Override
     public Result addCalStdCats(CalStdCatsSaveDto cats) {
+
+        //把特征值和标准值按照中文或者英文分隔，然后把每一项转为double类型，转失败的话就提示错误
+        String[] characteristicValue = cats.getCharacteristicValue().split("[,，]");
+        String[] standardValue = cats.getStandardValue().split("[,，]");
+        if (characteristicValue.length > 0) {
+            for (int i = 0; i < characteristicValue.length; i++) {
+                try {
+                    characteristicValue[i] = String.valueOf(Double.parseDouble(characteristicValue[i]));
+                } catch (Exception e) {
+                    return Result.fail("特征值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+                }
+            }
+        }
+        if (standardValue.length > 0) {
+
+            for (int i = 0; i < standardValue.length; i++) {
+                try {
+                    standardValue[i] = String.valueOf(Double.parseDouble(standardValue[i]));
+                } catch (Exception e) {
+                    return Result.fail("标准值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+                }
+            }
+        }
         CalStdCats calStdCats = new CalStdCats();
         BeanUtils.copyProperties(cats, calStdCats);
         if (StringUtil.isBlank(calStdCats.getId())) {

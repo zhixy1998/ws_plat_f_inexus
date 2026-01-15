@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.dto.factory_inspection;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 /*
@@ -20,6 +21,8 @@ public class TaskAddDto {
      * 检测任务名称，必填项
      */
     @ApiModelProperty(value = "检测任务名称，必填项")
+    //任务名称长度不能大于32
+    @Size(max = 32,message = "任务名称长度不能大于32")
     private String detectName;
 
     /**
