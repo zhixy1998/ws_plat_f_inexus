@@ -168,7 +168,7 @@ public class UdpSendUtil {
      * @param timeout     超时时间
      * @param connectType 连接类型
      */
-    public R<String> deviceNewIp(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, int connectType, String newIp) {
+    public R<String> deviceNewIp(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, int connectType, String newIp, List<String> headReceiveBytes) {
 
         DatagramSocket socket;
         int receivePort;
@@ -208,16 +208,10 @@ public class UdpSendUtil {
                 byte[] bytes = store.peekMessage(deviceId);
 
                 if (bytes == null) continue;
-                i += bytes.length;
-
 
                 String receiveIp = deviceManager.getIpByDeviceId(deviceId);
 
                 messageGetLog(deviceId, receiveIp, bytes);
-
-                if (i < 12) {
-                    continue;
-                }
 
                 if (isNewIpStartMessage(bytes)) {
                     log.info("07回应报文，开始接收");
@@ -236,7 +230,18 @@ public class UdpSendUtil {
                 }  else {
                     if (!start) {
                         log.info("该报文丢弃！");
-                        i = 0;
+                        store.getMessage(deviceId);
+                        continue;
+                    }
+
+                    StringBuilder s = new StringBuilder();
+                    for (int j = 0; j < 4; j++) {
+                        s.append(0XFF & bytes[j]).append(":");
+                    }
+                    String substring = s.substring(0, s.length() - 1);
+                    if (!headReceiveBytes.contains(substring)) {
+                        log.info("不是需要的报文头！");
+                        store.getMessage(deviceId);
                         continue;
                     }
 
@@ -323,7 +328,91 @@ public class UdpSendUtil {
 
             if (!Objects.equals(cmdId, "Stop")) {
                 for (int i = 0; i < 3; i++) {
+
                     r = messageDeal(deviceId, timeout, replyNumber, null);
+                    if (r.getSuccess()) {
+                        break;
+                    } else {
+                        log.info("报文接收不足！重试第{}次", i+1);
+                        store.clearDeviceMessages(deviceId);
+                        socket.send(packet);
+
+                        sendMessageLog(sendIp, cmdId, sendBytes);
+                    }
+                }
+            }
+
+            if (!r.getSuccess()) {
+                return R.fail(DeviceConstants.unCountResponse);
+            }
+            List<byte[]> responses = r.getData();
+
+            OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
+
+            if (!parse.getIsSuccess()) {
+                return R.fail("解析失败！");
+            }
+
+            if (parse.getCurrentMeasure() != null){
+                ChangeParam changeParam = parse.getCurrentMeasure();
+                System.out.println("测量值：" + changeParam);
+            }
+
+            return R.ok(parse);
+
+
+        } catch (Exception e) {
+
+            log.info("仪器信息出错：{}", e.getMessage());
+            return R.fail("报文接收不足！");
+        }
+    }
+
+
+    //测试
+    public R<Object> knowTotalReceiveSend1(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, List<String> headReceiveBytes) {
+
+        if (replyNumber < 1) {
+            return R.fail("回应报文字节数大于 1 ！");
+        }
+
+        DatagramSocket socket;
+        int receivePort;
+        boolean isReceiveRunning;
+
+        try {
+
+            socket = connectUtil.getSocket(connectType, ethernetReceivePort);
+
+            if (socket == null) {
+                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
+            }
+            receivePort = connectUtil.getSocketPort(connectType);
+            isReceiveRunning = udpReceiveThread.isRunning(connectType);
+
+
+            if (!isReceiveRunning) {
+                udpReceiveThread.networkReceptionStart(receivePort, connectType);
+            }
+
+            DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+            String sendIp = device.getConnectIdentity();
+
+            MessageStoreManager store = MessageStoreManager.getInstance();
+
+            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
+                    InetAddress.getByName(sendIp), sendPort);
+            store.clearDeviceMessages(deviceId);
+
+            socket.send(packet);
+
+            sendMessageLog(sendIp, cmdId, sendBytes);
+            R<List<byte[]>> r = new R<>();
+
+            if (!Objects.equals(cmdId, "Stop")) {
+                for (int i = 0; i < 3; i++) {
+
+                    r = messageDeal1(deviceId, timeout, replyNumber, null, headReceiveBytes);
                     if (r.getSuccess()) {
                         break;
                     } else {
@@ -604,6 +693,94 @@ public class UdpSendUtil {
             log.info("仪器信息出错：{}", e.getMessage());
             return R.fail("报文接收不足！");
         }
+    }
+
+    //测试
+    private R<List<byte[]>> messageDeal1(String deviceId, Integer timeout, Integer totalByteNumber, byte[] endBytes,List<String> headReceiveBytes) {
+
+        MessageStoreManager store = MessageStoreManager.getInstance();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String sendIp = device.getConnectIdentity();
+        List<byte[]> responses = new ArrayList<>();
+        boolean start = false;
+
+
+        if (totalByteNumber == null || totalByteNumber < 12) {
+            totalByteNumber = 12;
+        }
+
+        long lastReceiveTime = System.currentTimeMillis();
+        int i = 0;
+        try {
+            while (i < totalByteNumber && System.currentTimeMillis() - lastReceiveTime < timeout) {
+                if (store.getQueueSize(deviceId) == 0) {
+                    Thread.sleep(10);
+                    continue;
+                }
+
+                byte[] bytes = store.peekMessage(deviceId);
+
+                messageGetLog(deviceId, sendIp, bytes);
+
+                if (isStartMessage(bytes)) {
+                    log.info("07回应报文");
+                    start = !start;
+                    if (!start) {
+                        log.info("多收07报文！退出");
+                        return R.fail("报文不足!");
+                    }
+                    byte[] message = store.getMessage(deviceId);
+                    responses.add(message);
+                    i += message.length;
+                    continue;
+                } else {
+                    if (!start) {
+                        log.info("错误报文丢弃！");
+                        store.getMessage(deviceId);
+                        continue;
+                    }
+
+                    StringBuilder s = new StringBuilder();
+                    for (int j = 0; j < 4; j++) {
+                        s.append(0XFF & bytes[j]).append(":");
+                    }
+                    String substring = s.substring(0, s.length() - 1);
+                    if (!headReceiveBytes.contains(substring)) {
+                        log.info("不是需要的报文头！");
+                        store.getMessage(deviceId);
+                        continue;
+                    }
+
+                    byte[] message = store.getMessage(deviceId);
+                    responses.add(message);
+                    i += message.length;
+
+                    if (endBytes != null && endBytes.length >= 4) {
+                        boolean isEnd = true;
+                        for (int j = 0; j < 4; j++) {
+                            if (message[j] != endBytes[j]) {
+                                isEnd = false;
+                                break;
+                            }
+                        }
+                        if (isEnd) {
+                            log.info("报文结束！");
+                            break;
+                        }
+                    }
+                }
+
+                lastReceiveTime = System.currentTimeMillis();
+            }
+            if (i < totalByteNumber && totalByteNumber != Integer.MAX_VALUE) {
+                log.info("报文不足！");
+                return R.fail("报文不足!");
+            }
+        } catch (Exception e) {
+            log.info("处理消息出错：{}", e.getMessage());
+            return R.fail("处理消息出错！");
+        }
+        return R.ok(responses);
     }
 
 

@@ -2135,7 +2135,7 @@
 </ReadBytes>
     <ReplyNumber>20</ReplyNumber>
     <HeadReceiveBytes>
-        <string>255:181:241:1</string>
+        <string>255:181:240:1</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
@@ -2197,7 +2197,7 @@
 <ReadBytes>
 <string>254:181:241:1:0:255:0:164:Check</string>
 </ReadBytes>
-    <ReplyNumber>21</ReplyNumber>
+    <ReplyNumber>20</ReplyNumber>
     <HeadReceiveBytes>
         <string>254:181:241:1</string>
     </HeadReceiveBytes>

@@ -928,8 +928,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 int ReplyNumber = transition.getReplyNumber();
                 int Timeout = transition.getTimeout();
                 byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+                List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
-                R<String> r = udpSendUtil.deviceNewIp(deviceInfo.getDeviceId(), comId, bytes, ReplyNumber, Timeout, connectType, newIp.toString());
+                R<String> r = udpSendUtil.deviceNewIp(deviceInfo.getDeviceId(), comId, bytes, ReplyNumber, Timeout, connectType, newIp.toString(), headReceiveBytes);
                 if (!r.getSuccess()) {
                     return R.fail("当前仪器无法连接！");
                 }
@@ -954,6 +955,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             Transition transition = xml.get(comId);
             int replyNumber = transition.getReplyNumber();
             int timeout = transition.getTimeout();
+            List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
             if (comId.equals(ConnectEnum.Connect.getComId())) {
                 param = new Object[6];
@@ -990,6 +992,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (replyNumber < 0) {
                 r = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout, false, null, null);
             } else {
+//                r = udpSendUtil.knowTotalReceiveSend1(deviceId, comId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
                 r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, replyNumber, timeout, connectType);
 
             }
@@ -1199,6 +1202,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             int replyNumber = transition.getReplyNumber();
             int timeout = transition.getTimeout();
             byte[] endBytes = null;
+            List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
 
             byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
@@ -1229,6 +1233,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                     liveDetection = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout,false, deviceSerialNumber, endBytes);
                 } else {
                     log.info("+++{}", LocalDateTime.now());
+//                    liveDetection = udpSendUtil.knowTotalReceiveSend1(deviceId,comId, bytes,replyNumber,timeout,connectType, headReceiveBytes);
                     liveDetection = udpSendUtil.knowTotalReceiveSend(deviceId,comId, bytes,replyNumber,timeout,connectType);
                     log.info("+++{}", LocalDateTime.now());
                 }
