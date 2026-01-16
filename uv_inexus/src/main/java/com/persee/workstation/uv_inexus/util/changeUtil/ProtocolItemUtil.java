@@ -41,9 +41,11 @@ public class ProtocolItemUtil {
             Transition item = new Transition();
             item.setInputString(new ArrayList<>());
             item.setOutputString(new ArrayList<>());
+            item.setHeadReceiveBytes(new ArrayList<>());
             item.setID(getText(elem, "ID"));
             item.setDescribe(getText(elem, "Describe"));
             String TimeoutStr = getText(elem, "Timeout");
+
             int Timeout = 0;
             if (!TimeoutStr.isEmpty()) {
                 try {
@@ -90,6 +92,15 @@ public class ProtocolItemUtil {
             Element readBytesElem = getElement(elem, "ReadBytes");
             if (readBytesElem != null) {
                 item.setReadBytes(new String[]{getText(readBytesElem, "string")});
+            }
+
+            Element headElem = getElement(elem, "HeadReceiveBytes");
+            if (headElem != null) {
+                NodeList strings = headElem.getElementsByTagName("string");
+                for (int j = 0; j < strings.getLength(); j++) {
+                    item.getHeadReceiveBytes()
+                            .add(strings.item(j).getTextContent().trim());
+                }
             }
 
             map.put(item.getID(), item);

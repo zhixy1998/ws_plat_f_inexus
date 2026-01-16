@@ -25,4 +25,5 @@ public class Transition {
     private String[] SendBytes;
     private String[] ReadBytes;
     private int ReplyNumber;
+    private List<String> headReceiveBytes;
 }

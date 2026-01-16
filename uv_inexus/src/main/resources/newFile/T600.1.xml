@@ -1183,6 +1183,9 @@
 <string>254:181:2:8:AJ2:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:2:8</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetDLampStatus</ID>
@@ -1202,6 +1205,9 @@
 <string>254:181:2:7:AJ3:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:2:7</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetLampPos</ID>
@@ -1221,6 +1227,9 @@
 <string>254:181:6:4:AJ4:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:4</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetChangeLampWl</ID>
@@ -1240,6 +1249,9 @@
 <string>254:181:10:5:AJ5:AJ5:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:10:5</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetWlList</ID>
@@ -1262,6 +1274,9 @@
 <string>254:181:20:10:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:20:10</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetScanWlInterval</ID>
@@ -1281,6 +1296,9 @@
 <string>254:181:6:6:AJ10*50:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:6</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetScanSpeed</ID>
@@ -1300,6 +1318,9 @@
 <string>254:181:6:12:AJ11:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:12</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetWl</ID>
@@ -1319,6 +1340,9 @@
 <string>254:181:10:1:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:10:1</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetStartWl</ID>
@@ -1338,6 +1362,9 @@
 <string>254:181:10:2:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:10:2</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetEndWl</ID>
@@ -1357,6 +1384,9 @@
 <string>254:181:10:3:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:10:3</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetFilter</ID>
@@ -1376,6 +1406,9 @@
 <string>254:181:6:1:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:1</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetGain</ID>
@@ -1395,6 +1428,9 @@
 <string>254:181:6:7:AJ16-1:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:7</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetResponseTime</ID>
@@ -1414,6 +1450,9 @@
 <string>254:181:6:11:AJ17*100:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:11</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetPhotoMode</ID>
@@ -1433,6 +1472,9 @@
 <string>254:181:6:5:AJ18:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:5</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetSlit1</ID>
@@ -1452,6 +1494,9 @@
 <string>254:181:6:2:AJ19*10:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:2</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetCellPos</ID>
@@ -1471,6 +1516,9 @@
 <string>254:181:6:3:AJ20-1:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:6:3</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetCellPos</ID>
@@ -1490,6 +1538,9 @@
 <string>254:181:5:3:AJ21:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:5:3</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetAccessoryType</ID>
@@ -1509,6 +1560,9 @@
 <string>254:181:5:18:AJ22:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:5:18</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetChangeLampWl</ID>
@@ -1528,6 +1582,9 @@
 <string>254:181:9:5:AJ23:AJ23:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:9:5</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetWlList</ID>
@@ -1551,6 +1608,9 @@
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
 </ProtocolItem>
+    <HeadReceiveBytes>
+        <string>254:181:19:10</string>
+    </HeadReceiveBytes>
 <ProtocolItem>
 <ID>GetSn</ID>
 <Describe>读取序列号</Describe>
@@ -1569,6 +1629,9 @@
 <string>254:181:19:253:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:Check:254:181:19:253:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:AJ28:Check:254:181:19:253:AJ28:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>48</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:19:253</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>InitLampMotor</ID>
@@ -1588,6 +1651,9 @@
 <string>254:181:0:6:AJ31:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:0:6</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>InitFilterMotor</ID>
@@ -1607,6 +1673,9 @@
 <string>254:181:0:3:AJ32:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:0:3</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>InitSampleCell</ID>
@@ -1626,6 +1695,9 @@
 <string>254:181:0:13:AJ33:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:0:13</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>InitWlMotor</ID>
@@ -1645,6 +1717,9 @@
 <string>254:181:0:5:AJ34:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:0:5</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>InitSlit1Motor</ID>
@@ -1664,6 +1739,9 @@
 <string>254:181:0:4:AJ35:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:0:4</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>CheckWLamp</ID>
@@ -1683,6 +1761,10 @@
 <string>255:181:0:11:AJ36:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>255:181:32:240</string>
+        <string>255:181:0:11</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>CheckDLamp</ID>
@@ -1702,6 +1784,10 @@
 <string>255:181:0:12:AJ37:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>255:181:32:240</string>
+        <string>255:181:0:12</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>CheckWl</ID>
@@ -1721,6 +1807,10 @@
 <string>255:181:0:10:AJ38:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>255:181:32:241</string>
+        <string>255:181:0:10</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>Stop</ID>
@@ -1740,6 +1830,9 @@
 <string>254:181:0:0:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:0:0</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>Dark</ID>
@@ -1759,6 +1852,9 @@
 <string>254:181:0:14:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:0:14</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>Measure</ID>
@@ -1781,6 +1877,10 @@
 <string>254:181:19:3:0:AJ41:AJ41:0:AJ42:AJ42:AJ42:Check:254:181:19:4:AJ43:AJ43:AJ43:0:AJ44:AJ44:AJ44:Check</string>
 </ReadBytes>
     <ReplyNumber>36</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:19:3</string>
+        <string>254:181:19:4</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>BaseLine</ID>
@@ -1803,6 +1903,10 @@
 <string>254:181:19:5:0:AJ45:AJ45:0:AJ46:AJ46:AJ46:Check:254:181:19:6:AJ47:AJ47:AJ47:0:AJ48:AJ48:AJ48:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:19:5</string>
+        <string>254:181:19:6</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>Scan</ID>
@@ -1825,6 +1929,10 @@
 <string>254:181:19:1:0:AJ49:AJ49:0:AJ50:AJ50:AJ50:Check:254:181:19:2:AJ51:AJ51:AJ51:0:AJ52:AJ52:AJ52:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:19:1</string>
+        <string>254:181:19:2</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>Zero</ID>
@@ -1847,6 +1955,10 @@
 <string>254:181:19:7:0:AJ53:AJ53:0:AJ54:AJ54:AJ54:Check:254:181:19:8:AJ55:AJ55:AJ55:0:AJ56:AJ56:AJ56:Check</string>
 </ReadBytes>
     <ReplyNumber>36</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:19:7</string>
+        <string>254:181:19:8</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>BaseLineFast</ID>
@@ -1869,6 +1981,10 @@
 <string>254:181:19:9:0:AJ57:AJ57:0:AJ58:AJ58:AJ58:Check:254:181:19:48:AJ59:AJ59:AJ59:0:AJ60:AJ60:AJ60:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:19:9</string>
+        <string>254:181:19:48</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>ScanFast</ID>
@@ -1891,6 +2007,10 @@
 <string>254:181:19:11:0:AJ61:AJ61:0:AJ62:AJ62:AJ62:Check:254:181:19:2:AJ63:AJ63:AJ63:0:AJ64:AJ64:AJ64:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:19:11</string>
+        <string>254:181:19:2</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>DisConnect</ID>
@@ -1910,6 +2030,10 @@
 <string>254:181:240:2:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>20</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:240:2</string>
+        <string>254:181:240:3</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>DisConnectIAP</ID>
@@ -1929,6 +2053,9 @@
 <string>254:181:241:2:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241:2</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SearchInSameZoom</ID>
@@ -1953,6 +2080,9 @@
 <string>254:181:241:3:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241:3</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SearchAround</ID>
@@ -1977,6 +2107,9 @@
 <string>254:181:241:3:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241:3</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>Connect</ID>
@@ -2001,6 +2134,9 @@
 <string>254:181:241:1:AJ79:255:0:Check</string>
 </ReadBytes>
     <ReplyNumber>20</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241:1</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>ConnectIAP</ID>
@@ -2025,6 +2161,9 @@
 <string>254:181:241:1:AA85:255:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241:1</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>NewIP</ID>
@@ -2059,6 +2198,9 @@
 <string>254:181:241:1:0:255:0:164:Check</string>
 </ReadBytes>
     <ReplyNumber>21</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241:1</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetPressCover</ID>
@@ -2078,6 +2220,9 @@
 <string>254:181:1:10:0:AJ107:AJ107:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:1:10</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetPadModeTrue</ID>
@@ -2102,6 +2247,9 @@
 <string>254:181:241:AJ108+4:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetPadModeFalse</ID>
@@ -2126,6 +2274,9 @@
 <string>254:181:241:AJ114+4:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetInitStatus</ID>
@@ -2145,6 +2296,9 @@
 <string>254:181:1:11:AJ120:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:1:11</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetPCModeTrue</ID>
@@ -2164,6 +2318,9 @@
 <string>254:181:241:AJ122+6:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetPCModeFalse</ID>
@@ -2183,6 +2340,9 @@
 <string>254:181:241:AJ123+6:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:241</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetProgrammeModeTrue</ID>
@@ -2202,6 +2362,9 @@
 <string>254:181:240:AJ124+8:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:240</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetProgrammeModeFalse</ID>
@@ -2221,6 +2384,9 @@
 <string>254:181:240:AJ125+8:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:240</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>SetInitStatus</ID>
@@ -2240,6 +2406,9 @@
 <string>254:181:255:5:AJ126:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:255:5</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>Update</ID>
@@ -2259,6 +2428,9 @@
 <string>AH127</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>AH127</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>ReceiveSuc</ID>
@@ -2278,6 +2450,9 @@
 <string>254:181:255:7:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:255:7</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>ReadCheckWLampEnergy</ID>
@@ -2299,6 +2474,9 @@
 </ReadBytes>
 </ProtocolItem>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:32:240</string>
+    </HeadReceiveBytes>
 <ProtocolItem>
 <ID>ReadCheckDLampEnergy</ID>
 <Describe>氘灯能量</Describe>
@@ -2318,6 +2496,9 @@
 <string>254:181:32:241:0:0:AJ131:AJ131:AJ132:AJ132:AJ132:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:32:241</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>ReadCheckWlEnergy</ID>
@@ -2338,6 +2519,9 @@
 <string>254:181:要确定:Z133:0:0:AJ133-AD133*256:AJ133-AC133:AJ134-AF133*256-AG133:AJ134-AE133*256*256-AG133:AJ134-AE133*256*256-AF133*256:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetLampPos</ID>
@@ -2357,6 +2541,9 @@
 <string>254:181:5:4:AJ133:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:5:4</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
 <ID>GetPhotoMode</ID>
@@ -2376,6 +2563,9 @@
     <string>254:181:5:5:AJ18:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
+    <HeadReceiveBytes>
+        <string>254:181:5:5</string>
+    </HeadReceiveBytes>
 </ProtocolItem>
         <ProtocolItem>
         <ID>GetResponseTime</ID>
@@ -2395,6 +2585,9 @@
         <string>254:181:5:11:0:0:0:0:0:0:0:Check</string>
         </ReadBytes>
             <ReplyNumber>24</ReplyNumber>
+            <HeadReceiveBytes>
+                <string>181:255:5:11</string>
+            </HeadReceiveBytes>
         </ProtocolItem>
         <ProtocolItem>
             <ID>GetWLampStatus</ID>
@@ -2414,6 +2607,9 @@
                 <string>254:181:1:8:AJ2:0:0:0:0:0:0:Check</string>
             </ReadBytes>
             <ReplyNumber>24</ReplyNumber>
+            <HeadReceiveBytes>
+                <string>254:181:1:8</string>
+            </HeadReceiveBytes>
         </ProtocolItem>
     <ProtocolItem>
         <ID>GetDLampStatus</ID>
@@ -2433,6 +2629,9 @@
             <string>254:181:1:7:AJ3:0:0:0:0:0:0:Check</string>
         </ReadBytes>
         <ReplyNumber>24</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>254:181:1:7</string>
+        </HeadReceiveBytes>
     </ProtocolItem>
     <ProtocolItem>
         <ID>CorrectWl</ID>
@@ -2452,5 +2651,8 @@
             <string>255:181:0:15:AJ38:0:0:0:0:0:0:Check</string>
         </ReadBytes>
         <ReplyNumber>-1</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>255:181:0:15</string>
+        </HeadReceiveBytes>
     </ProtocolItem>
 </Protocols>
