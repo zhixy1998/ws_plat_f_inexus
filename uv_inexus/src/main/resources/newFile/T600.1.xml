@@ -1930,8 +1930,8 @@
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
     <HeadReceiveBytes>
-        <string>254:181:19:1</string>
-        <string>254:181:19:2</string>
+        <string>255:181:19:1</string>
+        <string>255:181:19:2</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
@@ -2293,7 +2293,7 @@
 <string>181:255:1:11:0:0:0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
-<string>254:181:1:11:AJ120:0:0:0:0:0:0:Check</string>
+<string>255:181:1:11:AJ120:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>

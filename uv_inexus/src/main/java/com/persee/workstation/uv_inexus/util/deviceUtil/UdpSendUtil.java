@@ -287,7 +287,7 @@ public class UdpSendUtil {
      * @param timeout  报文最大超时时间
 
      */
-    public R<Object> knowTotalReceiveSend(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType) {
+    public R<Object> knowTotalReceiveSend(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, List<String> headReceiveBytes) {
 
         if (replyNumber < 1) {
             return R.fail("回应报文字节数大于 1 ！");
@@ -329,7 +329,7 @@ public class UdpSendUtil {
             if (!Objects.equals(cmdId, "Stop")) {
                 for (int i = 0; i < 3; i++) {
 
-                    r = messageDeal(deviceId, timeout, replyNumber, null);
+                    r = messageDeal1(deviceId, timeout, replyNumber, null, headReceiveBytes);
                     if (r.getSuccess()) {
                         break;
                     } else {
@@ -570,7 +570,7 @@ public class UdpSendUtil {
 //
 //    }
 
-    public R<Object> unknownReceive(String deviceId, String cmdId, byte[] sendBytes, int timeout, Boolean isDealOnTime, String deviceSerialNumber, byte[] endBytes) {
+    public R<Object> unknownReceive(String deviceId, String cmdId, byte[] sendBytes, int timeout, Boolean isDealOnTime, String deviceSerialNumber, byte[] endBytes, List<String> headReceiveBytes) {
 
         DatagramSocket socket;
         try {
@@ -604,13 +604,13 @@ public class UdpSendUtil {
 
             if (isDealOnTime) {
                 ScanSessionManager.startScan(deviceId);
-                messageOnTimeDeal.parse(cmdId, deviceId, deviceSerialNumber, sendBytes, timeout);
+                messageOnTimeDeal.parse(cmdId, deviceId, deviceSerialNumber, sendBytes, timeout,headReceiveBytes);
                 return R.ok();
             }
 
             R<List<byte[]>> r = new R<>();
             for (int i = 0; i < 3; i++) {
-                r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes);
+                r = messageDeal1(deviceId, timeout, Integer.MAX_VALUE, endBytes, headReceiveBytes);
                 if (r.getSuccess()) {
                     break;
                 } else {
@@ -640,7 +640,7 @@ public class UdpSendUtil {
 
     }
 
-    public R<Object> TimeMeasure(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, Double intervalTime, Double totalTime,String deviceSerialNumber) {
+    public R<Object> TimeMeasure(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, Double intervalTime, Double totalTime, String deviceSerialNumber, List<String> headReceiveBytes) {
 
         if (replyNumber < 1) {
             return R.fail("回应报文字节数大于 1 ！");
@@ -676,7 +676,8 @@ public class UdpSendUtil {
                         totalTime,
                         deviceId,
                         replyNumber,
-                        deviceSerialNumber
+                        deviceSerialNumber,
+                        headReceiveBytes
                 );
             } else {
                 scheduler = null;
@@ -925,7 +926,8 @@ public class UdpSendUtil {
             Double totalTime,
             String deviceId,
             Integer replyNumber,
-            String deviceSerialNumber
+            String deviceSerialNumber,
+            List<String> headReceiveBytes
     ) {
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -989,7 +991,7 @@ public class UdpSendUtil {
                 sendMessageLog(sendIp, cmdId, packet.getData());
 
                 long firstTimeMillis = System.currentTimeMillis();
-                receiveAndDeal(deviceId, firstTimeMillis, intervalMillis, replyNumber, cmdId, deviceSerialNumber);
+                receiveAndDeal(deviceId, firstTimeMillis, intervalMillis, replyNumber, cmdId, deviceSerialNumber,headReceiveBytes);
 
             } catch (Exception e) {
                 log.error("时间扫描定时任务异常，立即停止", e);
@@ -1008,7 +1010,7 @@ public class UdpSendUtil {
         return scheduler;
     }
 
-    private void receiveAndDeal(String deviceId, long firstTimeMillis, long intervalTime, Integer replyNumber, String cmdId, String deviceSerialNumber) {
+    private void receiveAndDeal(String deviceId, long firstTimeMillis, long intervalTime, Integer replyNumber, String cmdId, String deviceSerialNumber, List<String> headReceiveBytes) {
 
         log.info("处理时间扫描报文，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
 
@@ -1037,6 +1039,17 @@ public class UdpSendUtil {
             } else {
                 if (!start) {
                     log.info("错误报文丢弃！");
+                    store.getMessage(deviceId);
+                    continue;
+                }
+
+                StringBuilder s = new StringBuilder();
+                for (int j = 0; j < 4; j++) {
+                    s.append(0XFF & bytes[j]).append(":");
+                }
+                String substring = s.substring(0, s.length() - 1);
+                if (!headReceiveBytes.contains(substring)) {
+                    log.info("不是需要的报文头！");
                     store.getMessage(deviceId);
                     continue;
                 }

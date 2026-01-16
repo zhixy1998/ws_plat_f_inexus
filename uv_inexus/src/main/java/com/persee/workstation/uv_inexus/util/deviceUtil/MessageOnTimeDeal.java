@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -255,7 +256,7 @@ public class MessageOnTimeDeal {
 //        return tempMap;
 //    }
 
-    public void parse(String cmdId, String deviceId, String deviceSerialNumber, byte[] sendBytes, int timeout) {
+    public void parse(String cmdId, String deviceId, String deviceSerialNumber, byte[] sendBytes, int timeout, List<String> headReceiveBytes) {
 
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
         if (device == null) {
@@ -319,7 +320,7 @@ public class MessageOnTimeDeal {
                     while (!Thread.currentThread().isInterrupted() && ScanSessionManager.isRunning(deviceId) && System.currentTimeMillis() - startTime < currentTimeout) {
 
                         // ----------------- 1. 取消息 -----------------
-                        byte[] message = store.getMessage(deviceId);
+                        byte[] message = store.peekMessage(deviceId);
                         if (message == null) {
                             Thread.sleep(5);
                             continue;
@@ -340,12 +341,24 @@ public class MessageOnTimeDeal {
                             return;
                         }
 
+                        StringBuilder s = new StringBuilder();
+                        for (int j = 0; j < 4; j++) {
+                            s.append(0XFF & message[j]).append(":");
+                        }
+                        String substring = s.substring(0, s.length() - 1);
+                        if (!headReceiveBytes.contains(substring)) {
+                            log.info("不是需要的报文头！");
+                            store.getMessage(deviceId);
+                            continue;
+                        }
+                        byte[] useMessage = store.getMessage(deviceId);
+
                         recvCount++;
                         if (recvCount >= 2) currentTimeout = 5000L;
                         startTime = System.currentTimeMillis();
 
                         // ----------------- 2. 解析报文 -----------------
-                        OperationResultEntity parsed = UdpResponseDeal.parseScan(Collections.singletonList(message));
+                        OperationResultEntity parsed = UdpResponseDeal.parseScan(Collections.singletonList(useMessage));
                         if (parsed == null || parsed.getCurrentMeasure() == null) continue;
 
                         ChangeParam partial = parsed.getCurrentMeasure();
@@ -394,10 +407,11 @@ public class MessageOnTimeDeal {
 
                             // ----------------- 5. 放入未知队列 -----------------
                             if (isFirst) {
-                                log.info("[光谱首条] device={}, cmd={}, wl={}", deviceSerialNumber, cmdId, sp.getWavelength());
+                                log.info("[光谱首条,不存] device={}, cmd={}, wl={}", deviceSerialNumber, cmdId, sp.getWavelength());
                                 isFirst = false;
                             } else {
                                 unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
+                                log.info("[光谱存入] device={}, cmd={}, wl={}", deviceSerialNumber, cmdId, sp.getWavelength());
                             }
 
                             // 清空半成品准备下一条报文
@@ -461,6 +475,15 @@ public class MessageOnTimeDeal {
         ScanSessionManager.stopScan(deviceId);
 
         log.info("[ON-TIME] stop parser thread, device={}", deviceSerialNumber);
+    }
+
+    private boolean isStartMessage(byte[] message) {
+//        FF B5 FF 07 00 00 00 00 00 00 00 BA
+
+        return message[0] == (byte) 0xFF && message[1] == (byte) 0xB5
+                && message[2] == (byte) 0xFF && message[3] == (byte) 0x07 && message[4] == (byte) 0x00
+                && message[5] == (byte) 0x00 && message[6] == (byte) 0x00 && message[7] == (byte) 0x00
+                && message[8] == (byte) 0x00 && message[9] == (byte) 0x00 && message[10] == (byte) 0x00 && message[11] == (byte) 0xBA;
     }
 
 }

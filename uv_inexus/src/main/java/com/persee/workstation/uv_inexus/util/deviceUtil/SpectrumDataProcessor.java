@@ -165,7 +165,7 @@ public class SpectrumDataProcessor {                 //计算RSD
             return Double.NaN;
         }
 
-        double startWl = cfg.getStartWavelength() + cfg.getInterval()*2;
+        double startWl = cfg.getStartWavelength() + cfg.getInterval();
         double endWl = cfg.getEndWavelength();
         double interval = cfg.getInterval();
         boolean isDescending = cfg.getDescending();
