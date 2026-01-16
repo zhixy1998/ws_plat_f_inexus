@@ -560,7 +560,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         // 根据方法id查询任务
         QueryWrapper<TMeasureTask> taskWrapper = new QueryWrapper<>();
         taskWrapper.in("method_key", methodIds);
-        taskWrapper.eq("is_save", "1");
+        taskWrapper.eq("task_status", Constants.PARAM_TWO);
         taskWrapper.eq("is_delete", "0");
         List<TMeasureTask> tasks = taskManagementMapper.selectList(taskWrapper);
         if (tasks == null || tasks.size() == 0){
@@ -662,7 +662,7 @@ public class DataManagementServiceImpl implements DataManagementService {
         }
         wrapper.eq("is_delete", "0");
         Long count = taskManagementMapper.selectCount(wrapper);
-        wrapper.eq("is_save", "1");
+        wrapper.eq("task_status", Constants.PARAM_TWO);
         Long completeCount = taskManagementMapper.selectCount(wrapper);
         taskDataNumDto.setDaily(daily);
         taskDataNumDto.setTaskNum(count);

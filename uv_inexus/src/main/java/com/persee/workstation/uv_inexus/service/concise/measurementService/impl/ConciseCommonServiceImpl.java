@@ -318,7 +318,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         // 根据任务id和is_save字段为1的条件查询
         QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
-        wrapper.eq("task_id", taskId).eq("is_save", "1");
+        wrapper.eq("task_id", taskId).eq("task_status",Constants.PARAM_TWO);
         List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
         if (measureDataList != null) {
             for (FMeasureData measureData : measureDataList) {
