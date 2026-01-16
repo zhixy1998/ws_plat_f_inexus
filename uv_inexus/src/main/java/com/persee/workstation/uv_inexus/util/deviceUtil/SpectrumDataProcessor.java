@@ -165,7 +165,7 @@ public class SpectrumDataProcessor {                 //计算RSD
             return Double.NaN;
         }
 
-        double startWl = cfg.getStartWavelength() + cfg.getInterval();
+        double startWl = cfg.getStartWavelength() + cfg.getInterval()*2;
         double endWl = cfg.getEndWavelength();
         double interval = cfg.getInterval();
         boolean isDescending = cfg.getDescending();
@@ -175,8 +175,8 @@ public class SpectrumDataProcessor {                 //计算RSD
                 : startWl + dataPointIndex * interval;
 
         // 边界吸附
-        if (isDescending && wl < endWl) wl = endWl -  interval;
-        if (!isDescending && wl > endWl) wl = endWl -  interval;
+        if (isDescending && wl < endWl) wl = endWl +  interval;
+        if (!isDescending && wl > endWl) wl = endWl +  interval;
 
         //停止条件
         updateNearEndFlag();

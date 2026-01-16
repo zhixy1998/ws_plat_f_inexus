@@ -312,6 +312,8 @@ public class MessageOnTimeDeal {
                 long currentTimeout = timeout;
                 int recvCount = 0;
                 int flag = 0;
+                boolean isFirst = true; // 标记第一条完整光谱
+
 
                 try {
                     while (!Thread.currentThread().isInterrupted() && ScanSessionManager.isRunning(deviceId) && System.currentTimeMillis() - startTime < currentTimeout) {
@@ -391,7 +393,12 @@ public class MessageOnTimeDeal {
 
 
                             // ----------------- 5. 放入未知队列 -----------------
-                            unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
+                            if (isFirst) {
+                                log.info("[光谱首条] device={}, cmd={}, wl={}", deviceSerialNumber, cmdId, sp.getWavelength());
+                                isFirst = false;
+                            } else {
+                                unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
+                            }
 
                             // 清空半成品准备下一条报文
                             tempMap.remove(deviceSerialNumber);
