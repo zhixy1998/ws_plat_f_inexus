@@ -1009,6 +1009,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             }
             if (!r.getSuccess()) {
+                deviceManager.removeDevice(deviceId);
                 return R.fail("当前仪器无法连接！");
             }
 
@@ -1038,11 +1039,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 OperationResultEntity entity = (OperationResultEntity) data;
                 if (!entity.getIsSuccess()) {
                     log.error("指令[{}]解析出错，错误原因：{}", comId, entity.getErrorMsg());
+                    deviceManager.removeDevice(deviceId);
                     return R.fail("指令" + comId + "，解析出错！");
                 }
                 BeanUtils.copyProperties(entity, result, getNullPropertyNames(entity));
             } catch (Exception e) {
                 log.error("指令{}，操作过程中数据转换错误，错误信息：{}",comId, e.getMessage());
+                deviceManager.removeDevice(deviceId);
                 return R.fail("数据转换错误");
             }
 
@@ -1488,6 +1491,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 Timeout = transition.getTimeout();
                 param = new Object[]{};
                 bytes = protocolItemUtil.calcSendBytes(param, transition);
+                headReceiveBytes = transition.getHeadReceiveBytes();
                 zero = udpSendUtil.knowTotalReceiveSend(deviceId,cmdId, bytes,ReplyNumber,Timeout,connectType, headReceiveBytes);
                 if (!zero.getSuccess()) {
                     return R.fail("零点失败");

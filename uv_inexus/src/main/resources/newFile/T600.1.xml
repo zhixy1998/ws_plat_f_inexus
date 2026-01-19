@@ -1607,10 +1607,11 @@
 <string>254:181:19:10:0:AJ24:AJ25:AJ26:AJ26:AJ27:AJ27:Check</string>
 </ReadBytes>
     <ReplyNumber>-1</ReplyNumber>
-</ProtocolItem>
     <HeadReceiveBytes>
         <string>255:181:19:10</string>
     </HeadReceiveBytes>
+</ProtocolItem>
+
 <ProtocolItem>
 <ID>GetSn</ID>
 <Describe>读取序列号</Describe>

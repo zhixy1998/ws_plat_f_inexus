@@ -329,7 +329,7 @@ public class UdpSendUtil {
             if (!Objects.equals(cmdId, "Stop")) {
                 for (int i = 0; i < 3; i++) {
 
-                    r = messageDeal1(deviceId, timeout, replyNumber, null, headReceiveBytes);
+                    r = messageDeal(deviceId, timeout, replyNumber, null, headReceiveBytes);
                     if (r.getSuccess()) {
                         break;
                     } else {
@@ -412,7 +412,7 @@ public class UdpSendUtil {
             if (!Objects.equals(cmdId, "Stop")) {
                 for (int i = 0; i < 3; i++) {
 
-                    r = messageDeal1(deviceId, timeout, replyNumber, null, headReceiveBytes);
+                    r = messageDeal(deviceId, timeout, replyNumber, null, headReceiveBytes);
                     if (r.getSuccess()) {
                         break;
                     } else {
@@ -610,7 +610,7 @@ public class UdpSendUtil {
 
             R<List<byte[]>> r = new R<>();
             for (int i = 0; i < 3; i++) {
-                r = messageDeal1(deviceId, timeout, Integer.MAX_VALUE, endBytes, headReceiveBytes);
+                r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes, headReceiveBytes);
                 if (r.getSuccess()) {
                     break;
                 } else {
@@ -697,7 +697,7 @@ public class UdpSendUtil {
     }
 
     //测试
-    private R<List<byte[]>> messageDeal1(String deviceId, Integer timeout, Integer totalByteNumber, byte[] endBytes,List<String> headReceiveBytes) {
+    private R<List<byte[]>> messageDeal(String deviceId, Integer timeout, Integer totalByteNumber, byte[] endBytes, List<String> headReceiveBytes) {
 
         MessageStoreManager store = MessageStoreManager.getInstance();
         DeviceConnectInfo device = deviceManager.getDevice(deviceId);
@@ -741,94 +741,26 @@ public class UdpSendUtil {
                         continue;
                     }
 
+
                     StringBuilder s = new StringBuilder();
-                    for (int j = 0; j < 4; j++) {
-                        s.append(0XFF & bytes[j]).append(":");
+                    for (byte aByte : bytes) {
+                        s.append(0XFF & aByte).append(":");
                     }
                     String substring = s.substring(0, s.length() - 1);
-                    if (!headReceiveBytes.contains(substring)) {
+                    boolean isHead = false;
+                    for (String receiveByte : headReceiveBytes) {
+                        if (substring.startsWith(receiveByte)) {
+                            isHead = true;
+                            break;
+                        }
+                    }
+
+                    if (!isHead) {
                         log.info("不是需要的报文头！");
                         store.getMessage(deviceId);
                         continue;
                     }
 
-                    byte[] message = store.getMessage(deviceId);
-                    responses.add(message);
-                    i += message.length;
-
-                    if (endBytes != null && endBytes.length >= 4) {
-                        boolean isEnd = true;
-                        for (int j = 0; j < 4; j++) {
-                            if (message[j] != endBytes[j]) {
-                                isEnd = false;
-                                break;
-                            }
-                        }
-                        if (isEnd) {
-                            log.info("报文结束！");
-                            break;
-                        }
-                    }
-                }
-
-                lastReceiveTime = System.currentTimeMillis();
-            }
-            if (i < totalByteNumber && totalByteNumber != Integer.MAX_VALUE) {
-                log.info("报文不足！");
-                return R.fail("报文不足!");
-            }
-        } catch (Exception e) {
-            log.info("处理消息出错：{}", e.getMessage());
-            return R.fail("处理消息出错！");
-        }
-        return R.ok(responses);
-    }
-
-
-
-    private R<List<byte[]>> messageDeal(String deviceId, Integer timeout, Integer totalByteNumber, byte[] endBytes) {
-
-        MessageStoreManager store = MessageStoreManager.getInstance();
-        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
-        String sendIp = device.getConnectIdentity();
-        List<byte[]> responses = new ArrayList<>();
-        boolean start = false;
-
-
-        if (totalByteNumber == null || totalByteNumber < 12) {
-            totalByteNumber = 12;
-        }
-
-        long lastReceiveTime = System.currentTimeMillis();
-        int i = 0;
-        try {
-            while (i < totalByteNumber && System.currentTimeMillis() - lastReceiveTime < timeout) {
-                if (store.getQueueSize(deviceId) == 0) {
-                    Thread.sleep(10);
-                    continue;
-                }
-
-                byte[] bytes = store.peekMessage(deviceId);
-
-                messageGetLog(deviceId, sendIp, bytes);
-
-                if (isStartMessage(bytes)) {
-                    log.info("07回应报文");
-                    start = !start;
-                    if (!start) {
-                        log.info("多收07报文！退出");
-                        return R.fail("报文不足!");
-                    }
-                    byte[] message = store.getMessage(deviceId);
-                    responses.add(message);
-                    i += message.length;
-                    continue;
-                } else {
-                    if (!start) {
-                        log.info("错误报文丢弃！");
-                        store.getMessage(deviceId);
-                        continue;
-                    }
 
                     byte[] message = store.getMessage(deviceId);
                     responses.add(message);
