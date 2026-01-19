@@ -10,14 +10,16 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
 import com.alibaba.fastjson.JSONObject;
-import com.persee.workstation.uv_inexus.dto.concise.rationDto.GuideCreateSampleDTO;
+import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
+import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
@@ -116,6 +118,16 @@ public interface RationService {
      */
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType, Integer digit);
     String valueCalculate(FittingReceiveInfo info, Double value, String equationType);
+
+    /**
+     * 公式修约
+     */
+    List<RationCountDataInfo> dataRounding(List<RationCountDataInfo> dataVO, RationParameter parameter);
+    /**
+     * 拟合浓度修约
+     */
+    String fitDataRounding(String fitConcentration, RationParameter parameter);
+
 
     R<List<RationCountDataInfo>> formula(List<RationWavelengthDataInfo> vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Integer digit);
 

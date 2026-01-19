@@ -135,6 +135,7 @@ public class RationMeasureNewWebSocket{
         String sampleKind = param.getSampleKind();
         String deviceSerialNumber = param.getDeviceSerialNumber();
         String dig = param.getDigit();
+        String oneSampleId = param.getSampleId();
         int di = digit;
         if (StringUtils.hasText(dig)) {
             di = Integer.parseInt(dig);
@@ -195,6 +196,92 @@ public class RationMeasureNewWebSocket{
                         specimen.getDeleteType() != null &&
                         specimen.getDeleteType().equals("0")
                 );
+        if (StringUtils.hasText(oneSampleId)){
+            TMeasureSample dealSample = tMeasureSampleService.getById(oneSampleId);
+            if (dealSample == null) {
+                sendError(deviceSerialNumber, "样品不存在");
+                return;
+            }
+            sampleKind = dealSample.getSampleKind();
+
+            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+            if (!setParams.getSuccess()) {
+                sendError(deviceSerialNumber, "参数设置异常！");
+                return;
+            }
+
+            boolean repeat = parameter.getRepeatMode().equals("单池重复");
+            dealSample.setSampleLocation(null);
+            R<RationDataVO> r;
+            if (repeat) {
+                //重复测量，单独处理！
+                r = singleSampleRepeatMeasure(dealSample, parameter, task, deviceSerialNumber);
+
+            } else {
+                r = singleSampleSimpleMeasure(dealSample, parameter, task, deviceSerialNumber);
+            }
+
+            if (!r.getSuccess()) {
+                sendError(deviceSerialNumber, r.getMessage());
+                return;
+            }
+            RationDataVO data = r.getData();
+
+            //保存数据
+            R<RationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
+            if (!saved.getSuccess()) {
+                log.info("数据保存异常");
+                sendError(deviceSerialNumber, "数据保存异常");
+                return;
+            }
+
+            for (TaskSpecimen speciman : taskSpecimen) {
+
+                if (speciman.getSpecimenKey().equals(oneSampleId)) {
+                    speciman.setIsTested(right);
+                }
+            }
+            task = tMeasureTaskService.getById(task.getId());
+            task.setSampleKey(JSON.toJSONString(taskSpecimen));
+            task.setDeviceSerialNumber(deviceSerialNumber);
+            tMeasureTaskService.updateById(task);
+
+
+            if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+
+                rationService.changeStandSampleDataDigit(taskId, digit);
+                rationService.changeUnknowSampleDigit(taskId, digit);
+
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成");
+                sendMessage(deviceSerialNumber, message);
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
+                sendMessage(deviceSerialNumber, jsonObject);
+
+
+            } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+
+                rationService.changeUnknowSampleDigit(taskId, digit);
+
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成");
+                sendMessage(deviceSerialNumber, message);
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
+                sendMessage(deviceSerialNumber, jsonObject);
+
+            } else {
+                log.info("未知的样品种类");
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("result", "finish");
+
+                sendMessage(deviceSerialNumber, jsonObject);
+            }
+            return;
+        }
 
 
         List<Integer> usefulLocation = samplePoolConfigService.getUsefulLocation(deviceSerialNumber);
@@ -338,9 +425,9 @@ public class RationMeasureNewWebSocket{
                                 RationCountDataInfo sumAbsData = new RationCountDataInfo();
                                 sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                                 sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                                double v = ansData.getColValue() - minuend;
+                                double v = Double.parseDouble(ansData.getColValue()) - minuend;
                                 String s = DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit);
-                                sumAbsData.setColValue(Double.parseDouble(s));
+                                sumAbsData.setColValue(s);
                                 fitCurveData.add(sumAbsData);
                             } else {
                                 fitCurveData.add(ansData);
@@ -419,8 +506,8 @@ public class RationMeasureNewWebSocket{
                         RationCountDataInfo sumAbsData = new RationCountDataInfo();
                         sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                         sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                        double v = absData.getColValue() - minuend;
-                        sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
+                        double v = Double.parseDouble(absData.getColValue()) - minuend;
+                        sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                         fitCurveData.add(sumAbsData);
                         measureAbsDataList.add(sumAbsData);
 
@@ -613,13 +700,16 @@ public class RationMeasureNewWebSocket{
                         RationCountDataInfo sumAbsData = new RationCountDataInfo();
                         sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                         sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                        double v = absData.getColValue() - minuend;
-                        sumAbsData.setColValue(DataCountUtil.formatValue(digit, v));
-                        countValue = sumAbsData.getColValue();
+                        double v = Double.parseDouble(absData.getColValue()) - minuend;
+                        Double value = DataCountUtil.formatValue(digit, v);
+                        sumAbsData.setColValue(DataCountUtil.addZero(value, digit));
+                        countValue = value;
                         measureAbsDataList.add(sumAbsData);
+                        saveDataInfo.setCountData(measureAbsDataList);
+                        rationService.saveAnalyzeData(saveDataInfo);
                         sampleSend(deviceSerialNumber, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
                     } else {
-                        countValue = absData.getColValue();
+                        countValue = Double.parseDouble(absData.getColValue());
                     }
                     FittingReceiveInfo fittingInfo = null;
                     if (StringUtils.hasText(task.getFittingParam())) {
@@ -627,11 +717,26 @@ public class RationMeasureNewWebSocket{
                     }
                     if (fittingInfo != null) {
                         String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
-                        RationCountDataInfo valueData = new RationCountDataInfo();
-                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                        valueData.setColValue(ans==null? null : Double.valueOf(ans));
-                        measureAbsDataList.add(valueData);
+
+                        if (ans != null && fittingInfo.getRoundCoefficients() != null) {
+                            RationCountDataInfo valueData = new RationCountDataInfo();
+                            valueData.setOriginalValue(ans);
+                            String s = rationService.fitDataRounding(ans, parameter);
+
+                            valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                            valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                            valueData.setColValue(s);
+                            measureAbsDataList.add(valueData);
+
+                            measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
+
+                            JSONObject jsonObject = new JSONObject();
+                            jsonObject.put("sampleId", specimen.getSpecimenKey());
+                            jsonObject.put("key", valueData.getIdentity());
+                            jsonObject.put("value", valueData.getColValue());
+                            sendMessage(deviceSerialNumber, jsonObject);
+                            sendUnknowPoint(deviceSerialNumber, valueData, String.valueOf(countValue), parameter);
+                        }
                     }
 
                     //定量的公式计算----待定
@@ -699,19 +804,24 @@ public class RationMeasureNewWebSocket{
                 continue;
             }
             //拟合浓度计算
-            String valued = rationService.valueCalculate(curveData, toCountData.getColValue(), parameter.getEquationType(), digit);
-            RationCountDataInfo valueData = new RationCountDataInfo();
-            valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-            valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-            valueData.setColValue(valued==null? null : Double.valueOf(valued));
-            newData.add(valueData);
+            String valued = rationService.valueCalculate(curveData, Double.valueOf(toCountData.getColValue()), parameter.getEquationType(), digit);
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("sampleId", specimen.getSpecimenKey());
-            jsonObject.put("key", valueData.getIdentity());
-            jsonObject.put("value", valueData.getColValue());
-            sendMessage(deviceSerialNumber, jsonObject);
+            if (valued != null) {
+                RationCountDataInfo valueData = new RationCountDataInfo();
+                valueData.setOriginalValue(valued);
+                String s = rationService.fitDataRounding(valued, parameter);
 
+                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                valueData.setColValue(s);
+                newData.add(valueData);
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sampleId", specimen.getSpecimenKey());
+                jsonObject.put("key", valueData.getIdentity());
+                jsonObject.put("value", valueData.getColValue());
+                sendMessage(deviceSerialNumber, jsonObject);
+            }
             //公式计算---待定
             //TODO 公式计算
 
@@ -733,7 +843,7 @@ public class RationMeasureNewWebSocket{
         minuend = 0.0;
     }
 
-    public void sendPoint(String deviceSerialNumber, String param, Double absValue, RationParameter parameter) {
+    public void sendPoint(String deviceSerialNumber, String param, String absValue, RationParameter parameter) {
         JSONObject point = new JSONObject();
         if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
             point.put("x", absValue);
@@ -750,13 +860,44 @@ public class RationMeasureNewWebSocket{
 
     }
 
+    public void sendUnknowPoint(String deviceSerialNumber, RationCountDataInfo param, String absValue, RationParameter parameter){
+        JSONObject point = new JSONObject();
+        if (parameter.getCurveType().equals(RationCurveParamEnums.typeAbs.getIdentity())) {
+            point.put("x", absValue);
+
+            if (param.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                point.put("y", DataCountUtil.addZero(Double.valueOf(param.getOriginalValue()), digit));
+                point.put("yValue", param.getColValue());
+                point.put("xValue", absValue);
+            } else {
+                point.put("y", DataCountUtil.addZero(Double.valueOf(param.getColValue()), digit));
+            }
+        } else {
+            point.put("y", absValue);
+            if (param.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                point.put("x", DataCountUtil.addZero(Double.valueOf(param.getOriginalValue()), digit));
+                point.put("xValue", param.getColValue());
+                point.put("yValue", absValue);
+            } else {
+                point.put("x", DataCountUtil.addZero(Double.valueOf(param.getColValue()), digit));
+            }
+        }
+
+
+        JSONObject payload = new JSONObject();
+        payload.put("point", point);
+        payload.put("equationType", RationCurveParamEnums.getName(parameter.getEquationType()));
+        sendMessage(deviceSerialNumber,payload);
+
+    }
+
     private void emptySampleDeal(Integer digit, RationCountDataInfo ansData, RationSaveCountDataInfo dealData){
         empty = true;
 
         RationCountDataInfo yAbs = new RationCountDataInfo();
         yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
         yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-        yAbs.setColValue(0.0);
+        yAbs.setColValue(DataCountUtil.addZero(0.0, digit));
 
         List<RationCountDataInfo> currentList = new ArrayList<>();
 
@@ -767,12 +908,13 @@ public class RationMeasureNewWebSocket{
             double sub = 0.0;
             //计算平均值
             for (RationCountDataInfo dataInfo : emptyList) {
-                sub += dataInfo.getColValue();
+                sub += Double.parseDouble(dataInfo.getColValue());
             }
             minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
             //添加到空白列表
             currentList.add(ansData);
-            yAbs.setColValue(ansData.getColValue() - minuend);
+            double v = Double.parseDouble(ansData.getColValue()) - minuend;
+            yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v),digit));
             currentList.add(yAbs);
             dealData.setCountData(currentList);
             emptyDataList.add(dealData);
@@ -784,7 +926,8 @@ public class RationMeasureNewWebSocket{
                 for (RationCountDataInfo dataInfo : list) {
                     if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                         newList.add(dataInfo);
-                        yAbs.setColValue(dataInfo.getColValue() - minuend);
+                        double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
+                        yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v1), digit));
                         newList.add(yAbs);
                     }
                 }
@@ -797,8 +940,9 @@ public class RationMeasureNewWebSocket{
             emptyDataList.clear();
             minuend = 0.0;
             emptyList.add(ansData);
-            minuend = ansData.getColValue();
-            yAbs.setColValue(ansData.getColValue() - minuend);
+            minuend = Double.parseDouble(ansData.getColValue());
+            double sumAbs = Double.parseDouble(ansData.getColValue()) - minuend;
+            yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, sumAbs), digit));
             currentList.add(yAbs);
             currentList.add(ansData);
             dealData.setCountData(currentList);

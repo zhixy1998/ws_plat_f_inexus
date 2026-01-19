@@ -20,7 +20,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
-import com.persee.workstation.uv_inexus.dto.concise.rationDto.GuideCreateSampleDTO;
+import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -1196,6 +1196,10 @@ public class RationServiceImpl implements RationService {
                 JSONObject newColData = new JSONObject();
 
                 for (HeadVO head : dto.getUnknowHeads()) {
+                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                        continue;
+                    }
+
                     String s = map.get(head.getIdentity());
                     newColData.put(head.getIdentity(), s);
                 }
@@ -1971,7 +1975,7 @@ public class RationServiceImpl implements RationService {
             ans += value;
         }
         RationCountDataInfo countDataInfo = new RationCountDataInfo();
-        countDataInfo.setColValue(DataCountUtil.formatValue(digit, ans));
+        countDataInfo.setColValue(DataCountUtil.formatValueWithBigDecimal(digit, String.valueOf(ans)));
         countDataInfo.setIdentity(SampleTableEnum.Abs.getIdentity());
         countDataInfo.setHeadName(SampleTableEnum.Abs.getName());
 
@@ -2004,7 +2008,7 @@ public class RationServiceImpl implements RationService {
             ans += value;
         }
         RationCountDataInfo countDataInfo = new RationCountDataInfo();
-        countDataInfo.setColValue(ans);
+        countDataInfo.setColValue(String.valueOf(ans));
         countDataInfo.setIdentity(SampleTableEnum.Abs.getIdentity());
         countDataInfo.setHeadName(SampleTableEnum.Abs.getName());
 
@@ -2278,7 +2282,6 @@ public class RationServiceImpl implements RationService {
                         }
                     }
                 }
-                sampleData.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
 
                 unknowSampleData.add(sampleData);
 
@@ -2512,8 +2515,8 @@ public class RationServiceImpl implements RationService {
         if (one != null && one.getAnalysisResult() != null) {
             List<RationCountDataInfo> countDataList = JSON.parseArray(one.getAnalysisResult(), RationCountDataInfo.class);
             for (RationCountDataInfo countData : countDataList) {
-                if (countData.getColValue() !=null) {
-                    map.put(countData.getIdentity(), DataCountUtil.addZero(countData.getColValue(), digit));
+                if (StringUtils.hasText(countData.getColValue())) {
+                    map.put(countData.getIdentity(), DataCountUtil.addZero(Double.valueOf(countData.getColValue()), digit));
                 }
             }
         }
@@ -2960,14 +2963,14 @@ public class RationServiceImpl implements RationService {
         if (empty) {
             for (RationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
-                    data.add(dataInfo.getColValue());
+                    data.add(Double.parseDouble(dataInfo.getColValue()));
 
                 }
             }
         } else {
             for (RationCountDataInfo dataInfo : countData) {
                 if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                    data.add(dataInfo.getColValue());
+                    data.add(Double.parseDouble(dataInfo.getColValue()));
                 }
             }
         }
@@ -3607,6 +3610,142 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
+    public List<RationCountDataInfo> dataRounding(List<RationCountDataInfo> dataVO, RationParameter parameter) {
+        List<RoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams == null || approxParams.isEmpty()) {
+            log.info("没有设置修约参数");
+            return dataVO;
+        }
+        List<PreCountResultParam> resultParams = parameter.getResultParams();
+        if (resultParams == null || resultParams.isEmpty()) {
+            log.info("没有设置待计算结果参数，不做修约处理");
+            return dataVO;
+        }
+
+        if (dataVO == null || dataVO.isEmpty()) {
+            log.info("没有待修约的数据");
+            return dataVO;
+        }
+        Map<String, String> map = new HashMap<>();
+        for (PreCountResultParam param : resultParams) {
+            map.put(param.getResultIdentity(), param.getResultIdentity() + "-" + param.getFormulaText());
+        }
+
+        map.put(SampleTableEnum.FIT_CONCENTRATION.getIdentity(), SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+        Map<String, List<RoundingParamVO>> roundingInfo = new HashMap<>();
+
+        for (RoundingVO param : approxParams) {
+            String identity = param.getResultIdentity();
+            if (map.containsKey(identity)) {
+                String key = map.get(identity);
+                roundingInfo.put(key, param.getRoundingParams());
+            }
+        }
+        for (RationCountDataInfo count : dataVO) {
+
+            String resultIdentity = count.getIdentity();
+
+            List<RoundingParamVO> list = roundingInfo.get(resultIdentity);
+            if (roundingInfo.containsKey(resultIdentity) && list != null) {
+                String s = roundData(count.getColValue(), list);
+                count.setColValue(s);
+            }
+        }
+
+        return dataVO;
+    }
+
+    @Override
+    public String fitDataRounding(String fitConcentration, RationParameter parameter) {
+
+        BigDecimal bd = new BigDecimal(fitConcentration);
+
+        SystemBusinessParamVO vo = businessParamService.queryBusinessParam();
+        if (vo.getIsNegativeShow() && bd.signum() < 0) {
+            return "未检出";
+        }
+
+        List<RoundingVO> approxParams = parameter.getApproxParams();
+        if (approxParams == null || approxParams.isEmpty()) {
+            log.info("无需修约");
+            return fitConcentration;
+        }
+
+        if (!StringUtils.hasText(fitConcentration)) {
+            log.info("数据为空");
+            return fitConcentration;
+        }
+
+        List<RoundingParamVO> roundingInfo = new ArrayList<>();
+
+        for (RoundingVO param : approxParams) {
+            String identity = param.getResultIdentity();
+            if (SampleTableEnum.FIT_CONCENTRATION.getIdentity().equals(identity)) {
+                roundingInfo = param.getRoundingParams();
+            }
+        }
+
+        if (roundingInfo.isEmpty()) {
+            log.info("没有设置修约规则，无需修约");
+            return fitConcentration;
+        }
+
+        return roundData(fitConcentration, roundingInfo);
+    }
+
+    private String roundData(String value, List<RoundingParamVO> roundingParams) {
+        double middle = Double.parseDouble(value);
+        String  ans = value;
+        for (RoundingParamVO param : roundingParams) {
+            Double lowerLimit = param.getLowerLimit();
+
+            Double upperLimit = param.getUpperLimit();
+
+            // 检查下限
+            boolean lowerCheck = true;
+            if (lowerLimit != null) {
+                if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+                    // 包含下限
+                    lowerCheck = middle >= lowerLimit;
+                } else {
+                    // 不包含下限
+                    lowerCheck = middle > lowerLimit;
+                }
+            }
+
+            // 检查上限
+            boolean upperCheck = true;
+            if (upperLimit != null) {
+                if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+                    // 包含上限
+                    upperCheck = middle <= upperLimit;
+                } else {
+                    // 不包含上限
+                    upperCheck = middle < upperLimit;
+                }
+            }
+
+            if (lowerCheck && upperCheck) {
+                String roundingType = param.getRoundingType();
+
+                if (roundingType == null) {
+                    return value;
+                }
+
+                if (roundingType.equals(RoundingTypeEnums.SIGNIFICANT_FIGURES.getCode())) {
+                    ans = DataCountUtil.formatToSignificantDigits(param.getDecimalPlaces(), BigDecimal.valueOf(middle));
+                } else {
+                    ans = DataCountUtil.addZero(DataCountUtil.formatValue(param.getDecimalPlaces(), middle), param.getDecimalPlaces());
+                }
+
+                return ans;
+            }
+        }
+        return value;
+    }
+
+
+    @Override
     public R<List<RationCountDataInfo>> formula(List<RationWavelengthDataInfo> vo, TMeasureSample sample, TMeasureTask task, RationParameter parameter, Integer digit) {
         if (!StringUtils.hasText(task.getTableInfo())) {
             //缺少分析参数，无法计算分析
@@ -3681,7 +3820,7 @@ public class RationServiceImpl implements RationService {
                 //"公式计算出错！" + resultJson.get("message")
                 return R.fail(YamlMessageSource.getMessageStatic("00300007",resultJson.get("message")));
             }
-            countDataInfo.setColValue((Double) resultJson.get("result"));
+            countDataInfo.setColValue((String) resultJson.get("result"));
             countList.add(countDataInfo);
         }
 
@@ -3825,7 +3964,7 @@ public class RationServiceImpl implements RationService {
                 RationCountDataInfo yAbs = new RationCountDataInfo();
                 yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
                 yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                yAbs.setColValue(Double.parseDouble(DataCountUtil.addZero(0.0, digit)));
+                yAbs.setColValue(DataCountUtil.addZero(0.0, digit));
 
                 List<RationCountDataInfo> currentList = new ArrayList<>();
 
@@ -3835,12 +3974,14 @@ public class RationServiceImpl implements RationService {
                     double sub = 0.0;
                     //计算平均值
                     for (RationCountDataInfo dataInfo : emptyList) {
-                        sub += dataInfo.getColValue();
+                        sub += Double.parseDouble(dataInfo.getColValue());
                     }
                     minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
                     //添加到空白列表
                     currentList.add(ansData);
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+
+                    yAbs.setColValue(String.valueOf(v));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
@@ -3852,11 +3993,12 @@ public class RationServiceImpl implements RationService {
                         for (RationCountDataInfo dataInfo : emList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
+                                double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
 
                                 RationCountDataInfo sumAbs = new RationCountDataInfo();
                                 BeanUtils.copyProperties(yAbs, sumAbs);
 
-                                sumAbs.setColValue(dataInfo.getColValue() - minuend);
+                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
                                 newList.add(sumAbs);
                             }
                         }
@@ -3866,8 +4008,9 @@ public class RationServiceImpl implements RationService {
                     emptyList.clear();
                     emptyDataList.clear();
                     emptyList.add(ansData);
-                    minuend = ansData.getColValue();
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    minuend = Double.parseDouble(ansData.getColValue());
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(yAbs);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -3888,7 +4031,8 @@ public class RationServiceImpl implements RationService {
                     RationCountDataInfo sumAbsData = new RationCountDataInfo();
                     sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                     sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                    sumAbsData.setColValue(ansData.getColValue() - minuend);
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(sumAbsData);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -4010,7 +4154,7 @@ public class RationServiceImpl implements RationService {
                 RationCountDataInfo yAbs = new RationCountDataInfo();
                 yAbs.setHeadName(SampleTableEnum.SUM_Abs.getName());
                 yAbs.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                yAbs.setColValue(0.0);
+                yAbs.setColValue(DataCountUtil.addZero(0.0, digit));
 
                 List<RationCountDataInfo> currentList = new ArrayList<>();
 
@@ -4020,12 +4164,13 @@ public class RationServiceImpl implements RationService {
                     double sub = 0.0;
                     //计算平均值
                     for (RationCountDataInfo dataInfo : emptyList) {
-                        sub += dataInfo.getColValue();
+                        sub += Double.parseDouble(dataInfo.getColValue());
                     }
                     minuend = DataCountUtil.formatValue(digit, sub / emptyList.size());
                     //添加到空白列表
                     currentList.add(ansData);
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v),digit));
                     currentList.add(yAbs);
                     dealData.setCountData(currentList);
                     emptyDataList.add(dealData);
@@ -4037,8 +4182,12 @@ public class RationServiceImpl implements RationService {
                         for (RationCountDataInfo dataInfo : emList) {
                             if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
                                 newList.add(dataInfo);
-                                yAbs.setColValue(dataInfo.getColValue() - minuend);
-                                newList.add(yAbs);
+                                double v1 = Double.parseDouble(dataInfo.getColValue()) - minuend;
+                                RationCountDataInfo sumAbs = new RationCountDataInfo();
+                                BeanUtils.copyProperties(yAbs, sumAbs);
+
+                                sumAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit,v1), digit));
+                                newList.add(sumAbs);
                             }
                         }
                         emptyData.setCountData(newList);
@@ -4047,8 +4196,9 @@ public class RationServiceImpl implements RationService {
                     emptyList.clear();
                     emptyDataList.clear();
                     emptyList.add(ansData);
-                    minuend = ansData.getColValue();
-                    yAbs.setColValue(ansData.getColValue() - minuend);
+                    minuend = Double.parseDouble(ansData.getColValue());
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    yAbs.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
                     currentList.add(yAbs);
                     currentList.add(ansData);
                     dealData.setCountData(currentList);
@@ -4072,11 +4222,12 @@ public class RationServiceImpl implements RationService {
                     RationCountDataInfo sumAbsData = new RationCountDataInfo();
                     sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
                     sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                    sumAbsData.setColValue(ansData.getColValue() - minuend);
-                    toCountData = sumAbsData.getColValue();
+                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                    sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
+                    toCountData = Double.parseDouble(sumAbsData.getColValue());
                     currentList.add(sumAbsData);
                 } else {
-                    toCountData = ansData.getColValue();
+                    toCountData = Double.parseDouble(ansData.getColValue());
                 }
                 currentList.add(ansData);
                 /*
@@ -4084,12 +4235,20 @@ public class RationServiceImpl implements RationService {
                  */
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
-                String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
-                RationCountDataInfo valueData = new RationCountDataInfo();
-                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                valueData.setColValue(ans==null? null : Double.valueOf(ans));
-                currentList.add(valueData);
+                if (fitInfo != null && fitInfo.getRoundCoefficients()!= null) {
+                    String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
+
+                    if (ans != null) {
+                        RationCountDataInfo valueData = new RationCountDataInfo();
+                        valueData.setOriginalValue(ans);
+                        String s = fitDataRounding(ans, parameter);
+
+                        valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                        valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                        valueData.setColValue(s);
+                        currentList.add(valueData);
+                    }
+                }
 
                 //TODO 公式计算，待做
                 dealData.setCountData(currentList);
@@ -4099,6 +4258,7 @@ public class RationServiceImpl implements RationService {
         }
         return R.ok();
     }
+
 
     public RationCountDataInfo getAbsValue(String taskId, String sampleId, String measureDataId, Boolean empty) {
         LambdaQueryWrapper<TMeasureAnalysisData> query = new LambdaQueryWrapper<>();

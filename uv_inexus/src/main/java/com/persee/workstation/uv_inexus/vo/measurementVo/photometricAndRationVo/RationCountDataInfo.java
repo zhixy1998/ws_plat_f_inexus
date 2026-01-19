@@ -22,7 +22,7 @@ public class RationCountDataInfo {
     private String identity;
 
     @ApiModelProperty("值")
-    private Double colValue;
+    private String colValue;
 
     @ApiModelProperty("修约后原始数据，仅针对需要修约的数")
     private String originalValue;

@@ -42,9 +42,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private TimeOneMeasureWebSocket timeOneMeasureWebSocket;
 
     @Autowired
-    private RationMeasureWebSocket RationWebSocket;
-
-    @Autowired
     ConciseRationMeasureWebSocket ConciseRationWebSocket;
 
     @Autowired
@@ -96,8 +93,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(spectrumOneMeasureWebSocket, "/ws/deviceOneMeasure")
                 .setAllowedOrigins("*");
         registry.addHandler(photometricWebSocket, "/ws/photometric")
-                .setAllowedOrigins("*");
-        registry.addHandler(RationWebSocket, "/ws/ration")
                 .setAllowedOrigins("*");
         registry.addHandler(TimeWebSocket, "/ws/timeScan")
                 .setAllowedOrigins("*");

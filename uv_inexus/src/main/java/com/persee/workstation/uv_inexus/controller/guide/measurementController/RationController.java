@@ -9,7 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.concise.rationDto.GuideCreateSampleDTO;
+import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamsDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.RationAddOrDeleteSampleDTO;
@@ -105,7 +105,7 @@ public class RationController {
 
     @PostMapping("createSample")
     @ApiOperation("创建样品接口")
-    public Result createSample(GuideCreateSampleDTO dto) {
+    public Result createSample(@RequestBody GuideCreateSampleDTO dto) {
         R<Boolean> r = rationService.createSample(dto);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
