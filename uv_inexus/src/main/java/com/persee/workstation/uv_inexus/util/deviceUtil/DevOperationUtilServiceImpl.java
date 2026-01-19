@@ -1561,6 +1561,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 Timeout = transition.getTimeout();
                 param = new Object[]{};
                 bytes = protocolItemUtil.calcSendBytes(param, transition);
+                headReceiveBytes = transition.getHeadReceiveBytes();
                 zero = udpSendUtil.knowTotalReceiveSend(deviceId,cmdId, bytes,ReplyNumber,Timeout,connectType, headReceiveBytes);
                 if (!zero.getSuccess()) {
                     return R.fail("零点失败");
