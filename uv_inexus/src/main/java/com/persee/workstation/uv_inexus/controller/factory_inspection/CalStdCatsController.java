@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.CalStdCatsSaveDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.MaterialStatisticsDto;
 import com.persee.workstation.uv_inexus.dto.factory_inspection.QueryCalStdCatsDto;
+import com.persee.workstation.uv_inexus.exception.BusinessException;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.factory_inspection.CalStdCats;
 import com.persee.workstation.uv_inexus.service.factory_inspection.CalStdCatsService;
@@ -40,7 +41,7 @@ public class CalStdCatsController {
      */
     @PostMapping("/saveCalStdCats")
     @ApiOperation("添加标准物种类")
-    public Result addCalStdCats(@Valid @RequestBody CalStdCatsSaveDto cats) {
+    public Result addCalStdCats(@Valid @RequestBody CalStdCatsSaveDto cats){
         return calStdService.addCalStdCats(cats);
     }
 //    /**

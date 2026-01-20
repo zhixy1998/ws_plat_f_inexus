@@ -41,6 +41,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.TEST_CATEGORY;
+
 @Slf4j
 @RestController
 @Api("模板管理")
@@ -105,7 +107,7 @@ public class TemplateController {
     @ApiOperation("查看模板")
     public Result<Map<String, List<Map<String, Object>>>> getGroupedData(
             @RequestParam("templateCode") String templateCode) {
-        return templateService.getGroupedData(templateCode, "检测类别");
+        return templateService.getGroupedData(templateCode, TEST_CATEGORY.getDescription());
     }
 
 //    @GetMapping("/headers")

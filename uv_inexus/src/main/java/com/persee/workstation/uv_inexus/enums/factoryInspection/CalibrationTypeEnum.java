@@ -127,6 +127,20 @@ public enum CalibrationTypeEnum {
     DRIFT_INSPECTION("drift", "漂移检验"),
 
 
+    //波长示值误差
+    WAVELENGTH_ACCURACY("wavelength_accuracy", "波长示值误差"),
+    //波长重复性
+    WAVELENGTH_REPEATABILITY("wavelength_repeatability", "波长重复性"),
+    //透射比示值误差
+    TRANSMITTANCE_ACCURACY("transmittance_accuracy", "透射比示值误差"),
+    //透射比重复性
+    TRANSMITTANCE_REPEATABILITY("transmittance_repeatability", "透射比重复性"),
+    //指标要求
+    INDICATOR_REQUIREMENT("indicator_requirement", "指标要求"),
+    //误差范围
+    ERROR_RANGE("error_range", "误差范围"),
+    //垂直距离范围
+    VERTICAL_DISTANCE_RANGE("vertical_distance_range", "垂直距离范围"),
 
 
     //新建模板或者修改模板

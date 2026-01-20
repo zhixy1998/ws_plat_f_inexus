@@ -75,6 +75,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     @Autowired
     @Lazy
     private DefaultTaskManager defaultTaskManager;
+    @Autowired
+    private SmartExcelContentConverter smartExcelContentConverter;
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
         try {
@@ -516,9 +518,17 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 
     @Override
     public Result<Map<String, Object>> generateReport(String taskId) {
-        Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
-        Map<String, Object> smartContent = SmartExcelContentConverter.convertToSimpleStructure(taskWorkbook);
-        return Result.ok(smartContent);
+        try {
+
+
+            Workbook taskWorkbook = workbookCacheManager.getTaskWorkbook(taskId);
+            Map<String, Object> smartContent = smartExcelContentConverter.convertToSimpleStructure(taskWorkbook);
+            return Result.ok(smartContent);
+
+        }catch (Exception e){
+            log.error("生成报告失败", e);
+        }
+        return Result.fail(null);
     }
 
     @Override

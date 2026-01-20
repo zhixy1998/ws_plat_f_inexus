@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.factory_inspection.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.factory_inspection.CalArtifactsMapper;
@@ -52,26 +53,30 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
 
     @Override
     public Result addCalStdCats(CalStdCatsSaveDto cats) {
-
-        //把特征值和标准值按照中文或者英文分隔，然后把每一项转为double类型，转失败的话就提示错误
-        String[] characteristicValue = cats.getCharacteristicValue().split("[,，]");
-        String[] standardValue = cats.getStandardValue().split("[,，]");
-        if (characteristicValue.length > 0) {
-            for (int i = 0; i < characteristicValue.length; i++) {
-                try {
-                    characteristicValue[i] = String.valueOf(Double.parseDouble(characteristicValue[i]));
-                } catch (Exception e) {
-                    return Result.fail("特征值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+        if (StringUtils.isNotBlank(cats.getCharacteristicValue())) {
+            //把特征值和标准值按照中文或者英文分隔，然后把每一项转为double类型，转失败的话就提示错误
+            String[] characteristicValue = cats.getCharacteristicValue().split("[,，]");
+            if (characteristicValue.length > 0) {
+                for (int i = 0; i < characteristicValue.length; i++) {
+                    try {
+                        characteristicValue[i] = String.valueOf(Double.parseDouble(characteristicValue[i]));
+                    } catch (Exception e) {
+                        return Result.fail("特征值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+                    }
                 }
             }
         }
-        if (standardValue.length > 0) {
+        if (StringUtils.isNotBlank(cats.getStandardValue())) {
 
-            for (int i = 0; i < standardValue.length; i++) {
-                try {
-                    standardValue[i] = String.valueOf(Double.parseDouble(standardValue[i]));
-                } catch (Exception e) {
-                    return Result.fail("标准值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+            String[] standardValue = cats.getStandardValue().split("[,，]");
+            if (standardValue.length > 0) {
+
+                for (int i = 0; i < standardValue.length; i++) {
+                    try {
+                        standardValue[i] = String.valueOf(Double.parseDouble(standardValue[i]));
+                    } catch (Exception e) {
+                        return Result.fail("标准值第" + (i + 1) + "项不是数字，请检查输入格式是否正确");
+                    }
                 }
             }
         }
@@ -80,6 +85,12 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
         if (StringUtil.isBlank(calStdCats.getId())) {
             calStdCats.setId(IdGeneratorUtil.generateIdWithPrefix("cal"));
             calStdCats.setIsDelete(NOT_DELETED.getCode());
+            LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(CalStdCats::getName, calStdCats.getName());
+            long count = this.count(wrapper);
+            if (count > 0) {
+                throw new RuntimeException("标准物名称已存在");
+            }
             int i = calStdCatsMapper.insert(calStdCats);
             return i != 0 ? Result.ok() : Result.fail();
         }

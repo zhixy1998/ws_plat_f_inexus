@@ -27,15 +27,16 @@ public class WebSocketSendUtil {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    @Value("/topic/device")
+//    @Value("/topic/device")
+@Value("/topic/detection")
     private String deviceTopic;
 
     /**
      * 获取设备消息主题
      */
     public String getDeviceMessageTopic(String deviceSerialNumber) {
-        return deviceTopic + "/" + deviceSerialNumber;
-//        return deviceTopic;
+//        return deviceTopic + "/" + deviceSerialNumber;
+        return deviceTopic;
     }
 
     /**

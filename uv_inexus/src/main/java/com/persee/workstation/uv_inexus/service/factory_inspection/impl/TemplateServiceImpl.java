@@ -1255,6 +1255,7 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
         Page<ExcelTemplate> page = new Page<>(templateQeqDto.getPageNum(), templateQeqDto.getPageSize());
         LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery());
+        queryWrapper.like(ExcelTemplate::getCreateBy, templateQeqDto.getUpdateBy()).or().isNull(ExcelTemplate::getCreateBy);
 
         // 获取分页结果
         Page<ExcelTemplate> pageResult = this.page(page, queryWrapper);
@@ -1368,7 +1369,24 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
             List<Map<String, Object>> structuredData = dataList.stream()
                     .map(ExcelDataAsset::getDataMap)
                     .collect(Collectors.toList());
-
+            if (CollectionUtils.isNotEmpty(structuredData)) {
+                for (Map<String, Object> map : structuredData) {
+                    String s = MapUtils.getString(map, "是否为光谱扫描");
+                    if (YES.getDescription().equals(s)){
+                        //光谱扫描
+                        map.put("measureType",0);
+                    }else {
+                        //时间扫描
+                        String timeScanCount = MapUtils.getString(map, "扫描个数");
+                        if (StringUtils.isNotBlank(timeScanCount)) {
+                            map.put("measureType", 1);
+                        }else {
+                            //光度测量
+                            map.put("measureType", 2);
+                        }
+                    }
+                }
+            }
             return Result.ok(structuredData);
         } catch (Exception e) {
             log.error("获取结构化数据失败", e);

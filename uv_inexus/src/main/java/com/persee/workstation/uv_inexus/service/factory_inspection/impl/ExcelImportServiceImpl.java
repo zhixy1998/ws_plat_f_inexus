@@ -209,6 +209,79 @@ public class ExcelImportServiceImpl implements ExcelImportService {
         }
     }
 
+    //找一下高亮的列名
+    public static List<String> findHighlightedHeaders(Sheet sheet) {
+        List<String> result = new ArrayList<>();
+
+        Row headerRow = sheet.getRow(0);
+        if (headerRow == null) {
+            return result;
+        }
+
+        // 获取工作簿对象，用于解析颜色
+        Workbook workbook = sheet.getWorkbook();
+
+        // 找到第一个非空单元格作为基准样式（避免第一列本身就是高亮）
+        CellStyle referenceStyle = null;
+        for (Cell cell : headerRow) {
+            if (cell != null && cell.getStringCellValue() != null && !cell.getStringCellValue().trim().isEmpty()) {
+                referenceStyle = cell.getCellStyle();
+                break;
+            }
+        }
+
+        if (referenceStyle == null) {
+            return result;
+        }
+
+        // 遍历所有表头单元格
+        for (Cell cell : headerRow) {
+            if (cell == null || cell.getStringCellValue() == null) continue;
+
+            CellStyle currentStyle = cell.getCellStyle();
+
+            // 比较填充颜色和填充模式
+            if (!isSameFill(currentStyle, referenceStyle, workbook)) {
+                result.add(cell.getStringCellValue());
+            }
+        }
+
+        return result;
+    }
+
+    private static boolean isSameFill(CellStyle s1, CellStyle s2, Workbook workbook) {
+        // 比较填充模式
+        if (s1.getFillPattern() != s2.getFillPattern()) {
+            return false;
+        }
+
+        // 比较前景色（需要转换为实际颜色）
+        short fg1 = s1.getFillForegroundColor();
+        short fg2 = s2.getFillForegroundColor();
+
+        // 如果都是自动色或无填充，视为相同
+        if ((fg1 == IndexedColors.AUTOMATIC.getIndex() || fg1 == IndexedColors.WHITE.getIndex()) &&
+                (fg2 == IndexedColors.AUTOMATIC.getIndex() || fg2 == IndexedColors.WHITE.getIndex())) {
+            return true;
+        }
+
+        // 如果前景色不同，则样式不同
+        if (fg1 != fg2) {
+            return false;
+        }
+
+        // 可选：比较背景色
+        short bg1 = s1.getFillBackgroundColor();
+        short bg2 = s2.getFillBackgroundColor();
+        if (bg1 != bg2) {
+            return false;
+        }
+
+        return true;
+    }
+
+
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result importExcel(MultipartFile file) {
@@ -261,11 +334,17 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     NOISE_INSPECTION.getDescription(),
                     WAVELENGTH_EDGE_NOISE.getDescription(),
                     DRIFT_INSPECTION.getDescription()
-                    );
+            );
 //            sheetNames.add("Report");
 
             Workbook workbook = extractSheetsToNewWorkbook(file, sheetNames);
 
+            for (Sheet sheet : workbook) {
+                List<String> list = findHighlightedHeaders(sheet);
+                if (!list.isEmpty()) {
+                    log.info("找到高亮列名：{}", list);
+                }
+            }
 //            /*构建要在根目录创建的文件名，路径*/
 //            String projectRoot = System.getProperty("user.dir");
 //            // 生成唯一文件名并保存
@@ -441,7 +520,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     js.put("id", zeroDetail.getStandardId());
                     js.put("name", z);
                     js.put("characteristicValue", StringUtils.isBlank(cats.getCharacteristicValue()) ? "" : cats.getCharacteristicValue());
-                    js.put("standardValue", StringUtils.isBlank(cats.getStandardValue())? "" : cats.getStandardValue());
+                    js.put("standardValue", StringUtils.isBlank(cats.getStandardValue()) ? "" : cats.getStandardValue());
                     dataMap.put(ZERO.getDescription(), js);
                     excelDataAsset.setStructuredData(JSON.toJSONString(dataMap));
                     assetMap.put(assetId, excelDataAsset);
@@ -465,7 +544,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                     js.put("id", measurementDetail.getStandardId());
                     js.put("name", z);
                     js.put("characteristicValue", StringUtils.isBlank(cats.getCharacteristicValue()) ? "" : cats.getCharacteristicValue());
-                    js.put("standardValue", StringUtils.isBlank(cats.getStandardValue())? "" : cats.getStandardValue());
+                    js.put("standardValue", StringUtils.isBlank(cats.getStandardValue()) ? "" : cats.getStandardValue());
                     dataMap.put(MEASUREMENT.getDescription(), js);
                     excelDataAsset.setStructuredData(JSON.toJSONString(dataMap));
                     assetMap.put(assetId, excelDataAsset);

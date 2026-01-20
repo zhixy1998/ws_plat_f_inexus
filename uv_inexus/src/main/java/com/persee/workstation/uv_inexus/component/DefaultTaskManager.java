@@ -68,6 +68,7 @@ public class DefaultTaskManager {
                 //使用最新的任务，不管有没有使用过
                 TaskManagement task1 = taskManagementService.getOne(
                         new LambdaQueryWrapper<TaskManagement>()
+                                .eq(TaskManagement::getCreateBy, updateBy)
                                 .orderByDesc(TaskManagement::getCreated)  // 按创建时间降序
                                 .last("LIMIT 1")  // 只取最新的一条
                 );

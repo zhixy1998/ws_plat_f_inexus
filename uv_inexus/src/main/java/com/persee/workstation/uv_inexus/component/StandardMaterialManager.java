@@ -34,10 +34,18 @@ public class StandardMaterialManager {
         private Set<String> blackBlockIds = new HashSet<>();    // 黑挡块物质ID
         private Set<String> zeroIds = new HashSet<>();          // 校零物质ID
         private Set<String> measureIds = new HashSet<>();       // 测量物质ID
+        private Set<String> baselineIds = new HashSet<>();       // 基线物质ID
         // 按动作类型存储样品池位置
         private Map<MaterialType, Integer> actionPositionMap = new HashMap<>();
     }
 
+    /**
+     * 添加基线物ID
+     */
+    public void addBaselineMaterial(String taskId, String standardId) {
+        StandardMaterialGroup group = materialGroupMap.computeIfAbsent(taskId, k -> new StandardMaterialGroup());
+        group.getBaselineIds().add(standardId);
+    }
     /**
      * 添加黑挡块物质ID
      */
@@ -78,6 +86,7 @@ public class StandardMaterialManager {
                 case BLACK_BLOCK: return group.getBlackBlockIds();
                 case ZERO: return group.getZeroIds();
                 case MEASURE: return group.getMeasureIds();
+                case BASELINE: return group.getBaselineIds();
                 default: return Collections.emptySet();
             }
         }
@@ -88,7 +97,7 @@ public class StandardMaterialManager {
      * 标准物类型枚举
      */
     public enum MaterialType {
-        BLACK_BLOCK, ZERO, MEASURE
+        BLACK_BLOCK, ZERO, MEASURE,BASELINE
     }
     /**
      * 获取指定动作类型的样品池位置
