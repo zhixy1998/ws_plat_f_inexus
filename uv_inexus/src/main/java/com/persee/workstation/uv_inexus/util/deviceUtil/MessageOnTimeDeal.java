@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -280,6 +281,7 @@ public class MessageOnTimeDeal {
         if (isScan) {
             ScanSessionManager.startScan(deviceId);
         }
+        boolean isDark = cmdId.equals("Dark");
 
         MessageStoreManager store = MessageStoreManager.getInstance();
         Map<String, Thread> targetThreadMap = isScan ? scanProcessorThreadMap : baselineProcessorThreadMap;
@@ -379,13 +381,19 @@ public class MessageOnTimeDeal {
                             double constrainedWl = spectrumDataProcessor.getConstrainedWavelength();
                             SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
 
+                            if (isDark){
+                                handleDarkRsd(temp, deviceSerialNumber,sp);
+                                tempMap.remove(deviceSerialNumber);
+                                continue;
+                            }
+
                             if (isScan) {
                                 sp.setScanRsd(temp);
 
-                                SpectrumCalcResult absResult = SpectrumResultCalculator.calculate(1, sp, RANGE);
-                                SpectrumCalcResult tResult   = SpectrumResultCalculator.calculate(2, sp, RANGE);
-                                SpectrumCalcResult esResult  = SpectrumResultCalculator.calculate(3, sp, RANGE);
-                                SpectrumCalcResult erResult  = SpectrumResultCalculator.calculate(4, sp, RANGE);
+                                SpectrumCalcResult absResult = SpectrumResultCalculator.calculate(1, sp, RANGE, sp);
+                                SpectrumCalcResult tResult   = SpectrumResultCalculator.calculate(2, sp, RANGE, sp);
+                                SpectrumCalcResult esResult  = SpectrumResultCalculator.calculate(3, sp, RANGE, sp);
+                                SpectrumCalcResult erResult  = SpectrumResultCalculator.calculate(4, sp, RANGE, sp);
 
                                 sp.setAbsResult(absResult);
                                 sp.setTResult(tResult);
@@ -402,16 +410,23 @@ public class MessageOnTimeDeal {
 
                             } else {
                                 sp.setBaselineRsd(temp);
+                                log.info("[光谱计算] wl={}, Abs={}",
+                                        sp.getWavelength(),
+                                        sp.getAbsResult());
                             }
 
 
                             // ----------------- 5. 放入未知队列 -----------------
-                            if (isFirst) {
-                                log.info("[光谱首条,不存] device={}, cmd={}, wl={}", deviceSerialNumber, cmdId, sp.getWavelength());
-                                isFirst = false;
-                            } else {
-                                unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
-                                log.info("[光谱存入] device={}, cmd={}, wl={}", deviceSerialNumber, cmdId, sp.getWavelength());
+                            if (isScan) {
+                                if (isFirst) {
+                                    log.info("[光谱首条,不存] device={}, cmd={}, wl={}",
+                                            deviceSerialNumber, cmdId, sp.getWavelength());
+                                    isFirst = false;
+                                } else {
+                                    unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
+                                    log.info("[光谱存入] device={}, cmd={}, wl={}",
+                                            deviceSerialNumber, cmdId, sp.getWavelength());
+                                }
                             }
 
                             // 清空半成品准备下一条报文
@@ -445,6 +460,10 @@ public class MessageOnTimeDeal {
                     spectrumProcessorMap.remove(deviceSerialNumber);
                     if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
                     else baselineProcessorThreadMap.remove(deviceSerialNumber);
+
+                    if (isScan) {
+                        clearDarkZ(pointStore, deviceSerialNumber);
+                    }
 
                     store.clearDeviceMessages(deviceId);
                     infoService.newReleaseDevice(deviceSerialNumber);
@@ -486,7 +505,42 @@ public class MessageOnTimeDeal {
                 && message[8] == (byte) 0x00 && message[9] == (byte) 0x00 && message[10] == (byte) 0x00 && message[11] == (byte) 0xBA;
     }
 
-}
+    private void handleDarkRsd(ChangeParam rsd, String deviceSerialNumber,SpectrumPoint sp) {
 
+        String dStr = rsd.getD();
+        String sStr = rsd.getS();
+
+        if (!StringUtils.hasText(dStr) || !StringUtils.hasText(sStr)) return;
+
+        double d = Double.parseDouble(dStr);
+        double z;
+
+        if (d == 0.0) {
+            z = 1.0;
+        } else {
+            double s = Double.parseDouble(sStr);
+            z = s / d;
+        }
+
+        sp.setDarkZ(z);
+        //        DarkZQueueStore.put(deviceSerialNumber, z);
+
+        log.info("[Dark] device={},wl={}, d={}, s={}, Z={}",
+                deviceSerialNumber, sp.getWavelength(),dStr, sStr, z);
+    }
+
+    private void clearDarkZ(SpectrumPointStore store, String deviceSerialNumber) {
+
+        if (store == null) return;
+
+        for (SpectrumPoint sp : store.allPoints()) { // 你真实方法名替换
+            sp.setDarkZ(null);
+        }
+
+        log.info("[CLEAR-DARK-Z] device={} 当前 pointStore 内 darkZ 已清空",
+                deviceSerialNumber);
+    }
+
+}
 
 

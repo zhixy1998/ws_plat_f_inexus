@@ -203,7 +203,7 @@ public class MessageUtil {
                         if (count > 1 ) {
                             currentSocket.setSoTimeout(100);
                             if (cmdId.equals( "BaseLine" ) || cmdId.equals("BaseLineFast") || cmdId.equals("Scan") || cmdId.equals("ScanFast") || cmdId.equals("CheckWLamp") || cmdId.equals("CheckDLamp") || cmdId.equals("CheckWl") || cmdId.equals("CorrectWl") || cmdId.equals("SetWl")){
-                                currentSocket.setSoTimeout(4000);
+                                currentSocket.setSoTimeout(10000);
                             }
                         }
 
@@ -800,7 +800,8 @@ public class MessageUtil {
                 System.out.println("收到当前消息的时间为: "+ System.currentTimeMillis());
                 count++;
                 if (count>1){
-                    scanSocket.setSoTimeout(4000);
+                    //修改时间
+                    scanSocket.setSoTimeout(10000);
                 }
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
 
@@ -923,7 +924,8 @@ public class MessageUtil {
                 scanSocket.receive(receivePacket);
                 count++;
                 if (count > 1) {
-                    scanSocket.setSoTimeout(5000);
+                    //修改了光谱扫描的超时时间
+                    scanSocket.setSoTimeout(10000);
                 }
 
                 byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());

@@ -4104,7 +4104,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             SpectrumPoint point = new SpectrumPoint(Double.parseDouble(wavelength));
                             point.setZeroRsd(pairValue.getKey());
                             point.setMeasureRsd(pairValue.getValue());
-                            SpectrumCalcResult result = SpectrumResultCalculator.calculate(finalPhotoMode, point, SpectrumSourceType.SINGLE);
+                            SpectrumCalcResult result = SpectrumResultCalculator.calculate(finalPhotoMode, point, SpectrumSourceType.SINGLE,point);
                             WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
                             if (anEnum != null) {
                                 JSONObject object = new JSONObject();

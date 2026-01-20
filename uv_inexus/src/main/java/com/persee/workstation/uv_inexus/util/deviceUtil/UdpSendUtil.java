@@ -1035,16 +1035,16 @@ public class UdpSendUtil {
         point.setTimestamp(System.currentTimeMillis());
 
         SpectrumCalcResult absResult =
-                SpectrumResultCalculator.calculate(1, point, SpectrumSourceType.SINGLE);
+                SpectrumResultCalculator.calculate(1, point, SpectrumSourceType.SINGLE,point);
 
         SpectrumCalcResult tResult =
-                SpectrumResultCalculator.calculate(2, point, SpectrumSourceType.SINGLE);
+                SpectrumResultCalculator.calculate(2, point, SpectrumSourceType.SINGLE,point);
 
         SpectrumCalcResult esResult =
-                SpectrumResultCalculator.calculate(3, point, SpectrumSourceType.SINGLE);
+                SpectrumResultCalculator.calculate(3, point, SpectrumSourceType.SINGLE,point);
 
         SpectrumCalcResult erResult =
-                SpectrumResultCalculator.calculate(4, point, SpectrumSourceType.SINGLE);
+                SpectrumResultCalculator.calculate(4, point, SpectrumSourceType.SINGLE,point);
 
         point.setAbsResult(absResult);
         point.setTResult(tResult);

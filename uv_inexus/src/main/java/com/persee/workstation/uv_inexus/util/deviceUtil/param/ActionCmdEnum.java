@@ -12,7 +12,8 @@ public enum ActionCmdEnum {
     BaseLine("BaseLine", "基线扫描"),
     Scan("Scan", "区间扫描"),
     ScanFast("ScanFast", "快速区间扫描"),
-    BaseLineFast("BaseLineFast", "快速基线扫描");
+    BaseLineFast("BaseLineFast", "快速基线扫描"),
+    Dark("Dark","暗电流");
 
     private final String cmdId;
     private final String desc;

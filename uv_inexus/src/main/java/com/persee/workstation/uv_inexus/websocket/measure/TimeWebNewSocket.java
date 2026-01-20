@@ -493,7 +493,7 @@ public class TimeWebNewSocket {
         SpectrumPoint point = new SpectrumPoint(luminosity);
         point.setZeroRsd(baselineData);
         point.setMeasureRsd(changeParam);
-        SpectrumCalcResult calculate = SpectrumResultCalculator.calculate(luminosity, point, SpectrumSourceType.SINGLE);
+        SpectrumCalcResult calculate = SpectrumResultCalculator.calculate(luminosity, point, SpectrumSourceType.SINGLE, point);
 
         context.originalData.add(changeParam);
         calculateAndPushData(deviceSerialNumber, context, param,calculate, xValue);

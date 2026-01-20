@@ -19,7 +19,8 @@ public class SpectrumResultCalculator {             //计算ABS T% Es Er
     public static SpectrumCalcResult calculate(
             int luminosity,
             SpectrumPoint point,
-            SpectrumSourceType sourceType
+            SpectrumSourceType sourceType,
+            SpectrumPoint sp
     ) {
 
         ChangeParam origin;
@@ -43,12 +44,12 @@ public class SpectrumResultCalculator {             //计算ABS T% Es Er
 
         switch (luminosity) {
             case 1: // Abs
-                String tPercent = calcTPercent(origin, real);
+                String tPercent = calcTPercent(origin, real, sp);
                 result.setAbs(calcAbsFromTPercent(tPercent));
                 break;
 
             case 2: // T%
-                result.setTPercent(calcTPercent(origin, real));
+                result.setTPercent(calcTPercent(origin, real, sp));
                 break;
 
             case 3: // Es
@@ -68,12 +69,14 @@ public class SpectrumResultCalculator {             //计算ABS T% Es Er
 
     // ======================= 核心公式 =======================
 
-    /** 透光率 T%（你给的公式，完整保留） */
-    public static String calcTPercent(ChangeParam origin, ChangeParam real) {
+    /** 透光率 T% */
+    public static String calcTPercent(ChangeParam origin, ChangeParam real,SpectrumPoint sp) {
         try {
             double d1 = Double.parseDouble(real.getD());
             double r1 = Double.parseDouble(real.getR());
             double s1 = Double.parseDouble(real.getS());
+            Double Zobj = sp.getDarkZ();
+            double Z = (Zobj == null) ? 1.0 : Zobj;
 
             double a1;
             if (origin == null || origin.isEmpty()) {

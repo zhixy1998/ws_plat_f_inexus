@@ -526,7 +526,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     ) {
 
         boolean isDealOnTime = false;
-        boolean isScan;
 
         /* ================= 1. 设备上下文准备（与 setParam 统一） ================= */
 
@@ -572,7 +571,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         int timeout = transition.getTimeout();
         List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
-        if (cmdId.equals("Scan") || cmdId.equals("BaseLine") || cmdId.equals("ScanFast") || cmdId.equals("BaseLineFast")) {
+        if (cmdId.equals("Scan") || cmdId.equals("BaseLine") || cmdId.equals("ScanFast") || cmdId.equals("BaseLineFast") || cmdId.equals("Dark")) {
             isDealOnTime = true;
         }
 
@@ -813,6 +812,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             int ReplyNumber = transition.getReplyNumber();
             int Timeout = transition.getTimeout();
             byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+            List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
             R<List<SearchInfo>> r = udpSendUtil.searchDevice(defaultIp, comId, bytes, Timeout, inputParam.getConnectType());
             if (r.getSuccess()) {
@@ -1009,7 +1009,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             }
             if (!r.getSuccess()) {
-                deviceManager.removeDevice(deviceId);
                 return R.fail("当前仪器无法连接！");
             }
 
@@ -1039,13 +1038,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 OperationResultEntity entity = (OperationResultEntity) data;
                 if (!entity.getIsSuccess()) {
                     log.error("指令[{}]解析出错，错误原因：{}", comId, entity.getErrorMsg());
-                    deviceManager.removeDevice(deviceId);
                     return R.fail("指令" + comId + "，解析出错！");
                 }
                 BeanUtils.copyProperties(entity, result, getNullPropertyNames(entity));
             } catch (Exception e) {
                 log.error("指令{}，操作过程中数据转换错误，错误信息：{}",comId, e.getMessage());
-                deviceManager.removeDevice(deviceId);
                 return R.fail("数据转换错误");
             }
 

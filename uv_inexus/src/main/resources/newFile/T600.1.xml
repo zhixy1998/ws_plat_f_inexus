@@ -1847,14 +1847,15 @@
 <string/>
 </OutputString>
 <SendBytes>
-<string>181:255:0:14:0:0:0:0:0:0:0:Check</string>
+<string>181:255:19:5:0:0:0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
 <string>254:181:0:14:0:0:0:0:0:0:0:Check</string>
 </ReadBytes>
-    <ReplyNumber>24</ReplyNumber>
+    <ReplyNumber>-1</ReplyNumber>
     <HeadReceiveBytes>
-        <string>255:181:0:14</string>
+        <string>255:181:19:5</string>
+        <string>255:181:19:6</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
@@ -2408,7 +2409,7 @@
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>
-        <string>255:181:255:5</string>
+        <string>255:181:2:11</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>
