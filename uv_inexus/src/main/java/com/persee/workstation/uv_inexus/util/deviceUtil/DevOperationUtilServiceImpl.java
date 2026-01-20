@@ -360,9 +360,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 break;
             case Stop:
                 actionExecutor.submit(() -> stop(inputParam));
+                release = false;
                 break;
             case TimeMeasure:
                 actionExecutor.submit(() -> executeTimeMeasure(inputParam));
+                release = false;
                 break;
             default:
                 infoService.newReleaseDevice(deviceSerialNumber);
