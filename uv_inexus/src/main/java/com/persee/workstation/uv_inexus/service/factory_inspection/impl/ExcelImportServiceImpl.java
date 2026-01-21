@@ -479,6 +479,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
                         cat.setId(IdGeneratorUtil.generateIdWithPrefix("cal"));
                         cat.setName(material);
                         cat.setRemark("导入的默认标准物质种类");
+                        cat.setMaterialType(BASE_FIXED_SUBSTANCE.getCode());
                         return cat;
                     })
                     .collect(Collectors.toList());

@@ -90,7 +90,7 @@ public enum CalibrationTypeEnum {
 
     //标准物质的类型
     BUILT_IN("BuiltIn", "内置物"),
-    BASE_FIXED_SUBSTANCE("BaseFixedSubstance", "初始固定不可删除物质"),
+    BASE_FIXED_SUBSTANCE("Fixed", "初始固定不可删除物质"),
     EXTERNAL_REFERENCE("ExtRef", "外部参考物"),
 //模板类型
     TEMPLATE_BUILT_IN("0", "内置模板"),

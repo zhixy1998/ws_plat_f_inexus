@@ -37,8 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.DELETED;
-import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.NOT_DELETED;
+import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
 
 @Service
 public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdCats>
@@ -85,6 +84,7 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
         if (StringUtil.isBlank(calStdCats.getId())) {
             calStdCats.setId(IdGeneratorUtil.generateIdWithPrefix("cal"));
             calStdCats.setIsDelete(NOT_DELETED.getCode());
+            calStdCats.setCreateBy(cats.getUpdateBy());
             LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(CalStdCats::getName, calStdCats.getName());
             long count = this.count(wrapper);
@@ -104,6 +104,15 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
         queryWrapper.eq(CalArtifacts::getCategoryId, id);
         if (0 != calArtifactsMapper.selectCount(queryWrapper)) {
             return Result.fail("请先删除该标准物下的所有标准实体物!!!");
+        }else {
+            LambdaUpdateWrapper<CalStdCats> wrapper1 = new LambdaUpdateWrapper<>();
+            wrapper1.eq(CalStdCats::getId, id)
+                    .notIn(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode())
+                    .set(CalStdCats::getIsDelete, DELETED.getCode());
+            boolean b = update(wrapper1);
+            if (b){
+                return Result.ok();
+            }
         }
 
         LambdaUpdateWrapper<CalStdCats> wrapper = new LambdaUpdateWrapper<>();

@@ -14,6 +14,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -21,6 +22,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @ApiModel("标准物质分类")
@@ -87,4 +89,10 @@ public class CalStdCats extends BasePO {
     @TableField(exist = false)
     @ApiModelProperty(value = "标准物实体")
     private List<CalArtifacts> children;
+
+    @Override
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    public LocalDateTime getCreated() {
+        return super.getCreated();
+    }
 }

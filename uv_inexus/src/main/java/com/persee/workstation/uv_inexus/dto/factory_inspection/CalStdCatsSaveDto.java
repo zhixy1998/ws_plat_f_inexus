@@ -54,4 +54,9 @@ public class CalStdCatsSaveDto {
      */
     @ApiModelProperty(value="标准值")
     private String standardValue;
+    /**
+     * 修改者
+     */
+    @ApiModelProperty(value="修改者")
+    private String updateBy;
 }
