@@ -330,19 +330,7 @@ public class MessageOnTimeDeal {
                             continue;
                         }
                         if (message[2] == 0x00 && message[3] == 0x00 && message[4] == 0x00 && message[5] == 0x00){
-                            unknowCountMessageQueue.putMessage(
-                                    deviceSerialNumber,
-                                    cmdId,
-                                    EndMarker.NormalStop(deviceSerialNumber, cmdId)
-                            );
-                            spectrumProcessorMap.remove(deviceSerialNumber);
-                            if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
-                            else baselineProcessorThreadMap.remove(deviceSerialNumber);
-
                             flag = 3;
-                            store.clearDeviceMessages(deviceId);
-                            infoService.newReleaseDevice(deviceSerialNumber);
-                            log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
                             return;
                         }
 
@@ -451,13 +439,20 @@ public class MessageOnTimeDeal {
                     Thread.currentThread().interrupt();
                     flag = 2;
                 } finally {
-                    if (flag == 1 || flag == 2 || flag == 3){
+                    if (flag == 1 || flag == 2){
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
                                 EndMarker.unNormal(deviceSerialNumber, cmdId)
                         );
-                    }else{
+                    }else if(flag == 3){
+                        unknowCountMessageQueue.putMessage(
+                                deviceSerialNumber,
+                                cmdId,
+                                EndMarker.NormalStop(deviceSerialNumber, cmdId)
+                        );
+                        log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+                    } else{
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
@@ -474,7 +469,6 @@ public class MessageOnTimeDeal {
 
                     store.clearDeviceMessages(deviceId);
                     infoService.newReleaseDevice(deviceSerialNumber);
-
 
 
                     log.info("[光谱测试] 停止处理光谱数据，设备={}，操作类型={}", deviceSerialNumber, isScan ? "Scan" : "BaseLine");
