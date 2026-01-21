@@ -283,7 +283,7 @@ public class MessageOnTimeDeal {
         }
         boolean isDark = cmdId.equals("Dark");
 
-        boolean isBaseline = cmdId.equals("Baseline") || cmdId.equals("BaselineFast");
+        boolean isBaseline = cmdId.equals("BaseLine") || cmdId.equals("BaseLineFast");
 
         MessageStoreManager store = MessageStoreManager.getInstance();
         Map<String, Thread> targetThreadMap = isScan ? scanProcessorThreadMap : baselineProcessorThreadMap;
