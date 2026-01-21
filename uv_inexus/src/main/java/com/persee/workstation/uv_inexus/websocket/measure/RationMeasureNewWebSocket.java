@@ -23,10 +23,7 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
-import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
@@ -53,6 +50,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+/**
+ * @author xudian
+ */
 @Component
 @Slf4j
 public class RationMeasureNewWebSocket{
@@ -150,7 +150,7 @@ public class RationMeasureNewWebSocket{
             sendError(deviceSerialNumber, "请创建任务后再测量");
             return;
         }
-        if(!StringUtils.hasText(sampleKind)){
+        if (!StringUtils.hasText(sampleKind)) {
             sendError(deviceSerialNumber, "请选择样品类型");
             return;
         }
@@ -177,466 +177,52 @@ public class RationMeasureNewWebSocket{
         } else {
             digit = di;
         }
-        R<TMeasureTaskAttachment> attachmentR = attachmentService.queryByTaskId(taskId);
-        if (attachmentR.getSuccess()) {
-            TMeasureTaskAttachment attachment = attachmentR.getData();
-            if (attachment != null && StringUtils.hasText(attachment.getDataParam())) {
-                QueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
-                if (queryDataDTO.getDigit() != digit) {
-                    reCount = true;
-                }
-            }
-        }
 
-        // 检查任务中是否存在空白样本，如果存在则设置empty为true
-        empty = taskSpecimen.stream()
-                .anyMatch(specimen ->
-                        specimen.getSampleType() != null &&
-                        specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
-                        specimen.getDeleteType() != null &&
-                        specimen.getDeleteType().equals("0")
-                );
-        if (StringUtils.hasText(oneSampleId)){
-            TMeasureSample dealSample = tMeasureSampleService.getById(oneSampleId);
-            if (dealSample == null) {
-                sendError(deviceSerialNumber, "样品不存在");
-                return;
-            }
-            sampleKind = dealSample.getSampleKind();
-
-            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-            if (!setParams.getSuccess()) {
-                sendError(deviceSerialNumber, "参数设置异常！");
-                return;
-            }
-
-            boolean repeat = parameter.getRepeatMode().equals("单池重复");
-            dealSample.setSampleLocation(null);
-            R<RationDataVO> r;
-            if (repeat) {
-                //重复测量，单独处理！
-                r = singleSampleRepeatMeasure(dealSample, parameter, task, deviceSerialNumber);
-
-            } else {
-                r = singleSampleSimpleMeasure(dealSample, parameter, task, deviceSerialNumber);
-            }
-
-            if (!r.getSuccess()) {
-                sendError(deviceSerialNumber, r.getMessage());
-                return;
-            }
-            RationDataVO data = r.getData();
-
-            //保存数据
-            R<RationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
-            if (!saved.getSuccess()) {
-                log.info("数据保存异常");
-                sendError(deviceSerialNumber, "数据保存异常");
-                return;
-            }
-
-            for (TaskSpecimen speciman : taskSpecimen) {
-
-                if (speciman.getSpecimenKey().equals(oneSampleId)) {
-                    speciman.setIsTested(right);
-                }
-            }
-            task = tMeasureTaskService.getById(task.getId());
-            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-            task.setDeviceSerialNumber(deviceSerialNumber);
-            tMeasureTaskService.updateById(task);
+        try {
 
 
-            if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
-
-                rationService.changeStandSampleDataDigit(taskId, digit);
-                rationService.changeUnknowSampleDigit(taskId, digit);
-
-                JSONObject message = new JSONObject();
-                message.put("success", "测量完成");
-                sendMessage(deviceSerialNumber, message);
-
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("result", "finish");
-                sendMessage(deviceSerialNumber, jsonObject);
-
-
-            } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
-
-                rationService.changeUnknowSampleDigit(taskId, digit);
-
-                JSONObject message = new JSONObject();
-                message.put("success", "测量完成");
-                sendMessage(deviceSerialNumber, message);
-
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("result", "finish");
-                sendMessage(deviceSerialNumber, jsonObject);
-
-            } else {
-                log.info("未知的样品种类");
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("result", "finish");
-
-                sendMessage(deviceSerialNumber, jsonObject);
-            }
-            return;
-        }
-
-
-        List<Integer> usefulLocation = samplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-        R<FSamplePoolInfoVO> poolInfo = samplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
-        if (!poolInfo.getSuccess()) {
-            sendError(deviceSerialNumber, "获取样品池信息失败");
-            return;
-        }
-        FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
-
-        boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool() != null && poolInfoVO.getIsAutoChangePool();
-
-
-        int usefulPoolNum = 1;
-        int measureCount = 0;
-
-        int currentPoolNum = -1;
-        int maxPoolNum = 0;
-
-        if (isAutoChangePool) {
-            if (usefulLocation == null || usefulLocation.isEmpty()) {
-                log.info("无可用位置");
-                sendError(deviceSerialNumber, "无可用样品池位置");
-                return;
-            }
-            usefulPoolNum = usefulLocation.size();
-            maxPoolNum = Collections.max(usefulLocation);
-        }
-
-        task.setDeviceSerialNumber(deviceSerialNumber);
-
-        R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
-        if (!setParams.getSuccess()) {
-            sendError(deviceSerialNumber, "参数设置异常！");
-            return;
-        }
-
-        //后续添加仪器状态检测
-        String ip = infoService.getIp(deviceSerialNumber);
-
-        if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
-            boolean repeat = parameter.getRepeatMode().equals("单池重复");
-
-            /*
-             * 循环所有样品
-             * 删除的过滤
-             * 测过的，要处理
-             */
-
-            //参与曲线拟合的数据
-            List<RationCountDataInfo> fitCurveData = new ArrayList<>();
-            //参与曲线拟合的参数
-            List<String> fitCurveParams = new ArrayList<>();
-            //测过的未知样，曲线拟合之后要重新计算
-            List<TaskSpecimen> testUnknowSample = new ArrayList<>();
-
-            for (TaskSpecimen specimen : taskSpecimen) {
-
-                if (!isAutoChangePool && measureCount == 1) {
-                    log.info("不自动切换样品池，只测一个就结束");
-                    break;
-                }
-
-                if (measureCount >= usefulPoolNum || currentPoolNum == maxPoolNum) {
-                    break;
-                }
-
-                if (specimen.getDeleteType().equals(right)) {
-                    System.out.println("删除的样品,不需要测量");
-                    continue;
-                }
-
-                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (!sample.getSampleKind().equals(sampleKind)) {
-
-                    if (sample.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity()) && specimen.getIsTested().equals(right)) {
-                        testUnknowSample.add(specimen);
-                    }
-
-                    log.info("不是需要的样品，跳过");
-                    continue;
-                }
-
-                if (specimen.getIsTested().equals(right)) {
-                    /*
-                    测过的样品
-                    处理空白样-----空白样统一处理，处理之后的放公共变量里
-                    标准样需要返回分析结果，ABS或sumAbs
-                    重新计算。遍历过程要保障，都是测过的样品，顺序不能乱
-                    标准样，首先，取原始数据，计算abs值，计算sumAbs值
-                    保存数据库？不对，测过的应该不会变，所以，直接取值
-                    空白样一样，直接取值存即可
-                     */
-                    LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                    queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                            .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                            .orderByDesc(TMeasureData::getSerialNumber)
-                            .last("limit 1");
-                    TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-                    if (data == null) {
-                        data = new TMeasureData();
-                    }
-                    List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
-                    if (list != null && !list.isEmpty()) {
-                        RationCountDataInfo ansData;
-                        RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
-                        dealData.setSampleId(specimen.getSpecimenKey());
-                        dealData.setTaskId(taskId);
-                        dealData.setMeasureDataId(data.getId());
-
-                        if (repeat) {
-                            List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
-                            R<RationCountDataInfo> absValue = rationService.countAbsValue(wavelengthDataInfos, parameter, digit);
-                            if (!absValue.getSuccess()) {
-                                log.info("计算abs失败");
-                                continue;
-                            }
-                            ansData = absValue.getData();
-
-                        } else {
-
-                            R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
-                            if (!absValue.getSuccess()) {
-                                log.info("重新计算abs失败");
-                                continue;
-                            }
-                            ansData = absValue.getData();
-                        }
-
-                        if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                            lastIsEmpty = true;
-
-                            emptySampleDeal(digit, ansData, dealData);
-                        } else {
-                            lastIsEmpty = false;
-                            //测量过的数据，非空白样，添加标准浓度为了拟合曲线
-                            //TODO 未来需要添加质量和浓度的区分
-                            fitCurveParams.add(sample.getNormalConcentration());
-
-                            if (empty) {
-                                RationCountDataInfo sumAbsData = new RationCountDataInfo();
-                                sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
-                                sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                                double v = Double.parseDouble(ansData.getColValue()) - minuend;
-                                String s = DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit);
-                                sumAbsData.setColValue(s);
-                                fitCurveData.add(sumAbsData);
-                            } else {
-                                fitCurveData.add(ansData);
-                            }
-                        }
-                    }
-                    continue;
-                }
-
-                /*
-                 * 测量
-                 * 区分重复与不重复测，测量 + 计算出abs值一起
-                 */
-                R<RationDataVO> r;
-                if (repeat) {
-                    //重复测量，单独处理！
-                    r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber);
-
-                } else {
-                    try {
-                        r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
+            R<TMeasureTaskAttachment> attachmentR = attachmentService.queryByTaskId(taskId);
+            if (attachmentR.getSuccess()) {
+                TMeasureTaskAttachment attachment = attachmentR.getData();
+                if (attachment != null && StringUtils.hasText(attachment.getDataParam())) {
+                    QueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
+                    if (queryDataDTO.getDigit() != digit) {
+                        reCount = true;
                     }
                 }
+            }
 
-                if (!r.getSuccess()) {
-                    sendError(deviceSerialNumber, r.getMessage());
+            // 检查任务中是否存在空白样本，如果存在则设置empty为true
+            empty = taskSpecimen.stream()
+                    .anyMatch(specimen ->
+                            specimen.getSampleType() != null &&
+                                    specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity()) &&
+                                    specimen.getDeleteType() != null &&
+                                    specimen.getDeleteType().equals("0")
+                    );
+            if (StringUtils.hasText(oneSampleId)) {
+                TMeasureSample dealSample = tMeasureSampleService.getById(oneSampleId);
+                if (dealSample == null) {
+                    sendError(deviceSerialNumber, "样品不存在");
                     return;
                 }
-                RationDataVO data = r.getData();
-                List<RationCountDataInfo> measureAbsDataList = data.getCountData();
+                sampleKind = dealSample.getSampleKind();
 
-                RationCountDataInfo absData = new RationCountDataInfo();
-                for (RationCountDataInfo dataInfo : measureAbsDataList) {
-                    if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                        BeanUtils.copyProperties(dataInfo, absData);
-                        break;
-                    }
-                }
-                if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                    lastIsEmpty = true;
-                    R<RationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
-                    if (!saved.getSuccess()) {
-                        log.info("数据保存异常");
-                        sendError(deviceSerialNumber, saved.getMessage());
-                        return;
-                    }
-
-                    RationSaveCountDataInfo measureData = saved.getData();
-                    String measureDataId = measureData.getMeasureDataId();
-
-                    RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
-                    dealData.setTaskId(taskId);
-                    dealData.setSampleId(sample.getId());
-                    dealData.setMeasureDataId(measureDataId);
-
-                    emptySampleDeal(digit, absData, dealData);
-                    for (RationSaveCountDataInfo info : emptyDataList) {
-                        String sampleId = info.getSampleId();
-                        for (RationCountDataInfo countDatum : info.getCountData()) {
-                            if (countDatum.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
-                                sampleSend(deviceSerialNumber, sampleId, countDatum.getIdentity(), null, String.valueOf(countDatum.getColValue()));
-                            }
-                        }
-
-                    }
-                    continue;
-                } else {
-                    lastIsEmpty = false;
-                    //测量成功后，非空白样，添加标准浓度为了拟合曲线
-                    //TODO 未来需要添加质量和浓度的区分
-                    fitCurveParams.add(sample.getNormalConcentration());
-
-                    if (empty) {
-                        RationCountDataInfo sumAbsData = new RationCountDataInfo();
-                        sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
-                        sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                        double v = Double.parseDouble(absData.getColValue()) - minuend;
-                        sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
-                        fitCurveData.add(sumAbsData);
-                        measureAbsDataList.add(sumAbsData);
-
-                        sampleSend(deviceSerialNumber, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
-
-                    } else {
-                        fitCurveData.add(absData);
-                    }
-                    sendPoint(deviceSerialNumber, sample.getNormalConcentration(), absData.getColValue(), parameter);
-
-                    data.setCountData(measureAbsDataList);
-                    rationService.saveSampleMeasureData(data);
-                }
-                specimen.setIsTested(right);
-            }
-            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-            tMeasureTaskService.updateById(task);
-
-            //所有样品测完，拟合曲线
-            //拟合曲线
-            R<FittingReceiveInfo> infoR = rationService.fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
-
-            if (!infoR.getSuccess()) {
-                sendError(deviceSerialNumber, infoR.getMessage());
-                return;
-            }
-            FittingReceiveInfo fittingReceiveInfo = infoR.getData();
-            String fitParam = JSON.toJSONString(fittingReceiveInfo);
-            task.setFittingParam(fitParam);
-            tMeasureTaskService.updateById(task);
-
-            //绘图
-            RationFitCurveVO curveData = rationService.curveData(fittingReceiveInfo);
-
-
-            JSONObject payload = new JSONObject();
-            payload.put("R2", curveData.getR2());
-            payload.put("dataList", curveData.getDataList());
-            payload.put("curveType", curveData.getCurveType());
-            payload.put("equation", curveData.getEquation());
-            payload.put("equationType", RationCurveParamEnums.getName(parameter.getEquationType()));
-            payload.put("coefficientList", curveData.getCoefficientList());
-            sendMessage(deviceSerialNumber, payload);
-
-
-            if (!testUnknowSample.isEmpty()) {
-                reCountUnknowSampleData(deviceSerialNumber, testUnknowSample, taskId, fittingReceiveInfo, parameter);
-            }
-
-
-        } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
-            boolean repeat = parameter.getRepeatMode().equals("单池重复");
-            /*
-             * 循环所有样品
-             * 删除的过滤
-             * 测过的，要处理
-             */
-            for (TaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(right)) {
-                    System.out.println("删除的样品,不需要测量");
-                    continue;
+                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+                if (!setParams.getSuccess()) {
+                    sendError(deviceSerialNumber, "参数设置异常！");
+                    return;
                 }
 
-                TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (!sample.getSampleKind().equals(sampleKind)) {
-                    log.info("不是需要的样品，跳过");
-                    continue;
-                }
-
-                if (specimen.getIsTested().equals(right)) {
-                    /*
-                    测过的样品，未知样，只需要处理空白即可
-                     */
-                    if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                        //只处理空白样
-                        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                        queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                                .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                                .orderByDesc(TMeasureData::getSerialNumber)
-                                .last("limit 1");
-                        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
-                        List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
-                        if (list != null && !list.isEmpty()) {
-                            RationCountDataInfo ansData;
-
-                            RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
-                            dealData.setSampleId(specimen.getSpecimenKey());
-                            dealData.setTaskId(taskId);
-                            dealData.setMeasureDataId(data.getId());
-
-                            if (repeat) {
-                                List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
-                                R<RationCountDataInfo> absValue = rationService.countAbsValue(wavelengthDataInfos, parameter, digit);
-                                if (!absValue.getSuccess()) {
-                                    log.info("数据处理失败");
-                                    continue;
-                                }
-                                ansData = absValue.getData();
-
-                            } else {
-
-                                R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
-                                if (!absValue.getSuccess()) {
-                                    log.info("数据处理失败");
-                                    continue;
-                                }
-                                ansData = absValue.getData();
-                            }
-
-                            emptySampleDeal(digit, ansData, dealData);
-                        }
-                    }
-                }
-
-                /*
-                 * 测量
-                 * 区分重复与不重复测，测量 + 计算出abs值一起
-                 */
+                boolean repeat = parameter.getRepeatMode().equals("单池重复");
+                dealSample.setSampleLocation(null);
                 R<RationDataVO> r;
                 if (repeat) {
                     //重复测量，单独处理！
-                    r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber);
+                    r = singleSampleRepeatMeasure(dealSample, parameter, task, deviceSerialNumber);
 
                 } else {
-                    try {
-                        r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+                    r = singleSampleSimpleMeasure(dealSample, parameter, task, deviceSerialNumber);
                 }
 
                 if (!r.getSuccess()) {
@@ -649,44 +235,553 @@ public class RationMeasureNewWebSocket{
                 R<RationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
                 if (!saved.getSuccess()) {
                     log.info("数据保存异常");
-                    sendError(deviceSerialNumber, saved.getMessage());
+                    sendError(deviceSerialNumber, "数据保存异常");
                     return;
                 }
-                RationSaveCountDataInfo saveDataInfo = saved.getData();
 
-                List<RationCountDataInfo> measureAbsDataList = saveDataInfo.getCountData();
+                for (TaskSpecimen speciman : taskSpecimen) {
 
-                RationCountDataInfo absData = new RationCountDataInfo();
-                for (RationCountDataInfo dataInfo : measureAbsDataList) {
-                    if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
-                        BeanUtils.copyProperties(dataInfo, absData);
-                        break;
+                    if (speciman.getSpecimenKey().equals(oneSampleId)) {
+                        speciman.setIsTested(right);
                     }
                 }
-                if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                    lastIsEmpty = true;
+                task = tMeasureTaskService.getById(task.getId());
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                task.setDeviceSerialNumber(deviceSerialNumber);
+                tMeasureTaskService.updateById(task);
 
-                    String measureDataId = saveDataInfo.getMeasureDataId();
 
-                    RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
-                    dealData.setTaskId(taskId);
-                    dealData.setSampleId(sample.getId());
-                    dealData.setMeasureDataId(measureDataId);
+                if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
 
-                    emptySampleDeal(digit, absData, dealData);
-                    for (RationSaveCountDataInfo info : emptyDataList) {
-                        String sampleId = info.getSampleId();
-                        for (RationCountDataInfo countDatum : info.getCountData()) {
-                            if (countDatum.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
-                                sampleSend(deviceSerialNumber, sampleId, countDatum.getIdentity(), null, String.valueOf(countDatum.getColValue()));
-                            }
+                    rationService.changeStandSampleDataDigit(taskId, digit);
+                    rationService.changeUnknowSampleDigit(taskId, digit);
+
+                    JSONObject message = new JSONObject();
+                    message.put("success", "测量完成");
+                    sendMessage(deviceSerialNumber, message);
+
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("result", "finish");
+                    sendMessage(deviceSerialNumber, jsonObject);
+
+                } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+
+                    rationService.changeUnknowSampleDigit(taskId, digit);
+
+                    JSONObject message = new JSONObject();
+                    message.put("success", "测量完成");
+                    sendMessage(deviceSerialNumber, message);
+
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("result", "finish");
+                    sendMessage(deviceSerialNumber, jsonObject);
+
+                } else {
+                    log.info("未知的样品种类");
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("result", "finish");
+
+                    sendMessage(deviceSerialNumber, jsonObject);
+                }
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return;
+            }
+
+
+            List<Integer> usefulLocation = samplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            R<FSamplePoolInfoVO> poolInfo = samplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (!poolInfo.getSuccess()) {
+                sendError(deviceSerialNumber, "获取样品池信息失败");
+                return;
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+
+            boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool() != null && poolInfoVO.getIsAutoChangePool();
+
+
+            int usefulPoolNum = 1;
+            int measureCount = 0;
+
+            int currentPoolNum = -1;
+            int maxPoolNum = 0;
+
+            if (isAutoChangePool) {
+                if (usefulLocation == null || usefulLocation.isEmpty()) {
+                    log.info("无可用位置");
+                    sendError(deviceSerialNumber, "无可用样品池位置");
+                    return;
+                }
+                usefulPoolNum = usefulLocation.size();
+                maxPoolNum = Collections.max(usefulLocation);
+            }
+
+            task.setDeviceSerialNumber(deviceSerialNumber);
+
+            R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+            if (!setParams.getSuccess()) {
+                sendError(deviceSerialNumber, "参数设置异常！");
+                return;
+            }
+
+            //后续添加仪器状态检测
+            String ip = infoService.getIp(deviceSerialNumber);
+
+            if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+                boolean repeat = parameter.getRepeatMode().equals("单池重复");
+
+                /*
+                 * 循环所有样品
+                 * 删除的过滤
+                 * 测过的，要处理
+                 */
+
+                //参与曲线拟合的数据
+                List<RationCountDataInfo> fitCurveData = new ArrayList<>();
+                //参与曲线拟合的参数
+                List<String> fitCurveParams = new ArrayList<>();
+                //测过的未知样，曲线拟合之后要重新计算
+                List<TaskSpecimen> testUnknowSample = new ArrayList<>();
+
+                for (TaskSpecimen specimen : taskSpecimen) {
+
+                    if (!isAutoChangePool && measureCount == 1) {
+                        log.info("不自动切换样品池，只测一个就结束");
+                        break;
+                    }
+
+                    if (measureCount >= usefulPoolNum || currentPoolNum == maxPoolNum) {
+                        break;
+                    }
+
+                    if (specimen.getDeleteType().equals(right)) {
+                        System.out.println("删除的样品,不需要测量");
+                        continue;
+                    }
+
+                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                    if (!sample.getSampleKind().equals(sampleKind)) {
+
+                        if (sample.getSampleKind().equals(SampleTypeEnum.kind_unknown.getIdentity()) && specimen.getIsTested().equals(right)) {
+                            testUnknowSample.add(specimen);
                         }
 
+                        log.info("不是需要的样品，跳过");
+                        continue;
                     }
-                    continue;
-                } else {
-                    lastIsEmpty = false;
-                    //TODO 未来需要添加质量和浓度的区分
+
+                    if (specimen.getIsTested().equals(right)) {
+                    /*
+                    测过的样品
+                    处理空白样-----空白样统一处理，处理之后的放公共变量里
+                    标准样需要返回分析结果，ABS或sumAbs
+                    重新计算。遍历过程要保障，都是测过的样品，顺序不能乱
+                    标准样，首先，取原始数据，计算abs值，计算sumAbs值
+                    保存数据库？不对，测过的应该不会变，所以，直接取值
+                    空白样一样，直接取值存即可
+                     */
+                        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                        queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                                .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                                .orderByDesc(TMeasureData::getSerialNumber)
+                                .last("limit 1");
+                        TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+                        if (data == null) {
+                            data = new TMeasureData();
+                        }
+                        List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
+                        if (list != null && !list.isEmpty()) {
+                            RationCountDataInfo ansData;
+                            RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
+                            dealData.setSampleId(specimen.getSpecimenKey());
+                            dealData.setTaskId(taskId);
+                            dealData.setMeasureDataId(data.getId());
+
+                            if (repeat) {
+                                List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
+                                R<RationCountDataInfo> absValue = rationService.countAbsValue(wavelengthDataInfos, parameter, digit);
+                                if (!absValue.getSuccess()) {
+                                    log.info("计算abs失败");
+                                    continue;
+                                }
+                                ansData = absValue.getData();
+
+                            } else {
+
+                                R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
+                                if (!absValue.getSuccess()) {
+                                    log.info("重新计算abs失败");
+                                    continue;
+                                }
+                                ansData = absValue.getData();
+                            }
+
+                            if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                                lastIsEmpty = true;
+
+                                emptySampleDeal(digit, ansData, dealData);
+                            } else {
+                                lastIsEmpty = false;
+                                //测量过的数据，非空白样，添加标准浓度为了拟合曲线
+                                //TODO 未来需要添加质量和浓度的区分
+                                fitCurveParams.add(sample.getNormalConcentration());
+
+                                if (empty) {
+                                    RationCountDataInfo sumAbsData = new RationCountDataInfo();
+                                    sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                                    sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
+                                    double v = Double.parseDouble(ansData.getColValue()) - minuend;
+                                    String s = DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit);
+                                    sumAbsData.setColValue(s);
+                                    fitCurveData.add(sumAbsData);
+                                } else {
+                                    fitCurveData.add(ansData);
+                                }
+                            }
+                        }
+                        continue;
+                    }
+
+                    /*
+                     * 测量
+                     * 区分重复与不重复测，测量 + 计算出abs值一起
+                     */
+                    R<RationDataVO> r;
+                    if (repeat) {
+                        //重复测量，单独处理！
+                        r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber);
+
+                    } else {
+                        try {
+                            r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    if (!r.getSuccess()) {
+                        sendError(deviceSerialNumber, r.getMessage());
+                        return;
+                    }
+                    measureCount++;
+                    RationDataVO data = r.getData();
+                    List<RationCountDataInfo> measureAbsDataList = data.getCountData();
+
+                    specimen.setIsTested(right);
+                    task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                    tMeasureTaskService.updateById(task);
+
+                    RationCountDataInfo absData = new RationCountDataInfo();
+                    for (RationCountDataInfo dataInfo : measureAbsDataList) {
+                        if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                            BeanUtils.copyProperties(dataInfo, absData);
+                            break;
+                        }
+                    }
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                        lastIsEmpty = true;
+                        R<RationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
+                        if (!saved.getSuccess()) {
+                            log.info("数据保存异常");
+                            sendError(deviceSerialNumber, saved.getMessage());
+                            return;
+                        }
+
+                        RationSaveCountDataInfo measureData = saved.getData();
+                        String measureDataId = measureData.getMeasureDataId();
+
+                        RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
+                        dealData.setTaskId(taskId);
+                        dealData.setSampleId(sample.getId());
+                        dealData.setMeasureDataId(measureDataId);
+
+                        emptySampleDeal(digit, absData, dealData);
+                        for (RationSaveCountDataInfo info : emptyDataList) {
+                            String sampleId = info.getSampleId();
+                            for (RationCountDataInfo countDatum : info.getCountData()) {
+                                if (countDatum.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
+                                    sampleSend(deviceSerialNumber, sampleId, countDatum.getIdentity(), null, String.valueOf(countDatum.getColValue()));
+                                }
+                            }
+
+                        }
+                        lastIsEmpty = true;
+                        specimen.setIsTested(right);
+                        continue;
+                    } else {
+                        lastIsEmpty = false;
+                        //测量成功后，非空白样，添加标准浓度为了拟合曲线
+                        //TODO 未来需要添加质量和浓度的区分
+                        fitCurveParams.add(sample.getNormalConcentration());
+
+                        if (empty) {
+                            RationCountDataInfo sumAbsData = new RationCountDataInfo();
+                            sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                            sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
+                            double v = Double.parseDouble(absData.getColValue()) - minuend;
+                            sumAbsData.setColValue(DataCountUtil.addZero(DataCountUtil.formatValue(digit, v), digit));
+                            fitCurveData.add(sumAbsData);
+                            measureAbsDataList.add(sumAbsData);
+
+                            sampleSend(deviceSerialNumber, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
+                            sendPoint(deviceSerialNumber, sample.getNormalConcentration(), sumAbsData.getColValue(), parameter);
+                        } else {
+                            fitCurveData.add(absData);
+                            sendPoint(deviceSerialNumber, sample.getNormalConcentration(), absData.getColValue(), parameter);
+                        }
+                        data.setCountData(measureAbsDataList);
+                        rationService.saveSampleMeasureData(data);
+                        specimen.setIsTested(right);
+                    }
+                    specimen.setIsTested(right);
+                }
+                task = tMeasureTaskService.getById(taskId);
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                tMeasureTaskService.updateById(task);
+
+                if (isAutoChangePool) {
+
+                    DevOperationInputParam inputParam = new DevOperationInputParam();
+                    inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                    inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+                    SetParam endParam = new SetParam();
+
+                    endParam.setCellPos(1);
+                    JSONObject object = new JSONObject();
+                    object.put("currentPoolNum", 1);
+                    sendMessage(deviceSerialNumber, object);
+
+                    inputParam.setParam(endParam);
+
+                    operationUtilService.operation(inputParam);
+                }
+
+                //所有样品测完，拟合曲线
+                //拟合曲线
+                int minPointNum = Integer.MIN_VALUE + 1;
+
+                switch (parameter.getCurveType()) {
+                    case "1":
+                        minPointNum = 2;
+                        break;
+
+                    case "2":
+                        minPointNum = 3;
+                        break;
+
+                    case "3":
+                        minPointNum = 4;
+                        break;
+
+                    case "4":
+                        minPointNum = 5;
+                        break;
+                }
+
+                if (parameter.getZeroMethod() != null && parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
+                    minPointNum = minPointNum - 1;
+                }
+
+                if (fitCurveData.size() < minPointNum) {
+                    infoService.releaseDevice(deviceSerialNumber);
+                    log.info("数据点数不足，不进行曲线拟合");
+                    JSONObject message = new JSONObject();
+                    message.put("success", "测量完成，请更换样品继续测量。");
+                    sendMessage(deviceSerialNumber, message);
+                    message.clear();
+                    message.put("result", "finish");
+                    sendMessage(deviceSerialNumber, message);
+                    return;
+                }
+                R<FittingReceiveInfo> infoR = rationService.fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
+
+                if (!infoR.getSuccess()) {
+                    log.info("曲线拟合异常");
+                    sendError(deviceSerialNumber, infoR.getMessage());
+                    return;
+                }
+                FittingReceiveInfo fittingReceiveInfo = infoR.getData();
+                String fitParam = JSON.toJSONString(fittingReceiveInfo);
+                task.setFittingParam(fitParam);
+                tMeasureTaskService.updateById(task);
+
+
+                //绘图
+                RationFitCurveVO curveData = rationService.curveData(fittingReceiveInfo);
+
+
+                JSONObject payload = new JSONObject();
+                if (StringUtils.hasText(curveData.getR2())) {
+                    payload.put("r2", curveData.getR2());
+                }
+                if (StringUtils.hasText(curveData.getR())) {
+                    payload.put("r", curveData.getR());
+                }
+                payload.put("dataList", curveData.getDataList());
+                payload.put("curveType", curveData.getCurveType());
+                payload.put("equation", curveData.getEquation());
+                payload.put("equationType", RationCurveParamEnums.getName(parameter.getEquationType()));
+                payload.put("coefficientList", curveData.getCoefficientList());
+                sendMessage(deviceSerialNumber, payload);
+
+
+                if (!testUnknowSample.isEmpty()) {
+                    reCountUnknowSampleData(deviceSerialNumber, testUnknowSample, taskId, fittingReceiveInfo, parameter);
+                }
+
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成，请更换样品继续测量。");
+                sendMessage(deviceSerialNumber, message);
+
+                message.clear();
+                message.put("result", "finish");
+                sendMessage(deviceSerialNumber, message);
+
+            } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+                boolean repeat = parameter.getRepeatMode().equals("单池重复");
+                /*
+                 * 循环所有样品
+                 * 删除的过滤
+                 * 测过的，要处理
+                 */
+                for (TaskSpecimen specimen : taskSpecimen) {
+
+                    if (!isAutoChangePool && measureCount == 1) {
+                        log.info("不自动切换样品池，只测一个就结束");
+                        break;
+                    }
+
+                    if (measureCount >= usefulPoolNum || currentPoolNum == maxPoolNum) {
+                        break;
+                    }
+
+                    if (specimen.getDeleteType().equals(right)) {
+                        System.out.println("删除的样品,不需要测量");
+                        continue;
+                    }
+
+                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                    if (!sample.getSampleKind().equals(sampleKind)) {
+                        log.info("不是需要的样品，跳过");
+                        continue;
+                    }
+
+                    if (specimen.getIsTested().equals(right)) {
+                    /*
+                    测过的样品，未知样，只需要处理空白即可
+                     */
+                        if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+                            //只处理空白样
+                            LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+                            queryWrapper.eq(TMeasureData::getTaskId, taskId)
+                                    .eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
+                                    .orderByDesc(TMeasureData::getSerialNumber)
+                                    .last("limit 1");
+                            TMeasureData data = tMeasureDataService.getOne(queryWrapper);
+                            if (data == null) {
+                                data = new TMeasureData();
+                            }
+                            List<RationWavelengthDataInfo> list = JSON.parseArray(data.getOriginalCalculationData(), RationWavelengthDataInfo.class);
+                            if (list != null && !list.isEmpty()) {
+                                RationCountDataInfo ansData;
+
+                                RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
+                                dealData.setSampleId(specimen.getSpecimenKey());
+                                dealData.setTaskId(taskId);
+                                dealData.setMeasureDataId(data.getId());
+
+                                if (repeat) {
+                                    List<RationWavelengthDataInfo> wavelengthDataInfos = countRepeatData(list, digit);
+                                    R<RationCountDataInfo> absValue = rationService.countAbsValue(wavelengthDataInfos, parameter, digit);
+                                    if (!absValue.getSuccess()) {
+                                        log.info("数据处理失败");
+                                        continue;
+                                    }
+                                    ansData = absValue.getData();
+
+                                } else {
+
+                                    R<RationCountDataInfo> absValue = rationService.countAbsValue(list, parameter, digit);
+                                    if (!absValue.getSuccess()) {
+                                        log.info("数据处理失败");
+                                        continue;
+                                    }
+                                    ansData = absValue.getData();
+                                }
+
+                                emptySampleDeal(digit, ansData, dealData);
+                            }
+                        }
+                    }
+
+                    /*
+                     * 测量
+                     * 区分重复与不重复测，测量 + 计算出abs值一起
+                     */
+                    R<RationDataVO> r;
+                    if (repeat) {
+                        //重复测量，单独处理！
+                        r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber);
+                    } else {
+                        r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber);
+                    }
+                    if (isAutoChangePool) {
+                        currentPoolNum = Integer.parseInt(sample.getSampleLocation());
+                        samplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), param.getUpdateBy());
+                    }
+
+                    if (!r.getSuccess()) {
+                        sendError(deviceSerialNumber, r.getMessage());
+                        return;
+                    }
+                    measureCount++;
+                    RationDataVO data = r.getData();
+
+                    //保存数据
+                    R<RationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
+                    if (!saved.getSuccess()) {
+                        log.info("数据保存异常");
+                        sendError(deviceSerialNumber, saved.getMessage());
+                        return;
+                    }
+                    RationSaveCountDataInfo saveDataInfo = saved.getData();
+                    specimen.setIsTested(right);
+                    task.setSampleKey(JSON.toJSONString(taskSpecimen));
+
+                    tMeasureTaskService.updateById(task);
+
+                    List<RationCountDataInfo> measureAbsDataList = saveDataInfo.getCountData();
+
+                    RationCountDataInfo absData = new RationCountDataInfo();
+                    for (RationCountDataInfo dataInfo : measureAbsDataList) {
+                        if (dataInfo.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                            BeanUtils.copyProperties(dataInfo, absData);
+                            break;
+                        }
+                    }
+                    if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+
+                        String measureDataId = saveDataInfo.getMeasureDataId();
+
+                        RationSaveCountDataInfo dealData = new RationSaveCountDataInfo();
+                        dealData.setTaskId(taskId);
+                        dealData.setSampleId(sample.getId());
+                        dealData.setMeasureDataId(measureDataId);
+
+                        emptySampleDeal(digit, absData, dealData);
+                        for (RationSaveCountDataInfo info : emptyDataList) {
+                            String sampleId = info.getSampleId();
+                            for (RationCountDataInfo countDatum : info.getCountData()) {
+                                if (countDatum.getIdentity().equals(SampleTableEnum.SUM_Abs.getIdentity())) {
+                                    sampleSend(deviceSerialNumber, sampleId, countDatum.getIdentity(), null, String.valueOf(countDatum.getColValue()));
+                                }
+                            }
+
+                        }
+                        continue;
+                    } else {
+                        lastIsEmpty = false;
+                        //TODO 未来需要添加质量和浓度的区分
                     /*
                     未知样处理----计算sumAbs值，计算拟合浓度，计算公式，保存结果
                     如果有空白样，和没有空白样
@@ -694,64 +789,99 @@ public class RationMeasureNewWebSocket{
                     然后各类计算
                     最后保存。。。。应该先保存一次测量结果，在保存计算结果，
                      */
-                    double countValue = 0.0;
+                        double countValue = 0.0;
 
-                    if (empty) {
-                        RationCountDataInfo sumAbsData = new RationCountDataInfo();
-                        sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
-                        sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
-                        double v = Double.parseDouble(absData.getColValue()) - minuend;
-                        Double value = DataCountUtil.formatValue(digit, v);
-                        sumAbsData.setColValue(DataCountUtil.addZero(value, digit));
-                        countValue = value;
-                        measureAbsDataList.add(sumAbsData);
+                        if (empty) {
+                            RationCountDataInfo sumAbsData = new RationCountDataInfo();
+                            sumAbsData.setHeadName(SampleTableEnum.SUM_Abs.getName());
+                            sumAbsData.setIdentity(SampleTableEnum.SUM_Abs.getIdentity());
+                            double v = Double.parseDouble(absData.getColValue()) - minuend;
+                            Double value = DataCountUtil.formatValue(digit, v);
+                            sumAbsData.setColValue(DataCountUtil.addZero(value, digit));
+                            countValue = value;
+                            measureAbsDataList.add(sumAbsData);
+                            saveDataInfo.setCountData(measureAbsDataList);
+                            rationService.saveAnalyzeData(saveDataInfo);
+                            sampleSend(deviceSerialNumber, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
+                        } else {
+                            countValue = Double.parseDouble(absData.getColValue());
+                        }
+                        FittingReceiveInfo fittingInfo = null;
+                        if (StringUtils.hasText(task.getFittingParam())) {
+                            fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+                        }
+                        if (fittingInfo != null) {
+                            String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
+
+                            if (ans != null && fittingInfo.getRoundCoefficient() != null) {
+                                RationCountDataInfo valueData = new RationCountDataInfo();
+                                valueData.setOriginalValue(ans);
+                                String s = rationService.fitDataRounding(ans, parameter);
+
+                                valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
+                                valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
+                                valueData.setColValue(s);
+                                measureAbsDataList.add(valueData);
+
+                                measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
+
+                                JSONObject jsonObject = new JSONObject();
+                                jsonObject.put("sampleId", specimen.getSpecimenKey());
+                                jsonObject.put("key", valueData.getIdentity());
+                                jsonObject.put("value", valueData.getColValue());
+                                sendMessage(deviceSerialNumber, jsonObject);
+                                sendUnknowPoint(deviceSerialNumber, valueData, String.valueOf(countValue), parameter);
+                            }
+                        }
                         saveDataInfo.setCountData(measureAbsDataList);
                         rationService.saveAnalyzeData(saveDataInfo);
-                        sampleSend(deviceSerialNumber, sample.getId(), sumAbsData.getIdentity(), null, String.valueOf(sumAbsData.getColValue()));
-                    } else {
-                        countValue = Double.parseDouble(absData.getColValue());
-                    }
-                    FittingReceiveInfo fittingInfo = null;
-                    if (StringUtils.hasText(task.getFittingParam())) {
-                        fittingInfo= JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
-                    }
-                    if (fittingInfo != null) {
-                        String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType());
-
-                        if (ans != null && fittingInfo.getRoundCoefficients() != null) {
-                            RationCountDataInfo valueData = new RationCountDataInfo();
-                            valueData.setOriginalValue(ans);
-                            String s = rationService.fitDataRounding(ans, parameter);
-
-                            valueData.setHeadName(SampleTableEnum.FIT_CONCENTRATION.getName());
-                            valueData.setIdentity(SampleTableEnum.FIT_CONCENTRATION.getIdentity());
-                            valueData.setColValue(s);
-                            measureAbsDataList.add(valueData);
-
-                            measureAbsDataList = rationService.dataRounding(measureAbsDataList, parameter);
-
-                            JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("sampleId", specimen.getSpecimenKey());
-                            jsonObject.put("key", valueData.getIdentity());
-                            jsonObject.put("value", valueData.getColValue());
-                            sendMessage(deviceSerialNumber, jsonObject);
-                            sendUnknowPoint(deviceSerialNumber, valueData, String.valueOf(countValue), parameter);
-                        }
-                    }
-
-                    //定量的公式计算----待定
+                        //定量的公式计算----待定
 //                    rationService.formula()
 
-                    saveDataInfo.setCountData(measureAbsDataList);
-                    rationService.saveAnalyzeData(saveDataInfo);
+                    }
+                    specimen.setIsTested(right);
                 }
-                specimen.setIsTested(right);
+                task = tMeasureTaskService.getById(taskId);
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                tMeasureTaskService.updateById(task);
+                //样品测完，移动样品池到1号
+                if (isAutoChangePool) {
+
+                    DevOperationInputParam inputParam = new DevOperationInputParam();
+                    inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                    inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+                    SetParam endParam = new SetParam();
+
+                    endParam.setCellPos(1);
+                    JSONObject object = new JSONObject();
+                    object.put("currentPoolNum", 1);
+                    sendMessage(deviceSerialNumber, object);
+
+                    inputParam.setParam(endParam);
+
+                    operationUtilService.operation(inputParam);
+                }
+
+                JSONObject message = new JSONObject();
+                message.put("success", "测量完成，请更换样品继续测量。");
+                sendMessage(deviceSerialNumber, message);
+
+                message.clear();
+                message.put("result", "finish");
+                sendMessage(deviceSerialNumber, message);
+            } else {
+                log.info("未知的样品种类");
+                sendError(deviceSerialNumber, "未知的样品种类");
             }
-            task.setSampleKey(JSON.toJSONString(taskSpecimen));
-            tMeasureTaskService.updateById(task);
-        } else {
-            log.info("未知的样品种类");
+        } catch (Exception e) {
+            log.error("出现异常", e);
+            sendError(deviceSerialNumber, "测量出错");
+
+        } finally {
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         }
+
     }
 
     public void reCountUnknowSampleData(String deviceSerialNumber, List<TaskSpecimen> dealSampleList, String taskId, FittingReceiveInfo curveData, RationParameter parameter) {

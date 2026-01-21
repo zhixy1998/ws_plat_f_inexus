@@ -18,6 +18,7 @@
 
 package com.persee.workstation.uv_inexus.dto.concise.common;
 
+import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -39,6 +40,9 @@ public class CreateSampleDTO {
     @ApiModelProperty("设备序列号")
     private String deviceSerialNumber;
 
-    @ApiModelProperty("编号信息")
-    private CreateSampleNumPreInfo preInfo;
+    @ApiModelProperty("样品名称配置")
+    private SampleCreateHeadConf sampleNameConfig;
+
+    @ApiModelProperty("样品编号配置")
+    private SampleCreateHeadConf sampleNumConfig;
 }

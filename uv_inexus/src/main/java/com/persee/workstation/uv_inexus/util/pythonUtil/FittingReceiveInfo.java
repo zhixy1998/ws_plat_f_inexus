@@ -28,7 +28,7 @@ public class FittingReceiveInfo {
     /**
      * Coefficients，修约后所有系数列表，顺序为 k0, k1, ..., kn
      */
-    private List<Double> roundCoefficients;
+    private List<Double> roundCoefficient;
 
     /**
      * Coefficients，所有系数列表，顺序为 k0, k1, ..., kn

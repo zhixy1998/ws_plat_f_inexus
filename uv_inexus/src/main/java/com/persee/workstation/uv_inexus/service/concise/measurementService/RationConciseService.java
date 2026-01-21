@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
@@ -102,6 +103,7 @@ public interface RationConciseService {
     R<Boolean> checkAllSampleTest(String taskId);
 
     R<Boolean> createSample(String taskId, String sampleKind, String normalConcentration, String updateBy, String deviceSerialNumber);
+    R<Boolean> newCreateSample(CreateSampleDTO dto);
 
     R<String> saveRationSampleMeasureData(FRationDataVO dataInfo);
     R<FRationSaveCountDataInfo> saveSampleMeasureData(FRationDataVO dataInfo);

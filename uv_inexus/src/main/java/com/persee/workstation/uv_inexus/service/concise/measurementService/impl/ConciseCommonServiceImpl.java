@@ -874,8 +874,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
                 StringBuilder param = new StringBuilder();
                 if (fittingReceiveInfo != null) {
 
-                    if (fittingReceiveInfo.getRoundCoefficients() != null) {
-                        for (Double coefficient : fittingReceiveInfo.getRoundCoefficients()) {
+                    if (fittingReceiveInfo.getRoundCoefficient() != null) {
+                        for (Double coefficient : fittingReceiveInfo.getRoundCoefficient()) {
                             param.append(coefficient).append(",");
                         }
                         param.deleteCharAt(param.length() - 1);

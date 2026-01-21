@@ -753,7 +753,7 @@ public class ConciseRationMeasureWebSocket extends TextWebSocketHandler {
                         if (StringUtils.hasText(task.getFittingParam())) {
                             fittingInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                         }
-                        if (fittingInfo != null && fittingInfo.getRoundCoefficients() != null) {
+                        if (fittingInfo != null && fittingInfo.getRoundCoefficient() != null) {
                             String ans = rationService.valueCalculate(fittingInfo, countValue, parameter.getEquationType(), digit);
 
                             if (ans != null) {

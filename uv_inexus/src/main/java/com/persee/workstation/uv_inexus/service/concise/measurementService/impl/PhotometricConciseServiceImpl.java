@@ -23,6 +23,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
+import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -1568,19 +1569,6 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         String taskId = dto.getTaskId();
         String deviceSerialNumber = dto.getDeviceSerialNumber();
         String updateBy = dto.getUpdateBy();
-        CreateSampleNumPreInfo preInfo = dto.getPreInfo();
-
-        String sampleNamePre = "默认样品";
-        String sampleNumPre = "default-";
-        if (preInfo != null) {
-            if (StringUtils.hasText(preInfo.getSampleNamePre())) {
-                sampleNamePre = preInfo.getSampleNamePre();
-            }
-            if (StringUtils.hasText(preInfo.getSampleNumPre())) {
-                sampleNumPre = preInfo.getSampleNumPre();
-            }
-
-        }
 
 
         FMeasureTask task = fMeasureTaskService.getById(taskId);
@@ -1623,8 +1611,34 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             FMeasureSample newSample = new FMeasureSample();
 
             sampleAutoNum = 1;
-            newSample.setSampleName("默认样品" + 1);
-            newSample.setSampleNumber("default-" + 1);
+            String namePrefix = "样品";
+            int startNum = 1;
+
+            if (dto.getSampleNameConfig() != null) {
+                SampleCreateHeadConf nameConfig = dto.getSampleNameConfig();
+                if (StringUtils.hasText(nameConfig.getPreName())) {
+                    namePrefix = nameConfig.getPreName();
+                }
+                if (nameConfig.getStartNum() != null) {
+                    startNum = nameConfig.getStartNum();
+                }
+            }
+
+            String sampleNumPrefix = "default-";
+            int numStartNum = 1;
+            if (dto.getSampleNumConfig() != null) {
+                SampleCreateHeadConf numConfig = dto.getSampleNumConfig();
+                if (StringUtils.hasText(numConfig.getPreName())) {
+                    sampleNumPrefix = numConfig.getPreName();
+                }
+                if (numConfig.getStartNum() != null) {
+                    numStartNum = numConfig.getStartNum();
+                }
+            }
+
+            newSample.setSampleName(namePrefix + startNum);
+
+            newSample.setSampleNumber(sampleNumPrefix + numStartNum);
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
             if (!dynamicHeads.isEmpty()) {
                 newSample.setHeads(JSON.toJSONString(dynamicHeads));
@@ -1640,6 +1654,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         } else {
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
+            List<String> sampleNameList = new ArrayList<>();
             for (FTaskSpecimen specimen : taskSpecimen) {
                 if (specimen.getDeleteType().equals(deleteType)) {
                     continue;
@@ -1653,6 +1668,8 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                 FMeasureSample measureSample = fMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())){
                     sampleNumList.add(measureSample.getSampleNumber());
+                    sampleNameList.add(measureSample.getSampleName());
+
                 }
             }
             if (hasNoTested) {
@@ -1660,17 +1677,57 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             }
             FMeasureSample newSample = new FMeasureSample();
 
-            sampleAutoNum = sampleAutoNum + 1;
-            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
-                sampleAutoNum += 1;
+
+            String namePrefix = "样品";
+            int nameStartNum = 1;
+            int nameSuffix = 1;
+
+            if (dto.getSampleNameConfig() != null) {
+                SampleCreateHeadConf nameConfig = dto.getSampleNameConfig();
+                if (StringUtils.hasText(nameConfig.getPreName())) {
+                    namePrefix = nameConfig.getPreName();
+                }
+                if (nameConfig.getStartNum() != null) {
+                    nameStartNum = nameConfig.getStartNum();
+                }
+                if (nameConfig.getStep() != null) {
+                    nameSuffix = nameConfig.getStep();
+                }
             }
 
-            int number = sampleAutoNum;
+            String sampleNumPrefix = "default-";
+            int numStartNum = 1;
+            int numSuffix = 1;
+            if (dto.getSampleNumConfig() != null) {
+                SampleCreateHeadConf numConfig = dto.getSampleNumConfig();
+                if (StringUtils.hasText(numConfig.getPreName())) {
+                    sampleNumPrefix = numConfig.getPreName();
+                }
+                if (numConfig.getStartNum() != null) {
+                    numStartNum = numConfig.getStartNum();
+                }
+                if (numConfig.getStep() != null) {
+                    numSuffix = numConfig.getStep();
+                }
+            }
 
-            newSample.setSampleNumber("default-"+ number);
-            newSample.setSampleName("默认样品" + number);
+            sampleAutoNum = numStartNum;
+            while (sampleNumList.contains(sampleNumPrefix+ sampleAutoNum)) {
+                sampleAutoNum += numSuffix;
+            }
 
-            sampleNumList.add("default-" + number);
+            int nameNum = nameStartNum;
+            while (sampleNameList.contains(namePrefix+ nameNum)) {
+                nameNum += nameSuffix;
+            }
+
+            int num = sampleAutoNum;
+            int numName = nameNum;
+
+            sampleNumList.add(sampleNumPrefix + num);
+            sampleNameList.add(namePrefix+ numName);
+            newSample.setSampleNumber(sampleNumPrefix + num);
+            newSample.setSampleName(namePrefix + numName);
 
             List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
             int all = usefulLocation.size();
@@ -1690,14 +1747,22 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             if (isAutoChangePool) {
                 for (int i = 1; i < all; i++) {
                     newSample.setId(null);
-                    while (sampleNumList.contains("default-"+ sampleAutoNum)) {
-                        sampleAutoNum += 1;
+                    while (sampleNumList.contains(sampleNumPrefix+ sampleAutoNum)) {
+                        sampleAutoNum += numSuffix;
                     }
 
-                    int newNum = sampleAutoNum;
-                    sampleNumList.add("default-" + newNum);
-                    newSample.setSampleNumber("default-" + newNum);
-                    newSample.setSampleName("默认样品" + newNum);
+                    while (sampleNameList.contains(namePrefix+ nameNum)) {
+                        nameNum += nameSuffix;
+                    }
+
+                    num = sampleAutoNum;
+                    numName = nameNum;
+
+                    sampleNumList.add(sampleNumPrefix + num);
+                    sampleNameList.add(namePrefix+ numName);
+                    newSample.setSampleNumber(sampleNumPrefix + num);
+                    newSample.setSampleName(namePrefix + numName);
+
 
                     save = fMeasureSampleService.save(newSample);
                     if (!save) {

@@ -21,6 +21,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
+import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -2156,6 +2157,7 @@ public class RationServiceImpl implements RationService {
         String taskId = queryDataDTO.getTaskId();
         Boolean allDisplay = queryDataDTO.getAllDisplay();
         Integer digit = queryDataDTO.getDigit();
+        Integer otherDigit = queryDataDTO.getOtherDigit();
         List<String> option = queryDataDTO.getOption();
 
         if (!StringUtils.hasText(taskId)) {
@@ -2170,15 +2172,15 @@ public class RationServiceImpl implements RationService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        if (digit == null) {
+        if (digit == null || digit < 0) {
             digit = Constants.DEFAULT_DECIMAL_NUM;
             queryDataDTO.setDigit(digit);
         }
 
         if(queryDataDTO.getAllDisplay() == null) {
             allDisplay = false;
-            queryDataDTO.setAllDisplay(allDisplay);
         }
+        queryDataDTO.setAllDisplay(allDisplay);
         TMeasureTaskAttachment attachment;
         boolean recount = false;
 
@@ -2200,6 +2202,11 @@ public class RationServiceImpl implements RationService {
             } else {
                 QueryDataDTO dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
                 if (dataDTO.getDigit() == null || !dataDTO.getDigit().equals(digit)) {
+                    recount = true;
+
+                    attachment.setDataParam(JSON.toJSONString(queryDataDTO));
+                    taskAttachmentService.saveOrUpdate(attachment);
+                } else if (dataDTO.getOtherDigit() == null || !dataDTO.getOtherDigit().equals(otherDigit)) {
                     recount = true;
 
                     attachment.setDataParam(JSON.toJSONString(queryDataDTO));
@@ -2242,12 +2249,12 @@ public class RationServiceImpl implements RationService {
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
         for (TaskSpecimen specimen : taskSpecimen) {
-            if (!allDisplay && specimen.getDeleteType().equals("1")) {
+            if (!allDisplay && "1".equals(specimen.getDeleteType())) {
                 continue;
             }
             if (specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                Map<String, Object> singleSampleData = getSingleSampleData(task, sample, repeat, option, digit);
+                Map<String, Object> singleSampleData = getSingleSampleData(task, sample, repeat, option, digit, otherDigit);
                 singleSampleData.put("deleteType", specimen.getDeleteType());
 
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
@@ -2268,7 +2275,7 @@ public class RationServiceImpl implements RationService {
 
                 TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
 
-                Map<String, Object> sampleData = getSingleSampleData(task, sample, repeat, option, digit);
+                Map<String, Object> sampleData = getSingleSampleData(task, sample, repeat, option, digit, otherDigit);
                 sampleData.put("deleteType", specimen.getDeleteType());
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
 
@@ -2333,10 +2340,13 @@ public class RationServiceImpl implements RationService {
         return ans;
     }
 
-    public Map<String, Object> getSingleSampleData(TMeasureTask task, TMeasureSample sample, Boolean repeat, List<String> option, Integer digit) {
+    public Map<String, Object> getSingleSampleData(TMeasureTask task, TMeasureSample sample, Boolean repeat, List<String> option, Integer digit, Integer otherDigit) {
 
         String sampleId = sample.getId();
         String taskId = task.getId();
+        if (otherDigit == null) {
+            otherDigit = Constants.DEFAULT_DECIMAL_NUM;
+        }
 
         Map<String, Object> map = new HashMap<>();
         //样品信息
@@ -2346,8 +2356,12 @@ public class RationServiceImpl implements RationService {
         map.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTypeEnum.getName(sample.getSampleType()));
         map.put(SampleTableEnum.SAMPLE_KIND.getIdentity(), sample.getSampleKind());
 
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer concentrationDigits = businessParamVO.getConcentrationDigits();
+
         if (sample.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
-            map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), sample.getNormalConcentration());
+            String s = DataCountUtil.addZero(Double.valueOf(sample.getNormalConcentration()), concentrationDigits);
+            map.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), s);
         }
 
         if (StringUtils.hasText(sample.getNewColData())) {
@@ -2374,8 +2388,8 @@ public class RationServiceImpl implements RationService {
 
                         map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
 
-                        Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
-                        String tP = DataCountUtil.addZero(t, digit);
+                        Double t = DataCountUtil.formatValue(otherDigit, Double.valueOf(dataInfo.getTPercentValue()));
+                        String tP = DataCountUtil.addZero(t, otherDigit);
 
                         map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
                     }
@@ -2450,8 +2464,8 @@ public class RationServiceImpl implements RationService {
                         if (dataInfo.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
                             map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
 
-                            Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
-                            String tP = DataCountUtil.addZero(t, digit);
+                            Double t = DataCountUtil.formatValue(otherDigit, Double.valueOf(dataInfo.getTPercentValue()));
+                            String tP = DataCountUtil.addZero(t, otherDigit);
 
                             map.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
 
@@ -2480,8 +2494,8 @@ public class RationServiceImpl implements RationService {
 
                             children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.abs.getCode(), s);
 
-                            Double t = DataCountUtil.formatValue(digit, Double.valueOf(dataInfo.getTPercentValue()));
-                            String tP = DataCountUtil.addZero(t, digit);
+                            Double t = DataCountUtil.formatValue(otherDigit, Double.valueOf(dataInfo.getTPercentValue()));
+                            String tP = DataCountUtil.addZero(t, otherDigit);
 
                             children.put(dataInfo.getWavelength() + "-" + WaveLengthEnum.tPercent.getCode(), tP);
 
@@ -2778,11 +2792,37 @@ public class RationServiceImpl implements RationService {
         }
 
         if (taskSpecimen.isEmpty()) {
-             TMeasureSample newSample = new  TMeasureSample();
+            TMeasureSample newSample = new  TMeasureSample();
 
             sampleAutoNum = 1;
-            newSample.setSampleName("默认样品" + 1);
-            newSample.setSampleNumber("default-" + 1);
+            String namePrefix = "样品";
+            int startNum = 1;
+
+            if (dto.getSampleNameConfig() != null) {
+                SampleCreateHeadConf nameConfig = dto.getSampleNameConfig();
+                if (StringUtils.hasText(nameConfig.getPreName())) {
+                    namePrefix = nameConfig.getPreName();
+                }
+                if (nameConfig.getStartNum() != null) {
+                    startNum = nameConfig.getStartNum();
+                }
+            }
+
+            String sampleNumPrefix = "default-";
+            int numStartNum = 1;
+            if (dto.getSampleNumConfig() != null) {
+                SampleCreateHeadConf numConfig = dto.getSampleNumConfig();
+                if (StringUtils.hasText(numConfig.getPreName())) {
+                    sampleNumPrefix = numConfig.getPreName();
+                }
+                if (numConfig.getStartNum() != null) {
+                    numStartNum = numConfig.getStartNum();
+                }
+            }
+
+            newSample.setSampleName(namePrefix + startNum);
+
+            newSample.setSampleNumber(sampleNumPrefix + numStartNum);
 
             if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
@@ -2809,6 +2849,7 @@ public class RationServiceImpl implements RationService {
         } else {
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
+            List<String> sampleNameList = new ArrayList<>();
 
             double cou = 0;
             double last = 0;
@@ -2821,9 +2862,10 @@ public class RationServiceImpl implements RationService {
                     hasNoTested = true;
                     break;
                 }
-                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
                 if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())){
                     sampleNumList.add(measureSample.getSampleNumber());
+                    sampleNameList.add(measureSample.getSampleName());
                     if (StringUtils.hasText(measureSample.getNormalConcentration())) {
                         cou =  Double.parseDouble(measureSample.getNormalConcentration()) - last;
                         last = Double.parseDouble(measureSample.getNormalConcentration());
@@ -2839,16 +2881,57 @@ public class RationServiceImpl implements RationService {
                 cou = 1;
             }
 
-            sampleAutoNum = 1;
-            while (sampleNumList.contains("default-"+ sampleAutoNum)) {
-                sampleAutoNum += 1;
+            String namePrefix = "样品";
+            int nameStartNum = 1;
+            int nameSuffix = 1;
+
+            if (dto.getSampleNameConfig() != null) {
+                SampleCreateHeadConf nameConfig = dto.getSampleNameConfig();
+                if (StringUtils.hasText(nameConfig.getPreName())) {
+                    namePrefix = nameConfig.getPreName();
+                }
+                if (nameConfig.getStartNum() != null) {
+                    nameStartNum = nameConfig.getStartNum();
+                }
+                if (nameConfig.getStep() != null) {
+                    nameSuffix = nameConfig.getStep();
+                }
+            }
+
+            String sampleNumPrefix = "default-";
+            int numStartNum = 1;
+            int numSuffix = 1;
+            if (dto.getSampleNumConfig() != null) {
+                SampleCreateHeadConf numConfig = dto.getSampleNumConfig();
+                if (StringUtils.hasText(numConfig.getPreName())) {
+                    sampleNumPrefix = numConfig.getPreName();
+                }
+                if (numConfig.getStartNum() != null) {
+                    numStartNum = numConfig.getStartNum();
+                }
+                if (numConfig.getStep() != null) {
+                    numSuffix = numConfig.getStep();
+                }
+            }
+
+            sampleAutoNum = numStartNum;
+            while (sampleNumList.contains(sampleNumPrefix+ sampleAutoNum)) {
+                sampleAutoNum += numSuffix;
+            }
+
+            int nameNum = nameStartNum;
+            while (sampleNameList.contains(namePrefix+ nameNum)) {
+                nameNum += nameSuffix;
             }
 
             int num = sampleAutoNum;
+            int numName = nameNum;
 
-            sampleNumList.add("default-" + num);
-            newSample.setSampleNumber("default-" + num);
-            newSample.setSampleName("默认样品" + num);
+            sampleNumList.add(sampleNumPrefix + num);
+            sampleNameList.add(namePrefix+ numName);
+            newSample.setSampleNumber(sampleNumPrefix + num);
+            newSample.setSampleName(namePrefix + numName);
+
             List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
             int all = usefulLocation.size();
 
@@ -2875,16 +2958,21 @@ public class RationServiceImpl implements RationService {
             if (isAutoChangePool) {
                 for (int i = 1; i < all; i++) {
                     newSample.setId(null);
-                    sampleAutoNum ++;
-
-                    while (sampleNumList.contains("default-"+ sampleAutoNum)) {
-                        sampleAutoNum += 1;
+                    while (sampleNumList.contains(sampleNumPrefix+ sampleAutoNum)) {
+                        sampleAutoNum += numSuffix;
                     }
 
-                    int newNum = sampleAutoNum;
-                    sampleNumList.add("default-" + newNum);
-                    newSample.setSampleNumber("default-" + newNum);
-                    newSample.setSampleName("默认样品" + newNum);
+                    while (sampleNameList.contains(namePrefix+ nameNum)) {
+                        nameNum += nameSuffix;
+                    }
+
+                    num = sampleAutoNum;
+                    numName = nameNum;
+
+                    sampleNumList.add(sampleNumPrefix + num);
+                    sampleNameList.add(namePrefix+ numName);
+                    newSample.setSampleNumber(sampleNumPrefix + num);
+                    newSample.setSampleName(namePrefix + numName);
 
                     if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                         normalConcentration = DataCountUtil.addZero((Double.parseDouble(normalConcentration) + cou), concentrationDigit);
@@ -2902,6 +2990,7 @@ public class RationServiceImpl implements RationService {
         }
         task.setSampleAutoNum(sampleAutoNum);
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
+
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
             //更新失败
@@ -2931,28 +3020,7 @@ public class RationServiceImpl implements RationService {
             //请选择曲线类型
             return R.fail(YamlMessageSource.getMessageStatic("00102025"));
         }
-        int minPointNum = Integer.MAX_VALUE;
-
-        switch (parameter.getCurveType()) {
-            case "1":
-                minPointNum = 2;
-                break;
-            case "2":
-                minPointNum = 3;
-                break;
-
-            case "3":
-                minPointNum = 4;
-                break;
-
-            case "4":
-                minPointNum = 5;
-                break;
-        }
-
-        if (parameter.getZeroMethod() != null && parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
-            minPointNum = minPointNum - 1;
-        }
+        int minPointNum = getMinPointNum(parameter);
 
         if (inputParam.size() < minPointNum) {
             log.info("数据点数不足，不进行曲线拟合");
@@ -3023,9 +3091,8 @@ public class RationServiceImpl implements RationService {
                 Double v = DataCountUtil.formatValue(kDigits, coefficient);
                 kList.add(v);
             }
-            info.setRoundCoefficients(kList);
+            info.setRoundCoefficient(kList);
         }
-
 
         if (info.getR() != null){
 
@@ -3053,10 +3120,10 @@ public class RationServiceImpl implements RationService {
 
         if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
 
-            equation = rebuildFormula(kList, info.getDegree(), "Abs", "C");
+            equation = rebuildFormula(kList, kDigits, info.getDegree(), "Abs", "C");
             info.setEquation(equation);
         } else {
-            equation = rebuildFormula(kList, info.getDegree(), "C", "Abs");
+            equation = rebuildFormula(kList,kDigits, info.getDegree(), "C", "Abs");
             info.setEquation(equation);
         }
         Arrays.stream(param.getX_data()).min().ifPresent(info::setMinX);
@@ -3065,22 +3132,54 @@ public class RationServiceImpl implements RationService {
         return R.ok(info);
     }
 
-    public String rebuildFormula(List<Double> coefficientList, Integer degree, String x, String y) {
+    private static int getMinPointNum(RationParameter parameter) {
+        int minPointNum = Integer.MAX_VALUE;
+
+        switch (parameter.getCurveType()) {
+            case "1":
+                minPointNum = 2;
+                break;
+            case "2":
+                minPointNum = 3;
+                break;
+
+            case "3":
+                minPointNum = 4;
+                break;
+
+            case "4":
+                minPointNum = 5;
+                break;
+        }
+
+        if (parameter.getZeroMethod() != null && parameter.getZeroMethod().contains(RationCurveParamEnums.insert_zero.getIdentity())) {
+            minPointNum = minPointNum - 1;
+        }
+        return minPointNum;
+    }
+
+    public String rebuildFormula(List<Double> coefficientList, Integer kDigits, Integer degree, String x, String y) {
+
+
+        while (coefficientList.size() < degree + 1) {
+            coefficientList.add(0.0);
+        }
 
         StringBuilder formula = new StringBuilder();
         formula.append(y).append(" = ");
+        int index = 0;
 
         for (int i = 0; i <= degree; i++) {
 
             // 设置系数字段（根据degree动态设置）
-            if(!coefficientList.get(degree - i).equals(0.0)){
+            if(coefficientList.get(degree - i) != 0.0){
                 double cuff = coefficientList.get(degree - i);
-                if (i==0){
+                if (index == 0){
                     if (cuff < 0) {
                         formula.append(" - ");
                     }
                 }
-                if (i > 0) {
+                if (index > 0) {
                     if (cuff < 0) {
                         formula.append(" - ");
                     } else {
@@ -3088,13 +3187,18 @@ public class RationServiceImpl implements RationService {
                     }
                 }
                 // 添加系数绝对值，如果是负数则取绝对值
-                formula.append(Math.abs(cuff));
+                double value = Math.abs(cuff);
+                String s = DataCountUtil.formatValueWithBigDecimal(kDigits, String.valueOf(value));
+                s = DataCountUtil.addZero(Double.valueOf(s), kDigits);
+
+                formula.append(s);
                 if (degree - i > 0) {
                     formula.append("*").append(x);
                     if (degree - i > 1) {
                         formula.append("^").append(degree - i);
                     }
                 }
+                index++;
             }
         }
         return formula.toString();
@@ -3279,7 +3383,7 @@ public class RationServiceImpl implements RationService {
                     }
                 }
                 fittingReceiveInfo.setEquation(formula.toString());
-                fittingReceiveInfo.setRoundCoefficients(paramList);
+                fittingReceiveInfo.setRoundCoefficient(paramList);
                 return fittingReceiveInfo;
 
             }
@@ -3445,19 +3549,25 @@ public class RationServiceImpl implements RationService {
 
     @Override
     public RationFitCurveVO curveData(FittingReceiveInfo info) {
-        List<Double> list = info.getRoundCoefficients().stream()
+        List<Double> list = info.getRoundCoefficient().stream()
                 .map(d -> BigDecimal.valueOf(d)
                         .setScale(3, RoundingMode.HALF_UP)
                         .doubleValue())
                 .collect(Collectors.toList());
 
         List<JSONObject> dataList = new ArrayList<>();
+        List<Double> coefficients = info.getRoundCoefficient();
+        for (int i = 0; i < 5; i++) {
+            if (i >= coefficients.size()) {
+                coefficients.add(0.0);
+            }
+        }
 
-        double k0 = info.getK0() == null ? 0 : info.getK0();
-        double k1 = info.getK1() == null ? 0 : info.getK1();
-        double k2 = info.getK2() == null ? 0 : info.getK2();
-        double k3 = info.getK3() == null ? 0 : info.getK3();
-        double k4 = info.getK4() == null ? 0 : info.getK4();
+        double k0 = coefficients.get(0);
+        double k1 = coefficients.get(1);
+        double k2 = coefficients.get(2);
+        double k3 = coefficients.get(3);
+        double k4 = coefficients.get(4);
 
         double step = 0.01;
         int dataDigit = 8;
@@ -3577,9 +3687,9 @@ public class RationServiceImpl implements RationService {
         String ans = null;
 
         if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 1);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficient(), value, 1);
         } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 0);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficient(), value, 0);
         }
         if (StringUtils.hasText(s)) {
             JSONObject jsonObject = JSON.parseObject(s);
@@ -3597,9 +3707,9 @@ public class RationServiceImpl implements RationService {
         String ans = null;
 
         if (equationType.equals(RationCurveParamEnums.typeAbs.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 1);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficient(), value, 1);
         } else if (equationType.equals(RationCurveParamEnums.typeCurve.getIdentity())) {
-            s = restUtil.concentrationCalculate(info.getRoundCoefficients(), value, 0);
+            s = restUtil.concentrationCalculate(info.getRoundCoefficient(), value, 0);
         }
         if (StringUtils.hasText(s)) {
             JSONObject jsonObject = JSON.parseObject(s);
@@ -4053,7 +4163,9 @@ public class RationServiceImpl implements RationService {
         R<FittingReceiveInfo> infoR = fittingCurve(fitCurveData, empty, task.getMethodKey(), fitCurveParams);
         if (infoR.getSuccess()) {
             log.info("拟合曲线成功，修改任务中的拟合参数");
-            task.setFittingParam(JSON.toJSONString(infoR.getData()));
+
+            String jsonString = JSON.toJSONString(infoR.getData());
+            task.setFittingParam(jsonString);
         }
         tMeasureTaskService.updateById(task);
         return R.ok();
@@ -4070,7 +4182,7 @@ public class RationServiceImpl implements RationService {
         }
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
-        boolean repeat = parameter.getRepeatMode().equals("单池重复");
+        boolean repeat = "单池重复".equals(parameter.getRepeatMode());
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         boolean empty = false;
@@ -4084,7 +4196,9 @@ public class RationServiceImpl implements RationService {
         empty = taskSpecimen.stream()
                 .anyMatch(specimen ->
                         specimen.getSpecimenKey().equals(dealSampleKind)
-                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())
+                                && specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())&&
+                                specimen.getDeleteType() != null &&
+                                specimen.getDeleteType().equals(createType)
                 );
 
         for (TaskSpecimen specimen : taskSpecimen) {
@@ -4235,7 +4349,7 @@ public class RationServiceImpl implements RationService {
                  */
                 FittingReceiveInfo fitInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
 
-                if (fitInfo != null && fitInfo.getRoundCoefficients()!= null) {
+                if (fitInfo != null && fitInfo.getRoundCoefficient()!= null) {
                     String ans = valueCalculate(fitInfo, toCountData, parameter.getEquationType(), digit);
 
                     if (ans != null) {
@@ -4766,7 +4880,7 @@ public class RationServiceImpl implements RationService {
         list.add(0.0);
         list.add(2.0);
 
-        String s = rebuildFormula(list, 2, "Abs", "C");
+        String s = rebuildFormula(list, 2,2, "Abs", "C");
         System.out.println(s);
     }
 

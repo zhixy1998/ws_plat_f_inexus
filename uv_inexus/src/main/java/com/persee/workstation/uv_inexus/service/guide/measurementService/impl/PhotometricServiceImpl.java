@@ -1258,6 +1258,8 @@ public class PhotometricServiceImpl implements PhotometricService {
     public Result<List<Map<String, Object>>> queryData(QueryDataDTO queryDataDTO) {
         String taskId = queryDataDTO.getTaskId();
         Boolean allDisplay = queryDataDTO.getAllDisplay();
+        Integer digit = queryDataDTO.getDigit();
+        Integer otherDigit = queryDataDTO.getOtherDigit();
         List<String> option = queryDataDTO.getOption();
 
         if (!StringUtils.hasText(taskId) || allDisplay == null) {
@@ -1271,7 +1273,6 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.ok(ans);
         }
 
-        Integer digit = queryDataDTO.getDigit();
         if (digit == null || digit < 0) {
             digit = Constants.DEFAULT_DECIMAL_NUM;
             queryDataDTO.setDigit(digit);

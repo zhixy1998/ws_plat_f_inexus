@@ -1415,7 +1415,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             if (StringUtils.hasText(task.getFittingParam())){
                 FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                 StringBuilder param = new StringBuilder();
-                for (Double coefficient : fittingReceiveInfo.getRoundCoefficients()) {
+                for (Double coefficient : fittingReceiveInfo.getRoundCoefficient()) {
                     param.append(coefficient).append(",");
                 }
                 param.deleteCharAt(param.length() - 1);

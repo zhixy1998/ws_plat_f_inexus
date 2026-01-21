@@ -21,6 +21,9 @@ public class FQueryDataDTO {
     private Boolean allDisplay;
     @ApiModelProperty("小数位数")
     private Integer digit;
+
+    @ApiModelProperty("其他小数位数")
+    private Integer otherDigit;
     @ApiModelProperty("要显示的数据类型：平均值/sd/rsd等")
     private List<String> option;
 
