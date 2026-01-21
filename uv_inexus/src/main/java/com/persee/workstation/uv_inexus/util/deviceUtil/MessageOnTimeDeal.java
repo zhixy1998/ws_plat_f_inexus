@@ -339,6 +339,7 @@ public class MessageOnTimeDeal {
                             if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
                             else baselineProcessorThreadMap.remove(deviceSerialNumber);
 
+                            flag = 3;
                             store.clearDeviceMessages(deviceId);
                             infoService.newReleaseDevice(deviceSerialNumber);
                             log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
@@ -450,7 +451,7 @@ public class MessageOnTimeDeal {
                     Thread.currentThread().interrupt();
                     flag = 2;
                 } finally {
-                    if (flag == 1 || flag == 2){
+                    if (flag == 1 || flag == 2 || flag == 3){
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
