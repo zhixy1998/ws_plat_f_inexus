@@ -283,6 +283,8 @@ public class MessageOnTimeDeal {
         }
         boolean isDark = cmdId.equals("Dark");
 
+        boolean isBaseline = cmdId.equals("Baseline") || cmdId.equals("BaselineFast");
+
         MessageStoreManager store = MessageStoreManager.getInstance();
         Map<String, Thread> targetThreadMap = isScan ? scanProcessorThreadMap : baselineProcessorThreadMap;
 
@@ -417,7 +419,7 @@ public class MessageOnTimeDeal {
 
 
                             // ----------------- 5. 放入未知队列 -----------------
-                            if (isScan) {
+                            if (isScan || isBaseline) {
                                 if (isFirst) {
                                     log.info("[光谱首条,不存] device={}, cmd={}, wl={}",
                                             deviceSerialNumber, cmdId, sp.getWavelength());
