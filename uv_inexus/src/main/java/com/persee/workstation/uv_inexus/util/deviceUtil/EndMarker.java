@@ -9,7 +9,8 @@ public final class EndMarker {
         TIMEOUT,
         UN_NORMAL,
         NORMAL,
-        TIME_STOP
+        TIME_STOP,
+        NORMAL_STOP
     }
 
     private final String deviceSn;
@@ -38,6 +39,10 @@ public final class EndMarker {
 
     public static EndMarker timeStop (String sn, String cmd) {
         return new EndMarker(sn, cmd, Reason.TIME_STOP);
+    }
+
+    public static EndMarker NormalStop (String sn, String cmd) {
+        return new EndMarker(sn, cmd, Reason.NORMAL_STOP);
     }
 }
 

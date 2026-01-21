@@ -333,7 +333,7 @@ public class MessageOnTimeDeal {
                             unknowCountMessageQueue.putMessage(
                                     deviceSerialNumber,
                                     cmdId,
-                                    EndMarker.Normal(deviceSerialNumber, cmdId)
+                                    EndMarker.NormalStop(deviceSerialNumber, cmdId)
                             );
                             spectrumProcessorMap.remove(deviceSerialNumber);
                             if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
@@ -381,6 +381,10 @@ public class MessageOnTimeDeal {
                             spectrumDataProcessor.processStepAndPrintWavelength(temp, deviceSerialNumber);
 
                             double constrainedWl = spectrumDataProcessor.getConstrainedWavelength();
+                            if (Double.isNaN(constrainedWl)){
+                                log.info("[光谱扫描]:跳过最后一条");
+                                break;
+                            }
                             SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
 
                             if (isDark){
@@ -469,6 +473,8 @@ public class MessageOnTimeDeal {
 
                     store.clearDeviceMessages(deviceId);
                     infoService.newReleaseDevice(deviceSerialNumber);
+
+
 
                     log.info("[光谱测试] 停止处理光谱数据，设备={}，操作类型={}", deviceSerialNumber, isScan ? "Scan" : "BaseLine");
                 }
