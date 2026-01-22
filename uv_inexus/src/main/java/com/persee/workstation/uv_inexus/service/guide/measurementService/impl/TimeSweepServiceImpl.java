@@ -25,6 +25,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -322,7 +323,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
         // 根据任务id查询任务数据
         TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
-        if (task.getTaskStatus().equals("0")) {
+        if (task.getTaskStatus().equals(TaskStatusEnum.UNTESTED.getCode())) {
             TMeasureMethod newMethod = createNewMethod(paramDto , methodBoolean);
             if (newMethod == null) {
                 //新建方法失败
@@ -3518,7 +3519,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         newTask.setProjectItemKey(task.getProjectItemKey());
         newTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
         newTask.setIsDelete(Constants.PARAM_ZERO);
-        newTask.setTaskStatus(Constants.PARAM_ZERO);
+        newTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         boolean save = tMeasureTaskService.save(newTask);
         if (save) {
             return newTask;

@@ -8,6 +8,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
@@ -2245,7 +2246,7 @@ public class SpectrumNewWebSocket {
                 }
                 task.setSampleKey(JSON.toJSONString(specimen));
                 task.setDeviceSerialNumber(deviceSerialNumber);
-                task.setTaskStatus(Constants.PARAM_ONE);
+                task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                 boolean update = tMeasureTaskService.updateById(task);
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
@@ -2254,7 +2255,7 @@ public class SpectrumNewWebSocket {
                 // 如果是重复模式的情况，需要判断是否全部测完
                 boolean success = false;
                 Integer repetitionCount = Integer.valueOf(spectrumParameter.getRepetitionTime());
-                task.setTaskStatus(Constants.PARAM_ONE);
+                task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                 for (int i = 0; i < repetitionCount; i++) {
                     QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                     queryWrapper.eq("task_id", taskId);

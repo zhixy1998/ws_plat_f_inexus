@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
@@ -2186,7 +2187,7 @@ public class SpectrumOneNewWebSocket {
                     }
                     task.setSampleKey(JSON.toJSONString(specimen));
                     task.setDeviceSerialNumber(deviceSerialNumber);
-                    task.setTaskStatus(Constants.PARAM_ONE);
+                    task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                     boolean update = tMeasureTaskService.updateById(task);
                     if (!update) {
                         log.error("更新任务失败: " + taskId);

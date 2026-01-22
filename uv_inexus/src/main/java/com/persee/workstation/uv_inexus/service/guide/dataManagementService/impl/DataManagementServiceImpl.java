@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -117,12 +118,12 @@ public class DataManagementServiceImpl implements DataManagementService {
         LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureTask::getMeasureType, taskType);
         // 如果status等于2的情况下则查询已完成的任务,如果小于2则查询未完成的任务
-        if (status.equals(Constants.PARAM_TWO)){
+        if (status.equals(TaskStatusEnum.COMPLETED.getCode())){
             // 查询taskStatus为2（结束）的记录
-            queryWrapper.eq(TMeasureTask::getTaskStatus, 2);
+            queryWrapper.eq(TMeasureTask::getTaskStatus, TaskStatusEnum.COMPLETED.getCode());
         } else {
             // 查询taskStatus为0（未测）或1（已测）的记录
-            queryWrapper.in(TMeasureTask::getTaskStatus, Arrays.asList(0, 1));
+            queryWrapper.in(TMeasureTask::getTaskStatus, Arrays.asList(TaskStatusEnum.UNTESTED.getCode(), TaskStatusEnum.TESTED.getCode()));
         }
         queryWrapper.eq(TMeasureTask::getTaskStatus, status);
         queryWrapper.eq(TMeasureTask::getUserId, unFinishTasksAndNumParam.getSystemIdentityId());
@@ -393,7 +394,7 @@ public class DataManagementServiceImpl implements DataManagementService {
             taskSumListDto.setMethodName(method.getMethodName());
             taskSumListDto.setProjectName(project.getProjectName());
             taskSumListDto.setMeasureMode(task.getMeasureType());
-            taskSumListDto.setTaskStatus(Constants.PARAM_ZERO.equals(task.getTaskStatus())?"未测":Constants.PARAM_ONE.equals(task.getTaskStatus())?"已测":"结束");
+            taskSumListDto.setTaskStatus(TaskStatusEnum.UNTESTED.getCode().equals(task.getTaskStatus())?"未测":TaskStatusEnum.TESTED.getCode().equals(task.getTaskStatus())?"已测":"结束");
             taskSumListDto.setSampleNum((long) specimen.size());
             taskSumListDto.setMeasureStartTime(task.getStartTime());
             taskSumList.add(taskSumListDto);
@@ -423,7 +424,7 @@ public class DataManagementServiceImpl implements DataManagementService {
 
         List<TMeasureTask> collect = (tasks == null ? new ArrayList<TMeasureTask>() : tasks)
                 .stream()
-                .filter(task -> task != null && "2".equals(task.getTaskStatus()))
+                .filter(task -> task != null && TaskStatusEnum.COMPLETED.getCode().equals(task.getTaskStatus()))
                 .collect(Collectors.toList());
 
         result.setTaskTotal((long) tasks.size());

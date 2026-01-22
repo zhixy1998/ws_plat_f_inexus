@@ -17,6 +17,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
@@ -768,7 +769,7 @@ public class TimeNewWebSocket {
 
             task.setSampleKey(JSON.toJSONString(specimens));
             task.setDeviceSerialNumber(deviceSerialNumber);
-            task.setTaskStatus(Constants.PARAM_ONE);
+            task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
             tMeasureTaskService.updateById(task);
 
         } catch (Exception e) {

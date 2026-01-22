@@ -512,7 +512,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureTask.setSampleKey(JSON.toJSONString(list));
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setStartTime(LocalDateTime.now());
-        tMeasureTask.setTaskStatus(Constants.PARAM_ZERO);
+        tMeasureTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         tMeasureTask.setIsDelete("0");
         boolean save = tMeasureTaskService.save(tMeasureTask);
         if (!save) {

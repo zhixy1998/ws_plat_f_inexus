@@ -26,6 +26,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TableHeadILocateEnums;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -2942,7 +2943,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             methodBoolean = true;
         }
 
-        if (task.getTaskStatus().equals("0")) {
+        if (task.getTaskStatus().equals(TaskStatusEnum.UNTESTED.getCode())) {
             TMeasureMethod newMethod = createNewMethod(paramDto , methodBoolean);
             if (newMethod == null) {
                 //新建方法失败
@@ -3984,7 +3985,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         newTask.setProjectItemKey(task.getProjectItemKey());
         newTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
         newTask.setIsDelete(Constants.PARAM_ZERO);
-        newTask.setTaskStatus(Constants.PARAM_ZERO);
+        newTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         boolean save = tMeasureTaskService.save(newTask);
         if (save) {
             return newTask;
