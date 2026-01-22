@@ -15,9 +15,16 @@ public class AddSampleDTO {
     @NotBlank(message = "设备序列号不能为空")
     private String deviceSerialNumber;
 
-    // 样品编号配置
-    private SampleNumConfig sampleNumberConfig;
-
-    // 样品名称配置
+    // 样品编号和名称配置（四个测量和定量测量通用）
+    private SampleNumConfig sampleNumConfig;
     private SampleNameConfig sampleNameConfig;
+
+    // 定量测量特有的字段
+    private String sampleKind;          // 样品种类：未知样品或标准样品
+    private String normalConcentration; // 标准浓度
+    private String updateBy;            // 更新人
+
+    // 可选字段
+    private String measureType;         // 测量类型（可选，不传则从任务获取）
+    private Boolean autoChangePool;     // 是否自动换池（可选）
 }

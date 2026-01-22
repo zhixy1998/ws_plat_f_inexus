@@ -9,12 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
-import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
-import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
+import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
@@ -34,9 +29,11 @@ public interface ExperimentTestService {
 
     Result createTask(CreateTaskParamDto paramDto);
 
-    // 是否添加样本
-    Result isAddSample(String taskId, String deviceSerialNumber,
-                       SampleNumConfig numberConfig, SampleNameConfig nameConfig);
+//    // 是否添加样本
+//    Result isAddSample(String taskId, String deviceSerialNumber,
+//                       SampleNumConfig numberConfig, SampleNameConfig nameConfig);
+
+    Result isAddSample(AddSampleDTO addSampleDTO);
 
     Result queryTaskPort(QueryTaskDto queryTask);
 

@@ -729,6 +729,7 @@ public class TimeNewOneWebSocket {
 
             task.setSampleKey(JSON.toJSONString(specimens));
             task.setDeviceSerialNumber(deviceSerialNumber);
+            task.setTaskStatus(Constants.PARAM_ONE);
             tMeasureTaskService.updateById(task);
 
         } catch (Exception e) {

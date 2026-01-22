@@ -1859,9 +1859,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         measurementCurrentInfoVO.setMethodId(task.getMethodKey());
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         measurementCurrentInfoVO.setMethodName(method.getMethodName());
-//        measurementCurrentInfoVO.setProjectId(task.getProjectItemKey());
+        measurementCurrentInfoVO.setProjectId(task.getProjectItemKey());
         TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-//        measurementCurrentInfoVO.setProjectName(project.getProjectName());
+        measurementCurrentInfoVO.setProjectName(project.getProjectName());
 
         return Result.ok(measurementCurrentInfoVO);
     }

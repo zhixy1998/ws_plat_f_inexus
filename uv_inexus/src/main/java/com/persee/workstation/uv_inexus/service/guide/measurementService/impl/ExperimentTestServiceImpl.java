@@ -49,6 +49,7 @@ import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretre
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -61,6 +62,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectrumReport
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReport;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
+import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemBusinessParamVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -108,6 +110,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
     @Autowired
+    GuidePublicUtilService guidePublicUtilService;
+    @Autowired
     private TimeSweepService timeSweepService;
     @Autowired
     private TReportStandardDetectionService tReportStandardDetectionService;
@@ -143,6 +147,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Autowired
     private SysUserMapper sysUserMapper;
+
+    @Autowired
+    SystemBusinessParamService businessParamService;
 
     @Value("1")
     String deleteType;
@@ -522,59 +529,315 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(vo);
     }
 
+//    /**
+//     * 是否添加样本
+//     *
+//     * @param taskId
+//     * @return
+//     */
+//    @Override
+//    public Result isAddSample(String taskId, String deviceSerialNumber, SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
+//        TMeasureTask task = tMeasureTaskService.getById(taskId);
+//        if (task == null) {
+//            //没有找到该任务
+//            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+//        }
+//        Integer sampleAutoNum = task.getSampleAutoNum();
+//        if (sampleAutoNum == null) {
+//            sampleAutoNum = 0;
+//        }
+//        // 如果前端没有传配置，使用默认值
+//        if (numberConfig == null) {
+//            numberConfig = new SampleNumConfig();
+//            numberConfig.setPreName("default");
+//            numberConfig.setStartNum(1);
+//            numberConfig.setStep(1);
+//            }
+//
+//        if (nameConfig == null) {
+//            nameConfig = new SampleNameConfig();
+//            nameConfig.setPreName("样品");
+//            nameConfig.setStartNum(1);
+//            nameConfig.setStep(1);
+//    }
+//        String description = null;
+//        if (task.getMeasureType().equals("光谱扫描")) {
+//            description = MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
+//        } else if (task.getMeasureType().equals("时间扫描")) {
+//            description = MeasureTypeEnum.TIME_SCAN.getDescription();
+//        } else if (task.getMeasureType().equals("定量测定")) {
+//            description = MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
+//        } else if (task.getMeasureType().equals("光度测量")) {
+//            description = MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
+//        }
+//
+//        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+//        if (taskSpecimen == null) {
+//            taskSpecimen = new ArrayList<>();
+//        }
+//
+//        Result<List<HeadVO>> listResult = querySampleHeads(taskId, description);
+//        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+//            return Result.fail(listResult.getMessage());
+//        }
+//
+//        List<HeadVO> heads = listResult.getData();
+//        //动态表头
+//        List<HeadVO> dynamicHeads = new ArrayList<>();
+//        heads.forEach(head -> {
+//            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())) {
+//                dynamicHeads.add(head);
+//            }
+//        });
+//
+//        if (taskSpecimen.isEmpty()) {
+//            TMeasureSample newSample = new TMeasureSample();
+//
+//            // 使用配置的开始号
+//            sampleAutoNum = numberConfig.getStartNum();
+//
+//            // 生成样品编号：名称-开始号
+//            newSample.setSampleNumber(numberConfig.getPreName() + "-" + sampleAutoNum);
+//            // 生成样品名称：直接使用开始号
+//            newSample.setSampleName(nameConfig.getPreName() + nameConfig.getStartNum());
+//            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+//
+//            if (!dynamicHeads.isEmpty()) {
+//                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+//            }
+//
+//            boolean save = tMeasureSampleService.save(newSample);
+//            if (!save) {
+//                //保存失败
+//                return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
+//            }
+//
+//            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested,
+//                    newSample.getSampleType(), null));
+//
+//        } else {
+//            boolean hasNoTested = false;
+//            List<String> sampleNumList = new ArrayList<>();
+//            for (FTaskSpecimen specimen : taskSpecimen) {
+//                if (specimen.getDeleteType().equals(deleteType)) {
+//                    continue;
+//                }
+//
+//                if (specimen.getIsTested().equals(noTested)) {
+//                    hasNoTested = true;
+//                    break;
+//                }
+//
+//                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+//                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())) {
+//                    sampleNumList.add(measureSample.getSampleNumber());
+//                }
+//            }
+//
+//            if (hasNoTested) {
+//                return Result.ok(true);
+//            }
+//
+//            TMeasureSample newSample = new TMeasureSample();
+//
+//            // 计算下一个编号
+//            if (sampleAutoNum == 0) {
+//                // 如果sampleAutoNum为0，使用配置的开始号
+//                sampleAutoNum = numberConfig.getStartNum();
+//            } else {
+//                // 否则使用当前编号 + 递增量
+//                sampleAutoNum = sampleAutoNum + numberConfig.getStep();
+//            }
+//
+//            // 检查编号是否已存在，如果存在则继续递增
+//            int number = sampleAutoNum;
+//            while (sampleNumList.contains(numberConfig.getPreName() + "-" + number)) {
+//                number += numberConfig.getStep();
+//            }
+//
+//            // 2. 计算当前名称的序号
+//            int nameSequenceNum = nameConfig.getStartNum() + (taskSpecimen.size() * nameConfig.getStep());
+//
+//            // 设置样品编号和名称
+//            newSample.setSampleNumber(numberConfig.getPreName() + "-" + number);
+//            newSample.setSampleName(nameConfig.getPreName() + nameSequenceNum);
+//            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+//
+//            if (!dynamicHeads.isEmpty()) {
+//                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+//            }
+//
+//            boolean save = tMeasureSampleService.save(newSample);
+//            if (!save) {
+//                //保存失败
+//                return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
+//            }
+//
+//            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested,
+//                    newSample.getSampleType(), null));
+//        }
+//
+//        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+//        task.setSampleAutoNum(sampleAutoNum);
+//        boolean update = tMeasureTaskService.updateById(task);
+//        if (!update) {
+//            //更新失败
+//            return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
+//        }
+//        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+//        if (poolInfo.getSuccess()) {
+//            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+//            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+//        if (isAutoChangePool) {
+//            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+//                        concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+//                    }
+//                }
+//        return Result.ok(true);
+//    }
+
+
     /**
      * 是否添加样本
      *
-     * @param taskId
+     * @param dto
      * @return
      */
     @Override
-    public Result isAddSample(String taskId, String deviceSerialNumber, SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
+    public Result isAddSample(AddSampleDTO dto) {
+        String taskId = dto.getTaskId();
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+        String sampleKind = dto.getSampleKind();
+        String normalConcentration = dto.getNormalConcentration();
+        String measureType = dto.getMeasureType();
+
+        // 1. 获取任务信息
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
-            //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
+
+        // 2. 如果未传测量类型，使用任务中的测量类型
+        if (measureType == null) {
+            measureType = task.getMeasureType();
+        }
+
+        // 3. 判断是否是定量测量
+        boolean isQuantitative = "定量测定".equals(measureType);
+
+        // 4. 如果是定量测量标准样品，校验浓度
+        if (isQuantitative && SampleTypeEnum.kind_stand.getIdentity().equals(sampleKind)) {
+            if (!StringUtils.hasText(normalConcentration)) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00102024"));
+            }
+            try {
+                double v = Double.parseDouble(normalConcentration);
+                if (v < 0) {
+                    return Result.fail(YamlMessageSource.getMessageStatic("0010202D"));
+                }
+            } catch (Exception e) {
+                return Result.fail(YamlMessageSource.getMessageStatic("0010202D"));
+            }
+        }
+
+        // 5. 获取测量类型描述
+        String description = getMeasureTypeDescription(measureType);
+
+        // 6. 准备配置
+        SampleNumConfig numberConfig = prepareNumberConfig(dto.getSampleNumConfig(), isQuantitative);
+        SampleNameConfig nameConfig = prepareNameConfig(dto.getSampleNameConfig(), isQuantitative);
+
+        // 7. 根据测量类型选择不同的处理逻辑
+        if (isQuantitative) {
+            return handleQuantitativeSample(dto, task, numberConfig, nameConfig);
+        } else {
+            return handleFourMeasurementSample(dto, task, description, numberConfig, nameConfig);
+        }
+    }
+
+
+    /**
+     * 处理定量测量样品创建
+     */
+    private Result handleQuantitativeSample(AddSampleDTO dto, TMeasureTask task,
+                                            SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
+        String taskId = dto.getTaskId();
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+        String sampleKind = dto.getSampleKind();
+        String normalConcentration = dto.getNormalConcentration();
+
+        // 获取任务样品列表
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+
+        // 获取表头信息
+        Result<List<HeadVO>> listResult = querySampleHeads(taskId, sampleKind);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return Result.fail(listResult.getMessage());
+        }
+
         Integer sampleAutoNum = task.getSampleAutoNum();
         if (sampleAutoNum == null) {
             sampleAutoNum = 0;
         }
-        // 如果前端没有传配置，使用默认值
-        if (numberConfig == null) {
-            numberConfig = new SampleNumConfig();
-            numberConfig.setPreName("default");
-            numberConfig.setStartNum(1);
-            numberConfig.setStep(1);
+
+        // 获取业务参数
+        SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+        Integer concentrationDigit = businessParamVO.getConcentrationDigits();
+
+        // 获取动态表头
+        List<HeadVO> heads = listResult.getData();
+        List<HeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())) {
+                dynamicHeads.add(head);
+            }
+        });
+
+        // 获取自动换池配置
+        boolean isAutoChangePool = getAutoChangePoolConfig(dto, deviceSerialNumber);
+
+        // 处理样品创建逻辑
+        if (taskSpecimen.isEmpty()) {
+            // 首次创建样品
+            return createFirstQuantitativeSample(task, taskSpecimen, sampleKind, normalConcentration,
+                    concentrationDigit, dynamicHeads, numberConfig, nameConfig);
+        } else {
+            // 后续添加样品
+            return createSubsequentQuantitativeSamples(dto, task, taskSpecimen, sampleKind, normalConcentration,
+                    concentrationDigit, dynamicHeads, isAutoChangePool,
+                    deviceSerialNumber, numberConfig, nameConfig, sampleAutoNum);
+        }
+    }
+
+    /**
+     * 处理四个测量样品创建
+     */
+    private Result handleFourMeasurementSample(AddSampleDTO dto, TMeasureTask task, String description,
+                                               SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
+        String taskId = dto.getTaskId();
+        String deviceSerialNumber = dto.getDeviceSerialNumber();
+
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
         }
 
-        if (nameConfig == null) {
-            nameConfig = new SampleNameConfig();
-            nameConfig.setPreName("样品");
-            nameConfig.setStartNum(1);
-            nameConfig.setStep(1);
-        }
-        String description = null;
-        if (task.getMeasureType().equals("光谱扫描")) {
-            description = MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
-        } else if (task.getMeasureType().equals("时间扫描")) {
-            description = MeasureTypeEnum.TIME_SCAN.getDescription();
-        } else if (task.getMeasureType().equals("定量测定")) {
-            description = MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
-        } else if (task.getMeasureType().equals("光度测量")) {
-            description = MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
-        }
-
+        // 获取任务样品列表
         List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
         if (taskSpecimen == null) {
             taskSpecimen = new ArrayList<>();
         }
 
+        // 获取表头信息
         Result<List<HeadVO>> listResult = querySampleHeads(taskId, description);
         if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
             return Result.fail(listResult.getMessage());
         }
+
         List<HeadVO> heads = listResult.getData();
-        //动态表头
         List<HeadVO> dynamicHeads = new ArrayList<>();
         heads.forEach(head -> {
             if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())) {
@@ -583,30 +846,37 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         });
 
         if (taskSpecimen.isEmpty()) {
+            // 首次创建样品
             TMeasureSample newSample = new TMeasureSample();
 
-            // 使用配置的开始号
+            // 使用配置的开始号（修正：从配置的startNum开始）
             sampleAutoNum = numberConfig.getStartNum();
 
             // 生成样品编号：名称-开始号
             newSample.setSampleNumber(numberConfig.getPreName() + "-" + sampleAutoNum);
-            // 生成样品名称：直接使用开始号
+
+            // 生成样品名称：使用配置的起始编号（修正：从配置的startNum开始）
             newSample.setSampleName(nameConfig.getPreName() + nameConfig.getStartNum());
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+
             if (!dynamicHeads.isEmpty()) {
                 newSample.setHeads(JSON.toJSONString(dynamicHeads));
             }
+
             boolean save = tMeasureSampleService.save(newSample);
             if (!save) {
-                //保存失败
                 return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
 
-            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested,
+                    newSample.getSampleType(), null));
 
         } else {
+            // 检查是否有未测试的样品
             boolean hasNoTested = false;
             List<String> sampleNumList = new ArrayList<>();
+            List<String> sampleNameList = new ArrayList<>();
+
             for (FTaskSpecimen specimen : taskSpecimen) {
                 if (specimen.getDeleteType().equals(deleteType)) {
                     continue;
@@ -618,25 +888,30 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
 
                 TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())) {
-                    sampleNumList.add(measureSample.getSampleNumber());
+                if (measureSample != null) {
+                    if (StringUtils.hasText(measureSample.getSampleNumber())) {
+                        sampleNumList.add(measureSample.getSampleNumber());
+                    }
+                    if (StringUtils.hasText(measureSample.getSampleName())) {
+                        sampleNameList.add(measureSample.getSampleName());
+                    }
                 }
             }
+
             if (hasNoTested) {
                 return Result.ok(true);
             }
 
             TMeasureSample newSample = new TMeasureSample();
 
-            // 计算下一个编号
+            // 计算下一个编号（修正：使用配置的递增逻辑）
             if (sampleAutoNum == 0) {
-                // 如果sampleAutoNum为0，使用配置的开始号
+                // 如果没有保存过自动编号，使用配置的开始号
                 sampleAutoNum = numberConfig.getStartNum();
             } else {
-                // 否则使用当前编号 + 递增量
+                // 否则使用当前编号 + 配置的递增量
                 sampleAutoNum = sampleAutoNum + numberConfig.getStep();
             }
-
 
             // 检查编号是否已存在，如果存在则继续递增
             int number = sampleAutoNum;
@@ -644,42 +919,409 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 number += numberConfig.getStep();
             }
 
-            // 2. 计算当前名称的序号
-            int nameSequenceNum = nameConfig.getStartNum() + (taskSpecimen.size() * nameConfig.getStep());
+            // 计算当前名称的序号（修正：基于现有样品数量，使用配置的递增逻辑）
+            // 先找到最大的名称序号
+            int maxNameNumber = nameConfig.getStartNum();
+            for (String sampleName : sampleNameList) {
+                if (sampleName.startsWith(nameConfig.getPreName())) {
+                    try {
+                        String numberStr = sampleName.substring(nameConfig.getPreName().length());
+                        int currentNum = Integer.parseInt(numberStr);
+                        if (currentNum > maxNameNumber) {
+                            maxNameNumber = currentNum;
+                        }
+                    } catch (NumberFormatException e) {
+                        // 忽略非数字后缀
+                    }
+                }
+            }
+
+            // 计算下一个名称序号
+            int nameSequenceNum = maxNameNumber + nameConfig.getStep();
+
+            // 检查名称是否已存在，如果存在则继续递增
+            while (sampleNameList.contains(nameConfig.getPreName() + nameSequenceNum)) {
+                nameSequenceNum += nameConfig.getStep();
+            }
 
             // 设置样品编号和名称
             newSample.setSampleNumber(numberConfig.getPreName() + "-" + number);
             newSample.setSampleName(nameConfig.getPreName() + nameSequenceNum);
             newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+
             if (!dynamicHeads.isEmpty()) {
                 newSample.setHeads(JSON.toJSONString(dynamicHeads));
             }
+
             boolean save = tMeasureSampleService.save(newSample);
             if (!save) {
-                //保存失败
                 return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
             }
 
-            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested,
+                    newSample.getSampleType(), null));
+
+            // 更新自动编号
+            sampleAutoNum = number;
         }
 
+        // 更新任务
         task.setSampleKey(JSON.toJSONString(taskSpecimen));
         task.setSampleAutoNum(sampleAutoNum);
         boolean update = tMeasureTaskService.updateById(task);
         if (!update) {
-            //更新失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
         }
+
+        // 处理自动换池
+        handleAutoChangePool(dto, task, deviceSerialNumber, false);
+
+        return Result.ok(true);
+    }
+
+    /**
+     * 准备样品编号配置
+     */
+    private SampleNumConfig prepareNumberConfig(SampleNumConfig config, boolean isQuantitative) {
+        if (config != null) {
+            // 确保step不为null
+            if (config.getStep() == null) {
+                config.setStep(1);
+            }
+            // 确保startNum不为null
+            if (config.getStartNum() == null) {
+                config.setStartNum(1);
+            }
+            // 确保preName不为空
+            if (!StringUtils.hasText(config.getPreName())) {
+                if (isQuantitative) {
+                    config.setPreName("default-");
+                } else {
+                    config.setPreName("default");
+                }
+            }
+            return config;
+        }
+
+        // 默认配置
+        SampleNumConfig defaultConfig = new SampleNumConfig();
+        if (isQuantitative) {
+            defaultConfig.setPreName("default-");
+        } else {
+            defaultConfig.setPreName("default");
+        }
+        defaultConfig.setStartNum(1);
+        defaultConfig.setStep(1);
+        return defaultConfig;
+    }
+
+
+    /**
+     * 准备样品名称配置
+     */
+    private SampleNameConfig prepareNameConfig(SampleNameConfig config, boolean isQuantitative) {
+        if (config != null) {
+            // 确保step不为null
+            if (config.getStep() == null) {
+                config.setStep(1);
+            }
+            // 确保startNum不为null
+            if (config.getStartNum() == null) {
+                config.setStartNum(1);
+            }
+            // 确保preName不为空
+            if (!StringUtils.hasText(config.getPreName())) {
+                config.setPreName("样品");
+            }
+            return config;
+        }
+
+        // 默认配置
+        SampleNameConfig defaultConfig = new SampleNameConfig();
+        defaultConfig.setPreName("样品");
+        defaultConfig.setStartNum(1);
+        defaultConfig.setStep(1);
+        return defaultConfig;
+    }
+
+    /**
+     * 获取自动换池配置
+     */
+    private boolean getAutoChangePoolConfig(AddSampleDTO dto, String deviceSerialNumber) {
+        // 如果请求中指定了自动换池，使用请求值
+        if (dto.getAutoChangePool() != null) {
+            return dto.getAutoChangePool();
+        }
+
+        // 否则从设备配置获取
         R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
         if (poolInfo.getSuccess()) {
-            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
-            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
-            if (isAutoChangePool) {
-                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            return poolInfo.getData().getIsAutoChangePool();
+        }
+        return false;
+    }
+
+    /**
+     * 创建首个定量测量样品
+     */
+    private Result createFirstQuantitativeSample(TMeasureTask task, List<TaskSpecimen> taskSpecimen,
+                                                 String sampleKind, String normalConcentration,
+                                                 Integer concentrationDigit, List<HeadVO> dynamicHeads,
+                                                 SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
+
+        TMeasureSample newSample = new TMeasureSample();
+
+        // 设置样品名称和编号（使用配置的起始值）
+        newSample.setSampleName(nameConfig.getPreName() + nameConfig.getStartNum());
+        newSample.setSampleNumber(numberConfig.getPreName() + numberConfig.getStartNum());
+
+        // 设置样品类型
+        if (SampleTypeEnum.kind_unknown.getIdentity().equals(sampleKind)) {
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+        } else {
+            newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+            String newNormalConcentration = DataCountUtil.addZero(Double.parseDouble(normalConcentration), concentrationDigit);
+            newSample.setNormalConcentration(newNormalConcentration);
+        }
+
+        newSample.setSampleKind(sampleKind);
+        if (!dynamicHeads.isEmpty()) {
+            newSample.setHeads(JSON.toJSONString(dynamicHeads));
+        }
+
+        boolean save = tMeasureSampleService.save(newSample);
+        if (!save) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
+        }
+
+        taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested,
+                newSample.getSampleType(), sampleKind));
+
+        // 更新任务（使用配置的起始值）
+        task.setSampleAutoNum(numberConfig.getStartNum());
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        boolean update = tMeasureTaskService.updateById(task);
+        if (!update) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
+        }
+
+        return Result.ok(true);
+    }
+
+    /**
+     * 创建后续定量测量样品（支持批量创建）
+     */
+    private Result createSubsequentQuantitativeSamples(AddSampleDTO dto, TMeasureTask task,
+                                                       List<TaskSpecimen> taskSpecimen, String sampleKind,
+                                                       String normalConcentration, Integer concentrationDigit,
+                                                       List<HeadVO> dynamicHeads, boolean isAutoChangePool,
+                                                       String deviceSerialNumber, SampleNumConfig numberConfig,
+                                                       SampleNameConfig nameConfig, Integer sampleAutoNum) {
+
+        // 检查是否有未测试的样品
+        boolean hasNoTested = false;
+        List<String> sampleNumList = new ArrayList<>();
+        List<String> sampleNameList = new ArrayList<>();
+        double cou = 0;
+        double last = 0;
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+            if (!specimen.getSampleKind().equals(sampleKind) || specimen.getDeleteType().equals(deleteType)) {
+                continue;
+            }
+            if (specimen.getIsTested().equals(noTested)) {
+                hasNoTested = true;
+                break;
+            }
+            TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+            if (measureSample != null && StringUtils.hasText(measureSample.getSampleName())) {
+                sampleNumList.add(measureSample.getSampleNumber());
+                sampleNameList.add(measureSample.getSampleName());
+                if (StringUtils.hasText(measureSample.getNormalConcentration())) {
+                    cou = Double.parseDouble(measureSample.getNormalConcentration()) - last;
+                    last = Double.parseDouble(measureSample.getNormalConcentration());
+                }
             }
         }
+
+        if (hasNoTested) {
+            return Result.ok(true);
+        }
+
+        if (cou == 0) {
+            cou = 1;
+        }
+
+        // 计算要创建的样品数量
+        int samplesToCreate = 1;
+        if (isAutoChangePool) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            int all = usefulLocation.size();
+            samplesToCreate = Math.max(1, all - taskSpecimen.size());
+        }
+
+        // 计算当前的样品编号和名称的最大值
+        int currentMaxNumber = findMaxNumberFromSamples(sampleNumList, numberConfig.getPreName());
+        int currentMaxNameNumber = findMaxNumberFromSamples(sampleNameList, nameConfig.getPreName());
+
+        // 批量创建样品
+        for (int i = 0; i < samplesToCreate; i++) {
+            TMeasureSample newSample = new TMeasureSample();
+
+            // 生成唯一的样品编号
+            int nextNumber;
+            if (currentMaxNumber < numberConfig.getStartNum()) {
+                // 如果当前最大值小于起始值，从起始值开始
+                nextNumber = numberConfig.getStartNum();
+            } else {
+                // 否则按递增规则计算下一个编号
+                nextNumber = currentMaxNumber + numberConfig.getStep();
+            }
+
+            // 检查编号是否已存在，如果存在则继续递增
+            while (sampleNumList.contains(numberConfig.getPreName() + nextNumber)) {
+                nextNumber += numberConfig.getStep();
+            }
+
+            // 生成唯一的样品名称
+            int nextNameNumber;
+            if (currentMaxNameNumber < nameConfig.getStartNum()) {
+                // 如果当前最大值小于起始值，从起始值开始
+                nextNameNumber = nameConfig.getStartNum();
+            } else {
+                // 否则按递增规则计算下一个名称编号
+                nextNameNumber = currentMaxNameNumber + nameConfig.getStep();
+            }
+
+            // 检查名称是否已存在，如果存在则继续递增
+            while (sampleNameList.contains(nameConfig.getPreName() + nextNameNumber)) {
+                nextNameNumber += nameConfig.getStep();
+            }
+
+            newSample.setSampleNumber(numberConfig.getPreName() + nextNumber);
+            newSample.setSampleName(nameConfig.getPreName() + nextNameNumber);
+
+            // 设置样品类型
+            if (SampleTypeEnum.kind_unknown.getIdentity().equals(sampleKind)) {
+                newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            } else {
+                newSample.setSampleType(SampleTypeEnum.stand.getIdentity());
+                String newNormalConcentration = DataCountUtil.addZero(Double.parseDouble(normalConcentration), concentrationDigit);
+                newSample.setNormalConcentration(newNormalConcentration);
+                // 更新下一个样品的浓度
+                normalConcentration = DataCountUtil.addZero((Double.parseDouble(normalConcentration) + cou), concentrationDigit);
+            }
+
+            newSample.setSampleKind(sampleKind);
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+
+            boolean save = tMeasureSampleService.save(newSample);
+            if (!save) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+
+            taskSpecimen.add(new TaskSpecimen(newSample.getId(), createType, noTested,
+                    newSample.getSampleType(), sampleKind));
+
+            // 更新列表
+            sampleNumList.add(newSample.getSampleNumber());
+            sampleNameList.add(newSample.getSampleName());
+
+            // 更新最大值
+            currentMaxNumber = nextNumber;
+            currentMaxNameNumber = nextNameNumber;
+
+            // 更新自动编号
+            sampleAutoNum = nextNumber;
+        }
+
+        // 更新任务
+        task.setSampleAutoNum(sampleAutoNum);
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        boolean update = tMeasureTaskService.updateById(task);
+        if (!update) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
+        }
+
+        // 处理自动换池
+        if (isAutoChangePool && samplesToCreate > 1) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+        }
+
         return Result.ok(true);
+    }
+
+    /**
+     * 从样品列表中找到最大的数字编号
+     */
+    private int findMaxNumberFromSamples(List<String> sampleList, String prefix) {
+        int maxNumber = 0;
+
+        for (String sample : sampleList) {
+            if (sample.startsWith(prefix)) {
+                try {
+                    String numberStr = sample.substring(prefix.length());
+                    int number = Integer.parseInt(numberStr);
+                    if (number > maxNumber) {
+                        maxNumber = number;
+                    }
+                } catch (NumberFormatException e) {
+                    // 忽略非数字后缀
+                }
+            }
+        }
+
+        return maxNumber;
+    }
+
+
+    /**
+     * 获取测量类型描述
+     */
+    private String getMeasureTypeDescription(String measureType) {
+        if ("光谱扫描".equals(measureType)) {
+            return MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
+        } else if ("时间扫描".equals(measureType)) {
+            return MeasureTypeEnum.TIME_SCAN.getDescription();
+        } else if ("定量测定".equals(measureType)) {
+            return MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
+        } else if ("光度测量".equals(measureType)) {
+            return MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
+        }
+        return null;
+    }
+
+    /**
+     * 处理自动换池
+     */
+    private void handleAutoChangePool(AddSampleDTO dto, TMeasureTask task, String deviceSerialNumber, boolean isQuantitative) {
+        Boolean autoChangePool = dto.getAutoChangePool();
+
+        if (autoChangePool != null && autoChangePool) {
+            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            if (isQuantitative) {
+                guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            } else {
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
+        } else {
+            // 如果没有指定，检查设备配置
+            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess()) {
+                FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+                if (poolInfoVO.getIsAutoChangePool()) {
+                    List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+                    if (isQuantitative) {
+                        guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+                    } else {
+                        concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+                    }
+                }
+            }
+        }
     }
 
     /**

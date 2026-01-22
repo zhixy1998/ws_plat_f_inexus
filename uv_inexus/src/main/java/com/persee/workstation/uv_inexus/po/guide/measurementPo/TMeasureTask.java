@@ -95,7 +95,7 @@ public class TMeasureTask{
     @TableField("is_delete")
     private String isDelete;
 
-    // 是否保存(0:未测 1:已测 2:结束)
+    // 任务状态(0:未测 1:已测 2:结束)
     @TableField("task_status")
     private String taskStatus;
 

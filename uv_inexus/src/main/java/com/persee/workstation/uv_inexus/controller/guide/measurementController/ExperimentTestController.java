@@ -87,6 +87,24 @@ public class ExperimentTestController {
     }
 
 
+//    @PostMapping("isAddSample")
+//    @ApiOperation("是否添加样品")
+//    public Result isAddSample(@RequestBody @Valid AddSampleDTO addSampleDTO,
+//                              BindingResult bindingResult) {
+//        if (bindingResult.hasErrors()) {
+//            String errorMsg = bindingResult.getFieldErrors().stream()
+//                    .map(error -> error.getDefaultMessage())
+//                    .collect(Collectors.joining("; "));
+//            return Result.fail("参数校验失败: " + errorMsg);
+//        }
+//        return experimentTestService.isAddSample(
+//                addSampleDTO.getTaskId(),
+//                addSampleDTO.getDeviceSerialNumber(),
+//                addSampleDTO.getSampleNumberConfig(),
+//                addSampleDTO.getSampleNameConfig()
+//        );
+//    }
+
     @PostMapping("isAddSample")
     @ApiOperation("是否添加样品")
     public Result isAddSample(@RequestBody @Valid AddSampleDTO addSampleDTO,
@@ -97,12 +115,7 @@ public class ExperimentTestController {
                     .collect(Collectors.joining("; "));
             return Result.fail("参数校验失败: " + errorMsg);
         }
-        return experimentTestService.isAddSample(
-                addSampleDTO.getTaskId(),
-                addSampleDTO.getDeviceSerialNumber(),
-                addSampleDTO.getSampleNumberConfig(),
-                addSampleDTO.getSampleNameConfig()
-        );
+        return experimentTestService.isAddSample(addSampleDTO);
     }
 
 

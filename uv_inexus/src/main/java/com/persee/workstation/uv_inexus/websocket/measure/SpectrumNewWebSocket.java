@@ -415,6 +415,8 @@ public class SpectrumNewWebSocket {
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
                             }
+                        }else{
+                            break;
                         }
                     }
                 } else {
@@ -508,6 +510,8 @@ public class SpectrumNewWebSocket {
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
                             }
+                        }else{
+                            break;
                         }
                     }
                 }
