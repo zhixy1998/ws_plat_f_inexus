@@ -10,6 +10,8 @@ public class ZeroCalibrationWebSocketParam {
     private String taskId;
     @ApiModelProperty(value = "方法ID")
     private String methodId;
+    @ApiModelProperty(value = "返回消息")
+    private String message="校零成功";
     @ApiModelProperty(value = "设备序列号")
     private String deviceSerialNumber;
 }

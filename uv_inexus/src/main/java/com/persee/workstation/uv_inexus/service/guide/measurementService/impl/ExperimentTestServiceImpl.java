@@ -20,11 +20,18 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureDataMap
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
+import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
@@ -33,6 +40,7 @@ import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardDetec
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardPretreatment;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
@@ -40,6 +48,7 @@ import com.persee.workstation.uv_inexus.service.guide.parseReport.CalculationFor
 import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretreatmentService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
+import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
@@ -52,10 +61,12 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.spectrum.SpectrumReport
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReport;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.timeSweep.TimeSweepReportParametersVo;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -64,11 +75,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 ("experimentTestService")
 public class ExperimentTestServiceImpl implements ExperimentTestService {
@@ -93,6 +106,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureDataMapper tMeasureDataMapper;
     @Autowired
+    ConcisePublicUtilService concisePublicUtilService;
+    @Autowired
     private TimeSweepService timeSweepService;
     @Autowired
     private TReportStandardDetectionService tReportStandardDetectionService;
@@ -108,6 +123,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired
     TMeasureTaskMapper tMeasureTaskMapper;
+    @Autowired
+    SystemBusinessParamService systemBusinessParamService;
     // 计算公式的服务
     @Autowired
     private CalculationFormulaService calculationFormulaService;
@@ -126,6 +143,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Autowired
     private SysUserMapper sysUserMapper;
+
+    @Value("1")
+    String deleteType;
+
+    @Value("0")
+    String createType;
+
+    @Value("0")
+    String noTested;
 
 
     public DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -336,18 +362,19 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //任务名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
         }
-        // 根据项目id查询项目
-        TMeasureProject project = tMeasureProjectService.getById(paramDto.getProjectId());
-        //根据项目中的用户名称查询用户
-        SysUserPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, project.getCreatorKey()));
+        SysUserPO sysUserPO = sysUserMapper.selectByUsername(paramDto.getUpdateBy());
+        if (sysUserPO == null) {
+            //用户不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000005"));
+        }
         // 创建任务类
         TMeasureTask tMeasureTask = new TMeasureTask();
-        tMeasureTask.setUserId(userConfigPO.getId());
+        tMeasureTask.setUserId(sysUserPO.getId());
         tMeasureTask.setTaskName(paramDto.getTaskName());
         tMeasureTask.setMeasureType(paramDto.getMeasurementType());
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setMethodKey(paramDto.getMethodId());
-        tMeasureTask.setProjectItemKey(project.getId());
+        tMeasureTask.setProjectItemKey(paramDto.getProjectId());
         tMeasureTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
         List<TaskSpecimen> list = new ArrayList<>();
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(paramDto.getMeasurementType());
@@ -478,6 +505,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         tMeasureTask.setSampleKey(JSON.toJSONString(list));
         tMeasureTask.setCreateTime(LocalDateTime.now());
         tMeasureTask.setStartTime(LocalDateTime.now());
+        tMeasureTask.setTaskStatus(Constants.PARAM_ZERO);
         tMeasureTask.setIsDelete("0");
         boolean save = tMeasureTaskService.save(tMeasureTask);
         if (!save) {
@@ -494,6 +522,204 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(vo);
     }
 
+    /**
+     * 是否添加样本
+     *
+     * @param taskId
+     * @return
+     */
+    @Override
+    public Result isAddSample(String taskId, String deviceSerialNumber, SampleNumConfig numberConfig, SampleNameConfig nameConfig) {
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        Integer sampleAutoNum = task.getSampleAutoNum();
+        if (sampleAutoNum == null) {
+            sampleAutoNum = 0;
+        }
+        // 如果前端没有传配置，使用默认值
+        if (numberConfig == null) {
+            numberConfig = new SampleNumConfig();
+            numberConfig.setPreName("default");
+            numberConfig.setStartNum(1);
+            numberConfig.setStep(1);
+        }
+
+        if (nameConfig == null) {
+            nameConfig = new SampleNameConfig();
+            nameConfig.setPreName("样品");
+            nameConfig.setStartNum(1);
+            nameConfig.setStep(1);
+        }
+        String description = null;
+        if (task.getMeasureType().equals("光谱扫描")) {
+            description = MeasureTypeEnum.SPECTRAL_SCAN.getDescription();
+        } else if (task.getMeasureType().equals("时间扫描")) {
+            description = MeasureTypeEnum.TIME_SCAN.getDescription();
+        } else if (task.getMeasureType().equals("定量测定")) {
+            description = MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
+        } else if (task.getMeasureType().equals("光度测量")) {
+            description = MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
+        }
+
+        List<FTaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), FTaskSpecimen.class);
+        if (taskSpecimen == null) {
+            taskSpecimen = new ArrayList<>();
+        }
+
+        Result<List<HeadVO>> listResult = querySampleHeads(taskId, description);
+        if (!listResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode())) {
+            return Result.fail(listResult.getMessage());
+        }
+        List<HeadVO> heads = listResult.getData();
+        //动态表头
+        List<HeadVO> dynamicHeads = new ArrayList<>();
+        heads.forEach(head -> {
+            if (head.getLocate().equals(TableHeadILocateEnums.sample.getIdentity())) {
+                dynamicHeads.add(head);
+            }
+        });
+
+        if (taskSpecimen.isEmpty()) {
+            TMeasureSample newSample = new TMeasureSample();
+
+            // 使用配置的开始号
+            sampleAutoNum = numberConfig.getStartNum();
+
+            // 生成样品编号：名称-开始号
+            newSample.setSampleNumber(numberConfig.getPreName() + "-" + sampleAutoNum);
+            // 生成样品名称：直接使用开始号
+            newSample.setSampleName(nameConfig.getPreName() + nameConfig.getStartNum());
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = tMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+
+        } else {
+            boolean hasNoTested = false;
+            List<String> sampleNumList = new ArrayList<>();
+            for (FTaskSpecimen specimen : taskSpecimen) {
+                if (specimen.getDeleteType().equals(deleteType)) {
+                    continue;
+                }
+
+                if (specimen.getIsTested().equals(noTested)) {
+                    hasNoTested = true;
+                    break;
+                }
+
+                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+                if (measureSample != null && StringUtils.hasText(measureSample.getSampleNumber())) {
+                    sampleNumList.add(measureSample.getSampleNumber());
+                }
+            }
+            if (hasNoTested) {
+                return Result.ok(true);
+            }
+
+            TMeasureSample newSample = new TMeasureSample();
+
+            // 计算下一个编号
+            if (sampleAutoNum == 0) {
+                // 如果sampleAutoNum为0，使用配置的开始号
+                sampleAutoNum = numberConfig.getStartNum();
+            } else {
+                // 否则使用当前编号 + 递增量
+                sampleAutoNum = sampleAutoNum + numberConfig.getStep();
+            }
+
+
+            // 检查编号是否已存在，如果存在则继续递增
+            int number = sampleAutoNum;
+            while (sampleNumList.contains(numberConfig.getPreName() + "-" + number)) {
+                number += numberConfig.getStep();
+            }
+
+            // 2. 计算当前名称的序号
+            int nameSequenceNum = nameConfig.getStartNum() + (taskSpecimen.size() * nameConfig.getStep());
+
+            // 设置样品编号和名称
+            newSample.setSampleNumber(numberConfig.getPreName() + "-" + number);
+            newSample.setSampleName(nameConfig.getPreName() + nameSequenceNum);
+            newSample.setSampleType(SampleTypeEnum.unKnown.getIdentity());
+            if (!dynamicHeads.isEmpty()) {
+                newSample.setHeads(JSON.toJSONString(dynamicHeads));
+            }
+            boolean save = tMeasureSampleService.save(newSample);
+            if (!save) {
+                //保存失败
+                return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
+            }
+
+            taskSpecimen.add(new FTaskSpecimen(newSample.getId(), createType, noTested, newSample.getSampleType(), null));
+        }
+
+        task.setSampleKey(JSON.toJSONString(taskSpecimen));
+        task.setSampleAutoNum(sampleAutoNum);
+        boolean update = tMeasureTaskService.updateById(task);
+        if (!update) {
+            //更新失败
+            return Result.fail(YamlMessageSource.getMessageStatic("00000048"));
+        }
+        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        if (poolInfo.getSuccess()) {
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+                concisePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+            }
+        }
+        return Result.ok(true);
+    }
+
+    /**
+     * 查询样品表头
+     *
+     * @param taskId
+     * @param measureType
+     * @return
+     */
+    public Result<List<HeadVO>> querySampleHeads(String taskId, String measureType) {
+
+        if (!StringUtils.hasText(taskId)) {
+            // 如果任务ID为空，直接返回预定义的表头
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(measureType, null);
+            return Result.ok(preHead);
+        }
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            // 如果任务的表头信息为空，返回预定义的表头
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(measureType, null);
+            return Result.ok(preHead);
+        } else {
+            // 如果任务的表头信息不为空，解析任务中的表头数据
+            TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                // 如果解析的样品表头为空，返回预定义的表头
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(measureType, null);
+                return Result.ok(preHead);
+            }
+        }
+    }
+
     @Override
     public Result queryTaskPort(QueryTaskDto queryTask) {
         // 判断方法id是all还是id
@@ -502,6 +728,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (queryTask.getMethodIds().size()!=0){
             wrapper.in("method_key", queryTask.getMethodIds());
         }
+        // 根据用户名称查询用户id
+        SysUserPO sysUserPO = sysUserMapper.selectByUsername(queryTask.getUpdateBy());
+        wrapper.eq("user_id", sysUserPO.getId());
         wrapper.eq("project_item_key", queryTask.getProjectId());
         if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
             wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
@@ -555,7 +784,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result queryMethodProt(String projectId, String measureType, Integer pageNum, Integer pageSize) {
+    public Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize) {
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(measureType);
         // TODO 所有测量的查看任务查询需要完善
         switch (type){
@@ -589,7 +818,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
                 break;
         }
-        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureType));
+        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId)
+                .eq("measurement_type", measureType)
+               .eq("method_creator", updateBy));
         if (page==null||page.getRecords().size() == 0){
             //未查询到数据
             return Result.fail(YamlMessageSource.getMessageStatic("0030100C"));
@@ -604,7 +835,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setTaskCount(count);
             if (count > 0){
                 // 查询当前方法id的所有任务中最近采集的任务时间,最近采集任务的时间字段是collection_start_time
-                TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId()).orderByDesc("create_time").last("limit 1"));
+                TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId())
+                        .orderByDesc("create_time").last("limit 1"));
                 vo.setLastTaskTime(task.getStartTime().format(formatter));
             }
             records.add(vo);
@@ -805,8 +1037,137 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
     }
 
+//    @Override
+//    public Result newReportTableDataQuery(String taskId, List<String> sampleIds) {
+//
+//        if (!StringUtils.hasText(taskId)) {
+//            //请选择任务
+//            return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
+//        }
+//        TMeasureTask task = tMeasureTaskService.getById(taskId);
+//        if (task == null) {
+//            //没有找到该任务
+//            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+//        }
+//        switch (task.getMeasureType()) {
+//            case "光度测量": {
+//                PhotometricReportDataVO vo = new PhotometricReportDataVO();
+//                Result<List<HeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), true);
+//                if (result.getCode() == 200) {
+//                    List<HeadVO> vos = result.getData();
+//                    vo.setHeadList(vos);
+//                }
+//                QueryDataDTO queryDataDTO = new QueryDataDTO();
+//                queryDataDTO.setTaskId(taskId);
+//                queryDataDTO.setAllDisplay(true);
+//                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+//                queryDataDTO.setOption(new ArrayList<>());
+//                Result<List<Map<String, Object>>> data = photometricService.queryData(queryDataDTO);
+//                if (data.getCode() == 200) {
+//                    vo.setDataList(data.getData());
+//                }
+//                if (StringUtils.hasText(task.getTableInfo())) {
+//                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+//                    if (snapshot != null && snapshot.getMapRelation() != null) {
+//                        vo.setMapRelation(snapshot.getMapRelation());
+//                    }
+//                }
+//                return Result.ok(vo);
+//            }
+//            case "定量测定":  {
+//                RationReportDataVO vo = new RationReportDataVO();
+//                Result<List<HeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true, null);
+//                if (standHeads.getCode() == 200) {
+//                    vo.setStandHeadList(standHeads.getData());
+//                }
+//                Result<List<HeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), true, null);
+//                if (unknowHeads.getCode() == 200) {
+//                    vo.setUnknowHeadList(unknowHeads.getData());
+//                }
+//                QueryDataDTO queryDataDTO = new QueryDataDTO();
+//                queryDataDTO.setTaskId(taskId);
+//                queryDataDTO.setAllDisplay(true);
+//                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+//                queryDataDTO.setOption(new ArrayList<>());
+//                Result<RationSampleDataVO> data = rationService.querySampleData(queryDataDTO);
+//                if (data.getCode() == 200) {
+//                    RationSampleDataVO sampleDataVO = data.getData();
+//                    System.out.println(sampleDataVO);
+//                    vo.setStandDataList(sampleDataVO.getStandSampleData());
+//                    vo.setUnknowDataList(sampleDataVO.getUnknowSampleData());
+//                }
+//                RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
+//                if (shot != null && shot.getUnknownHead() != null) {
+//                    TaskHeadSnapshot unknownHead = shot.getUnknownHead();
+//                    vo.setMapRelation(unknownHead.getMapRelation());
+//                }
+//                Result<RationFitCurveVO> curveInfo = rationService.queryCurveInfo(taskId, task.getMethodKey());
+//                if (curveInfo.getCode() == 200) {
+//                    vo.setCurveInfo(curveInfo.getData());
+//                }
+//                return Result.ok(vo);
+//            }
+//            case "光谱扫描":
+//            {
+//                SpectrumReportDataVO vo = new SpectrumReportDataVO();
+//                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), sampleIds);
+//                if (result.getCode() == 200) {
+//                    List<HeadVO> vos = result.getData();
+//                    vo.setHeadList(vos);
+//                }
+//                // 获取数据
+//                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, sampleIds);
+//                if (dataList != null){
+//                    vo.setDataList(dataList);
+//                }
+//
+//                if (StringUtils.hasText(task.getTableInfo())) {
+//                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+//                    if (snapshot != null && snapshot.getMapRelation() != null) {
+//                        vo.setMapRelation(snapshot.getMapRelation());
+//                    }
+//                }
+//                return Result.ok(vo);
+//            }
+//            case "时间扫描":
+//            {
+//                TimeSweepReportDataVo vo = new TimeSweepReportDataVo();
+//                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), sampleIds);
+//                if (result.getCode() == 200) {
+//                    List<HeadVO> vos = result.getData();
+//                    vo.setHeadList(vos);
+//                }
+//                // 获取数据
+//                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, sampleIds);
+//                if (dataList != null){
+//                    vo.setDataList(dataList);
+//                }
+//
+//                if (StringUtils.hasText(task.getTableInfo())) {
+//                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+//                    if (snapshot != null && snapshot.getMapRelation() != null) {
+//                        vo.setMapRelation(snapshot.getMapRelation());
+//                    }
+//                }
+//                return Result.ok(vo);
+//            }
+//            default:
+//                return Result.fail(YamlMessageSource.getMessageStatic("00000005"));//类型错误,请重新选择
+//        }
+//    }
+
+
+    /**
+     * 新建报告表数据查询
+     *
+     * @param taskId
+     * @param analysisId
+     * @param allDisplay
+     * @param decimalDigits
+     * @return
+     */
     @Override
-    public Result newReportTableDataQuery(String taskId, List<String> sampleIds) {
+    public Result newReportTableDataQuery(String taskId, String analysisId, Boolean allDisplay, Integer decimalDigits) {
 
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
@@ -817,76 +1178,55 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
+        // 根据任务id查询方法,再从json转换为对象方法参数
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+
+        Integer digit = Constants.DEFAULT_DECIMAL_NUM;
+        FQueryDataDTO dataDTO = new FQueryDataDTO();
+        LambdaQueryWrapper<TMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureTaskAttachment::getTaskId, taskId);
+        TMeasureTaskAttachment attachment = tMeasureTaskAttachmentService.getOne(queryWrapper);
+        if (attachment != null && attachment.getDataParam() != null) {
+            dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+        }
+
         switch (task.getMeasureType()) {
             case "光度测量": {
-                PhotometricReportDataVO vo = new PhotometricReportDataVO();
-                Result<List<HeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), true);
-                if (result.getCode() == 200) {
-                    List<HeadVO> vos = result.getData();
-                    vo.setHeadList(vos);
-                }
-                QueryDataDTO queryDataDTO = new QueryDataDTO();
-                queryDataDTO.setTaskId(taskId);
-                queryDataDTO.setAllDisplay(true);
-                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
-                queryDataDTO.setOption(new ArrayList<>());
-                Result<List<Map<String, Object>>> data = photometricService.queryData(queryDataDTO);
-                if (data.getCode() == 200) {
-                    vo.setDataList(data.getData());
-                }
-                if (StringUtils.hasText(task.getTableInfo())) {
-                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
-                    if (snapshot != null && snapshot.getMapRelation() != null) {
-                        vo.setMapRelation(snapshot.getMapRelation());
-                    }
-                }
-                return Result.ok(vo);
+                return Result.fail();
             }
-            case "定量测定":  {
-                RationReportDataVO vo = new RationReportDataVO();
-                Result<List<HeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), true, null);
-                if (standHeads.getCode() == 200) {
-                    vo.setStandHeadList(standHeads.getData());
-                }
-                Result<List<HeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), true, null);
-                if (unknowHeads.getCode() == 200) {
-                    vo.setUnknowHeadList(unknowHeads.getData());
-                }
-                QueryDataDTO queryDataDTO = new QueryDataDTO();
-                queryDataDTO.setTaskId(taskId);
-                queryDataDTO.setAllDisplay(true);
-                queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
-                queryDataDTO.setOption(new ArrayList<>());
-                Result<RationSampleDataVO> data = rationService.querySampleData(queryDataDTO);
-                if (data.getCode() == 200) {
-                    RationSampleDataVO sampleDataVO = data.getData();
-                    System.out.println(sampleDataVO);
-                    vo.setStandDataList(sampleDataVO.getStandSampleData());
-                    vo.setUnknowDataList(sampleDataVO.getUnknowSampleData());
-                }
-                RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
-                if (shot != null && shot.getUnknownHead() != null) {
-                    TaskHeadSnapshot unknownHead = shot.getUnknownHead();
-                    vo.setMapRelation(unknownHead.getMapRelation());
-                }
-                Result<RationFitCurveVO> curveInfo = rationService.queryCurveInfo(taskId, task.getMethodKey());
-                if (curveInfo.getCode() == 200) {
-                    vo.setCurveInfo(curveInfo.getData());
-                }
-                return Result.ok(vo);
+            case "定量测定": {
+              return Result.fail();
             }
-            case "光谱扫描":
-            {
+            case "光谱扫描": {
+                // 判断方法参数中的重复模式为true的话就分割分析id
+                List<String> analysisIdList = Arrays.asList(analysisId.split(","));
+                // 过滤掉分析结果为null的分析id
+                analysisIdList = analysisIdList.stream()
+                        .filter(id -> {
+                            // 根据分析ID查询分析数据结果
+                            String analysisResult = getAnalysisResultById(id);
+                            return analysisResult != null; // 只保留分析结果不为null的分析ID
+                        })
+                        .collect(Collectors.toList());
+
+                // 获取数据
                 SpectrumReportDataVO vo = new SpectrumReportDataVO();
-                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), sampleIds);
+                Result<List<HeadVO>> result = spectrumService.tableHead(taskId, task.getMethodKey(), analysisIdList);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
+
                 // 获取数据
-                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, sampleIds);
-                if (dataList != null){
+                List<Map<String, Object>> dataList = spectrumService.queryTableData(taskId, analysisIdList, decimalDigits);
+                if (dataList != null) {
                     vo.setDataList(dataList);
+                } else {
+                    vo.setDataList(new ArrayList<>());
                 }
 
                 if (StringUtils.hasText(task.getTableInfo())) {
@@ -895,34 +1235,131 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         vo.setMapRelation(snapshot.getMapRelation());
                     }
                 }
+                if (vo.getDataList() != null) {
+                    List<Map<String, Object>> dataList1 = vo.getDataList();
+                    for (Map<String, Object> stringObjectMap : dataList1) {
+                        for (String key : stringObjectMap.keySet()) {
+                            if (key.equals("Abs")) {
+                                Object value = stringObjectMap.get(key);
+                                if (value != null) {
+                                    Object o = convertSciToDecimal(value);
+                                    String strValue = o.toString();
+                                    if (strValue.length() >= 6) {
+                                        stringObjectMap.put(key, strValue.substring(0, 6));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                log.info("报表表格数据输出完毕,内容: {} ",vo);
                 return Result.ok(vo);
             }
-            case "时间扫描":
-            {
+            case "时间扫描": {
+
+
                 TimeSweepReportDataVo vo = new TimeSweepReportDataVo();
-                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), sampleIds);
+                // 判断方法参数中的重复模式为true的话就分割分析id
+                List<String> analysisIdList = Arrays.asList(analysisId.split(","));
+                // 过滤掉分析结果为null的分析id
+                analysisIdList = analysisIdList.stream()
+                        .filter(id -> {
+                            // 根据分析ID查询分析数据结果
+                            String analysisResult = getAnalysisResultById(id);
+                            return analysisResult != null; // 只保留分析结果不为null的分析ID
+                        })
+                        .collect(Collectors.toList());
+
+                // 获取表头
+                Result<List<HeadVO>> result = timeSweepService.tableHead(taskId, task.getMethodKey(), analysisIdList);
                 if (result.getCode() == 200) {
                     List<HeadVO> vos = result.getData();
                     vo.setHeadList(vos);
                 }
+
                 // 获取数据
-                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, sampleIds);
-                if (dataList != null){
+                List<Map<String, Object>> dataList = timeSweepService.queryTableData(taskId, analysisIdList, decimalDigits);
+                if (dataList != null) {
                     vo.setDataList(dataList);
+                } else {
+                    vo.setDataList(new ArrayList<>());
                 }
 
+                // 获取额外的映射关系
                 if (StringUtils.hasText(task.getTableInfo())) {
                     TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
                     if (snapshot != null && snapshot.getMapRelation() != null) {
                         vo.setMapRelation(snapshot.getMapRelation());
                     }
                 }
+
+                if (vo.getDataList() != null) {
+                    // 格式化数据中的 "Abs" 值
+                    List<Map<String, Object>> dataList1 = vo.getDataList();
+                    for (Map<String, Object> stringObjectMap : dataList1) {
+                        for (String key : stringObjectMap.keySet()) {
+                            if (key.equals("Abs")) {
+                                Object value = stringObjectMap.get(key);
+                                if (value != null) {
+                                    Object o = convertSciToDecimal(value);
+                                    String strValue = o.toString();
+                                    if (strValue.length() >= 6) {
+                                        stringObjectMap.put(key, strValue.substring(0, 6));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return Result.ok(vo);
             }
+
             default:
-                return Result.fail(YamlMessageSource.getMessageStatic("00000005"));//类型错误,请重新选择
+                //类型错误,请重新选择
+                return Result.fail(YamlMessageSource.getMessageStatic("00000005"));
         }
     }
+
+    /**
+     * 根据分析ID获取分析结果
+     *
+     * @param analysisId
+     * @return
+     */
+    private String getAnalysisResultById(String analysisId) {
+        // 根据分析ID从数据库获取分析结果
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
+        if (analysisData == null) {
+            return null;
+        }
+        if (analysisData.getAnalysisResult() == null || analysisData.getAnalysisResult().isEmpty()) {
+            return null;
+        }
+        return analysisData.getAnalysisResult();
+    }
+
+    public static Object convertSciToDecimal(Object obj) {
+        if (obj == null) { // 额外处理null，避免空指针
+            return null;
+        }
+        String str = String.valueOf(obj);
+        // 核心逻辑：只要含e或E，就尝试转小数
+        if (str.toLowerCase().contains("e")) {
+            try {
+                // 尝试转成Double再格式化，成功则返回小数格式
+                DecimalFormat df = new DecimalFormat("0.##########");
+                return df.format(Double.parseDouble(str));
+            } catch (NumberFormatException e) {
+                // 转失败（如哈希串），直接返回原字符串
+                return str;
+            }
+        } else {
+            // 不含e/E，直接返回原字符串（封装为Object）
+            return str;
+        }
+    }
+
 
     @Override
     public Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType) {
@@ -1232,8 +1669,538 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(vos);
     }
 
+//    @Override
+//    public Result obtainReportParameters(String taskId,String sampleId,String serialNumber) {
+//
+//        if ((taskId == null)) {
+//            //任务id不能为空
+//            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+//        }
+//
+//        TMeasureTask task = tMeasureTaskService.getById(taskId);
+//        if (task == null) {
+//            //没有找到该任务
+//            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+//        }
+//
+//        if (task.getMeasureType().equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())) {
+//
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+//
+//            SpectralReportVo vo = new SpectralReportVo();
+//            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+//            SysUserPO user = userConfigDAO.selectById(task.getUserId());
+//            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+//            PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+//
+//            if (StringUtils.hasText(task.getSampleKey())) {
+//                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+//                if (!taskSpecimen.isEmpty()) {
+//                    TaskSpecimen specimen = taskSpecimen.get(0);
+//                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+//                    vo.setSampleName(sample.getSampleName());
+//                    vo.setSampleNumber(sample.getSampleNumber());
+//                    vo.setSamplingTime(task.getCreateTime().format(formatter));
+//
+//                    LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
+//                    wrapper.eq(TMeasureData::getTaskId, taskId)
+//                            .eq(TMeasureData::getSampleKey, sample.getId())
+//                            .orderByDesc(TMeasureData::getSerialNumber)
+//                            .last("LIMIT 1");
+//                    TMeasureData one = tMeasureDataService.getOne(wrapper);
+//                    if (one != null) {
+//                        if (one.getMeasurementStartTime() != null) {
+//                            vo.setDetectionStartTime(one.getMeasurementStartTime().format(formatter));
+//                        }
+//                        if (one.getMeasurementEndTime() != null) {
+//                            vo.setDetectionEndTime(one.getMeasurementEndTime().format(formatter));
+//                        }
+//                        if (one.getInstrumentData() != null) {
+//                            vo.setOriginalData(one.getInstrumentData());
+//                        }
+//                    }
+//                }
+//            }
+//
+//            StringBuilder wave = new StringBuilder();
+//            if (methodparam.getWaveLength() != null && !methodparam.getWaveLength().isEmpty()) {
+//                for (String s : methodparam.getWaveLength()) {
+//                    wave.append(s).append(",");
+//                }
+//            }
+//            if (wave.length() > 0) {
+//                wave.deleteCharAt(wave.length() - 1);
+//            }
+//            vo.setInstrumentWavelength(wave.toString());
+//
+//            vo.setReferenceMethod(method.getMethodName());
+//            vo.setReferenceStandard(methodparam.getReferenceStandardName());
+//
+//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+//            vo.setLuminosityMode(WaveLengthEnum.getName(methodparam.getLuminosity()));
+//            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
+//
+//            vo.setInstrumentName("紫外可见分光光度计");
+//            vo.setInstrumentModel("T600");
+//
+//            vo.setReferenceMethod(method.getMethodName());
+//            vo.setReferenceStandard(methodparam.getReferenceStandardName());
+//            StringBuilder steps = new StringBuilder();
+//            methodparam.getPreProcessParameters().forEach(preProcessParameter -> {
+//                steps.append(preProcessParameter).append("\n");
+//            });
+//
+//            StringBuilder result = new StringBuilder();
+//            methodparam.getResultParams().forEach(resultParam -> {
+//                result.append(resultParam.getFormulaText()).append("\n");
+//            });
+//            vo.setCalculationFormula(result.toString());
+//
+//            result.setLength(0);
+//            methodparam.getSampleInputParams().forEach(sampleInputParam -> {
+//                result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
+//            });
+//            vo.setFormulaParams(result.toString());
+//
+//            vo.setSteps(steps.toString());
+//            vo.setDetectionStartTime(task.getStartTime().format(formatter));
+//            if (task.getEndTime() != null){
+//                vo.setDetectionEndTime(task.getEndTime().format(formatter));
+//            }
+//            vo.setDataType("测量数据");
+//
+//            vo.setAmbientTemperature("26℃");
+//            vo.setRelativeHumidity("60%");
+//            vo.setSampleState("正常");
+//            vo.setColorPlateWavelength("1");
+//
+//
+//            vo.setProject(project.getProjectName());
+//            vo.setDetector(user.getUsername());
+//            vo.setEnergyLight(methodparam.getEnergyLamp());
+//            vo.setMethodName(method.getMethodName());
+//
+//            return Result.ok(vo);
+//
+//        } else if (task.getMeasureType().equals(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription())) {
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+//
+//            SpectralReportVo vo = new SpectralReportVo();
+//            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+//            SysUserPO user = userConfigDAO.selectById(task.getUserId());
+//            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+//            RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+//
+//            vo.setRepetitionPattern(parameter.getRepeatMode());
+//            vo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
+//            vo.setForceZeroPoint("否");
+//            vo.setInsertZeroPoint("否");
+//            for (String s : parameter.getZeroMethod()) {
+//                if (s.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+//                    vo.setForceZeroPoint("是");
+//                }
+//                if (s.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+//                    vo.setInsertZeroPoint("是");
+//                }
+//            }
+//            vo.setAutoChangeSamplePool("否");
+//
+//            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(task.getDeviceSerialNumber());
+//            if (!poolInfo.getSuccess()) {
+//                FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+//                if (poolInfoVO != null) {
+//                    Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+//                    if (isAutoChangePool) {
+//                        vo.setAutoChangeSamplePool("是");
+//                    }
+//                }
+//
+//            }
+//            if (StringUtils.hasText(task.getSampleKey())) {
+//                List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+//
+//                for (TaskSpecimen specimen : taskSpecimen) {
+//                    if (specimen.getDeleteType().equals("1")) {
+//                        continue;
+//                    }
+//                    if (!specimen.getSampleKind().equals(SampleTypeEnum.kind_stand.getIdentity())) {
+//                        continue;
+//                    }
+//                    if (specimen.getIsTested().equals("0")) {
+//                        continue;
+//                    }
+//                    TMeasureSample sample = tMeasureSampleService.getById(specimen.getSpecimenKey());
+//                    vo.setStandardConcentration(sample.getNormalConcentration());
+//                    vo.setSampleName(sample.getSampleName());
+//                    vo.setSampleNumber(sample.getSampleNumber());
+//                    LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
+//                    wrapper.eq(TMeasureData::getTaskId, taskId)
+//                            .eq(TMeasureData::getSampleKey, sample.getId())
+//                            .orderByDesc(TMeasureData::getSerialNumber)
+//                            .last("LIMIT 1");
+//                    TMeasureData measureData = tMeasureDataService.getOne(wrapper);
+//                    vo.setSamplingTime(measureData.getSamplingTime());
+//                    if (measureData.getMeasurementStartTime() != null) {
+//                        vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
+//                    }
+//                    if (measureData.getMeasurementEndTime() != null) {
+//                        vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
+//                    }
+//                }
+//            }
+//
+//            if (StringUtils.hasText(task.getFittingParam())){
+//                FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
+//                StringBuilder param = new StringBuilder();
+//                for (Double coefficient : fittingReceiveInfo.getRoundCoefficients()) {
+//                    param.append(coefficient).append(",");
+//                }
+//                param.deleteCharAt(param.length() - 1);
+//                vo.setCurveParams(param.toString());
+//                vo.setR(fittingReceiveInfo.getRoundR());
+//                vo.setR2(fittingReceiveInfo.getRoundR2());
+//                vo.setCurveFormula(fittingReceiveInfo.getEquation());
+//                vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree()));
+//            }
+//
+//            StringBuilder wave = new StringBuilder();
+//            if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()) {
+//                for (String s : parameter.getWaveLength()) {
+//                    wave.append(s).append(",");
+//                }
+//            }
+//            if (wave.length() > 0) {
+//                wave.deleteCharAt(wave.length() - 1);
+//            }
+//            vo.setInstrumentWavelength(wave.toString());
+//
+//            vo.setReferenceMethod(method.getMethodName());
+//            vo.setReferenceStandard(parameter.getReferenceStandardName());
+//
+//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+//            vo.setSpectrumBandwidth(parameter.getSpectralBandwidth());
+//
+//            vo.setInstrumentName("紫外可见分光光度计");
+//            vo.setInstrumentModel("T600");
+//
+//            StringBuilder steps = new StringBuilder();
+//            parameter.getPreProcessParameters().forEach(preProcessParameter -> {
+//                steps.append(preProcessParameter).append("\n");
+//            });
+//
+//            StringBuilder result = new StringBuilder();
+//            parameter.getResultParams().forEach(resultParam -> {
+//                result.append(resultParam.getFormulaText()).append("\n");
+//            });
+//            vo.setCalculationFormula(result.toString());
+//
+//            result.setLength(0);
+//            parameter.getSampleInputParams().forEach(sampleInputParam -> {
+//                result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
+//            });
+//            vo.setFormulaParams(result.toString());
+//
+//            vo.setSteps(steps.toString());
+//            vo.setDetectionStartTime(task.getStartTime().format(formatter));
+//            if (task.getEndTime() != null){
+//                vo.setDetectionEndTime(task.getEndTime().format(formatter));
+//            }
+//            vo.setDataType("测量数据");
+//
+//            vo.setAmbientTemperature("26℃");
+//            vo.setRelativeHumidity("60%");
+//            vo.setSampleState("正常");
+//            vo.setColorPlateWavelength("1");
+//
+//            vo.setProject(project.getProjectName());
+//            vo.setDetector(user.getUsername());
+//            vo.setEnergyLight(parameter.getEnergyLamp());
+//            vo.setMethodName(method.getMethodName());
+//            return Result.ok(vo);
+//        } else if (task.getMeasureType().equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())) {
+//
+////            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+////            SpectralReportVo vo = new SpectralReportVo();
+//////            TMeasureTask task = tMeasureTaskService.getById(taskId);
+////            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+////            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+////            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+////            SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+////            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
+////            // 根据方法表的计算公式id和前处理id进行查
+////            if(StringUtils.hasText(method.getMultipleCalculationFormulaKey())) {
+////                CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
+////                vo.setCalculationFormula(calculationFormula.getResultName());
+////            }
+////            if(StringUtils.hasText(method.getPreprocessKey())){
+////                StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
+////                vo.setReferenceStandard(serviceById.getPretreatmentDescription());
+////            }
+////            TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
+////            vo.setSampleName(byId.getSampleName());
+////            vo.setSampleNumber(byId.getSampleNumber());
+////            vo.setDataType("测量数据");
+////            vo.setScanSpeed(methodparam.getScanSpeed().equals("0")?"慢速":methodparam.getScanSpeed().equals("1")?"中速":methodparam.getScanSpeed().equals("2")?"快速":"极快");
+////            vo.setStartWavelength(methodparam.getStartWaveLength());
+////            vo.setEndWavelength(methodparam.getEndWaveLength());
+////            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+////            vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
+////            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
+////            vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+////            vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
+////            vo.setProject(project.getProjectName());
+////            vo.setDetector(user.getUserName());
+////            vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
+////            vo.setGain(methodparam.getGain().toString());
+////            vo.setStairCorrection(methodparam.getLadderCorrection() == true ? "启用" : "不启用");
+////            vo.setSpectrumScanImage(data.getDataImage());
+////            vo.setScanInterval(methodparam.getWaveLengthInterval());
+////            vo.setMethodName(method.getMethodName());
+////            vo.setTaskName(task.getTaskName());
+////            return Result.ok(vo);
+//            // 校验任务id
+//            // 校验样品id
+//            if (StringUtils.isEmpty(sampleId)) {
+//                //请选择样品
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000000A"));
+//            }
+//            // 根据任务中的所属项目的Key查询项目
+//            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+//            if (project == null) {
+//                //项目不存在
+//                return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+//            }
+//            // 根据任务中的方法key查询方法
+//            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+//            if (method == null) {
+//                //没有找到该方法
+//                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+//            }
+//            // 根据样品id查询样品数据
+//            TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+//            if (sample == null) {
+//                //样品不存在
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
+//            }
+//            // 编写查询测量的条件
+//            QueryWrapper<TMeasureData> wrapper = new QueryWrapper<>();
+//            wrapper.eq("task_id",taskId);
+//            wrapper.eq("sample_key",sampleId);
+//            // 如果存在编号，则查询该设备编号的测量数据
+//            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
+//                wrapper.eq("serial_number",serialNumber);
+//            }
+//            wrapper.last("limit 1");
+//            TMeasureData measureData = tMeasureDataService.getOne(wrapper);
+//            if (measureData == null) {
+//                //未找到该测量数据
+//                return Result.fail(YamlMessageSource.getMessageStatic("00301013"));
+//            }
+//            // 编写分析的查询条件
+//            QueryWrapper<TMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
+//            analysisWrapper.eq("task_id", taskId);
+//            analysisWrapper.eq("sample_key", sampleId);
+//            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
+//                analysisWrapper.eq("analysis_number", serialNumber);
+//            }
+//            analysisWrapper.last("limit 1");
+//            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisWrapper);
+//            if (analysisData == null) {
+//                //没有找到该分析数据
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
+//            }
+//            // 根据分析id查询分析图片数据
+//            QueryWrapper<TMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
+//            attachmentWrapper.eq("analysis_id", analysisData.getId());
+//            attachmentWrapper.last("limit 1");
+//            TMeasureAnalysisImage attachment = tMeasureAnalysisImageService.getOne(attachmentWrapper);
+//            if (attachment == null) {
+//                //没有找到对应的图片数据
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000000C"));
+//            }
+//            SpectralReportVo vo = new SpectralReportVo();
+//            // 将方法参数提取出来拷贝到report中
+//            SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+//            vo.setStartWaveLength(param.getStartWaveLength());
+//            vo.setEndWaveLength(param.getEndWaveLength());
+//            vo.setScanSpeed(param.getScanSpeed());
+//            vo.setTimeInterval(param.getTimeInterval());
+//            vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
+//            vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
+//            vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
+//            vo.setRepetitionPattern(param.getRepetitionPattern().equals("0")?"不重复":"单池重复");
+//            if (param.getRepetitionPattern().equals("1")){
+//                vo.setRepetitionTime(param.getRepetitionTime());
+//            }
+//            vo.setWaveLengthInterval(param.getWaveLengthInterval());
+//            ///  仪器
+//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+//            // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
+//            vo.setLuminosityMode(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":param.getLuminosity().equals("3")?"Es":param.getLuminosity().equals("4")?"Er":"");
+//            vo.setResponseTime(param.getResponseTime());
+//            vo.setSpectrumBandwidth(param.getSpectralBandwidth());
+//            vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
+//            // 能量灯(0.钨灯 1.氘灯 2.汞灯)
+//            vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+//            vo.setGain(param.getGain());
+//            vo.setProject(project.getProjectName());
+//            vo.setDetector(method.getMethodCreator());
+//            vo.setSampleName(sample.getSampleName());
+//            vo.setSampleNumber(sample.getSampleNumber());
+//            vo.setSpectrumScanImage(attachment.getImageBase64());
+//            vo.setMethodName(method.getMethodName());
+//            vo.setTaskName(task.getTaskName());
+//
+//            // 仪器型号
+//            vo.setInstrumentModel("T600");
+//            return Result.ok(vo);
+//        }else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
+////            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+////            SpectralReportVo vo = new SpectralReportVo();
+////            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+////            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+////            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+////            TimeSweepParamter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+////            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
+////            // 根据方法表的计算公式id和前处理id进行查
+////            if(StringUtils.hasText(method.getMultipleCalculationFormulaKey())) {
+////                CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
+////                vo.setCalculationFormula(calculationFormula.getResultName());
+////            }
+////            if(StringUtils.hasText(method.getPreprocessKey())){
+////                StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
+////                vo.setReferenceStandard(serviceById.getPretreatmentDescription());
+////            }
+////            TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
+////            vo.setSampleName(byId.getSampleName());
+////            vo.setSampleNumber(byId.getSampleNumber());
+////            vo.setDataType("测量数据");
+////            vo.setInstrumentWavelength(methodparam.getWaveLength());
+////            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+////            vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
+////            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
+////            vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+////            vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
+////            vo.setProject(project.getProjectName());
+////            vo.setDetector(user.getUserName());
+////            if (methodparam.getScanUnit()!=null) {
+////                vo.setTimeUnit(methodparam.getScanUnit());
+////                vo.setTimeUnitName(methodparam.getScanUnit().equals("0")?"秒":"分钟");
+////            }
+////            vo.setTotalNumber(methodparam.getTotalNumber());
+////            vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
+////            vo.setGain(methodparam.getGain().toString());
+////            vo.setScanTime(methodparam.getScanTime());
+////            vo.setScanInterval(methodparam.getIntervalTime());
+////            vo.setMethodName(method.getMethodName());
+////            vo.setTimeScanImage(data.getDataImage());
+////            vo.setTaskName(task.getTaskName());
+////            return Result.ok(vo);
+//            // 校验样品id
+//            if (StringUtils.isEmpty(sampleId)) {
+//                //请选择样品
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000000A"));
+//            }
+//            // 根据任务中的所属项目的Key查询项目
+//            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+//            if (project == null) {
+//                //项目不存在
+//                return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+//            }
+//            // 根据任务中的方法key查询方法
+//            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+//            if (method == null) {
+//                //没有找到该方法
+//                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+//            }
+//            // 根据样品id查询样品数据
+//            TMeasureSample sample = tMeasureSampleService.getById(sampleId);
+//            if (sample == null) {
+//                //样品不存在
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
+//            }
+//            // 编写查询测量的条件
+//            QueryWrapper<TMeasureData> wrapper = new QueryWrapper<>();
+//            wrapper.eq("task_id",taskId);
+//            wrapper.eq("sample_key",sampleId);
+//            // 如果存在编号，则查询该设备编号的测量数据
+//            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
+//                wrapper.eq("serial_number",serialNumber);
+//            }
+//            wrapper.last("limit 1");
+//            TMeasureData measureData = tMeasureDataService.getOne(wrapper);
+//            if (measureData == null) {
+//                //未找到该测量数据
+//                return Result.fail(YamlMessageSource.getMessageStatic("00301013"));
+//            }
+//            // 编写分析的查询条件
+//            QueryWrapper<TMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
+//            analysisWrapper.eq("task_id", taskId);
+//            analysisWrapper.eq("sample_key", sampleId);
+//            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
+//                analysisWrapper.eq("analysis_number", serialNumber);
+//            }
+//            analysisWrapper.last("limit 1");
+//            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisWrapper);
+//            if (analysisData == null) {
+//                //没有找到该分析数据
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
+//            }
+//            // 根据分析id查询分析图片数据
+//            QueryWrapper<TMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
+//            attachmentWrapper.eq("analysis_id", analysisData.getId());
+//            attachmentWrapper.last("limit 1");
+//            TMeasureAnalysisImage attachment = tMeasureAnalysisImageService.getOne(attachmentWrapper);
+//            if (attachment == null) {
+//                //没有找到对应的图片数据
+//                return Result.fail(YamlMessageSource.getMessageStatic("0000000C"));
+//            }
+//            SpectralReportVo vo = new SpectralReportVo();
+//            // 将方法参数提取出来拷贝到report中
+//            TimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
+//            vo.setInstrumentWavelength(param.getWaveLength());
+//            vo.setScanTime(param.getScanTime());
+//            vo.setTimeUnit(param.getScanUnit().equals("0")?"分":"秒");
+//            vo.setTimeInterval(param.getIntervalTime());
+//            vo.setTotalNumber(param.getTotalNumber());
+//            vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
+//            vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
+//            vo.setMultiPoolMode(param.getMultiPoolMode().equals("0") ? "顺序单池连续采样" : "循环多池交替采样");
+//            ///  仪器
+//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+//            // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
+//            vo.setLuminosityMode(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":param.getLuminosity().equals("3")?"Es":param.getLuminosity().equals("4")?"Er":"");
+//            vo.setResponseTime(param.getResponseTime());
+//            vo.setSpectrumBandwidth(param.getSpectralBandwidth());
+//            vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
+//            // 能量灯(0.钨灯 1.氘灯 2.汞灯)
+//            vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+//            vo.setGain(param.getGain());
+//            vo.setProject(project.getProjectName());
+//            vo.setDetector(method.getMethodCreator());
+//            vo.setSampleName(sample.getSampleName());
+//            vo.setSampleNumber(sample.getSampleNumber());
+//            vo.setTimeScanImage(attachment.getImageBase64());
+//            vo.setMethodName(method.getMethodName());
+//            vo.setTaskName(task.getTaskName());
+//
+//            // 仪器型号
+//            vo.setInstrumentModel("T600");
+//            return Result.ok(vo);
+//        }else{
+//            return Result.ok();
+//        }
+//    }
+
+    /**
+     * 获取报告参数
+     *
+     * @param taskId
+     * @param analysisId
+     * @return
+     */
     @Override
-    public Result obtainReportParameters(String taskId,String sampleId,String serialNumber) {
+    public Result obtainReportParameters(String taskId, String analysisId) {
 
         if ((taskId == null)) {
             //任务id不能为空
@@ -1251,10 +2218,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
             SpectralReportVo vo = new SpectralReportVo();
-            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            SysUserPO user = userConfigDAO.selectById(task.getUserId());
+            TMeasureProject project =tMeasureProjectService.getById(task.getProjectItemKey());
+            SysUserPO user = sysUserMapper.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
+            vo.setTaskName(task.getTaskName());
 
             if (StringUtils.hasText(task.getSampleKey())) {
                 List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -1288,7 +2256,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             StringBuilder wave = new StringBuilder();
             if (methodparam.getWaveLength() != null && !methodparam.getWaveLength().isEmpty()) {
                 for (String s : methodparam.getWaveLength()) {
-                    wave.append(s).append(",");
+                    wave.append(s).append("nm").append(",");
                 }
             }
             if (wave.length() > 0) {
@@ -1299,35 +2267,57 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
 
-            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            DeviceInfoPO info = null;
+            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
+                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+
+            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+
+                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
+                vo.setInstrumentModel(info.getDeviceModelName());
+            } else {
+                vo.setInstrumentName("紫外可见分光光度计");
+                vo.setInstrumentModel("T600");
+            }
+
+
             vo.setLuminosityMode(WaveLengthEnum.getName(methodparam.getLuminosity()));
             vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
 
-            vo.setInstrumentName("紫外可见分光光度计");
-            vo.setInstrumentModel("T600");
 
             vo.setReferenceMethod(method.getMethodName());
             vo.setReferenceStandard(methodparam.getReferenceStandardName());
             StringBuilder steps = new StringBuilder();
-            methodparam.getPreProcessParameters().forEach(preProcessParameter -> {
-                steps.append(preProcessParameter).append("\n");
-            });
+            if (methodparam.getPreProcessParameters() != null) {
+                methodparam.getPreProcessParameters().forEach(preProcessParameter -> {
+                    steps.append(preProcessParameter).append("\n");
+                });
+            }
+
 
             StringBuilder result = new StringBuilder();
-            methodparam.getResultParams().forEach(resultParam -> {
-                result.append(resultParam.getFormulaText()).append("\n");
-            });
+            if (methodparam.getResultParams() != null) {
+                methodparam.getResultParams().forEach(resultParam -> {
+                    result.append(resultParam.getFormulaText()).append("\n");
+                });
+            }
+
             vo.setCalculationFormula(result.toString());
 
             result.setLength(0);
-            methodparam.getSampleInputParams().forEach(sampleInputParam -> {
-                result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
-            });
+            if (methodparam.getSampleInputParams() != null) {
+                methodparam.getSampleInputParams().forEach(sampleInputParam -> {
+                    result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
+                });
+            }
+
             vo.setFormulaParams(result.toString());
 
             vo.setSteps(steps.toString());
-            vo.setDetectionStartTime(task.getStartTime().format(formatter));
-            if (task.getEndTime() != null){
+            vo.setDetectionStartTime(task.getCreateTime().format(formatter));
+            if (task.getEndTime() != null) {
                 vo.setDetectionEndTime(task.getEndTime().format(formatter));
             }
             vo.setDataType("测量数据");
@@ -1338,7 +2328,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setColorPlateWavelength("1");
 
 
-            vo.setProject(project.getProjectName());
+//            vo.setProject(project.getProjectName());
             vo.setDetector(user.getUsername());
             vo.setEnergyLight(methodparam.getEnergyLamp());
             vo.setMethodName(method.getMethodName());
@@ -1349,27 +2339,33 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
             SpectralReportVo vo = new SpectralReportVo();
-            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            SysUserPO user = userConfigDAO.selectById(task.getUserId());
+//            TMeasureProject project =tMeasureProjectService.getById(task.getProjectItemKey());
+            vo.setTaskName(task.getTaskName());
+            SysUserPO user = sysUserMapper.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-            RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+            FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
 
             vo.setRepetitionPattern(parameter.getRepeatMode());
             vo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
-            vo.setForceZeroPoint("否");
-            vo.setInsertZeroPoint("否");
-            for (String s : parameter.getZeroMethod()) {
-                if (s.equals(RationCurveParamEnums.force_zero.getIdentity())) {
-                    vo.setForceZeroPoint("是");
-                }
-                if (s.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
-                    vo.setInsertZeroPoint("是");
+            if (parameter.getCoefficientMode().equals(RationCurveParamEnums.standard_curve.getIdentity())) {
+                vo.setForceZeroPoint("否");
+                vo.setInsertZeroPoint("否");
+                if (parameter.getZeroMethod() != null && !parameter.getZeroMethod().isEmpty()) {
+                    for (String s : parameter.getZeroMethod()) {
+                        if (s.equals(RationCurveParamEnums.force_zero.getIdentity())) {
+                            vo.setForceZeroPoint("是");
+                        }
+                        if (s.equals(RationCurveParamEnums.insert_zero.getIdentity())) {
+                            vo.setInsertZeroPoint("是");
+                        }
+                    }
                 }
             }
+
             vo.setAutoChangeSamplePool("否");
 
             R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(task.getDeviceSerialNumber());
-            if (!poolInfo.getSuccess()) {
+            if (poolInfo.getSuccess()) {
                 FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
                 if (poolInfoVO != null) {
                     Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
@@ -1411,15 +2407,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     }
                 }
             }
-            
-            if (StringUtils.hasText(task.getFittingParam())){
+
+            if (StringUtils.hasText(task.getFittingParam())) {
                 FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                 StringBuilder param = new StringBuilder();
                 for (Double coefficient : fittingReceiveInfo.getRoundCoefficient()) {
-                    param.append(coefficient).append(",");
-                }
-                param.deleteCharAt(param.length() - 1);
-                vo.setCurveParams(param.toString());
+                            param.append(coefficient).append(",");
+                        }
+                        param.deleteCharAt(param.length() - 1);
+                        vo.setCurveParams(param.toString());
                 vo.setR(fittingReceiveInfo.getRoundR());
                 vo.setR2(fittingReceiveInfo.getRoundR2());
                 vo.setCurveFormula(fittingReceiveInfo.getEquation());
@@ -1447,25 +2443,31 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setInstrumentModel("T600");
 
             StringBuilder steps = new StringBuilder();
-            parameter.getPreProcessParameters().forEach(preProcessParameter -> {
-                steps.append(preProcessParameter).append("\n");
-            });
-
+            if (parameter.getPreProcessParameters() != null) {
+                parameter.getPreProcessParameters().forEach(preProcessParameter -> {
+                    steps.append(preProcessParameter).append("\n");
+                });
+            }
             StringBuilder result = new StringBuilder();
-            parameter.getResultParams().forEach(resultParam -> {
-                result.append(resultParam.getFormulaText()).append("\n");
-            });
+            if (parameter.getResultParams() != null) {
+                parameter.getResultParams().forEach(resultParam -> {
+                    result.append(resultParam.getFormulaText()).append("\n");
+                });
+            }
             vo.setCalculationFormula(result.toString());
 
             result.setLength(0);
-            parameter.getSampleInputParams().forEach(sampleInputParam -> {
-                result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
-            });
+            if (parameter.getSampleInputParams() != null) {
+                parameter.getSampleInputParams().forEach(sampleInputParam -> {
+                    result.append(sampleInputParam.getResultIdentity()).append("——").append(sampleInputParam.getParamName()).append("\n");
+                });
+            }
+
             vo.setFormulaParams(result.toString());
 
             vo.setSteps(steps.toString());
-            vo.setDetectionStartTime(task.getStartTime().format(formatter));
-            if (task.getEndTime() != null){
+            vo.setDetectionStartTime(task.getCreateTime().format(formatter));
+            if (task.getEndTime() != null) {
                 vo.setDetectionEndTime(task.getEndTime().format(formatter));
             }
             vo.setDataType("测量数据");
@@ -1475,285 +2477,147 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             vo.setSampleState("正常");
             vo.setColorPlateWavelength("1");
 
-            vo.setProject(project.getProjectName());
+//            vo.setProject(project.getProjectName());
             vo.setDetector(user.getUsername());
             vo.setEnergyLight(parameter.getEnergyLamp());
             vo.setMethodName(method.getMethodName());
             return Result.ok(vo);
         } else if (task.getMeasureType().equals(MeasureTypeEnum.SPECTRAL_SCAN.getDescription())) {
-
-//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-//            SpectralReportVo vo = new SpectralReportVo();
-////            TMeasureTask task = tMeasureTaskService.getById(taskId);
-//            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-//            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
-//            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-//            SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-//            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
-//            // 根据方法表的计算公式id和前处理id进行查
-//            if(StringUtils.hasText(method.getMultipleCalculationFormulaKey())) {
-//                CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
-//                vo.setCalculationFormula(calculationFormula.getResultName());
-//            }
-//            if(StringUtils.hasText(method.getPreprocessKey())){
-//                StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
-//                vo.setReferenceStandard(serviceById.getPretreatmentDescription());
-//            }
-//            TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
-//            vo.setSampleName(byId.getSampleName());
-//            vo.setSampleNumber(byId.getSampleNumber());
-//            vo.setDataType("测量数据");
-//            vo.setScanSpeed(methodparam.getScanSpeed().equals("0")?"慢速":methodparam.getScanSpeed().equals("1")?"中速":methodparam.getScanSpeed().equals("2")?"快速":"极快");
-//            vo.setStartWavelength(methodparam.getStartWaveLength());
-//            vo.setEndWavelength(methodparam.getEndWaveLength());
-//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-//            vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
-//            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
-//            vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
-//            vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
-//            vo.setProject(project.getProjectName());
-//            vo.setDetector(user.getUserName());
-//            vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
-//            vo.setGain(methodparam.getGain().toString());
-//            vo.setStairCorrection(methodparam.getLadderCorrection() == true ? "启用" : "不启用");
-//            vo.setSpectrumScanImage(data.getDataImage());
-//            vo.setScanInterval(methodparam.getWaveLengthInterval());
-//            vo.setMethodName(method.getMethodName());
-//            vo.setTaskName(task.getTaskName());
-//            return Result.ok(vo);
-            // 校验任务id
-            // 校验样品id
-            if (StringUtils.isEmpty(sampleId)) {
-                //请选择样品
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000A"));
-            }
-            // 根据任务中的所属项目的Key查询项目
-            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            if (project == null) {
-                //项目不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
-            }
             // 根据任务中的方法key查询方法
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
                 //没有找到该方法
                 return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
             }
-            // 根据样品id查询样品数据
-            TMeasureSample sample = tMeasureSampleService.getById(sampleId);
-            if (sample == null) {
-                //样品不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
-            }
-            // 编写查询测量的条件
-            QueryWrapper<TMeasureData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id",taskId);
-            wrapper.eq("sample_key",sampleId);
-            // 如果存在编号，则查询该设备编号的测量数据
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                wrapper.eq("serial_number",serialNumber);
-            }
-            wrapper.last("limit 1");
-            TMeasureData measureData = tMeasureDataService.getOne(wrapper);
-            if (measureData == null) {
-                //未找到该测量数据
-                return Result.fail(YamlMessageSource.getMessageStatic("00301013"));
-            }
-            // 编写分析的查询条件
-            QueryWrapper<TMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
-            analysisWrapper.eq("task_id", taskId);
-            analysisWrapper.eq("sample_key", sampleId);
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                analysisWrapper.eq("analysis_number", serialNumber);
-            }
-            analysisWrapper.last("limit 1");
-            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisWrapper);
-            if (analysisData == null) {
-                //没有找到该分析数据
-                return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
-            }
-            // 根据分析id查询分析图片数据
-            QueryWrapper<TMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
-            attachmentWrapper.eq("analysis_id", analysisData.getId());
-            attachmentWrapper.last("limit 1");
-            TMeasureAnalysisImage attachment = tMeasureAnalysisImageService.getOne(attachmentWrapper);
-            if (attachment == null) {
-                //没有找到对应的图片数据
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000C"));
+            List<String> analysisIdList = new ArrayList<>(Arrays.asList(analysisId.split(",")));
+            TMeasureData data = null;
+            if (analysisIdList.size() == 1) {
+                // 根据分析iD查询分析数据
+                TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisIdList.get(0));
+                if (analysisData == null) {
+                    //没有找到该分析数据
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
+                }
+                if (analysisData.getMeasureDataId() != null)
+                    data = tMeasureDataService.getById(analysisData.getMeasureDataId());
             }
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             SpectrumParameter param = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
-            vo.setStartWaveLength(param.getStartWaveLength());
-            vo.setEndWaveLength(param.getEndWaveLength());
-            vo.setScanSpeed(param.getScanSpeed());
-            vo.setTimeInterval(param.getTimeInterval());
-            vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
-            vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
+            vo.setStartWaveLength(param.getStartWaveLength() + "nm");
+            vo.setEndWaveLength(param.getEndWaveLength() + "nm");
+            // (0.慢速 1.中速 2.快速 3.极快)
+            vo.setScanSpeed(param.getScanSpeed().equals("0") ? "慢速" : param.getScanSpeed().equals("1") ? "中速" : param.getScanSpeed().equals("2") ? "快速" : "极快");
+            if (param.getRepetitionPattern().equals("单池重复")){
+                vo.setTimeInterval(param.getTimeInterval());
+                vo.setIsRepeat(true);
+                vo.setRepeatCount(param.getRepetitionTime());
+            }else{
+                vo.setTimeInterval(null);
+                vo.setIsRepeat(false);
+                vo.setRepeatCount(null);
+            }
             vo.setStairCorrection(param.getLadderCorrection() == true ? "启用" : "不启用");
-            vo.setRepetitionPattern(param.getRepetitionPattern().equals("0")?"不重复":"单池重复");
-            if (param.getRepetitionPattern().equals("1")){
+            vo.setRepetitionPattern(param.getRepetitionPattern());
+            if (data != null) {
+                vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+                vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
+            }
+            if (param.getRepetitionPattern().equals("1")) {
                 vo.setRepetitionTime(param.getRepetitionTime());
             }
             vo.setWaveLengthInterval(param.getWaveLengthInterval());
             ///  仪器
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
             // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
-            vo.setLuminosityMode(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":param.getLuminosity().equals("3")?"Es":param.getLuminosity().equals("4")?"Er":"");
+            vo.setLuminosityMode(param.getLuminosity().equals("1") ? "Abs" : param.getLuminosity().equals("2") ? "T%" : param.getLuminosity().equals("3") ? "Es" : param.getLuminosity().equals("4") ? "Er" : "");
             vo.setResponseTime(param.getResponseTime());
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
-            vo.setGain(param.getGain());
-            vo.setProject(project.getProjectName());
+            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+                vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+                vo.setGain(param.getGain());
+            }
             vo.setDetector(method.getMethodCreator());
-            vo.setSampleName(sample.getSampleName());
-            vo.setSampleNumber(sample.getSampleNumber());
-            vo.setSpectrumScanImage(attachment.getImageBase64());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
-            // 仪器型号
-            vo.setInstrumentModel("T600");
+            DeviceInfoPO info = null;
+            if (StringUtils.hasText(task.getDeviceSerialNumber())) {
+                vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+                info = deviceInfoService.getInfo(task.getDeviceSerialNumber());
+            }
+
+            if (info != null && StringUtils.hasText(info.getDeviceModelName())) {
+
+                vo.setInstrumentName(info.getDeviceName() == null ? info.getDeviceModelName() : info.getDeviceName());
+                vo.setInstrumentModel(info.getDeviceModelName());
+            } else {
+                vo.setInstrumentName("紫外可见分光光度计");
+                vo.setInstrumentModel("T600");
+            }
+            log.info("报表参数数据输出完毕,内容: {} ",vo);
             return Result.ok(vo);
-        }else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())){
-//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-//            SpectralReportVo vo = new SpectralReportVo();
-//            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-//            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
-//            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-//            TimeSweepParamter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
-//            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
-//            // 根据方法表的计算公式id和前处理id进行查
-//            if(StringUtils.hasText(method.getMultipleCalculationFormulaKey())) {
-//                CalculationFormula calculationFormula = calculationFormulaService.findById(Integer.valueOf(method.getMultipleCalculationFormulaKey()));
-//                vo.setCalculationFormula(calculationFormula.getResultName());
-//            }
-//            if(StringUtils.hasText(method.getPreprocessKey())){
-//                StandardPretreatment serviceById = standardPretreatmentService.findById(Integer.valueOf(method.getPreprocessKey()));
-//                vo.setReferenceStandard(serviceById.getPretreatmentDescription());
-//            }
-//            TMeasureSample byId = tMeasureSampleService.getById(data.getSampleKey());
-//            vo.setSampleName(byId.getSampleName());
-//            vo.setSampleNumber(byId.getSampleNumber());
-//            vo.setDataType("测量数据");
-//            vo.setInstrumentWavelength(methodparam.getWaveLength());
-//            vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
-//            vo.setLuminosityMode(methodparam.getLuminosity().equals("1")?"Abs":methodparam.getLuminosity().equals("2")?"T%":methodparam.getLuminosity().equals("3")?"Es":"Er");
-//            vo.setSpectrumBandwidth(methodparam.getSpectralBandwidth());
-//            vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
-//            vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
-//            vo.setProject(project.getProjectName());
-//            vo.setDetector(user.getUserName());
-//            if (methodparam.getScanUnit()!=null) {
-//                vo.setTimeUnit(methodparam.getScanUnit());
-//                vo.setTimeUnitName(methodparam.getScanUnit().equals("0")?"秒":"分钟");
-//            }
-//            vo.setTotalNumber(methodparam.getTotalNumber());
-//            vo.setEnergyLight(methodparam.getEnergyLamp().equals("0")?"钨灯":methodparam.getEnergyLamp().equals("1")?"氘灯":"汞灯");
-//            vo.setGain(methodparam.getGain().toString());
-//            vo.setScanTime(methodparam.getScanTime());
-//            vo.setScanInterval(methodparam.getIntervalTime());
-//            vo.setMethodName(method.getMethodName());
-//            vo.setTimeScanImage(data.getDataImage());
-//            vo.setTaskName(task.getTaskName());
-//            return Result.ok(vo);
-            // 校验样品id
-            if (StringUtils.isEmpty(sampleId)) {
-                //请选择样品
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000A"));
-            }
-            // 根据任务中的所属项目的Key查询项目
-            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-            if (project == null) {
-                //项目不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
-            }
+        } else if (task.getMeasureType().equals(MeasureTypeEnum.TIME_SCAN.getDescription())) {
             // 根据任务中的方法key查询方法
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
                 //没有找到该方法
-                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
             }
-            // 根据样品id查询样品数据
-            TMeasureSample sample = tMeasureSampleService.getById(sampleId);
-            if (sample == null) {
-                //样品不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
+            List<String> analysisIdList = new ArrayList<>(Arrays.asList(analysisId.split(",")));
+            TMeasureData data = null;
+            if (analysisIdList.size() == 1) {
+                // 根据分析iD查询分析数据
+                TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisIdList.get(0));
+                if (analysisData == null) {
+                    //没有找到该分析数据
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
+                }
+                if (analysisData.getMeasureDataId() != null)
+                    data = tMeasureDataService.getById(analysisData.getMeasureDataId());
             }
-            // 编写查询测量的条件
-            QueryWrapper<TMeasureData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id",taskId);
-            wrapper.eq("sample_key",sampleId);
-            // 如果存在编号，则查询该设备编号的测量数据
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                wrapper.eq("serial_number",serialNumber);
-            }
-            wrapper.last("limit 1");
-            TMeasureData measureData = tMeasureDataService.getOne(wrapper);
-            if (measureData == null) {
-                //未找到该测量数据
-                return Result.fail(YamlMessageSource.getMessageStatic("00301013"));
-            }
-            // 编写分析的查询条件
-            QueryWrapper<TMeasureAnalysisData> analysisWrapper = new QueryWrapper<>();
-            analysisWrapper.eq("task_id", taskId);
-            analysisWrapper.eq("sample_key", sampleId);
-            if (StringUtils.hasText(serialNumber)&&!"None".equals(serialNumber)) {
-                analysisWrapper.eq("analysis_number", serialNumber);
-            }
-            analysisWrapper.last("limit 1");
-            TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(analysisWrapper);
-            if (analysisData == null) {
-                //没有找到该分析数据
-                return Result.fail(YamlMessageSource.getMessageStatic("0000003D"));
-            }
-            // 根据分析id查询分析图片数据
-            QueryWrapper<TMeasureAnalysisImage> attachmentWrapper = new QueryWrapper<>();
-            attachmentWrapper.eq("analysis_id", analysisData.getId());
-            attachmentWrapper.last("limit 1");
-            TMeasureAnalysisImage attachment = tMeasureAnalysisImageService.getOne(attachmentWrapper);
-            if (attachment == null) {
-                //没有找到对应的图片数据
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000C"));
-            }
+
             SpectralReportVo vo = new SpectralReportVo();
             // 将方法参数提取出来拷贝到report中
             TimeSweepParamter param = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
-            vo.setInstrumentWavelength(param.getWaveLength());
+            vo.setInstrumentWavelength(param.getWaveLength() + "nm");
             vo.setScanTime(param.getScanTime());
-            vo.setTimeUnit(param.getScanUnit().equals("0")?"分":"秒");
+            vo.setTimeUnit(param.getScanUnit().equals("0") ? "分" : "秒");
             vo.setTimeInterval(param.getIntervalTime());
             vo.setTotalNumber(param.getTotalNumber());
-            vo.setDetectionStartTime(measureData.getMeasurementStartTime().format(formatter));
-            vo.setDetectionEndTime(measureData.getMeasurementEndTime().format(formatter));
             vo.setMultiPoolMode(param.getMultiPoolMode().equals("0") ? "顺序单池连续采样" : "循环多池交替采样");
             ///  仪器
             vo.setInstrumentSerialNumber(task.getDeviceSerialNumber());
+            if (data != null) {
+                vo.setDetectionStartTime(data.getMeasurementStartTime().format(formatter));
+                vo.setDetectionEndTime(data.getMeasurementEndTime().format(formatter));
+            }
             // 将光度模式转换为(1.abs 2.T% 3.Es 4.Er)用equals判断,首字母大写
-            vo.setLuminosityMode(param.getLuminosity().equals("1")?"Abs":param.getLuminosity().equals("2")?"T%":param.getLuminosity().equals("3")?"Es":param.getLuminosity().equals("4")?"Er":"");
+            vo.setLuminosityMode(param.getLuminosity().equals("1") ? "Abs" : param.getLuminosity().equals("2") ? "T%" : param.getLuminosity().equals("3") ? "Es" : param.getLuminosity().equals("4") ? "Er" : "");
             vo.setResponseTime(param.getResponseTime());
             vo.setSpectrumBandwidth(param.getSpectralBandwidth());
             vo.setChangeLampWaveLength(param.getChangeLampWaveLength());
             // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-            vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
-            vo.setGain(param.getGain());
-            vo.setProject(project.getProjectName());
+            if (param.getLuminosity().equals("3")||param.getLuminosity().equals("4")){
+                vo.setEnergyLight(param.getEnergyLamp().equals("0") ? "钨灯" : param.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
+                vo.setGain(param.getGain());
+            }
+//            vo.setProject(project.getProjectName());
             vo.setDetector(method.getMethodCreator());
-            vo.setSampleName(sample.getSampleName());
-            vo.setSampleNumber(sample.getSampleNumber());
-            vo.setTimeScanImage(attachment.getImageBase64());
             vo.setMethodName(method.getMethodName());
             vo.setTaskName(task.getTaskName());
 
             // 仪器型号
             vo.setInstrumentModel("T600");
             return Result.ok(vo);
-        }else{
+        } else {
             return Result.ok();
         }
     }
+
+
 
     /**
      * 查询报告参数

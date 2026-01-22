@@ -25,6 +25,8 @@ public class SpectralMethodParameterDto extends SpectrumParameterVo {
     private String methodId2;
     // 方法名称
     private String methodName;
+    // 任务id
+    private String taskId;
     // 用户名
     private String updateBy;
     // 是否共享

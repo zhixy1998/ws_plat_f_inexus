@@ -46,15 +46,18 @@ public class TimeSweepController {
 
     @GetMapping("queryEssentialInformation")
     @ApiOperation("查询项目任务方法接口")
-    public Result queryProjectTaskMethod(@RequestParam String updateBy,@RequestParam String measureType) {
+    public Result queryProjectTaskMethod(@RequestParam String updateBy,
+                                         @RequestParam String measureType) {
         return timeSweepService.queryProjectTaskMethod(updateBy,measureType);
     }
 
 
     @GetMapping("queryProjectAllMethods")
     @ApiOperation("查询项目下的所有方法")
-    public Result queryProjectAllMethods(@RequestParam String projectId, @RequestParam String measureForm) {
-        return timeSweepService.queryProjectAllMethods(projectId,measureForm);
+    public Result queryProjectAllMethods(@RequestParam String projectId,
+                                         @RequestParam String measureForm,
+                                         @RequestParam String updateBy) {
+        return timeSweepService.queryProjectAllMethods(projectId,measureForm,updateBy);
     }
 
     @GetMapping("queryMethodParameter")
@@ -134,7 +137,7 @@ public class TimeSweepController {
 
     @GetMapping("querySampleHeads")
     @ApiOperation("获取样本输入表头接口")
-    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam(required = false) String taskId) {
         return timeSweepService.querySampleHeads(taskId);
     }
 
@@ -309,6 +312,12 @@ public class TimeSweepController {
         
         // 关键修正：返回Service层的具体错误信息，而非空字符串
         return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
+    }
+
+    @GetMapping("stopMeasure")
+    @ApiOperation("停止测量接口")
+    public Result stopMeasure(@RequestParam String deviceSerialNumber) {
+        return timeSweepService.stopMeasure(deviceSerialNumber);
     }
 
 }

@@ -13,6 +13,8 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.CreateTaskParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.MethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.ProjectParamDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryTaskDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
+import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
@@ -32,13 +34,17 @@ public interface ExperimentTestService {
 
     Result createTask(CreateTaskParamDto paramDto);
 
+    // 是否添加样本
+    Result isAddSample(String taskId, String deviceSerialNumber,
+                       SampleNumConfig numberConfig, SampleNameConfig nameConfig);
+
     Result queryTaskPort(QueryTaskDto queryTask);
 
     Result continueMeasuringPort(String projectId, String methodId);
 
     Result queryAllProject();
 
-    Result queryMethodProt(String projectId, String measureType, Integer pageNum, Integer pageSize);
+    Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize);
 
     Result assignMethodPort(String methodType, String projectId);
 
@@ -51,7 +57,8 @@ public interface ExperimentTestService {
     Result reportDataQuery(String taskId, String reportName,String sampleId);
 
     // 新的报表数据查询
-    Result newReportTableDataQuery(String taskId, List<String> sampleIds);
+//    Result newReportTableDataQuery(String taskId, List<String> sampleIds);
+    Result newReportTableDataQuery(String taskId,String analysisId, Boolean allDisplay,Integer digit);
 
     Result<MeasurementCurrentInfoVO> getProjectInfo(String projectId, String measureType);
 
@@ -69,8 +76,8 @@ public interface ExperimentTestService {
     Result recentlyCreatedTasks(String updateBy, String measureType);
 
     // 获取报告参数
-    Result obtainReportParameters(String taskId,String sampleId,String serialNumber);
-
+//    Result obtainReportParameters(String taskId,String sampleId,String serialNumber);
+    Result obtainReportParameters(String taskId,String analysisId);
 
     // 获取报告所有参数
     Result queryReportAllParameters(String taskId, String sampleId, String serialNumber);

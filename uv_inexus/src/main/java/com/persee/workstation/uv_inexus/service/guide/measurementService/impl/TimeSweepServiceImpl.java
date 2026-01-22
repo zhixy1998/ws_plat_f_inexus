@@ -20,7 +20,8 @@ import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
@@ -29,20 +30,19 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
+import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
@@ -79,6 +79,7 @@ import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -103,7 +104,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     @Autowired
     private DevMessageUtil devMessageUtil;
     @Autowired
-    private SystemUserManageDAO systemUserManageDAO;
+    private SysUserMapper sysUserMapper;
     @Autowired
     private TMeasureProjectService tMeasureProjectService;
     @Autowired
@@ -114,6 +115,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private PythonPathConstant pythonPathConstant;
     @Autowired
     private DevOperationUtilService devOperationUtilService;
+    @Autowired
+    private TMeasureTaskMapper tMeasureTaskMapper;
+    @Autowired
+    DeviceInfoService infoService;
 
     @Value("1")
     String deleteType;
@@ -131,50 +136,93 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @return
      */
     @Override
-    public Result   queryProjectTaskMethod(String updateBy,String measureType) {
-        if (updateBy.length()>=256){
-            //用户名过长！
-            return Result.fail(YamlMessageSource.getMessageStatic("00305001"));
-        }
-        SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<SystemUserManagePO>().eq("user_name", updateBy));
-        if (user==null){
+    public Result queryProjectTaskMethod(String updateBy,String measureType) {
+        SysUserPO user = sysUserMapper.selectByUsername(updateBy);
+        if (user == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-
         MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
-        if (measureTypeEnum==null){
-            //暂不支持此测量类型
-            return Result.fail(YamlMessageSource.getMessageStatic("00305002"));
+        if (measureTypeEnum == null) {
+            //暂不支持
+            return Result.fail(YamlMessageSource.getMessageStatic("0000002B"));
         }
         // 根据用户id和测量类型然后通过创建时间查找到最近的一次任务
-        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("user_id", user.getId()).eq("measure_type", measureTypeEnum.getDescription()).orderByDesc("create_time").last("limit 1"));
-        if (task==null){
-            //暂无任务数据
-            return Result.fail(YamlMessageSource.getMessageStatic("00305003"));
+        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>()
+                .eq("user_id", user.getId())
+                .eq("measure_type", measureTypeEnum.getDescription())
+                .orderByDesc("create_time")
+                .last("limit 1"));
+
+        if (task != null) {
+            // 根据任务id查询方法
+            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+            // 根据项目id查询项目
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            SpectrumBasicParameterVo spectrumBasicParameterVo = new SpectrumBasicParameterVo();
+            spectrumBasicParameterVo.setTaskId(task.getId());
+            spectrumBasicParameterVo.setTaskName(task.getTaskName());
+            spectrumBasicParameterVo.setTaskStatus(task.getTaskStatus());
+            if (method == null) {
+                spectrumBasicParameterVo.setMethodId(null);
+                spectrumBasicParameterVo.setMethodName(null);
+            } else {
+                spectrumBasicParameterVo.setMethodId(method.getId());
+                spectrumBasicParameterVo.setMethodName(method.getMethodName());
+            }
+            if (project == null) {
+                spectrumBasicParameterVo.setProjectId(null);
+                spectrumBasicParameterVo.setProjectName(null);
+            } else {
+                spectrumBasicParameterVo.setProjectId(project.getId());
+                spectrumBasicParameterVo.setProjectName(project.getProjectName());
+            }
+            return Result.ok(spectrumBasicParameterVo);
         }
-        // 根据任务id查询方法
-        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-        // 根据项目id查询项目
-        TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-        SpectrumBasicParameterVo spectrumBasicParameterVo = new SpectrumBasicParameterVo();
-        spectrumBasicParameterVo.setTaskId(task.getId());
-        spectrumBasicParameterVo.setTaskName(task.getTaskName());
-        if (method==null){
-            spectrumBasicParameterVo.setMethodId(null);
-            spectrumBasicParameterVo.setMethodName(null);
-        }else{
-            spectrumBasicParameterVo.setMethodId(method.getId());
-            spectrumBasicParameterVo.setMethodName(method.getMethodName());
+        TMeasureMethod method = tMeasureMethodService.getOne(new QueryWrapper<TMeasureMethod>()
+                .eq("method_creator", user.getUsername())
+                .eq("measurement_type", measureType)
+                .orderByDesc("method_create_time")
+                .last("limit 1"));
+        SpectrumBasicParameterVo vo = new SpectrumBasicParameterVo();
+        if (method != null) {
+            // 根据方法id查询任务
+            TMeasureTask measureTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>()
+                    .eq("method_key", method.getId())
+                    .orderByDesc("create_time")
+                    .last("limit 1"));
+            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+            vo.setMethodId(method.getId());
+            vo.setMethodName(method.getMethodName());
+            vo.setTaskId(measureTask.getId());
+            vo.setTaskName(measureTask.getTaskName());
+            vo.setTaskStatus(measureTask.getTaskStatus());
+            vo.setProjectId(project.getId());
+            vo.setProjectName(project.getProjectName());
+            return Result.ok(vo);
         }
-        if (project==null){
-            spectrumBasicParameterVo.setProjectId(null);
-            spectrumBasicParameterVo.setProjectName(null);
-        }else{
-            spectrumBasicParameterVo.setProjectId(project.getId());
-            spectrumBasicParameterVo.setProjectName(project.getProjectName());
+        // 根据默认任务名称查询默认任务
+        TMeasureTask defaultTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("task_name", Constants.DEFAULT_TASK));
+        if (defaultTask != null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
         }
-        return Result.ok(spectrumBasicParameterVo);
+        // 根据方法id和项目id查询方法和项目
+        TMeasureProject byId = tMeasureProjectService.getById(defaultTask.getProjectItemKey());
+        if (byId == null){
+            return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+        }
+        TMeasureMethod method1 = tMeasureMethodService.getById(defaultTask.getMethodKey());
+        if (method1 == null){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
+        }
+        vo.setMethodId(method1.getId());
+        vo.setMethodName(method1.getMethodName());
+        vo.setProjectId(byId.getId());
+        vo.setProjectName(byId.getProjectName());
+        vo.setTaskId(defaultTask.getId());
+        vo.setTaskName(defaultTask.getTaskName());
+        vo.setTaskStatus(defaultTask.getTaskStatus());
+        return Result.ok(vo);
     }
 
 
@@ -185,10 +233,15 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * @return
      */
     @Override
-    public Result queryProjectAllMethods(String projectId,String measureForm) {
+    public Result queryProjectAllMethods(String projectId,String measureForm, String updateBy) {
 
-        List<TMeasureMethod> methods = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type",  measureForm));
-        if (methods==null){
+        // 参数校验
+        if (StringUtils.isEmpty(projectId)|| StringUtils.isEmpty(measureForm)|| StringUtils.isEmpty(updateBy)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
+        }
+        List<TMeasureMethod> methods = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", measureForm).eq("method_creator", updateBy));
+
+        if (methods == null) {
             //没有此类型的数据
             return Result.fail(YamlMessageSource.getMessageStatic("0030000A"));
         }
@@ -236,100 +289,62 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         setParam.setSetWl(Double.valueOf(paramDto.getWaveLength()));
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
         if (!b) {
-            return Result.fail("设置参数失败");
+            log.error("下发参数失败,请查看是否连接仪器");
         }
+        // 使用isEmpty判断，如果为空，则返回失败
+        if (paramDto.getUpdateBy().isEmpty()){
+            return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
+        }
+        SysUserPO sysUserPO = sysUserMapper.selectByUsername(paramDto.getUpdateBy());
 
         // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
-        if (paramDto.getMethodId() != null && (paramDto.getMethodId2() == null || paramDto.getMethodId().equals(paramDto.getMethodId2()))) {
-            TMeasureMethod currentMethod = tMeasureMethodService.getById(paramDto.getMethodId());
-            if (currentMethod != null) {
-                // 1. 获取数据库中的旧参数
-                TimeSweepParamter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), TimeSweepParamter.class);
-
-                // 2. 获取传入的新参数
-                TimeSweepParamter newParam = new TimeSweepParamter();
-                BeanUtils.copyProperties(paramDto, newParam);
-
-                // 3. 比较参数
-                if (compareParam(oldParam, newParam)) {
-                    // 参数未变，直接返回成功结果，跳过后续所有数据库更新/新建操作
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("method", currentMethod);
-                    return Result.ok(map);
-                }
-            }
+        TMeasureMethod currentMethod = tMeasureMethodService.getById(paramDto.getMethodId());
+        if (currentMethod == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("0030100C"));
         }
+        // 1. 获取数据库中的旧参数
+        TimeSweepParamter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), TimeSweepParamter.class);
 
-        Map<String, Object> map = new HashMap<>();
-        if (paramDto.getMethodId2() != null) {
-            TMeasureMethod method2 = tMeasureMethodService.getById(paramDto.getMethodId2());
-            if (method2 == null) {
-                //没有找到该方法
-                return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
-            }
-            // 将方法的参数取出来
-            TimeSweepParamter parameter2 = JSON.parseObject(method2.getMeasurementParamInfo(), TimeSweepParamter.class);
-            TimeSweepParamter parameter = new TimeSweepParamter();
-            BeanUtils.copyProperties(paramDto, parameter);
-            boolean memberKeys = compareParam(parameter2, parameter);
-            if (memberKeys) {
-                if (method2.getId().equals(paramDto.getMethodId())) {
-                    //请勿重复使用
-                    return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
-                } else {
-                    method2.setMethodUseTime(LocalDateTime.now());
-                }
-            } else {
-                method2.setMethodUseTime(LocalDateTime.now());
-            }
-            boolean update = tMeasureMethodService.updateById(method2);
-            if (!update) {
-                //应用失败
-                return Result.fail(YamlMessageSource.getMessageStatic("00100002"));
-            }
-            map.put("method", method2);
-            return Result.ok(map);
-        }
-        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-
-        TimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
-
+        // 2. 获取传入的新参数
         TimeSweepParamter newParam = new TimeSweepParamter();
-        // 将方法参数拷贝出来
         BeanUtils.copyProperties(paramDto, newParam);
 
-        // 3. 参数比较
-        boolean sameParam = compareParam(parameter, newParam);
+        // 3. 比较参数
+        if (compareParam(oldParam, newParam)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00104001"));
+        }
 
+        boolean methodBoolean = false;
+        // 比较方法名称跟查询的方法的方法名称是否一样
+        if (!currentMethod.getMethodName().equals(paramDto.getMethodName())) {
+            methodBoolean = true;
+        }
 
-        // 2. 查询历史方法
-        if (method == null) {
-            TMeasureMethod newMethod = createNewMethod(paramDto);
+        // 根据任务id查询任务数据
+        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
+        if (task.getTaskStatus().equals("0")) {
+            TMeasureMethod newMethod = createNewMethod(paramDto , methodBoolean);
             if (newMethod == null) {
                 //新建方法失败
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
-            map.put("method", newMethod);
-            return Result.ok(map);
-        }
-
-        if (sameParam) {
-            if (method.getId().equals(paramDto.getMethodId())) {
-                //请勿重复使用
-                return Result.fail(YamlMessageSource.getMessageStatic("00105016"));
-            } else {
-                map.put("method", method);
-                return Result.ok(map);
-            }
-        } else {
-            TMeasureMethod newMethod = createNewMethod(paramDto);
+            task.setMethodKey(newMethod.getId());
+            task.setCreateTime(LocalDateTime.now());
+            boolean update = tMeasureTaskService.updateById(task);
+            return update?Result.ok():Result.fail(YamlMessageSource.getMessageStatic("00000048"));
+        }else{
+            TMeasureMethod newMethod = createNewMethod(paramDto , methodBoolean);
             if (newMethod == null) {
                 //新建方法失败
                 return Result.fail(YamlMessageSource.getMessageStatic("0010000A"));
             }
-            map.put("method", newMethod);
-            return Result.ok(map);
+            TMeasureTask newTask = createNewTask(paramDto, newMethod.getId(), task, sysUserPO.getId());
+            if (newTask == null){
+                return Result.fail(YamlMessageSource.getMessageStatic("00000010"));
+            }
+            return Result.ok();
         }
+
     }
 
     /**
@@ -345,56 +360,61 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //任务id不能为空
             return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
         }
-
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
-
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<SampleListVo> listVos = new ArrayList<>();
 
-        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-            SampleListVo vo = new SampleListVo();
-            TMeasureSample sample =  tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-            if (sample==null){
-                //样品不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
-            }
-            if (taskSpeciman.getIsTested().equals("0")){
-                vo.setTitle(sample.getSampleName());
-                vo.setSampleId(taskSpeciman.getSpecimenKey());
-                vo.setAnalysisId(null);
-                vo.setAnalysisNumber(1);
-                vo.setColor(null);
-                vo.setOriginalData(null);
-                vo.setDeleteType("0");
-            }else{
-                QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
-                queryWrapper.eq("task_id", taskId);
-                queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
-                queryWrapper.eq("analysis_type", "5");
-                if (type==null){
-                    queryWrapper.eq("is_delete", "0");
-                }
-                queryWrapper.orderByDesc("analysis_number");
-                queryWrapper.last("limit 1");
-                TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
-                if (measureData == null){
-//                    return Result.fail("无测量数据");
+        if (taskSpecimen != null) {
+            for (TaskSpecimen taskSpeciman : taskSpecimen) {
+                if (taskSpeciman.getDeleteType().equals("1") && type == null) {
                     continue;
                 }
-                vo.setTitle(sample.getSampleName());
-                vo.setAnalysisId(measureData.getId());
-                vo.setSampleId(taskSpeciman.getSpecimenKey());
-                vo.setAnalysisNumber(measureData.getAnalysisNumber());
-                vo.setColor(measureData.getColor());
-                vo.setOriginalData(getSampleData(measureData,digit));
-                vo.setDeleteType(measureData.getIsDelete());
+                SampleListVo vo = new SampleListVo();
+                TMeasureSample sample = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (sample == null) {
+                    //样品不存在
+                    return Result.fail(YamlMessageSource.getMessageStatic("0000000B"));
+                }
+                if (taskSpeciman.getIsTested().equals("0")) {
+                    vo.setTitle(sample.getSampleName());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setAnalysisId(null);
+                    vo.setAnalysisNumber(1);
+                    vo.setSampleLocation(sample.getSampleLocation());
+                    vo.setColor(null);
+                    vo.setData(null);
+                    vo.setDeleteType("0");
+                } else {
+                    QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("task_id", taskId);
+                    queryWrapper.eq("sample_key", taskSpeciman.getSpecimenKey());
+                    queryWrapper.eq("analysis_type", "5");
+                    if (type == null) {
+                        queryWrapper.eq("is_delete", "0");
+                    }
+                    queryWrapper.orderByDesc("analysis_number");
+                    queryWrapper.last("limit 1");
+                    TMeasureAnalysisData measureData = tMeasureAnalysisDataService.getOne(queryWrapper);
+                    if (measureData == null) {
+                        continue;
+                    }
+                    vo.setTitle(sample.getSampleName());
+                    vo.setAnalysisId(measureData.getId());
+                    vo.setSampleId(taskSpeciman.getSpecimenKey());
+                    vo.setSampleLocation(sample.getSampleLocation());
+                    vo.setAnalysisNumber(measureData.getAnalysisNumber());
+                    vo.setColor(measureData.getColor());
+                    vo.setData(getSampleData(measureData, digit));
+                    vo.setOriginalData(getOriginalSampleData(measureData, digit));
+                    vo.setDeleteType(taskSpeciman.getDeleteType());
+                }
+                vo.setType("0");
+                listVos.add(vo);
             }
-            vo.setType("0");
-            listVos.add(vo);
         }
         return Result.ok(listVos);
     }
@@ -717,7 +737,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }else{
             task = new TMeasureTask();
             TMeasureMethod method = tMeasureMethodService.getById(methodId);
-            SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
+            SysUserPO user = sysUserMapper.selectOne(new QueryWrapper<>(SysUserPO.class).eq("user_name", method.getMethodCreator()));
             task.setUserId(user.getId());
             String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             String collect = new Random().ints(8, 0, chars.length())
@@ -831,21 +851,18 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
-        if (StringUtils.hasText(task.getSampleKey())) {
-            List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-            for (TaskSpecimen specimen : taskSpecimen) {
-                if (specimen.getDeleteType().equals(deleteType)) {
-                    continue;
-                }
-                TMeasureSample measureSample = tMeasureSampleService.getById(specimen.getSpecimenKey());
-                List<HeadVO> heads = JSON.parseArray(measureSample.getHeads(), HeadVO.class);
-
-                if (heads != null && !heads.equals(ans)) {
-                    ans.addAll(heads);
-                }
+        if (!StringUtils.hasText(task.getTableInfo())) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+            return Result.ok(preHead);
+        } else {
+            TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+            if (snapshot.getSampleHeads() != null && !snapshot.getSampleHeads().isEmpty()) {
+                return Result.ok(snapshot.getSampleHeads());
+            } else {
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+                return Result.ok(preHead);
             }
         }
-        return Result.ok(ans);
     }
 
     /**
@@ -983,7 +1000,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             TMeasureTask newTask = new TMeasureTask();
 
             TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-            SystemUserManagePO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SystemUserManagePO.class).eq(SystemUserManagePO::getUserName, paramDto.getUpdateBy()));
+            SysUserPO po = sysUserMapper.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, paramDto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());
@@ -2570,38 +2587,32 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      * (实验测试)表格头接口
      * @param taskId
      * @param methodId
-     * @param sampleIds
+     * @param analysisIdList
      * @return
      */
     @Override
-    public Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds) {
+    public Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList) {
         // 根据方法id查找方法
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        TimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
         List<HeadVO> ans = new ArrayList<>();
 
         // 1. 编号
         ans.add(new HeadVO("编号", "id", "system", "编号"));
 
         // 2. 波长
-        ans.add(new HeadVO("波长(nm)", "waveLength", "measure", "波长(nm)"));
+        ans.add(new HeadVO("时长(s)", "waveLength", "measure", "时长(s)"));
 
         // 如果样品长度为1则是单样品表头,如果样品长度超过1则是多样品表头
-        if (sampleIds.size() == 1){
-            addLuminosityMode(ans,parameter.getLuminosity());
+        if (analysisIdList.size() == 1) {
+            addLuminosityMode(ans, parameter.getLuminosity());
             ans.add(new HeadVO("峰谷/标记点", "peakValleyGaugePoint", "measure", "峰谷"));
-            ans.add(new HeadVO("备注", "Remark", "analysis", "备注"));
+            ans.add(new HeadVO("备注", "remark", "analysis", "备注"));
             return Result.ok(ans);
-        }else{
-            // 根据样品id查询多个样品的样品信息
-            QueryWrapper<TMeasureSample> qw = new QueryWrapper<>();
-            qw.in("sample_key", sampleIds);
-            List<TMeasureSample> samples = tMeasureSampleService.list(qw);
-            if (samples == null || samples.isEmpty()){
-                //样品信息不存在
-                return Result.fail(YamlMessageSource.getMessageStatic("00000049"));
-            }
-            for (TMeasureSample sample : samples) {
+        } else {
+            for (String analysisId : analysisIdList) {
+                TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
+                TMeasureSample sample = tMeasureSampleService.getById(analysisData.getSampleKey());
                 ans.add(new HeadVO(sample.getSampleName(), "sampleNumber", "name", "样品名称"));
                 ans.add(new HeadVO("峰/谷", "peakValley", "system", "峰谷"));
             }
@@ -2612,208 +2623,204 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     /**
      * (实验测试)查询表格数据接口
      * @param taskId
-     * @param sampleIds
+     * @param analysisIds
+     * @param digit
      * @return
      */
     @Override
-    public List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds) {
+    public List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIds, Integer digit) {
         // 校验参数
-        if (StringUtils.isEmpty(taskId) || sampleIds == null || sampleIds.isEmpty()) {
+        if (StringUtils.isEmpty(taskId) || analysisIds == null || analysisIds.isEmpty()) {
             return null;
         }
         List<Map<String, Object>> arrayList = new ArrayList<>();
 
         // 判断样品长度是否为1
-        if (sampleIds.size() == 1) {
-            // 单样品表数据
-            QueryWrapper<TMeasureAnalysisData> wrapper = new QueryWrapper<>();
-            wrapper.eq("task_id", taskId);
-            wrapper.eq("analysis_number",1);
-            wrapper.eq("sample_key", sampleIds.get(0));
-            wrapper.last("limit 1");
-            TMeasureAnalysisData measureAnalysisData = tMeasureAnalysisDataService.getOne(wrapper);
+        if (analysisIds.size() == 1) {
+            TMeasureAnalysisData measureAnalysisData = tMeasureAnalysisDataService.getById(analysisIds.get(0));
             if (measureAnalysisData == null) {
                 return null;
             }
-            int id =1;
-            List<FPeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), FPeakValleyMarking.class);
-            List<FPeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), FPeakValleyMarking.class);
-            if (peaks != null){
-                for (FPeakValleyMarking peak : peaks) {
+            int id = 1;
+            List<PeakValleyMarking> peaks = JSON.parseArray(measureAnalysisData.getPeak(), PeakValleyMarking.class);
+            List<PeakValleyMarking> valleys = JSON.parseArray(measureAnalysisData.getGrain(), PeakValleyMarking.class);
+            List<PeakValleyMarking> gaugePoints = JSON.parseArray(measureAnalysisData.getGaugePoint(), PeakValleyMarking.class);
+            if (peaks != null && !peaks.isEmpty()) {
+                for (PeakValleyMarking peak : peaks) {
                     Map<String, Object> map = new HashMap<>();
-                    map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), peak.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), peak.getY());
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(peak.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(peak.getY(), digit));
                     map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "峰");
-                    map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark());
+                    map.put(SampleTableEnum.REMARK.getIdentity(), peak.getRemark() != null ? peak.getRemark() : "");
                     arrayList.add(map);
                 }
             }
-            if (valleys != null){
-                for (FPeakValleyMarking valley : valleys) {
+            if (valleys != null && !valleys.isEmpty()) {
+                for (PeakValleyMarking valley : valleys) {
                     Map<String, Object> map = new HashMap<>();
-                    map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), valley.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), valley.getY());
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(valley.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(valley.getY(), digit));
                     map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "谷");
-                    map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark());
+                    map.put(SampleTableEnum.REMARK.getIdentity(), valley.getRemark() != null ? valley.getRemark() : "");
                     arrayList.add(map);
                 }
             }
-            if (gaugePoints != null){
-                for (FPeakValleyMarking gaugePoint : gaugePoints) {
+            if (gaugePoints != null && !gaugePoints.isEmpty()) {
+                for (PeakValleyMarking gaugePoint : gaugePoints) {
                     Map<String, Object> map = new HashMap<>();
-                    map.put(SampleTableEnum.ID.getIdentity(),id++);
-                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), gaugePoint.getX());
-                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), gaugePoint.getY());
+                    map.put(SampleTableEnum.ID.getIdentity(), id++);
+                    map.put(SampleTableEnum.WAVELENGTH.getIdentity(), formatBigDecimal(gaugePoint.getX(), 1));
+                    map.put(SampleTableEnum.LUMINOSITY.getIdentity(), formatBigDecimal(gaugePoint.getY(), digit));
                     map.put(SampleTableEnum.PEAKVALLEYGAUGEPOINT.getIdentity(), "标记点");
-                    map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark());
+                    map.put(SampleTableEnum.REMARK.getIdentity(), gaugePoint.getRemark() != null ? gaugePoint.getRemark() : "");
                     arrayList.add(map);
                 }
             }
 
             return arrayList;
-        }else{
+        } else {
             // 多样品表数据
-            // 根据任务id和样品id查询分析数据
-            QueryWrapper<TMeasureAnalysisData> eq = new QueryWrapper<>();
-            eq.eq("task_id", taskId);
-            eq.eq("analysis_number",1);
-            eq.in("sample_key", sampleIds);
+            List<TMeasureAnalysisData> analysisDataList = new ArrayList<>();
+            // 存储每个样品的数据映射，用于快速查找
+            List<Map<String, String[]>> sampleDataMaps = new ArrayList<>();
+            // 存储每个样品的峰谷标记映射
+            List<Map<String, String>> samplePeakValleyMaps = new ArrayList<>();
+            // 收集所有波长
+            Set<String> allWavelengthsSet = new LinkedHashSet<>();
 
-            List<TMeasureAnalysisData> analysisDataList = tMeasureAnalysisDataService.list(eq);
-            if (analysisDataList == null || analysisDataList.isEmpty()) {
+            // 根据任务id和样品id查询分析数据
+            for (String analysisId : analysisIds) {
+                TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getById(analysisId);
+                if (analysisData != null) {
+                    analysisDataList.add(analysisData);
+
+                    // 解析当前样品的数据
+                    List<String> datas = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
+                    Map<String, String[]> dataMap = new HashMap<>();
+                    Map<String, String> peakValleyMap = new HashMap<>();
+
+                    if (datas != null) {
+                        for (String data : datas) {
+                            String[] split = data.split(",");
+                            if (split.length >= 2) {
+                                String wavelength = formatBigDecimal(split[0], 1);
+                                String value = formatBigDecimal(split[1], digit);
+                                dataMap.put(wavelength, new String[]{value, split[0]}); // 存储格式化后的值和原始值
+                                allWavelengthsSet.add(wavelength); // 收集所有波长
+                            }
+                        }
+                    }
+
+                    // 处理峰标记
+                    List<PeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), PeakValleyMarking.class);
+                    if (peaks != null) {
+                        for (PeakValleyMarking peak : peaks) {
+                            String wavelength = formatBigDecimal(peak.getX(), 1);
+                            peakValleyMap.put(wavelength, "峰");
+                        }
+                    }
+
+                    // 处理谷标记
+                    List<PeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), PeakValleyMarking.class);
+                    if (valleys != null) {
+                        for (PeakValleyMarking valley : valleys) {
+                            String wavelength = formatBigDecimal(valley.getX(), 1);
+                            // 如果该波长已经有峰标记，则不覆盖
+                            if (!peakValleyMap.containsKey(wavelength)) {
+                                peakValleyMap.put(wavelength, "谷");
+                            }
+                        }
+                    }
+
+                    sampleDataMaps.add(dataMap);
+                    samplePeakValleyMaps.add(peakValleyMap);
+                }
+            }
+
+            if (analysisDataList.isEmpty()) {
                 return null;
             }
 
-            List<Integer> list = new ArrayList<>();
-            List<String> result = JSON.parseArray(analysisDataList.get(0).getAnalysisResult(), String.class);
-            for (String s : result) {
-                String[] split = s.split(",");
-                list.add(Integer.parseInt(split[0]));
-            }
+            // 将波长集合转换为列表并保持插入顺序
+            List<String> allWavelengths = new ArrayList<>(allWavelengthsSet);
 
-            for (Integer i : list) {
-                Map<String, Object> map = new HashMap<>();
-                Map<String,Object> resultMap = new HashMap<>();
-                resultMap.put(SampleTableEnum.ID.getIdentity(),i);
-                for (TMeasureAnalysisData fMeasureAnalysisData : analysisDataList) {
-                    List<String> datas = JSON.parseArray(fMeasureAnalysisData.getAnalysisResult(), String.class);
-                    List<FPeakValleyMarking> peaks = JSON.parseArray(fMeasureAnalysisData.getPeak(), FPeakValleyMarking.class);
-                    List<FPeakValleyMarking> valleys = JSON.parseArray(fMeasureAnalysisData.getGrain(), FPeakValleyMarking.class);
-                    for (String data : datas) {
-                        String[] split = data.split(",");
-                        if (Integer.parseInt(split[0])== i) {
-                            if (resultMap.get("sampleNumber") == null){
-                                List<String> y = new ArrayList<>();
-                                y.add(split[1]);
-                                resultMap.put("sampleNumber", y);
-                            }else{
-                                List<String> y = (List<String>) map.get("sampleNumber");
-                                y.add(split[1]);
-                                map.put("sampleNumber", y);
-                            }
-                            boolean statePeak = false;
-                            boolean stateValley = false;
-                            if (peaks != null){
-                                for (FPeakValleyMarking peak : peaks) {
-                                    if (peak.getX().equals(split[0])){
-                                        if (resultMap.get("peakValley")==null){
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("峰");
-                                        }else{
-                                            List<String> peakList = (List<String>) map.get("peakValley");
-                                            peakList.add("峰");
-                                        }
-                                        statePeak = true;
-                                    }
-                                }
-                            }
-                            if (valleys != null){
-                                for (FPeakValleyMarking valley : valleys) {
-                                    if (valley.getX().equals(split[0])){
-                                        if (resultMap.get("peakValley")==null){
-                                            List<String> peakList = new ArrayList<>();
-                                            peakList.add("谷");
-                                        }else{
-                                            List<String> peakList = (List<String>) map.get("peakValley");
-                                            peakList.add("谷");
-                                        }
-                                        stateValley = true;
-                                    }
-                                }
-                            }
-                            /// 校验是否有峰/谷进行添加,如果没有添加则进行补充为null
-                            if (!statePeak&&!stateValley){
-                                if (resultMap.get("peakValley")==null){
-                                    List<String> peakList = new ArrayList<>();
-                                    peakList.add(null);
-                                }else{
-                                    List<String> peakList = (List<String>) map.get("peakValley");
-                                    peakList.add(null);
-                                }
-                            }
-                            break;
-                        }
+            int id = 1;
+            for (String wavelength : allWavelengths) {
+                Map<String, Object> resultMap = new HashMap<>();
+                resultMap.put(SampleTableEnum.ID.getIdentity(), id++);
+
+                // 为每个样品初始化列表
+                List<String> sampleNumbers = new ArrayList<>();
+                List<String> peakValleys = new ArrayList<>();
+
+                // 为每个样品查找对应波长的数据
+                for (int i = 0; i < sampleDataMaps.size(); i++) {
+                    Map<String, String[]> dataMap = sampleDataMaps.get(i);
+                    Map<String, String> peakValleyMap = samplePeakValleyMaps.get(i);
+
+                    // 查找数据
+                    if (dataMap.containsKey(wavelength)) {
+                        String[] data = dataMap.get(wavelength);
+                        sampleNumbers.add(data[0]); // 格式化后的值
+
+                        // 查找峰谷标记
+                        String peakValleyType = peakValleyMap.getOrDefault(wavelength, "");
+                        peakValleys.add(peakValleyType);
+                    } else {
+                        // 没有对应波长的数据，补充空值
+                        sampleNumbers.add("");
+                        peakValleys.add("");
                     }
                 }
-                map.put(String.valueOf(i),resultMap);
+
+                // 将列表放入resultMap
+                resultMap.put("sampleNumber", sampleNumbers);
+                resultMap.put("peakValley", peakValleys);
+                resultMap.put(SampleTableEnum.WAVELENGTH.getIdentity(), wavelength);
+
+                Map<String, Object> map = new HashMap<>();
+                map.put(wavelength, resultMap);
                 arrayList.add(map);
             }
+
             return arrayList;
-
-
         }
+    }
 
+    @Override
+    public Result stopMeasure(String deviceSerialNumber) {
+        // 1. 校验参数
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+        }
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
+        Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
+        if (!put) {
+            log.info("设备已停止测量");
+            Constants.measureStopStatus.put(deviceSerialNumber, false);
+            return Result.ok();
+        } else {
+            return Result.fail();
+        }
+    }
 
+    /**
+     * 格式化 BigDecimal，保留指定的小数位数
+     *
+     * @param valueStr
+     * @param digit
+     * @return
+     */
 
-
-
-
-
-
-
-
-
-//        // 根据任务id和样品id查询分析数据
-//        QueryWrapper<FMeasureAnalysisData> eq = new QueryWrapper<>();
-//        eq.eq("task_id", taskId);
-//        eq.eq("sample_key", sampleId);
-//        eq.orderByDesc("analysis_number");
-//        eq.last("LIMIT 1");
-//        FMeasureAnalysisData analysisData = fMeasureAnalysisDataService.getOne(eq);
-//        if (analysisData == null) {
-//            return null;
-//        }
-//        // 解析分析数据
-//        List<String> result = JSON.parseArray(analysisData.getAnalysisResult(), String.class);
-//        // 解析峰谷数据
-//        List<FPeakValleyMarking> peaks = JSON.parseArray(analysisData.getPeak(), FPeakValleyMarking.class);
-//        List<FPeakValleyMarking> valleys = JSON.parseArray(analysisData.getGrain(), FPeakValleyMarking.class);
-//        List<Map<String, Object>> arrayList = new ArrayList<>();
-//        // 根据长度遍历
-//        for (int i = 0; i < result.size(); i++) {
-//            // 根据,进行分割数据
-//            String[] split = result.get(i).split(",");
-//            Map<String, Object> map = new HashMap<>();
-//            map.put(SampleTableEnum.ID.getIdentity(), i + 1);
-//            for (FPeakValleyMarking peak : peaks) {
-//                if (peak.getX().equals(split[0])){
-//                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "峰");
-//                }
-//            }
-//            for (FPeakValleyMarking grade : valleys) {
-//                if (grade.getX().equals(split[0])){
-//                    map.put(SampleTableEnum.PEAKVALLEY.getIdentity(), "谷");
-//                }
-//            }
-//            map.put(SampleTableEnum.WAVELENGTH.getIdentity(), split[0]);
-//            map.put(SampleTableEnum.LUMINOSITY.getIdentity(), split[1]);
-//            map.put(SampleTableEnum.REMARK.getIdentity(), null);
-//            arrayList.add(map);
-//        }
-//        return arrayList;
+    public static String formatBigDecimal(String valueStr, int digit) {
+        // 将字符串转换成 BigDecimal
+        BigDecimal value = new BigDecimal(valueStr);
+        BigDecimal decimal = value.setScale(digit, RoundingMode.HALF_UP);
+        // 设置小数位数并进行舍入
+        return DataCountUtil.addZero(Double.valueOf(decimal.stripTrailingZeros().toPlainString()), digit);
     }
 
     /**
@@ -2939,6 +2946,94 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             } else {
                 map.put("gu", "0");
             }
+            resultList.add(map);
+        }
+        return resultList;
+    }
+
+
+    /**
+     * 获取样品的原始数据
+     * 该方法与 getSampleData 方法逻辑相同，但不会进行小数位数限制
+     *
+     * @param measureData
+     * @return
+     */
+    public List<Map<String, Object>> getOriginalSampleData(TMeasureAnalysisData measureData,
+                                                           Integer digit) {
+        // 解析分析结果、峰、谷、标记点
+        List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
+        List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
+        List<FPeakValleyMarking> peaks = JSON.parseArray(measureData.getPeak(), FPeakValleyMarking.class);
+        List<FPeakValleyMarking> grades = JSON.parseArray(measureData.getGrain(), FPeakValleyMarking.class);
+
+        // 存放数据的结果列表
+        List<Map<String, Object>> resultList = new ArrayList<>();
+
+        // 遍历每个分析数据
+        for (String s : list) {
+            String[] split = s.split(","); // 以逗号分割
+            Map<String, Object> map = new HashMap<>();
+            Double x = new Double(split[0]);
+            Double y = new Double(split[1]);
+            Double valueX = DataCountUtil.formatValue(1, x);
+            String zeroX = DataCountUtil.addZero(valueX, 1);
+            map.put("x", valueX);
+            if (digit != null) {
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
+                map.put("astrictY", valueY);
+            } else {
+                map.put("astrictY", DataCountUtil.addZero(Double.valueOf(split[1]), 8));
+            }
+            map.put("y", y);
+            Double value = DataCountUtil.formatValue(digit, y);
+            String valueY = DataCountUtil.addZero(value, digit);
+
+
+            // 标记点数据处理
+            if (gauges != null && !gauges.isEmpty()) {
+                for (FPeakValleyMarking gauge : gauges) {
+                    if (split[0].equals(gauge.getX())) {
+                        map.put("marked", "1");
+                        break;
+                    } else {
+                        map.put("marked", "0");
+                    }
+                }
+            } else {
+                map.put("marked", "0");
+            }
+
+            // 峰数据处理
+            if (peaks != null && !peaks.isEmpty()) {
+                for (FPeakValleyMarking peak : peaks) {
+                    if (split[0].equals(peak.getX())) {
+                        map.put("feng", "1");
+                        break;
+                    } else {
+                        map.put("feng", "0");
+                    }
+                }
+            } else {
+                map.put("feng", "0");
+            }
+
+            // 谷数据处理
+            if (grades != null && !grades.isEmpty()) {
+                for (FPeakValleyMarking grade : grades) {
+                    if (split[0].equals(grade.getX())) {
+                        map.put("gu", "1");
+                        break;
+                    } else {
+                        map.put("gu", "0");
+                    }
+                }
+            } else {
+                map.put("gu", "0");
+            }
+
+            // 将当前的map添加到结果列表
             resultList.add(map);
         }
         return resultList;
@@ -3381,24 +3476,25 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     /**
      * 创建新的方法
      */
-    private TMeasureMethod createNewMethod(TimeSweepMethodParameterDto paramDto) {
+    private TMeasureMethod createNewMethod(TimeSweepMethodParameterDto paramDto, Boolean isCopy) {
         TMeasureMethod fMeasureMethod = new TMeasureMethod();
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        String collect = new Random().ints(8, 0, chars.length())
-                .mapToObj(i -> String.valueOf(chars.charAt(i)))
-                .collect(Collectors.joining());
-
-        fMeasureMethod.setMethodName(paramDto.getMeasureType() + collect);
+        if (isCopy){
+            fMeasureMethod.setMethodName(paramDto.getMethodName());
+        }else{
+            fMeasureMethod.setMethodName(paramDto.getMethodName()+"- 副本");
+        }
 
         TimeSweepParamter parameter = new TimeSweepParamter();
         // 将前端参数复制给数据库参数
         BeanUtils.copyProperties(paramDto, parameter);
-        parameter.setEnergyLampName(paramDto.getEnergyLamp().equals("0") ? "钨灯" : paramDto.getEnergyLamp().equals("1") ? "氘灯" : "汞灯");
         fMeasureMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
         fMeasureMethod.setMethodCreateTime(LocalDateTime.now());
+        fMeasureMethod.setProjectItemKey(paramDto.getProjectId());
         fMeasureMethod.setMethodUseTime(LocalDateTime.now());
         fMeasureMethod.setMethodCreator(paramDto.getUpdateBy());
         fMeasureMethod.setMeasurementType(paramDto.getMeasureType());
+        fMeasureMethod.setIsSharingMethod(paramDto.getIsShare());
+        fMeasureMethod.setIsDelete(Constants.PARAM_ZERO);
         boolean save = tMeasureMethodService.save(fMeasureMethod);
         if (save) {
             return fMeasureMethod;
@@ -3406,5 +3502,30 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return null;
         }
     }
+
+    /**
+     * 创建新的任务
+     */
+    private TMeasureTask createNewTask(TimeSweepMethodParameterDto paramDto, String methodId, TMeasureTask task, String userId) {
+        TMeasureTask newTask = new TMeasureTask();
+        newTask.setUserId(userId);
+        newTask.setTaskName(task.getTaskName()+"- 副本");
+        newTask.setCreateTime(LocalDateTime.now());
+        newTask.setMethodKey(methodId);
+        List<TaskSpecimen> specimens = new ArrayList<>();
+        newTask.setSampleKey(specimens.toString());
+        newTask.setMeasureType(paramDto.getMeasureType());
+        newTask.setProjectItemKey(task.getProjectItemKey());
+        newTask.setDeviceSerialNumber(paramDto.getDeviceSerialNumber());
+        newTask.setIsDelete(Constants.PARAM_ZERO);
+        newTask.setTaskStatus(Constants.PARAM_ZERO);
+        boolean save = tMeasureTaskService.save(newTask);
+        if (save) {
+            return newTask;
+        } else {
+            return null;
+        }
+    }
+
 
 }

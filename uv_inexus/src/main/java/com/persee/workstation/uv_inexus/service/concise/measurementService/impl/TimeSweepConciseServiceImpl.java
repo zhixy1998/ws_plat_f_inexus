@@ -20,6 +20,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -41,6 +42,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakVal
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpecimen;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
@@ -51,10 +53,7 @@ import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
-import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
-import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleListVo;
@@ -96,6 +95,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 /**
@@ -167,6 +167,9 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    DeviceInfoService infoService;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -3538,7 +3541,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     public Result<List<FHeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList) {
         // 根据方法id查找方法
         FMeasureMethod method = fMeasureMethodService.getById(methodId);
-        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+        FTimeSweepParamter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
         List<FHeadVO> ans = new ArrayList<>();
 
         // 1. 编号
@@ -3866,6 +3869,29 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
             return false;
         }
 
+    }
+
+    /**
+     * 停止测量
+     * @param deviceSerialNumber
+     * @return
+     */
+    @Override
+    public Result stopMeasure(String deviceSerialNumber) {
+        // 1. 校验参数
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+        }
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
+        Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
+        if (!put) {
+            log.info("设备已停止测量");
+            Constants.measureStopStatus.put(deviceSerialNumber, false);
+            return Result.ok();
+        } else {
+            return Result.fail();
+        }
     }
 
     public void addLuminosityMode(List<FHeadVO> ans, String mode) {

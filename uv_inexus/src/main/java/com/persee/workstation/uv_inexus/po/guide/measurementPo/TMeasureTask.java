@@ -14,6 +14,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -41,6 +42,7 @@ public class TMeasureTask{
 
     // 创建时间
     @TableField("create_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime createTime;
 
     // 方法Key
@@ -73,10 +75,12 @@ public class TMeasureTask{
 
     //  开始时间
     @TableField("start_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime startTime;
 
     //  结束时间
     @TableField("end_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime endTime;
 
     // 序列号
@@ -91,7 +95,7 @@ public class TMeasureTask{
     @TableField("is_delete")
     private String isDelete;
 
-    // 是否保存(0:未保存 1:已保存)
+    // 是否保存(0:未测 1:已测 2:结束)
     @TableField("task_status")
     private String taskStatus;
 

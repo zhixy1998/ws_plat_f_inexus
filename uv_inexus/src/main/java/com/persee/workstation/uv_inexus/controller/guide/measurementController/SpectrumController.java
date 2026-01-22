@@ -57,8 +57,10 @@ public class SpectrumController {
 
     @GetMapping("queryProjectAllMethods")
     @ApiOperation("查询项目下的所有方法")
-    public Result queryProjectAllMethods(@RequestParam String projectId, @RequestParam String measureForm) {
-        return spectrumService.queryProjectAllMethods(projectId,measureForm);
+    public Result queryProjectAllMethods(@RequestParam String projectId,
+                                         @RequestParam String measureForm,
+                                         @RequestParam String updateBy) {
+        return spectrumService.queryProjectAllMethods(projectId,measureForm,updateBy);
     }
 
     @GetMapping("methodParameter")
@@ -114,7 +116,7 @@ public class SpectrumController {
 
     @GetMapping("querySampleHeads")
     @ApiOperation("获取样本输入表头接口")
-    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam(required = false) String taskId) {
         return spectrumService.querySampleHeads(taskId);
     }
 
@@ -366,6 +368,13 @@ public class SpectrumController {
         
         // 关键修正：返回Service层的具体错误信息，而非空字符串
         return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
+    }
+
+
+    @GetMapping("stopMeasure")
+    @ApiOperation("停止测量接口")
+    public Result stopMeasure(@RequestParam String deviceSerialNumber) {
+        return spectrumService.stopMeasure(deviceSerialNumber);
     }
 
 }

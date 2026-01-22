@@ -140,6 +140,9 @@ public interface SpectrumConciseService {
     // 计算数据接口
     Result calculateData(String taskId, String sampleId);
 
+    // 停止测量接口
+    Result stopMeasure(String deviceSerialNumber);
+
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
 }

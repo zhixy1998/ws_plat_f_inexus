@@ -75,7 +75,7 @@ public class RationController {
 
     @GetMapping("querySampleHeads")
     @ApiOperation("查询样品表头接口")
-    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId,
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam(required = false) String taskId,
                                                  @RequestParam String sampleKind) {
         return rationService.querySampleHeads(taskId, sampleKind);
     }

@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
@@ -34,17 +35,14 @@ import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
-import com.persee.workstation.uv_inexus.websocket.measure.param.FBaseLineWebSocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.param.FBaseLineNewWebSocketParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -70,9 +68,6 @@ public class ConciseBaseLineNewWebSocket {
 
     // WebSocket消息发送队列，避免并发发送冲突
     private static final Map<String, Object> sessionSendLocks = new ConcurrentHashMap<>();
-
-    // 设备占用锁，确保同一设备不会被多个会话同时占用
-    private static final Map<String, String> deviceOccupiedBy = new ConcurrentHashMap<>();
 
     private static ChangeParam lastChangeParam;
 
@@ -143,11 +138,16 @@ public class ConciseBaseLineNewWebSocket {
     /**
      * 当WebSocket连接建立后调用此方法
      */
-    public void measureTask(FBaseLineWebSocketParam param) {
+    public void measureTask(FBaseLineNewWebSocketParam param) {
+        // 清空全局数据，确保从干净状态开始
+        clearGlobalData();
         String sessionId = param.getDeviceSerialNumber();
         log.info("【连接建立】客户端进入: {} 时间: {}", sessionId, LocalDateTime.now());
 
         deviceSerialNumber=param.getDeviceSerialNumber();
+
+        // 停止状态给初始值
+        Constants.measureStopStatus.put(deviceSerialNumber, true);
 
         // 初始化会话状态
         SessionState state = new SessionState();
@@ -175,7 +175,7 @@ public class ConciseBaseLineNewWebSocket {
     /**
      * 主要的业务逻辑
      */
-    private void runBusinessLogic(FBaseLineWebSocketParam param) {
+    private void runBusinessLogic(FBaseLineNewWebSocketParam param) {
         String sessionId = param.getDeviceSerialNumber();
         log.info("【业务逻辑开始】session: {}", sessionId);
 
@@ -226,18 +226,34 @@ public class ConciseBaseLineNewWebSocket {
             }
 
             // 保存任务结果
-            if (!saveTaskResult(taskId, methodId, deviceSerialNumber, method, dataList)) {
-                return;
+            if (Constants.measureStopStatus.get(deviceSerialNumber)) {
+                saveTaskResult(taskId, methodId, deviceSerialNumber, method, dataList);
+
+                // 进行校零
+                DevOperationInputParam inputParam = new DevOperationInputParam();
+                inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+                inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                inputParam.setWavelength(Collections.singletonList(methodParam.getStartWaveLength()));
+                R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+                if (!r.getSuccess()) {
+                    sendError(deviceSerialNumber, r.getMessage());
+                    return;
+                }
+                log.info("【校零成功】零点校零成功完成, session: {}", sessionId);
+            }else{
+                log.info("【停止成功】停止成功,不保存数据, session: {}", sessionId);
             }
 
             log.info("【基线成功】基线测量成功完成, session: {}", sessionId);
 
+
             JSONObject object = new JSONObject();
-            object.put("success", "基线成功");
+            if (Constants.measureStopStatus.get(deviceSerialNumber)){
+                object.put("success", "基线成功");
+            }else{
+                object.put("success", "停止成功");
+            }
             sendClose(sessionId, object);
-
-
-
         } catch (UserInterruptedException e) {
             // 用户主动停止，不处理，由 handleStopRequest 统一发送停止成功
             log.info("【用户中断】用户主动停止任务, session: {}", sessionId);
@@ -311,9 +327,6 @@ public class ConciseBaseLineNewWebSocket {
 
             FSpectrumParameter param = JSONObject.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
 
-            // 清空全局数据，确保从干净状态开始
-            clearGlobalData();
-
             DevOperationInputParam inputParam = new DevOperationInputParam();
             inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
             inputParam.setDeviceSerialNumber(deviceSerialNumber);
@@ -365,20 +378,7 @@ public class ConciseBaseLineNewWebSocket {
                 sendErrorClose(sessionId, "会话状态异常");
                 return null;
             }
-
-            int consecutiveEndWavelengthCount = 0;
-            final int MAX_CONSECUTIVE_END_WAVELENGTH = 3;
-            final long NO_DATA_TIMEOUT_MS = 120 * 1000; // 120秒无数据超时（增加以处理换灯暂停）
-            long lastDataTime = System.currentTimeMillis();
-            while (true) {
-                // 检查无数据超时
-                if (System.currentTimeMillis() - lastDataTime > NO_DATA_TIMEOUT_MS) {
-                    log.error("【无数据超时】长时间没有收到数据, session: {}, 最后数据时间: {}ms前",
-                            sessionId, System.currentTimeMillis() - lastDataTime);
-                    sendErrorClose(sessionId, "设备无响应");
-                    return null;
-                }
-
+            while (Constants.isRunning) {
                 Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLine.getComId());
                 // 如果队列为空（可选：根据你的 pollMessage 实现决定是否需要）
                 if (result == null) {
@@ -400,6 +400,9 @@ public class ConciseBaseLineNewWebSocket {
                         case NORMAL:
                             log.info("设备 {} 的测量正常完成", deviceSerialNumber);
                             break;
+                        case NORMAL_STOP:
+                            log.info("设备 {} 的测量已停止", deviceSerialNumber);
+                            break;
                     }
                     // 结束循环
                     break;
@@ -408,26 +411,6 @@ public class ConciseBaseLineNewWebSocket {
                 // 推送单个数据点
                 pushBaselineDataPoint(message.getWavelength());
                 dataList.add(message.getBaselineRsd());
-                // 检查测量是否完成（通过检查全局数据中的结束标志）
-                if (isMeasurementComplete()) {
-                    log.info("【测量完成】检测到测量完成标志, session: {}", sessionId);
-                    state.measurementStarted.set(false);
-                    break;
-                }
-
-                // 检查数据点数是否达到期望
-                if (dataList.size() >= expectedPoints) {
-                    log.info("【数据点达到】达到期望数据点数: {}, session: {}", expectedPoints, sessionId);
-                    state.measurementStarted.set(false);
-                    break;
-                }
-
-                // 检查是否连续检测到结束波长
-                if (consecutiveEndWavelengthCount >= MAX_CONSECUTIVE_END_WAVELENGTH) {
-                    log.info("【结束波长完成】通过结束波长检测完成数据收集, session: {}", sessionId);
-                    state.measurementStarted.set(false);
-                    break;
-                }
 
                 // 短暂休眠，减少CPU占用
                 try {
@@ -534,18 +517,6 @@ public class ConciseBaseLineNewWebSocket {
      */
     private void cleanupResources(String sessionId) {
         SessionState state = sessionStates.get(sessionId);
-
-        if (state.cleanupInProgress.getAndSet(true)) {
-            log.info("【清理资源】清理正在进行中，跳过重复清理, session: {}", sessionId);
-            return;
-        }
-        while (Constants.sendMeasureThread!=null&&Constants.sendMeasureThread.isAlive()){
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
         if (state == null) {
             log.info("【清理资源】会话状态为空，无需清理, session: {}", sessionId);
             // 即使状态为空，也要清理其他资源
@@ -763,6 +734,7 @@ public class ConciseBaseLineNewWebSocket {
         Constants.instrumentData.clear();
         Constants.measureStatus = false;
         Constants.sendMeasureThread = null;
+        Constants.measureStopStatus.clear();
     }
 
     private void sendMessage(String deviceSerialNumber, JSONObject object) {

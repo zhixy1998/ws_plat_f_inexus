@@ -25,13 +25,17 @@ public enum WebSocketOperationEnum {
     ConcisePhotoMetric("concisePhotoMetric", "经典-光度测量"),
     ConciseRationMeasure("conciseRationMeasure", "经典-定量测定"),
     ConciseSpectrum("conciseSpectrum", "经典-光谱扫描"),
+    ConciseSpectrumOne("conciseSpectrumOne", "经典-光谱扫描(单扫)"),
     ConciseTimeMeasure("conciseTimeMeasure", "经典-时间测量"),
+    ConciseTimeMeasureOne("conciseTimeMeasureOne", "经典-时间测量(单扫)"),
     ZeroCalibration("zeroCalibration", "向导-零点校准"),
     BaseLine("baseLine", "向导-基线测量"),
     PhotoMetric("photoMetric", "向导-光度测量"),
     RationMeasure("rationMeasure", "向导-定量测定"),
     Spectrum("spectrum", "向导-光谱扫描"),
+    SpectrumOne("spectrumOne", "向导-光谱扫描(单扫)"),
     TimeMeasure("timeMeasure", "向导-时间测量"),
+    TimeMeasureOne("timeMeasureOne", "向导-时间测量(单扫)"),
 
 
     DeviceStatus("deviceStatus", "仪器实时状态值"),

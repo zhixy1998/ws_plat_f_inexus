@@ -23,10 +23,10 @@ public class TimeSweepMethodParameterDto extends TimeSweepParamterVo {
     private String measureType;
     // 方法ID
     private String methodId;
-    // 方法id2
-    private String methodId2;
     // 方法名称
     private String methodName;
+    // 任务id
+    private String taskId;
     // 用户名
     private String updateBy;
     // 是否共享

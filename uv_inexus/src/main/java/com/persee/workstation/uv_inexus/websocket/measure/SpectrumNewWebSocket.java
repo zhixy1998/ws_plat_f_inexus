@@ -58,7 +58,7 @@ import java.util.stream.Collectors;
 @Component
 public class SpectrumNewWebSocket {
 
-    private static final Logger log = LoggerFactory.getLogger(com.persee.workstation.uv_inexus.websocket.SpectrumWebSocket.class);
+    private static final Logger log = LoggerFactory.getLogger(SpectrumNewWebSocket.class);
     // 存储任务线程
     private static final Map<String, Thread> taskThreads = new ConcurrentHashMap<>();
     // 会话状态管理
@@ -170,9 +170,9 @@ public class SpectrumNewWebSocket {
         /**
          * 获取并清空批次缓冲区
          */
-        public BatchData getAndClearBatchBuffer( Integer count, String sampleId,
-                                                Integer digit, SpectrumParameter parameter,
-                                                TMeasureTask task) {
+        public BatchData getAndClearBatchBuffer(String sessionId, Integer count, String sampleId,
+                                                                            Integer digit, SpectrumParameter parameter,
+                                                                            TMeasureTask task) {
             synchronized (batchXBuffer) {
                 if (batchXBuffer.isEmpty()) {
                     return null;
@@ -183,6 +183,7 @@ public class SpectrumNewWebSocket {
                         new ArrayList<>(batchYBuffer),
                         startIndex,
                         count,
+                        sessionId,
                         sampleId,
                         digit,
                         parameter,
@@ -200,7 +201,7 @@ public class SpectrumNewWebSocket {
         public BatchData getRemainingBatchBuffer(Integer count, String sampleId,
                                                  Integer digit, SpectrumParameter parameter,
                                                  TMeasureTask task) {
-            return getAndClearBatchBuffer(count, sampleId, digit, parameter, task);
+            return getAndClearBatchBuffer(deviceSerialNumber,count, sampleId, digit, parameter, task);
         }
 
         /**
@@ -226,11 +227,12 @@ public class SpectrumNewWebSocket {
         TMeasureTask task;
 
         public BatchData(List<Double> xBatch, List<Double> yBatch, int startIndex,
-                         Integer count, String sampleId, Integer digit,
+                         Integer count,String sessionId, String sampleId, Integer digit,
                          SpectrumParameter parameter, TMeasureTask task) {
             this.xBatch = new ArrayList<>(xBatch);
             this.yBatch = new ArrayList<>(yBatch);
             this.startIndex = startIndex;
+            this.sessionId = sessionId;
             this.count = count;
             this.sampleId = sampleId;
             this.digit = digit;
@@ -245,6 +247,9 @@ public class SpectrumNewWebSocket {
     public void measureTask(SpectrumNewWebSocketParam param) {
         log.info("仪器编号: {} 进入扫描 时间: {}", param.getDeviceSerialNumber(), LocalDateTime.now());
 
+        clearGlobalData();
+        Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
+
         // 初始化会话状态
         SessionState state = new SessionState();
         sessionStates.put(param.getDeviceSerialNumber(), state);
@@ -256,8 +261,6 @@ public class SpectrumNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
 
-        clearGlobalData();
-
         if (Constants.endTime != null || Constants.startTime != null) {
             JSONObject errorMsg = new JSONObject();
             errorMsg.put("error", "当前测量未结束,无法开启新的测试！");
@@ -266,7 +269,7 @@ public class SpectrumNewWebSocket {
         }
 
         String taskId = param.getTaskId();
-        String deviceSerialNumber = param.getDeviceSerialNumber();
+        deviceSerialNumber = param.getDeviceSerialNumber();
         String updateBy = param.getUpdateBy();
         Integer digit = param.getDigit();
 
@@ -339,9 +342,7 @@ public class SpectrumNewWebSocket {
         /// 设置参数
         Result result = spectrumService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
         if (result.getCode() != 200) {
-            JSONObject errorMsg = new JSONObject();
-            errorMsg.put("error", "设置参数失败");
-            sendClose(deviceSerialNumber, errorMsg);
+            sendError(deviceSerialNumber, "设置参数失败");
             return;
         }
 
@@ -413,20 +414,7 @@ public class SpectrumNewWebSocket {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
-                            } else {
-                                JSONObject payload = new JSONObject();
-                                payload.put("success", "扫描成功");
-                                sendMessage(deviceSerialNumber, payload);
-                                // 全部完成后再告诉前端 finish
-                                payload.clear();
-                                payload.put("result", "finish");
-                                sendClose(deviceSerialNumber, payload);
                             }
-                        } else {
-                            // 全部完成后再告诉前端 finish
-                            JSONObject payload = new JSONObject();
-                            payload.put("result", "finish");
-                            sendClose(deviceSerialNumber, payload);
                         }
                     }
                 } else {
@@ -514,34 +502,27 @@ public class SpectrumNewWebSocket {
                         }
 
                         if (configPO.getIsAutoChangePool().equals(true)) {
+                            // 如果当前位置不是最大位置
                             if ((i + 1) != newSampleData.size() && !sample.getSampleLocation().equals(finalMaxLocation)) {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
-                            } else {
-                                JSONObject payload = new JSONObject();
-                                payload.put("success", "扫描成功");
-                                sendMessage(deviceSerialNumber, JSONObject.parseObject("扫描成功"));
-                                payload.clear();
-                                payload.put("result", "finish");
-                                sendClose(deviceSerialNumber, payload);
                             }
-                        } else {
-                            JSONObject payload = new JSONObject();
-                            payload.put("success", "扫描成功");
-                            sendMessage(deviceSerialNumber, JSONObject.parseObject("扫描成功"));
-                            payload.clear();
-                            payload.put("result", "finish");
-                            sendClose(deviceSerialNumber, payload);
                         }
                     }
                 }
 
 
-                    sendMessage(deviceSerialNumber, JSONObject.parseObject("扫描成功"));
-                    JSONObject payload = new JSONObject();
-                    payload.put("result", "finish");
-                    sendClose("扫描成功", payload);
+                JSONObject payload = new JSONObject();
+                if (Constants.measureStopStatus.get(deviceSerialNumber)){
+                    payload.put("success", "扫描成功");
+                }else{
+                    payload.put("success", "停止成功");
+                }
+                sendMessage(deviceSerialNumber, payload);
+                payload.clear();
+                payload.put("result", "finish");
+                sendClose(deviceSerialNumber, payload);
 
 
             } catch (Exception e) {
@@ -1040,9 +1021,10 @@ public class SpectrumNewWebSocket {
                     new ArrayList<>(Constants.originalCalculationData)
             );
         } else {
+            boolean whileStatus = true;
             // 普通扫描模式：使用批次处理机制
             try {
-                while (true) {
+                while (whileStatus) {
                     // 检查会话状态
                     if (state != null && (state.sessionClosing.get() || state.stopCommandSent.get())) {
                         log.info("会话正在关闭或停止命令已发送，退出测量循环");
@@ -1050,13 +1032,13 @@ public class SpectrumNewWebSocket {
                     }
 
                     // 处理所有可用的数据点
-                    while (!Constants.measurd_data.isEmpty()) {
+                    while (whileStatus) {
                         if (Thread.currentThread().isInterrupted()) {
                             log.info("线程被中断，退出内部循环");
                             break;
                         }
 
-                        Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
+                        Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.Scan.getComId());
                         // 如果队列为空（可选：根据你的 pollMessage 实现决定是否需要）
                         if (result == null) {
                             // 可选：短暂休眠避免 CPU 空转
@@ -1077,8 +1059,12 @@ public class SpectrumNewWebSocket {
                                 case NORMAL:
                                     log.info("设备 {} 的测量正常完成", deviceSerialNumber);
                                     break;
+                                case NORMAL_STOP:
+                                    log.info("设备 {} 的测量已停止", deviceSerialNumber);
+                                    break;
                             }
                             // 结束循环
+                            whileStatus = false;
                             break;
                         }
 
@@ -1105,7 +1091,7 @@ public class SpectrumNewWebSocket {
 
                             if (isBatchFull) {
                                 // 批次已满，进行处理
-                                BatchData batchData = state.getAndClearBatchBuffer( count, sampleId, state.digit,
+                                BatchData batchData = state.getAndClearBatchBuffer(deviceSerialNumber,count, sampleId, state.digit,
                                         spectrumParameter, task);
 
                                 if (batchData != null) {
@@ -1465,6 +1451,9 @@ public class SpectrumNewWebSocket {
                             break;
                         case NORMAL:
                             log.info("设备 {} 的测量正常完成", deviceSerialNumber);
+                            break;
+                        case NORMAL_STOP:
+                            log.info("设备 {} 的测量已停止", deviceSerialNumber);
                             break;
                     }
                     // 结束循环
@@ -2252,6 +2241,7 @@ public class SpectrumNewWebSocket {
                 }
                 task.setSampleKey(JSON.toJSONString(specimen));
                 task.setDeviceSerialNumber(deviceSerialNumber);
+                task.setTaskStatus(Constants.PARAM_ONE);
                 boolean update = tMeasureTaskService.updateById(task);
                 if (!update) {
                     log.error("更新任务失败: " + taskId);
@@ -2260,6 +2250,7 @@ public class SpectrumNewWebSocket {
                 // 如果是重复模式的情况，需要判断是否全部测完
                 boolean success = false;
                 Integer repetitionCount = Integer.valueOf(spectrumParameter.getRepetitionTime());
+                task.setTaskStatus(Constants.PARAM_ONE);
                 for (int i = 0; i < repetitionCount; i++) {
                     QueryWrapper<TMeasureAnalysisData> queryWrapper = new QueryWrapper<>();
                     queryWrapper.eq("task_id", taskId);
@@ -2285,6 +2276,10 @@ public class SpectrumNewWebSocket {
                     if (!update) {
                         log.error("更新任务失败: " + taskId);
                     }
+                }
+                boolean update = tMeasureTaskService.updateById(task);
+                if (!update) {
+                    log.error("更新任务失败: " + taskId);
                 }
             }
 
@@ -2327,6 +2322,7 @@ public class SpectrumNewWebSocket {
         Constants.sendMeasureThread = null;
         Constants.startTime = null;
         Constants.endTime = null;
+        Constants.measureStopStatus.clear();
     }
 
     // 返回测量结果的类
@@ -2380,13 +2376,13 @@ public class SpectrumNewWebSocket {
     private void sendMessage(String deviceSerialNumber, JSONObject object) {
 
         WebSocketResponseVO vo = new WebSocketResponseVO();
-        vo.setOperation(WebSocketOperationEnum.ConciseBaseLine.getOperation());
+        vo.setOperation(WebSocketOperationEnum.Spectrum.getOperation());
         vo.setData(object);
 
         webSocketSendUtil.sendMessage(deviceSerialNumber, vo);
     }
 
     private void sendError(String deviceSerialNumber, String message) {
-        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseBaseLine.getOperation(), message);
+        webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.Spectrum.getOperation(), message);
     }
 }

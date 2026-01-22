@@ -26,7 +26,7 @@ public interface TimeSweepService {
     Result queryProjectTaskMethod(String updateBy, String measureType);
 
     // 查询项目下的所有方法
-    Result queryProjectAllMethods(String projectId, String measureForm);
+    Result queryProjectAllMethods(String projectId, String measureForm ,String updateBy);
 
     // 查询方法参数接口
     Result queryMethodParameter(String methodId);
@@ -128,8 +128,11 @@ public interface TimeSweepService {
     List<PeakValleyMarking>queryReportFormData(String taskId, String sampleId);
 
     // (实验测试)表格头接口
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIdList);
 
     // (实验测试)查询表格数据接口
-    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
+    List<Map<String, Object>> queryTableData(String taskId, List<String> analysisIdList,Integer decimalDigits);
+
+    // 停止测量接口
+    Result stopMeasure(String deviceSerialNumber);
 }

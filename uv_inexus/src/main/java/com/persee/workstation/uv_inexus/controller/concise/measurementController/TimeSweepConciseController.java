@@ -324,4 +324,10 @@ public class TimeSweepConciseController {
         // 关键修正：返回Service层的具体错误信息，而非空字符串
         return ResponseEntity.badRequest().body("导出失败：" + result.getMessage());
     }
+
+    @GetMapping("stopMeasure")
+    @ApiOperation("停止测量接口")
+    public Result stopMeasure(@RequestParam String deviceSerialNumber) {
+        return timeSweepConciseService.stopMeasure(deviceSerialNumber);
+    }
 }

@@ -598,7 +598,11 @@ public class DataManagementServiceImpl implements DataManagementService {
             methodSumListDto.setMethodName(method.getMethodName());
             methodSumListDto.setCreateBy(method.getMethodCreator());
             methodSumListDto.setCreateTime(method.getMethodCreateTime());
-            methodSumListDto.setProjectName(project.getProjectName());
+            if (project != null){
+                methodSumListDto.setProjectName(project.getProjectName());
+            }else{
+                methodSumListDto.setProjectName("");
+            }
             methodSumListDto.setLastUseTime(method.getMethodUseTime());
             methodSumList.add(methodSumListDto);
         }

@@ -17,6 +17,7 @@ public class SpectrumBasicParameterVo {
     private String projectName;
     private String taskId;
     private String taskName;
+    private String taskStatus;
     private String methodId;
     private String methodName;
 }

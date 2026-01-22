@@ -15,7 +15,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
@@ -35,7 +34,7 @@ import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
-import com.persee.workstation.uv_inexus.websocket.measure.param.FTimeWebNewSocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.param.FTimeNewWebSocketParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -97,6 +96,8 @@ public class ConciseTimeNewWebSocket {
     WebSocketSendUtil webSocketSendUtil;
     @Autowired
     private DevOperationUtilService devOperationUtilService;
+
+    private String deviceSerialNumber;
 
     /**
      * 时间扫描上下文
@@ -170,8 +171,10 @@ public class ConciseTimeNewWebSocket {
      *
      * @param param
      */
-    public void measureTask(FTimeWebNewSocketParam param) {
+    public void measureTask(FTimeNewWebSocketParam param) {
         log.info("时间扫描连接建立");
+        clearGlobalData();
+        Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         String taskId = param.getTaskId();
         connectionClosingMap.put(taskId, new AtomicBoolean(false));
         stopProcessingMap.put(taskId, new AtomicBoolean(false));
@@ -193,17 +196,17 @@ public class ConciseTimeNewWebSocket {
     /**
      * 初始化并开始测量
      */
-    private void initializeAndStart(FTimeWebNewSocketParam param, TimeScanContext context) {
+    private void initializeAndStart(FTimeNewWebSocketParam param, TimeScanContext context) {
         String sessionId = param.getTaskId();
 
         try {
             String taskId = param.getTaskId();
-            String deviceSerialNumber = param.getDeviceSerialNumber();
+            deviceSerialNumber = param.getDeviceSerialNumber();
             String updateBy = param.getUpdateBy();
             Integer digit = param.getDigit();
 
             if (taskId == null || deviceSerialNumber == null || updateBy == null) {
-                safeCleanup(sessionId, true);
+                sendError(deviceSerialNumber, "参数错误");
                 return;
             }
 
@@ -221,7 +224,7 @@ public class ConciseTimeNewWebSocket {
             // 设置参数
             Result paramResult = timeSweepConciseService.setUpParametersPort(task.getMethodKey(), deviceSerialNumber);
             if (paramResult.getCode() != 200) {
-                safeCleanup(sessionId, true);
+                sendError(sessionId,paramResult.getMessage());
                 return;
             }
 
@@ -243,7 +246,7 @@ public class ConciseTimeNewWebSocket {
         }
     }
 
-    private void startTimeMeasurement(FTimeWebNewSocketParam session, TimeScanContext context,
+    private void startTimeMeasurement(FTimeNewWebSocketParam session, TimeScanContext context,
                                       FTimeSweepParamter param, String updateBy) {
         String sessionId = session.getTaskId();
 
@@ -288,19 +291,25 @@ public class ConciseTimeNewWebSocket {
             }
 
             // 只有在正常完成（没有被停止）的情况下才发送"扫描成功"
-            if (context.running.get()) {
+            if (context.running.get()&&Constants.measureStopStatus.get(session.getDeviceSerialNumber())) {
                 JSONObject object = new JSONObject();
                 object.put("success", "扫描成功");
                 sendMessage(session.getDeviceSerialNumber(), object);
                 // 正常完成 - 等待数据保存后再清理
                 log.info("所有样品测量完成，等待数据保存...");
-                if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
-                    log.info("数据保存完成，开始清理会话");
-                    safeCleanup(sessionId, true);
-                } else {
-                    log.warn("数据保存超时，强制清理");
-                    safeCleanup(sessionId, true);
-                }
+            }else{
+                JSONObject object = new JSONObject();
+                object.put("success", "停止成功");
+                sendMessage(session.getDeviceSerialNumber(), object);
+                // 正常完成 - 等待数据保存后再清理
+                log.info("测量停止成功，等待数据保存...");
+            }
+            if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
+                log.info("数据保存完成，开始清理会话");
+                safeCleanup(sessionId, true);
+            } else {
+                log.warn("数据保存超时，强制清理");
+                safeCleanup(sessionId, true);
             }
 
         } catch (Exception e) {
@@ -317,7 +326,7 @@ public class ConciseTimeNewWebSocket {
      * @param param
      * @param sample
      */
-    private void executeSampleMeasurement(FTimeWebNewSocketParam session, TimeScanContext context,
+    private void executeSampleMeasurement(FTimeNewWebSocketParam session, TimeScanContext context,
                                           FTimeSweepParamter param, FTaskSpecimen sample, String updateBy) {
         context.clearData();
         context.currentSampleId = sample.getSpecimenKey();
@@ -363,20 +372,8 @@ public class ConciseTimeNewWebSocket {
     private void retrieveTimeScanData(String deviceSerialNumber, TimeScanContext context,
                                       FTimeSweepParamter param, BigDecimal interval, int totalTasks) {
         int currentIndex = 0;
-        long timeoutMs = interval.multiply(BigDecimal.valueOf(totalTasks * 2))  // 2倍超时时间
-                .multiply(BigDecimal.valueOf(1000))
-                .longValue() + 10000;  // 额外10秒
-
-        long startTime = System.currentTimeMillis();
-
-        while (currentIndex < totalTasks && context.running.get()) {
+        while (Constants.isRunning) {
             try {
-                // 检查超时
-                if (System.currentTimeMillis() - startTime > timeoutMs) {
-                    log.warn("接收数据超时，预期点数: {}, 实际接收: {}", totalTasks, currentIndex);
-                    break;
-                }
-
                 Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
                 // 如果队列为空（可选：根据你的 pollMessage 实现决定是否需要）
                 if (result == null) {
@@ -397,6 +394,9 @@ public class ConciseTimeNewWebSocket {
                             break;
                         case NORMAL:
                             log.info("设备 {} 的测量正常完成", deviceSerialNumber);
+                            break;
+                        case TIME_STOP:
+                            log.info("设备 {} 的测量停止结束", deviceSerialNumber);
                             break;
                     }
                     // 结束循环
@@ -425,7 +425,7 @@ public class ConciseTimeNewWebSocket {
     /**
      * 设置样品池位置
      */
-    private void setupSamplePoolIfNeeded(FTimeWebNewSocketParam session, TimeScanContext context,
+    private void setupSamplePoolIfNeeded(FTimeNewWebSocketParam session, TimeScanContext context,
                                          FTaskSpecimen sample, String updateBy) {
         try {
             QueryWrapper<SamplePoolConfigPO> wrapper = new QueryWrapper<>();
@@ -463,26 +463,23 @@ public class ConciseTimeNewWebSocket {
             }
 
             // 设置样品池位置
-            R<String> setResult = devMessageUtil.setCurrentCellPos(Integer.valueOf(sampleInfo.getSampleLocation()), context.ip);
-            if (setResult.getSuccess()) {
-                // 更新当前样品池位置
-                fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber,
-                        Integer.parseInt(sampleInfo.getSampleLocation()), updateBy);
+            // 更新当前样品池位置
+            fSamplePoolConfigService.updateCurrentPoolNum(context.deviceSerialNumber,
+                    Integer.parseInt(sampleInfo.getSampleLocation()), updateBy);
 
-                SetParam setParam = new SetParam();
-                setParam.setCellPos(Integer.parseInt(sampleInfo.getSampleLocation()));
-                timeSweepConciseService.setInstrumentParameters(context.deviceSerialNumber, setParam);
-
+            SetParam setParam = new SetParam();
+            setParam.setCellPos(Integer.parseInt(sampleInfo.getSampleLocation()));
+            boolean b = timeSweepConciseService.setInstrumentParameters(context.deviceSerialNumber, setParam);
+            if (b){
                 // 发送样品池位置信息到前端
                 JSONObject poolMsg = new JSONObject();
                 poolMsg.put("currentPoolNum", sampleInfo.getSampleLocation());
                 sendMessage(session.getDeviceSerialNumber(), poolMsg);
-
                 log.info("成功设置样品池位置: {}", sampleInfo.getSampleLocation());
-            } else {
+            }else{
                 log.warn("设置样品池位置失败: {}", sampleInfo.getSampleLocation());
+                return;
             }
-
         } catch (Exception e) {
             log.error("设置样品池位置异常: {}", e.getMessage());
         }
@@ -501,12 +498,14 @@ public class ConciseTimeNewWebSocket {
         inputParam.setOperationType(OperationTypeEnums.TimeMeasure.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setWavelength(Collections.singletonList(param.getWaveLength()));
-        Double scanTime = Double.valueOf(param.getScanTime());
+        Double scanTime;
         if (param.getScanUnit().equals("0")){
-            scanTime = Double.valueOf(param.getScanTime()) * 60;
+            scanTime = Double.parseDouble(param.getScanTime()) * 60+Double.parseDouble(param.getIntervalTime());
+        }else{
+            scanTime = Double.parseDouble(param.getScanTime())+Double.parseDouble(param.getIntervalTime());
         }
         inputParam.setTotalTime(scanTime);
-        inputParam.setIntervalSeconds(Double.valueOf(param.getIntervalTime()));
+        inputParam.setIntervalSeconds(Double.parseDouble(param.getIntervalTime()));
         devOperationUtilService.operation(inputParam);
     }
 
@@ -827,6 +826,7 @@ public class ConciseTimeNewWebSocket {
     private void clearGlobalData() {
         Constants.startTime = null;
         Constants.endTime = null;
+        Constants.measureStopStatus.clear();
     }
 
     private void sendMessage(String deviceSerialNumber, JSONObject object) {

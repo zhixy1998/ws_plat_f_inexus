@@ -26,19 +26,16 @@ public class MeasurePublicParameters {
     @NotNull(message = "光谱带宽不能为空")
     private String spectralBandwidth;
     // 响应时间
-    @NotNull(message = "响应时间不能为空")
     private String responseTime;
     // 换灯波长
     @NotNull(message = "换灯波长不能为空")
     private String changeLampWaveLength;
     // 能量灯(0.钨灯 1.氘灯 2.汞灯)
-    @NotNull(message = "能量灯不能为空")
     @Pattern(regexp = "^[0-2]$", message = "能量灯值无效")
     private String energyLamp;
     //能量灯的名称
     private String energyLampName;
     // 增益
-    @NotNull(message = "增益不能为空")
     @Min(value = 0, message = "增益不能小于0")
     private Integer gain;
 }

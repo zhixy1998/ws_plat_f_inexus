@@ -26,6 +26,7 @@ public class CreateTaskParamDto {
     private String methodId;    // 方法ID，标识任务所采用的方法
     private String measurementType;  // 测量类型，标识任务的测量类型
     private String deviceSerialNumber;  // 设备序列号，标识执行任务的设备
+    private String updateBy;  // 更新人，标识任务创建者
 //    private List<SpectrumSpecimenDto> specimens;  // 光谱样本数据列表，已注释掉
 
     private List<Map<String, String>> specimens;  // 样本数据列表，使用Map存储键值对形式的样本数据

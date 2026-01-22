@@ -71,14 +71,6 @@ public class SpectrumConciseController {
         return spectrumConciseService.searchMethodButton(pageNum,pageSize,updateBy,measureType,methodName);
     }
 
-    @GetMapping("obtainReportParameters")
-    @ApiOperation("获取报告通用数据接口")
-    public Result obtainReportParameters(@RequestParam String taskId,
-                                         @RequestParam(required = false) String sampleId,
-                                         @RequestParam(required = false) String serialNumber) {
-        return experimentTestService.obtainReportParameters(taskId, sampleId, serialNumber);
-    }
-
 
     @PostMapping("parameterValidation")
     @ApiOperation("参数校验接口")
@@ -354,5 +346,11 @@ public class SpectrumConciseController {
     @ApiOperation("计算数据接口")
     public Result calculateData(@RequestParam String taskId, @RequestParam String sampleId) {
         return spectrumConciseService.calculateData(taskId, sampleId);
+    }
+
+    @GetMapping("stopMeasure")
+    @ApiOperation("停止测量接口")
+    public Result stopMeasure(@RequestParam String deviceSerialNumber) {
+        return spectrumConciseService.stopMeasure(deviceSerialNumber);
     }
 }

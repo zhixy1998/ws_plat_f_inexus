@@ -28,12 +28,15 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
@@ -83,6 +86,26 @@ public class ExperimentTestController {
         return experimentTestService.createTask(paramDto);
     }
 
+
+    @PostMapping("isAddSample")
+    @ApiOperation("是否添加样品")
+    public Result isAddSample(@RequestBody @Valid AddSampleDTO addSampleDTO,
+                              BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
+        return experimentTestService.isAddSample(
+                addSampleDTO.getTaskId(),
+                addSampleDTO.getDeviceSerialNumber(),
+                addSampleDTO.getSampleNumberConfig(),
+                addSampleDTO.getSampleNameConfig()
+        );
+    }
+
+
     @GetMapping("queryProjectStatistics")
     @ApiOperation("查询项目统计接口")
     public Result queryProjectStatistics(@RequestParam String updateBy) {
@@ -91,7 +114,14 @@ public class ExperimentTestController {
 
     @PostMapping("queryTaskPort")
     @ApiOperation("查看任务接口")
-    public Result queryTaskPort(@RequestBody QueryTaskDto queryTask) {
+    public Result queryTaskPort(@Valid @RequestBody QueryTaskDto queryTask,
+                                BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            String errorMsg = bindingResult.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+            return Result.fail("参数校验失败: " + errorMsg);
+        }
         return experimentTestService.queryTaskPort(queryTask);
     }
 
@@ -99,9 +129,10 @@ public class ExperimentTestController {
     @ApiOperation("查找方法接口")
     public Result queryMethodProt(@RequestParam String projectId,
                                   @RequestParam String measureType,
+                                  @RequestParam String updateBy,
                                   @RequestParam("pageNum") Integer pageNum,
                                   @RequestParam("pageSize") Integer pageSize) {
-        return experimentTestService.queryMethodProt(projectId,measureType,pageNum,pageSize);
+        return experimentTestService.queryMethodProt(projectId,measureType,updateBy,pageNum,pageSize);
     }
 
     @GetMapping("useThisMethodPort")
@@ -142,19 +173,35 @@ public class ExperimentTestController {
         return experimentTestService.reportDataQuery(taskId,reportName,sampleId);
     }
 
+//    @GetMapping("queryReportTableData")
+//    @ApiOperation("查询报告表格数据")
+//    public Result reportTableDataQuery(@RequestParam String taskId,
+//                                  @RequestParam(required = false) List<String> sampleIds){
+//        return experimentTestService.newReportTableDataQuery(taskId, sampleIds);
+//    }
+
     @GetMapping("queryReportTableData")
     @ApiOperation("查询报告表格数据")
     public Result reportTableDataQuery(@RequestParam String taskId,
-                                  @RequestParam(required = false) List<String> sampleIds){
-        return experimentTestService.newReportTableDataQuery(taskId, sampleIds);
+                                       @RequestParam(required = false) String analysisId,
+                                       @RequestParam(required = false) Boolean allDisplay,
+                                       @RequestParam(required = false) Integer digit){
+        return experimentTestService.newReportTableDataQuery(taskId, analysisId,allDisplay,digit);
     }
+
+//    @GetMapping("obtainReportParameters")
+//    @ApiOperation("获取报告通用数据接口")
+//    public Result obtainReportParameters(@RequestParam String taskId,
+//                                         @RequestParam(required = false) String sampleId,
+//                                         @RequestParam(required = false) String serialNumber) {
+//        return experimentTestService.obtainReportParameters(taskId, sampleId, serialNumber);
+//    }
 
     @GetMapping("obtainReportParameters")
     @ApiOperation("获取报告通用数据接口")
     public Result obtainReportParameters(@RequestParam String taskId,
-                                         @RequestParam(required = false) String sampleId,
-                                         @RequestParam(required = false) String serialNumber) {
-        return experimentTestService.obtainReportParameters(taskId, sampleId, serialNumber);
+                                         @RequestParam(required = false) String analysisId) {
+        return experimentTestService.obtainReportParameters(taskId,analysisId);
     }
 
     @GetMapping("queryReportAllParameters")

@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -56,6 +57,7 @@ public class Constants {
     public final static String PARAM_TWO = "2";
     public final static String PARAM_THREE = "3";
     public final static String PARAM_FOUR = "4";
+    public final static String DEFAULT_TASK = "默认任务";
 
     /**
      * 开机状态：0-未开机，1-开机，2-软关机
@@ -102,6 +104,9 @@ public class Constants {
 
     // 存储计算后的数据
     public static volatile List<String> originalCalculationData = new CopyOnWriteArrayList<>();
+
+    // 停止状态集合(序列号,停止状态 true-正常运行, false-停止)
+    public static volatile Map<String, Boolean> measureStopStatus = new ConcurrentHashMap<>();
 
     public static volatile List<String> x_data = new ArrayList<>();
     public static volatile List<String> y_data = new ArrayList<>();

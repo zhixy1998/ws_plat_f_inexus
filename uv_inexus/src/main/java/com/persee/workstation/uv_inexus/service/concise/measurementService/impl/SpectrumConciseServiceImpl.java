@@ -20,6 +20,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
@@ -605,7 +606,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         setParam.setPhotoMode(Integer.valueOf(paramDto.getParameter().getLuminosity()));
         setParam.setSetWl(Double.valueOf(paramDto.getParameter().getStartWaveLength()));
         boolean b = setInstrumentParameters(paramDto.getDeviceSerialNumber(), setParam);
-        if (b) {
+        if (!b) {
             return Result.fail("设置参数失败");
         }
 
@@ -3956,6 +3957,31 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
         return Result.ok(result);
 
+    }
+
+    /**
+     * 停止测量接口
+     * @param deviceSerialNumber
+     * @return
+     */
+    @Override
+    public Result stopMeasure(String deviceSerialNumber) {
+        // 1. 校验参数
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+        }
+        // 2. 将测量停止状态设置为false
+        Constants.measureStopStatus.put(deviceSerialNumber, false);
+        // 3. 仪器下发停止命令
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.Stop.getType());
+        R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
+        if (r.getSuccess()) {
+            return Result.ok();
+        }else{
+            return Result.fail(r.getMessage());
+        }
     }
 
     /**

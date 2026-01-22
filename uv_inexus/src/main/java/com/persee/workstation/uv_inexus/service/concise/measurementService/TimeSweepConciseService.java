@@ -135,4 +135,8 @@ public interface TimeSweepConciseService {
 
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
+
+    // 停止测量
+    Result stopMeasure(String deviceSerialNumber);
+
 }

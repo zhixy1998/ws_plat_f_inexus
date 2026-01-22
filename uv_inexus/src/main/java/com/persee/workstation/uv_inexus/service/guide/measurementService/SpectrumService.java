@@ -30,7 +30,7 @@ public interface SpectrumService {
     Result queryProjectTaskMethod(String updateBy,String measureType);
 
     // 查询项目下的所有方法
-    Result queryProjectAllMethods(String projectId,  String measureForm);
+    Result queryProjectAllMethods(String projectId,  String measureForm, String updateBy);
 
     // 查询方法参数接口
     Result queryMethodParameter(String methodId);
@@ -147,11 +147,14 @@ public interface SpectrumService {
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);
 
     // (实验测试)查询表格头
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> sampleIds);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, List<String> analysisIds);
 
     // (实验测试)查询表格数据
-    List<Map<String, Object>> queryTableData(String taskId, List<String> sampleIds);
+    List<Map<String, Object>> queryTableData(String taskId,List<String> analysisIds, Integer digit);
 
     // 仪器设置参数
     boolean setInstrumentParameters(String deviceSerialNumber, SetParam setParam);
+
+    // 停止测量接口
+    Result stopMeasure(String deviceSerialNumber);
 }

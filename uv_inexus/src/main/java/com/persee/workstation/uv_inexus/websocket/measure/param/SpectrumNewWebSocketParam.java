@@ -9,6 +9,10 @@ public class SpectrumNewWebSocketParam {
     private String taskId;
     @ApiModelProperty(value = "用户名")
     private String updateBy;
+    @ApiModelProperty(value = "样品ID")
+    private String sampleId;
+    @ApiModelProperty(value = "analysisNumber")
+    private String analysisNumber;
     @ApiModelProperty(value = "设备序列号")
     private String deviceSerialNumber;
     @ApiModelProperty(value = "小数位数")

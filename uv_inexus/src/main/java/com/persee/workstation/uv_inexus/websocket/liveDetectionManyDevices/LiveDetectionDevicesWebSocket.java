@@ -21,10 +21,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.websocket.guide.GuidePhotometricWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.*;
-import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseBaseLineNewWebSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseSpectrumNewWebSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseTimeNewWebSocket;
-import com.persee.workstation.uv_inexus.websocket.measure.concise.ConciseZeroCalibrationNewWebSocket;
+import com.persee.workstation.uv_inexus.websocket.measure.concise.*;
 import com.persee.workstation.uv_inexus.websocket.measure.param.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -80,16 +77,31 @@ public class LiveDetectionDevicesWebSocket {
     ConciseBaseLineNewWebSocket conciseBaseLineNewWebSocket;
 
     @Autowired
-    TimeWebNewSocket timeWebNewSocket;
+    private BaseLineNewWebSocket baseLineNewWebSocket;
+
+    @Autowired
+    TimeNewWebSocket timeWebNewSocket;
+
+    @Autowired
+    private TimeNewOneWebSocket timeNewOneWebSocket;
 
     @Autowired
     ConciseTimeNewWebSocket conciseTimeNewWebSocket;
 
     @Autowired
+    private ConciseTimeOneNewWebSocket conciseTimeOneNewWebSocket;
+
+    @Autowired
     private ConciseSpectrumNewWebSocket conciseSpectrumNewWebSocket;
 
     @Autowired
+    private ConciseSpectrumOneNewWebSocket conciseSpectrumOneNewWebSocket;
+
+    @Autowired
     private SpectrumNewWebSocket spectrumWebSocket;
+
+    @Autowired
+    private SpectrumOneNewWebSocket spectrumOneNewWebSocket;
 
     @Autowired
     GuidePhotometricWebSocket guidePhotometricWebSocket;
@@ -205,7 +217,7 @@ public class LiveDetectionDevicesWebSocket {
                     break;
                 }
                 case ConciseBaseLine:{
-                    FBaseLineWebSocketParam param = data.toJavaObject(FBaseLineWebSocketParam.class);
+                    FBaseLineNewWebSocketParam param = data.toJavaObject(FBaseLineNewWebSocketParam.class);
                     conciseBaseLineNewWebSocket.measureTask(param);
                     break;
                 }
@@ -223,9 +235,19 @@ public class LiveDetectionDevicesWebSocket {
                     conciseSpectrumNewWebSocket.measureTask(param);
                     break;
                 }
+                case ConciseSpectrumOne:{
+                    FSpectrumNewWebSocketParam param = data.toJavaObject(FSpectrumNewWebSocketParam.class);
+                    conciseSpectrumOneNewWebSocket.measureTask(param);
+                    break;
+                }
                 case ConciseTimeMeasure:{
-                    FTimeWebNewSocketParam param = data.toJavaObject(FTimeWebNewSocketParam.class);
+                    FTimeNewWebSocketParam param = data.toJavaObject(FTimeNewWebSocketParam.class);
                     conciseTimeNewWebSocket.measureTask(param);
+                    break;
+                }
+                case ConciseTimeMeasureOne:{
+                    FTimeNewWebSocketParam param = data.toJavaObject(FTimeNewWebSocketParam.class);
+                    conciseTimeOneNewWebSocket.measureTask(param);
                     break;
                 }
                 case ZeroCalibration:{
@@ -234,7 +256,8 @@ public class LiveDetectionDevicesWebSocket {
                     break;
                 }
                 case BaseLine:{
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.BaseLine.getOperation());
+                    BaseLineNewWebSocketParam param = data.toJavaObject(BaseLineNewWebSocketParam.class);
+                    baseLineNewWebSocket.measureTask(param);
                     break;
                 }
                 case PhotoMetric:{
@@ -258,9 +281,22 @@ public class LiveDetectionDevicesWebSocket {
                     spectrumWebSocket.measureTask(param);
                     break;
                 }
+                case SpectrumOne:{
+                    JSONObject photometricdata = input.getData();
+                    SpectrumNewWebSocketParam param = photometricdata.toJavaObject(SpectrumNewWebSocketParam.class);
+                    spectrumOneNewWebSocket.measureTask(param);
+                    break;
+                }
                 case TimeMeasure:{
-                    TimeWebNewSocketParam param = new TimeWebNewSocketParam();
+                    JSONObject photometricdata = input.getData();
+                    TimeNewWebSocketParam param = photometricdata.toJavaObject(TimeNewWebSocketParam.class);
                     timeWebNewSocket.measureTask(param);
+                    break;
+                }
+                case TimeMeasureOne:{
+                    JSONObject photometricdata = input.getData();
+                    TimeNewWebSocketParam param = photometricdata.toJavaObject(TimeNewWebSocketParam.class);
+                    timeNewOneWebSocket.measureTask(param);
                     break;
                 }
                 default:{

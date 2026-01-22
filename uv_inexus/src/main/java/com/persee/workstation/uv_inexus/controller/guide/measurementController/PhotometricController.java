@@ -90,7 +90,7 @@ public class PhotometricController {
 
     @GetMapping("querySampleHeads")
     @ApiOperation("获取样本输入表头接口")
-    public Result<List<HeadVO>> querySampleHeads(@RequestParam String taskId) {
+    public Result<List<HeadVO>> querySampleHeads(@RequestParam(required = false) String taskId) {
         return photometricService.querySampleHeads(taskId);
     }
 

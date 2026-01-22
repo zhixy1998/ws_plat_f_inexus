@@ -24,12 +24,18 @@ public class SampleListVo {
     private String sampleId;
     // 分析编号
     private Integer analysisNumber;
+    // 样品位置
+    private String sampleLocation;
     // 颜色
     private String color;
     // 数据
+    private List<Map<String, Object>> data;
+    // 原始数据
     private List<Map<String, Object>> originalData;
     // 类型(0.测量数据 1.分析数据)
     private String type;
     // deleteType
     private String deleteType;
+    // 是否已测(0.未测,1.已测)
+    private String isTested;
 }

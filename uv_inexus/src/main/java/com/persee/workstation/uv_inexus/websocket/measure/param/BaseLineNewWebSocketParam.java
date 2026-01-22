@@ -4,7 +4,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 @Data
-public class FBaseLineWebSocketParam {
+public class BaseLineNewWebSocketParam {
     @ApiModelProperty(value = "任务ID")
     private String taskId;
     @ApiModelProperty(value = "方法ID")

@@ -4,13 +4,11 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 @Data
-public class TimeWebNewSocketParam {
+public class FBaseLineNewWebSocketParam {
     @ApiModelProperty(value = "任务ID")
     private String taskId;
-    @ApiModelProperty(value = "用户名")
-    private String updateBy;
+    @ApiModelProperty(value = "方法ID")
+    private String methodId;
     @ApiModelProperty(value = "设备序列号")
     private String deviceSerialNumber;
-    @ApiModelProperty(value = "小数位数")
-    private Integer digit;
 }
