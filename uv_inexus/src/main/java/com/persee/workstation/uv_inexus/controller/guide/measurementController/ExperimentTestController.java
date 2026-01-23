@@ -335,4 +335,11 @@ public class ExperimentTestController {
         }
     }
 
+
+    @GetMapping("nameDuplicationCheck")
+    @ApiOperation("名称重复性检查")
+    public Result nameDuplicationCheck(@RequestParam String projectId, @RequestParam String methodName) {
+        return experimentTestService.nameDuplicationCheck(projectId, methodName);
+    }
+
 }

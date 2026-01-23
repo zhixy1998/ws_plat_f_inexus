@@ -3812,6 +3812,29 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(vo);
     }
 
+    /**
+     * 方法名称重复性检查
+     * @param projectId
+     * @param methodName
+     * @return
+     */
+    @Override
+    public Result nameDuplicationCheck(String projectId, String methodName) {
+        if (StringUtils.isEmpty(projectId) || StringUtils.isEmpty(methodName)) {
+            //参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+        }
+        QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
+        wrapper.eq("project_item_key", projectId)
+                .eq("method_name", methodName)
+                .eq("is_delete", Constants.PARAM_ZERO);
+        long count = tMeasureMethodService.count(wrapper);
+        // 打印日志
+        log.info("方法名称查重检查: projectId={}, methodName={}, count={}",
+                projectId, methodName, count);
+        return count > 0 ? Result.fail(YamlMessageSource.getMessageStatic("00301002")) : Result.ok();
+    }
+
 
     private <T> T convertParams(Map<String, Object> params, Class<T> clazz) {
 //        ObjectMapper objectMapper = new ObjectMapper();

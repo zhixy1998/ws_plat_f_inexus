@@ -100,5 +100,9 @@ public interface ExperimentTestService {
     // 清除方法
     Result clearMethod(String methodId);
 
+    // 查询保存状态
     Result querySaveState(String taskId);
+
+    // 方法名称重复性检查
+    Result nameDuplicationCheck(String projectId, String methodName);
 }
