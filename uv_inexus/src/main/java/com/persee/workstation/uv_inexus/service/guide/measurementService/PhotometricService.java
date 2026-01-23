@@ -37,8 +37,10 @@ public interface PhotometricService {
      * 方法参数修改接口
      */
     Result<String> updateMethodParameter(PhotometricMethodParameterDto methodDto);
-
-    Result<MethodChangeVO> checkMethodParam(PhotometricMethodParamCheckDTO checkDTO);
+    /**
+     * 检查方法参数
+     */
+    Result<MethodChangeCheckVO> checkMethodParam(PhotometricMethodParameterDto checkDTO);
 
     /**
      * 获取当前信息

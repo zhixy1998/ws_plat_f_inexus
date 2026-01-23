@@ -6,7 +6,7 @@
  *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
  *
  */
-package com.persee.workstation.uv_inexus.websocket.measure;
+package com.persee.workstation.uv_inexus.websocket.measure.concise;
 
 
 import com.alibaba.fastjson.JSON;
@@ -41,6 +41,7 @@ import com.persee.workstation.uv_inexus.vo.concise.ration.FRepeatMeasureData;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
+import com.persee.workstation.uv_inexus.websocket.measure.param.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +60,7 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
-public class PhotometricNewWebSocket{
+public class ConcisePhotometricNewWebSocket {
 
     // 所有设备连接 <sessionId, deviceSerialNumber>
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
@@ -514,67 +515,6 @@ public class PhotometricNewWebSocket{
 
             originDataList.add(dataInfo);
         }
-
-
-//        JSONObject object = new JSONObject();
-//        object.put("currentPoolNum", sample.getSampleLocation());
-//        sendMessage(new TextMessage(object.toJSONString()));
-//
-
-//        R<ChangeParam> res = null;
-//        String ip = infoService.getIp(deviceSerialNumber);
-//        for (String waveLength : waveLengths) {
-//
-//            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
-//
-//            param.setWlList(String.valueOf(step));
-//
-//
-//            if (!operation.getSuccess()) {
-//                log.info("设置波长出错");
-//                return R.fail("设置波长出错！");
-//            }
-//
-//
-//            inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-//
-//
-//
-//            list.add(new Command(T600ComIdEnums.Measure.getComId(), new Object[]{}));
-//
-//            try {
-//                res = devMessageUtil.photometricAndRationMeasurement(list, ip);
-//            } catch (Exception e) {
-//                throw new RuntimeException(e);
-//            }
-//            if (!res.getSuccess()) {
-//                log.info("测量出错");
-//                return R.fail("测量出错");
-//            }
-//
-//            ChangeParam response = res.getData();
-//            machineData.add(response);
-//            ChangeParam originRsd = new ChangeParam();
-//            List<ChangeParam> params = new ArrayList<>();
-//            if (StringUtils.hasText(task.getZeroParam())) {
-//                params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-//                if (params != null) {
-//                    for (ChangeParam param : params) {
-//                        if (param.getWl().equals(waveLength)) {
-//                            BeanUtils.copyProperties(param, originRsd);
-//                            break;
-//                        }
-//                    }
-//                }
-//            }
-//
-//            //处理数据
-//            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), response, params, null, sample.getSampleNumber());
-//            dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
-//
-//            originDataList.add(dataInfo);
-//            list.clear();
-//        }
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sampleKey);

@@ -49,17 +49,30 @@ public class RationController {
         return rationService.getCurrentInfo(updateBy, measureType);
     }
 
-    @PostMapping("updateMethodParameter")
-    @ApiOperation("方法参数修改接口")
-    public Result updateMethodParameter(@RequestBody MethodParamsDto methodDto) {
-        return rationService.updateMethodParameter(methodDto);
-    }
+//    @PostMapping("updateMethodParameter")
+//    @ApiOperation("方法参数修改接口")
+//    public Result updateMethodParameter(@RequestBody MethodParamsDto methodDto) {
+//        return rationService.updateMethodParameter(methodDto);
+//    }
 
     @GetMapping("queryMethodParam")
     @ApiOperation("查询方法参数接口")
     public Result<RationMethodParam> queryMethodParam(@RequestParam String methodId) {
         return rationService.queryMethodParam(methodId);
     }
+
+    @PostMapping("checkParam")
+    @ApiOperation("检查参数接口")
+    public Result<MethodChangeCheckVO> checkParam(@RequestBody MethodParamsDto methodParam) {
+        return rationService.checkMethodParam(methodParam);
+    }
+
+    @PostMapping("updateMethodParam")
+    @ApiOperation("保存方法参数接口")
+    public Result<MeasurementCurrentInfoVO> applyMethod(@RequestBody MethodParamsDto methodParam) {
+        return rationService.updateMethodParam(methodParam);
+    }
+
     @GetMapping("getSampleList")
     @ApiOperation("获取样本列表接口")
     public Result getSampleList(@RequestParam String taskId,

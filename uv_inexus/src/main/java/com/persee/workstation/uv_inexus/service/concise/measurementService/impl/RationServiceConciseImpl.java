@@ -171,14 +171,14 @@ public class RationServiceConciseImpl implements RationConciseService {
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
-        if (!StringUtils.hasText(methodDto.getMethodId())){
+        if (!StringUtils.hasText(methodDto.getCurrentMethodId())){
             //请先创建方法或者选择方法
             return Result.fail( YamlMessageSource.getMessageStatic("0010000B"));
 
         }
 
         // 根据方法id查询当前方法
-        FMeasureMethod method = fMeasureMethodService.getById(methodDto.getMethodId());
+        FMeasureMethod method = fMeasureMethodService.getById(methodDto.getCurrentMethodId());
         if (method == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
@@ -2574,7 +2574,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public R<Boolean> createSample(String taskId, String sampleKind, String normalConcentration, String updateBy, String deviceSerialNumber) {
+    public R<Boolean> oldCreateSample(String taskId, String sampleKind, String normalConcentration, String updateBy, String deviceSerialNumber) {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
 
         if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
@@ -2769,7 +2769,7 @@ public class RationServiceConciseImpl implements RationConciseService {
     }
 
     @Override
-    public R<Boolean> newCreateSample(CreateSampleDTO dto) {
+    public R<Boolean> createSample(CreateSampleDTO dto) {
 
         String taskId = dto.getTaskId();
         String sampleKind = dto.getSampleKind();

@@ -396,6 +396,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                             sample.setHeads(JSON.toJSONString(paramDto.getHeads()));
                             JSONObject newColData = new JSONObject();
                             for (HeadVO head : paramDto.getHeads()) {
+
+                                if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                                    continue;
+                                }
+
                                 String s = cols.get(head.getIdentity());
                                 newColData.put(head.getIdentity(), s);
                             }
@@ -411,14 +416,25 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     }
                 }
             case QUANTITATIVE_MEASUREMENT:
+
+                RationTaskHeadSnapShot taskHeadSnapShot = new RationTaskHeadSnapShot();
                 if (paramDto.getRationStandData() != null && !paramDto.getRationStandData().isEmpty()) {
                     for (Map<String, String> map : paramDto.getRationStandData()) {
                         String jsonString = JSON.toJSONString(map);
                         TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
-                        if (paramDto.getRationStandHeads() != null) {
+                        if (paramDto.getRationStandHeads() != null && !paramDto.getRationStandHeads().isEmpty()) {
+
+                            TaskHeadSnapshot standHead = new TaskHeadSnapshot();
+
+                            standHead.setSampleHeads(paramDto.getRationStandHeads());
+                            taskHeadSnapShot.setStandHead(standHead);
+
                             sample.setHeads(JSON.toJSONString(paramDto.getRationStandHeads()));
                             JSONObject newColData = new JSONObject();
                             for (HeadVO head : paramDto.getRationStandHeads()) {
+                                if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                                    continue;
+                                }
                                 String s = map.get(head.getIdentity());
                                 newColData.put(head.getIdentity(), s);
                             }
@@ -440,10 +456,21 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     for (Map<String, String> map : paramDto.getRationUnknowData()) {
                         String jsonString = JSON.toJSONString(map);
                         TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
-                        if (paramDto.getRationUnknowHeads() != null) {
+                        if (paramDto.getRationUnknowHeads() != null && !paramDto.getRationUnknowHeads().isEmpty()) {
+
+                            TaskHeadSnapshot unknownHead = new TaskHeadSnapshot();
+
+
+                            unknownHead.setSampleHeads(paramDto.getRationUnknowHeads());
+                            taskHeadSnapShot.setUnknownHead(unknownHead);
+
                             sample.setHeads(JSON.toJSONString(paramDto.getRationUnknowHeads()));
                             JSONObject newColData = new JSONObject();
                             for (HeadVO head : paramDto.getRationUnknowHeads()) {
+
+                                if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                                    continue;
+                                }
                                 String s = map.get(head.getIdentity());
                                 newColData.put(head.getIdentity(), s);
                             }
@@ -461,6 +488,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         list.add(taskSpecimen);
                     }
                 }
+                tMeasureTask.setTableInfo(JSON.toJSONString(taskHeadSnapShot));
                 break;
             case SPECTRAL_SCAN:
                 if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {

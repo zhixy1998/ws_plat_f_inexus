@@ -23,7 +23,10 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Sampl
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
-import com.persee.workstation.uv_inexus.util.changeUtil.*;
+import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
+import com.persee.workstation.uv_inexus.util.changeUtil.Command;
+import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
@@ -35,19 +38,18 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
+import com.persee.workstation.uv_inexus.websocket.measure.param.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -56,11 +58,6 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class RationMeasureNewWebSocket{
-    // 所有设备连接 <sessionId, session>
-    private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
-
-    // 假设的设备数据缓存队列
-    private static final Map<String, List<String>> deviceDataCache = new ConcurrentHashMap<>();
 
     private static volatile Boolean empty = false;
     private static volatile Boolean lastIsEmpty = false;
@@ -416,9 +413,9 @@ public class RationMeasureNewWebSocket{
                             }
 
                             if (specimen.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
-                                lastIsEmpty = true;
 
                                 emptySampleDeal(digit, ansData, dealData);
+                                lastIsEmpty = true;
                             } else {
                                 lastIsEmpty = false;
                                 //测量过的数据，非空白样，添加标准浓度为了拟合曲线
@@ -1363,6 +1360,10 @@ public class RationMeasureNewWebSocket{
                     jsonObject.put("identity", waveLength + "-" + WaveLengthEnum.tPercent.getCode() + "-" + i);
                     jsonObject.put("value", originDataInfo.getTPercentValue());
                     sendMessage(deviceSerialNumber, jsonObject);
+
+                    jsonObject.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
+                    jsonObject.put("value", originDataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    sendMessage(deviceSerialNumber, jsonObject);
                 }
             }
             //重复测完，开始计算平均值
@@ -1511,7 +1512,7 @@ public class RationMeasureNewWebSocket{
         jsonObject.put("key", key);
         jsonObject.remove("identity");
         jsonObject.put("value", String.valueOf(v));
-
+        sendMessage(deviceSerialNumber, jsonObject);
     }
 
     private R<Boolean> setPreMeasureParams(String deviceSerialNumber, RationParameter parameter) {

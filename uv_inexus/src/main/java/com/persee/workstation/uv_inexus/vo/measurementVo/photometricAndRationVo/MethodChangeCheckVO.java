@@ -12,6 +12,9 @@ package com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+/**
+ * @author xudian
+ */
 @Data
 public class MethodChangeCheckVO {
 

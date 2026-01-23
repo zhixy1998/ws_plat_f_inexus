@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.concise.measurementController;
 
+import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SaveDataDto;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FRationAddOrDeleteSampleDTO;
@@ -159,14 +160,25 @@ public class RationConciseController {
         }
     }
 
-    @GetMapping("createSample")
+//    @GetMapping("createSample")
+//    @ApiOperation("创建样品接口")
+//    public Result createSample(@RequestParam String taskId,
+//                               @RequestParam String sampleKind,
+//                               @RequestParam(required = false) String normalConcentration,
+//                               @RequestParam String updateBy,
+//                               @RequestParam String deviceSerialNumber) {
+//        R<Boolean> r = rationService.oldCreateSample(taskId, sampleKind, normalConcentration, updateBy, deviceSerialNumber);
+//        if (!r.getSuccess()) {
+//            return Result.fail(r.getMessage());
+//        } else {
+//            return Result.ok();
+//        }
+//    }
+
+    @PostMapping("createSample")
     @ApiOperation("创建样品接口")
-    public Result createSample(@RequestParam String taskId,
-                               @RequestParam String sampleKind,
-                               @RequestParam(required = false) String normalConcentration,
-                               @RequestParam String updateBy,
-                               @RequestParam String deviceSerialNumber) {
-        R<Boolean> r = rationService.createSample(taskId, sampleKind, normalConcentration, updateBy, deviceSerialNumber);
+    public Result createSample(@RequestBody CreateSampleDTO dto) {
+        R<Boolean> r = rationService.createSample(dto);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {

@@ -13,7 +13,6 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.SamplePoolConfigDAO;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.DeviceInfoDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
@@ -27,6 +26,11 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.Conci
 import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
+import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
+import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
@@ -59,6 +63,9 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
+    DevOperationUtilService operationUtilService;
 
     @Override
     public Boolean updateCurrentPoolNum(String deviceSerialNumber, Integer currentPoolNum, String updateBy) {
@@ -290,20 +297,19 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
             po.setPoolInfo(JSON.toJSONString(poolInfo));
         }
 
-        String ip = deviceInfoDAO.getIp(deviceSerialNumber);
-        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-        if (!r.getSuccess()) {
-            log.info("设备被占用");
-            return R.fail(r.getMessage());
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+        SetParam param = new SetParam();
+        param.setCellPos(poolNum);
+        inputParam.setParam(param);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+
+        if (!operation.getSuccess()) {
+            return R.fail("参数设置出错！");
         }
-        R<String> stringR = devMessageUtil.setCurrentCellPos(poolNum, ip);
-        if (!stringR.getSuccess()) {
-            log.info("设置出错");
-            deviceInfoService.releaseDevice(deviceSerialNumber);
-            //设置出错
-            return R.fail(YamlMessageSource.getMessageStatic("00106004"));
-        }
-        deviceInfoService.releaseDevice(deviceSerialNumber);
+
         po.setCurrentPoolNum(poolNum);
         po.setUpdateBy(updateBy);
         boolean b = dao.updateById(po) > 0;

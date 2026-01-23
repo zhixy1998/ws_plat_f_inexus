@@ -9,7 +9,6 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
@@ -52,7 +51,7 @@ public class PhotometricController {
 
     @PostMapping("checkParam")
     @ApiOperation("检查参数接口")
-    public Result<MethodChangeVO> checkParam(@RequestBody PhotometricMethodParamCheckDTO methodParam) {
+    public Result<MethodChangeCheckVO> checkParam(@RequestBody PhotometricMethodParameterDto methodParam) {
         return photometricService.checkMethodParam(methodParam);
     }
     @PostMapping

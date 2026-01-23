@@ -20,6 +20,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
@@ -155,7 +156,7 @@ public class RationServiceImpl implements RationService {
 
     @Override
     public Result updateMethodParameter(MethodParamsDto methodDto) {
-        if (!StringUtils.hasText(methodDto.getMethodId())){
+        if (!StringUtils.hasText(methodDto.getCurrentMethodId())){
             //方法id不能为空,请创建方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
         }
@@ -253,7 +254,7 @@ public class RationServiceImpl implements RationService {
 //        }
 
         // 根据方法id查询当前方法
-        TMeasureMethod method = tMeasureMethodService.getById(methodDto.getMethodId());
+        TMeasureMethod method = tMeasureMethodService.getById(methodDto.getCurrentMethodId());
         if (method == null) {
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
@@ -375,77 +376,201 @@ public class RationServiceImpl implements RationService {
     }
 
     @Override
-    public Result<MethodChangeCheckVO> checkMethodParam(RationMethodParamCheckDTO checkDTO) {
+    public Result<MeasurementCurrentInfoVO> updateMethodParam(MethodParamsDto methodDto) {
 
-        if (Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
-            //没有可应用的方法参数
-            return Result.fail(YamlMessageSource.getMessageStatic("00103014"));
+        RationParameter parameter = new RationParameter();
+        BeanUtils.copyProperties(methodDto, parameter);
+        MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
+        String clearDataRange = methodDto.getClearDataRange();
+        if (StringUtils.hasText(clearDataRange) && !RationChangeMethodTypeEnums.noChange.getIdentity().equals(clearDataRange)) {
+            //设置参数给仪器。。。待定
+            return Result.ok(vo);
         }
 
-        if (!StringUtils.hasText(checkDTO.getNewMethodId())) {
+        TMeasureMethod method = tMeasureMethodService.getById(methodDto.getCurrentMethodId());
+        TMeasureMethod newMethod = new TMeasureMethod();
+        newMethod.setMethodName(StringUtils.hasText(methodDto.getMethodName())? methodDto.getMethodName() : method.getMethodName() + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        newMethod.setMethodCreator(methodDto.getUpdateBy());
+        newMethod.setMethodCreateTime(LocalDateTime.now());
+        newMethod.setIsDelete(createType);
+        newMethod.setProjectItemKey(method.getProjectItemKey());
+        newMethod.setMeasurementType(method.getMeasurementType());
+        newMethod.setMeasurementParamInfo(JSON.toJSONString(parameter));
+        newMethod.setPreprocessKey(methodDto.getPreprocessKey());
+        boolean save = tMeasureMethodService.save(newMethod);
+        if (!save) {
+            //创建失败
+            return Result.fail(YamlMessageSource.getMessageStatic("方法修改失败"));
+        }
 
-            RationParameter methodParam = checkDTO.getNewMethodParam();
+        vo.setMethodId(newMethod.getId());
+        vo.setMethodName(newMethod.getMethodName());
+        vo.setProjectId(newMethod.getProjectItemKey());
+        vo.setProjectName(tMeasureProjectService.getById(newMethod.getProjectItemKey()).getProjectName());
 
-            R<Boolean> r = checkParam(methodParam);
-            if (!r.getSuccess()) {
-                return Result.fail(r.getMessage());
-            }
+        newMethod = tMeasureMethodService.getById(newMethod.getId());
 
-            double minWaveLength = 190.0;
-            double maxWaveLength = 1100.0;
+        if (!StringUtils.hasText(methodDto.getTaskId())) {
+            return Result.ok(vo);
+        }
 
-            if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
-                R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
-                if (typeInfo.getSuccess()) {
-                    DeviceMeasureVO vo = typeInfo.getData();
-                    if (vo != null) {
-                        minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
-                        maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+        TMeasureTask task = tMeasureTaskService.getById(methodDto.getTaskId());
+        if (task == null || task.getTaskStatus() == null) {
+
+            return Result.ok(vo);
+        }
+        if (TaskStatusEnum.UNTESTED.getCode().equals(task.getTaskStatus())) {
+            //任务是新建状态
+            task.setMethodKey(newMethod.getId());
+            task.setCreateTime(LocalDateTime.now());
+            tMeasureTaskService.updateById(task);
+            return Result.ok(vo);
+        }
+
+        if (TaskStatusEnum.TESTED.getCode().equals(task.getTaskStatus())) {
+            //任务已测
+
+            if (StringUtils.hasText(clearDataRange)) {
+
+                int digit = Constants.DEFAULT_DECIMAL_NUM;
+                R<TMeasureTaskAttachment> attachmentR = taskAttachmentService.queryByTaskId(task.getId());
+                if (attachmentR.getSuccess()) {
+                    TMeasureTaskAttachment attachment = attachmentR.getData();
+                    if (StringUtils.hasText(attachment.getDataParam())) {
+                        FQueryDataDTO queryDataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+                        if (queryDataDTO.getDigit() != null) {
+                            digit = queryDataDTO.getDigit();
+                        }
+                    }
+                }
+
+                if (RationChangeMethodTypeEnums.analyze.getIdentity().equals(clearDataRange) && methodDto.getIsApplyToCurrent()) {
+                    task.setMethodKey(newMethod.getId());
+                    task.setCreateTime(LocalDateTime.now());
+                    tMeasureTaskService.updateById(task);
+
+                    changeStandSampleDataDigit(task.getId(), digit);
+                    changeUnknowSampleDigit(task.getId(), digit);
+                    //TODO 公式重算
+                    vo.setTaskId(task.getId());
+                    vo.setTaskName(task.getTaskName());
+                    return Result.ok(vo);
+                }
+
+                if ( RationChangeMethodTypeEnums.curve.getIdentity().equals(clearDataRange) && methodDto.getIsApplyToCurrent()) {
+                    task.setMethodKey(newMethod.getId());
+                    task.setCreateTime(LocalDateTime.now());
+                    tMeasureTaskService.updateById(task);
+
+                    FittingReceiveInfo curveInfo = createFittingInfo(newMethod.getId());
+
+                    String fittingInfo = null;
+                    if (curveInfo != null) {
+                        fittingInfo = JSONObject.toJSONString(curveInfo);
                     }
 
+                    if (StringUtils.hasText(fittingInfo)){
+                        task.setFittingParam(fittingInfo);
+                        tMeasureTaskService.updateById(task);
+                        changeUnknowSampleDigit(task.getId(), digit);
+
+                    } else {
+                        task.setFittingParam(fittingInfo);
+                        tMeasureTaskService.updateById(task);
+                        changeStandSampleDataDigit(task.getId(), digit);
+                        changeUnknowSampleDigit(task.getId(), digit);
+                    }
+                    vo.setTaskId(task.getId());
+                    vo.setTaskName(task.getTaskName());
+                    return Result.ok(vo);
                 }
             }
+        }
 
-            List<String> waveLengths = methodParam.getWaveLength();
+        TMeasureTask newTask = new TMeasureTask();
+        newTask.setMethodKey(newMethod.getId());
+        newTask.setCreateTime(LocalDateTime.now());
+        newTask.setFittingParam(task.getFittingParam());
+        SysUserPO sysUserPO = userManageDAO.selectByUsername(methodDto.getUpdateBy());
+        newTask.setUserId(sysUserPO.getId());
 
-            for (int i = 0; i < waveLengths.size(); i++) {
-                String waveStr = waveLengths.get(i);
-                if (isBlank(waveStr)) {
-                    //"第" + (i + 1) + "个波长值不能为空字符串"
-                    return Result.fail(YamlMessageSource.getMessageStatic("00102005",(i + 1)));
-                }
-                try {
-                    double waveVal = Double.parseDouble(waveStr);
-                    if (waveVal < minWaveLength || waveVal > maxWaveLength) {
-                        //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
-                        return Result.fail(YamlMessageSource.getMessageStatic("00102006",(i + 1),waveVal, minWaveLength, maxWaveLength));
-                    }
-                    // 校验小数点后最多1位
-                    String[] parts = waveStr.split("\\.");
-                    if (parts.length > 1 && parts[1].length() > 1) {
-                        //"波长值" + waveStr + "小数点后最多保留1位"
-                        return Result.fail(YamlMessageSource.getMessageStatic("00105005",waveStr));
-                    }
-                } catch (NumberFormatException e) {
-                    return Result.fail(YamlMessageSource.getMessageStatic("00102007",(i + 1) ,waveStr));
+        String taskName = task.getTaskName() + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        if (StringUtils.hasText(methodDto.getNewTaskName())) {
+            taskName = methodDto.getNewTaskName();
+        }
+
+        newTask.setTaskName(taskName);
+        newTask.setProjectItemKey(newMethod.getProjectItemKey());
+        newTask.setTaskStatus("0");
+        newTask.setMeasureType(newMethod.getMeasurementType());
+        newTask.setTableInfo(StringUtils.hasText(task.getTableInfo())?task.getTableInfo() : null);
+        tMeasureTaskService.save(newTask);
+        vo.setTaskId(newTask.getId());
+        vo.setTaskName(newTask.getTaskName());
+        return Result.ok(vo);
+    }
+
+
+    @Override
+    public Result<MethodChangeCheckVO> checkMethodParam(MethodParamsDto checkDTO) {
+
+        if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
+            //请选择当前方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000023"));
+        }
+
+        RationParameter newMethodParam = new RationParameter();
+        BeanUtils.copyProperties(checkDTO, newMethodParam);
+
+        R<Boolean> r = checkParam(newMethodParam);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
+
+        double minWaveLength = 190.0;
+        double maxWaveLength = 1100.0;
+
+        if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+            R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+            if (typeInfo.getSuccess()) {
+                DeviceMeasureVO vo = typeInfo.getData();
+                if (vo != null) {
+                    minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                    maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
                 }
             }
+        }
+        List<String> waveLengths = newMethodParam.getWaveLength();
 
+        for (int i = 0; i < waveLengths.size(); i++) {
+            String waveStr = waveLengths.get(i);
+            if (isBlank(waveStr)) {
+                //"第" + (i + 1) + "个波长值不能为空字符串"
+                return Result.fail(YamlMessageSource.getMessageStatic("00102005", (i + 1)));
+            }
+            try {
+                double waveVal = Double.parseDouble(waveStr);
+                if (waveVal < minWaveLength || waveVal > maxWaveLength) {
+                    //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
+                    return Result.fail(YamlMessageSource.getMessageStatic("00102006", (i + 1), waveVal, minWaveLength, maxWaveLength));
+                }
+                // 校验小数点后最多1位
+                String[] parts = waveStr.split("\\.");
+                if (parts.length > 1 && parts[1].length() > 1) {
+                    //"波长值" + waveStr + "小数点后最多保留1位"
+                    return Result.fail(YamlMessageSource.getMessageStatic("00105005", waveStr));
+                }
+            } catch (NumberFormatException e) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00102007", (i + 1), waveStr));
+            }
         }
 
         MethodChangeCheckVO vo = new MethodChangeCheckVO();
         vo.setCurrentMethodId(checkDTO.getCurrentMethodId());
         vo.setParamChange(false);
-        vo.setClearDataRange(PhotoMetricChangeMethodTypeEnum.noChange.getIdentity());
-        vo.setMessage(PhotoMetricChangeMethodTypeEnum.noChange.getMessage());
+        vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+        vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
 
-        if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
-            log.info("生成新方法");
-            vo.setParamChange(true);
-            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
-            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
-            return Result.ok(vo);
-        }
 
         TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
         if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultMethodProjectName)) {
@@ -456,25 +581,10 @@ public class RationServiceImpl implements RationService {
             return Result.ok(vo);
         }
 
-        if (!StringUtils.hasText(checkDTO.getCurrentTaskId())) {
-            log.info("没有任务存在，将使用该方法生成数据");
-            vo.setParamChange(true);
-            vo.setClearDataRange(RationChangeMethodTypeEnums.noData.getIdentity());
-            return Result.ok(vo);
-        }
+        RationParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), RationParameter.class);
 
-        TMeasureMethod method = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
-        RationParameter oldParam = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
-
-        RationParameter methodParam = new RationParameter();
-        if (StringUtils.hasText(checkDTO.getNewMethodId())) {
-            TMeasureMethod newMethod = tMeasureMethodService.getById(checkDTO.getNewMethodId());
-            methodParam = JSON.parseObject(newMethod.getMeasurementParamInfo(), RationParameter.class);
-        } else {
-            methodParam = checkDTO.getNewMethodParam();
-        }
         String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
-        String frontJson = JSON.toJSONString(methodParam, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(newMethodParam, SerializerFeature.SortField);
 
         if (dbJson.equals(frontJson)) {
             vo.setParamChange(false);
@@ -483,7 +593,7 @@ public class RationServiceImpl implements RationService {
             return Result.ok(vo);
         }
         //检查测量数据
-        boolean b = checkMeasureParam(oldParam, methodParam);
+        boolean b = checkMeasureParam(oldParam, newMethodParam);
         System.out.println(b);
         if (!b) {
             log.info("测量参数有改变");
@@ -493,7 +603,7 @@ public class RationServiceImpl implements RationService {
             return Result.ok(vo);
         }
 
-        boolean curveParam = checkCurveParam(oldParam, methodParam);
+        boolean curveParam = checkCurveParam(oldParam, newMethodParam);
         if (!curveParam) {
             log.info("曲线参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.curve.getIdentity());
@@ -502,7 +612,7 @@ public class RationServiceImpl implements RationService {
         }
 
         //检查分析参数
-        boolean analyze = checkAnalyzeParam(oldParam, methodParam);
+        boolean analyze = checkAnalyzeParam(oldParam, newMethodParam);
         if (!analyze) {
             log.info("分析参数有改变");
             vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
@@ -855,9 +965,6 @@ public class RationServiceImpl implements RationService {
     private boolean isBlank(String str) {
         return str == null || str.trim().isEmpty();
     }
-
-
-
 
     @Override
     public Result<List<JSONObject>> querySampleList(String taskId, String sampleKind) {

@@ -40,9 +40,14 @@ public interface RationService {
     Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType);
 
     /**
+     * 修改方法并保存
+     */
+    Result<MeasurementCurrentInfoVO> updateMethodParam(MethodParamsDto methodDto);
+
+    /**
      * 检查方法参数
      */
-    Result<MethodChangeCheckVO> checkMethodParam(RationMethodParamCheckDTO checkDTO);
+    Result<MethodChangeCheckVO> checkMethodParam(MethodParamsDto checkDTO);
     /**
      * 查询样品列表
      */

@@ -32,6 +32,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamM
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
@@ -48,6 +49,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.*;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 import lombok.extern.slf4j.Slf4j;
@@ -96,7 +98,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     PublicUtilService publicUtilService;
 
     @Autowired
-    TSamplePoolConfigService tSamplePoolConfigService;
+    SamplePoolConfigService tSamplePoolConfigService;
     @Autowired
     TMeasureAnalysisDataService tMeasureAnalysisDataService;
 
@@ -123,6 +125,9 @@ public class PhotometricServiceImpl implements PhotometricService {
 
     @Autowired
     LaTeXConverter latexConverter;
+
+    @Value("default")
+    String defaultMethodProjectName;
 
     @Value("1")
     String deleteType;
@@ -234,6 +239,20 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (parameter.getQcParams() != null && parameter.getQcParams().size() > 10) {
             return R.fail(YamlMessageSource.getMessageStatic("00103013"));
         }
+
+        if (parameter.getResultParams() != null && !parameter.getResultParams().isEmpty()) {
+            java.util.List<InputParam> inputParams = parameter.getSampleInputParams();
+            java.util.List<PreCountResultParam> resultParams = parameter.getResultParams();
+            for (PreCountResultParam resultParam : resultParams) {
+                if (resultParam == null) {
+                    continue;
+                }
+                Result<Boolean> checkResult = checkFormula(inputParams, resultParam);
+                if (checkResult.getCode() != 200 || !java.lang.Boolean.TRUE.equals(checkResult.getData())) {
+                    return R.fail(checkResult.getMessage());
+                }
+            }
+        }
         return R.ok(true);
     }
 
@@ -343,7 +362,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     @Override
     public Result<String> updateMethodParameter(PhotometricMethodParameterDto methodDto) {
         // 根据方法id查询当前方法
-        if (!StringUtils.hasText(methodDto.getMethodId())) {
+        if (!StringUtils.hasText(methodDto.getCurrentMethodId())) {
             //缺少方法
             return Result.fail(YamlMessageSource.getMessageStatic("00302001"));
         }
@@ -352,7 +371,7 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail(YamlMessageSource.getMessageStatic("00300002"));
         }
         // 根据方法id查询方法
-        TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getMethodId());
+        TMeasureMethod measureMethod = tMeasureMethodService.getById(methodDto.getCurrentMethodId());
         if (measureMethod==null){
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
@@ -371,6 +390,112 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
+    public Result<MethodChangeCheckVO> checkMethodParam(PhotometricMethodParameterDto checkDTO) {
+
+        if (!StringUtils.hasText(checkDTO.getCurrentMethodId())) {
+            //请选择当前方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000023"));
+        }
+
+        PhotometricParameter newMethodParam = new PhotometricParameter();
+        BeanUtils.copyProperties(checkDTO, newMethodParam);
+
+        R<Boolean> r = checkParam(newMethodParam);
+        if (!r.getSuccess()) {
+            return Result.fail(r.getMessage());
+        }
+
+        double minWaveLength = 190.0;
+        double maxWaveLength = 1100.0;
+
+        if (StringUtils.hasText(checkDTO.getDeviceSerialNumber())) {
+            R<DeviceMeasureVO> typeInfo = deviceInfoService.queryDeviceTypeInfo(checkDTO.getDeviceSerialNumber());
+            if (typeInfo.getSuccess()) {
+                DeviceMeasureVO vo = typeInfo.getData();
+                if (vo != null) {
+                    minWaveLength = StringUtils.hasText(vo.getMinWavelength()) ? Double.parseDouble(vo.getMinWavelength()) : minWaveLength;
+                    maxWaveLength = StringUtils.hasText(vo.getMaxWavelength()) ? Double.parseDouble(vo.getMaxWavelength()) : maxWaveLength;
+                }
+            }
+        }
+        List<String> waveLengths = newMethodParam.getWaveLength();
+
+        for (int i = 0; i < waveLengths.size(); i++) {
+            String waveStr = waveLengths.get(i);
+            if (isBlank(waveStr)) {
+                //"第" + (i + 1) + "个波长值不能为空字符串"
+                return Result.fail(YamlMessageSource.getMessageStatic("00102005", (i + 1)));
+            }
+            try {
+                double waveVal = Double.parseDouble(waveStr);
+                if (waveVal < minWaveLength || waveVal > maxWaveLength) {
+                    //"第" + (i + 1) + "个波长值超出范围（190-900），当前值：" + waveVal
+                    return Result.fail(YamlMessageSource.getMessageStatic("00102006", (i + 1), waveVal, minWaveLength, maxWaveLength));
+                }
+                // 校验小数点后最多1位
+                String[] parts = waveStr.split("\\.");
+                if (parts.length > 1 && parts[1].length() > 1) {
+                    //"波长值" + waveStr + "小数点后最多保留1位"
+                    return Result.fail(YamlMessageSource.getMessageStatic("00105005", waveStr));
+                }
+            } catch (NumberFormatException e) {
+                return Result.fail(YamlMessageSource.getMessageStatic("00102007", (i + 1), waveStr));
+            }
+        }
+
+        MethodChangeCheckVO vo = new MethodChangeCheckVO();
+        vo.setCurrentMethodId(checkDTO.getCurrentMethodId());
+        vo.setParamChange(false);
+        vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+        vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
+
+
+        TMeasureMethod currentMethod = tMeasureMethodService.getById(checkDTO.getCurrentMethodId());
+        if (StringUtils.hasText(currentMethod.getProjectItemKey()) && currentMethod.getProjectItemKey().equals(defaultMethodProjectName)) {
+            log.info("生成新方法");
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.newMethod.getMessage());
+            vo.setClearDataRange(RationChangeMethodTypeEnums.newMethod.getIdentity());
+            return Result.ok(vo);
+        }
+
+        PhotometricParameter oldParam = JSON.parseObject(currentMethod.getMeasurementParamInfo(), PhotometricParameter.class);
+
+        String dbJson = JSON.toJSONString(oldParam, SerializerFeature.SortField);
+        String frontJson = JSON.toJSONString(newMethodParam, SerializerFeature.SortField);
+
+        if (dbJson.equals(frontJson)) {
+            vo.setParamChange(false);
+            vo.setClearDataRange(RationChangeMethodTypeEnums.noChange.getIdentity());
+            vo.setMessage(RationChangeMethodTypeEnums.noChange.getMessage());
+            return Result.ok(vo);
+        }
+        //检查测量数据
+        boolean b = checkMeasureParam(oldParam, newMethodParam);
+        System.out.println(b);
+        if (!b) {
+            log.info("测量参数有改变");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.measure.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.measure.getMessage());
+            return Result.ok(vo);
+        }
+
+        //检查分析参数
+        boolean analyze = checkAnalyzeParam(oldParam, newMethodParam);
+        if (!analyze) {
+            log.info("分析参数有改变");
+            vo.setClearDataRange(RationChangeMethodTypeEnums.analyze.getIdentity());
+            vo.setParamChange(true);
+            vo.setMessage(RationChangeMethodTypeEnums.analyze.getMessage());
+        }
+        return Result.ok(vo);
+    }
+
+    private boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
     public Result<MethodChangeVO> checkMethodParam(PhotometricMethodParamCheckDTO checkDTO) {
         if (java.util.Objects.isNull(checkDTO.getNewMethodParam()) && !StringUtils.hasText(checkDTO.getNewMethodId())) {
             return Result.fail(YamlMessageSource.getMessageStatic("00103014"));
@@ -404,7 +529,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                     if (resultParam == null) {
                         continue;
                     }
-                    Result<Boolean> checkResult = checkFormula(inputParams, resultParam, checkDTO.getMeasureType());
+                    Result<Boolean> checkResult = checkFormula(inputParams, resultParam);
                     if (checkResult.getCode() != 200 || !java.lang.Boolean.TRUE.equals(checkResult.getData())) {
                         return Result.fail(checkResult.getMessage());
                     }
@@ -523,7 +648,7 @@ public class PhotometricServiceImpl implements PhotometricService {
                 java.util.Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
     }
 
-    private Result<Boolean> checkFormula(java.util.List<InputParam> inputParamList, PreCountResultParam newFormula, String measureType) {
+    private Result<Boolean> checkFormula(java.util.List<InputParam> inputParamList, PreCountResultParam newFormula) {
         if (newFormula == null || !StringUtils.hasText(newFormula.getFormulaText())) {
             return Result.fail(YamlMessageSource.getMessageStatic("0010100C"));
         }
@@ -2450,9 +2575,9 @@ public class PhotometricServiceImpl implements PhotometricService {
         });
 
         Boolean isAutoChangePool = false;
-        R<TSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.queryCalibrationSampleInfo(deviceSerialNumber);
+        R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
         if (poolInfo.getSuccess()) {
-            TSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
             isAutoChangePool = poolInfoVO.getIsAutoChangePool();
         }
         if (taskSpecimen.isEmpty()) {

@@ -19,7 +19,7 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
-import com.persee.workstation.uv_inexus.websocket.guide.GuidePhotometricWebSocket;
+import com.persee.workstation.uv_inexus.websocket.measure.GuidePhotometricWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.*;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.*;
 import com.persee.workstation.uv_inexus.websocket.measure.param.*;
@@ -65,7 +65,7 @@ public class LiveDetectionDevicesWebSocket {
     WebSocketSendUtil webSocketSendUtil;
 
     @Autowired
-    PhotometricNewWebSocket photometricNewWebSocket;
+    ConcisePhotometricNewWebSocket concisePhotometricNewWebSocket;
 
     @Autowired
     ZeroCalibrationNewWebSocket zeroCalibrationNewWebSocket;
@@ -108,6 +108,9 @@ public class LiveDetectionDevicesWebSocket {
 
     @Autowired
     RationMeasureNewWebSocket rationMeasureNewWebSocket;
+
+    @Autowired
+    ConciseRationMeasureNewWebSocket conciseRationMeasureNewWebSocket;
 
     private static final DeviceConnectionManager deviceManager = DeviceConnectionManager.getInstance();
 
@@ -223,11 +226,12 @@ public class LiveDetectionDevicesWebSocket {
                 }
                 case ConcisePhotoMetric:{
                     PhotoAndRationMetricWebsocketParam param = data.toJavaObject(PhotoAndRationMetricWebsocketParam.class);
-                    photometricNewWebSocket.measureTask(param);
+                    concisePhotometricNewWebSocket.measureTask(param);
                     break;
                 }
                 case ConciseRationMeasure:{
-                    Measure(deviceSerialNumber, WebSocketOperationEnum.ConciseRationMeasure.getOperation());
+                    PhotoAndRationMetricWebsocketParam param = data.toJavaObject(PhotoAndRationMetricWebsocketParam.class);
+                    conciseRationMeasureNewWebSocket.startConciseRationMeasure(param);
                     break;
                 }
                 case ConciseSpectrum:{

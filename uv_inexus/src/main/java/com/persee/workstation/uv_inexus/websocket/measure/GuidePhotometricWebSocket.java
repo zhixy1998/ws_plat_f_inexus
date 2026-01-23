@@ -1,4 +1,13 @@
-package com.persee.workstation.uv_inexus.websocket.guide;
+/*
+ * *
+ *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
+ *  * 本软件受商业机密法和版权法保护。
+ *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
+ *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
+ *
+ */
+
+package com.persee.workstation.uv_inexus.websocket.measure;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -9,8 +18,10 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
+import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
@@ -23,15 +34,15 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricSampleAndDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.RepeatMeasureData;
-import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketResponseVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketSendUtil;
-import com.persee.workstation.uv_inexus.websocket.measure.PhotoAndRationMetricWebsocketParam;
+import com.persee.workstation.uv_inexus.websocket.measure.param.PhotoAndRationMetricWebsocketParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,10 +95,7 @@ public class GuidePhotometricWebSocket {
     private TMeasureAnalysisDataService tMeasureAnalysisDataService;
 
     @Autowired
-    TSamplePoolConfigService TSamplePoolConfigService;
-
-    @Autowired
-    TSamplePoolConfigService tSamplePoolConfigService;
+    SamplePoolConfigService tSamplePoolConfigService;
 
     @Autowired
     DeviceInfoService infoService;
@@ -187,18 +195,18 @@ public class GuidePhotometricWebSocket {
                    }
                   measureSample.setSampleLocation(null);
                   R<PhotometricSampleAndDataVO> measure;
-                  R<TSamplePoolInfoVO> poolInfo=TSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+                  R<FSamplePoolInfoVO> poolInfo=tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
                   if (!poolInfo.getSuccess()) {
                       sendError(deviceSerialNumber, "无样品池信息");
                       return;
                   }
-                  TSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+                  FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
                   Integer currentPoolNum = poolInfoVO.getCurrentPoolNum();
                   boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool() != null && poolInfoVO.getIsAutoChangePool();
                   if (isAutoChangePool) {
-                      List<TSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
+                      List<FSamplePoolStatus> list = poolInfoVO.getPoolStatusList();
                       boolean poolCanUse = false;
-                      for (TSamplePoolStatus pool : list) {
+                      for (FSamplePoolStatus pool : list) {
                           if (pool.getPoolStatus()) {
                               poolCanUse = true;
                               break;
@@ -268,13 +276,13 @@ public class GuidePhotometricWebSocket {
              task = tMeasureTaskService.getById(task.getId());
              taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
              List<Integer> usefulLocation = tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
-             R<TSamplePoolInfoVO> poolInfo=tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+             R<FSamplePoolInfoVO> poolInfo=tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
              if (!poolInfo.getSuccess()) {
 
                  sendError(deviceSerialNumber, "无样品池信息");
                  return;
              }
-             TSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+             FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
              Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
 
              int usefulPoolNum = 1;
