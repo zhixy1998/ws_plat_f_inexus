@@ -77,6 +77,10 @@ public class DeviceInfoPO extends BasePO {
     @TableField("device_port")
     private Integer devicePort;
 
+    @ApiModelProperty("暗电流信息")
+    @TableField("dark_info")
+    private String darkInfo;
+
     @ApiModelProperty("附件类型")
     @TableField("attachment_type")
     private Integer attachmentType;
