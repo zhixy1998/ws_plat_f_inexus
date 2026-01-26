@@ -3919,6 +3919,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
         List<LinearSegment> linearSegment = formulaUtil.getLinearSegment("34-U1702-01-0002");
+        Double coefficient = deviceInfoService.queryCoefficient("34-U1702-01-0002");
         // 根据任务id查询任务
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         // 将任务中的校零参数取出
@@ -3935,9 +3936,10 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
             String s = DataCountUtil.countTPercent(params.get(0), originData.get(0), 1.0);
             String yy = DataCountUtil.changeTPercentOrAbs2(null, s);
             double parsed = Double.parseDouble(params.get(0).getWl());
-            Double v = formulaUtil.calculateWavelength(parsed, linearSegment);
+
+            Double v = formulaUtil.calculateWavelength(parsed, linearSegment, coefficient);
             double parsed1 = Double.parseDouble(originData.get(0).getWl());
-            Double v1 = formulaUtil.calculateWavelength(parsed1, linearSegment);
+            Double v1 = formulaUtil.calculateWavelength(parsed1, linearSegment, coefficient);
             map.put("BaseLineStep", params.get(0).getStep());
             map.put("MeasureStep", originData.get(0).getStep());
             map.put("Abs", yy);
@@ -3950,7 +3952,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
 
         Double s = 12107.0;
         Double ans = formulaUtil.calculateWl(s, "34-U1702-01-0002");
-        Double wavelength = formulaUtil.calculateWavelength(s, linearSegment);
+        Double wavelength = formulaUtil.calculateWavelength(s, linearSegment, coefficient);
         System.out.println("---------------"+linearSegment.toString());
         System.out.println("---------------"+ans);
         System.out.println("++++++++++++++"+wavelength);

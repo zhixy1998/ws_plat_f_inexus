@@ -764,9 +764,8 @@ public class ConcisePhotometricNewWebSocket {
 
         SetParam param = new SetParam();
         param.setPhotoMode(Integer.valueOf(parameter.getLuminosity()));
-        Double v = formulaUtil.calculateStep(Double.parseDouble(parameter.getChangeLampWaveLength()), deviceSerialNumber);
 
-        param.setChangeLampWl(v);
+        param.setChangeLampWl(Double.parseDouble(parameter.getChangeLampWaveLength()));
         if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
             param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
         }

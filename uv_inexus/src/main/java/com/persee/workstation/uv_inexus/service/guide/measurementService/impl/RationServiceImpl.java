@@ -73,6 +73,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -382,8 +383,10 @@ public class RationServiceImpl implements RationService {
         BeanUtils.copyProperties(methodDto, parameter);
         MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
         String clearDataRange = methodDto.getClearDataRange();
-        if (StringUtils.hasText(clearDataRange) && !RationChangeMethodTypeEnums.noChange.getIdentity().equals(clearDataRange)) {
+        if (StringUtils.hasText(clearDataRange) && RationChangeMethodTypeEnums.noChange.getIdentity().equals(clearDataRange)) {
             //设置参数给仪器。。。待定
+            vo.setTaskId(methodDto.getTaskId());
+            vo.setMethodId(methodDto.getCurrentMethodId());
             return Result.ok(vo);
         }
 
@@ -423,7 +426,12 @@ public class RationServiceImpl implements RationService {
             //任务是新建状态
             task.setMethodKey(newMethod.getId());
             task.setCreateTime(LocalDateTime.now());
+            if (StringUtils.hasText(methodDto.getNewTaskName())) {
+                task.setTaskName(methodDto.getNewTaskName());
+            }
             tMeasureTaskService.updateById(task);
+            vo.setTaskId(task.getId());
+            vo.setTaskName(task.getTaskName());
             return Result.ok(vo);
         }
 
@@ -448,6 +456,8 @@ public class RationServiceImpl implements RationService {
                     task.setMethodKey(newMethod.getId());
                     task.setCreateTime(LocalDateTime.now());
                     tMeasureTaskService.updateById(task);
+                    generateTableInfo(task.getId(), task.getMethodKey(), false);
+                    task = tMeasureTaskService.getById(task.getId());
 
                     changeStandSampleDataDigit(task.getId(), digit);
                     changeUnknowSampleDigit(task.getId(), digit);
@@ -461,6 +471,8 @@ public class RationServiceImpl implements RationService {
                     task.setMethodKey(newMethod.getId());
                     task.setCreateTime(LocalDateTime.now());
                     tMeasureTaskService.updateById(task);
+                    generateTableInfo(task.getId(), task.getMethodKey(), false);
+                    task = tMeasureTaskService.getById(task.getId());
 
                     FittingReceiveInfo curveInfo = createFittingInfo(newMethod.getId());
 
@@ -505,9 +517,137 @@ public class RationServiceImpl implements RationService {
         newTask.setMeasureType(newMethod.getMeasurementType());
         newTask.setTableInfo(StringUtils.hasText(task.getTableInfo())?task.getTableInfo() : null);
         tMeasureTaskService.save(newTask);
+        generateTableInfo(newTask.getId(), newMethod.getId(), true);
         vo.setTaskId(newTask.getId());
         vo.setTaskName(newTask.getTaskName());
         return Result.ok(vo);
+    }
+
+    /**
+     *  生成表头和映射信息
+     */
+    private R<Boolean> generateTableInfo(String taskId, String methodId, Boolean clearOld) {
+
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null || !StringUtils.hasText(method.getMeasurementParamInfo())) {
+            //方法不存在
+            return R.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task == null) {
+            //任务不存在
+            return R.fail(YamlMessageSource.getMessageStatic("00000008"));
+        }
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        if (parameter == null || parameter.getSampleInputParams() == null || parameter.getSampleInputParams().size() <= parameter.getWaveLength().size()) {
+            log.info("参数信息不存在");
+            return R.ok();
+        }
+        List<InputParam> inputParams = parameter.getSampleInputParams();
+
+        RationTaskHeadSnapShot snapShot = new RationTaskHeadSnapShot();
+
+        TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
+        if (StringUtils.hasText(task.getTableInfo()) && !clearOld) {
+            snapShot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
+            if (snapShot == null) {
+                snapShot = new RationTaskHeadSnapShot();
+                taskHeadSnapshot = new TaskHeadSnapshot();
+            }
+        }
+        List<HeadVO> heads = taskHeadSnapshot.getSampleHeads();
+        if (heads == null) {
+            List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
+            heads = new ArrayList<>(preHead);
+        }
+
+        Set<String> allHeadIdentity = new HashSet<>();
+
+        for (HeadVO head : heads) {
+            allHeadIdentity.add(head.getIdentity());
+        }
+
+        List<InputParamMapTableHead> mapRelation = taskHeadSnapshot.getMapRelation();
+        Map<String, String> map = new HashMap<>();
+        for (InputParamMapTableHead relation : mapRelation) {
+            map.put(relation.getParamIdentity(), relation.getHeadIdentity());
+        }
+
+        String luminosity = WaveLengthEnum.abs.getCode();
+        List<String> waveLength = parameter.getWaveLength();
+
+        for (InputParam param : inputParams) {
+            String resultIdentity = param.getResultIdentity();
+            if (StringUtils.hasText(map.get(resultIdentity))) {
+                log.info("当前输入参数{}已存在", resultIdentity);
+                if (allHeadIdentity.contains(map.get(resultIdentity))) {
+                    log.info("当前输入参数{}绑定的表头{}存在", resultIdentity, map.get(resultIdentity));
+                    continue;
+                }
+            }
+
+            if (resultIdentity.matches("[A-Z]")) {
+                log.info("大写字母，只绑定，不添加");
+                int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
+                InputParamMapTableHead relation = new InputParamMapTableHead();
+                relation.setHeadName(param.getParamName());
+                relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+                relation.setParamName(param.getParamName());
+                relation.setParamIdentity(resultIdentity);
+                mapRelation.add(relation);
+                continue;
+            }
+
+            String newHeadIdentity = randomString(8);
+            while (allHeadIdentity.contains(newHeadIdentity)) {
+                newHeadIdentity = randomString(8);
+            }
+
+            //创建表头
+            HeadVO newHead = new HeadVO();
+            newHead.setName(param.getParamName());
+            newHead.setPrintTitle(param.getParamName());
+            newHead.setIdentity(newHeadIdentity);
+            newHead.setLocate(TableHeadILocateEnums.sample.getIdentity());
+
+            heads.add(newHead);
+            InputParamMapTableHead relation = new InputParamMapTableHead();
+            relation.setHeadName(param.getParamName());
+            relation.setHeadIdentity(newHeadIdentity);
+            relation.setParamName(param.getParamName());
+            relation.setParamIdentity(resultIdentity);
+            mapRelation.add(relation);
+            allHeadIdentity.add(newHeadIdentity);
+        }
+        taskHeadSnapshot.setSampleHeads(heads);
+        taskHeadSnapshot.setMapRelation(mapRelation);
+
+        List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_stand.getIdentity());
+        TaskHeadSnapshot standHead = new TaskHeadSnapshot();
+        standHead.setSampleHeads(preHead);
+        standHead.setMapRelation(new ArrayList<>());
+
+        snapShot.setStandHead(standHead);
+        snapShot.setUnknownHead(taskHeadSnapshot);
+
+        boolean update = tMeasureTaskService.updateById(task);
+
+        return update ? R.ok(true) : R.fail(YamlMessageSource.getMessageStatic("00000010"));
+
+
+    }
+
+    private String randomString(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(chars.length());
+            sb.append(chars.charAt(index));
+        }
+
+        return sb.toString();
     }
 
 
@@ -632,17 +772,11 @@ public class RationServiceImpl implements RationService {
         }
 
         return Objects.equals( oldParam.getSpectralBandwidth(), newParam.getSpectralBandwidth())&&
-//                oldParam.getSpectralBandwidth().equals(newParam.getSpectralBandwidth()) &&
                 Objects.equals(oldParam.getResponseTime(), newParam.getResponseTime()) &&
-//                oldParam.getResponseTime().equals(newParam.getResponseTime()) &&
                 Objects.equals(oldParam.getChangeLampWaveLength(),newParam.getChangeLampWaveLength()) &&
-//                oldParam.getChangeLampWaveLength().equals(newParam.getChangeLampWaveLength()) &&
                 Objects.equals(oldParam.getTimeInterval(),newParam.getTimeInterval())&&
-//                oldParam.getTimeInterval().equals(newParam.getTimeInterval()) &&
                 Objects.equals(oldParam.getRepeatMode(), newParam.getRepeatMode()) &&
-//                oldParam.getRepeatMode().equals(newParam.getRepeatMode()) &&
                 Objects.equals(oldParam.getRepeatCount(), newParam.getRepeatCount()) ;
-//                oldParam.getRepeatCount().equals(newParam.getRepeatCount());
     }
 
     //检查参数是否改变，true--未改变，false--改变了
@@ -1933,6 +2067,11 @@ public class RationServiceImpl implements RationService {
     public R<RationSaveCountDataInfo> saveSampleMeasureData(RationDataVO dataInfo) {
         String sampleId = dataInfo.getSampleId();
         String taskId = dataInfo.getTaskId();
+
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
+        tMeasureTaskService.updateById(task);
+
 
         LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureData::getTaskId, taskId)

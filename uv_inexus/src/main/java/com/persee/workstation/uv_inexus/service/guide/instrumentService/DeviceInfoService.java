@@ -58,4 +58,9 @@ public interface DeviceInfoService {
 
     R<DeviceMeasureVO> queryDeviceTypeInfo(String deviceSerialNumber);
 
+    /**
+     * 没有波长列表时的系数
+     */
+    Double queryCoefficient(String deviceSerialNumber);
+
 }

@@ -24,7 +24,6 @@ import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
-import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
@@ -113,6 +112,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
     @Autowired
     ConcisePublicUtilService concisePublicUtilService;
+
+    @Autowired
+    private DevOperationUtilService operationUtilService;
 
 //    @Autowired
 //    DeviceManageService manageService;
@@ -965,53 +967,51 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
             log.warn("解析测量参数失败: methodId={}, json={}", methodId, fMeasureMethod.getMeasurementParamInfo());
             return R.fail("解析测量参数失败");
         }
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        if (StringUtils.hasText(ip)) {
-            List<Command> list = new ArrayList<>();
+        DeviceInfoPO info = deviceInfoService.getInfo(deviceSerialNumber);
+        if (info != null && info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
 
-            String wave = StringUtils.hasText(parameter.getLuminosity()) ? parameter.getLuminosity(): WaveLengthEnum.abs.getCode();
-            String responseTime = StringUtils.hasText(parameter.getResponseTime()) ? parameter.getResponseTime() : "0.5";
-            String waveLength = "660";
-            if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()){
-                waveLength = parameter.getWaveLength().get(parameter.getWaveLength().size() - 1);
-            }
-
-            list.add(new Command(T600ComIdEnums.SetPhotoMode.getComId(), new Object[]{wave}));
-            list.add(new Command(T600ComIdEnums.SetResponseTime.getComId(), new Object[]{responseTime}));
-            String changeLampWaveLength = parameter.getChangeLampWaveLength();
-            Double v1 = formulaUtil.calculateStep(Double.parseDouble(changeLampWaveLength), deviceSerialNumber);
-            list.add(new Command(T600ComIdEnums.SetChangeLampWl.getComId(), new Object[]{v1}));
-
-            Double step = formulaUtil.calculateStep(Double.parseDouble(waveLength), deviceSerialNumber);
-            list.add(new Command(T600ComIdEnums.SetWl.getComId(), new Object[]{step}));
-            if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
-
-                String lampPos = StringUtils.hasText(parameter.getEnergyLamp()) ? parameter.getEnergyLamp() : "0";
-                int gain = parameter.getGain() == null ? 3: parameter.getGain();
-
-                list.add(new Command(T600ComIdEnums.SetLampPos.getComId(), new Object[]{lampPos}));
-                list.add(new Command(T600ComIdEnums.SetGain.getComId(), new Object[]{gain}));
-            }
             try {
-                R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_OTHER);
-                if (!r.getSuccess()) {
-                    log.info("设置参数，仪器抢占失败");
-                    return R.fail(r.getMessage());
+                DevOperationInputParam inputParam = new DevOperationInputParam();
+                inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+                SetParam param = new SetParam();
+
+
+                String wave = StringUtils.hasText(parameter.getLuminosity()) ? parameter.getLuminosity() : WaveLengthEnum.abs.getCode();
+                String responseTime = StringUtils.hasText(parameter.getResponseTime()) ? parameter.getResponseTime() : "0.5";
+                String waveLength = "660";
+                if (parameter.getWaveLength() != null && !parameter.getWaveLength().isEmpty()) {
+                    waveLength = parameter.getWaveLength().get(parameter.getWaveLength().size() - 1);
                 }
-                R<ChangeParam> changeParamR = devMessageUtil.photometricAndRationMeasurement(list, ip);
-                if (!changeParamR.getSuccess()) {
+                String changeLampWaveLength = parameter.getChangeLampWaveLength();
+
+                param.setPhotoMode(Integer.valueOf(wave));
+                param.setResponseTime(Double.valueOf(responseTime));
+                param.setSetWl(Double.valueOf(waveLength));
+                param.setChangeLampWl(Double.valueOf(changeLampWaveLength));
+                if (parameter.getLuminosity().equals(WaveLengthEnum.er.getCode()) || parameter.getLuminosity().equals(WaveLengthEnum.es.getCode())) {
+
+                    String lampPos = StringUtils.hasText(parameter.getEnergyLamp()) ? parameter.getEnergyLamp() : "0";
+                    int gain = parameter.getGain() == null ? 3 : parameter.getGain();
+
+                    param.setLampPos(Integer.valueOf(lampPos));
+                    param.setGain(gain);
+                }
+
+                inputParam.setParam(param);
+                R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+
+                if (!operation.getSuccess()) {
                     log.info("设置参数失败");
                     return R.fail("设置参数失败");
                 }
-                DetectionConstants.currentWavelength = waveLength;
+
             } catch (Exception e) {
                 log.info("参数设置异常");
-            } finally {
-                deviceInfoService.releaseDevice(deviceSerialNumber);
             }
         }
         return R.ok(true);
-
     }
 
 

@@ -54,6 +54,10 @@ public class DeviceTypeInfoPO {
     @ApiModelProperty("连接方式，0-串口，1-网口")
     private Integer connectMode;
 
+    @ApiModelProperty("没有波长列表时的系数")
+    @TableField(value = "coefficient")
+    private Double coefficient;
+
     @ApiModelProperty("增益")
     @TableField(value = "gain", typeHandler = JacksonTypeHandler.class)
     private List<Integer> gain;

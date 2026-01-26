@@ -19,7 +19,8 @@ import java.util.Map;
 @Getter
 public enum DevXmlEnums {
 
-    T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700");
+    T800("T800", "newFile/T800.xml", "T800", 40.0),
+    T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 50.0);
 //    T800("T800", "file/T800新.1.xml", "T800");
 
     // 仪器型号
@@ -28,6 +29,8 @@ public enum DevXmlEnums {
     private final String xmlPath;
     // 描述
     private final String desc;
+
+    private final Double coefficient;
 
 
     private static final Map<String, DevXmlEnums> enums = new HashMap<>();
@@ -39,10 +42,11 @@ public enum DevXmlEnums {
     }
 
     // 构造函数
-    DevXmlEnums(String devType, String xmlPath, String desc) {
+    DevXmlEnums(String devType, String xmlPath, String desc, Double coefficient) {
         this.devType = devType;
         this.xmlPath = xmlPath;
         this.desc = desc;
+        this.coefficient = coefficient;
     }
 
     public static DevXmlEnums getEnum(String type) {

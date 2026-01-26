@@ -48,6 +48,11 @@ public interface PhotometricService {
     Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType);
 
     /**
+     * 方法参数修改接口
+     */
+    Result<MeasurementCurrentInfoVO> updateMethodParam(PhotometricMethodParameterDto methodDto);
+
+    /**
      * 新增或删除样本
      */
     Result addOrDeleteSample(AddOrDeleteSampleDTO dto);

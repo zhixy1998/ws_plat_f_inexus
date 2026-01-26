@@ -19,4 +19,9 @@ public class RationTaskHeadSnapShot {
 
     TaskHeadSnapshot unknownHead;
 
+    public RationTaskHeadSnapShot() {
+        this.standHead = new TaskHeadSnapshot();
+        this.unknownHead = new TaskHeadSnapshot();
+    }
+
 }

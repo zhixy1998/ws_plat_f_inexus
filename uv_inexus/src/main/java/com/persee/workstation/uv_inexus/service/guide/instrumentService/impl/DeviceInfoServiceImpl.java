@@ -423,6 +423,31 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
         return R.ok(ans);
     }
 
+    @Override
+    public Double queryCoefficient(String deviceSerialNumber) {
+
+        String devModel = deviceSerialNumber.substring(3, 8);
+
+        LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
+        query.eq(DeviceModelInfoPO::getDevModel, devModel);
+
+        DeviceModelInfoPO deviceModelInfoPo = deviceModelInfoDAO.selectOne(query);
+
+        if (deviceModelInfoPo == null) {
+            //未识别该型号
+            return 50.0;
+        }
+
+        Integer devTypeId = deviceModelInfoPo.getDevTypeId();
+
+        DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(devTypeId);
+        if (deviceTypeInfoPO == null) {
+            //未识别该型号
+            return 50.0;
+        }
+        return deviceTypeInfoPO.getCoefficient() == null ? 50.0 : deviceTypeInfoPO.getCoefficient();
+    }
+
     private DeviceMeasureVO changeType(DeviceTypeInfoPO po) {
 
         DeviceMeasureVO ans = new DeviceMeasureVO();

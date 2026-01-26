@@ -13,6 +13,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -29,5 +30,11 @@ public class TaskHeadSnapshot {
 
     @ApiModelProperty("样品表头")
     private List<HeadVO> sampleHeads;
+
+    public TaskHeadSnapshot() {
+        this.taskHeads = new ArrayList<>();
+        this.mapRelation = new ArrayList<>();
+        this.sampleHeads = new ArrayList<>();
+    }
 
 }

@@ -608,6 +608,19 @@ public class UdpSendUtil {
                 return R.ok();
             }
 
+            if ("TestConnect".equals(cmdId)) {
+
+                OperationResultEntity entity = new OperationResultEntity();
+                R<Object> r = T800ReceiveTemp(deviceId, timeout);
+                if (!r.getSuccess()) {
+                    return r;
+                } else {
+                    entity.setIsSuccess(true);
+                    return R.ok(entity);
+                }
+            }
+
+
             R<List<byte[]>> r = new R<>();
             for (int i = 0; i < 3; i++) {
                 r = messageDeal(deviceId, timeout, Integer.MAX_VALUE, endBytes, headReceiveBytes);
@@ -694,6 +707,41 @@ public class UdpSendUtil {
             log.info("仪器信息出错：{}", e.getMessage());
             return R.fail("报文接收不足！");
         }
+    }
+
+    private R<Object> T800ReceiveTemp(String deviceId, Integer timeout) {
+
+        MessageStoreManager store = MessageStoreManager.getInstance();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String sendIp = device.getConnectIdentity();
+        long lastReceiveTime = System.currentTimeMillis();
+
+        try {
+            while (System.currentTimeMillis() - lastReceiveTime < timeout) {
+                if (store.getQueueSize(deviceId) == 0) {
+                    Thread.sleep(10);
+                    continue;
+                }
+
+                byte[] bytes = store.peekMessage(deviceId);
+
+                messageGetLog(deviceId, sendIp, bytes);
+
+                if (bytes.length == 1) {
+                    if (bytes[0] == 0x65) {
+                        byte[] message = store.getMessage(deviceId);
+
+                        return R.ok();
+                    }
+                }
+                lastReceiveTime = System.currentTimeMillis();
+            }
+
+        } catch (Exception e) {
+            log.info("处理消息出错：{}", e.getMessage());
+            return R.fail("处理消息出错！");
+        }
+        return R.ok();
     }
 
     //测试

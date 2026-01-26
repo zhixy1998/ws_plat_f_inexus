@@ -11,16 +11,27 @@ package com.persee.workstation.uv_inexus.util.deviceUtil.cmdEnums;
 
 import lombok.Getter;
 
+/**
+ * @author xudian
+ */
+
 @Getter
 public enum ConnectEnum {
-
-    Connect("Connect"),//, "连接设备"
-    GetSn("GetSn"),//, "获取设备SN"
-    GetAccessoryType("GetAccessoryType"), //, "获取设备配件类型"
+    //, "连接设备"
+    // 连接设备
+    Connect("Connect"),
+//    Connect("TestConnect"),
+    // 获取设备SN
+    GetSn("GetSn"),
+    // 获取设备配件类型
+    GetAccessoryType("GetAccessoryType"),
     SetCellPos("SetCellPos"),
-    GetInitStatus("GetInitStatus"),//, "获取设备初始化状态"
-    GetCellPos("GetCellPos"),// "获取当前样品池位置"
-    GetWlList("GetWlList"); // "获取波长信息"
+    // 获取设备初始化状态
+    GetInitStatus("GetInitStatus"),
+    // 获取当前样品池位置
+    GetCellPos("GetCellPos"),
+    // 获取波长信息
+    GetWlList("GetWlList");
 
     // 获取comId
     private final String comId;

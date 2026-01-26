@@ -245,6 +245,7 @@ public class RationMeasureNewWebSocket{
                 task = tMeasureTaskService.getById(task.getId());
                 task.setSampleKey(JSON.toJSONString(taskSpecimen));
                 task.setDeviceSerialNumber(deviceSerialNumber);
+                task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                 tMeasureTaskService.updateById(task);
 
 
@@ -465,6 +466,7 @@ public class RationMeasureNewWebSocket{
 
                     specimen.setIsTested(right);
                     task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                    task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                     tMeasureTaskService.updateById(task);
 
                     RationCountDataInfo absData = new RationCountDataInfo();
@@ -1523,9 +1525,8 @@ public class RationMeasureNewWebSocket{
 
         SetParam param = new SetParam();
         param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
-        Double v = formulaUtil.calculateStep(Double.parseDouble(parameter.getChangeLampWaveLength()), deviceSerialNumber);
 
-        param.setChangeLampWl(v);
+        param.setChangeLampWl(Double.valueOf(parameter.getChangeLampWaveLength()));
         if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
             param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
         }

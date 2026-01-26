@@ -10,11 +10,20 @@
 package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
+import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 
 /**
  * 测量任务表(TMeasureTask)表服务实现类
@@ -25,5 +34,32 @@ import org.springframework.stereotype.Service;
 @Service("tMeasureTaskService")
 public class TMeasureTaskServiceImpl extends ServiceImpl<TMeasureTaskMapper, TMeasureTask> implements TMeasureTaskService {
 
+
+    @Autowired
+    TMeasureTaskAttachmentService tMeasureTaskAttachmentService;
+    @Autowired
+    FMeasureTaskMapper fMeasureTaskMapper;
+
+    @Override
+    public boolean save(TMeasureTask entity) {
+        entity.setIsDelete("0");
+        boolean save = super.save(entity);
+        if (!save) {
+            return false;
+        }
+        TMeasureTaskAttachment taskAttachment = new TMeasureTaskAttachment();
+        taskAttachment.setTaskId(entity.getId());
+
+        QueryDataDTO queryDataDTO = new QueryDataDTO();
+        queryDataDTO.setTaskId(entity.getId());
+        queryDataDTO.setAllDisplay(false);
+        queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+        queryDataDTO.setOption(new ArrayList<>());
+        taskAttachment.setDataParam(JSON.toJSONString(queryDataDTO));
+
+        tMeasureTaskAttachmentService.save(taskAttachment);
+
+        return true;
+    }
 }
 

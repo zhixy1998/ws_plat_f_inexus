@@ -32,6 +32,7 @@ public enum OperationTypeEnums {
     Calibration(886, "校准", "deviceIp,connectType", "", 4),
     LiveDetection(887, "实时检测", "deviceIp,connectType", "", 3),
     Disconnect(888, "断开连接", "deviceIp,connectType", "", 4),
+    T800Connect(889, "T800连接", "deviceIp,connectType", "", 4),
     End(999, "枚举最后标志量，不做操作，方便添加", "deviceIp,connectType", "", 999);
 
     // 操作类型

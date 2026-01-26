@@ -22,7 +22,10 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
 
 @Component
 public class FormulaUtil {
@@ -37,13 +40,17 @@ public class FormulaUtil {
      * 根据步数计算波长
      * */
     public Double calculateWl(double actualStep, String deviceSerialNumber) {
+        Double coefficient = 50.0;
+        coefficient = infoService.queryCoefficient(deviceSerialNumber);
         try {
             List<LinearSegment> linearSegment = this.getLinearSegment(deviceSerialNumber);
+
+
             if (CollectionUtils.isNotEmpty(linearSegment)) {
                 // 先查找是否在某个线段范围内
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsActualStep(actualStep)) {
-                        return roundToOneDecimal((segment.getK() * actualStep+ segment.getB())/ 50);
+                        return roundToOneDecimal((segment.getK() * actualStep+ segment.getB())/ coefficient);
                     }
                 }
 
@@ -53,18 +60,18 @@ public class FormulaUtil {
 
                 // 如果小于最小线段的起始点，则使用最小线段计算
                 if (actualStep < firstSegment.getMinActualStep()) {
-                    return roundToOneDecimal((firstSegment.getK() * actualStep + firstSegment.getB()) / 50);
+                    return roundToOneDecimal((firstSegment.getK() * actualStep + firstSegment.getB()) / coefficient);
                 }
 
                 // 如果大于最大线段的结束点，则使用最大线段计算
                 if (actualStep > lastSegment.getMaxActualStep()) {
-                    return roundToOneDecimal((lastSegment.getK() * actualStep + lastSegment.getB()) / 50);
+                    return roundToOneDecimal((lastSegment.getK() * actualStep + lastSegment.getB()) / coefficient);
                 }
             }
         } catch (Exception e) {
-            return actualStep / 50;
+            return actualStep / coefficient;
         }
-        return actualStep / 50;
+        return actualStep / coefficient;
     }
 
     /**
@@ -74,12 +81,12 @@ public class FormulaUtil {
      * @param linearSegments
      * @return
      */
-    public Double calculateWavelength(double actualStep, List<LinearSegment> linearSegments) {
+    public Double calculateWavelength(double actualStep, List<LinearSegment> linearSegments, double coefficient) {
         try {
             if (CollectionUtils.isNotEmpty(linearSegments)) {
                 for (LinearSegment segment : linearSegments) {
                     if (segment.containsActualStep(actualStep)) {
-                        return roundToOneDecimal((segment.getK() * actualStep + segment.getB()) / 50);
+                        return roundToOneDecimal((segment.getK() * actualStep + segment.getB()) / coefficient);
                     }
                 }
                 // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
@@ -88,18 +95,18 @@ public class FormulaUtil {
 
                 // 如果小于最小线段的起始点，则使用最小线段计算
                 if (actualStep < firstSegment.getMinActualStep()) {
-                    return roundToOneDecimal((firstSegment.getK() * actualStep + firstSegment.getB()) / 50);
+                    return roundToOneDecimal((firstSegment.getK() * actualStep + firstSegment.getB()) / coefficient);
                 }
 
                 // 如果大于最大线段的结束点，则使用最大线段计算
                 if (actualStep > lastSegment.getMaxActualStep()) {
-                    return roundToOneDecimal((lastSegment.getK() * actualStep + lastSegment.getB()) / 50);
+                    return roundToOneDecimal((lastSegment.getK() * actualStep + lastSegment.getB()) / coefficient);
                 }
             }
         } catch (Exception e) {
-            return actualStep / 50;
+            return actualStep / coefficient;
         }
-        return actualStep / 50;
+        return actualStep / coefficient;
     }
 
 
@@ -170,12 +177,15 @@ public class FormulaUtil {
      * 根据波长计算步数
      * */
     public Double calculateStep(double wl, String deviceSerialNumber) {
+        Double coefficient = 50.0;
+        coefficient = infoService.queryCoefficient(deviceSerialNumber);
         try {
             List<LinearSegment> linearSegment = getLinearSegment(deviceSerialNumber);
+
             if (CollectionUtils.isNotEmpty(linearSegment)) {
                 for (LinearSegment segment : linearSegment) {
                     if (segment.containsWl(wl)) {
-                        return roundToOneDecimal((wl * 50 - segment.getB()) / segment.getK());
+                        return roundToOneDecimal((wl * coefficient - segment.getB()) / segment.getK());
                     }
                 }
                 // 如果不在任何线段范围内，则判断是小于最小值还是大于最大值
@@ -183,19 +193,19 @@ public class FormulaUtil {
                 LinearSegment lastSegment = linearSegment.get(linearSegment.size() - 1);
 
                 // 如果小于最小线段的起始点，则使用最小线段计算
-                if (wl*50 < firstSegment.getMinTheoryStep()) {
-                    return roundToOneDecimal((wl * 50 - firstSegment.getB()) / firstSegment.getK());
+                if (wl*coefficient < firstSegment.getMinTheoryStep()) {
+                    return roundToOneDecimal((wl * coefficient - firstSegment.getB()) / firstSegment.getK());
                 }
 
                 // 如果大于最大线段的结束点，则使用最大线段计算
-                if (wl*50 > lastSegment.getMaxActualStep()) {
-                    return roundToOneDecimal((wl * 50 - lastSegment.getB()) / lastSegment.getK());
+                if (wl*coefficient > lastSegment.getMaxActualStep()) {
+                    return roundToOneDecimal((wl * coefficient - lastSegment.getB()) / lastSegment.getK());
                 }
             }
         } catch (Exception e) {
-            return wl * 50;
+            return wl * coefficient;
         }
-        return wl * 50;
+        return wl * coefficient;
     }
 
     /**
@@ -205,19 +215,19 @@ public class FormulaUtil {
      * @param list
      * @return
      */
-    public Double calculateStepByWavelength(double wl, List<LinearSegment> list) {
+    public Double calculateStepByWavelength(double wl, List<LinearSegment> list, double  coefficient) {
         try {
             if (CollectionUtils.isNotEmpty(list)) {
                 for (LinearSegment segment : list) {
                     if (segment.containsWl(wl)) {
-                        return roundToOneDecimal((wl * 50 - segment.getB() )/ segment.getK());
+                        return roundToOneDecimal((wl * coefficient - segment.getB() )/ segment.getK());
                     }
                 }
             }
         } catch (Exception e) {
-            return wl * 50;
+            return wl * coefficient;
         }
-        return wl * 50;
+        return wl * coefficient;
     }
 
     public HashMap<String, Double> getLine(StepPoint p1, StepPoint p2) {
