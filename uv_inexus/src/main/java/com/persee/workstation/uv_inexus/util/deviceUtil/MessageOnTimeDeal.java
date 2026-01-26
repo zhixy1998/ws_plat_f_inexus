@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
@@ -49,8 +50,18 @@ public class MessageOnTimeDeal {
     private final Map<String, SpectrumDataProcessor> spectrumProcessorMap =
             new ConcurrentHashMap<>();
 
+    // 设备序列号 -> (wl -> z)
+    private static final Map<String, Map<String, String>> darkCache = new ConcurrentHashMap<>();
+
+
     @Autowired
     private SpectrumThreadManager spectrumThreadManager;
+
+    @Autowired
+    private DeviceInfoService deviceInfoService;
+
+    @Autowired
+    private SpectrumResultCalculator calculator;
 
 //    public Object parse(String cmdId, String deviceId, String deviceSerialNumber, byte[] sendBytes, int timeout) {
 //        boolean isScan;
@@ -385,10 +396,10 @@ public class MessageOnTimeDeal {
                             if (isScan) {
                                 sp.setScanRsd(temp);
 
-                                SpectrumCalcResult absResult = SpectrumResultCalculator.calculate(1, sp, RANGE, sp);
-                                SpectrumCalcResult tResult   = SpectrumResultCalculator.calculate(2, sp, RANGE, sp);
-                                SpectrumCalcResult esResult  = SpectrumResultCalculator.calculate(3, sp, RANGE, sp);
-                                SpectrumCalcResult erResult  = SpectrumResultCalculator.calculate(4, sp, RANGE, sp);
+                                SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
+                                SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
+                                SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
+                                SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
 
                                 sp.setAbsResult(absResult);
                                 sp.setTResult(tResult);
@@ -459,13 +470,10 @@ public class MessageOnTimeDeal {
                                 EndMarker.Normal(deviceSerialNumber, cmdId)
                         );
                     }
+                    saveDarkInfoToDb(deviceSerialNumber);
                     spectrumProcessorMap.remove(deviceSerialNumber);
                     if (isScan) scanProcessorThreadMap.remove(deviceSerialNumber);
                     else baselineProcessorThreadMap.remove(deviceSerialNumber);
-
-                    if (isScan) {
-                        clearDarkZ(pointStore, deviceSerialNumber);
-                    }
 
                     store.clearDeviceMessages(deviceId);
                     infoService.newReleaseDevice(deviceSerialNumber);
@@ -512,6 +520,7 @@ public class MessageOnTimeDeal {
 
         String dStr = rsd.getD();
         String sStr = rsd.getS();
+        String wlStr = String.valueOf(sp.getWavelength());
 
         if (!StringUtils.hasText(dStr) || !StringUtils.hasText(sStr)) return;
 
@@ -525,8 +534,8 @@ public class MessageOnTimeDeal {
             z = s / d;
         }
 
-        sp.setDarkZ(z);
-        //        DarkZQueueStore.put(deviceSerialNumber, z);
+        darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>())
+                .put(wlStr, String.valueOf(z));
 
         log.info("[Dark] device={},wl={}, d={}, s={}, Z={}",
                 deviceSerialNumber, sp.getWavelength(),dStr, sStr, z);
@@ -542,6 +551,25 @@ public class MessageOnTimeDeal {
 
         log.info("[CLEAR-DARK-Z] device={} 当前 pointStore 内 darkZ 已清空",
                 deviceSerialNumber);
+    }
+
+    private void saveDarkInfoToDb(String deviceSerialNumber) {
+        Map<String, String> map = darkCache.get(deviceSerialNumber);
+        if (map == null || map.isEmpty()) return;
+
+        DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
+        if (po != null) {
+            po.setDarkInfo1(map); // 保存整个Map
+            Boolean b = infoService.saveOrUpdateInfo(po);
+            if (b){
+                log.info("[Dark] device={} darkInfo写入数据库成功", deviceSerialNumber);
+            } else {
+                log.warn("[Dark] device={} darkInfo写入数据库失败", deviceSerialNumber);
+            }
+        }
+
+        // 清理缓存
+        darkCache.remove(deviceSerialNumber);
     }
 
 }

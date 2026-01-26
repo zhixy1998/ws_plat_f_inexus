@@ -1,26 +1,35 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
 import com.persee.workstation.uv_inexus.constant.Constants;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.Map;
 
+@Service
 @Slf4j
-public class SpectrumResultCalculator {             //计算ABS T% Es Er
+public class SpectrumResultCalculator {
+
+    @Autowired
+    private DeviceInfoService deviceInfoService;//计算ABS T% Es Er
 
     private static final double Z = 1.0;
 
     /**
      * @param luminosity 1=Abs, 2=T%, 3=Es, 4=Er
      */
-    public static SpectrumCalcResult calculate(
+    public SpectrumCalcResult calculate(
             int luminosity,
             SpectrumPoint point,
             SpectrumSourceType sourceType,
-            SpectrumPoint sp
+            String deviceSerialNumber
     ) {
 
         ChangeParam origin;
@@ -44,12 +53,12 @@ public class SpectrumResultCalculator {             //计算ABS T% Es Er
 
         switch (luminosity) {
             case 1: // Abs
-                String tPercent = calcTPercent(origin, real, sp);
+                String tPercent = calcTPercent(origin, real, point, deviceSerialNumber);
                 result.setAbs(calcAbsFromTPercent(tPercent));
                 break;
 
             case 2: // T%
-                result.setTPercent(calcTPercent(origin, real, sp));
+                result.setTPercent(calcTPercent(origin, real, point, deviceSerialNumber));
                 break;
 
             case 3: // Es
@@ -70,13 +79,18 @@ public class SpectrumResultCalculator {             //计算ABS T% Es Er
     // ======================= 核心公式 =======================
 
     /** 透光率 T% */
-    public static String calcTPercent(ChangeParam origin, ChangeParam real,SpectrumPoint sp) {
+    public String calcTPercent(ChangeParam origin, ChangeParam real,SpectrumPoint sp,String deviceSerialNumber) {
         try {
             double d1 = Double.parseDouble(real.getD());
             double r1 = Double.parseDouble(real.getR());
             double s1 = Double.parseDouble(real.getS());
-            Double Zobj = sp.getDarkZ();
-            double Z = (Zobj == null) ? 1.0 : Zobj;
+            String wl = String.valueOf(sp.getWavelength());
+
+//            Double Zobj = sp.getDarkZ();
+//            double Z = (Zobj == null) ? 1.0 : Zobj;
+
+            Double Z = getZFromDatabase(deviceSerialNumber, wl);
+            Z = (Z == null) ? 1.0 : Z;
 
             double a1;
             if (origin == null || origin.isEmpty()) {
@@ -135,6 +149,17 @@ public class SpectrumResultCalculator {             //计算ABS T% Es Er
     private static String calcEr(ChangeParam scan) {
         double r = Double.parseDouble(scan.getR());
         return String.valueOf((r / 8388607d) * 100);
+    }
+
+    private Double getZFromDatabase(String deviceSerialNumber, String wl) {
+
+        DeviceInfoPO po = deviceInfoService.getInfo(deviceSerialNumber);
+
+        if (po != null && po.getDarkInfo1() != null) {
+            Map<String, String> darkInfo = po.getDarkInfo1();
+            return Double.parseDouble(darkInfo.get(wl));  // 根据波长 wl 获取对应的 Z 值
+        }
+        return null;  // 如果没有找到 Z 值，返回 null
     }
 }
 

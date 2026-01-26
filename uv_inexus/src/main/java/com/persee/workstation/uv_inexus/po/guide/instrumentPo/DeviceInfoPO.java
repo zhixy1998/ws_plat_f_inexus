@@ -11,14 +11,17 @@ package com.persee.workstation.uv_inexus.po.guide.instrumentPo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.persee.workstation.uv_inexus.model.BasePO;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.Map;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("t_ins_info_temp")
+@TableName(value = "t_ins_info_temp", autoResultMap = true)
 public class DeviceInfoPO extends BasePO {
 
     @ApiModelProperty("机器ip")
@@ -88,6 +91,10 @@ public class DeviceInfoPO extends BasePO {
     @ApiModelProperty("附件名称")
     @TableField("attachment_name")
     private String attachmentName;
+
+    @ApiModelProperty("暗电流参数")
+    @TableField(value = "dark_info", typeHandler = JacksonTypeHandler.class)
+    private Map<String,String> darkInfo1;
 
     @ApiModelProperty("计算公式")
     @TableField("linear_segment")

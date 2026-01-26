@@ -142,4 +142,10 @@ public class OperationResultEntity {
     @ApiModelProperty("测量原始结果")
     private List<ChangeParam> originalMeasureResult;
 
+    @ApiModelProperty("获取仪器及灯的使用时间")
+    private float useTime;
+
+    @ApiModelProperty("获取仪器当前负高压")
+    private float currentNegativeHighVoltage;
+
 }

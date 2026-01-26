@@ -71,6 +71,7 @@ public class UdpResponseDeal {
             case "SetProgrammeModeTrue":
             case "SetProgrammeModeFalse":
             case "SetInitStatus":
+            case "SetCurrentNegativeHV":
                 return parseCompareBytes(responses, sendBytes);
             case "SetSlit1":
                 return parseSlit1(responses, sendBytes);
@@ -145,12 +146,56 @@ public class UdpResponseDeal {
                 return parseGetResponseTime(responses);
             case "Stop":
                 return parseStop(responses);
+            case"GetDeviceTotalTime":
+            case"GetWLampTotalTime":
+            case"GetDLampTotalTime":
+            case"GetDeviceCurrentTime":
+            case"GetWLampCurrentTime":
+            case"GetDLampCurrentTime":
+                return pareTime(responses);
+            case"GetCurrentNegativeHV":
+                return parseCurrentNegativeHV(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
             default:
                 return resultEntity;
         }
+    }
+
+    private static OperationResultEntity parseCurrentNegativeHV(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
+        }
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
+        }
+        int NegativeHV = ((lastResponse[4] & 0xFF) << 8) | ((lastResponse[5] & 0xFF));
+        resultEntity.setCurrentNegativeHighVoltage((float) NegativeHV / 10);
+        return resultEntity;
+    }
+
+    private static OperationResultEntity pareTime(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
+        }
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
+        }
+        int time = ((lastResponse[4] & 0xFF) << 8) | (lastResponse[5] & 0xFF);
+        System.out.println("设备运行时间: " + time);
+        resultEntity.setUseTime(time);
+        return resultEntity;
     }
 
     private static OperationResultEntity parseStop(List<byte[]> responses) {

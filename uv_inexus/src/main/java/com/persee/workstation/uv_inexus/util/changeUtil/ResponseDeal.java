@@ -65,6 +65,7 @@ public class ResponseDeal {
             case "SetProgrammeModeTrue":
             case "SetProgrammeModeFalse":
             case "SetInitStatus":
+            case"SetCurrentNegativeHV":
                 return parseCompareBytes(responses, sendBytes);
             case "SetPhotoMode":
                 return parseMode(responses, sendBytes);
@@ -133,12 +134,55 @@ public class ResponseDeal {
                 return parsePhotoMode(responses);
             case "GetResponseTime":
                 return parseGetResponseTime(responses);
+            case"GetDeviceTotalTime":
+            case"GetWLampTotalTime":
+            case"GetDLampTotalTime":
+            case"GetDeviceCurrentTime":
+            case"GetWLampCurrentTime":
+            case"GetDLampCurrentTime":
+                return pareTime(responses);
+            case"GetCurrentNegativeHV":
+                return parseCurrentNegativeHV(responses);
 
 //            case "NewIP":
 //                return parseNewIP(responses);
             default:
                 return 0;
         }
+    }
+
+    private static Object parseCurrentNegativeHV(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+        int NegativeHV = ((lastResponse[4] & 0xFF) << 8) | ((lastResponse[5] & 0xFF));
+        System.out.println("负高压: " + NegativeHV / 10);
+        return NegativeHV / 10;
+    }
+
+    private static Object pareTime(List<byte[]> responses) {
+        if (responses == null || responses.isEmpty()) {
+            System.out.println("回应列表为空");
+            result = "false";
+            return false;
+        }
+        byte[] lastResponse = responses.get(responses.size() - 1);
+        if (lastResponse == null || lastResponse.length < 5) {
+            System.out.println("回应报文长度不足5字节，实际长度: " + (lastResponse == null ? 0 : lastResponse.length));
+            result = "false";
+            return false;
+        }
+        int time = ((lastResponse[4] & 0xFF) << 8) | (lastResponse[5] & 0xFF);
+        System.out.println("设备运行时间: " + time);
+        return time;
     }
 
     private static Object parseGetResponseTime(List<byte[]> responses) {

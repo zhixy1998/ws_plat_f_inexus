@@ -174,6 +174,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private StandardMaterialManager materialManager;
     @Autowired
     private FindMaxOffsetUVTestTool findMaxOffsetUVTestTool;
+    @Autowired
+    private SpectrumResultCalculator calculator;
     private final UnknowCountMessageQueue queue = MessageOnTimeDeal.unknowCountMessageQueue;
     //用任务id做主键，任务当前测量的检测项为值，线程安全
     private final Map<String, String> currentMeasureItemMap = new ConcurrentHashMap<>();
@@ -4030,7 +4032,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             SpectrumPoint point = new SpectrumPoint(Double.parseDouble(wavelength));
                             point.setZeroRsd(pairValue.getKey());
                             point.setMeasureRsd(pairValue.getValue());
-                            SpectrumCalcResult result = SpectrumResultCalculator.calculate(finalPhotoMode, point, SpectrumSourceType.SINGLE,point);
+                            SpectrumCalcResult result = calculator.calculate(finalPhotoMode, point, SpectrumSourceType.SINGLE, deviceSerialNumber);
                             WaveLengthEnum anEnum = WaveLengthEnum.getByName(luminosityMode);
                             if (anEnum != null) {
                                 JSONObject object = new JSONObject();
