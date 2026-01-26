@@ -1,0 +1,11 @@
+/*
+ * *
+ *  * 版权所有 (C) 2025 北京普析通用仪器有限责任公司。保留所有权利。
+ *  * 本软件受商业机密法和版权法保护。
+ *  * 本代码仅限与北京普析通用仪器有限责任公司签订有效协议的授权用户内部使用。
+ *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
+ *
+ */
+
+ALTER TABLE `t800_uv_inexus`.`t_device_type_info`
+ADD COLUMN `coefficient` int(11) NULL COMMENT '没有波长列表时的默认系数' AFTER `connect_mode`;
