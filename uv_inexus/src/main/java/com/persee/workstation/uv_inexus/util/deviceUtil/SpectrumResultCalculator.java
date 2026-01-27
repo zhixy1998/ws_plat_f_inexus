@@ -155,8 +155,8 @@ public class SpectrumResultCalculator {
 
         DeviceInfoPO po = deviceInfoService.getInfo(deviceSerialNumber);
 
-        if (po != null && po.getDarkInfo1() != null) {
-            Map<String, String> darkInfo = po.getDarkInfo1();
+        if (po != null && po.getDarkInfo() != null) {
+            Map<String, String> darkInfo = po.getDarkInfo();
             return Double.parseDouble(darkInfo.get(wl));  // 根据波长 wl 获取对应的 Z 值
         }
         return null;  // 如果没有找到 Z 值，返回 null

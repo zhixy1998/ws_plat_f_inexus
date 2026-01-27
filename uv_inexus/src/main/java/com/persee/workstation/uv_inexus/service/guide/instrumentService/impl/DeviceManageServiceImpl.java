@@ -37,6 +37,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
 import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstants;
@@ -48,10 +49,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -1319,7 +1317,68 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             return R.fail(YamlMessageSource.getMessageStatic("00203004"));
         }
 
-        String ip = infoService.getIp(dto.getDeviceSerialNumber());
+        if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
+            Double start = 900.0;
+            Double end = 190.0;
+            Double step = 0.5;
+
+            int scanSpeed = 3;
+            double darkBand = 2.0;
+
+            for (DataNameValue datum : dto.getData()) {
+                try {
+
+                    if (datum.getDataKey().equals("start")) {
+                        start = Double.parseDouble(datum.getDataValue());
+                    }
+                    if (datum.getDataKey().equals("end")) {
+                        end = Double.parseDouble(datum.getDataValue());
+                    }
+                    if (datum.getDataKey().equals("scanSpeed")) {
+                        scanSpeed = Integer.parseInt(datum.getDataValue());
+                    }
+
+                    if (datum.getDataKey().equals("darkband")) {
+                        darkBand = Double.parseDouble(datum.getDataValue());
+                    }
+                    if (datum.getDataKey().equals("step")) {
+                        step = Double.parseDouble(datum.getDataValue());
+                    }
+                } catch (Exception e) {
+                    log.info("参数转换失败");
+                }
+            }
+
+            if (end >= start) {
+                return R.fail("终止波长不能大于起始波长");
+            }
+
+            start = start + step;
+            end = end - step;
+            DevOperationInputParam inputParam = new DevOperationInputParam();
+            inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+
+            SetParam param = new SetParam();
+            param.setScanWlInterval(step);
+            param.setStartWl(start);
+            param.setEndWl(end);
+            param.setScanSpeed(scanSpeed);
+            param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+            inputParam.setDeviceSerialNumber(dto.getDeviceSerialNumber());
+
+            Boolean needSetSit = infoService.isNeedSetSit(dto.getDeviceSerialNumber());
+            if (needSetSit) {
+                param.setSlit1(darkBand);
+            }
+            inputParam.setParam(param);
+            R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                return R.fail(operation.getMessage());
+            }
+
+            inputParam.setOperationType(OperationTypeEnums.ActionCmdEnum.getType());
+        }
+
         log.info("调用校准");
 
         DevOperationInputParam inputParam = new DevOperationInputParam();
@@ -1413,6 +1472,19 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
         inputParam.setWavelength(param);
         inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return R.fail(operation.getMessage());
+        } else {
+            return R.ok(true);
+        }
+    }
+
+    @Override
+    public R<Boolean> addDevice(SearchInfo info) {
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceInfo(info);
+        inputParam.setOperationType(OperationTypeEnums.T800Connect.getType());
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
         if (!operation.getSuccess()) {
             return R.fail(operation.getMessage());

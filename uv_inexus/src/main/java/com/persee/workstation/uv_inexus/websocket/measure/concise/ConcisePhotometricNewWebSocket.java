@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPhotometricParameter;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -892,7 +893,20 @@ public class ConcisePhotometricNewWebSocket {
                 }
             }
 
-            String tPercent = DataCountUtil.countTPercent(originRsd, response, 1.0);
+            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+            Map<String, String> darkInfo = info.getDarkInfo();
+            double z = 1.0;
+            try {
+                if (darkInfo != null && darkInfo.containsKey(waveLength)) {
+                    z = Double.parseDouble(darkInfo.get(waveLength));
+                }
+            } catch (Exception e) {
+                log.info("获取z值出错");
+            }
+
+
+
+            String tPercent = DataCountUtil.countTPercent(originRsd, response, z);
             String data = DataCountUtil.changeTPercentOrAbs(null, tPercent);
             measureData.put(waveLength + "-" + WaveLengthEnum.abs.getCode(), data);
             measureData.put(waveLength + "-" + WaveLengthEnum.tPercent.getCode(), tPercent);

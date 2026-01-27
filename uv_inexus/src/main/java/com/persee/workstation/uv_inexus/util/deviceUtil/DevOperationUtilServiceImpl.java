@@ -190,6 +190,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
 
             String deviceId = deviceManager.getOrCreateDeviceId(po.getIp(), port, po.getConnectType());
+            DevOperationUtilServiceImpl.deviceManager.updateDeviceInfo(deviceId, Constants.CONNECT_DEVICE_NO, "", type);
 
             R<Object> r = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
             if (r.getSuccess()) {
@@ -292,7 +293,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
 
         if (!StringUtils.hasText(deviceSerialNumber)) {
-
             if (!inputParam.getOperationType().equals(OperationTypeEnums.Find.getType()) && !inputParam.getOperationType().equals(OperationTypeEnums.Connect.getType())) {
                 return R.fail("请先连接仪器！");
             }
@@ -352,6 +352,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 break;
             case Calibration:
                 result = calibration(inputParam);
+                release = false;
                 break;
             case Zero:
                 result = zero(inputParam);
@@ -368,7 +369,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 release = false;
                 break;
             case T800Connect:
-
+                t800Connect(inputParam);
+                break;
             default:
                 infoService.newReleaseDevice(deviceSerialNumber);
                 break;
@@ -398,8 +400,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         ans.add(info);
         result.setSearchInfo(ans);
         return R.ok(result);
-
-
     }
 
     private R<OperationResultEntity> stop(DevOperationInputParam inputParam) {
@@ -841,7 +841,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
             List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
-            R<List<SearchInfo>> r = udpSendUtil.searchDevice(defaultIp, comId, bytes, Timeout, inputParam.getConnectType());
+            R<List<SearchInfo>> r = udpSendUtil.searchDevice(defaultIp, comId, bytes, Timeout, inputParam.getConnectType(), anEnum.getPort());
             if (r.getSuccess()) {
                 List<SearchInfo> data = r.getData();
                 allDevice.addAll(data);
@@ -947,14 +947,16 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 String deviceMac = deviceInfo.getDeviceMac();
                 String[] deviceMacParts = deviceMac.split(":");
                 for (int i = 0; i < deviceMacParts.length; i++) {
-                    param[6 + i] = deviceMacParts[i];  // 将 MAC 地址的十进制值填充到 param 数组的相应位置
+                    // 将 MAC 地址的十进制值填充到 param 数组的相应位置
+                    param[6 + i] = deviceMacParts[i];
                 }
 
                 StringBuilder newIp = new StringBuilder();
 
                 String[] deviceIpParts = ethernetIp.split("\\.");
                 for (int i = 0; i <= 2; i++) {
-                    param[12 + i] = Integer.parseInt(deviceIpParts[i]);  // 逆序插入 IP 地址的最后 3 个部分
+                    // 逆序插入 IP 地址的最后 3 个部分
+                    param[12 + i] = Integer.parseInt(deviceIpParts[i]);
                     newIp.append(deviceIpParts[i]).append(".");
                 }
 
@@ -1173,8 +1175,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                                     if (!part.matches("\\d+")) {
                                         break; // 或 continue，根据逻辑决定
                                     }
-                                    int intValue = Integer.parseInt(part); // 解析为 int（支持 0~255）
-                                    endBytes[i] = (byte) (intValue & 0xFF); // 安全转为 byte（保留低8位）
+                                    // 解析为 int（支持 0~255）
+                                    int intValue = Integer.parseInt(part);
+                                    // 安全转为 byte（保留低8位）
+                                    endBytes[i] = (byte) (intValue & 0xFF);
 //                                        System.out.println(endBytes[i]);
                                 }
                             }
@@ -1439,11 +1443,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         if (!part.matches("\\d+")) {
                             break; // 或 continue，根据逻辑决定
                         }
-                        int intValue = Integer.parseInt(part); // 解析为 int（支持 0~255）
-                        endBytes[i] = (byte) (intValue & 0xFF); // 安全转为 byte（保留低8位）
+                        // 解析为 int（支持 0~255）
+                        int intValue = Integer.parseInt(part);
+                        // 安全转为 byte（保留低8位）
+                        endBytes[i] = (byte) (intValue & 0xFF);
                     }
                 }
-                calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, false, deviceSerialNumber, endBytes, headReceiveBytes);
+                boolean isDealOnTime = xmlKey.equals(DevXmlEnums.T800.getDevType());
+
+                calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
             } else {
                 calibration = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
             }
@@ -1451,7 +1459,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if (!calibration.getSuccess()) {
             //TODO 国际化待定
             String description = DeviceCalibrationInfoEnum.getDescription(inputParam.getCalibrationType());
-
+            infoService.releaseDevice(deviceSerialNumber);
             return R.fail(description + "失败");
         }
 

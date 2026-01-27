@@ -73,9 +73,10 @@ public class SpectrumDataProcessor {                 //计算RSD
         }
 
         List<LinearSegment> segments = formulaUtil.getLinearSegment(deviceSerialNumber);
+
         Double realWavelength = null;
         if (segments != null && !segments.isEmpty()) {
-            realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
+            realWavelength = formulaUtil.calculateWl(step,deviceSerialNumber);
         }
 
         // ================= 2. 强制约束波长（测试阶段，完全按 index） =================

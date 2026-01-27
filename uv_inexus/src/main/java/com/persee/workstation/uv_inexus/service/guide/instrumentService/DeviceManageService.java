@@ -162,4 +162,6 @@ public interface DeviceManageService {
 
     R<Boolean> zero(String deviceSerialNumber, List<String> param);
 
+    R<Boolean> addDevice(SearchInfo info);
+
 }

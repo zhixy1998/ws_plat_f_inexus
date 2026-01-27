@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -358,7 +359,7 @@ public class MessageOnTimeDeal {
                         byte[] useMessage = store.getMessage(deviceId);
 
                         recvCount++;
-                        if (recvCount >= 2) currentTimeout = 5000L;
+                        if (recvCount >= 2) currentTimeout = 10000L;
                         startTime = System.currentTimeMillis();
 
                         // ----------------- 2. 解析报文 -----------------
@@ -533,6 +534,8 @@ public class MessageOnTimeDeal {
             double s = Double.parseDouble(sStr);
             z = s / d;
         }
+        BigDecimal wl = new BigDecimal(wlStr);
+        wlStr = wl.toPlainString();
 
         darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>())
                 .put(wlStr, String.valueOf(z));
@@ -559,7 +562,7 @@ public class MessageOnTimeDeal {
 
         DeviceInfoPO po = infoService.getInfo(deviceSerialNumber);
         if (po != null) {
-            po.setDarkInfo1(map); // 保存整个Map
+            po.setDarkInfo(map); // 保存整个Map
             Boolean b = infoService.saveOrUpdateInfo(po);
             if (b){
                 log.info("[Dark] device={} darkInfo写入数据库成功", deviceSerialNumber);

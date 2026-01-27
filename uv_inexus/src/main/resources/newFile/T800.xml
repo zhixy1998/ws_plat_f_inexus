@@ -1496,8 +1496,8 @@
     </HeadReceiveBytes>
 </ProtocolItem>
     <ProtocolItem>
-<!--        <ID>TestConnect</ID>-->
-        <ID>Connect</ID>
+        <ID>TestConnect</ID>
+<!--        <ID>Connect</ID>-->
         <Describe>测试连接</Describe>
         <Timeout>3000</Timeout>
         <ACK>Y</ACK>

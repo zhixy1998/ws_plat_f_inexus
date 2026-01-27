@@ -72,7 +72,7 @@ public class UdpSendUtil {
     /**
      * 以太网查找设备
      */
-    public R<List<SearchInfo>> searchDevice(String sendIp, String cmdId, byte[] sendBytes, int timeout, int connectType) {
+    public R<List<SearchInfo>> searchDevice(String sendIp, String cmdId, byte[] sendBytes, int timeout, int connectType, Integer sendPort) {
 
         DatagramSocket socket;
         int receivePort;
@@ -184,11 +184,14 @@ public class UdpSendUtil {
             }
             receivePort = connectUtil.getSocketPort(connectType);
 
+            DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+            String xmlKey = device.getXmlKey();
+            DevXmlEnums anEnum = DevXmlEnums.getEnum(xmlKey);
 
             MessageStoreManager store = MessageStoreManager.getInstance();
 
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
-                    InetAddress.getByName("255.255.255.255"), sendPort);
+                    InetAddress.getByName("255.255.255.255"), anEnum.getPort());
             store.clearDeviceMessages(deviceId);
 
             String newDeviceId = deviceManager.getOrCreateDeviceId(newIp, receivePort, connectType);
@@ -210,13 +213,15 @@ public class UdpSendUtil {
                 }
                 byte[] bytes = store.peekMessage(deviceId);
 
-                if (bytes == null) continue;
+                if (bytes == null) {
+                    continue;
+                }
 
                 String receiveIp = deviceManager.getIpByDeviceId(deviceId);
 
                 messageGetLog(deviceId, receiveIp, bytes);
 
-                if (isNewIpStartMessage(bytes)) {
+                if (isNewIpStartMessage(bytes, deviceId)) {
                     log.info("07回应报文，开始接收");
                     start = !start;
 
@@ -320,8 +325,11 @@ public class UdpSendUtil {
 
             MessageStoreManager store = MessageStoreManager.getInstance();
 
+            String xmlKey = device.getXmlKey();
+            DevXmlEnums anEnum = DevXmlEnums.getEnum(xmlKey);
+
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
-                    InetAddress.getByName(sendIp), sendPort);
+                    InetAddress.getByName(sendIp), anEnum.getPort());
             store.clearDeviceMessages(deviceId);
 
             socket.send(packet);
@@ -329,88 +337,17 @@ public class UdpSendUtil {
             sendMessageLog(sendIp, cmdId, sendBytes);
             R<List<byte[]>> r = new R<>();
 
-            if (!Objects.equals(cmdId, "Stop")) {
-                for (int i = 0; i < 3; i++) {
+            if ("TestConnect".equals(cmdId)) {
 
-                    r = messageDeal(deviceId, timeout, replyNumber, null, headReceiveBytes);
-                    if (r.getSuccess()) {
-                        break;
-                    } else {
-                        log.info("报文接收不足！重试第{}次", i+1);
-                        store.clearDeviceMessages(deviceId);
-                        socket.send(packet);
-
-                        sendMessageLog(sendIp, cmdId, sendBytes);
-                    }
+                OperationResultEntity entity = new OperationResultEntity();
+                R<Object> r1 = T800ReceiveTemp(deviceId, timeout);
+                if (!r1.getSuccess()) {
+                    return r1;
+                } else {
+                    entity.setIsSuccess(true);
+                    return R.ok(entity);
                 }
             }
-
-            if (!r.getSuccess()) {
-                return R.fail(DeviceConstants.unCountResponse);
-            }
-            List<byte[]> responses = r.getData();
-
-            OperationResultEntity parse = UdpResponseDeal.parse(cmdId, responses, sendBytes);
-
-            if (!parse.getIsSuccess()) {
-                return R.fail("解析失败！");
-            }
-
-            if (parse.getCurrentMeasure() != null){
-                ChangeParam changeParam = parse.getCurrentMeasure();
-                System.out.println("测量值：" + changeParam);
-            }
-
-            return R.ok(parse);
-
-
-        } catch (Exception e) {
-
-            log.info("仪器信息出错：{}", e.getMessage());
-            return R.fail("报文接收不足！");
-        }
-    }
-
-
-    //测试
-    public R<Object> knowTotalReceiveSend1(String deviceId, String cmdId, byte[] sendBytes, int replyNumber, int timeout, Integer connectType, List<String> headReceiveBytes) {
-
-        if (replyNumber < 1) {
-            return R.fail("回应报文字节数大于 1 ！");
-        }
-
-        DatagramSocket socket;
-        int receivePort;
-        boolean isReceiveRunning;
-
-        try {
-
-            socket = connectUtil.getSocket(connectType, ethernetReceivePort);
-
-            if (socket == null) {
-                return R.fail("请检查"+ DeviceConnectTypeEnum.getEnum(connectType).getDesc()+"连接！");
-            }
-            receivePort = connectUtil.getSocketPort(connectType);
-            isReceiveRunning = udpReceiveThread.isRunning(connectType);
-
-
-            if (!isReceiveRunning) {
-                udpReceiveThread.networkReceptionStart(receivePort, connectType);
-            }
-
-            DeviceConnectInfo device = deviceManager.getDevice(deviceId);
-            String sendIp = device.getConnectIdentity();
-
-            MessageStoreManager store = MessageStoreManager.getInstance();
-
-            DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
-                    InetAddress.getByName(sendIp), sendPort);
-            store.clearDeviceMessages(deviceId);
-
-            socket.send(packet);
-
-            sendMessageLog(sendIp, cmdId, sendBytes);
-            R<List<byte[]>> r = new R<>();
 
             if (!Objects.equals(cmdId, "Stop")) {
                 for (int i = 0; i < 3; i++) {
@@ -597,8 +534,12 @@ public class UdpSendUtil {
 
             String sendIp = device.getConnectIdentity();
 
+
+            String xmlKey = device.getXmlKey();
+            DevXmlEnums anEnum = DevXmlEnums.getEnum(xmlKey);
+
             DatagramPacket packet = new DatagramPacket(sendBytes, sendBytes.length,
-                    InetAddress.getByName(sendIp), sendPort);
+                    InetAddress.getByName(sendIp), anEnum.getPort());
             store.clearDeviceMessages(sendIp);
 
             socket.send(packet);
@@ -774,7 +715,7 @@ public class UdpSendUtil {
 
                 messageGetLog(deviceId, sendIp, bytes);
 
-                if (isStartMessage(bytes)) {
+                if (isStartMessage(bytes, deviceId)) {
                     log.info("07回应报文");
                     start = !start;
                     if (!start) {
@@ -871,32 +812,47 @@ public class UdpSendUtil {
                 reply[3] == SEARCH_DEVICE_HEADER2;
     }
 
-    private boolean isNewIpStartMessage(byte[] firstBytes) {
+    private boolean isNewIpStartMessage(byte[] firstBytes, String deviceId) {
+
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        DevXmlEnums anEnum = DevXmlEnums.getEnum(xmlKey);
+        byte[] newIpStartMessage = anEnum.getNewIpStartMessage();
 
 
+        // 验证字节数组长度
+        if (firstBytes == null || newIpStartMessage == null || firstBytes.length < 12 || newIpStartMessage.length < 12) {
+            return false;
+        }
 
-        // 4. 验证报文开头（关键修正：从前往后匹配）
-        return firstBytes[0] == (byte) 0xFE &&
-                firstBytes[1] == (byte) 0xB5 &&
-                firstBytes[2] == (byte) 0xFF &&
-                firstBytes[3] == (byte) 0x07 &&
-                firstBytes[4] == (byte) 0x00 &&
-                firstBytes[5] == (byte) 0x00 &&
-                firstBytes[6] == (byte) 0x00 &&
-                firstBytes[7] == (byte) 0x00 &&
-                firstBytes[8] == (byte) 0x00 &&
-                firstBytes[9] == (byte) 0x00 &&
-                firstBytes[10] == (byte) 0x00 &&
-                firstBytes[11] == (byte) 0xB9;
+        // 比较两个字节数组的前12个字节
+        for (int i = 0; i < 12; i++) {
+            if (firstBytes[i] != newIpStartMessage[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    private boolean isStartMessage(byte[] message) {
-//        FF B5 FF 07 00 00 00 00 00 00 00 BA
+    private boolean isStartMessage(byte[] message, String deviceId) {
 
-        return message[0] == (byte) 0xFF && message[1] == (byte) 0xB5
-                && message[2] == (byte) 0xFF && message[3] == (byte) 0x07 && message[4] == (byte) 0x00
-                && message[5] == (byte) 0x00 && message[6] == (byte) 0x00 && message[7] == (byte) 0x00
-                && message[8] == (byte) 0x00 && message[9] == (byte) 0x00 && message[10] == (byte) 0x00 && message[11] == (byte) 0xBA;
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        DevXmlEnums anEnum = DevXmlEnums.getEnum(xmlKey);
+        byte[] startMessage = anEnum.getStartMessage();
+
+        // 验证字节数组长度
+        if (message == null || startMessage == null || message.length < 12 || startMessage.length < 12) {
+            return false;
+        }
+
+        // 比较两个字节数组的前12个字节
+        for (int i = 0; i < 12; i++) {
+            if (message[i] != startMessage[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     //定时器工具
@@ -921,13 +877,17 @@ public class UdpSendUtil {
 
         MessageStoreManager store = MessageStoreManager.getInstance();
 
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        DevXmlEnums anEnum = DevXmlEnums.getEnum(xmlKey);
+
         DatagramPacket packet;
         try {
             packet = new DatagramPacket(
                     sendBytes,
                     sendBytes.length,
                     InetAddress.getByName(sendIp),
-                    sendPort
+                    anEnum.getPort()
             );
             timeMeasureIsStop.put(deviceId, false);
         } catch (Exception e) {
@@ -1008,7 +968,7 @@ public class UdpSendUtil {
                 continue;
             }
             log.info("开始接收，起始时间：{}，当前时间：{}", firstTimeMillis, System.currentTimeMillis());
-            if (isStartMessage(bytes)) {
+            if (isStartMessage(bytes, deviceId)) {
                 log.info("07回应报文");
                 start = !start;
                 if (!start) {

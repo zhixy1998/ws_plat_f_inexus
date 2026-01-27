@@ -18,6 +18,7 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
+import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -1137,7 +1138,14 @@ public class ConciseRationMeasureNewWebSocket {
                     }
                 }
             }
-            String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, 1.0);
+
+            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+            Map<String, String> darkInfo = info.getDarkInfo();
+            double z = 1.0;
+            if (darkInfo != null && darkInfo.containsKey(waveLength)) {
+                z = Double.parseDouble(darkInfo.get(waveLength));
+            }
+            String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, z);
             String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
             JSONObject currentInfo = new JSONObject();
@@ -1293,7 +1301,13 @@ public class ConciseRationMeasureNewWebSocket {
                         }
                     }
                 }
-                String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, 1.0);
+                DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                Map<String, String> darkInfo = info.getDarkInfo();
+                double z = 1.0;
+                if (darkInfo != null && darkInfo.containsKey(waveLength)) {
+                    z = Double.parseDouble(darkInfo.get(waveLength));
+                }
+                String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, z);
                 String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();

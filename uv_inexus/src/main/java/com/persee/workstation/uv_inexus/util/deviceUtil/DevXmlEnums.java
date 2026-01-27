@@ -16,12 +16,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @author xudian
+ */
+
 @Getter
 public enum DevXmlEnums {
 
-    T800("T800", "newFile/T800.xml", "T800", 40.0),
-    T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 50.0);
-//    T800("T800", "file/T800新.1.xml", "T800");
+    T800("T800", "newFile/T800.xml", "T800", 8000,
+            new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
+
+            new byte[]{(byte) 0xFE, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x69}),
+
+    T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 5000,
+            new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xBA},
+            new byte[]{(byte) 0xFE, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xB9});
 
     // 仪器型号
     private final String devType;
@@ -29,8 +46,12 @@ public enum DevXmlEnums {
     private final String xmlPath;
     // 描述
     private final String desc;
+    // 发送端口
+    private final int port;
+    // 起始报文
+    private final byte[] startMessage;
 
-    private final Double coefficient;
+    private final byte[] newIpStartMessage;
 
 
     private static final Map<String, DevXmlEnums> enums = new HashMap<>();
@@ -42,13 +63,15 @@ public enum DevXmlEnums {
     }
 
     // 构造函数
-    DevXmlEnums(String devType, String xmlPath, String desc, Double coefficient) {
+    DevXmlEnums(String devType, String xmlPath, String desc, int port,
+                byte[] startMessage, byte[] newIpStartMessage) {
         this.devType = devType;
         this.xmlPath = xmlPath;
         this.desc = desc;
-        this.coefficient = coefficient;
+        this.port = port;
+        this.startMessage = startMessage;
+        this.newIpStartMessage = newIpStartMessage;
     }
-
     public static DevXmlEnums getEnum(String type) {
         return enums.get(type);
     }

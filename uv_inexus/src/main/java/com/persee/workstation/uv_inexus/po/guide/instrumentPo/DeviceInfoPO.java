@@ -80,10 +80,6 @@ public class DeviceInfoPO extends BasePO {
     @TableField("device_port")
     private Integer devicePort;
 
-    @ApiModelProperty("暗电流信息")
-    @TableField("dark_info")
-    private String darkInfo;
-
     @ApiModelProperty("附件类型")
     @TableField("attachment_type")
     private Integer attachmentType;
@@ -94,7 +90,7 @@ public class DeviceInfoPO extends BasePO {
 
     @ApiModelProperty("暗电流参数")
     @TableField(value = "dark_info", typeHandler = JacksonTypeHandler.class)
-    private Map<String,String> darkInfo1;
+    private Map<String,String> darkInfo;
 
     @ApiModelProperty("计算公式")
     @TableField("linear_segment")

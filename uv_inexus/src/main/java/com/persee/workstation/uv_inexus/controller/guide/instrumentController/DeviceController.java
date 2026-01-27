@@ -443,6 +443,17 @@ public class DeviceController {
 
     }
 
+    @PostMapping("/addDevice")
+    @ApiOperation("添加仪器接口")
+    public Result<Boolean> addDevice(@RequestBody SearchInfo info) {
+        R<Boolean> r = deviceManageService.addDevice(info);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
     @PostMapping("/test")
     public void test(){
         deviceManageService.test();
