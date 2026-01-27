@@ -842,11 +842,9 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         }
         List<HeadVO> heads = taskHeadSnapshot.getSampleHeads();
-        if (heads == null) {
-
+        if (heads == null|| heads.isEmpty()) {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
             heads = new ArrayList<>(preHead);
-
         }
 
         Set<String> allHeadIdentity = new HashSet<>();

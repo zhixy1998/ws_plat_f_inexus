@@ -180,6 +180,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
         two = manager.getDevCurrentStatus(info.getDeviceId());
 
+        if (first == null || two == null){
+            return R.fail("获取当前状态值失败");
+        }
+
         boolean flag = first.equals(Constants.DEVICE_STATUS_IDLE) || first.equals(Constants.DEVICE_STATUS_ECHO);
         boolean flag2 = two.equals(Constants.DEVICE_STATUS_IDLE) || two.equals(Constants.DEVICE_STATUS_ECHO);
 

@@ -1488,7 +1488,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 }
                 break;
         }
-        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId)
+        Page<TMeasureMethod> page = tMeasureMethodService.page(new Page<>(pageNum, pageSize), new QueryWrapper<TMeasureMethod>()
+                .eq("project_item_key", projectId)
                 .eq("measurement_type", measureType)
                .eq("method_creator", updateBy));
         if (page==null||page.getRecords().size() == 0){
@@ -1507,7 +1508,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                 // 查询当前方法id的所有任务中最近采集的任务时间,最近采集任务的时间字段是collection_start_time
                 TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("method_key", method.getId())
                         .orderByDesc("create_time").last("limit 1"));
-                vo.setLastTaskTime(task.getStartTime().format(formatter));
+                if(task.getStartTime()!=null){
+                    vo.setLastTaskTime(task.getStartTime().format(formatter));
+                }
             }
             records.add(vo);
         }
@@ -1842,6 +1845,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
+        }
+        if (decimalDigits == null) {
+            decimalDigits = Constants.DEFAULT_DECIMAL_NUM;
         }
         TMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null) {

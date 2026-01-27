@@ -157,15 +157,6 @@ public class TimeNewOneWebSocket {
             dataSaved.set(true);
             saveLatch.countDown();
         }
-
-        // 标记连接已关闭
-        void markConnectionClosed() {
-            connectionClosed.set(true);
-        }
-
-        boolean isConnectionClosed() {
-            return connectionClosed.get();
-        }
     }
 
     /**
@@ -587,7 +578,6 @@ public class TimeNewOneWebSocket {
 
 
             // 寻峰寻谷
-
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(analysisBody, headers);
             String peakUrl = pythonPathConstant.getPeakSearching();
             String valleyUrl = pythonPathConstant.getValleySearching();

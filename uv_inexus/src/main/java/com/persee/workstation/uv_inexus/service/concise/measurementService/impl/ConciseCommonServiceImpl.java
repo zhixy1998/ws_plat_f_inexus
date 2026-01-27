@@ -1307,6 +1307,9 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
             //请选择任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
         }
+        if (decimalDigits == null) {
+            decimalDigits = Constants.DEFAULT_DECIMAL_NUM;
+        }
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         if (task == null) {
             //没有找到该任务

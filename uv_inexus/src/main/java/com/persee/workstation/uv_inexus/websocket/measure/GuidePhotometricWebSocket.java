@@ -16,6 +16,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricParameter;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DataIdentityEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
@@ -250,6 +251,7 @@ public class GuidePhotometricWebSocket {
                   specimen.setIsTested(right);
                   task.setSampleKey(JSON.toJSONString(taskSpecimen));
                   task.setDeviceSerialNumber(deviceSerialNumber);
+                  task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
                   tMeasureTaskService.updateById(task);
 
                   TMeasureSample sample=tMeasureSampleService.getById(sampleId);
@@ -363,6 +365,7 @@ public class GuidePhotometricWebSocket {
              }
              task = tMeasureTaskService.getById(task.getId());
              task.setSampleKey(JSON.toJSONString(taskSpecimen));
+             task.setTaskStatus(TaskStatusEnum.TESTED.getCode());
              tMeasureTaskService.updateById(task);
              //样品测完，移动样品池到1号
              if (isAutoChangePool) {
