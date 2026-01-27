@@ -83,8 +83,18 @@ public enum CalibrationTypeEnum {
     //响应时间
     RESPONSE_TIME("responseTime", "响应时间"),
 
+    MEASUREMENT_STATUS_NOT_PERFORMED("0", "未检测"),
+    MEASUREMENT_STATUS_SUCCESS("1", "检测成功"),
+    MEASUREMENT_STATUS_FAILED("2", "检测失败"),
 
-    //光度模式
+
+    CHECK_RESULT_NOT_EVALUATED("0", "未检测"),
+    CHECK_RESULT_PASS("1", "合格"),
+    CHECK_RESULT_FAIL("2", "不合格"),
+
+    //检测项信息
+    CHECK_ITEM_INFO("measurementItemType", "检测项信息"),
+    // 光度模式
     LUMINOSITY_MODE("luminosityMode", "光度模式"),
     CLOSE("close", "关闭"),
 

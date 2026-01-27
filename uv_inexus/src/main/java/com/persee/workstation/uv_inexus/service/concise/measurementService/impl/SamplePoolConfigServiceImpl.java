@@ -321,7 +321,6 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         }
     }
 
-    @DS("concise")
     @Override
     public R<SamplePoolInfoVO> queryCalibrationSampleInfo(String deviceSerialNumber) {
         LambdaQueryWrapper<SamplePoolConfigPO> query = new LambdaQueryWrapper<>();

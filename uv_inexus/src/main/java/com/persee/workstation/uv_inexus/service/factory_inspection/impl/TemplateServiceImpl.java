@@ -1254,12 +1254,14 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     public Result<Page<TemplateResponseDto>> getTemplateList(TemplateQeqDto templateQeqDto) {
         Page<ExcelTemplate> page = new Page<>(templateQeqDto.getPageNum(), templateQeqDto.getPageSize());
         LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery());
-        queryWrapper.like(ExcelTemplate::getCreateBy, templateQeqDto.getUpdateBy()).or().isNull(ExcelTemplate::getCreateBy);
-
+        queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery())
+                .and(wrapper -> wrapper
+                        .like(ExcelTemplate::getCreateBy, templateQeqDto.getUpdateBy())
+                        .or()
+                        .isNull(ExcelTemplate::getCreateBy)
+                );
         // 获取分页结果
         Page<ExcelTemplate> pageResult = this.page(page, queryWrapper);
-
         // 转换为TemplateResponseDto
         Page<TemplateResponseDto> dtoPage = new Page<>(pageResult.getCurrent(), pageResult.getSize(), pageResult.getTotal());
         List<TemplateResponseDto> dtoList = pageResult.getRecords().stream()
@@ -1419,6 +1421,60 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
                     ));
             List<Map<String, Object>> maps = generateDropdownOptions();
             groupedData.put("dropdownOptions", maps);
+            Result<Map<String, List<Map<String, Object>>>> result = new Result<>();
+            if (!list.isEmpty()) {
+                result.setObj(new Object[]{list.get(0)});
+            }
+            result.setData(groupedData);
+            result.setCode(200);
+            return result;
+        } catch (Exception e) {
+            log.error("获取分组数据失败", e);
+            return Result.fail("获取分组数据失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public Result<Map<String, List<Map<String, Object>>>> getGroupedData(String templateCode) {
+        try {
+            LambdaQueryWrapper<ExcelTemplate> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ExcelTemplate::getTemplateCode, templateCode);
+            List<ExcelTemplate> list = this.list(wrapper);
+
+
+            // 获取结构化数据
+            Result<List<Map<String, Object>>> structuredDataResult = getStructuredData(templateCode);
+            if (structuredDataResult.getCode() != 200) {
+                return Result.fail("获取数据失败: " + structuredDataResult.getMessage());
+            }
+
+            List<Map<String, Object>> dataList = structuredDataResult.getData();
+
+            // 按指定字段分组
+            Map<String, List<Map<String, Object>>> groupedData = dataList.stream()
+                    .collect(Collectors.groupingBy(
+                            map -> String.valueOf(map.getOrDefault(TEST_CATEGORY.getDescription(), "未知")),
+                            LinkedHashMap::new,
+                            Collectors.toList()
+                    ));
+            // 从每个分组的map中移除id字段
+            groupedData.replaceAll((key, value) ->
+                    value.stream()
+                            .map(itemMap -> {
+                                Map<String, Object> newMap = new HashMap<>(itemMap);
+                                newMap.remove("id");
+                                return newMap;
+                            })
+                            .collect(Collectors.toList())
+            );
+            // 过滤掉每个分组中的含id的map
+//            groupedData.replaceAll((key, value) ->
+//                    value.stream()
+//                            .filter(itemMap -> !itemMap.containsKey("id"))
+//                            .collect(Collectors.toList())
+//            );
+//            List<Map<String, Object>> maps = generateDropdownOptions();
+//            groupedData.put("dropdownOptions", maps);
             Result<Map<String, List<Map<String, Object>>>> result = new Result<>();
             if (!list.isEmpty()) {
                 result.setObj(new Object[]{list.get(0)});

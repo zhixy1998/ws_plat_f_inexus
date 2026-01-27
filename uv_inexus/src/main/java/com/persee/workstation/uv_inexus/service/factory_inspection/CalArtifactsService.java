@@ -21,11 +21,31 @@ import com.persee.workstation.uv_inexus.po.factory_inspection.CalArtifacts;
 
 public interface CalArtifactsService extends IService<CalArtifacts> {
 
+    /**
+     * 新增
+     * @param calArtifacts
+     * @return
+     */
     Result addCalArtifacts(CalArtifactsSaveDto calArtifacts);
 
+    /**
+     * 删除
+     * @param id
+     * @return
+     */
     boolean delCalArtifacts(String id);
 
+    /**
+     * 批量查询
+     * @param dto
+     * @return
+     */
     Result<IPage<StandardSubstanceDto>> listCalArtifacts(QueryCalStdCatsDto dto);
 
+    /**
+     * 批量删除
+     * @param ids
+     * @return
+     */
     Result<String> batchDelCalStdCats(BatchDelDto ids);
 }

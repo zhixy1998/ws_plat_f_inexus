@@ -13,5 +13,11 @@ import org.apache.poi.ss.usermodel.Workbook;
  *
  */
 public interface WorkbookDataService extends IService<WorkbookData> {
+    /**
+     * 上传Excel文件
+     * @param workbook
+     * @param templateCode
+     * @return
+     */
      boolean uploadExcel(Workbook workbook, String templateCode);
 }

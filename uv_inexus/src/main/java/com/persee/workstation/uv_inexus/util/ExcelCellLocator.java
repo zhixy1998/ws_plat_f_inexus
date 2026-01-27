@@ -1,9 +1,6 @@
 package com.persee.workstation.uv_inexus.util;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.springframework.stereotype.Component;
 
@@ -279,7 +276,14 @@ public class ExcelCellLocator {
 
         return rowIndices;
     }
-
+    private String getCellValueAsString(Cell cell, FormulaEvaluator evaluator) {
+        if (cell == null) return "";
+        try {
+            return new DataFormatter().formatCellValue(cell, evaluator);
+        } catch (Exception e) {
+            return "";
+        }
+    }
     /**
      * 获取单元格位置信息（包括合并区域信息）
      */
@@ -288,8 +292,9 @@ public class ExcelCellLocator {
         int colIndex = cell.getColumnIndex();
         int rowSpan = 1;
         int colSpan = 1;
-        String value = getCellValueAsString(cell);
-
+        Workbook workbook = sheet.getWorkbook();
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+        String value = getCellValueAsString(cell, evaluator);
         // 检查是否在合并区域内
         for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
             CellRangeAddress mergedRegion = sheet.getMergedRegion(i);

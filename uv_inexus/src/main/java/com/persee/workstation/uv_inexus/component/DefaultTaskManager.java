@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.component;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.persee.workstation.uv_inexus.model.R;
@@ -11,8 +12,10 @@ import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceMa
 import com.persee.workstation.uv_inexus.util.IdGeneratorUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
 import static com.persee.workstation.uv_inexus.enums.factoryInspection.CalibrationTypeEnum.*;
 
@@ -25,6 +28,7 @@ import static com.persee.workstation.uv_inexus.enums.factoryInspection.Calibrati
  *
  */
 @Component
+@DS("factory_inspection")
 public class DefaultTaskManager {
 
     @Autowired
@@ -45,6 +49,7 @@ public class DefaultTaskManager {
     }
 
     // 确保存在未开始的默认任务
+    @Transactional(rollbackFor = Exception.class)
     public void ensureDefaultTaskExists(String updateBy) {
 //        QueryWrapper<TaskManagement> wrapper = new QueryWrapper<>();
 //        wrapper.eq("completion_status", TASK_NOT_STARTED.getCode())
@@ -64,6 +69,7 @@ public class DefaultTaskManager {
                 TaskManagement newTask = createDefaultTask(updateBy);
                 taskManagementService.save(newTask);
                 this.defaultTaskId = newTask.getId();
+
             }else {
                 //使用最新的任务，不管有没有使用过
                 TaskManagement task1 = taskManagementService.getOne(
@@ -92,6 +98,12 @@ public class DefaultTaskManager {
         if (device!=null&& StringUtils.isNotBlank(device.getData())) {
             task.setOperationInstrument(device.getData());
         }
+
+        ExcelTemplate excelTemplate = new ExcelTemplate();
+        excelTemplate.setId(template.getId());
+        excelTemplate.setUseCount(template.getUseCount() + 1);
+        excelTemplate.setLastUsed(new Date());
+        templateService.updateById(excelTemplate);
         return task;
     }
 }

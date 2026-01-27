@@ -14,5 +14,11 @@ import java.util.List;
  *  * 任何未经明确许可的复制、使用、修改、分发或公开均被严格禁止。
  *
  */public interface SpectrumDataService extends IService<SpectrumData> {
+    /**
+     * 查询多条数据
+     * @param taskId
+     * @param itemId
+     * @return
+     */
     List<ExcelWebSocketHandler.MultiLineSpectrumData> findByTaskIdAndItemId(String taskId, String itemId);
 }

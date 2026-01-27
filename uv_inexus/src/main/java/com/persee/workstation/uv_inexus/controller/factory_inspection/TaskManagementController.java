@@ -130,6 +130,14 @@ public class TaskManagementController {
     public Result<Boolean> setStandardMaterial(@RequestBody SetSamplePoolDto dto) {
         return taskManagementService.setStandardMaterial(dto);
     }
+
+    /**
+     * 清空样品池
+     */
+    @RequestMapping("/clear-sample-pool")
+    public Result<Boolean> clearSamplePool(@RequestParam String taskId) {
+        return taskManagementService.clearSamplePool(taskId);
+    }
     //先看一下选了哪些标准物
     @RequestMapping("/get-standard-material")
     public Result<List<SetSamplePoolDto>> getStandardMaterial(@RequestParam String taskId) {

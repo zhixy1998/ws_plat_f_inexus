@@ -76,7 +76,7 @@ public class TemplateController {
     @GetMapping("/buildResultTemplate")
     @ApiOperation("构建结果模板")
     Result buildResultTemplate(String templateCode) {
-        return templateService.buildResultTemplate(templateCode,null);
+        return templateService.buildResultTemplate(templateCode, null);
     }
 
     @GetMapping("/export")
@@ -106,8 +106,17 @@ public class TemplateController {
     @GetMapping("/data/list")
     @ApiOperation("查看模板")
     public Result<Map<String, List<Map<String, Object>>>> getGroupedData(
-            @RequestParam("templateCode") String templateCode) {
-        return templateService.getGroupedData(templateCode, TEST_CATEGORY.getDescription());
+            @RequestParam("templateCode") String templateCode,
+            @RequestParam(value = "type",required = false) String type,
+            @RequestParam("updateBy") String updateBy) {
+        if (type==null){
+            type="1";
+        }
+        if (type.equals("0")){
+            return templateService.getGroupedData(templateCode);
+        }else {
+            return templateService.getGroupedData(templateCode, TEST_CATEGORY.getDescription());
+        }
     }
 
 //    @GetMapping("/headers")
@@ -134,12 +143,6 @@ public class TemplateController {
             if (request == null) {
                 return Result.fail("请求参数不能为空");
             }
-            // 检查模板是否已存在
-//            Result<List<String>> existingHeaders = templateService.getHeaders(request.getTemplateCode());
-//            if (existingHeaders.getCode() == 200) {
-//                return Result.fail("模板代码已存在");
-//            }
-
             // 调用服务创建模板
             Result<String> result = templateService.createTemplate(request);
 

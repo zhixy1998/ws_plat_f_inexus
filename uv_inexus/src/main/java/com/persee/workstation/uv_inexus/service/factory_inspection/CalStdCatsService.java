@@ -22,13 +22,36 @@ import java.util.Map;
 
 
 public interface CalStdCatsService extends IService<CalStdCats> {
+    /**
+     * 添加标定标准类别
+     * @param calStdCats
+     * @return
+     */
     Result addCalStdCats(CalStdCatsSaveDto calStdCats);
 
+    /**
+     * 删除标定标准类别
+     * @param id
+     * @return
+     */
     Result delCalStdCats(String id);
 
+    /**
+     * 查询标定标准类别
+     * @param queryCalStdCatsDto
+     * @return
+     */
     Result<Page<CalStdCats>> listCalStdCats(QueryCalStdCatsDto queryCalStdCatsDto);
 
+    /**
+     * 获取标定标准类别名称列表
+     * @return
+     */
     Result<Map> getCalStdCatsNameList();
 
+    /**
+     * 获取标定标准类别统计信息
+     * @return
+     */
     Result<List<MaterialStatisticsDto>> getCalStdCatsStats();
 }

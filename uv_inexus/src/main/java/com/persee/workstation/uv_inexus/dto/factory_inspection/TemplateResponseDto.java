@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.dto.factory_inspection;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -29,18 +30,20 @@ public class TemplateResponseDto {
     /**
      * 模板类型
      */
-    @ApiModelProperty(value="模板类型")
+    @ApiModelProperty(value = "模板类型")
     private String category;
     /**
      * 最近一次使用时间
      */
-    @ApiModelProperty(value="最近一次使用时间")
+    @ApiModelProperty(value = "最近一次使用时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    //格式化成yyyy-MM-dd HH:mm:ss
     private Date lastUsed;
 
     /**
      * 模板描述
      */
-    @ApiModelProperty(value="模板描述")
+    @ApiModelProperty(value = "模板描述")
     private String remark;
     @ApiModelProperty(value = "使用次数")
     private Integer useCount;

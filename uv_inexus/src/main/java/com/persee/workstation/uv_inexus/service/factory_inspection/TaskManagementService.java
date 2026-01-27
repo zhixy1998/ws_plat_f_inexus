@@ -47,4 +47,6 @@ public interface TaskManagementService extends IService<TaskManagement> {
     Result<Map<String, Object>> generateReport(String taskId);
 
     Result<List<SetSamplePoolDto>> getStandardMaterial(String taskId);
+
+    Result<Boolean> clearSamplePool(String taskId);
 }

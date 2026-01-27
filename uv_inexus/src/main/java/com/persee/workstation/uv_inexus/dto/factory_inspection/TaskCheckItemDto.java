@@ -122,10 +122,17 @@ public class TaskCheckItemDto {
 
         /**
          * 检查结果
-         * 检测项的执行结果，如"通过"、"失败"、"无结果"
+         * 检测项的执行结果，如"通过"、"失败"、"未检测"
          */
-        @ApiModelProperty("检查结果（如'通过'、'失败'、'无结果'）")
-        private String result;
+        @ApiModelProperty("检测结果")
+        private String measured;
+
+        /**
+         * 判定结果
+         * 检测项的判定结果，如"通过"、"失败"、"未检测"
+         */
+        @ApiModelProperty("判定结果")
+        private String checkResult;
 
         /**
          * 执行时间

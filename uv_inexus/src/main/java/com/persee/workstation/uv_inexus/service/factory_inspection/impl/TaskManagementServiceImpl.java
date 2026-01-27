@@ -77,6 +77,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
     private DefaultTaskManager defaultTaskManager;
     @Autowired
     private SmartExcelContentConverter smartExcelContentConverter;
+
     @Override
     public Result getList(TaskMgrQueryDto queryDto) {
         try {
@@ -116,7 +117,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 //                String defaultTaskId = defaultTaskManager.getDefaultTaskId();
 //                management = this.getById(defaultTaskId);
 //            } else {
-                management = this.getById(id);
+            management = this.getById(id);
 //            }
 
 
@@ -178,7 +179,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             management.setResultTemplate(task.getUseTemplate());
             management.setContentCategory(TEMPLATE_USER_DEFINED_TASK.getCode());
             management.setCreateBy(task.getCreateBy());
-            if (device.getData() != null){
+            if (device.getData() != null) {
                 management.setOperationInstrument(device.getData());
             }
             boolean save = this.save(management);
@@ -190,6 +191,12 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 //                ExcelTemplate template = templateService.getById(management.getUseTemplate());
                 map.put("taskId", management.getId());
                 map.put("templateCode", task.getUseTemplate());
+
+                ExcelTemplate excelTemplate = new ExcelTemplate();
+                excelTemplate.setId(template.getId());
+                excelTemplate.setUseCount(template.getUseCount() + 1);
+                excelTemplate.setLastUsed(new Date());
+                templateService.updateById(excelTemplate);
                 return Result.ok(map);
             }
             return Result.ok(null);
@@ -227,6 +234,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             //获取之前的关联关系
             LambdaQueryWrapper<TaskExecutionDetail> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(TaskExecutionDetail::getTaskId, taskCreateDto.getCurrentTaskId());
+            log.info("dangqianrenwu id" + taskCreateDto.getCurrentTaskId());
             List<TaskExecutionDetail> detailList = taskExecutionDetailMapper.selectList(wrapper);
             //构建新任务的关联关系
             if (!CollectionUtils.isEmpty(detailList)) {
@@ -237,13 +245,21 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
 
             boolean b = taskExecutionDetailService.saveBatch(detailList);
-            if (b) {
-                HashMap<String, String> map = new HashMap<>();
-                ExcelTemplate template = templateService.getById(task.getUseTemplate());
-                map.put("taskId", task.getId());
-                map.put("templateCode", template.getTemplateCode());
-                return Result.ok(map);
-            }
+            log.info("dfsfs" + detailList.size());
+
+            HashMap<String, String> map = new HashMap<>();
+            ExcelTemplate template = templateService.getById(task.getUseTemplate());
+            map.put("taskId", task.getId());
+            map.put("templateCode", template.getTemplateCode());
+
+
+            ExcelTemplate excelTemplate = new ExcelTemplate();
+            excelTemplate.setId(template.getId());
+            excelTemplate.setUseCount(template.getUseCount() + 1);
+            excelTemplate.setLastUsed(new Date());
+            templateService.updateById(excelTemplate);
+            return Result.ok(map);
+
         } catch (Exception e) {
             log.error("复制任务失败", e);
         }
@@ -406,7 +422,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             if (cachedObject instanceof List) {
                 // 进行类型检查和转换
                 dtoList = (List<SetSamplePoolDto>) cachedObject;
-                if (CollectionUtils.isNotEmpty(dtoList)){
+                if (CollectionUtils.isNotEmpty(dtoList)) {
                     // 使用迭代器安全地修改集合
                     Iterator<SetSamplePoolDto> iterator = dtoList.iterator();
                     while (iterator.hasNext()) {
@@ -417,6 +433,8 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                         }
                     }
                     // 添加更新后的对象
+                    dtoList.add(dto);
+                } else {
                     dtoList.add(dto);
                 }
             } else {
@@ -492,7 +510,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
 //            }
             if (this.removeById(taskId)) {
                 return Result.ok("删除成功");
-            }else {
+            } else {
                 return Result.fail("删除任务失败");
             }
         } catch (Exception e) {
@@ -510,7 +528,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             boolean b = this.removeBatchByIds(taskIds);
             return b ? Result.ok("删除成功") : Result.fail("删除失败");
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error("批量删除任务失败", e);
         }
         return null;
@@ -525,7 +543,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             Map<String, Object> smartContent = smartExcelContentConverter.convertToSimpleStructure(taskWorkbook);
             return Result.ok(smartContent);
 
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error("生成报告失败", e);
         }
         return Result.fail(null);
@@ -546,12 +564,23 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         return Result.ok(dtoList);
     }
 
+    @Override
+    public Result<Boolean> clearSamplePool(String taskId) {
+        try {
+            List<SetSamplePoolDto> dtoList = new ArrayList<>();
+            ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), taskId, dtoList, String.class, Object.class);
+        } catch (Exception e) {
+            log.error("清空样本池失败", e);
+        }
+        return Result.ok(true);
+    }
+
     /**
      * 导出指定名称的 Sheet 页到文件，保留所有格式并计算公式
      *
-     * @param workbook Excel 工作簿对象
+     * @param workbook  Excel 工作簿对象
      * @param sheetName 要导出的 sheet 名称
-     * @param filePath 导出文件路径
+     * @param filePath  导出文件路径
      */
     public void exportSheetWithCompleteFormat(Workbook workbook, String sheetName, String filePath) {
         if (workbook == null || StringUtils.isBlank(sheetName) || StringUtils.isBlank(filePath)) {
@@ -667,7 +696,7 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
      *
      * @param sourceCell 源单元格
      * @param targetCell 目标单元格
-     * @param workbook 工作簿对象
+     * @param workbook   工作簿对象
      */
     private void copyCellDataWithFormulaCalculation(Cell sourceCell, Cell targetCell, Workbook workbook) {
         switch (sourceCell.getCellType()) {
@@ -821,10 +850,12 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
             }
             // 设置可选择的标准物质列表
             setAvailableStandards(item);
-
+            item.setMeasured(asset.getMeasured());
+            item.setCheckResult(asset.getCheckResult());
             checkItems.add(item);
         }
-
+        //先按照group排序，再按照itemName排序
+        checkItems.sort(Comparator.comparing(TaskCheckItemDto.CheckItem::getGroupName).thenComparing(TaskCheckItemDto.CheckItem::getItemName));
         return checkItems;
     }
 
