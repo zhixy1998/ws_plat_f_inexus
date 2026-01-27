@@ -19,6 +19,7 @@ import com.persee.workstation.uv_inexus.dto.softwareActivation.DeviceInfoDTO;
 import com.persee.workstation.uv_inexus.po.guide.softwareActivation.SoftwareActivationPO;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceDiscoveryService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ResponseDeal;
+import com.persee.workstation.uv_inexus.util.deviceUtil.UdpResponseDeal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -28,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -75,19 +78,44 @@ public class DeviceDiscoveryServiceImpl implements DeviceDiscoveryService {
     @Override
     public List<DeviceInfoDTO> generateMockDeviceData() {
         try {
+//            List<DeviceInfoDTO> mockData = new ArrayList<>();
+//            String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
+//            String sn = ResponseDeal.Sn;
+//
+//            if (sn == null || sn.isEmpty()) {
+//                return mockData;
+//            }else if(sn.length() >= 16){
+//                sn = sn.substring(0, 16);
+//            }
+//            // 使用解析好的序列号替代
+//            mockData.add(buildDeviceInfo(sn, currentTime));
+//
+//            return mockData;
             List<DeviceInfoDTO> mockData = new ArrayList<>();
             String currentTime = LocalDateTime.now().format(DATE_FORMATTER);
-            String sn = ResponseDeal.Sn;
 
-            if (sn == null || sn.isEmpty()) {
+            // 获取两个可能的序列号
+            String sn = ResponseDeal.Sn;
+            String sn1 = UdpResponseDeal.Sn;
+
+            // 如果两个序列号都为空，直接返回空列表
+            if ((sn == null || sn.isEmpty()) && (sn1 == null || sn1.isEmpty())) {
                 return mockData;
-            }else if(sn.length() >= 16){
-                sn = sn.substring(0, 16);
             }
-            // 使用解析好的序列号替代
-            mockData.add(buildDeviceInfo(sn, currentTime));
+
+            // 优先使用 sn，如果 sn 为空则使用 sn1
+            String finalSn = (sn != null && !sn.isEmpty()) ? sn : sn1;
+
+            // 截取前16位（如果长度足够）
+            if (finalSn.length() >= 16) {
+                finalSn = finalSn.substring(0, 16);
+            }
+
+            // 使用解析好的序列号构建设备信息
+            mockData.add(buildDeviceInfo(finalSn, currentTime));
 
             return mockData;
+
         }finally {
 //            ResponseDeal.Sn = null;
         }
