@@ -582,7 +582,6 @@ public class RationMeasureNewWebSocket{
                 }
 
                 if (fitCurveData.size() < minPointNum) {
-                    infoService.releaseDevice(deviceSerialNumber);
                     log.info("数据点数不足，不进行曲线拟合");
                     JSONObject message = new JSONObject();
                     message.put("success", "测量完成，请更换样品继续测量。");

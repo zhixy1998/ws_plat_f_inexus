@@ -84,7 +84,7 @@ public interface PhotometricService {
     /**
      *  查询表格头
      */
-    Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay);
+    Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber);
     /**
      * 查询数据信息
      */

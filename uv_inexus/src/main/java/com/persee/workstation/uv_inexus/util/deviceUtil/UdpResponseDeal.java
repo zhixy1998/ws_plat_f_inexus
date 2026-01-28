@@ -475,7 +475,7 @@ public class UdpResponseDeal {
     }
 
     private static OperationResultEntity parseWlList(List<byte[]> responses) {
-        OperationResultEntity resultEntity = new OperationResultEntity();
+
 
         if (responses == null || responses.isEmpty()) {
             System.out.println("回应列表为空");

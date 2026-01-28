@@ -875,13 +875,16 @@ public class PhotometricServiceImpl implements PhotometricService {
             if (resultIdentity.matches("[A-Z]")) {
                 log.info("大写字母，只绑定，不添加");
                 int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
-                InputParamMapTableHead relation = new InputParamMapTableHead();
-                relation.setHeadName(param.getParamName());
-                relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
-                relation.setParamName(param.getParamName());
-                relation.setParamIdentity(resultIdentity);
-                mapRelation.add(relation);
-                continue;
+
+                if (letterIndex <= waveLength.size()) {
+                    InputParamMapTableHead relation = new InputParamMapTableHead();
+                    relation.setHeadName(param.getParamName());
+                    relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+                    relation.setParamName(param.getParamName());
+                    relation.setParamIdentity(resultIdentity);
+                    mapRelation.add(relation);
+                    continue;
+                }
             }
 
             String newHeadIdentity = randomString(8);
@@ -1302,7 +1305,7 @@ public class PhotometricServiceImpl implements PhotometricService {
     }
 
     @Override
-    public Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay) {
+    public Result<List<HeadVO>> tableHead(String taskId, String methodId, Boolean allDisplay, String deviceSerialNumber) {
         if (!StringUtils.hasText(taskId)) {
             //请选择任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000006"));
@@ -1362,12 +1365,12 @@ public class PhotometricServiceImpl implements PhotometricService {
 
         }
 
-        List<HeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay);
+        List<HeadVO> vos = dealHeads(new ArrayList<>(ans), parameter, allDisplay, deviceSerialNumber);
 
         return Result.ok(vos);
     }
 
-    private List<HeadVO> dealHeads(List<HeadVO> heads, PhotometricParameter parameter, Boolean allDisplay) {
+    private List<HeadVO> dealHeads(List<HeadVO> heads, PhotometricParameter parameter, Boolean allDisplay, String deviceSerialNumber) {
         List<String> waveLength = parameter.getWaveLength();
         Map<String, HeadVO> map = heads.stream().collect(Collectors.toMap(HeadVO::getIdentity, head -> head));
 
@@ -1376,6 +1379,10 @@ public class PhotometricServiceImpl implements PhotometricService {
         Map<String, HeadVO> analyzeMap = new HashMap<>();
 
         for (HeadVO head : heads) {
+
+            if (head.getIdentity().equals("remark")) {
+                head.setLocate(TableHeadILocateEnums.remark.getIdentity());
+            }
             headsMap.computeIfAbsent(head.getLocate(), k -> new ArrayList<>()).add(head);
             if (head.getLocate().equals(TableHeadILocateEnums.measure.getIdentity())) {
                 map.put(head.getIdentity(), head);
@@ -1391,7 +1398,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
             for (String s : waveLength) {
                 String identity = s + "-"+ mode;
-                String name = s + WaveLengthEnum.getName(mode);
+                String name = s + WaveLengthEnum.getName(mode)  + "[" + s + "nm]";
                 HeadVO newHead = new HeadVO(name, identity, TableHeadILocateEnums.measure.getIdentity(), name);
                 if (map.containsKey(identity)) {
                     newHead = map.get(identity);
@@ -1402,8 +1409,8 @@ public class PhotometricServiceImpl implements PhotometricService {
             for (String s : waveLength) {
                 String absIdentity = s + "-"+ WaveLengthEnum.abs.getCode();
                 String tPercentIdentity = s + "-"+ WaveLengthEnum.tPercent.getCode();
-                String absName = s + WaveLengthEnum.abs.getName();
-                String tPercentName = s + WaveLengthEnum.tPercent.getName();
+                String absName = WaveLengthEnum.abs.getName()+ "[" + s + "nm]";
+                String tPercentName = WaveLengthEnum.tPercent.getName()+ "[" + s + "nm]";
 
                 HeadVO absHead = new HeadVO(absName, absIdentity, TableHeadILocateEnums.measure.getIdentity(), absName);
                 HeadVO tPercentHead = new HeadVO(tPercentName, tPercentIdentity, TableHeadILocateEnums.measure.getIdentity(), tPercentName);
@@ -1411,28 +1418,61 @@ public class PhotometricServiceImpl implements PhotometricService {
                 if (map.containsKey(absIdentity)) {
                     absHead = map.get(absIdentity);
                 }
-                allMeasureHeads.add(absHead);
-
                 if (allDisplay) {
                     if (map.containsKey(tPercentIdentity)) {
                         tPercentHead = map.get(tPercentIdentity);
                     }
+                    allMeasureHeads.add(absHead);
                     allMeasureHeads.add(tPercentHead);
+                } else {
+                    if (mode.equals(WaveLengthEnum.tPercent.getCode())) {
+                        allMeasureHeads.add(tPercentHead);
+                    } else {
+                        allMeasureHeads.add(absHead);
+                    }
                 }
             }
         }
         List<HeadVO> ans = new ArrayList<>();
         List<HeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
-        if (systemHeads != null) ans.addAll(systemHeads);
+        if (systemHeads != null) {
+            ans.addAll(systemHeads);
+        }
+        for (HeadVO an : ans) {
+            if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
+                ans.remove(an);
+                break;
+            }
+        }
 
+        if (StringUtils.hasText(deviceSerialNumber)) {
+
+            R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess()) {
+                FSamplePoolInfoVO data = poolInfo.getData();
+                if (data.getIsAutoChangePool() ){
+                    String sampleLocationName = SampleTableEnum.SAMPLE_LOCATION.getName();
+                    String sampleLocationIdentity = SampleTableEnum.SAMPLE_LOCATION.getIdentity();
+                    HeadVO sampleLocation = new HeadVO(sampleLocationName, sampleLocationIdentity, TableHeadILocateEnums.location.getIdentity(), sampleLocationName);
+                    ans.add(sampleLocation);
+                }
+            }
+        }
         List<HeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
-        if (sampleHeads != null) ans.addAll(sampleHeads);
+        if (sampleHeads != null) {
+            ans.addAll(sampleHeads);
+        }
         ans.addAll(allMeasureHeads);
         List<HeadVO> taskHeads = headsMap.get(TableHeadILocateEnums.data.getIdentity());
-        if (taskHeads != null)ans.addAll(taskHeads);
+        if (taskHeads != null) {
+            ans.addAll(taskHeads);
+        }
 
         List<PreCountResultParam> resultParams = parameter.getResultParams();
         List<HeadVO> headAnalyze = new ArrayList<>();
+        if (resultParams == null) {
+            resultParams = new ArrayList<>();
+        }
         for (PreCountResultParam results : resultParams) {
             //TODO 方法参数标识待定，后续再改动
             if (!StringUtils.hasText(results.getParam())) {
@@ -1452,12 +1492,16 @@ public class PhotometricServiceImpl implements PhotometricService {
         if (other == null || other.isEmpty()) {
             other = new ArrayList<>();
             HeadVO samplingTimeHead = new HeadVO(SampleTableEnum.SAMPLING_TIME.getName(), SampleTableEnum.SAMPLING_TIME.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.SAMPLING_TIME.getName());
-            HeadVO remark = new HeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.other.getIdentity(), SampleTableEnum.REMARK.getName());
             other.add(samplingTimeHead);
-            other.add(remark);
         }
-
         ans.addAll(other);
+        List<HeadVO> remarks = headsMap.get(TableHeadILocateEnums.remark.getIdentity());
+        if (remarks == null || remarks.isEmpty()) {
+            remarks = new ArrayList<>();
+            HeadVO remark = new HeadVO(SampleTableEnum.REMARK.getName(), SampleTableEnum.REMARK.getIdentity(), TableHeadILocateEnums.remark.getIdentity(), SampleTableEnum.REMARK.getName());
+            remarks.add(remark);
+        }
+        ans.addAll(remarks);
 
         return ans;
     }
@@ -2192,7 +2236,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         }
 
         List<HeadVO> heads = new ArrayList<>();
-        List<HeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
+        List<HeadVO> vos = tableHead(taskId, methodId, allDisplay, task.getDeviceSerialNumber()).getData();
         heads.addAll(vos);
         heads.add(0, new HeadVO("序号", "serialNumber"));
 
@@ -2314,7 +2358,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         // heads.add(new HeadVO("样品体积", "sampleVolume"));
         // heads.add(new HeadVO("样品位置", "sampleLocation"));
         // 添加动态表头
-        List<HeadVO> vos = tableHead(taskId, methodId, allDisplay).getData();
+        List<HeadVO> vos = tableHead(taskId, methodId, allDisplay, task.getDeviceSerialNumber()).getData();
         heads.addAll(vos);
         // 添加固定补充表头
         // heads.add(new HeadVO("备注", "remark"));

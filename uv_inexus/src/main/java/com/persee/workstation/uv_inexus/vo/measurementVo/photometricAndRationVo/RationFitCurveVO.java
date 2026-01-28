@@ -27,7 +27,7 @@ public class RationFitCurveVO {
     @ApiModelProperty("数据")
     List<JSONObject> dataList;
 
-    @ApiModelProperty("方程k值，从高次到低")
+    @ApiModelProperty("方程k值，从低次到高")
     private List<Double> coefficientList;
 
     @ApiModelProperty("曲线类型,一次曲线，二次曲线...")

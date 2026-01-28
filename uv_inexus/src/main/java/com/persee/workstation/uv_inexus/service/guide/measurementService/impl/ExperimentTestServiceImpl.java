@@ -20,7 +20,6 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureDataMap
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
-import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
@@ -358,14 +357,14 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //请选择方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000002"));
         }
-        if (!StringUtils.hasText(paramDto.getMeasurementType())) {
+        if (!StringUtils.hasText(paramDto.getMeasurementType()) || MeasureTypeEnum.fromDescription(paramDto.getMeasurementType()) == null) {
             //请选择测量类型
             return Result.fail(YamlMessageSource.getMessageStatic("00301004"));
         }
 
         // 根据任务名称查询任务,如果为空则继续,如果有值的话则返回错误
         List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName()));
-        if (taskList.size()>0){
+        if (!taskList.isEmpty()){
             //任务名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
         }
@@ -387,7 +386,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(paramDto.getMeasurementType());
         // TODO 所有测量的创建任务需要完善
         switch (type){
-            case PHOTOMETRIC_MEASUREMENT:
+            case PHOTOMETRIC_MEASUREMENT: {
                 if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
                     for (Map<String, String> cols : paramDto.getSpecimens()) {
                         String jsonString = JSON.toJSONString(cols);
@@ -415,10 +414,12 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         list.add(taskSpecimen);
                     }
                 }
-            case QUANTITATIVE_MEASUREMENT:
-
-                RationTaskHeadSnapShot taskHeadSnapShot = new RationTaskHeadSnapShot();
+                break;
+            }
+            case QUANTITATIVE_MEASUREMENT: {
+                RationTaskHeadSnapShot taskHeadSnapShot = null;
                 if (paramDto.getRationStandData() != null && !paramDto.getRationStandData().isEmpty()) {
+                    taskHeadSnapShot = new RationTaskHeadSnapShot();
                     for (Map<String, String> map : paramDto.getRationStandData()) {
                         String jsonString = JSON.toJSONString(map);
                         TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
@@ -453,13 +454,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     }
                 }
                 if (paramDto.getRationUnknowData() != null && !paramDto.getRationUnknowData().isEmpty()) {
+                    taskHeadSnapShot = new RationTaskHeadSnapShot();
                     for (Map<String, String> map : paramDto.getRationUnknowData()) {
                         String jsonString = JSON.toJSONString(map);
                         TMeasureSample sample = JSON.parseObject(jsonString, TMeasureSample.class);
                         if (paramDto.getRationUnknowHeads() != null && !paramDto.getRationUnknowHeads().isEmpty()) {
 
                             TaskHeadSnapshot unknownHead = new TaskHeadSnapshot();
-
 
                             unknownHead.setSampleHeads(paramDto.getRationUnknowHeads());
                             taskHeadSnapShot.setUnknownHead(unknownHead);
@@ -488,11 +489,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                         list.add(taskSpecimen);
                     }
                 }
-                tMeasureTask.setTableInfo(JSON.toJSONString(taskHeadSnapShot));
+                if (taskHeadSnapShot != null) {
+                    tMeasureTask.setTableInfo(JSON.toJSONString(taskHeadSnapShot));
+                }
                 break;
-            case SPECTRAL_SCAN:
+            }
+
+            case SPECTRAL_SCAN: {
                 if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
-                    for (Map<String, String> map: paramDto.getSpecimens()) {
+                    for (Map<String, String> map : paramDto.getSpecimens()) {
                         String jsonString = JSON.toJSONString(map);
 
                         SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
@@ -512,9 +517,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     }
                 }
                 break;
-            case TIME_SCAN:
+            }
+            case TIME_SCAN: {
                 if (paramDto.getSpecimens() != null && !paramDto.getSpecimens().isEmpty()) {
-                    for (Map<String, String> map: paramDto.getSpecimens()) {
+                    for (Map<String, String> map : paramDto.getSpecimens()) {
                         String jsonString = JSON.toJSONString(map);
 
                         SpectrumSpecimenDto specimen = JSON.parseObject(jsonString, SpectrumSpecimenDto.class);
@@ -533,7 +539,10 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     }
                 }
                 break;
+            }
             case TWO_COMPONENT_QUANTITATIVE_ANALYSIS:
+                break;
+            default:
                 break;
         }
 
@@ -547,9 +556,6 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //保存失败
             return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
         }
-        TMeasureTaskAttachment tMeasureTaskAttachment = new TMeasureTaskAttachment();
-        tMeasureTaskAttachment.setTaskId(tMeasureTask.getId());
-        tMeasureTaskAttachmentService.save(tMeasureTaskAttachment);
         ProjectTaskMethodVo vo = new ProjectTaskMethodVo();
         vo.setTaskId(tMeasureTask.getId());
         vo.setTaskName(tMeasureTask.getTaskName());
@@ -1587,7 +1593,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             heads.add(new HeadVO("样品体积", "sampleVolume"));
             heads.add(new HeadVO("样品位置", "sampleLocation"));
 
-            List<HeadVO> vos = photometricService.tableHead(taskId, method.getId(), false).getData();
+            List<HeadVO> vos = photometricService.tableHead(taskId, method.getId(), false, null).getData();
             heads.addAll(vos);
 
             heads.add(new HeadVO("备注", "remark"));
@@ -1862,20 +1868,119 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         Integer digit = Constants.DEFAULT_DECIMAL_NUM;
-        FQueryDataDTO dataDTO = new FQueryDataDTO();
+        QueryDataDTO dataDTO = new QueryDataDTO();
         LambdaQueryWrapper<TMeasureTaskAttachment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureTaskAttachment::getTaskId, taskId);
         TMeasureTaskAttachment attachment = tMeasureTaskAttachmentService.getOne(queryWrapper);
         if (attachment != null && attachment.getDataParam() != null) {
-            dataDTO = JSON.parseObject(attachment.getDataParam(), FQueryDataDTO.class);
+            dataDTO = JSON.parseObject(attachment.getDataParam(), QueryDataDTO.class);
         }
 
         switch (task.getMeasureType()) {
             case "光度测量": {
-                return Result.fail();
+
+                PhotometricReportDataVO vo = new PhotometricReportDataVO();
+                if (allDisplay == null) {
+                    allDisplay = false;
+                }
+
+                Result<List<HeadVO>> result = photometricService.tableHead(taskId, task.getMethodKey(), allDisplay, null);
+                if (result.getCode() == 200) {
+                    List<HeadVO> vos = result.getData();
+                    vo.setHeadList(vos);
+                }
+
+                if (dataDTO == null) {
+                    dataDTO = new QueryDataDTO();
+                    dataDTO.setTaskId(taskId);
+                    dataDTO.setAllDisplay(false);
+                    dataDTO.setDigit(digit);
+                    dataDTO.setOption(new ArrayList<>());
+                }
+
+                Result<List<Map<String, Object>>> data = photometricService.queryData(dataDTO);
+                if (data.getCode() == 200) {
+                    vo.setDataList(data.getData());
+//                    data.getData().forEach(item -> {
+//                        item.put(SampleTableEnum.SAMPLE_TYPE.getIdentity(), SampleTableEnum.getName(item.get(SampleTableEnum.SAMPLE_TYPE.getIdentity()).toString()));
+//                    });
+                }
+                if (StringUtils.hasText(task.getTableInfo())) {
+                    TaskHeadSnapshot snapshot = JSON.parseObject(task.getTableInfo(), TaskHeadSnapshot.class);
+                    if (snapshot != null && snapshot.getMapRelation() != null) {
+                        vo.setMapRelation(snapshot.getMapRelation());
+                    }
+                }
+                List<Map<String, Object>> dataList1 = vo.getDataList();
+                for (Map<String, Object> stringObjectMap : dataList1) {
+                    for (String key : stringObjectMap.keySet()) {
+                        if (key.equals("Abs")) {
+                            Object value = stringObjectMap.get(key);
+                            if (value != null) {
+                                Object o = convertSciToDecimal(value);
+                                String strValue = o.toString();
+                                if (strValue.length() >= 6) {
+                                    stringObjectMap.put(key, strValue.substring(0, 6));
+                                }
+                            }
+                        }
+                    }
+                }
+                return Result.ok(vo);
+
             }
             case "定量测定": {
-              return Result.fail();
+                RationReportDataVO vo = new RationReportDataVO();
+
+                if (allDisplay == null) {
+                    allDisplay = false;
+                }
+                Result<List<HeadVO>> standHeads = rationService.getStandSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
+                if (standHeads.getCode() == 200) {
+                    vo.setStandHeadList(standHeads.getData());
+                }
+                Result<List<HeadVO>> unknowHeads = rationService.getUnknownSampleTableHead(taskId, task.getMethodKey(), allDisplay, null);
+                if (unknowHeads.getCode() == 200) {
+                    vo.setUnknowHeadList(unknowHeads.getData());
+                }
+                if (dataDTO == null) {
+                    dataDTO = new QueryDataDTO();
+                    dataDTO.setTaskId(taskId);
+                    dataDTO.setAllDisplay(false);
+                    dataDTO.setDigit(digit);
+                    dataDTO.setOption(new ArrayList<>());
+                }
+                Result<RationSampleDataVO> data = rationService.querySampleData(dataDTO);
+                if (data.getCode() == 200) {
+                    RationSampleDataVO sampleDataVO = data.getData();
+                    vo.setStandDataList(sampleDataVO.getStandSampleData());
+                    vo.setUnknowDataList(sampleDataVO.getUnknowSampleData());
+                }
+                RationTaskHeadSnapShot shot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
+                if (shot != null && shot.getUnknownHead() != null) {
+                    TaskHeadSnapshot unknownHead = shot.getUnknownHead();
+                    vo.setMapRelation(unknownHead.getMapRelation());
+                }
+                Result<RationFitCurveVO> curveInfo = rationService.queryCurveInfo(taskId, task.getMethodKey());
+                if (curveInfo.getCode() == 200) {
+                    vo.setCurveInfo(curveInfo.getData());
+                }
+                List<Map<String, Object>> dataList1 = vo.getStandDataList();
+                for (Map<String, Object> stringObjectMap : dataList1) {
+                    for (String key : stringObjectMap.keySet()) {
+                        if (key.equals("Abs")) {
+                            Object value = stringObjectMap.get(key);
+                            if (value != null) {
+                                Object o = convertSciToDecimal(value);
+                                String strValue = o.toString();
+                                if (strValue.length() >= 6) {
+                                    stringObjectMap.put(key, strValue.substring(0, 6));
+                                }
+                            }
+                        }
+                    }
+                }
+                return Result.ok(vo);
             }
             case "光谱扫描": {
                 // 判断方法参数中的重复模式为true的话就分割分析id
@@ -3087,15 +3192,31 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             if (StringUtils.hasText(task.getFittingParam())) {
                 FittingReceiveInfo fittingReceiveInfo = JSON.parseObject(task.getFittingParam(), FittingReceiveInfo.class);
                 StringBuilder param = new StringBuilder();
-                for (Double coefficient : fittingReceiveInfo.getRoundCoefficient()) {
+                if (fittingReceiveInfo != null) {
+
+                    if (fittingReceiveInfo.getRoundCoefficient() != null) {
+                        for (Double coefficient : fittingReceiveInfo.getRoundCoefficient()) {
                             param.append(coefficient).append(",");
                         }
                         param.deleteCharAt(param.length() - 1);
                         vo.setCurveParams(param.toString());
-                vo.setR(fittingReceiveInfo.getRoundR());
-                vo.setR2(fittingReceiveInfo.getRoundR2());
-                vo.setCurveFormula(fittingReceiveInfo.getEquation());
-                vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree()));
+                    }
+
+                    SystemBusinessParamVO systemBusinessParamVO = systemBusinessParamService.queryBusinessParam();
+                    String curveConf = systemBusinessParamVO.getStandardCurveConf();
+                    String[] split = curveConf.split(",");
+                    for (int i = 0; i < split.length; i++) {
+                        if (split[i].equals("1")) {
+                            vo.setR(fittingReceiveInfo.getRoundR() == null ? "" : fittingReceiveInfo.getRoundR());
+                        }
+                        if (split[i].equals("2")) {
+                            vo.setR2(fittingReceiveInfo.getRoundR2() == null ? "" : fittingReceiveInfo.getRoundR2());
+                        }
+                    }
+                    vo.setCurveFormula(fittingReceiveInfo.getEquation() == null ? "" : fittingReceiveInfo.getEquation());
+                    vo.setCurveType(String.valueOf(fittingReceiveInfo.getDegree() == null ? "" : fittingReceiveInfo.getDegree()));
+
+                }
             }
 
             StringBuilder wave = new StringBuilder();

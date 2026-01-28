@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -234,6 +235,7 @@ public class UdpSendUtil {
                     i += message.length;
                     store.transferQueueMerge(deviceId, newDeviceId);
                     deviceId = newDeviceId;
+                    deviceManager.updateDeviceInfo(deviceId, Constants.CONNECT_DEVICE_NO, device.getMacInfo(), anEnum.getDevType());
                     continue;
                 }  else {
                     if (!start) {

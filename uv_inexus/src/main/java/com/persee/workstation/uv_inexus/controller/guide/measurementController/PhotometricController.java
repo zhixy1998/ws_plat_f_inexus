@@ -126,8 +126,9 @@ public class PhotometricController {
     @ApiOperation("获取表头信息接口")
     public Result getTableHead(@RequestParam String taskId,
                                @RequestParam String methodId,
-                               @RequestParam Boolean allDisplay) {
-        return photometricService.tableHead(taskId, methodId, allDisplay);
+                               @RequestParam Boolean allDisplay,
+                               @RequestParam String deviceSerialNumber) {
+        return photometricService.tableHead(taskId, methodId, allDisplay, deviceSerialNumber);
     }
 
     @PostMapping("queryDataInfo")

@@ -21,6 +21,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
  */
 public interface TMeasureTaskService extends IService<TMeasureTask> {
 
+    @Override
     boolean save(TMeasureTask entity);
 
 }

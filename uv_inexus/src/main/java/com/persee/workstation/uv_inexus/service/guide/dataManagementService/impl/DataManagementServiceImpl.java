@@ -118,14 +118,14 @@ public class DataManagementServiceImpl implements DataManagementService {
         LambdaQueryWrapper<TMeasureTask> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureTask::getMeasureType, taskType);
         // 如果status等于2的情况下则查询已完成的任务,如果小于2则查询未完成的任务
-        if (status.equals(TaskStatusEnum.COMPLETED.getCode())){
+        if (status.equals(TaskStatusEnum.TESTED.getCode())){
             // 查询taskStatus为2（结束）的记录
             queryWrapper.eq(TMeasureTask::getTaskStatus, TaskStatusEnum.COMPLETED.getCode());
         } else {
             // 查询taskStatus为0（未测）或1（已测）的记录
             queryWrapper.in(TMeasureTask::getTaskStatus, Arrays.asList(TaskStatusEnum.UNTESTED.getCode(), TaskStatusEnum.TESTED.getCode()));
         }
-        queryWrapper.eq(TMeasureTask::getTaskStatus, status);
+//        queryWrapper.eq(TMeasureTask::getTaskStatus, status);
         queryWrapper.eq(TMeasureTask::getUserId, unFinishTasksAndNumParam.getSystemIdentityId());
         if (selectKey!=null&&!selectKey.isEmpty()){
             queryWrapper.like(TMeasureTask::getTaskName, selectKey);
@@ -390,6 +390,9 @@ public class DataManagementServiceImpl implements DataManagementService {
             // 根据任务中的项目id查询项目
             TMeasureProject project = projectManagementMapper.selectOne(new QueryWrapper<TMeasureProject>().eq("id", task.getProjectItemKey()));
             List<TaskSpecimen> specimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+            if (specimen == null) {
+                specimen = new ArrayList<>();
+            }
             taskSumListDto.setTaskId(task.getId());
             taskSumListDto.setMethodName(method.getMethodName());
             taskSumListDto.setProjectName(project.getProjectName());

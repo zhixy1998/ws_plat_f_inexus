@@ -2654,6 +2654,7 @@
         </ReadBytes>
         <ReplyNumber>-1</ReplyNumber>
         <HeadReceiveBytes>
+            <string>255:181:32:241</string>
             <string>255:181:0:15</string>
         </HeadReceiveBytes>
     </ProtocolItem>

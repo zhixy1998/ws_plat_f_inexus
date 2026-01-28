@@ -2042,7 +2042,9 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         List<FHeadVO> ans = new ArrayList<>();
         List<FHeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
-        if (systemHeads != null) ans.addAll(systemHeads);
+        if (systemHeads != null) {
+            ans.addAll(systemHeads);
+        }
         for (FHeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
                 ans.remove(an);
@@ -2065,10 +2067,14 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         List<FHeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
-        if (sampleHeads != null) ans.addAll(sampleHeads);
+        if (sampleHeads != null) {
+            ans.addAll(sampleHeads);
+        }
         ans.addAll(allMeasureHeads);
         List<FHeadVO> taskHeads = headsMap.get(TableHeadILocateEnums.data.getIdentity());
-        if (taskHeads != null)ans.addAll(taskHeads);
+        if (taskHeads != null) {
+            ans.addAll(taskHeads);
+        }
 
         List<FPreCountResultParam> resultParams = parameter.getResultParams();
         List<FHeadVO> headAnalyze = new ArrayList<>();

@@ -13,9 +13,9 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
+import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
@@ -38,7 +38,7 @@ public class TMeasureTaskServiceImpl extends ServiceImpl<TMeasureTaskMapper, TMe
     @Autowired
     TMeasureTaskAttachmentService tMeasureTaskAttachmentService;
     @Autowired
-    FMeasureTaskMapper fMeasureTaskMapper;
+    TMeasureTaskMapper tMeasureTaskMapper;
 
     @Override
     public boolean save(TMeasureTask entity) {
@@ -47,17 +47,23 @@ public class TMeasureTaskServiceImpl extends ServiceImpl<TMeasureTaskMapper, TMe
         if (!save) {
             return false;
         }
-        TMeasureTaskAttachment taskAttachment = new TMeasureTaskAttachment();
-        taskAttachment.setTaskId(entity.getId());
 
-        QueryDataDTO queryDataDTO = new QueryDataDTO();
-        queryDataDTO.setTaskId(entity.getId());
-        queryDataDTO.setAllDisplay(false);
-        queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
-        queryDataDTO.setOption(new ArrayList<>());
-        taskAttachment.setDataParam(JSON.toJSONString(queryDataDTO));
+        R<TMeasureTaskAttachment> attachmentR = tMeasureTaskAttachmentService.queryByTaskId(entity.getId());
+        if (!attachmentR.getSuccess()) {
+            TMeasureTaskAttachment taskAttachment = new TMeasureTaskAttachment();
+            taskAttachment.setTaskId(entity.getId());
 
-        tMeasureTaskAttachmentService.save(taskAttachment);
+            QueryDataDTO queryDataDTO = new QueryDataDTO();
+            queryDataDTO.setTaskId(entity.getId());
+            queryDataDTO.setAllDisplay(false);
+            queryDataDTO.setDigit(Constants.DEFAULT_DECIMAL_NUM);
+            queryDataDTO.setOption(new ArrayList<>());
+            taskAttachment.setDataParam(JSON.toJSONString(queryDataDTO));
+
+            tMeasureTaskAttachmentService.save(taskAttachment);
+        }
+
+
 
         return true;
     }

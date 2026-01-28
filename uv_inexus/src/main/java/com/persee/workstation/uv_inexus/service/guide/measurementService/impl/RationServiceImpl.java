@@ -556,7 +556,7 @@ public class RationServiceImpl implements RationService {
             }
         }
         List<HeadVO> heads = taskHeadSnapshot.getSampleHeads();
-        if (heads == null) {
+        if (heads == null || heads.isEmpty()) {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), SampleTypeEnum.kind_unknown.getIdentity());
             heads = new ArrayList<>(preHead);
         }
@@ -589,13 +589,16 @@ public class RationServiceImpl implements RationService {
             if (resultIdentity.matches("[A-Z]")) {
                 log.info("大写字母，只绑定，不添加");
                 int letterIndex = resultIdentity.charAt(0) - 'A' + 1;
-                InputParamMapTableHead relation = new InputParamMapTableHead();
-                relation.setHeadName(param.getParamName());
-                relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
-                relation.setParamName(param.getParamName());
-                relation.setParamIdentity(resultIdentity);
-                mapRelation.add(relation);
-                continue;
+
+                if (letterIndex <= waveLength.size()) {
+                    InputParamMapTableHead relation = new InputParamMapTableHead();
+                    relation.setHeadName(param.getParamName());
+                    relation.setHeadIdentity(waveLength.get(letterIndex - 1) + "-" + luminosity);
+                    relation.setParamName(param.getParamName());
+                    relation.setParamIdentity(resultIdentity);
+                    mapRelation.add(relation);
+                    continue;
+                }
             }
 
             String newHeadIdentity = randomString(8);

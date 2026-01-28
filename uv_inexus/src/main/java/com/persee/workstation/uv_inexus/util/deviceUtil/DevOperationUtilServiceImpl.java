@@ -641,6 +641,11 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
     ) {
 
         OperationResultEntity resultEntity = new OperationResultEntity();
+        SetParam setParam = inputParam.getParam();
+
+        if (setParam == null) {
+            return R.fail("请设置参数！");
+        }
 
         /* ================= 1. 设备上下文准备 ================= */
 
@@ -678,11 +683,13 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
         List<Command> commandList = new ArrayList<>();
 
+
         for (ParamCmdEnum e : ParamCmdEnum.values()) {
-            Object value = getFieldValueByGetter(inputParam.getParam(), e.getParamField());
+            Object value = getFieldValueByGetter(setParam, e.getParamField());
             if (value != null) {
 
-                Object[] paramArray = new Object[]{value}; // 默认参数
+                // 默认参数
+                Object[] paramArray = new Object[]{value};
 
                 // 针对特定字段做额外处理
                 if (e == ParamCmdEnum.START_WL
@@ -699,27 +706,25 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         paramArray = new Object[]{step};
                     } catch (Exception ex) {
                         log.warn("计算 step 失败，使用原始值: {}", value, ex);
-                        paramArray = new Object[]{value}; // 保底
+                        // 保底
+                        paramArray = new Object[]{value};
                     }
                 }
 
-                SetParam setParam = inputParam.getParam();
-                if (setParam != null) {
-                    Double startWl = setParam.getStartWl();
-                    Double endWl = setParam.getEndWl();
-                    Double interval = setParam.getScanWlInterval();
+                Double startWl = setParam.getStartWl();
+                Double endWl = setParam.getEndWl();
+                Double interval = setParam.getScanWlInterval();
 
-                    if (startWl != null && endWl != null && interval != null) {
-                        // 直接操作 device 对象
-                        cfg.setStartWavelength(startWl.doubleValue());
-                        cfg.setEndWavelength(endWl.doubleValue());
-                        cfg.setInterval(interval);
-                        cfg.setDescending(startWl > endWl);
-                        device.setScanWavelengthConfig(cfg);
+                if (startWl != null && endWl != null && interval != null) {
+                    // 直接操作 device 对象
+                    cfg.setStartWavelength(startWl);
+                    cfg.setEndWavelength(endWl);
+                    cfg.setInterval(interval);
+                    cfg.setDescending(startWl > endWl);
+                    device.setScanWavelengthConfig(cfg);
 
-                        log.info("[setParam] 保存扫描波长配置: device={} start={} end={} interval={}",
-                                deviceSerialNumber, startWl, endWl, interval);
-                    }
+                    log.info("[setParam] 保存扫描波长配置: device={} start={} end={} interval={}",
+                            deviceSerialNumber, startWl, endWl, interval);
                 }
 
                 // 构造 Command
@@ -775,6 +780,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             if (!result.getSuccess()) {
                 return R.fail("参数设置失败，指令：" + command.getCmdId());
             }
+            if (setParam.getPhotoMode() != null) {
+                deviceManager.setLuminosityMode(deviceId, String.valueOf(setParam.getPhotoMode()));
+            }
         }
 
         resultEntity.setIsSuccess(true);
@@ -822,7 +830,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
             int anInt = Integer.parseInt(macParts[i], 16);
 
-            param[i] = anInt;  // 将每一部分从十六进制转换为十进制
+            // 将每一部分从十六进制转换为十进制
+            param[i] = anInt;
         }
 
         List<SearchInfo> allDevice = new ArrayList<>();
@@ -897,7 +906,6 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             deviceManager.updateDeviceInfo(deviceInfo.getDeviceId(), Constants.CONNECT_DEVICE_ING, deviceInfo.getDeviceMac(), devType);
 
         }
-
 
         Integer connectType = device.getConnectType();
 
@@ -998,80 +1006,83 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             int timeout = transition.getTimeout();
             List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
-            if (comId.equals(ConnectEnum.Connect.getComId())) {
-                param = new Object[6];
-                String[] macParts = macAddress.split(":");
-                // 将上位机的前 6 个 MAC 地址部分插入到 param 数组的前 6 个位置
-                for (int i = 0; i < 6; i++) {
-
-                    int anInt = Integer.parseInt(macParts[i], 16);
-
-                    param[i] = anInt;  // 将每一部分从十六进制转换为十进制
-                }
-            }
-
-            if (comId.equals(ConnectEnum.SetCellPos.getComId())) {
-                if (result.getAttachmentType() == null) {
-                    continue;
-                }
-
-                DeviceAttachmentTypeVO attachment = infoService.getAttachment(result.getAttachmentType());
-                if (attachment == null || attachment.getAttachmentKind() == null) {
-                    continue;
-                }
-                Integer kind = attachment.getAttachmentKind();
-
-                if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType()) || kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())) {
-                    param = new Object[]{1};
-                } else {
-                    continue;
-                }
-            }
-
-            byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
-            R<Object> r;
-            if (replyNumber < 0) {
-                r = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout, false, null, null, headReceiveBytes);
-            } else {
-//                r = udpSendUtil.knowTotalReceiveSend1(deviceId, comId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
-                r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
-
-            }
-            if (!r.getSuccess()) {
-                return R.fail("当前仪器无法连接！");
-            }
-
-            if (comId.equals(ConnectEnum.Connect.getComId())) {
-
-                String s = deviceManager.convertToPermanentByDeviceId(deviceInfo.getDeviceId());
-                result.setIp(deviceInfo.getDeviceIp());
-                result.setDeviceId(s);
-                deviceId = s;
-                result.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
-                deviceManager.setDeviceIdleStatus(deviceId, true);
-                deviceManager.updateDeviceInfo(deviceId, Constants.DEVICE_STATUS_IDLE, macAddress, devType);
-            }
-
-            Object data = r.getData();
-
-            if (comId.equals(ConnectEnum.GetWlList.getComId())) {
-
-                OperationResultEntity entity = (OperationResultEntity) data;
-                List<StepPoint> stepPoints = entity.getStepPoints();
-                String s = formulaUtil.addFormula(stepPoints, result.getDeviceSerialNumber());
-
-                result.setLinearSegment(s);
-                continue;
-            }
             try {
+                if (comId.equals(ConnectEnum.Connect.getComId())) {
+                    param = new Object[6];
+                    String[] macParts = macAddress.split(":");
+                    // 将上位机的前 6 个 MAC 地址部分插入到 param 数组的前 6 个位置
+                    for (int i = 0; i < 6; i++) {
+
+                        int anInt = Integer.parseInt(macParts[i], 16);
+
+                        param[i] = anInt;  // 将每一部分从十六进制转换为十进制
+                    }
+                }
+
+                if (comId.equals(ConnectEnum.SetCellPos.getComId())) {
+                    if (result.getAttachmentType() == null) {
+                        continue;
+                    }
+
+                    DeviceAttachmentTypeVO attachment = infoService.getAttachment(result.getAttachmentType());
+                    if (attachment == null || attachment.getAttachmentKind() == null) {
+                        continue;
+                    }
+                    Integer kind = attachment.getAttachmentKind();
+
+                    if (kind.equals(DeviceAttachmentKindEnum.FIVE_POOL.getType()) || kind.equals(DeviceAttachmentKindEnum.EIGHT_POOL.getType())) {
+                        param = new Object[]{1};
+                    } else {
+                        continue;
+                    }
+                }
+
+                byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
+                R<Object> r;
+                if (replyNumber < 0) {
+                    r = udpSendUtil.unknownReceive(deviceId, comId, bytes, timeout, false, null, null, headReceiveBytes);
+                } else {
+//                r = udpSendUtil.knowTotalReceiveSend1(deviceId, comId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+                    r = udpSendUtil.knowTotalReceiveSend(deviceId, comId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+
+                }
+                if (!r.getSuccess()) {
+                    return R.fail("当前仪器无法连接！");
+                }
+
+                if (comId.equals(ConnectEnum.Connect.getComId())) {
+
+                    String s = deviceManager.convertToPermanentByDeviceId(deviceInfo.getDeviceId());
+                    result.setIp(deviceInfo.getDeviceIp());
+                    result.setDeviceId(s);
+                    deviceId = s;
+                    result.setConnectStatus(Constants.CONNECT_DEVICE_SUCCESS);
+                    deviceManager.setDeviceIdleStatus(deviceId, true);
+                    deviceManager.updateDeviceInfo(deviceId, Constants.DEVICE_STATUS_IDLE, macAddress, devType);
+                }
+
+                Object data = r.getData();
+
+                if (comId.equals(ConnectEnum.GetWlList.getComId())) {
+
+                    OperationResultEntity entity = (OperationResultEntity) data;
+                    List<StepPoint> stepPoints = entity.getStepPoints();
+                    String s = formulaUtil.addFormula(stepPoints, result.getDeviceSerialNumber());
+
+                    result.setLinearSegment(s);
+                    continue;
+                }
+
                 OperationResultEntity entity = (OperationResultEntity) data;
                 if (!entity.getIsSuccess()) {
                     log.error("指令[{}]解析出错，错误原因：{}", comId, entity.getErrorMsg());
+                    deviceManager.removeDevice(deviceId);
                     return R.fail("指令" + comId + "，解析出错！");
                 }
                 BeanUtils.copyProperties(entity, result, getNullPropertyNames(entity));
             } catch (Exception e) {
                 log.error("指令{}，操作过程中数据转换错误，错误信息：{}", comId, e.getMessage());
+                deviceManager.removeDevice(deviceId);
                 return R.fail("数据转换错误");
             }
 
@@ -1426,6 +1437,8 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         byte[] bytes = protocolItemUtil.calcSendBytes(param, transition);
 
         R<Object> calibration = new R<>();
+
+        boolean isDealOnTime = false;
         if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
 
         } else {
@@ -1449,9 +1462,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         endBytes[i] = (byte) (intValue & 0xFF);
                     }
                 }
-                boolean isDealOnTime = xmlKey.equals(DevXmlEnums.T800.getDevType());
+                isDealOnTime = xmlKey.equals(DevXmlEnums.T800.getDevType());
 
                 calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
+
             } else {
                 calibration = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
             }
@@ -1459,13 +1473,15 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         if (!calibration.getSuccess()) {
             //TODO 国际化待定
             String description = DeviceCalibrationInfoEnum.getDescription(inputParam.getCalibrationType());
-            infoService.releaseDevice(deviceSerialNumber);
+            infoService.newReleaseDevice(deviceSerialNumber);
             return R.fail(description + "失败");
         }
 
         resultEntity = (OperationResultEntity) calibration.getData();
 
-
+        if (!isDealOnTime) {
+            infoService.newReleaseDevice(deviceSerialNumber);
+        }
         return R.ok(resultEntity);
     }
 
