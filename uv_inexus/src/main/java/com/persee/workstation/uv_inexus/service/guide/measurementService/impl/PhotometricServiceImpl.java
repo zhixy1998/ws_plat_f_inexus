@@ -634,6 +634,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         task.setProjectItemKey(vo.getProjectId());
         task.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         task.setIsDelete("0");
+        task.setSampleKey("[]");
         task.setTaskName("defaultName");
         tMeasureTaskService.save(task);
         vo.setTaskId(task.getId());

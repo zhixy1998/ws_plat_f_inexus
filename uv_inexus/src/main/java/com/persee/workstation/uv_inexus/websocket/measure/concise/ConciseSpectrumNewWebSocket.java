@@ -507,7 +507,9 @@ public class ConciseSpectrumNewWebSocket {
 
                             doOneMeasurementSerial(finalParam, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), ip, r + 1);
 
-
+                            if (!Constants.measureStopStatus.get(deviceSerialNumber)){
+                                break;
+                            }
                             // 修复：如果不是最后一次测量，添加时间间隔
                             if (r < repetitionTime - 1) {
                                 try {
@@ -524,31 +526,13 @@ public class ConciseSpectrumNewWebSocket {
                             }
                         }
 
-                        if (configPO.getIsAutoChangePool().equals(true)) {
+                        if (configPO.getIsAutoChangePool().equals(true)&&Constants.measureStopStatus.get(deviceSerialNumber)) {
                             if ((i + 1) != newSampleData.size() && !sample.getSampleLocation().equals(finalMaxLocation)) {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
-                            } else {
-                                JSONObject payload = new JSONObject();
-                                if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                                    payload.put("success", "扫描成功");
-                                }else{
-                                    payload.put("success", "停止成功");
-                                }
-                                sendMessage(deviceSerialNumber, payload);
-                                payload.clear();
-                                payload.put("result", "finish");
-                                sendClose(deviceSerialNumber, payload);
                             }
                         } else {
-                            JSONObject payload = new JSONObject();
-                            if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                                payload.put("success", "扫描成功");
-                            }else{
-                                payload.put("success", "停止成功");
-                            }
-                            sendMessage(deviceSerialNumber, payload);
                             break;
                         }
                     }
@@ -560,9 +544,6 @@ public class ConciseSpectrumNewWebSocket {
                 }else{
                     payload.put("success", "停止成功");
                 }
-                sendMessage(deviceSerialNumber,payload);
-                payload.clear();
-                payload.put("result", "finish");
                 sendClose(deviceSerialNumber, payload);
 
 

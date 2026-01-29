@@ -33,6 +33,7 @@ import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTaskSpe
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TMeasureProjectCollaboratorGroup;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.guide.standardPo.TReportStandardDetection;
@@ -48,6 +49,7 @@ import com.persee.workstation.uv_inexus.service.guide.parseReport.StandardPretre
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardDetectionService;
 import com.persee.workstation.uv_inexus.service.guide.standardService.TReportStandardPretreatmentService;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemBusinessParamService;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
@@ -149,6 +151,16 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Autowired
     SystemBusinessParamService businessParamService;
+
+    @Autowired
+    private SysUserService userService;
+
+    @Autowired
+    private SysUserGroupMapper userGroupMapper ;
+
+    @Autowired
+    private TMeasureProjectCollaboratorGroupService collaboratorGroupService;
+
 
     @Value("1")
     String deleteType;
@@ -1424,7 +1436,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         records.forEach(task -> {
             // 根据任务中的用户id查询用户
             SysUserPO userConfigPO = userConfigDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getId, task.getUserId()));
-            task.setUserId(userConfigPO.getId());
+            task.setUserId(userConfigPO.getUsername());
             task.setIsDelete("0");
         });
         return Result.ok(page);
@@ -1453,9 +1465,39 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * @return
      */
     @Override
-    public Result queryAllProject() {
-        // 根据用户名查询项目
-        List<TMeasureProject> projects = tMeasureProjectService.list();
+    public Result queryAllProject(String updateBy) {
+        SysUserPO user = userService.getOne(new QueryWrapper<SysUserPO>().eq("username", updateBy));
+        if (user == null){
+            return Result.fail("用户不存在");
+        }
+        // 根据用户查询用户所在的组
+        SysUserGroupPO userGroupPO = userGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()));
+        if (userGroupPO == null){
+            return Result.fail("用户未加入任何组");
+        }
+        // 根据查询到的组id条件查询协作组中所有的组内的协作项目id
+        List<TMeasureProjectCollaboratorGroup> projectList = collaboratorGroupService.list(new QueryWrapper<TMeasureProjectCollaboratorGroup>().eq("group_id", userGroupPO.getGroupId()));
+        QueryWrapper<TMeasureProject> wrapper = new QueryWrapper<>();
+        List<String> collects;
+        if (projectList != null && projectList.size() > 0){
+            collects=projectList.stream().map(TMeasureProjectCollaboratorGroup::getProjectId).collect(Collectors.toList());
+        } else {
+            collects = new ArrayList<>();
+        }
+        wrapper.and(qw -> {
+            // 第一个条件：创建者匹配
+            qw.eq("creator_key", updateBy);
+
+            // 第二个条件：协作者项目列表（动态判断）
+            if (com.baomidou.mybatisplus.core.toolkit.CollectionUtils.isNotEmpty(collects)) {
+                qw.or().in("id", collects);
+            }
+
+            // 第三个条件：用户组匹配
+            qw.or().eq("owner_group_id", userGroupPO.getGroupId());
+        });
+
+        List<TMeasureProject> projects = tMeasureProjectService.list(wrapper);
         return Result.ok(projects);
     }
 

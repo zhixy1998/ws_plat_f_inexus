@@ -42,18 +42,22 @@ public class QueryTaskDto {
     private String updateBy;
 
     /**
-     * 自定义校验方法 - 校验结束时间必须晚于开始时间
+     * 自定义校验方法 - 校验结束时间必须晚于或等于开始时间
      */
-    @AssertTrue(message = "结束时间必须晚于开始时间")
+    @AssertTrue(message = "结束时间必须晚于或等于开始时间")
     public boolean isTimeRangeValid() {
-        if (startTime == null || endTime == null) {
+        if (startTime == null || endTime == null|| startTime.isEmpty() || endTime.isEmpty()) {
             return true; // 让@NotBlank处理空值情况
         }
         try {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             LocalDateTime start = LocalDateTime.parse(startTime, formatter);
             LocalDateTime end = LocalDateTime.parse(endTime, formatter);
-            return end.isAfter(start);
+
+            // 修改这里：允许结束时间等于开始时间
+            return end.isAfter(start) || end.isEqual(start);
+            // 或者使用更简洁的写法：
+            // return !end.isBefore(start);
         } catch (Exception e) {
             return false; // 格式错误会在@Pattern中捕获
         }

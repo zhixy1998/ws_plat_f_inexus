@@ -379,7 +379,12 @@ public class ConciseBaseLineNewWebSocket {
                 return null;
             }
             while (Constants.isRunning) {
-                Object result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLine.getComId());
+                Object result;
+                if (param.getScanSpeed().equals(Constants.PARAM_THREE)){
+                    result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLineFast.getComId());
+                }else {
+                    result = unknowCountMessageQueue.pollMessage(deviceSerialNumber, T600ComIdEnums.BaseLine.getComId());
+                }
                 // 如果队列为空（可选：根据你的 pollMessage 实现决定是否需要）
                 if (result == null) {
                     // 可选：短暂休眠避免 CPU 空转

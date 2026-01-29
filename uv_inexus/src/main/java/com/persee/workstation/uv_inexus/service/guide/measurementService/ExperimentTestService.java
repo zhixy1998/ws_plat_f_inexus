@@ -39,7 +39,7 @@ public interface ExperimentTestService {
 
     Result continueMeasuringPort(String projectId, String methodId);
 
-    Result queryAllProject();
+    Result queryAllProject(String updateBy);
 
     Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize);
 

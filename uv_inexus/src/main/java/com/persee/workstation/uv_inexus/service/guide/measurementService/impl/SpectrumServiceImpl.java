@@ -232,16 +232,22 @@ public class SpectrumServiceImpl implements SpectrumService {
             TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
             vo.setMethodId(method.getId());
             vo.setMethodName(method.getMethodName());
-            vo.setTaskId(measureTask.getId());
-            vo.setTaskName(measureTask.getTaskName());
-            vo.setTaskStatus(measureTask.getTaskStatus());
+            if (measureTask!=null){
+                vo.setTaskId(measureTask.getId());
+                vo.setTaskName(measureTask.getTaskName());
+                vo.setTaskStatus(measureTask.getTaskStatus());
+            }else{
+                vo.setTaskId(null);
+                vo.setTaskName(null);
+                vo.setTaskStatus(null);
+            }
             vo.setProjectId(project.getId());
             vo.setProjectName(project.getProjectName());
             return Result.ok(vo);
         }
         // 根据默认任务名称查询默认任务
         TMeasureTask defaultTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("task_name", Constants.DEFAULT_TASK));
-        if (defaultTask != null) {
+        if (defaultTask == null) {
             return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
         }
         // 根据方法id和项目id查询方法和项目
@@ -704,6 +710,20 @@ public class SpectrumServiceImpl implements SpectrumService {
         if (dto.getHeads() != null && dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
+        }
+
+        if (dto.getNewSamples()!=null&&!dto.getNewSamples().isEmpty()) {
+            for (Map<String, String> map : dto.getNewSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
+                if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
+                    return Result.fail("新增样品编号超出限制");
+                }
+                if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
+                    return Result.fail("新增样品名称超出限制");
+                }
+
+            }
         }
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
@@ -1397,6 +1417,26 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result peakSearchingPort(SeekingPeaksValleysDto paramDto) {
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+        if (paramDto.getDataId() == null || paramDto.getDataId().equals("")) {
+            //数据ID不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00100011"));
+        }
+        if (paramDto.getHeight() == null) {
+            paramDto.setHeight(Double.parseDouble(confVO.getPeakValleyDiff()));
+        }
+        if (paramDto.getDistance() == null || paramDto.getDistance().isEmpty()) {
+            paramDto.setDistance(confVO.getPeakInterval());
+        }
+        double distance = Double.parseDouble(paramDto.getDistance());
+        int i1 = (int) distance;
+        if (i1 < 1) {
+            //峰谷间距不可以小于1
+            return Result.fail(YamlMessageSource.getMessageStatic("00100012"));
+        }
+        if (paramDto.getHeight() > 100) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00100027"));
+        }
         paramDto.setHeight(paramDto.getHeight() / 100);
         TMeasureAnalysisData tMeasureAnalysisData = tMeasureAnalysisDataService.getById(paramDto.getDataId());
         if (tMeasureAnalysisData == null) {
@@ -1421,7 +1461,13 @@ public class SpectrumServiceImpl implements SpectrumService {
         body.put("valley_height", paramDto.getHeight());
         body.put("distance", paramDto.getDistance());
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class).getBody();
+        Map<String, Object> resultMap;
+        try {
+            resultMap = restTemplate.postForEntity(pythonPathConstant.getPeakSearchingAndValleySearching(), request, Map.class).getBody();
+        } catch (Exception e){
+            return Result.fail("算法调用失败,请联系管理员");
+        }
+
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
         List<String> yPeak = (List<String>) resultMap.get("peak_y");
@@ -3250,13 +3296,14 @@ public class SpectrumServiceImpl implements SpectrumService {
             String[] split = s.split(",");
             Map<String, Object> map = new HashMap<>();
             if (digit != null) {
-                BigDecimal value = new BigDecimal(split[1]);
-                value = value.setScale(digit, RoundingMode.HALF_UP);
+                Double y = new Double(split[1]);
+                Double value = DataCountUtil.formatValue(digit, y);
+                String valueY = DataCountUtil.addZero(value, digit);
                 map.put("x", split[0]);
-                map.put("y", value.stripTrailingZeros().toPlainString());
+                map.put("y", valueY);
             } else {
                 map.put("x", split[0]);
-                map.put("y", split[1]);
+                map.put("y", DataCountUtil.addZero(valueOf(split[1]), 8));
             }
             if (gauges != null && peaks!= null) {
                 for (PeakValleyMarking gauge : gauges) {

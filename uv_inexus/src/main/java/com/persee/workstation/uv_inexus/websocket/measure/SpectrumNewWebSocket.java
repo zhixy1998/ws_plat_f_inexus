@@ -334,7 +334,12 @@ public class SpectrumNewWebSocket {
             QueryWrapper<TMeasureSample> eq = new QueryWrapper<>();
             eq.in("id", sampleIds);
             List<TMeasureSample> list = tMeasureSampleService.list(eq);
-            maxLocation = list.stream().map(TMeasureSample::getSampleLocation).max(String::compareTo).orElse(null);
+            // 过滤掉 null 的 location
+            maxLocation = list.stream()
+                    .map(TMeasureSample::getSampleLocation)
+                    .filter(Objects::nonNull)  // 过滤掉 null
+                    .max(String::compareTo)
+                    .orElse(null);
         }
 
         /// 设置参数
@@ -369,7 +374,7 @@ public class SpectrumNewWebSocket {
         }
 
         // 往前端推送数据的线程
-        String finalMaxLocation = maxLocation;
+        String finalMaxLocation = maxLocation!=null?maxLocation:"";
         boolean finalPoolStatus = poolStatus;
         DevOperationInputParam finalParam = inputParam;
 
@@ -389,7 +394,7 @@ public class SpectrumNewWebSocket {
                                 sendClose(deviceSerialNumber, errorMsg);
                                 return;
                             }
-                            if (finalPoolStatus) {
+                            if (finalPoolStatus&&!finalMaxLocation.isEmpty()) {
                                 R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
                                 if (!stringR.getSuccess()) {
                                     JSONObject errorMsg = new JSONObject();
@@ -429,7 +434,7 @@ public class SpectrumNewWebSocket {
                                 sendClose(deviceSerialNumber, errorMsg);
                                 return;
                             }
-                            if (finalPoolStatus) {
+                            if (finalPoolStatus&&!finalMaxLocation.isEmpty()) {
                                 R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
                                 if (!stringR.getSuccess()) {
                                     JSONObject errorMsg = new JSONObject();
@@ -484,6 +489,9 @@ public class SpectrumNewWebSocket {
 
                             doOneMeasurementSerial(finalParam, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), ip, r + 1);
 
+                            if (!Constants.measureStopStatus.get(deviceSerialNumber)){
+                                break;
+                            }
 
                             // 修复：如果不是最后一次测量，添加时间间隔
                             if (r < repetitionTime - 1) {
@@ -501,7 +509,7 @@ public class SpectrumNewWebSocket {
                             }
                         }
 
-                        if (configPO.getIsAutoChangePool().equals(true)) {
+                        if (configPO.getIsAutoChangePool().equals(true)&&Constants.measureStopStatus.get(deviceSerialNumber)) {
                             // 如果当前位置不是最大位置
                             if ((i + 1) != newSampleData.size() && !sample.getSampleLocation().equals(finalMaxLocation)) {
                                 JSONObject payload = new JSONObject();
@@ -521,9 +529,6 @@ public class SpectrumNewWebSocket {
                 }else{
                     payload.put("success", "停止成功");
                 }
-                sendMessage(deviceSerialNumber, payload);
-                payload.clear();
-                payload.put("result", "finish");
                 sendClose(deviceSerialNumber, payload);
 
 
@@ -1333,7 +1338,7 @@ public class SpectrumNewWebSocket {
             yForStorage = processedY;
         }
 
-        // 关键修改：根据是否开启阶梯校正来决定存储的数据
+        // 根据是否开启阶梯校正来决定存储的数据
         String key = deviceSerialNumber + "_" + sampleId + "_" + count;
         synchronized (originalYValues) {
             // 清理当前key的旧数据

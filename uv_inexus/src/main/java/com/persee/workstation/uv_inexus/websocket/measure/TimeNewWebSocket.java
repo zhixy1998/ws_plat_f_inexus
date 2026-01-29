@@ -805,16 +805,6 @@ public class TimeNewWebSocket {
                 }
             }
 
-            // 释放设备资源
-            if (releaseDevice && context.deviceSerialNumber != null) {
-                try {
-                    deviceInfoService.releaseDevice(context.deviceSerialNumber);
-                    log.info("释放时间扫描设备: {}", context.deviceSerialNumber);
-                } catch (Exception e) {
-                    log.error("释放设备异常", e);
-                }
-            }
-
             // 从上下文中移除
             contexts.remove(sessionId);
             log.info("时间扫描上下文已移除: {}", sessionId);

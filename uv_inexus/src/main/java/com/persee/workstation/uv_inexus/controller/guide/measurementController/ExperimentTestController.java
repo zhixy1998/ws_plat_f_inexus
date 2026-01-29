@@ -63,8 +63,8 @@ public class ExperimentTestController {
 
     @GetMapping("queryAllProject")
     @ApiOperation("查询所有项目接口")
-    public Result queryAllProject() {
-        return experimentTestService.queryAllProject();
+    public Result queryAllProject(@RequestParam String updateBy) {
+        return experimentTestService.queryAllProject(updateBy);
     }
 
 
