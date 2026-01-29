@@ -109,7 +109,10 @@ public class RationServiceImpl implements RationService {
     TMeasureTaskAttachmentService taskAttachmentService;
 
     @Autowired
-    SamplePoolConfigService fSamplePoolConfigService;
+    SamplePoolConfigService tSamplePoolConfigService;
+
+    @Autowired
+    PublicUtilService publicUtilService;
 
     @Autowired
     DevMessageUtil devMessageUtil;
@@ -1493,14 +1496,14 @@ public class RationServiceImpl implements RationService {
         changeUnknowSampleDigit(task.getId(), digit);
 
         if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
-            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
+            R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
             if (!poolInfo.getSuccess()) {
                 return Result.ok();
             }
             FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
             Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
             if (isAutoChangePool) {
-                List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+                List<Integer> usefulLocation = tSamplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
                 guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
             }
         }
@@ -1760,13 +1763,8 @@ public class RationServiceImpl implements RationService {
         }
 
         List<HeadVO> result = dealHeads(new ArrayList<>(ans), parameter, SampleTypeEnum.kind_stand.getIdentity(), allDisplay, empty, deviceSerialNumber);
-        List<HeadVO> a = new ArrayList<>();
-        for (HeadVO head : result) {
-            if (!head.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
-                a.add(head);
-            }
-        }
-        return Result.ok(a);
+
+        return Result.ok(result);
 
     }
 
@@ -1850,7 +1848,7 @@ public class RationServiceImpl implements RationService {
 
         if (StringUtils.hasText(deviceSerialNumber)) {
 
-            R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
             if (poolInfo.getSuccess()) {
                 FSamplePoolInfoVO data = poolInfo.getData();
                 if (data.getIsAutoChangePool() ) {
@@ -2433,6 +2431,20 @@ public class RationServiceImpl implements RationService {
         TMeasureTaskAttachment attachment;
         boolean recount = false;
 
+        String deviceSerialNumber = queryDataDTO.getDeviceSerialNumber();
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess()) {
+                FSamplePoolInfoVO data = poolInfo.getData();
+
+                if (data.getIsAutoChangePool()) {
+                    List<Integer> usefulLocation = tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+                    publicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+                }
+            }
+        }
+
         R<TMeasureTaskAttachment> r = taskAttachmentService.queryByTaskId(taskId);
         if (!r.getSuccess()) {
             log.info("未查询到任务附件信息");
@@ -2470,7 +2482,7 @@ public class RationServiceImpl implements RationService {
         }
         List<Integer> usefulLocation = new ArrayList<>();
         if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
-            usefulLocation = fSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
+            usefulLocation = tSamplePoolConfigService.getUsefulLocation(queryDataDTO.getDeviceSerialNumber());
         }
         /*
         查询数据
@@ -2509,7 +2521,7 @@ public class RationServiceImpl implements RationService {
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
 
                     if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
-                        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
+                        R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
                         if (poolInfo.getSuccess()) {
                             FSamplePoolInfoVO data = poolInfo.getData();
                             if (data.getIsAutoChangePool()) {
@@ -2529,7 +2541,7 @@ public class RationServiceImpl implements RationService {
                 if (StringUtils.hasText(queryDataDTO.getDeviceSerialNumber())) {
 
                     if (specimen.getIsTested().equals(noTested) && !usefulLocation.isEmpty()) {
-                        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
+                        R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(queryDataDTO.getDeviceSerialNumber());
                         if (poolInfo.getSuccess()) {
                             FSamplePoolInfoVO data = poolInfo.getData();
                             if (data.getIsAutoChangePool()) {
@@ -3033,7 +3045,7 @@ public class RationServiceImpl implements RationService {
         });
         boolean isAutoChangePool = false;
 
-        R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+        R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
         if (poolInfo.getSuccess()) {
             FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
             isAutoChangePool = poolInfoVO.getIsAutoChangePool();
@@ -3181,7 +3193,7 @@ public class RationServiceImpl implements RationService {
             newSample.setSampleNumber(sampleNumPrefix + num);
             newSample.setSampleName(namePrefix + numName);
 
-            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            List<Integer> usefulLocation = tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
             int all = usefulLocation.size();
 
             if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
@@ -3247,7 +3259,7 @@ public class RationServiceImpl implements RationService {
         }
 
         if (isAutoChangePool) {
-            List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+            List<Integer> usefulLocation = tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
             guidePublicUtilService.changeSampleLocation(task.getId(), usefulLocation);
         }
 

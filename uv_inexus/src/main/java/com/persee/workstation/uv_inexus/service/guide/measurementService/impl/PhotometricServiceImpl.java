@@ -1641,6 +1641,20 @@ public class PhotometricServiceImpl implements PhotometricService {
             }
         }
 
+        String deviceSerialNumber = queryDataDTO.getDeviceSerialNumber();
+
+        if (StringUtils.hasText(deviceSerialNumber)) {
+            R<FSamplePoolInfoVO> poolInfo = tSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
+            if (poolInfo.getSuccess()) {
+                FSamplePoolInfoVO data = poolInfo.getData();
+
+                if (data.getIsAutoChangePool()) {
+                    List<Integer> usefulLocation = tSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
+                    publicUtilService.changeSampleLocation(task.getId(), usefulLocation);
+                }
+            }
+        }
+
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
         for (TaskSpecimen specimen : taskSpecimen) {

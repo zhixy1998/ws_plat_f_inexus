@@ -555,7 +555,9 @@ public class LiveDetectionDevicesWebSocket {
             // 直接执行测量循环（减少方法调用链）
             String deviceSerialNumber = taskInfo.deviceSerialNumber;
 
-            if (!taskInfo.isRunning || !hasSubscribers(deviceSerialNumber)) return;
+            if (!taskInfo.isRunning || !hasSubscribers(deviceSerialNumber)) {
+                return;
+            }
 
             long startTime = System.currentTimeMillis();
 
@@ -592,7 +594,7 @@ public class LiveDetectionDevicesWebSocket {
                     // 2. 检查设备是否空闲
 
                     if (device != null && Boolean.FALSE.equals(device.getIsIdle())) {
-                        log.debug("设备正忙，跳过本次测量: {}", deviceSerialNumber);
+                        log.info("设备正忙，跳过本次测量: {}", deviceSerialNumber);
                         return;
                     }
 
