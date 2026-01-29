@@ -981,6 +981,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 R<String> r = udpSendUtil.deviceNewIp(deviceInfo.getDeviceId(), comId, bytes, ReplyNumber, Timeout, connectType, newIp.toString(), headReceiveBytes);
                 if (!r.getSuccess()) {
+                    deviceConnectionManager.removeDevice(deviceInfo.getDeviceId());
                     return R.fail("当前仪器无法连接！");
                 }
                 sendIp = newIp.toString();
@@ -1047,6 +1048,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 }
                 if (!r.getSuccess()) {
+
+                    deviceConnectionManager.removeDevice(deviceId);
+
                     return R.fail("当前仪器无法连接！");
                 }
 

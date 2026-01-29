@@ -576,8 +576,8 @@ public class UdpResponseDeal {
 
     private static OperationResultEntity parseSetCellPos(List<byte[]> responses, byte[] sendBytes) {
         if (responses == null || responses.isEmpty()) {
-            result = "false"; // 设置全局变量
-            return null;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] last = responses.get(responses.size() - 1);
@@ -593,7 +593,8 @@ public class UdpResponseDeal {
 
     private static OperationResultEntity parseSn(List<byte[]> responses) {
         if (responses.size() < 4) {
-            return null;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         StringBuilder sn = new StringBuilder();
@@ -625,7 +626,8 @@ public class UdpResponseDeal {
      */
     private static OperationResultEntity parseType(List<byte[]> responses) {
         if (responses ==  null || responses.isEmpty()) {
-            return null;
+            resultEntity.setIsSuccess(false);
+            return resultEntity;
         }
 
         byte[] last = responses.get(responses.size() - 1);
