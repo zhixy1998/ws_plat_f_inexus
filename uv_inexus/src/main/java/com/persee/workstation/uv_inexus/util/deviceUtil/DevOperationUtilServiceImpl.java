@@ -1299,6 +1299,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 if (liveDetection.getMessage() != null && liveDetection.getMessage().equals(DeviceConstants.unCountResponse)) {
                     log.info("{}指令无响应", comId);
                     deviceManager.removeDevice(deviceId);
+                    DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
+                    infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
+                    infoService.saveOrUpdateInfo(infoPO);
                 }
                 //TODO 实时回显指令出错需要另外处理
                 deviceManager.removeDevice(deviceId);

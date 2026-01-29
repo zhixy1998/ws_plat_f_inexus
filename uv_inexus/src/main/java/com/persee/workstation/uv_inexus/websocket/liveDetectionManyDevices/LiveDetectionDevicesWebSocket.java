@@ -19,7 +19,6 @@ import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.DeviceConnectInfo;
-import com.persee.workstation.uv_inexus.websocket.measure.GuidePhotometricWebSocket;
 import com.persee.workstation.uv_inexus.websocket.measure.*;
 import com.persee.workstation.uv_inexus.websocket.measure.concise.*;
 import com.persee.workstation.uv_inexus.websocket.measure.param.*;
@@ -35,6 +34,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
@@ -50,6 +50,7 @@ import java.util.concurrent.*;
 
 @Controller
 @Slf4j
+@EnableWebSocketMessageBroker
 public class LiveDetectionDevicesWebSocket {
 
     @Autowired
@@ -603,20 +604,26 @@ public class LiveDetectionDevicesWebSocket {
                     inputParam.setDeviceSerialNumber(deviceSerialNumber);
                     inputParam.setOperationType(OperationTypeEnums.LiveDetection.getType());
 
+                    info = infoService.getInfo(deviceSerialNumber);
+                    if (!Constants.DEVICE_STATUS_IDLE.equals(info.getDeviceCurrentStatus())) {
+                        log.info("设备状态非空闲，跳过本次测量: {}", deviceSerialNumber);
+                        return;
+                    }
                     R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 
                     if (!operation.getSuccess()) {
-                        log.warn("实时回显测量失败: {}, 错误: {}", deviceSerialNumber, operation.getMessage());
-                        taskInfo.consecutiveFailures++;
 
-                        taskInfo.isRunning = false;
 
-                        DeviceInfoPO infoPO = infoService.getInfo(deviceSerialNumber);
-                        infoPO.setConnectStatus(Constants.CONNECT_DEVICE_STOP);
-                        infoService.saveOrUpdateInfo(infoPO);
+                        info = infoService.getInfo(deviceSerialNumber);
+                        if (info != null && !Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+                            log.info("设备状态非空闲，跳过本次测量: {}", deviceSerialNumber);
+                        } else {
 
-                        webSocketSendUtil.sendDeviceDisConnectMessage(deviceSerialNumber);
-
+                            log.warn("实时回显测量失败: {}, 错误: {}", deviceSerialNumber, operation.getMessage());
+                            taskInfo.consecutiveFailures++;
+                            taskInfo.isRunning = false;
+                            webSocketSendUtil.sendDeviceDisConnectMessage(deviceSerialNumber);
+                        }
                         return;
 
                     } else {
@@ -838,7 +845,7 @@ public class LiveDetectionDevicesWebSocket {
     @EventListener
     public void handleWebSocketDisconnect(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        String sessionId = headerAccessor.getSessionId();
+        String sessionId = event.getSessionId();
 
         log.debug("WebSocket连接断开: {}", sessionId);
 
@@ -852,10 +859,9 @@ public class LiveDetectionDevicesWebSocket {
                 Set<String> sessions = deviceSessionSubscriptions.get(deviceSerialNumber);
                 if (sessions != null) {
                     sessions.remove(sessionId);
+                    handleUnsubscribe(deviceSerialNumber);
                     if (sessions.isEmpty()) {
                         deviceSessionSubscriptions.remove(deviceSerialNumber);
-                        // 设备没有订阅者了，停止所有任务
-                        handleUnsubscribe(deviceSerialNumber);
                     }
                 }
             }
