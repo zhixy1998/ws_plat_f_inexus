@@ -44,7 +44,7 @@ public interface ExperimentTestService {
 
     Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize);
 
-    Result assignMethodPort(String methodType, String projectId);
+    Result assignMethodPort(String methodType, String projectId,String updateBy);
 
     Result queryReferenceStandard(String standardName);
 
@@ -111,4 +111,7 @@ public interface ExperimentTestService {
      * 前端调用保存数据
      */
     Result saveDataInfo(SaveDataVO vo);
+
+    // 查询样本默认表头
+    Result querySampleDefaultHead(String measureType);
 }

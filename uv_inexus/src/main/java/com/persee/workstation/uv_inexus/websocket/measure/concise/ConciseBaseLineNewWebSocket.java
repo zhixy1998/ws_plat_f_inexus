@@ -101,6 +101,9 @@ public class ConciseBaseLineNewWebSocket {
     @Autowired
     private DevOperationUtilService devOperationUtilService;
 
+    @Autowired
+    DeviceInfoService infoService;
+
     String deviceSerialNumber;
 
     /**
@@ -155,6 +158,8 @@ public class ConciseBaseLineNewWebSocket {
 
         // 初始化发送锁
         sessionSendLocks.put(sessionId, new Object());
+
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
 
         // 往前端推送数据的线程
         Thread taskThread = new Thread(() -> {
@@ -253,6 +258,7 @@ public class ConciseBaseLineNewWebSocket {
             }else{
                 object.put("success", "停止成功");
             }
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             sendClose(sessionId, object);
         } catch (UserInterruptedException e) {
             // 用户主动停止，不处理，由 handleStopRequest 统一发送停止成功
@@ -752,7 +758,9 @@ public class ConciseBaseLineNewWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseBaseLine.getOperation(), message);
+        cleanupResources(deviceSerialNumber);
     }
 
 

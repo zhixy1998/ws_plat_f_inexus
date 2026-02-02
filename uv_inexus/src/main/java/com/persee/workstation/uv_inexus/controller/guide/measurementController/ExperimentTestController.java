@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.MethodExportRequest;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DatabaseEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
@@ -95,6 +96,7 @@ public class ExperimentTestController {
     @PostMapping("changeSampleAttachmentInfo")
     @ApiOperation("修改样品池信息")
     public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {
+        dto.setUpdateDatabase(DatabaseEnum.GUIDE.getCode());
         R<Boolean> r = samplePoolConfigService.updateSamplePoolInfo(dto);
         if (r.getSuccess()) {
             return Result.ok();
@@ -179,8 +181,10 @@ public class ExperimentTestController {
 
     @GetMapping("assignMethodPort")
     @ApiOperation("指定方法接口")
-    public Result assignMethodPort(@RequestParam String methodType,@RequestParam String projectId){
-        return experimentTestService.assignMethodPort(methodType,projectId);
+    public Result assignMethodPort(@RequestParam String methodType,
+                                   @RequestParam String projectId,
+                                   @RequestParam String updateBy){
+        return experimentTestService.assignMethodPort(methodType,projectId,updateBy);
     }
 
     @GetMapping("queryReferenceStandard")
@@ -365,5 +369,11 @@ public class ExperimentTestController {
         return experimentTestService.saveDataInfo(vo);
     }
 
+
+    @GetMapping("querySampleDefaultHead")
+    @ApiOperation("查询样品默认表头")
+    public Result querySampleDefaultHead(@RequestParam String measureType) {
+        return experimentTestService.querySampleDefaultHead(measureType);
+    }
 
 }

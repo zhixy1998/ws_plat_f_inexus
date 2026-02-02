@@ -32,11 +32,14 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.parseReport.CalculationFormulaService;
@@ -53,7 +56,7 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
-import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.OriginalMeasuredDataVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.QueryMethodParameterVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
@@ -73,9 +76,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.servlet.http.HttpServletResponse;
@@ -156,6 +163,12 @@ public class SpectrumServiceImpl implements SpectrumService {
 
     @Autowired
     private DevOperationUtilService devOperationUtilService;
+
+    @Autowired
+    private SamplePoolConfigService samplePoolConfigService;
+
+    @Autowired
+    private ConcisePublicUtilService concisePublicUtilService;
 
     @Value("1")
     String deleteType;
@@ -697,7 +710,6 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO dto) {
-
         if (!StringUtils.hasText(dto.getMethodId())) {
             //请先创建方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
@@ -706,30 +718,24 @@ public class SpectrumServiceImpl implements SpectrumService {
             //至少需要一个表头
             return Result.fail(YamlMessageSource.getMessageStatic("00000012"));
         }
-
-        if (dto.getHeads() != null && dto.getHeads().size() > 10) {
+        if (dto.getHeads().size() > 10) {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
 
-        if (dto.getNewSamples()!=null&&!dto.getNewSamples().isEmpty()) {
-            for (Map<String, String> map : dto.getNewSamples()) {
-                String jsonString = JSON.toJSONString(map);
-                SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
-                if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
-                    return Result.fail("新增样品编号超出限制");
-                }
-                if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
-                    return Result.fail("新增样品名称超出限制");
-                }
-
-            }
+        // 获取方法信息，用于判断重复模式
+        TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
+        if (method == null) {
+            // 方法不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
+        // 将方法参数用json解析出来
+        FSpectrumParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
+
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
 
-            TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
             SysUserPO po = sysUserMapper.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, dto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
@@ -757,50 +763,45 @@ public class SpectrumServiceImpl implements SpectrumService {
             dto.setTaskId(newTask.getId());
         }
 
-
         TMeasureTask task = tMeasureTaskService.getById(dto.getTaskId());
         if (task == null) {
             //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        /// 校验是否有重复的样品编号
-        // 取出所有样品编号
-        List<String> sampleNos = dto.getNewSamples().stream()
-                .map(m -> JSON.parseObject(JSON.toJSONString(m), FSampleVO.class).getSampleNumber()) // 取出 sampleNo
-                .filter(Objects::nonNull)    // 过滤掉空值
-                .collect(Collectors.toList());
-        // 查重：找到重复的样品编号
-        Set<String> duplicates = sampleNos.stream()
-                .filter(no -> Collections.frequency(sampleNos, no) > 1)
-                .collect(Collectors.toSet());
-        // 判断如果isTested为true，
-        if (!duplicates.isEmpty()) {
-            //样品编号重复
-            return Result.fail(YamlMessageSource.getMessageStatic("0000003F"));
+        List<TaskSpecimen> taskSpecimen = new ArrayList<>();
+        if (StringUtils.hasText(task.getSampleKey())) {
+            taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         }
-        if(taskSpecimen == null){
-            taskSpecimen = new ArrayList<>();
+
+        Map<String, TaskSpecimen> oldMap = new HashMap<>();
+        for (TaskSpecimen specimen : taskSpecimen) {
+            oldMap.put(specimen.getSpecimenKey(), specimen);
         }
-        if (taskSpecimen != null){
-            for (TaskSpecimen specimen : taskSpecimen) {
-                if (dto.getDelSampleIds().contains(specimen.getSpecimenKey())) {
+
+        // 处理要删除的样品
+        if (dto.getDelSampleIds() != null && !dto.getDelSampleIds().isEmpty()) {
+            // 获取方法的重复模式（假设方法中有isRepeatMode字段，0-不重复，1-重复）
+            Integer repeatMode = parameter.getRepetitionPattern().equals("单池重复") ? 1 : null; // 请根据实际情况调整字段名
+
+            for (String delSampleId : dto.getDelSampleIds()) {
+                TaskSpecimen specimen = oldMap.get(delSampleId);
+                if (specimen != null) {
                     specimen.setDeleteType(deleteType);
-                    LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-                    queryWrapper.eq(TMeasureData::getSampleKey, specimen.getSpecimenKey())
-                            .eq(TMeasureData::getTaskId, task.getId())
-                            .orderByDesc(TMeasureData::getSerialNumber);
-                    List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
-                    if (list != null && !list.isEmpty()) {
-                        TMeasureData one = list.get(0);
-                        one.setIsDelete(deleteType);
-                        tMeasureDataService.updateById(one);
+
+                    // 根据重复模式执行不同的删除逻辑
+                    if (repeatMode != null && repeatMode == 1) {
+                        // 重复模式：删除所有相关的测量数据和分析数据
+                        handleDeleteForRepeatMode(delSampleId, task.getId());
+                    } else {
+                        // 不重复模式：只删除最新的测量数据
+                        handleDeleteForNonRepeatMode(delSampleId, task.getId());
                     }
                 }
             }
         }
 
+        // 更新任务表头信息
         TaskHeadSnapshot taskHeadSnapshot = new TaskHeadSnapshot();
 
         if (StringUtils.hasText(task.getTableInfo())) {
@@ -813,46 +814,94 @@ public class SpectrumServiceImpl implements SpectrumService {
         taskHeadSnapshot.setTaskId(task.getId());
         task.setTableInfo(JSON.toJSONString(taskHeadSnapshot));
 
+        // 处理新增或更新的样品
+        if (dto.getNewSamples() != null && !dto.getNewSamples().isEmpty()) {
+            List<String> sampleNos = dto.getNewSamples().stream()
+                    .map(m -> m.get(SampleTableEnum.SAMPLE_NUMBER.getIdentity()))
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.toList());
 
-        for (Map<String, String> map : dto.getNewSamples()) {
-            String jsonString = JSON.toJSONString(map);
-            SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
-            TMeasureSample newSample = new TMeasureSample();
-            BeanUtils.copyProperties(sample, newSample);
-            newSample.setId(sample.getSampleId());
-
-            if (dto.getHeads() != null) {
-                JSONObject newColData = new JSONObject();
-
-                for (HeadVO head : dto.getHeads()) {
-                    if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
-                        continue;
-                    }
-                    String s = map.get(head.getIdentity());
-                    newColData.put(head.getIdentity(), s);
-                }
-                newSample.setHeads(JSON.toJSONString(dto.getHeads()));
-                newSample.setNewColData(JSON.toJSONString(newColData));
+            if (sampleNos.size() < dto.getNewSamples().size()) {
+                return Result.fail(YamlMessageSource.getMessageStatic("0000004E"));
             }
 
-            if (StringUtils.hasText(newSample.getId())) {
-                tMeasureSampleService.updateById(newSample);
-            } else {
-                TaskSpecimen specimen = new TaskSpecimen();
-                specimen.setDeleteType(createType);
-                specimen.setIsTested(noTested);
-                specimen.setSampleType(newSample.getSampleType());
-                log.info("新增的样品：{}", newSample);
-                tMeasureSampleService.save(newSample);
-                specimen.setSpecimenKey(newSample.getId());
-                taskSpecimen.add(specimen);
+            // 查重：找到重复的样品编号
+            Set<String> duplicates = sampleNos.stream()
+                    .filter(no -> Collections.frequency(sampleNos, no) > 1)
+                    .collect(Collectors.toSet());
+
+            if (!duplicates.isEmpty()) {
+                //标准样品编号重复
+                return Result.fail(YamlMessageSource.getMessageStatic("00102001"));
+            }
+
+            for (Map<String, String> map : dto.getNewSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
+
+                TMeasureSample newSample = new TMeasureSample();
+                BeanUtils.copyProperties(sample, newSample);
+                newSample.setId(sample.getSampleId());
+
+                if (dto.getHeads() != null) {
+                    JSONObject newColData = new JSONObject();
+
+                    for (HeadVO head : dto.getHeads()) {
+                        if (head.getLocate().equals(TableHeadILocateEnums.system.getIdentity())) {
+                            continue;
+                        }
+                        String s = map.get(head.getIdentity());
+                        newColData.put(head.getIdentity(), s);
+                    }
+                    newSample.setHeads(JSON.toJSONString(dto.getHeads()));
+                    newSample.setNewColData(JSON.toJSONString(newColData));
+                }
+
+                if (StringUtils.hasText(newSample.getId())) {
+                    // 更新现有样品
+                    tMeasureSampleService.updateById(newSample);
+                    TaskSpecimen specimen = oldMap.get(newSample.getId());
+                    if (specimen != null) {
+                        specimen.setSampleType(newSample.getSampleType());
+                        oldMap.put(newSample.getId(), specimen);
+                    }
+                } else {
+                    // 新增样品
+                    TaskSpecimen specimen = new TaskSpecimen();
+                    specimen.setDeleteType(createType);
+                    specimen.setIsTested(noTested);
+                    specimen.setSampleType(newSample.getSampleType());
+                    log.info("新增的样品：{}", newSample);
+                    tMeasureSampleService.save(newSample);
+                    specimen.setSpecimenKey(newSample.getId());
+                    oldMap.put(newSample.getId(), specimen);
+                    taskSpecimen.add(specimen);
+                }
             }
         }
 
+        // 更新任务中的样品信息
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
+        boolean b = tMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
+        }
 
-        return Result.ok(tMeasureTaskService.updateById(task));
+        // 处理样品池自动切换
+        if (StringUtils.hasText(dto.getDeviceSerialNumber())) {
+            R<FSamplePoolInfoVO> poolInfo = samplePoolConfigService.querySamplePoolInfo(dto.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                return Result.ok();
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = samplePoolConfigService.getUsefulLocation(dto.getDeviceSerialNumber());
+                concisePublicUtilService.changeSampleLocationTwo(task.getId(), usefulLocation);
+            }
+        }
+        return Result.ok();
     }
 
     /**
@@ -1403,7 +1452,7 @@ public class SpectrumServiceImpl implements SpectrumService {
                 for (PeakValleyMarking data : dataAll) {
                     BigDecimal value = new BigDecimal(data.getY());
                     value = value.setScale(digit, RoundingMode.HALF_UP);
-                    data.setY(value.stripTrailingZeros().toPlainString());
+                    data.setY(value.toPlainString());
                 }
             }
         }
@@ -1818,10 +1867,6 @@ public class SpectrumServiceImpl implements SpectrumService {
                 yList2.add(split[1]);
             }
         }
-        // 创建请求头
-        HttpHeaders headers = new HttpHeaders();
-        // 设置请求头类型为json
-        headers.setContentType(MediaType.APPLICATION_JSON);
         // 创建请求体
         Map<String, Object> body = new HashMap<>();
         // 将参数添加到请求体中
@@ -1829,13 +1874,15 @@ public class SpectrumServiceImpl implements SpectrumService {
         body.put("y1_data", yList1);
         body.put("y2_data", yList2);
         body.put("operation", paramDto.getArithmeticOperators());
-        // 创建请求对象
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        // 将请求结果转换成对象
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumFourOperation(), request, Map.class).getBody();
-        if (resultMap == null) {
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumFourOperation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         // 对结果进行寻峰计算
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
@@ -1847,10 +1894,25 @@ public class SpectrumServiceImpl implements SpectrumService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -1887,6 +1949,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //保存失败
@@ -1930,7 +1993,7 @@ public class SpectrumServiceImpl implements SpectrumService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
         }
         // 提取方法参数
-        SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
+        FSpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), FSpectrumParameter.class);
         if (spectrumParameter == null) {
             //方法参数错误
             return Result.fail(YamlMessageSource.getMessageStatic("00105017"));
@@ -1970,9 +2033,16 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
         body.put("x_data", xList);
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumTransformation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
@@ -1981,10 +2051,24 @@ public class SpectrumServiceImpl implements SpectrumService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2021,6 +2105,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
@@ -2090,8 +2175,15 @@ public class SpectrumServiceImpl implements SpectrumService {
         body.put("y_data", yList);
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSmoothed(), request, Map.class).getBody();
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSmoothed(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2101,9 +2193,24 @@ public class SpectrumServiceImpl implements SpectrumService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2139,6 +2246,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -2213,8 +2321,15 @@ public class SpectrumServiceImpl implements SpectrumService {
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
         body.put("deriv", paramDto.getDifferentialNum());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getDifferentiated(), request, Map.class).getBody();
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getDifferentiated(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
@@ -2224,9 +2339,24 @@ public class SpectrumServiceImpl implements SpectrumService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2262,6 +2392,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -2314,7 +2445,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
         // 获取方法表中的方法参数信息
         String measurementParamInfo = method.getMeasurementParamInfo();
-        SpectrumParameter spectrumParameter = JSON.parseObject(measurementParamInfo, SpectrumParameter.class);
+        FSpectrumParameter spectrumParameter = JSON.parseObject(measurementParamInfo, FSpectrumParameter.class);
         Integer type = null;
         if (paramDto.getDataType().equals("1")) {
             if (spectrumParameter.getLuminosity().equals("1")) {
@@ -2353,8 +2484,15 @@ public class SpectrumServiceImpl implements SpectrumService {
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", type);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumTransformation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
         SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
@@ -2363,9 +2501,24 @@ public class SpectrumServiceImpl implements SpectrumService {
         double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
         body1.put("height", height);
         body1.put("distance", confVO.getPeakInterval());
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2401,6 +2554,7 @@ public class SpectrumServiceImpl implements SpectrumService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -4023,7 +4177,11 @@ public class SpectrumServiceImpl implements SpectrumService {
     private TMeasureTask createNewTask(SpectralMethodParameterDto paramDto, String methodId, TMeasureTask task, String userId) {
         TMeasureTask newTask = new TMeasureTask();
         newTask.setUserId(userId);
-        newTask.setTaskName(task.getTaskName()+"- 副本");
+        if(task.getTaskName().equals(paramDto.getTaskName())||paramDto.getTaskName()==null|| paramDto.getTaskName().isEmpty()){
+            newTask.setTaskName(task.getTaskName()+"- 副本");
+        }else{
+            newTask.setTaskName(paramDto.getTaskName());
+        }
         newTask.setCreateTime(LocalDateTime.now());
         newTask.setMethodKey(methodId);
         List<TaskSpecimen> specimens = new ArrayList<>();
@@ -4118,6 +4276,120 @@ public class SpectrumServiceImpl implements SpectrumService {
             resultList.add(map);
         }
         return resultList;
+    }
+
+
+    /**
+     * 处理重复模式下的删除逻辑
+     * 删除所有相关的测量数据和分析数据
+     */
+    private void handleDeleteForRepeatMode(String sampleId, String taskId) {
+        // 查询所有未删除的测量数据
+        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureData::getSampleKey, sampleId)
+                .eq(TMeasureData::getTaskId, taskId)
+                .eq(TMeasureData::getIsDelete, 0);
+        List<TMeasureData> measureDataList = tMeasureDataService.list(queryWrapper);
+
+        if (measureDataList != null && !measureDataList.isEmpty()) {
+            for (TMeasureData measureData : measureDataList) {
+                // 标记测量数据为删除
+                measureData.setIsDelete(deleteType);
+                tMeasureDataService.updateById(measureData);
+
+                // 查询并标记相关的分析数据为删除
+                LambdaQueryWrapper<TMeasureAnalysisData> analysisQueryWrapper = new LambdaQueryWrapper<>();
+                analysisQueryWrapper.eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                        .eq(TMeasureAnalysisData::getTaskId, taskId)
+                        .eq(TMeasureAnalysisData::getMeasureDataId, measureData.getId())
+                        .eq(TMeasureAnalysisData::getIsDelete, 0);
+                List<TMeasureAnalysisData> analysisDataList = tMeasureAnalysisDataService.list(analysisQueryWrapper);
+
+                if (analysisDataList != null && !analysisDataList.isEmpty()) {
+                    for (TMeasureAnalysisData analysisData : analysisDataList) {
+                        analysisData.setIsDelete(deleteType);
+                        tMeasureAnalysisDataService.updateById(analysisData);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 处理不重复模式下的删除逻辑
+     * 只删除最新的测量数据
+     */
+    private void handleDeleteForNonRepeatMode(String sampleId, String taskId) {
+        // 查询最新的未删除的测量数据
+        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureData::getSampleKey, sampleId)
+                .eq(TMeasureData::getTaskId, taskId)
+                .eq(TMeasureData::getIsDelete, 0)
+                .last("LIMIT 1");
+
+        // 获取最新的一条
+        List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
+        if (list != null && !list.isEmpty()) {
+            TMeasureData latestData = list.get(0);
+
+            // 标记测量数据为删除
+            latestData.setIsDelete(deleteType);
+            tMeasureDataService.updateById(latestData);
+
+            // 查询并标记相关的分析数据为删除
+            LambdaQueryWrapper<TMeasureAnalysisData> analysisQueryWrapper = new LambdaQueryWrapper<>();
+            analysisQueryWrapper.eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                    .eq(TMeasureAnalysisData::getTaskId, taskId)
+                    .eq(TMeasureAnalysisData::getMeasureDataId, latestData.getId())
+                    .eq(TMeasureAnalysisData::getIsDelete, 0);
+            List<TMeasureAnalysisData> analysisDataList = tMeasureAnalysisDataService.list(analysisQueryWrapper);
+
+            if (analysisDataList != null && !analysisDataList.isEmpty()) {
+                for (TMeasureAnalysisData analysisData : analysisDataList) {
+                    analysisData.setIsDelete(deleteType);
+                    tMeasureAnalysisDataService.updateById(analysisData);
+                }
+            }
+        }
+    }
+
+    /**
+     * 调用Python服务
+     * @param url
+     * @param requestBody
+     * @return
+     */
+    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            Map<String, Object> responseBody = response.getBody();
+
+            // 检查响应体是否为空
+            if (responseBody == null) {
+                throw new RuntimeException(YamlMessageSource.getMessageStatic("00000032")); // "算法服务返回异常"
+            }
+
+            Integer code = (Integer) responseBody.get("code");
+            if (code == null || code != 200) {
+                String message = (String) responseBody.get("message");
+                String errorMsg = StringUtils.hasText(message) ? message : "未知错误";
+                throw new RuntimeException(errorMsg);
+            }
+
+            return responseBody;
+
+        } catch (ResourceAccessException ex) {
+            throw new RuntimeException("算法服务异常,请重启服务");
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            throw new RuntimeException("算法服务异常：" + ex.getStatusCode());
+        } catch (Exception e) {
+            // 兜底异常（包括上面 throw 的 RuntimeException）
+            throw e;
+        }
     }
 
 

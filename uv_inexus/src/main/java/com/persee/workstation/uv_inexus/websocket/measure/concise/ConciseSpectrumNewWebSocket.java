@@ -14,7 +14,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.common.FSamplePoolStatus;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
@@ -29,6 +28,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.concise.ConciseSpectrumWebSocket;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -106,6 +106,8 @@ public class ConciseSpectrumNewWebSocket {
     private FMeasureAnalysisDataService tMeasureAnalysisDataService;
     @Autowired
     private FMeasureAnalysisImageService tMeasureAnalysisImageService;
+    @Autowired
+    DeviceInfoService infoService;
     // 注入PythonPathConstant
     @Autowired
     private PythonPathConstant pythonPathConstant;
@@ -262,14 +264,14 @@ public class ConciseSpectrumNewWebSocket {
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
 
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+
         clearGlobalData();
         // 停止状态给初始值
         Constants.measureStopStatus.put(deviceSerialNumber, true);
 
         if (Constants.endTime != null || Constants.startTime != null) {
-            JSONObject errorMsg = new JSONObject();
-            errorMsg.put("error", "当前测量未结束,无法开启新的测试！");
-            sendClose(deviceSerialNumber, errorMsg);
+            sendError(deviceSerialNumber, "当前测量未结束,无法开启新的测试！");
             return;
         }
 
@@ -279,15 +281,11 @@ public class ConciseSpectrumNewWebSocket {
         Integer digit = param.getDigit();
 
         if (taskId == null) {
-            JSONObject errorMsg = new JSONObject();
-            errorMsg.put("error", "缺少 taskId 参数");
-            sendClose(deviceSerialNumber, errorMsg);
+            sendError(deviceSerialNumber, "缺少 taskId 参数");
             return;
         }
         if (updateBy == null) {
-            JSONObject errorMsg = new JSONObject();
-            errorMsg.put("error", "缺少 updateBy 参数");
-            sendClose(deviceSerialNumber, errorMsg);
+            sendError(deviceSerialNumber,  "缺少 updateBy 参数");
             return;
         }
 
@@ -298,17 +296,13 @@ public class ConciseSpectrumNewWebSocket {
         // 根据任务id查询任务数据
         FMeasureTask task = tMeasureTaskService.getById(taskId);
         if (task == null || task.getSampleKey() == null || task.getSampleKey().equals("")) {
-            JSONObject errorMsg = new JSONObject();
-            errorMsg.put("error", "请先创建样品");
-            sendClose(deviceSerialNumber, errorMsg);
+            sendError(deviceSerialNumber,  "请先创建样品");
             return;
         }
         // 根据方法id查询方法数据
         FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
         if (method == null) {
-            JSONObject errorMsg = new JSONObject();
-            errorMsg.put("error", "方法不存在");
-            sendClose(deviceSerialNumber, errorMsg);
+            sendError(deviceSerialNumber,  "方法不存在");
             return;
         }
 
@@ -329,9 +323,7 @@ public class ConciseSpectrumNewWebSocket {
         wrapper.eq("device_serial_number", deviceSerialNumber);
         SamplePoolConfigPO configPO = fSamplePoolConfigService.getOne(wrapper);
         if (configPO == null) {
-            JSONObject errorMsg = new JSONObject();
-            errorMsg.put("error", "没有找到对应的附件配置信息");
-            sendClose(deviceSerialNumber, errorMsg);
+            sendError(deviceSerialNumber,  "没有找到对应的附件配置信息");
             return;
         }
 
@@ -391,17 +383,15 @@ public class ConciseSpectrumNewWebSocket {
                         FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
                         if (configPO.getIsAutoChangePool()) {
                             if (sample == null) {
-                                JSONObject errorMsg = new JSONObject();
-                                errorMsg.put("error", "请先创建样品");
-                                sendClose(deviceSerialNumber, errorMsg);
+                                sendError(deviceSerialNumber,  "请先创建样品");
                                 return;
                             }
                             if (finalPoolStatus) {
-                                R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
-                                if (!stringR.getSuccess()) {
-                                    JSONObject errorMsg = new JSONObject();
-                                    errorMsg.put("error", "设置出错");
-                                    sendClose(deviceSerialNumber, errorMsg);
+                                SetParam setParam = new SetParam();
+                                setParam.setCellPos(Integer.parseInt(sample.getSampleLocation()));
+                                boolean status = spectrumService.setInstrumentParameters(deviceSerialNumber, setParam);
+                                if (!status) {
+                                    sendError(deviceSerialNumber,  "设置出错");
                                     return;
                                 }
                                 fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
@@ -419,24 +409,8 @@ public class ConciseSpectrumNewWebSocket {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
                                 sendMessage(deviceSerialNumber, payload);
-                            } else {
-                                JSONObject payload = new JSONObject();
-                                if (Constants.measureStopStatus.get(deviceSerialNumber)){
-                                    payload.put("success", "扫描成功");
-                                }else{
-                                    payload.put("success", "停止成功");
-                                }
-                                sendMessage(deviceSerialNumber, payload);
-                                // 全部完成后再告诉前端 finish
-                                payload.clear();
-                                payload.put("result", "finish");
-                                sendClose(deviceSerialNumber, payload);
                             }
                         } else {
-                            // 全部完成后再告诉前端 finish
-                            JSONObject payload = new JSONObject();
-                            payload.put("result", "finish");
-                            sendClose(deviceSerialNumber, payload);
                             break;
                         }
                     }
@@ -447,40 +421,21 @@ public class ConciseSpectrumNewWebSocket {
                         FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
                         if (configPO.getIsAutoChangePool()) {
                             if (sample == null) {
-                                JSONObject errorMsg = new JSONObject();
-                                errorMsg.put("error", "请先创建样品");
-                                sendClose(deviceSerialNumber, errorMsg);
+                                sendError(deviceSerialNumber,  "请先创建样品");
                                 return;
                             }
                             if (finalPoolStatus) {
-                                R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
-                                if (!stringR.getSuccess()) {
-                                    JSONObject errorMsg = new JSONObject();
-                                    errorMsg.put("error", "设置出错");
-                                    sendClose(deviceSerialNumber, errorMsg);
+                                SetParam setParam = new SetParam();
+                                setParam.setCellPos(Integer.parseInt(sample.getSampleLocation()));
+                                boolean status = spectrumService.setInstrumentParameters(deviceSerialNumber, setParam);
+                                if (!status) {
+                                    sendError(deviceSerialNumber,  "设置出错");
                                     return;
                                 }
                                 fSamplePoolConfigService.updateCurrentPoolNum(deviceSerialNumber, Integer.parseInt(sample.getSampleLocation()), updateBy);
                                 JSONObject object = new JSONObject();
                                 object.put("currentPoolNum", sample.getSampleLocation());
                                 sendMessage(deviceSerialNumber, object);
-                            }
-                        }
-
-                        // 根据样品的key查询样品
-                        if (configPO.getIsAutoChangePool()) {
-                            if (sample == null) {
-                                JSONObject errorMsg = new JSONObject();
-                                errorMsg.put("error", "样品不存在");
-                                sendClose(deviceSerialNumber, errorMsg);
-                                return;
-                            }
-                            R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
-                            if (!stringR.getSuccess()) {
-                                JSONObject errorMsg = new JSONObject();
-                                errorMsg.put("error", "设置样品池出错");
-                                sendClose(deviceSerialNumber, errorMsg);
-                                return;
                             }
                         }
 
@@ -544,6 +499,7 @@ public class ConciseSpectrumNewWebSocket {
                 }else{
                     payload.put("success", "停止成功");
                 }
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
                 sendClose(deviceSerialNumber, payload);
 
 
@@ -552,10 +508,7 @@ public class ConciseSpectrumNewWebSocket {
                 sendMessage(deviceSerialNumber, JSONObject.parseObject("执行异常: " + e.getMessage()));
 
                 // 异常时也只发送消息，不清理资源
-                JSONObject errorPayload = new JSONObject();
-                errorPayload.put("result", "error");
-                errorPayload.put("message", "执行异常: " + e.getMessage());
-                sendClose(deviceSerialNumber, errorPayload);
+                sendError(deviceSerialNumber,  "执行异常: " + e.getMessage());
             } finally {
                 // 标记任务线程已完成
                 taskThreads.remove(deviceSerialNumber);
@@ -2075,6 +2028,8 @@ public class ConciseSpectrumNewWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseSpectrum.getOperation(), message);
+        cleanupResources(deviceSerialNumber);
     }
 }

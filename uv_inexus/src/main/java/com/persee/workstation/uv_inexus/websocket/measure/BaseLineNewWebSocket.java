@@ -105,6 +105,9 @@ public class BaseLineNewWebSocket {
     @Autowired
     private DevOperationUtilService devOperationUtilService;
 
+    @Autowired
+    DeviceInfoService infoService;
+
     String deviceSerialNumber;
 
     /**
@@ -154,6 +157,8 @@ public class BaseLineNewWebSocket {
 
         // 初始化发送锁
         sessionSendLocks.put(sessionId, new Object());
+
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
 
         // 往前端推送数据的线程
         Thread taskThread = new Thread(() -> {
@@ -246,6 +251,7 @@ public class BaseLineNewWebSocket {
             }else{
                 object.put("success", "停止成功");
             }
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
             sendClose(sessionId, object);
 
         } catch (UserInterruptedException e) {
@@ -750,7 +756,9 @@ public class BaseLineNewWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.BaseLine.getOperation(), message);
+        cleanupResources(deviceSerialNumber);
     }
 
 

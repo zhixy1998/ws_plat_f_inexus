@@ -35,4 +35,7 @@ public class AddOrDeleteSampleDTO {
 
     @ApiModelProperty("删除的样本id")
     private List<String> delSampleIds;
+
+    @ApiModelProperty("设备序列号")
+    private String deviceSerialNumber;
 }

@@ -17,7 +17,13 @@ import java.util.List;
 public interface ConcisePublicUtilService {
 
 
-    R<Boolean> changeSampleLocation(String taskId, List<Integer> usefulLocation);
+    /**
+     * 修改样本位置
+     */
+    R<Boolean> changeSampleLocation(String taskId, List<Integer> usefulLocation);  /**
+     * 修改样本位置
+     */
+    R<Boolean> changeSampleLocationTwo(String taskId, List<Integer> usefulLocation);
 
     /**
      * 检查修约条件是否合法

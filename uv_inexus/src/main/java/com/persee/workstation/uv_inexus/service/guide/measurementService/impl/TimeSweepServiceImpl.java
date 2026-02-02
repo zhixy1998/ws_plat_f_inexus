@@ -30,13 +30,16 @@ import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
-import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FPeakValleyMarking;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FSpectrumParameter;
+import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.PeakValleyMarking;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskHeadSnapshot;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.ConcisePublicUtilService;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.systemManageService.SystemAlgorithmConfService;
@@ -47,6 +50,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
+import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSampleVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleListVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SpectrumBasicParameterVo;
@@ -69,9 +73,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.servlet.http.HttpServletResponse;
@@ -84,6 +92,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+
 import static java.lang.Double.valueOf;
 
 @Service
@@ -125,6 +134,10 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     DeviceInfoService infoService;
     @Autowired
     private SystemAlgorithmConfService systemAlgorithmConfService;
+    @Autowired
+    private SamplePoolConfigService samplePoolConfigService;
+    @Autowired
+    private ConcisePublicUtilService concisePublicUtilService;
 
     @Value("1")
     String deleteType;
@@ -884,109 +897,6 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result addOrDeleteSamplePort(AddOrDeleteSampleDTO paramDto) {
-//        if (paramDto.getNewSamples().isEmpty() && paramDto.getDelSampleIds().isEmpty()) {
-//            return Result.ok("没有要新增或删除的样品！");
-//        }
-//        if (paramDto.getDelSampleIds()==null){
-//            paramDto.setDelSampleIds(new ArrayList<>());
-//        }
-//        if (paramDto.getNewSamples()==null){
-//            paramDto.setNewSamples(new ArrayList<>());
-//        }
-//
-//        if (paramDto.getHeads() != null && paramDto.getHeads().size() > 10) {
-//            return Result.fail("表格新增列数不能超过10列");
-//        }
-//        // 根据方法id查询方法数据
-//        TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-//        // 根据用户名查询用户数据
-//        SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", paramDto.getUpdateBy()));
-//        TMeasureTask task;
-//        if (paramDto.getTaskId()!=null){
-//            task = tMeasureTaskService.getById(paramDto.getTaskId());
-//        }else{
-//            task = new TMeasureTask();
-//            task.setUserId(user.getId());
-//            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-//            String collect = new Random().ints(8, 0, chars.length())
-//                    .mapToObj(i -> String.valueOf(chars.charAt(i)))
-//                    .collect(Collectors.joining());
-//            task.setTaskName(method.getMeasurementType() + "task_" + collect);
-//            task.setCreateTime(LocalDateTime.now());
-//            task.setMethodKey(method.getId());
-//            task.setMeasureType(method.getMeasurementType());
-//            task.setProjectItemKey(method.getProjectItemKey());
-//            task.setIsDelete("0");
-//            tMeasureTaskService.save(task);
-//            TMeasureTaskAttachment taskAttachment = new TMeasureTaskAttachment();
-//            taskAttachment.setTaskId(task.getId());
-//            boolean save = tMeasureTaskAttachmentService.save(taskAttachment);
-//        }
-//        List<TaskSpecimen> taskSpecimenList = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-//        if (taskSpecimenList != null&&(paramDto.getDelSampleIds()!=null||paramDto.getDelSampleIds().isEmpty())) {
-//            for (TaskSpecimen taskSpecimen : taskSpecimenList) {
-//                for (String delSampleId : paramDto.getDelSampleIds()) {
-//                    if (taskSpecimen.getSpecimenKey().equals(delSampleId)) {
-//                        taskSpecimen.setDeleteType("1");
-//                    }
-//                }
-//            }
-//        }
-//
-//        // 遍历新增的样品列表,如果id为null则进行新增,如果id不为null则进行方法修改
-//        for (Map<String, String> map : paramDto.getNewSamples()) {
-//            String jsonString = JSON.toJSONString(map);
-//            SampleVO newSample = JSON.parseObject(jsonString, SampleVO.class);
-//
-//            JSONObject newColData = new JSONObject();
-//            if (paramDto.getHeads() != null) {
-//
-//                for (HeadVO head : paramDto.getHeads()) {
-//                    String s = map.get(head.getIdentity());
-//                    newColData.put(head.getIdentity(), s);
-//                }
-//            }
-//
-//            if (newSample.getSampleId()!=null){
-//                TMeasureSample byId = tMeasureSampleService.getById(newSample.getSampleId());
-//                if (byId == null){
-//                    return Result.ok("样品不存在");
-//                }
-//                byId.setSampleName(newSample.getSampleName());
-//                byId.setSampleNumber(newSample.getSampleNumber());
-//                byId.setSampleLocation(newSample.getSampleLocation());
-//
-//                byId.setHeads(JSON.toJSONString(paramDto.getHeads()));
-//                byId.setNewColData(newColData.toJSONString());
-//                boolean update = tMeasureSampleService.updateById(byId);
-//                if (!update){
-//                    return Result.ok("修改失败");
-//                }
-//            }else{
-//                TMeasureSample sample = new TMeasureSample();
-//                sample.setSampleName(newSample.getSampleName());
-//                sample.setSampleNumber(newSample.getSampleNumber());
-//                sample.setSampleLocation(newSample.getSampleLocation());
-//                sample.setColor("#000000");
-//                sample.setSampleType(SampleTypeEnum.kind_stand.getIdentity());
-//
-//                sample.setHeads(JSON.toJSONString(paramDto.getHeads()));
-//                sample.setNewColData(newColData.toJSONString());
-//                boolean save = tMeasureSampleService.save(sample);
-//                if (!save){
-//                    return Result.ok("新增失败");
-//                }
-//                TaskSpecimen newTaskSpecimen = new TaskSpecimen();
-//                newTaskSpecimen.setSpecimenKey(sample.getId());
-//                newTaskSpecimen.setDeleteType("0");
-//                newTaskSpecimen.setIsTested("0");
-//                taskSpecimenList.add(newTaskSpecimen);
-//            }
-//        }
-//
-//        task.setSampleKey(JSON.toJSONString(taskSpecimenList));
-//        boolean update = tMeasureTaskService.updateById(task);
-//        return Result.ok(update);
 
         if (!StringUtils.hasText(paramDto.getMethodId())) {
             //请先创建方法
@@ -1128,9 +1038,27 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             }
         }
 
+        // 更新任务中的样品信息
         String jsonString = JSONArray.toJSONString(taskSpecimen);
         task.setSampleKey(jsonString);
+        boolean b = tMeasureTaskService.updateById(task);
+        if (!b) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00100003"));
+        }
 
+        // 处理样品池自动切换
+        if (StringUtils.hasText(paramDto.getDeviceSerialNumber())) {
+            R<FSamplePoolInfoVO> poolInfo = samplePoolConfigService.querySamplePoolInfo(paramDto.getDeviceSerialNumber());
+            if (!poolInfo.getSuccess()) {
+                return Result.ok();
+            }
+            FSamplePoolInfoVO poolInfoVO = poolInfo.getData();
+            Boolean isAutoChangePool = poolInfoVO.getIsAutoChangePool();
+            if (isAutoChangePool) {
+                List<Integer> usefulLocation = samplePoolConfigService.getUsefulLocation(paramDto.getDeviceSerialNumber());
+                concisePublicUtilService.changeSampleLocationTwo(task.getId(), usefulLocation);
+            }
+        }
         return Result.ok(tMeasureTaskService.updateById(task));
     }
 
@@ -1221,7 +1149,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                 for (PeakValleyMarking data : dataAll){
                     BigDecimal value = new BigDecimal(data.getY());
                     value = value.setScale(digit, RoundingMode.HALF_UP);
-                    data.setY(value.stripTrailingZeros().toPlainString());
+                    data.setY(value.toPlainString());
                 }
             }
         }
@@ -1589,28 +1517,60 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     @Override
     public Result queryArithmeticSourceData(String taskId) {
         TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (task == null){
+        if (task == null) {
             return Result.ok(new ArrayList<>());
         }
-        if (task.getSampleKey()==null||task.getSampleKey().equals("[]")){
+        if (task.getSampleKey() == null || task.getSampleKey().equals("[]")) {
             return Result.ok(new ArrayList<>());
         }
+        // 根据任务的方法key查询方法参数
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        List<Map<String,String>> list = new ArrayList<>();
-        for (TaskSpecimen taskSpeciman : taskSpecimen) {
-            if(taskSpeciman.getIsTested().equals("1")&&taskSpeciman.getDeleteType().equals("0")){
-                Map<String, String> map = new HashMap<>();
-                TMeasureData one = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>()
-                        .eq("task_id", taskId)
-                        .eq("sample_key", taskSpeciman.getSpecimenKey())
-                        .orderByDesc("serial_number")
-                        .last("limit 1"));
-                TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-                map.put("measureId", one.getId());
-                map.put("sampleName", byId.getSampleName());
-                list.add(map);
+        List<Map<String, String>> list = new ArrayList<>();
+        // 判断是否是重复模式
+        if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
+            for (TaskSpecimen taskSpeciman : taskSpecimen) {
+                if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
+                    TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>()
+                            .eq("task_id", taskId)
+                            .eq("sample_key", taskSpeciman.getSpecimenKey())
+                            .eq("analysis_type", "5")
+                            .eq("is_delete", "0")
+                            .eq("analysis_number", 1)
+                            .last("limit 1"));
+                    TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                    if (one == null) {
+                        one = new TMeasureAnalysisData();
+                    }
+                    if (one.getAnalysisResult() != null) {
+                        Map<String, String> map = new HashMap<>();
+                        map.put("measureId", one.getId());
+                        map.put("sampleName", byId.getSampleName());
+                        list.add(map);
+                    }
+                }
+            }
+        } else {
+            for (TaskSpecimen taskSpeciman : taskSpecimen) {
+                if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
+                    List<TMeasureAnalysisData> measureDataList = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>()
+                            .eq("task_id", taskId)
+                            .eq("sample_key", taskSpeciman.getSpecimenKey())
+                            .orderByAsc("analysis_number"));
+                    TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                    for (TMeasureAnalysisData tMeasureData : measureDataList) {
+                        if (tMeasureData.getAnalysisResult() != null) {
+                            Map<String, String> map = new HashMap<>();
+                            map.put("measureId", tMeasureData.getId());
+                            map.put("sampleName", byId.getSampleName() + "-" + tMeasureData.getAnalysisNumber());
+                            list.add(map);
+                        }
+                    }
+                }
             }
         }
+
         return Result.ok(list);
     }
 
@@ -1621,34 +1581,33 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result fourOperationsPort(FourOperationsParamDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             //请输入变换名称
             return Result.fail(YamlMessageSource.getMessageStatic("0000002C"));
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             //变换名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000002D"));
         }
         // 对所有传过来的对象数据进行校验,判断是否为null或""
-        if (paramDto.getMeasureDataId1()==null||paramDto.getMeasureDataId1().equals("")){
+        if (paramDto.getMeasureDataId1() == null || paramDto.getMeasureDataId1().equals("")) {
             //请选择测量数据1
             return Result.fail(YamlMessageSource.getMessageStatic("0000002E"));
         }
-        if (paramDto.getMeasureDataId2()==null||paramDto.getMeasureDataId2().equals("")){
+        if (paramDto.getMeasureDataId2() == null || paramDto.getMeasureDataId2().equals("")) {
             //请选择测量数据2
             return Result.fail(YamlMessageSource.getMessageStatic("0000002F"));
         }
-        if (paramDto.getArithmeticOperators()==null||paramDto.getArithmeticOperators().equals("")){
-            //请选择运算符
+        if (paramDto.getArithmeticOperators() == null || paramDto.getArithmeticOperators().equals("")) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000030"));
         }
-        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")){
+        if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             //请选择数据类型
             return Result.fail(YamlMessageSource.getMessageStatic("00000031"));
         }
@@ -1663,50 +1622,65 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             xList.add(split[0]);
             yList1.add(split[1]);
         }
-        if(paramDto.getDataType().equals("0")){
+        if (paramDto.getDataType().equals("0")) {
             for (int i = 0; i < yList1.size(); i++) {
                 yList2.add(String.valueOf(paramDto.getMeasureDataId2()));
             }
-        }else if (paramDto.getDataType().equals("1")){
-            TMeasureData measureData2 = tMeasureDataService.getById(paramDto.getMeasureDataId2());
+        } else if (paramDto.getDataType().equals("1")) {
+            TMeasureAnalysisData measureData2 = tMeasureAnalysisDataService.getById(paramDto.getMeasureDataId2());
             // 将测量数据1和2的测量数据提取出来
-            List<String> list2 = JSON.parseArray(measureData2.getOriginalCalculationData(), String.class);
+            List<String> list2 = JSON.parseArray(measureData2.getAnalysisResult(), String.class);
             for (String s : list2) {
                 String[] split = s.split(",");
                 yList2.add(split[1]);
             }
         }
-        // 创建请求头
-        HttpHeaders headers = new HttpHeaders();
-        // 设置请求头类型为json
-        headers.setContentType(MediaType.APPLICATION_JSON);
         // 创建请求体
         Map<String, Object> body = new HashMap<>();
         // 将参数添加到请求体中
         body.put("x_data", xList);
         body.put("y1_data", yList1);
         body.put("y2_data", yList2);
-        body.put("operation",paramDto.getArithmeticOperators());
-        // 创建请求对象
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        // 将请求结果转换成对象
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumFourOperation(), request, Map.class).getBody();
-        if (resultMap == null){
-            //python接口调用失败
-            return Result.fail(YamlMessageSource.getMessageStatic("00000032"));
+        body.put("operation", paramDto.getArithmeticOperators());
+
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumFourOperation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
         // 对结果进行寻峰计算
         List<Double> x_data = (List<Double>) resultMap.get("x_data");
         List<Double> y_data = (List<Double>) resultMap.get("y_data");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", x_data);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
+
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -1743,16 +1717,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             //保存失败
             return Result.fail(YamlMessageSource.getMessageStatic("00300008"));
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < x_data.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",x_data.get(i));
-            map.put("y",y_data.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", x_data.get(i));
+            map.put("y", y_data.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -1765,26 +1740,51 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result advancedOperationsPort(AdvancedOperationsDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             //请输入变换名称
             return Result.fail(YamlMessageSource.getMessageStatic("0000002C"));
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
+
+        // 根据任务id查询任务数据
+        TMeasureTask task = tMeasureTaskService.getById(paramDto.getTaskId());
+        if (task == null) {
+            //没有找到该任务
+            return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
+        }
+        // 根据任务中的方法key查询方法并且提取方法参数
+        TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            //没有找到该方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
+        }
+        // 提取方法参数
+        FTimeSweepParamter timeSweepParamter = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
+        if (timeSweepParamter == null) {
+            //方法参数错误
+            return Result.fail(YamlMessageSource.getMessageStatic("00105017"));
+        }
+        // 判断光度模式是否是1
+        if (timeSweepParamter.getLuminosity().equals("1")) {
+            //Abs光度模式不可使用高级运算
+            return Result.fail(YamlMessageSource.getMessageStatic("00100015"));
+        }
+
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             //变换名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000002D"));
         }
         // 将所有传过来的数据校验是否为空是否是""
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
             //请选择测量数据
             return Result.fail(YamlMessageSource.getMessageStatic("00000035"));
         }
-        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")){
+        if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             //请选择变换类型
             return Result.fail(YamlMessageSource.getMessageStatic("00000033"));
         }
@@ -1798,24 +1798,45 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             xList.add(split[0]);
             yList.add(split[1]);
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("transform_type", Integer.valueOf(paramDto.getDataType()));
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
         body.put("x_data", xList);
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumTransformation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        // 直接拿寻峰数据进行一次寻谷
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -1852,16 +1873,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             //数据保存失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",y_data.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", y_data.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -1874,34 +1896,34 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result smoothnessPort(SmoothnessDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             //请输入变换名称
             return Result.fail(YamlMessageSource.getMessageStatic("0000002C"));
         }
         // 将所有参数校验是否为空或""
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
             //请选择测量数据
             return Result.fail(YamlMessageSource.getMessageStatic("00000035"));
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")){
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
-        if (paramDto.getCoefficient()==null||paramDto.getCoefficient().equals("")){
+        if (paramDto.getCoefficient() == null || paramDto.getCoefficient().equals("")) {
             //请输入系数
             return Result.fail(YamlMessageSource.getMessageStatic("00000038"));
         }
-        if (paramDto.getPointNum()==null||paramDto.getPointNum().equals("")){
+        if (paramDto.getPointNum() == null || paramDto.getPointNum().equals("")) {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             //变换名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000002D"));
         }
@@ -1911,29 +1933,51 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
-        for (String s : list){
+        for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
             yList.add(split[1]);
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSmoothed(), request, Map.class).getBody();
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSmoothed(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> smoothedY = (List<Double>) data.get("smoothed_y");
-        Map<String, Object> body1 =  new HashMap<>();
+        Map<String, Object> body1 = new HashMap<>();
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         body1.put("x_data", xList);
         body1.put("y_data", smoothedY);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -1969,16 +2013,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             //数据保存失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",smoothedY.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", smoothedY.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -1991,34 +2036,34 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result differentialPort(DifferentialDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             //请输入变换名称
             return Result.fail(YamlMessageSource.getMessageStatic("0000002C"));
         }
         // 将所有参数校验是否为空或""
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")){
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
             //请选择测量数据
             return Result.fail(YamlMessageSource.getMessageStatic("00000035"));
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")){
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
-        if (paramDto.getCoefficient()==null||paramDto.getCoefficient().equals("")){
+        if (paramDto.getCoefficient() == null || paramDto.getCoefficient().equals("")) {
             //请输入系数
             return Result.fail(YamlMessageSource.getMessageStatic("00000038"));
         }
-        if (paramDto.getPointNum()==null||paramDto.getPointNum().equals("")){
+        if (paramDto.getPointNum() == null || paramDto.getPointNum().equals("")) {
             //请输入点数
             return Result.fail(YamlMessageSource.getMessageStatic("00000039"));
         }
-        if (Double.valueOf(paramDto.getCoefficient())>Double.valueOf(paramDto.getPointNum())){
+        if (Double.valueOf(paramDto.getCoefficient()) > Double.valueOf(paramDto.getPointNum())) {
             //系数不能大于点数
             return Result.fail(YamlMessageSource.getMessageStatic("0000003A"));
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             //变换名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000002D"));
         }
@@ -2028,30 +2073,52 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         List<String> xList = new ArrayList<>();
         List<String> yList = new ArrayList<>();
         List<String> list = JSON.parseArray(tMeasureData.getAnalysisResult(), String.class);
-        for (String s : list){
+        for (String s : list) {
             String[] split = s.split(",");
             xList.add(split[0]);
             yList.add(split[1]);
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
         body.put("window_length", paramDto.getPointNum());
         body.put("polyorder", paramDto.getCoefficient());
         body.put("deriv", paramDto.getDifferentialNum());
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getDifferentiated(), request, Map.class).getBody();
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getDifferentiated(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         Map<String, Object> data = (Map<String, Object>) resultMap.get("data");
         List<Double> differentiatedY = (List<Double>) data.get("differentiated_y");
-        Map<String, Object> body1 =  new HashMap<>();
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
+        Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", differentiatedY);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2087,16 +2154,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             //数据保存失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",differentiatedY.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", differentiatedY.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -2109,29 +2177,29 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result luminanceModeConversionPort(LuminosityConversionDto paramDto) {
-        if (paramDto.getAnalysisDataName()==null||paramDto.getAnalysisDataName().equals("")){
+        if (paramDto.getAnalysisDataName() == null || paramDto.getAnalysisDataName().equals("")) {
             //请输入变换名称
             return Result.fail(YamlMessageSource.getMessageStatic("0000002C"));
         }
-        if (paramDto.getTaskId()==null||paramDto.getTaskId().equals("")) {
-            // 缺少参数
-            return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
-        }
-        if (paramDto.getMeasureDataId()==null||paramDto.getMeasureDataId().equals("")) {
-            //请选择测量数据
-            return Result.fail(YamlMessageSource.getMessageStatic("00000035"));
-        }
-        if (paramDto.getMethodId()==null||paramDto.getMethodId().equals("")) {
+        if (paramDto.getTaskId() == null || paramDto.getTaskId().equals("")) {
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
-        if (paramDto.getDataType()==null||paramDto.getDataType().equals("")) {
+        if (paramDto.getMeasureDataId() == null || paramDto.getMeasureDataId().equals("")) {
+            //请选择测量数据
+            return Result.fail(YamlMessageSource.getMessageStatic(YamlMessageSource.getMessageStatic("00000035")));
+        }
+        if (paramDto.getMethodId() == null || paramDto.getMethodId().equals("")) {
+            //缺少参数
+            return Result.fail(YamlMessageSource.getMessageStatic(YamlMessageSource.getMessageStatic("00000007")));
+        }
+        if (paramDto.getDataType() == null || paramDto.getDataType().equals("")) {
             //变换类型错误
             return Result.fail(YamlMessageSource.getMessageStatic("00304004"));
         }
         // 根据传过来的名称去分析数据表中进行查询如果查询出来数据则直接返回并且返回信息提示变换名称重复
         List<TMeasureAnalysisData> analysisData = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>().eq("analysis_name", paramDto.getAnalysisDataName()).eq("task_id", paramDto.getTaskId()));
-        if (analysisData.size()>0){
+        if (analysisData.size() > 0) {
             //变换名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000002D"));
         }
@@ -2139,28 +2207,28 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
         // 获取方法表中的方法参数信息
         String measurementParamInfo = method.getMeasurementParamInfo();
-        SpectrumParameter spectrumParameter = JSON.parseObject(measurementParamInfo, SpectrumParameter.class);
+        FSpectrumParameter spectrumParameter = JSON.parseObject(measurementParamInfo, FSpectrumParameter.class);
         Integer type = null;
-        if(paramDto.getDataType().equals("1")){
-            if (spectrumParameter.getLuminosity().equals("1")){
+        if (paramDto.getDataType().equals("1")) {
+            if (spectrumParameter.getLuminosity().equals("1")) {
                 type = 0;
-            }else if (spectrumParameter.getLuminosity().equals("2")){
+            } else if (spectrumParameter.getLuminosity().equals("2")) {
                 type = 1;
-            }else {
+            } else {
                 //您当前的光度模式不支持进行转换
                 return Result.fail(YamlMessageSource.getMessageStatic("00000036"));
             }
-        }else if (paramDto.getDataType().equals("2")){
-            if (spectrumParameter.getLuminosity().equals("1")){
+        } else if (paramDto.getDataType().equals("2")) {
+            if (spectrumParameter.getLuminosity().equals("1")) {
                 type = 2;
-            }else if (spectrumParameter.getLuminosity().equals("3")){
+            } else if (spectrumParameter.getLuminosity().equals("3")) {
                 type = 3;
-            }else {
+            } else {
                 //您当前的光度模式不支持进行转换
                 return Result.fail(YamlMessageSource.getMessageStatic("00000036"));
             }
-        }else{
-            //您当前的光度模式不支持进行转换
+        } else {
+            //您当前的光度模式不支持进行转换!
             return Result.fail(YamlMessageSource.getMessageStatic("00000036"));
         }
         // 根据测量数据id查询测量数据
@@ -2173,22 +2241,44 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             xList.add(split[0]);
             yList.add(split[1]);
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new HashMap<>();
         body.put("y_data", yList);
-        body.put("transform_type",type);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        Map<String, Object> resultMap = restTemplate.postForEntity(pythonPathConstant.getSpectrumTransformation(), request, Map.class).getBody();
+        body.put("transform_type", type);
+        Map<String, Object> resultMap;
+        try {
+            resultMap = callPythonService(
+                    pythonPathConstant.getSpectrumTransformation(),
+                    body
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<Double> y_data = (List<Double>) resultMap.get("result_y");
+        SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
         Map<String, Object> body1 = new HashMap<>();
         body1.put("x_data", xList);
         body1.put("y_data", y_data);
-        body1.put("height", "0.5");
-        body1.put("distance", "1");
-        HttpEntity<Map<String, Object>> request1 = new HttpEntity<>(body1, headers);
-        Map<String, Object> resultMap1 = restTemplate.postForEntity(pythonPathConstant.getPeakSearching(), request1, Map.class).getBody();
-        Map<String, Object> resultMap2 = restTemplate.postForEntity(pythonPathConstant.getValleySearching(), request1, Map.class).getBody();
+        double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+        body1.put("height", height);
+        body1.put("distance", confVO.getPeakInterval());
+        Map<String, Object> resultMap1;
+        try {
+            resultMap1 = callPythonService(
+                    pythonPathConstant.getPeakSearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
+        Map<String, Object> resultMap2;
+        try {
+            resultMap2 = callPythonService(
+                    pythonPathConstant.getValleySearching(),
+                    body1
+            );
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
         List<PeakValleyMarking> peakData = new ArrayList<>();
         List<Double> peakX = (List<Double>) resultMap1.get("peak_x");
         List<String> peakY = (List<String>) resultMap1.get("peak_y");
@@ -2224,16 +2314,17 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = tMeasureAnalysisDataService.save(tMeasureAnalysisData);
-        if (!save){
+        if (!save) {
             //数据保存失败
             return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
         }
-        List<Map<String,Object>> dataList = new ArrayList<>();
+        List<Map<String, Object>> dataList = new ArrayList<>();
         for (int i = 0; i < xList.size(); i++) {
-            Map<String,Object> map = new HashMap<>();
-            map.put("x",xList.get(i));
-            map.put("y",y_data.get(i));
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", xList.get(i));
+            map.put("y", y_data.get(i));
             dataList.add(map);
         }
         return Result.ok(dataList);
@@ -3016,9 +3107,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
                                                            Integer digit) {
         // 解析分析结果、峰、谷、标记点
         List<String> list = JSON.parseArray(measureData.getAnalysisResult(), String.class);
-        List<FPeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), FPeakValleyMarking.class);
-        List<FPeakValleyMarking> peaks = JSON.parseArray(measureData.getPeak(), FPeakValleyMarking.class);
-        List<FPeakValleyMarking> grades = JSON.parseArray(measureData.getGrain(), FPeakValleyMarking.class);
+        List<PeakValleyMarking> gauges = JSON.parseArray(measureData.getGaugePoint(), PeakValleyMarking.class);
+        List<PeakValleyMarking> peaks = JSON.parseArray(measureData.getPeak(), PeakValleyMarking.class);
+        List<PeakValleyMarking> grades = JSON.parseArray(measureData.getGrain(), PeakValleyMarking.class);
 
         // 存放数据的结果列表
         List<Map<String, Object>> resultList = new ArrayList<>();
@@ -3046,7 +3137,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
             // 标记点数据处理
             if (gauges != null && !gauges.isEmpty()) {
-                for (FPeakValleyMarking gauge : gauges) {
+                for (PeakValleyMarking gauge : gauges) {
                     if (split[0].equals(gauge.getX())) {
                         map.put("marked", "1");
                         break;
@@ -3060,7 +3151,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
             // 峰数据处理
             if (peaks != null && !peaks.isEmpty()) {
-                for (FPeakValleyMarking peak : peaks) {
+                for (PeakValleyMarking peak : peaks) {
                     if (split[0].equals(peak.getX())) {
                         map.put("feng", "1");
                         break;
@@ -3074,7 +3165,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
 
             // 谷数据处理
             if (grades != null && !grades.isEmpty()) {
-                for (FPeakValleyMarking grade : grades) {
+                for (PeakValleyMarking grade : grades) {
                     if (split[0].equals(grade.getX())) {
                         map.put("gu", "1");
                         break;
@@ -3577,6 +3668,45 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return newTask;
         } else {
             return null;
+        }
+    }
+
+    /**
+     * 调用Python服务
+     * @param url
+     * @param requestBody
+     * @return
+     */
+    private Map<String, Object> callPythonService(String url, Map<String, Object> requestBody) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            Map<String, Object> responseBody = response.getBody();
+
+            // 检查响应体是否为空
+            if (responseBody == null) {
+                throw new RuntimeException(YamlMessageSource.getMessageStatic("00000032")); // "算法服务返回异常"
+            }
+
+            Integer code = (Integer) responseBody.get("code");
+            if (code == null || code != 200) {
+                String message = (String) responseBody.get("message");
+                String errorMsg = StringUtils.hasText(message) ? message : "未知错误";
+                throw new RuntimeException(errorMsg);
+            }
+
+            return responseBody;
+
+        } catch (ResourceAccessException ex) {
+            throw new RuntimeException("算法服务异常,请重启服务");
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            throw new RuntimeException("算法服务异常：" + ex.getStatusCode());
+        } catch (Exception e) {
+            // 兜底异常（包括上面 throw 的 RuntimeException）
+            throw e;
         }
     }
 

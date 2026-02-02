@@ -226,7 +226,12 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         }
         if (StringUtils.hasText(changeDto.getTaskId()) && po.getIsAutoChangePool()) {
             List<Integer> usefulLocation = getUsefulLocation(changeDto.getDeviceSerialNumber());
-            concisePublicUtilService.changeSampleLocation(changeDto.getTaskId(), usefulLocation);
+            if (changeDto.getUpdateDatabase().equals("concise")){
+                concisePublicUtilService.changeSampleLocation(changeDto.getTaskId(), usefulLocation);
+            } if (changeDto.getUpdateDatabase().equals("guide")){
+                concisePublicUtilService.changeSampleLocationTwo(changeDto.getTaskId(), usefulLocation);
+            }
+
         }
         return R.ok();
     }
@@ -250,6 +255,11 @@ public class SamplePoolConfigServiceImpl extends ServiceImpl<SamplePoolConfigDAO
         return R.ok(vo);
     }
 
+    /**
+     * 获取可用的样本位置
+     * @param deviceSerialNumber
+     * @return
+     */
     @Override
     public List<Integer> getUsefulLocation(String deviceSerialNumber) {
         List<Integer> list = new ArrayList<>();

@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.controller.concise.measurementControlle
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.DatabaseEnum;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRoundingVO;
@@ -116,6 +117,7 @@ public class ConciseCommonController {
     @PostMapping("changeSampleAttachmentInfo")
     @ApiOperation("修改样品池信息")
     public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {
+        dto.setUpdateDatabase(DatabaseEnum.CONCISE.getCode());
         R<Boolean> r = fSamplePoolConfigService.updateSamplePoolInfo(dto);
         if (r.getSuccess()) {
             return Result.ok();

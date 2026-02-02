@@ -2119,6 +2119,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //保存失败
@@ -2275,6 +2276,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -2415,6 +2417,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -2556,6 +2559,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -2716,6 +2720,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败

@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.websocket.measure.concise;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -24,6 +25,7 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeas
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.TimeSweepConciseService;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
@@ -72,6 +74,9 @@ public class ConciseZeroCalibrationNewWebSocket {
     WebSocketSendUtil webSocketSendUtil;
 
     @Autowired
+    DeviceInfoService infoService;
+
+    @Autowired
     private DevOperationUtilService devOperationUtilService;
 
     /**
@@ -105,6 +110,8 @@ public class ConciseZeroCalibrationNewWebSocket {
         String taskId = param.getTaskId();
         String methodId = param.getMethodId();
         deviceSerialNumber = param.getDeviceSerialNumber();
+
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
 
         if (methodId == null || methodId.equals("")) {
             sendError(deviceSerialNumber, "方法编号不能为空");
@@ -185,9 +192,7 @@ public class ConciseZeroCalibrationNewWebSocket {
         point.clear();
         point.put("success", "校零成功");
         sendMessage(deviceSerialNumber, point);
-        point.clear();
-        point.put("result", "finish");
-        sendMessage(deviceSerialNumber, point);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
     }
 
 
@@ -201,7 +206,7 @@ public class ConciseZeroCalibrationNewWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
-
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseZeroCalibration.getOperation(), message);
     }
 }

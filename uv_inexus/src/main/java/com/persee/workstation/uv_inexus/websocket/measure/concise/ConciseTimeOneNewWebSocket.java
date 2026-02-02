@@ -96,6 +96,8 @@ public class ConciseTimeOneNewWebSocket {
     WebSocketSendUtil webSocketSendUtil;
     @Autowired
     private DevOperationUtilService devOperationUtilService;
+    @Autowired
+    DeviceInfoService infoService;
 
     /**
      * 时间扫描上下文
@@ -190,7 +192,7 @@ public class ConciseTimeOneNewWebSocket {
             initializeAndStart(param, context);
         } catch (Exception e) {
             log.error("时间扫描初始化失败: {}", taskId, e);
-            safeCleanup(taskId, true);
+            sendError(param.getDeviceSerialNumber(), "时间扫描初始化失败");
         }
     }
 
@@ -200,14 +202,13 @@ public class ConciseTimeOneNewWebSocket {
      */
     private void initializeAndStart(FTimeNewWebSocketParam param, TimeScanContext context) {
         String sessionId = param.getTaskId();
-
         try {
             String taskId = param.getTaskId();
             String sampleId = param.getSampleId();
             String deviceSerialNumber = param.getDeviceSerialNumber();
             String updateBy = param.getUpdateBy();
             Integer digit = param.getDigit();
-
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
             if (taskId == null || deviceSerialNumber == null || updateBy == null || sampleId == null) {
                 sendError(deviceSerialNumber, "参数错误");
                 return;
@@ -220,7 +221,7 @@ public class ConciseTimeOneNewWebSocket {
 
             FMeasureTask task = tMeasureTaskService.getById(taskId);
             if (task == null) {
-                safeCleanup(sessionId, true);
+                sendError(sessionId,"任务不存在");
                 return;
             }
 
@@ -236,14 +237,14 @@ public class ConciseTimeOneNewWebSocket {
             // 查询方法参数
             FMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
-                safeCleanup(sessionId, true);
+                sendError(sessionId,"方法不存在");
                 return;
             }
 
             FTimeSweepParamter timeParam = JSON.parseObject(method.getMeasurementParamInfo(), FTimeSweepParamter.class);
             // 配置样品池
             if (!setupSamplePoolIfNeeded(param, context, updateBy)) {
-                safeCleanup(sessionId, true);
+                sendError(sessionId,"样品池配置失败");
                 return;
             }
             // 开始测量
@@ -251,7 +252,7 @@ public class ConciseTimeOneNewWebSocket {
 
         } catch (Exception e) {
             log.error("时间扫描初始化异常: {}", sessionId, e);
-            safeCleanup(sessionId, true);
+            sendError(sessionId, "时间扫描初始化异常");
         }
     }
 
@@ -279,6 +280,7 @@ public class ConciseTimeOneNewWebSocket {
                 // 正常完成 - 等待数据保存后再清理
                 log.info("测量停止成功，等待数据保存...");
             }
+            infoService.updateDeviceCurrentStatus(session.getDeviceSerialNumber(), Constants.DEVICE_STATUS_IDLE);
             if (context.waitForDataSave(30, TimeUnit.SECONDS)) {
                 log.info("数据保存完成，开始清理会话");
                 safeCleanup(sessionId, true);
@@ -289,7 +291,7 @@ public class ConciseTimeOneNewWebSocket {
 
         } catch (Exception e) {
             log.error("时间测量执行异常: {}", sessionId, e);
-            safeCleanup(sessionId, true);
+            sendError(sessionId,"时间测量执行异常");
         }
     }
 
@@ -463,6 +465,28 @@ public class ConciseTimeOneNewWebSocket {
             scanTime = Double.parseDouble(param.getScanTime()) * 60+Double.parseDouble(param.getIntervalTime());
         }else{
             scanTime = Double.parseDouble(param.getScanTime())+Double.parseDouble(param.getIntervalTime());
+        }
+
+        Double intervalTime = Double.parseDouble(param.getIntervalTime());
+
+        // 时间校验逻辑
+        if (intervalTime > 0) {
+            // 计算倍数
+            double times = scanTime / intervalTime;
+
+            // 判断是否为整数倍数
+            boolean isExactMultiple = Math.abs(times - Math.round(times)) < 0.000001;
+
+            if (!isExactMultiple) {
+                // 方法1：向下取整倍数
+                int fullIntervals = (int) Math.floor(times);
+                scanTime = fullIntervals * intervalTime;
+
+                // 确保至少有一个间隔的时间
+                if (scanTime < intervalTime) {
+                    scanTime = intervalTime;
+                }
+            }
         }
         inputParam.setTotalTime(scanTime);
         inputParam.setIntervalSeconds(Double.parseDouble(param.getIntervalTime()));
@@ -790,5 +814,7 @@ public class ConciseTimeOneNewWebSocket {
 
     private void sendError(String deviceSerialNumber, String message) {
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseTimeMeasureOne.getOperation(), message);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+        safeCleanup(deviceSerialNumber, true);
     }
 }

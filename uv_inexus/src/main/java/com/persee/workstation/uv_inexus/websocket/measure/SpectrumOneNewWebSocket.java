@@ -17,7 +17,6 @@ import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.TaskStatusEnum;
-import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.SamplePoolConfigPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
@@ -32,6 +31,7 @@ import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.*;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEnum;
+import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
 import com.persee.workstation.uv_inexus.vo.factory_inspection.SamplePoolStatus;
 import com.persee.workstation.uv_inexus.vo.systemManageVo.SystemAlgorithmConfVO;
 import com.persee.workstation.uv_inexus.websocket.liveDetectionManyDevices.WebSocketOperationEnum;
@@ -113,6 +113,8 @@ public class SpectrumOneNewWebSocket {
     WebSocketSendUtil webSocketSendUtil;
     @Autowired
     private DevOperationUtilService devOperationUtilService;
+    @Autowired
+    DeviceInfoService infoService;
 
     // 从yaml配置文件读取台阶消除批次大小
     @Value("${staircase-elimination.data-count}")
@@ -261,6 +263,7 @@ public class SpectrumOneNewWebSocket {
 
         // 初始化发送锁
         sessionSendLocks.put(deviceSerialNumber, new Object());
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
 
         clearGlobalData();
         Constants.measureStopStatus.put(deviceSerialNumber, true);
@@ -379,8 +382,10 @@ public class SpectrumOneNewWebSocket {
             }
 
             if (poolStatus) {
-                R<String> stringR = devMessageUtil.setCurrentCellPos(Integer.valueOf(sample.getSampleLocation()), ip);
-                if (!stringR.getSuccess()) {
+                SetParam setParam = new SetParam();
+                setParam.setCellPos(Integer.parseInt(sample.getSampleLocation()));
+                boolean status = spectrumService.setInstrumentParameters(deviceSerialNumber, setParam);
+                if (!status) {
                     JSONObject errorMsg = new JSONObject();
                     errorMsg.put("error", "设置出错");
                     sendClose(deviceSerialNumber, errorMsg);
@@ -406,12 +411,8 @@ public class SpectrumOneNewWebSocket {
                 }else{
                     payload.put("success", "停止成功");
                 }
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
                 sendMessage(deviceSerialNumber, payload);
-                // 全部完成后再告诉前端 finish
-                payload.clear();
-                payload.put("result", "finish");
-                sendClose(deviceSerialNumber, payload);
-
             } catch (Exception e) {
                 log.error("单次测量异常", e);
                 JSONObject payload = new JSONObject();
@@ -1866,6 +1867,8 @@ public class SpectrumOneNewWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.SpectrumOne.getOperation(), message);
+        cleanupResources(deviceSerialNumber);
     }
 }

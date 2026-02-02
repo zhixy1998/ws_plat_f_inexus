@@ -2500,6 +2500,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //保存失败
@@ -2656,6 +2657,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000034"));
@@ -2797,6 +2799,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -2943,6 +2946,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败
@@ -3105,6 +3109,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
         tMeasureAnalysisData.setGrain(JSON.toJSONString(valleyData));
         tMeasureAnalysisData.setColor("#000000");
         tMeasureAnalysisData.setIsDelete("0");
+        tMeasureAnalysisData.setIsSave(Constants.PARAM_ZERO);
         boolean save = fMeasureAnalysisDataService.save(tMeasureAnalysisData);
         if (!save) {
             //数据保存失败

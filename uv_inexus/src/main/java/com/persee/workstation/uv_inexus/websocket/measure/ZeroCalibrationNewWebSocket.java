@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.websocket.measure;/*
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.model.R;
@@ -19,6 +20,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskService;
@@ -38,6 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -72,6 +75,9 @@ public class ZeroCalibrationNewWebSocket {
     @Autowired
     private DevOperationUtilService devOperationUtilService;
 
+    @Autowired
+    DeviceInfoService infoService;
+
     /**
      * 当WebSocket连接建立后调用此方法
      */
@@ -103,6 +109,7 @@ public class ZeroCalibrationNewWebSocket {
         String taskId = param.getTaskId();
         String methodId = param.getMethodId();
         deviceSerialNumber = param.getDeviceSerialNumber();
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
 
         if (methodId == null || methodId.equals("")) {
             sendError(deviceSerialNumber, "方法编号不能为空");
@@ -133,6 +140,7 @@ public class ZeroCalibrationNewWebSocket {
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Zero.getType());
         inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setWavelength(Collections.singletonList(timeSweepParamter.getWaveLength()));
         R<OperationResultEntity> r = devOperationUtilService.operation(inputParam);
         if (!r.getSuccess()) {
             sendError(deviceSerialNumber, r.getMessage());
@@ -182,9 +190,7 @@ public class ZeroCalibrationNewWebSocket {
         point.clear();
         point.put("success", "校零成功");
         sendMessage(deviceSerialNumber, point);
-        point.clear();
-        point.put("result", "finish");
-        sendMessage(deviceSerialNumber, point);
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
     }
 
 
@@ -198,7 +204,7 @@ public class ZeroCalibrationNewWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
-
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ZeroCalibration.getOperation(), message);
     }
 }

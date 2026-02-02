@@ -34,4 +34,7 @@ public class FSamplePoolInfoChangeDto {
 
     @ApiModelProperty("更新人")
     private String updateBy;
+
+    @ApiModelProperty("更新数据库")
+    private String updateDatabase;
 }

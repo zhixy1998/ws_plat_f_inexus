@@ -771,7 +771,7 @@ public class UdpResponseDeal {
                     param.setS(String.valueOf(s0));
                 }
 
-                else if (cmdType == 0x02 || cmdType == 0x06 || cmdType == 0x30) {
+                else if (cmdType == 0x02 || cmdType == 0x06 || cmdType == 0x30 || cmdType == 0x0C) {
 
                     int d0 = ((resp[4] & 0xFF) << 16)
                             | ((resp[5] & 0xFF) << 8)

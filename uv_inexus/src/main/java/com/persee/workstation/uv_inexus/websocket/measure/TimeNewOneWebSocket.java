@@ -100,6 +100,8 @@ public class TimeNewOneWebSocket {
     WebSocketSendUtil webSocketSendUtil;
     @Autowired
     private DevOperationUtilService devOperationUtilService;
+    @Autowired
+    DeviceInfoService infoService;
 
     /**
      * 时间扫描上下文
@@ -185,7 +187,7 @@ public class TimeNewOneWebSocket {
             initializeAndStart(param, context);
         } catch (Exception e) {
             log.error("时间扫描初始化失败: {}", taskId, e);
-            safeCleanup(taskId, true);
+            sendError(param.getDeviceSerialNumber(), "时间扫描初始化失败");
         }
     }
 
@@ -202,6 +204,8 @@ public class TimeNewOneWebSocket {
             String deviceSerialNumber = param.getDeviceSerialNumber();
             String updateBy = param.getUpdateBy();
             Integer digit = param.getDigit();
+
+            infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
 
             if (taskId == null || deviceSerialNumber == null || updateBy == null || sampleId == null) {
                 safeCleanup(sessionId, true);
@@ -231,14 +235,14 @@ public class TimeNewOneWebSocket {
             // 查询方法参数
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             if (method == null) {
-                safeCleanup(sessionId, true);
+                sendError(sessionId, "方法不存在");
                 return;
             }
 
             TimeSweepParamter timeParam = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
             // 配置样品池
             if (!setupSamplePoolIfNeeded(param, context, updateBy)) {
-                safeCleanup(sessionId, true);
+                sendError(sessionId,"样品池配置失败");
                 return;
             }
             // 开始测量
@@ -246,7 +250,7 @@ public class TimeNewOneWebSocket {
 
         } catch (Exception e) {
             log.error("时间扫描初始化异常: {}", sessionId, e);
-            safeCleanup(sessionId, true);
+            sendError(sessionId,"时间扫描初始化异常");
         }
     }
 
@@ -270,6 +274,7 @@ public class TimeNewOneWebSocket {
             }else{
                 JSONObject object = new JSONObject();
                 object.put("success", "停止成功");
+                infoService.updateDeviceCurrentStatus(context.deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
                 sendMessage(session.getDeviceSerialNumber(), object);
                 // 正常完成 - 等待数据保存后再清理
                 log.info("测量停止成功，等待数据保存...");
@@ -284,7 +289,7 @@ public class TimeNewOneWebSocket {
 
         } catch (Exception e) {
             log.error("时间测量执行异常: {}", sessionId, e);
-            safeCleanup(sessionId, true);
+            sendError(session.getDeviceSerialNumber(), "时间测量执行异常");
         }
     }
 
@@ -460,6 +465,28 @@ public class TimeNewOneWebSocket {
             scanTime = Double.parseDouble(param.getScanTime()) * 60+Double.parseDouble(param.getIntervalTime());
         }else{
             scanTime = Double.parseDouble(param.getScanTime())+Double.parseDouble(param.getIntervalTime());
+        }
+
+        Double intervalTime = Double.parseDouble(param.getIntervalTime());
+
+        // 时间校验逻辑
+        if (intervalTime > 0) {
+            // 计算倍数
+            double times = scanTime / intervalTime;
+
+            // 判断是否为整数倍数
+            boolean isExactMultiple = Math.abs(times - Math.round(times)) < 0.000001;
+
+            if (!isExactMultiple) {
+                // 方法1：向下取整倍数
+                int fullIntervals = (int) Math.floor(times);
+                scanTime = fullIntervals * intervalTime;
+
+                // 确保至少有一个间隔的时间
+                if (scanTime < intervalTime) {
+                    scanTime = intervalTime;
+                }
+            }
         }
         inputParam.setTotalTime(scanTime);
         inputParam.setIntervalSeconds(Double.parseDouble(param.getIntervalTime()));
@@ -786,7 +813,9 @@ public class TimeNewOneWebSocket {
     }
 
     private void sendError(String deviceSerialNumber, String message) {
+        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
         webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.ConciseTimeMeasureOne.getOperation(), message);
+        safeCleanup(deviceSerialNumber, true);
     }
 
     private String getYType(String luminosity) {

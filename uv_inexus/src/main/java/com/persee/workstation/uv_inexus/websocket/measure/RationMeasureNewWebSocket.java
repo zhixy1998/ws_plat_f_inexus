@@ -1279,7 +1279,7 @@ public class RationMeasureNewWebSocket{
                 operation = operationUtilService.operation(inputParam);
 
                 if (!operation.getSuccess()) {
-                    log.info("设置样品池位置出错");
+                    log.info("设置样品池位x置出错");
                     return R.fail("设置样品池位置出错！");
                 }
 

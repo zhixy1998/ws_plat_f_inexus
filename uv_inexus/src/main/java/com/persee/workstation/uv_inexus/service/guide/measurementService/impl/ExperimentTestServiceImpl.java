@@ -85,6 +85,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT;
+
 @Slf4j
 @Service
 ("experimentTestService")
@@ -376,7 +378,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         // 根据任务名称查询任务,如果为空则继续,如果有值的话则返回错误
-        List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName()));
+        List<TMeasureTask> taskList =  tMeasureTaskService.list(Wrappers.lambdaQuery(TMeasureTask.class).eq(TMeasureTask::getTaskName, paramDto.getTaskName())
+                .eq(TMeasureTask::getMeasureType, paramDto.getMeasurementType())
+                .eq(TMeasureTask::getProjectItemKey, paramDto.getProjectId()));
         if (!taskList.isEmpty()){
             //任务名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
@@ -1336,7 +1340,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         } else if ("定量测定".equals(measureType)) {
             return MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription();
         } else if ("光度测量".equals(measureType)) {
-            return MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription();
+            return PHOTOMETRIC_MEASUREMENT.getDescription();
         }
         return null;
     }
@@ -1417,13 +1421,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         if (queryTask.getMethodIds().size()!=0){
             wrapper.in("method_key", queryTask.getMethodIds());
         }
+        if ((queryTask.getStartTime() != null && !queryTask.getStartTime().isEmpty())
+                && (queryTask.getEndTime() != null && !queryTask.getEndTime().isEmpty())) {
+            wrapper.apply("DATE(create_time) >= DATE({0})", queryTask.getStartTime())
+                    .apply("DATE(create_time) <= DATE({0})", queryTask.getEndTime());
+        }
         // 根据用户名称查询用户id
         SysUserPO sysUserPO = sysUserMapper.selectByUsername(queryTask.getUpdateBy());
         wrapper.eq("user_id", sysUserPO.getId());
         wrapper.eq("project_item_key", queryTask.getProjectId());
-        if ((queryTask.getStartTime()!=null&&queryTask.getStartTime()!="")&&(queryTask.getEndTime()!=null&&queryTask.getEndTime()!="")){
-            wrapper.between("create_time", queryTask.getStartTime(), queryTask.getEndTime());
-        }
         wrapper.eq("measure_type", queryTask.getMeasurementType());
         Page<TMeasureTask> page = tMeasureTaskService.page(new Page<>(queryTask.getPageNum(), queryTask.getPageSize()), wrapper);
         if (page == null) {
@@ -1508,7 +1514,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // TODO 所有测量的查看任务查询需要完善
         switch (type){
             case PHOTOMETRIC_MEASUREMENT:
-                if (!measureType.equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())){
+                if (!measureType.equals(PHOTOMETRIC_MEASUREMENT.getDescription())){
                     //请选择光度测量
                     return Result.fail(YamlMessageSource.getMessageStatic("00301007"));
                 }
@@ -1571,15 +1577,21 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(finalPage);
     }
 
+    /**
+     * 查询方法
+     * @param methodType
+     * @param projectId
+     * @return
+     */
     @Override
-    public Result assignMethodPort(String methodType, String projectId) {
+    public Result assignMethodPort(String methodType, String projectId,String updateBy) {
         // 根据方法判定是否是测量方法
         MeasureTypeEnum.fromDescription(methodType);
         if (methodType == null || methodType.equals("")){
             return Result.ok(new ArrayList<>());
         }
         // 根据项目id和方法类型查询方法表数据
-        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType));
+        List<TMeasureMethod> list = tMeasureMethodService.list(new QueryWrapper<TMeasureMethod>().eq("project_item_key", projectId).eq("measurement_type", methodType).eq("method_creator",updateBy));
         if (list == null || list.size() == 0){
             return Result.ok(new ArrayList<>());
         }
@@ -2307,6 +2319,8 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         dto.setTaskName(method.getMeasurementType() + "task_" + collect);
         List<Map<String, String>> taskSpecimen = new ArrayList<>();
         dto.setSpecimens(taskSpecimen);
+        dto.setUpdateBy(updateBy);
+
 
         Result task = createTask(dto);
         if (!task.getCode().equals(200)) {
@@ -3037,7 +3051,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
 
-        if (task.getMeasureType().equals(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription())) {
+        if (task.getMeasureType().equals(PHOTOMETRIC_MEASUREMENT.getDescription())) {
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -4031,6 +4045,50 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         log.info("方法名称查重检查: projectId={}, methodName={}, count={}",
                 projectId, methodName, count);
         return count > 0 ? Result.fail(YamlMessageSource.getMessageStatic("00301002")) : Result.ok();
+    }
+
+    /**
+     * 查询样品默认表头
+     * @param measureType
+     * @return
+     */
+    @Override
+    public Result querySampleDefaultHead(String measureType) {
+        if (measureType == null) {
+            //参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00000045"));
+        }
+        Map<String, List<HeadVO>> map = new HashMap<>();
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        switch (measureTypeEnum){
+            case PHOTOMETRIC_MEASUREMENT :{
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.PHOTOMETRIC_MEASUREMENT.getDescription(), null);
+                map.put("hander", preHead);
+                break;
+            }
+            case QUANTITATIVE_MEASUREMENT :{
+                List<HeadVO> unknown = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), Constants.PARAM_ONE);
+                map.put("unknown", unknown);
+                List<HeadVO> standard = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), Constants.PARAM_ZERO);
+                map.put("standard", standard);
+                break;
+            }
+            case SPECTRAL_SCAN :{
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.SPECTRAL_SCAN.getDescription(), null);
+                map.put("hander", preHead);
+                break;
+            }
+            case TIME_SCAN :{
+                List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.TIME_SCAN.getDescription(), null);
+                map.put("hander", preHead);
+                break;
+            }
+            default: {
+                return Result.fail(YamlMessageSource.getMessageStatic("0000000D"));
+            }
+        }
+        return Result.ok(map);
+
     }
 
 
