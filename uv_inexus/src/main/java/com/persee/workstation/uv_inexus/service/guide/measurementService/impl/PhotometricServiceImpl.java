@@ -1658,7 +1658,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
 
         for (TaskSpecimen specimen : taskSpecimen) {
-            if (!allDisplay && specimen.getDeleteType().equals("1")) {
+            if (!allDisplay && specimen.getDeleteType().equals(deleteType)) {
                 continue;
             }
 
@@ -2028,29 +2028,36 @@ public class PhotometricServiceImpl implements PhotometricService {
             return Result.fail(YamlMessageSource.getMessageStatic("0000001C"));
         }
 
-        if (!StringUtils.hasText(vo.getRemark())) {
-            //缺少备注
-            return Result.fail(YamlMessageSource.getMessageStatic("00302004"));
+        if (vo.getData() == null || vo.getData().isEmpty()) {
+            return Result.ok();
         }
-
         String taskId = vo.getTaskId();
         String sampleId = vo.getSampleId();
-        LambdaQueryWrapper<TMeasureData> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TMeasureData::getTaskId, taskId)
-                .eq(TMeasureData::getSampleKey, sampleId)
-                .orderByDesc(TMeasureData::getSerialNumber);
-        List<TMeasureData> list = tMeasureDataService.list(queryWrapper);
-        TMeasureData data = new TMeasureData();
-        if (list != null && !list.isEmpty()) {
-            data = list.get(0);
-            data.setRemark(vo.getRemark());
+
+        LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                .orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+        if (analysisData != null) {
+            Map<String, String> jsonObject;
+            if (StringUtils.hasText(analysisData.getAnalysisParam())) {
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>(){});
+            } else {
+                jsonObject = vo.getData();
+            }
+            analysisData.setAnalysisParam(JSON.toJSONString(jsonObject));
+            tMeasureAnalysisDataService.updateById(analysisData);
         } else {
-            data.setTaskId(taskId);
-            data.setSampleKey(sampleId);
-            data.setSerialNumber(1);
-            data.setRemark(vo.getRemark());
+            analysisData = new TMeasureAnalysisData();
+            analysisData.setTaskId(taskId);
+            analysisData.setSampleKey(sampleId);
+            analysisData.setAnalysisParam(JSON.toJSONString(vo.getData()));
+            analysisData.setDataVersion(0);
+            analysisData.setIsDelete(createType);
+            tMeasureAnalysisDataService.save(analysisData);
         }
-        tMeasureDataService.saveOrUpdate(data);
 
         return Result.ok(true);
     }

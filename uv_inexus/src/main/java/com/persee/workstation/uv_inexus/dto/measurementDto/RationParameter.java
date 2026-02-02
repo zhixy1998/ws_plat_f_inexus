@@ -41,13 +41,13 @@ public class RationParameter extends MeasurePublicParameters{
     @ApiModelProperty("微分方式名称")
     private String differentialModeName;
     // 曲线类型
-    @ApiModelProperty("曲线类型")
+    @ApiModelProperty("曲线类型, 一次、二次、三次……曲线")
     private String curveType;
 
     @ApiModelProperty("曲线类型名称")
     private String curveTypeName;
     // 方程类型
-    @ApiModelProperty("方程类型")
+    @ApiModelProperty("方程类型，c=f(abs)，abs=f(c)")
     private String equationType;
 
     @ApiModelProperty("方程类型名称")

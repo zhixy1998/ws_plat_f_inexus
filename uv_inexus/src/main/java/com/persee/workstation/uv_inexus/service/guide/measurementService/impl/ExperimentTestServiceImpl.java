@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -4046,5 +4047,70 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         T t = JSON.parseObject(jsonString, clazz);
         return t;
 
+    }
+
+    @Override
+    public Result saveDataInfo(SaveDataVO vo) {
+        if (!StringUtils.hasText(vo.getTaskId())) {
+            return Result.fail("请创建任务");
+        }
+
+        if (!StringUtils.hasText(vo.getSampleId())) {
+            return Result.fail("缺少样品id");
+        }
+
+        if (vo.getData() == null || vo.getData().isEmpty()) {
+            return Result.ok();
+        }
+        String taskId = vo.getTaskId();
+        String sampleId = vo.getSampleId();
+
+        LambdaQueryWrapper<TMeasureData> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TMeasureData::getTaskId, taskId)
+                .eq(TMeasureData::getSampleKey, sampleId)
+                .orderByDesc(TMeasureData::getSerialNumber).last("limit 1");
+        TMeasureData data = tMeasureDataService.getOne(wrapper);
+
+
+        LambdaQueryWrapper<TMeasureAnalysisData> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                .eq(TMeasureAnalysisData::getSampleKey, sampleId);
+
+        if (data != null) {
+            queryWrapper.eq(TMeasureAnalysisData::getMeasureDataId, data.getId());
+        }
+        queryWrapper.orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+
+        TMeasureAnalysisData analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+        if (analysisData != null) {
+            Map<String, String> jsonObject;
+            if (StringUtils.hasText(analysisData.getAnalysisParam())) {
+                jsonObject = JSON.parseObject(analysisData.getAnalysisParam(), new TypeReference<Map<String, String>>() {
+                });
+                jsonObject.putAll(vo.getData());
+            } else {
+                jsonObject = vo.getData();
+            }
+            analysisData.setAnalysisParam(JSON.toJSONString(jsonObject));
+            tMeasureAnalysisDataService.updateById(analysisData);
+        } else {
+
+            queryWrapper.clear();
+            queryWrapper.eq(TMeasureAnalysisData::getTaskId, taskId)
+                    .eq(TMeasureAnalysisData::getSampleKey, sampleId)
+                    .orderByDesc(TMeasureAnalysisData::getDataVersion).last("limit 1");
+            analysisData = tMeasureAnalysisDataService.getOne(queryWrapper);
+            if (analysisData == null) {
+                analysisData = new TMeasureAnalysisData();
+                analysisData.setDataVersion(0);
+            }
+            analysisData.setTaskId(taskId);
+            analysisData.setSampleKey(sampleId);
+            analysisData.setAnalysisParam(JSON.toJSONString(vo.getData()));
+            analysisData.setIsDelete(createType);
+            tMeasureAnalysisDataService.saveOrUpdate(analysisData);
+        }
+
+        return Result.ok(true);
     }
 }

@@ -132,6 +132,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         vo.setIsDevOpened(deviceInfoPO.getIsDevOpened());
         vo.setDeviceSerialNumber(deviceSerialNumber);
         vo.setDeviceName(deviceInfoPO.getDeviceName());
+        vo.setDeviceModelName(deviceInfoPO.getDeviceModelName());
         vo.setIsActivated(deviceInfoPO.getIsActivated() == null ? 0 : deviceInfoPO.getIsActivated());
 
         String connect = DeviceConnectMessageEnum.getName(deviceInfoPO.getConnectStatus()) + " IP="
@@ -974,7 +975,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             OperationResultEntity data = operation.getData();
             FindDeviceVO vo = new FindDeviceVO();
 
-            DeviceInfoPO info = new DeviceInfoPO();
+            DeviceInfoPO info = infoService.getInfo(data.getDeviceSerialNumber());
+            if (info == null) {
+                info = new DeviceInfoPO();
+            }
 
             BeanUtils.copyProperties(data, vo);
             BeanUtils.copyProperties(data, info);

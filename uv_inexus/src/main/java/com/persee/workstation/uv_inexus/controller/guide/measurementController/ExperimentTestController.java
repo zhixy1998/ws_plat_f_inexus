@@ -9,16 +9,19 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
+import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.MethodExportRequest;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
+import com.persee.workstation.uv_inexus.service.concise.measurementService.SamplePoolConfigService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.ExperimentTestService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SampleHeadTemplateService;
 import com.persee.workstation.uv_inexus.vo.measurementVo.MethodBaseVo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiOperation;
@@ -47,6 +50,9 @@ public class ExperimentTestController {
 
     @Autowired
     SampleHeadTemplateService sampleHeadTemplateService;
+
+    @Autowired
+    SamplePoolConfigService samplePoolConfigService;
 
 
     @GetMapping("recentlyAccomplishTask")
@@ -84,6 +90,17 @@ public class ExperimentTestController {
     @ApiOperation("新建任务接口")
     public Result createTask(@RequestBody CreateTaskParamDto paramDto) {
         return experimentTestService.createTask(paramDto);
+    }
+
+    @PostMapping("changeSampleAttachmentInfo")
+    @ApiOperation("修改样品池信息")
+    public Result<Boolean> changeSampleAttachmentInfo(@RequestBody FSamplePoolInfoChangeDto dto) {
+        R<Boolean> r = samplePoolConfigService.updateSamplePoolInfo(dto);
+        if (r.getSuccess()) {
+            return Result.ok();
+        } else {
+            return Result.fail(r.getMessage());
+        }
     }
 
 
@@ -341,5 +358,12 @@ public class ExperimentTestController {
     public Result nameDuplicationCheck(@RequestParam String projectId, @RequestParam String methodName) {
         return experimentTestService.nameDuplicationCheck(projectId, methodName);
     }
+
+    @PostMapping("saveDataInfo")
+    @ApiOperation("保存数据接口，用户自定义数据")
+    public Result saveData(@RequestBody SaveDataVO vo) {
+        return experimentTestService.saveDataInfo(vo);
+    }
+
 
 }

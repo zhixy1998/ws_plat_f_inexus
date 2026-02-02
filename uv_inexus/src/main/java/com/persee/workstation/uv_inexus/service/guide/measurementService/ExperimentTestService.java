@@ -13,6 +13,7 @@ import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
+import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -105,4 +106,9 @@ public interface ExperimentTestService {
 
     // 方法名称重复性检查
     Result nameDuplicationCheck(String projectId, String methodName);
+
+    /**
+     * 前端调用保存数据
+     */
+    Result saveDataInfo(SaveDataVO vo);
 }

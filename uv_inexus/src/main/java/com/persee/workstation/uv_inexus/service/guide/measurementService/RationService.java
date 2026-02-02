@@ -48,6 +48,12 @@ public interface RationService {
      * 检查方法参数
      */
     Result<MethodChangeCheckVO> checkMethodParam(MethodParamsDto checkDTO);
+
+//    /**
+//     * 使用方法时检查参数
+//     */
+//    Result<MethodChangeCheckVO> checkTwoMethodParam(String currenntMethodId, String newMethodId);
+
     /**
      * 查询样品列表
      */
@@ -142,6 +148,11 @@ public interface RationService {
     Result zero(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 
     Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy);
+
+    /**
+     * 质控判断
+     */
+    List<QualityCheckResultVO> qualityControl(String taskId, String methodId);
 
     /**
      * 查询可绑定的方法参数

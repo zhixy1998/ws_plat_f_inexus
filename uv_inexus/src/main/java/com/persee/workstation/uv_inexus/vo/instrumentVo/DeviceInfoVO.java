@@ -23,6 +23,9 @@ public class DeviceInfoVO {
     @ApiModelProperty("设备名称")
     private String deviceName;
 
+    @ApiModelProperty("设备型号")
+    private String deviceModelName;
+
     @ApiModelProperty("序列号")
     private String deviceSerialNumber;
 

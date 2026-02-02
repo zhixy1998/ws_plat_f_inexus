@@ -20,6 +20,10 @@ package com.persee.workstation.uv_inexus.enums.measurementEnums;
 
 import lombok.Getter;
 
+/**
+ * @author xudian
+ */
+
 @Getter
 public enum QualityConfEnums {
 

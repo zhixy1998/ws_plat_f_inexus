@@ -3659,7 +3659,7 @@ public class RationServiceImpl implements RationService {
         //系数方式：直接系数法或其他
         String coefficientMode = parameter.getCoefficientMode();
         boolean isDirectCoefficient = coefficientMode.equals(RationCurveParamEnums.direct_coefficient.getIdentity());
-        String curveType = parameter.getCurveType();
+        String equationType = parameter.getEquationType();
         String taskId = task.getId();
 
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
@@ -3738,10 +3738,10 @@ public class RationServiceImpl implements RationService {
         result.setMinX(Double.MAX_VALUE);
 
         if (!isDirectCoefficient && !standData.isEmpty()) {
-            List<JSONObject> standPoints = processPoints(standData, standEmpty, curveType, result);
+            List<JSONObject> standPoints = processPoints(standData, standEmpty, equationType, result);
             result.setStandPoints(standPoints);
         }
-        List<JSONObject> unknownPoints = processPoints(unKnowData, unKnowEmpty, curveType, result);
+        List<JSONObject> unknownPoints = processPoints(unKnowData, unKnowEmpty, equationType, result);
         result.setUnknowPoints(unknownPoints);
 
 
@@ -4924,6 +4924,59 @@ public class RationServiceImpl implements RationService {
         }
         boolean update = tMeasureTaskService.updateById(task);
         return update ? Result.ok() : Result.fail();
+    }
+
+    @Override
+    public List<QualityCheckResultVO> qualityControl(String taskId, String methodId) {
+        List<QualityCheckResultVO> result = new ArrayList<>();
+
+        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
+            log.info("缺少参数，无法进行质控管理");
+            return null;
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (method == null || task == null) {
+            log.info("没有找到该任务或方法");
+            return null;
+        }
+
+        String paramInfo = method.getMeasurementParamInfo();
+        RationParameter parameter = JSON.parseObject(paramInfo, RationParameter.class);
+        if (parameter == null || parameter.getQcParams() == null || parameter.getQcParams().isEmpty()) {
+            log.info("没有质控参数");
+            return null;
+        }
+        if (!StringUtils.hasText(task.getSampleKey())) {
+            log.info("任务没有样品");
+            return null;
+        }
+
+        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
+        if (taskSpecimen == null || taskSpecimen.isEmpty()) {
+            log.info("样品转换失败");
+            return null;
+        }
+        List<QualityConfVO> qcParams = parameter.getQcParams();
+
+        for (TaskSpecimen specimen : taskSpecimen) {
+            QualityCheckResultVO vo = new QualityCheckResultVO();
+            if (specimen.getDeleteType().equals(deleteType) || specimen.getIsTested().equals(noTested)) {
+                log.info("该样品已删除或未测试");
+                continue;
+            }
+
+
+            QualityConfEnums.slope_qc.getCode();
+
+
+
+
+
+        }
+
+        return result;
+
     }
 
     @Override
