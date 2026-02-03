@@ -28,9 +28,9 @@ public enum DevXmlEnums {
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
 
-            new byte[]{(byte) 0xFE, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
+            new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x69}),
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A}),
 
     T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 5000,
             new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,

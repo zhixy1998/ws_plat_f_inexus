@@ -244,10 +244,10 @@
 <string>扫描间隔:AJ10:4</string>
 </OutputString>
 <SendBytes>
-<string>101:255:6:6:I10*50:0:0:0:0:0:0:Check</string>
+<string>101:255:6:6:I10*40:0:0:0:0:0:0:Check</string>
 </SendBytes>
 <ReadBytes>
-<string>255:101:6:6:AJ10*50:0:0:0:0:0:0:Check</string>
+<string>255:101:6:6:AJ10*40:0:0:0:0:0:0:Check</string>
 </ReadBytes>
     <ReplyNumber>24</ReplyNumber>
     <HeadReceiveBytes>
@@ -791,7 +791,7 @@
 <ProtocolItem>
 <ID>Dark</ID>
 <Describe>暗电流校正</Describe>
-<Timeout>30000</Timeout>
+<Timeout>60000</Timeout>
 <ACK>N</ACK>
 <InputString>
 <string/>
@@ -1149,7 +1149,7 @@
 </ReadBytes>
     <ReplyNumber>20</ReplyNumber>
     <HeadReceiveBytes>
-        <string>254:101:241:1</string>
+        <string>255:101:241:1</string>
     </HeadReceiveBytes>
 </ProtocolItem>
 <ProtocolItem>

@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -378,14 +377,14 @@ public class MessageOnTimeDeal {
                         // ----------------- 4. 如果完整，再计算光谱 -----------------
                         if (temp.getWl() != null && temp.getS() != null && temp.getR() != null && temp.getD() != null) {
 
-                            // 处理光谱数据
-                            spectrumDataProcessor.processStepAndPrintWavelength(temp, deviceSerialNumber);
-
                             double constrainedWl = spectrumDataProcessor.getConstrainedWavelength();
                             if (Double.isNaN(constrainedWl)){
                                 log.info("[光谱扫描]:跳过最后一条");
                                 break;
                             }
+                            // 处理光谱数据
+                            spectrumDataProcessor.processStepAndPrintWavelength(temp, deviceSerialNumber);
+
                             SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
 
                             if (isDark){
@@ -534,8 +533,6 @@ public class MessageOnTimeDeal {
             double s = Double.parseDouble(sStr);
             z = s / d;
         }
-        BigDecimal wl = new BigDecimal(wlStr);
-        wlStr = wl.toPlainString();
 
         darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>())
                 .put(wlStr, String.valueOf(z));
@@ -548,7 +545,7 @@ public class MessageOnTimeDeal {
 
         if (store == null) return;
 
-        for (SpectrumPoint sp : store.allPoints()) { // 你真实方法名替换
+        for (SpectrumPoint sp : store.allPoints()) {
             sp.setDarkZ(null);
         }
 

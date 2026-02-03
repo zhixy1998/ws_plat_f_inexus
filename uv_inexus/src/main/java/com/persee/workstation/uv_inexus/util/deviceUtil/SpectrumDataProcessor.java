@@ -73,27 +73,24 @@ public class SpectrumDataProcessor {                 //计算RSD
         }
 
         List<LinearSegment> segments = formulaUtil.getLinearSegment(deviceSerialNumber);
-
         Double realWavelength = null;
-        if (segments != null && !segments.isEmpty()) {
-            realWavelength = formulaUtil.calculateWl(step,deviceSerialNumber);
-        }
+        realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
 
-        // ================= 2. 强制约束波长（测试阶段，完全按 index） =================
+        // ================= 2. 强制约束波长 =================
         double constrainedWl = getConstrainedWavelength();
 
-        // ================= 3. 拟合 r/s/d =================
+        // ================= 3. 拟合 r/s/d （T800不需要）=================
         // 用步数差计算拟合，避免 int 溢出
         ChangeParam fittedParam = calculateByStep(lastStepParam, param, step);
 
         // ================= 4. 打印 =================
         //注释打印
-//        log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
-//                dataPointIndex,
-//                step,
-//                realWavelength,
-//                constrainedWl
-//        );
+        log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
+                dataPointIndex,
+                step,
+                realWavelength,
+                constrainedWl
+        );
 
 //        log.info("[SPECTRUM-FITTED] index={}, targetStep={}, r={}, s={}, d={}",
 //                dataPointIndex,
@@ -118,25 +115,32 @@ public class SpectrumDataProcessor {                 //计算RSD
     /** 根据步数做线性拟合 r/s/d，避免 int 溢出 */
     private ChangeParam lastStepParam = null; // 上一个点，用于拟合
 
-    public static ChangeParam calculateByStep(ChangeParam start, ChangeParam end, double targetStep) {
+    public static ChangeParam calculateByStep(ChangeParam start, ChangeParam end, Double targetWl) {
         if (start == null || end == null) return end;
 
-        double startStep = Double.parseDouble(start.getWl()); // 原始步数
+        double startStep = Double.parseDouble(start.getWl());
+        double startWl = startStep / 40.0;
         double endStep = Double.parseDouble(end.getWl());
-        long startR = Long.parseLong(start.getR());
-        long endR = Long.parseLong(end.getR());
-        long startS = Long.parseLong(start.getS());
-        long endS = Long.parseLong(end.getS());
+        double endWl = endStep / 40.0;
+        int startR = Integer.parseInt(start.getR());
+        int endR = Integer.parseInt(end.getR());
+        int startS = Integer.parseInt(start.getS());
+        int endS = Integer.parseInt(end.getS());
         int dValue = Integer.parseInt(start.getD());
 
-        // slope 用步数差计算
-        double slopeR = (double) (endR - startR) / (endStep - startStep);
-        double slopeS = (double) (endS - startS) / (endStep - startStep);
+        // 计算拟合曲线
+        double slopeR = (double) (endR - startR) / (endWl - startWl);
+        double interceptR = startR - slopeR * startWl;
 
-        long r = Math.round(slopeR * (targetStep - startStep) + startR);
-        long s = Math.round(slopeS * (targetStep - startStep) + startS);
+        double slopeS = (double) (endS - startS) / (endWl - startWl);
+        double interceptS = startS - slopeS * startWl;
 
-        String wlStr = String.valueOf(targetStep);
+        // 计算r和s值
+        int r = (int) Math.round(slopeR * targetWl + interceptR);
+        int s = (int) Math.round(slopeS * targetWl + interceptS);
+
+        // 格式化wl字符串
+        String wlStr = String.valueOf(targetWl);
 
         return new ChangeParam(wlStr, wlStr, String.valueOf(r), String.valueOf(s), String.valueOf(dValue));
     }
@@ -166,13 +170,13 @@ public class SpectrumDataProcessor {                 //计算RSD
             return Double.NaN;
         }
 
-        double startWl = cfg.getStartWavelength() + cfg.getInterval();
-        double endWl = cfg.getEndWavelength() + cfg.getInterval();
+        double startWl = cfg.getStartWavelength();
+        double endWl = cfg.getEndWavelength();
         double interval = cfg.getInterval();
         boolean isDescending = cfg.getDescending();
         double wl = isDescending
-                ? startWl - dataPointIndex * interval
-                : startWl + dataPointIndex * interval;
+                ? (startWl - dataPointIndex * interval)
+                : (startWl + dataPointIndex * interval);
 
         // 边界吸附
         if (isDescending && wl < endWl) return Double.NaN;
@@ -203,7 +207,7 @@ public class SpectrumDataProcessor {                 //计算RSD
 
         return (int) Math.round(
                 Math.abs(cfg.getStartWavelength() - cfg.getEndWavelength())
-                        / cfg.getInterval() + 1
+                        / cfg.getInterval()
         );
     }
 

@@ -7,7 +7,7 @@ import lombok.Data;
 public class SpectrumPoint {
 
     /** 约束后的波长，如 656.2 */
-    private final double wavelength;
+    private double wavelength;
 
     /** baseline 阶段拟合得到的 rsd */
     private ChangeParam baselineRsd;

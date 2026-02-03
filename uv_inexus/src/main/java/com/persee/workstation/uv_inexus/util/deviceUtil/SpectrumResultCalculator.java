@@ -20,7 +20,7 @@ public class SpectrumResultCalculator {
     @Autowired
     private DeviceInfoService deviceInfoService;//计算ABS T% Es Er
 
-    private static final double Z = 1.0;
+//    private static final double Z = 1.0;
 
     /**
      * @param luminosity 1=Abs, 2=T%, 3=Es, 4=Er
@@ -92,6 +92,7 @@ public class SpectrumResultCalculator {
             Double Z = getZFromDatabase(deviceSerialNumber, wl);
             Z = (Z == null) ? 1.0 : Z;
 
+
             double a1;
             if (origin == null || origin.isEmpty()) {
                 a1 = 1.0;
@@ -113,7 +114,7 @@ public class SpectrumResultCalculator {
                     .toPlainString();
 
         } catch (Exception e) {
-            log.error("T% 计算异常", e);
+            log.error("T% 计算异常, origin={}, real={}, sp={}", origin, real, sp, e);
             return "0";
         }
     }
@@ -157,7 +158,11 @@ public class SpectrumResultCalculator {
 
         if (po != null && po.getDarkInfo() != null) {
             Map<String, String> darkInfo = po.getDarkInfo();
-            return Double.parseDouble(darkInfo.get(wl));  // 根据波长 wl 获取对应的 Z 值
+//            return Double.parseDouble(darkInfo.get(wl));  // 根据波长 wl 获取对应的 Z 值
+            if (darkInfo.get(wl) != null){
+                return Double.parseDouble(darkInfo.get(wl));
+            }
+            return null;
         }
         return null;  // 如果没有找到 Z 值，返回 null
     }
