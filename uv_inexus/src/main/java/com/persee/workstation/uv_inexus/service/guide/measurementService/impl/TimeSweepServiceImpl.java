@@ -3653,7 +3653,11 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     private TMeasureTask createNewTask(TimeSweepMethodParameterDto paramDto, String methodId, TMeasureTask task, String userId) {
         TMeasureTask newTask = new TMeasureTask();
         newTask.setUserId(userId);
-        newTask.setTaskName(task.getTaskName()+"- 副本");
+        if(task.getTaskName().equals(paramDto.getTaskName())||paramDto.getTaskName()==null|| paramDto.getTaskName().isEmpty()){
+            newTask.setTaskName(task.getTaskName()+"- 副本");
+        }else{
+            newTask.setTaskName(paramDto.getTaskName());
+        }
         newTask.setCreateTime(LocalDateTime.now());
         newTask.setMethodKey(methodId);
         List<TaskSpecimen> specimens = new ArrayList<>();

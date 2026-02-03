@@ -167,10 +167,10 @@ public class ExperimentTestController {
         return experimentTestService.queryMethodProt(projectId,measureType,updateBy,pageNum,pageSize);
     }
 
-    @GetMapping("useThisMethodPort")
+    @PostMapping("useThisMethodPort")
     @ApiOperation("使用此方法接口")
-    public Result useThisMethodPort(@RequestParam String methodId){
-        return experimentTestService.useThisMethodPort(methodId);
+    public Result useThisMethodPort(@RequestBody CreateTaskParamDto paramDto ){
+        return experimentTestService.useThisMethodPort(paramDto);
     }
 
     @GetMapping("continueMeasuringPort")

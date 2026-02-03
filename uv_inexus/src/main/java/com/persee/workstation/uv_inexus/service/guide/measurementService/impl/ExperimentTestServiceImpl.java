@@ -1509,7 +1509,18 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     }
 
     @Override
-    public Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize) {
+        public Result queryMethodProt(String projectId, String measureType, String updateBy, Integer pageNum, Integer pageSize) {
+        // 校验所有的参数
+        if (projectId == null || projectId.isEmpty()){
+            return Result.fail(YamlMessageSource.getMessageStatic("项目不存在"));
+        }
+        if (measureType == null || measureType.isEmpty()){
+            return Result.fail(YamlMessageSource.getMessageStatic("00307003"));
+        }
+        if (updateBy == null || updateBy.isEmpty()){
+            return Result.fail(YamlMessageSource.getMessageStatic("0020400A"));
+        }
+
         MeasureTypeEnum type = MeasureTypeEnum.fromDescription(measureType);
         // TODO 所有测量的查看任务查询需要完善
         switch (type){
@@ -2259,33 +2270,49 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         return Result.ok(taskList);
     }
 
+    /**
+     * 使用此方法
+     */
     @Override
-    public Result useThisMethodPort(String methodId) {
+    public Result useThisMethodPort(CreateTaskParamDto dto) {
         // 使用StringUtils 判断参数是否为空
-        if (!StringUtils.hasText(methodId)){
+        if (!StringUtils.hasText(dto.getMethodId())){
             //缺少参数
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
-        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (dto.getTaskName() == null || dto.getTaskName().isEmpty()){
+            return Result.fail("任务名称不可为空");
+        }
+        // 根据项目id查询任务名称是否在当前项目下重复,如果重复则返回错误
+        QueryWrapper<TMeasureTask> wq = new QueryWrapper<>();
+        wq.eq("project_item_key", dto.getProjectId());
+        wq.eq("task_name", dto.getTaskName());
+        List<TMeasureTask> list = tMeasureTaskService.list(wq);
+        if (list != null && list.size() > 0){
+            return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(dto.getMethodId());
         if (method == null){
             //没有找到该方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000009"));
-//            return Result.failCode("00301012");
         }
+        return createTask(dto);
 
-        // 根据方法的测量类型和方法id去查询最近时间的任务
-        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>()
-                .eq("measure_type", method.getMeasurementType())
-                .eq("method_key", methodId)
-                .orderByDesc("create_time")
-                .last("limit 1"));
-        if (task == null){
-            return Result.ok("没有找到该任务");
-        }
-        Map<String,String> params = new HashMap<>();
-        params.put("taskId", task.getId());
-        params.put("taskName", task.getTaskName());
-        return Result.ok(params);
+
+//
+//        // 根据方法的测量类型和方法id去查询最近时间的任务
+//        TMeasureTask task = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>()
+//                .eq("measure_type", method.getMeasurementType())
+//                .eq("method_key", methodId)
+//                .orderByDesc("create_time")
+//                .last("limit 1"));
+//        if (task == null){
+//            return Result.ok("没有找到该任务");
+//        }
+//        Map<String,String> params = new HashMap<>();
+//        params.put("taskId", task.getId());
+//        params.put("taskName", task.getTaskName());
+//        return Result.ok(params);
     }
 
     @Override

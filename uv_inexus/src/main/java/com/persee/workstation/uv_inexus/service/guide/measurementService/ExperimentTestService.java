@@ -63,7 +63,7 @@ public interface ExperimentTestService {
     Result<List<TaskBaseVO>> getAllTask(String projectId, String measureType);
 
     // 使用此方法接口
-    Result useThisMethodPort(String methodId);
+    Result useThisMethodPort(CreateTaskParamDto paramDto);
 
     Result<MeasurementCurrentInfoVO> useMethodToTest(String methodId, String updateBy, String deviceSerialNumber);
 

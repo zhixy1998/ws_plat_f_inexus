@@ -63,52 +63,73 @@ public class SpectrumDataProcessor {                 //计算RSD
 
         if (param == null || param.getWl() == null) return;
 
-        // ================= 1. 步数 -> 真实波长 =================
-        double step;
-        try {
-            step = Double.parseDouble(param.getWl());
-        } catch (NumberFormatException e) {
-            log.warn("[SPECTRUM] invalid step wl={}", param.getWl());
+        param.setStep(param.getWl());
+
+        List<LinearSegment> segments = formulaUtil.getLinearSegment(deviceSerialNumber);
+
+        if (lastStepParam == null) {
+            ///  判断基线是否为空,不为空的话则以key,value格式存储(波长,值)方便后续匹配   Map<String, ChangeParam> baselineMap = new HashMap<>();
+
+
+            Double originalWavelength = Double.parseDouble(param.getWl());
+            // 步数转波长
+            Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, segments);
+            param.setWl(correctedWavelength.toString());
+            lastStepParam = param;
             return;
         }
 
-        List<LinearSegment> segments = formulaUtil.getLinearSegment(deviceSerialNumber);
-        Double realWavelength = null;
-        realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
+       while (true){
 
-        // ================= 2. 强制约束波长 =================
-        double constrainedWl = getConstrainedWavelength();
+           // ================= 1. 步数 -> 真实波长 =================
+           double step;
+           try {
+               step = Double.parseDouble(param.getWl());
+           } catch (NumberFormatException e) {
+               log.warn("[SPECTRUM] invalid step wl={}", param.getWl());
+               return;
+           }
+           Double realWavelength = null;
+           // 步数 -> 真实波长
+           realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
 
-        // ================= 3. 拟合 r/s/d （T800不需要）=================
-        // 用步数差计算拟合，避免 int 溢出
-        ChangeParam fittedParam = calculateByStep(lastStepParam, param, step);
+           // ================= 2. 强制约束波长 =================
+           double constrainedWl = getConstrainedWavelength();
 
-        // ================= 4. 打印 =================
-        //注释打印
-        log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
-                dataPointIndex,
-                step,
-                realWavelength,
-                constrainedWl
-        );
+           // 循环判断当前读取波长和上一次波长的区间段内需要的波长值
+           while (constrainedWl>=realWavelength){
+               // ================= 3. 拟合 r/s/d （T800不需要）=================
+               // 用步数差计算拟合，避免 int 溢出
+               ChangeParam fittedParam = calculateByStep(lastStepParam, param, step);
+               ///  根据是否基线做判断计算出对应的波长值,上面是map结构的话可以直接根据波长做key读取对应的基线值
 
-//        log.info("[SPECTRUM-FITTED] index={}, targetStep={}, r={}, s={}, d={}",
-//                dataPointIndex,
-//                step,
-//                fittedParam.getR(),
-//                fittedParam.getS(),
-//                fittedParam.getD()
-//        );
+               ///  根据光度模式进行不同的计算
 
-        // 更新 lastStepParam
-        lastStepParam = param;
+               ///  存储进入队列值并且只有在存储入队列中才会进行索引++
 
-        // index 前进，边界保护
-        dataPointIndex++;
-        int maxIndex = getMaxIndex();
-        if (dataPointIndex > maxIndex) {
-            dataPointIndex = maxIndex;
-        }
+               // index 前进，边界保护(实时跟着存储完再++)
+               dataPointIndex++;
+               // 步数 -> 真实波长
+               realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
+           }
+           // 更新 lastStepParam
+           lastStepParam = param;
+
+
+           // ================= 4. 打印 =================
+           //注释打印
+           log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
+                   dataPointIndex,
+                   step,
+                   realWavelength,
+                   constrainedWl
+           );
+
+           int maxIndex = getMaxIndex();
+           if (dataPointIndex > maxIndex) {
+               dataPointIndex = maxIndex;
+           }
+       }
 
     }
 
