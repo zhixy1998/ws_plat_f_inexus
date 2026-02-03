@@ -25,7 +25,9 @@ public class FindMaxOffsetUVTestTool extends IAlgorithm {
                 }
             }
             double diff = maximum - minimum;
-            result.add(diff);
+            // 使用BigDecimal进行四舍五入到小数点后两位
+            java.math.BigDecimal bd = new java.math.BigDecimal(diff).setScale(2, java.math.RoundingMode.HALF_UP);
+            result.add(bd.doubleValue());
         }
         return result;
     }

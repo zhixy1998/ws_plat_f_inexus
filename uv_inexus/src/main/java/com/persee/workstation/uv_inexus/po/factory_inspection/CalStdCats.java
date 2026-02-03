@@ -78,6 +78,13 @@ public class CalStdCats extends BasePO {
     private String standardValue;
 
     /**
+     * 标准值单位
+     */
+    @TableField(value = "standard_unit")
+    @ApiModelProperty(value = "标准值单位")
+    private String standardUnit;
+
+    /**
      * 层级
      */
     @TableField(exist = false)

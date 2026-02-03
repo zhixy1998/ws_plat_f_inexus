@@ -558,8 +558,40 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         if (cachedObject instanceof List) {
             // 进行类型检查和转换
             dtoList = (List<SetSamplePoolDto>) cachedObject;
+            if (CollectionUtils.isEmpty(dtoList)){
+                SetSamplePoolDto setSamplePoolDto = new SetSamplePoolDto();
+                TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
+                LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(CalStdCats::getName, AIR.getDescription());
+                List<CalStdCats> list = catsService.list(wrapper);
+                if (CollectionUtils.isNotEmpty(list)){
+                    CalStdCats cats = list.get(0);
+                    standard.setStandardId(cats.getId());
+                    standard.setStandardName(cats.getName());
+                }
+                setSamplePoolDto.setPoolNum(1);
+                setSamplePoolDto.setPoolName("1号");
+                setSamplePoolDto.setStandard(standard);
+                dtoList.add(setSamplePoolDto);
+                ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), taskId, dtoList, String.class, Object.class);
+            }
         } else {
             dtoList = new ArrayList<>();
+            SetSamplePoolDto setSamplePoolDto = new SetSamplePoolDto();
+            TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
+            LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(CalStdCats::getName, AIR.getDescription());
+            List<CalStdCats> list = catsService.list(wrapper);
+            if (CollectionUtils.isNotEmpty(list)){
+                CalStdCats cats = list.get(0);
+                standard.setStandardId(cats.getId());
+                standard.setStandardName(cats.getName());
+            }
+            setSamplePoolDto.setPoolNum(1);
+            setSamplePoolDto.setPoolName("1号");
+            setSamplePoolDto.setStandard(standard);
+            dtoList.add(setSamplePoolDto);
+            ehcacheUtil.put(DEFAULT_CACHE.getCacheName(), taskId, dtoList, String.class, Object.class);
         }
         return Result.ok(dtoList);
     }

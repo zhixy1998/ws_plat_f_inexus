@@ -33,7 +33,7 @@ public class TaskManagementController {
     @Autowired
     private TaskManagementService taskManagementService;
     @RequestMapping("/list")
-    public Result getList(@RequestParam String query, @RequestParam String updateBy,@RequestParam Integer pageNum, @RequestParam Integer pageSize) {
+    public Result getList(@RequestParam(required = false) String query, @RequestParam String updateBy,@RequestParam Integer pageNum, @RequestParam Integer pageSize) {
         TaskMgrQueryDto taskMgrQueryDto = new TaskMgrQueryDto();
         taskMgrQueryDto.setQuery(query);
         taskMgrQueryDto.setUpdateBy(updateBy);

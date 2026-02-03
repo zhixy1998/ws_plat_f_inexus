@@ -128,7 +128,8 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
         Page<CalStdCats> page = new Page<>(queryCalStdCatsDto.getPageNum(), queryCalStdCatsDto.getPageSize());
         LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(CalStdCats::getName, queryCalStdCatsDto.getSelectKey())
-                .eq(CalStdCats::getIsDelete, NOT_DELETED.getCode());
+                .eq(CalStdCats::getIsDelete, NOT_DELETED.getCode())
+                .notIn(CalStdCats::getName, BLACK_BLOCK.getDescription(), AIR.getDescription()); //排除水和空气两个标准物类别
         Page<CalStdCats> calStdCatsPage = calStdCatsMapper.selectPage(page, wrapper);
         if (!ObjectUtils.isEmpty(calStdCatsPage) || !CollectionUtils.isEmpty(calStdCatsPage.getRecords())) {
             calStdCatsPage.getRecords().forEach(c -> {
