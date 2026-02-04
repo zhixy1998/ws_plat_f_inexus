@@ -72,6 +72,10 @@ public class SoftwareActivationPO extends BasePO {
     private String additionalFunctions;
 
     @JsonSerialize(using = NullToDashSerializer.class)
+    @TableField("features")
+    private String features;
+
+    @JsonSerialize(using = NullToDashSerializer.class)
     @TableField("is_add_status")
     private int isAddStatus;
 }

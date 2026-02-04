@@ -77,8 +77,9 @@ public class SoftwareActivationController {
 
             // 3. 解析解密后的参数
             Map<String, String> params = parseDecryptedParams(decryptedText);
-            String codeDeviceNumber = params.get("deviceNumber");
-            String expirationDateStr = params.get("expirationDate");
+            String codeDeviceNumber = params.get("devN");
+            String expirationDateStr = params.get("expT");
+            String features = params.get("fea");
             System.out.println("激活码中的设备序列号:" + codeDeviceNumber);
             System.out.println("激活码中的过期时间:" + expirationDateStr);
 
@@ -121,6 +122,7 @@ public class SoftwareActivationController {
             activationPO.setActivationStatus(1);
             activationPO.setActivationTime(fullTime);  // 记录激活时间
             activationPO.setExpirationDate(expirationDateStr);  // 更新过期时间
+            activationPO.setFeatures(features);  // 更新过期时间
             softwareActivationService.updateById(activationPO);
 
             deviceInfoService.activeDevice(codeDeviceNumber);

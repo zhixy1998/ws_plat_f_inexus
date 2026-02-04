@@ -16,7 +16,11 @@
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
-
+-- ----------------------------
+-- 2026-02-03 新增付费功能字段
+-- ----------------------------
+ALTER TABLE `t_software_activation`
+ADD COLUMN `features` VARCHAR(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '付费功能';
 -- ----------------------------
 -- Table structure for aerich
 -- ----------------------------
