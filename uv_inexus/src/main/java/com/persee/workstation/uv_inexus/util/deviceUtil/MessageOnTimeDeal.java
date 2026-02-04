@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
@@ -321,18 +322,17 @@ public class MessageOnTimeDeal {
                 SpectrumPointStore pointStore = spectrumPointStoreMap.computeIfAbsent(deviceSerialNumber, key -> new SpectrumPointStore());
                 spectrumProcessorMap.put(deviceSerialNumber, spectrumDataProcessor);
 
-                // ----------------- 半成品 map，用于拼装完整 ChangeParam -----------------
                 Map<String, ChangeParam> tempMap = new HashMap<>();
 
                 long startTime = System.currentTimeMillis();
                 long currentTimeout = timeout;
                 int recvCount = 0;
                 int flag = 0;
-                boolean isFirst = true; // 标记第一条完整光谱
-
-
+                boolean[] isFirstFlag = {true};// 标记首条光谱
+                Constants.lastStepParam=null;
                 try {
-                    while (!Thread.currentThread().isInterrupted() && ScanSessionManager.isRunning(deviceId) && System.currentTimeMillis() - startTime < currentTimeout) {
+                    while (!Thread.currentThread().isInterrupted() && ScanSessionManager.isRunning(deviceId)
+                            && System.currentTimeMillis() - startTime < currentTimeout) {
 
                         // ----------------- 1. 取消息 -----------------
                         byte[] message = store.peekMessage(deviceId);
@@ -377,29 +377,75 @@ public class MessageOnTimeDeal {
                         // ----------------- 4. 如果完整，再计算光谱 -----------------
                         if (temp.getWl() != null && temp.getS() != null && temp.getR() != null && temp.getD() != null) {
 
+
                             double constrainedWl = spectrumDataProcessor.getConstrainedWavelength();
                             if (Double.isNaN(constrainedWl)){
                                 log.info("[光谱扫描]:跳过最后一条");
                                 break;
                             }
-                            // 处理光谱数据
-                            spectrumDataProcessor.processStepAndPrintWavelength(temp, deviceSerialNumber);
+//                            DeviceInfoPO type = infoService.getInfo(device.getXmlKey());
+                            DevXmlEnums dev = DevXmlEnums.getEnum(device.getXmlKey());
+                            if (dev.isNeedFit()) {
+                                // 拟合实时处理，每生成一个拟合点就回调
+                                spectrumDataProcessor.processStepAndPrintWavelength(temp, deviceSerialNumber, fittedParam -> {
+                                    double wl = Double.parseDouble(fittedParam.getWl());
+                                    SpectrumPoint sp = pointStore.getOrCreate(wl);
 
-                            SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
+                                    if (isDark) {
+                                        handleDarkRsd(temp, deviceSerialNumber, sp);
+                                        tempMap.remove(deviceSerialNumber);
+                                    }
 
-                            if (isDark){
-                                handleDarkRsd(temp, deviceSerialNumber,sp);
-                                tempMap.remove(deviceSerialNumber);
-                                continue;
+                                    if (isScan) {
+                                        sp.setScanRsd(fittedParam);
+                                        SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
+
+                                        sp.setAbsResult(absResult);
+                                        sp.setTResult(tResult);
+                                        sp.setEsResult(esResult);
+                                        sp.setErResult(erResult);
+
+                                        log.info("[光谱计算] wl={}, Abs={}, T%={}, Es={}, Er={}",
+                                                sp.getWavelength(),
+                                                absResult != null ? absResult.getAbs() : "-",
+                                                tResult != null ? tResult.getTPercent() : "-",
+                                                esResult != null ? esResult.getEs() : "-",
+                                                erResult != null ? erResult.getEr() : "-");
+                                    } else {
+                                        sp.setBaselineRsd(fittedParam);
+                                    }
+;
+                                    // ----------------- 放入未知队列 -----------------
+                                    if (isScan || isBaseline) {
+                                        if (isFirstFlag[0]) {
+                                            log.info("[光谱首条,不存] device={}, cmd={}, wl={}",
+                                                    deviceSerialNumber, cmdId, sp.getWavelength());
+                                            isFirstFlag[0] = false;
+                                        } else {
+                                            unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
+                                            log.info("[光谱存入] device={}, cmd={}, wl={}",
+                                                    deviceSerialNumber, cmdId, sp.getWavelength());
+                                        }
+                                    }
+                                });
                             }
+                            else {
+                                // 不拟合，直接使用 temp
+                                SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
 
-                            if (isScan) {
-                                sp.setScanRsd(temp);
-
-                                SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
-                                SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
-                                SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
-                                SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
+                                if (isDark) {
+                                    handleDarkRsd(temp, deviceSerialNumber, sp);
+                                    tempMap.remove(deviceSerialNumber);
+                                    continue;
+                                } else if (isScan) {
+                                    sp.setScanRsd(temp);
+                                    SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
 
                                 sp.setAbsResult(absResult);
                                 sp.setTResult(tResult);
@@ -420,18 +466,18 @@ public class MessageOnTimeDeal {
                                         sp.getWavelength(),
                                         sp.getAbsResult());
                             }
+                                spectrumDataProcessor.dataPointIndex();
 
-
-                            // ----------------- 5. 放入未知队列 -----------------
-                            if (isScan || isBaseline) {
-                                if (isFirst) {
-                                    log.info("[光谱首条,不存] device={}, cmd={}, wl={}",
-                                            deviceSerialNumber, cmdId, sp.getWavelength());
-                                    isFirst = false;
-                                } else {
-                                    unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
-                                    log.info("[光谱存入] device={}, cmd={}, wl={}",
-                                            deviceSerialNumber, cmdId, sp.getWavelength());
+                                if (isScan || isBaseline) {
+                                    if (isFirstFlag[0]) {
+                                        log.info("[光谱首条,不存] device={}, cmd={}, wl={}",
+                                                deviceSerialNumber, cmdId, sp.getWavelength());
+                                        isFirstFlag[0] = false;
+                                    } else {
+                                        unknowCountMessageQueue.putMessage(deviceSerialNumber, cmdId, sp);
+                                        log.info("[光谱存入] device={}, cmd={}, wl={}",
+                                                deviceSerialNumber, cmdId, sp.getWavelength());
+                                    }
                                 }
                             }
 
@@ -456,13 +502,12 @@ public class MessageOnTimeDeal {
                                 cmdId,
                                 EndMarker.unNormal(deviceSerialNumber, cmdId)
                         );
-                    }else if(flag == 3){
+                    } else if(flag == 3){
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
                                 cmdId,
                                 EndMarker.NormalStop(deviceSerialNumber, cmdId)
                         );
-                        log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
                     } else{
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
@@ -478,11 +523,9 @@ public class MessageOnTimeDeal {
                     store.clearDeviceMessages(deviceId);
                     infoService.newReleaseDevice(deviceSerialNumber);
 
-
                     log.info("[光谱测试] 停止处理光谱数据，设备={}，操作类型={}", deviceSerialNumber, isScan ? "Scan" : "BaseLine");
                 }
             });
-
             t.start();
             return t;
         });

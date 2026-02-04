@@ -102,6 +102,9 @@ public class Constants {
     // 存储仪器数据
     public static volatile List<String> instrumentData = new CopyOnWriteArrayList<>();
 
+    // 拟合存储对象
+    public static volatile  ChangeParam lastStepParam = null; // 上一个点，用于拟合
+
     // 存储计算后的数据
     public static volatile List<String> originalCalculationData = new CopyOnWriteArrayList<>();
 

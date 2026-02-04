@@ -30,7 +30,8 @@ public enum DevXmlEnums {
 
             new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A}),
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
+            false),
 
     T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 5000,
             new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
@@ -38,7 +39,8 @@ public enum DevXmlEnums {
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xBA},
             new byte[]{(byte) 0xFE, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xB9});
+                    (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xB9},
+            true);
 
     // 仪器型号
     private final String devType;
@@ -52,6 +54,8 @@ public enum DevXmlEnums {
     private final byte[] startMessage;
 
     private final byte[] newIpStartMessage;
+    // 设备是否需要数据拟合
+    private final boolean needFit;
 
 
     private static final Map<String, DevXmlEnums> enums = new HashMap<>();
@@ -64,13 +68,14 @@ public enum DevXmlEnums {
 
     // 构造函数
     DevXmlEnums(String devType, String xmlPath, String desc, int port,
-                byte[] startMessage, byte[] newIpStartMessage) {
+                byte[] startMessage, byte[] newIpStartMessage, boolean needFit) {
         this.devType = devType;
         this.xmlPath = xmlPath;
         this.desc = desc;
         this.port = port;
         this.startMessage = startMessage;
         this.newIpStartMessage = newIpStartMessage;
+        this.needFit = needFit;
     }
     public static DevXmlEnums getEnum(String type) {
         return enums.get(type);

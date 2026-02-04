@@ -1,5 +1,6 @@
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.model.LinearSegment;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
@@ -9,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Slf4j
 public class SpectrumDataProcessor {                 //计算RSD
@@ -59,7 +61,7 @@ public class SpectrumDataProcessor {                 //计算RSD
 
 
     /** 测试用：步数 -> 真实波长 -> 强制约束波长 -> 拟合 r/s/d */
-    public void processStepAndPrintWavelength(ChangeParam param, String deviceSerialNumber) {
+    public void processStepAndPrintWavelength(ChangeParam param, String deviceSerialNumber, Consumer<ChangeParam> consumer) {
 
         if (param == null || param.getWl() == null) return;
 
@@ -67,82 +69,75 @@ public class SpectrumDataProcessor {                 //计算RSD
 
         List<LinearSegment> segments = formulaUtil.getLinearSegment(deviceSerialNumber);
 
-        if (lastStepParam == null) {
-            ///  判断基线是否为空,不为空的话则以key,value格式存储(波长,值)方便后续匹配   Map<String, ChangeParam> baselineMap = new HashMap<>();
-
-
+        if (Constants.lastStepParam == null) {
             Double originalWavelength = Double.parseDouble(param.getWl());
             // 步数转波长
             Double correctedWavelength = formulaUtil.calculateWavelengthTwo(originalWavelength, segments);
             param.setWl(correctedWavelength.toString());
-            lastStepParam = param;
+            Constants.lastStepParam = param;
+            // 第一个点立即回调
+            if (consumer != null) consumer.accept(param);
+
             return;
         }
 
-       while (true){
+        // ================= 1. 步数 -> 真实波长 =================
+        double step;
+        try {
+            step = Double.parseDouble(param.getWl());
+        } catch (NumberFormatException e) {
+            log.warn("[SPECTRUM] invalid step wl={}", param.getWl());
+            return;
+        }
+        Double realWavelength = null;
+        // 步数 -> 真实波长
+        realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
+        param.setWl(realWavelength.toString());
 
-           // ================= 1. 步数 -> 真实波长 =================
-           double step;
-           try {
-               step = Double.parseDouble(param.getWl());
-           } catch (NumberFormatException e) {
-               log.warn("[SPECTRUM] invalid step wl={}", param.getWl());
-               return;
-           }
-           Double realWavelength = null;
-           // 步数 -> 真实波长
-           realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
+        // ================= 2. 强制约束波长 =================
+        double constrainedWl = getConstrainedWavelength();
 
-           // ================= 2. 强制约束波长 =================
-           double constrainedWl = getConstrainedWavelength();
+        // 循环判断当前读取波长和上一次波长的区间段内需要的波长值
+        while (constrainedWl>realWavelength){
+            // ================= 3. 拟合 r/s/d （T800不需要）=================
+            // 用步数差计算拟合，避免 int 溢出
+            ChangeParam fittedParam = calculateByStep(Constants.lastStepParam, param, constrainedWl);
+            // ---------------- 实时回调 ----------------
+            if (consumer != null) consumer.accept(fittedParam);
+            // index 前进，边界保护(实时跟着存储完再++)
+            dataPointIndex++;
+            // 步数 -> 真实波长
+            constrainedWl = getConstrainedWavelength();
+        }
+        // 更新 lastStepParam
+        Constants.lastStepParam = param;
 
-           // 循环判断当前读取波长和上一次波长的区间段内需要的波长值
-           while (constrainedWl>=realWavelength){
-               // ================= 3. 拟合 r/s/d （T800不需要）=================
-               // 用步数差计算拟合，避免 int 溢出
-               ChangeParam fittedParam = calculateByStep(lastStepParam, param, step);
-               ///  根据是否基线做判断计算出对应的波长值,上面是map结构的话可以直接根据波长做key读取对应的基线值
+        // ================= 4. 打印 =================
+        //注释打印
+        log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
+                dataPointIndex,
+                step,
+                realWavelength,
+                constrainedWl
+        );
 
-               ///  根据光度模式进行不同的计算
-
-               ///  存储进入队列值并且只有在存储入队列中才会进行索引++
-
-               // index 前进，边界保护(实时跟着存储完再++)
-               dataPointIndex++;
-               // 步数 -> 真实波长
-               realWavelength = formulaUtil.calculateWavelengthTwo(step, segments);
-           }
-           // 更新 lastStepParam
-           lastStepParam = param;
-
-
-           // ================= 4. 打印 =================
-           //注释打印
-           log.info("[SPECTRUM-CONSTRAIN] index={}, step={}, realWl={}, constrainedWl={}",
-                   dataPointIndex,
-                   step,
-                   realWavelength,
-                   constrainedWl
-           );
-
-           int maxIndex = getMaxIndex();
-           if (dataPointIndex > maxIndex) {
-               dataPointIndex = maxIndex;
-           }
-       }
+        int maxIndex = getMaxIndex();
+        if (dataPointIndex > maxIndex) {
+            dataPointIndex = maxIndex;
+            return;
+        }
 
     }
 
+
     /** 根据步数做线性拟合 r/s/d，避免 int 溢出 */
-    private ChangeParam lastStepParam = null; // 上一个点，用于拟合
+
 
     public static ChangeParam calculateByStep(ChangeParam start, ChangeParam end, Double targetWl) {
         if (start == null || end == null) return end;
 
         double startStep = Double.parseDouble(start.getWl());
-        double startWl = startStep / 40.0;
         double endStep = Double.parseDouble(end.getWl());
-        double endWl = endStep / 40.0;
         int startR = Integer.parseInt(start.getR());
         int endR = Integer.parseInt(end.getR());
         int startS = Integer.parseInt(start.getS());
@@ -150,11 +145,11 @@ public class SpectrumDataProcessor {                 //计算RSD
         int dValue = Integer.parseInt(start.getD());
 
         // 计算拟合曲线
-        double slopeR = (double) (endR - startR) / (endWl - startWl);
-        double interceptR = startR - slopeR * startWl;
+        double slopeR = (double) (endR - startR) / (endStep - startStep);
+        double interceptR = startR - slopeR * startStep;
 
-        double slopeS = (double) (endS - startS) / (endWl - startWl);
-        double interceptS = startS - slopeS * startWl;
+        double slopeS = (double) (endS - startS) / (endStep - startStep);
+        double interceptS = startS - slopeS * startStep;
 
         // 计算r和s值
         int r = (int) Math.round(slopeR * targetWl + interceptR);
@@ -274,6 +269,10 @@ public class SpectrumDataProcessor {                 //计算RSD
 
     public static boolean isNotNearEnd() {
         return isNotNearEnd;
+    }
+
+    public void dataPointIndex(){
+        dataPointIndex++;
     }
 }
 
