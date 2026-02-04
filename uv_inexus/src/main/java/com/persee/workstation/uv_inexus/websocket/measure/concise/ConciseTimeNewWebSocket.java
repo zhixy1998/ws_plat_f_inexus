@@ -176,7 +176,7 @@ public class ConciseTimeNewWebSocket {
         clearGlobalData();
         Constants.measureStopStatus.put(param.getDeviceSerialNumber(), true);
         String taskId = param.getTaskId();
-        infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_MEASURE);
+        infoService.updateDeviceCurrentStatus(param.getDeviceSerialNumber(), Constants.DEVICE_STATUS_MEASURE);
         connectionClosingMap.put(taskId, new AtomicBoolean(false));
         stopProcessingMap.put(taskId, new AtomicBoolean(false));
 
