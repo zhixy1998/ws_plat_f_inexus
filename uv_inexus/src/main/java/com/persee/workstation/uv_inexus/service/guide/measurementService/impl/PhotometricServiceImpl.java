@@ -948,6 +948,20 @@ public class PhotometricServiceImpl implements PhotometricService {
             //表格新增列数不能超过10列
             return Result.fail(YamlMessageSource.getMessageStatic("00000013"));
         }
+
+        if (dto.getNewSamples()!=null&&!dto.getNewSamples().isEmpty()) {
+            for (Map<String, String> map : dto.getNewSamples()) {
+                String jsonString = JSON.toJSONString(map);
+                SampleVO sample = JSON.parseObject(jsonString, SampleVO.class);
+                if (sample.getSampleNumber()!=null&&sample.getSampleNumber().length()>256){
+                    return Result.fail("新增样品编号超出限制");
+                }
+                if (sample.getSampleName()!=null&&sample.getSampleName().length()>256){
+                    return Result.fail("新增样品名称超出限制");
+                }
+
+            }
+        }
         if (!StringUtils.hasText(dto.getTaskId())) {
             //创建任务
             TMeasureTask newTask = new TMeasureTask();
