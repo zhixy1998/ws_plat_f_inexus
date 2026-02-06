@@ -141,7 +141,7 @@ public interface SpectrumService {
     Result testCompare(String taskId, SpectrumParameter spectrumParameter);
 
     // 多格式文件下载接口（支持word/excel/txt）
-    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds);
+    R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit);
 
     // (实验测试)创建方法接口
     Result createMethodPort(MethodParamRequestDto methodDto, String updateBy, SpectrumParameter spectrumParameter);

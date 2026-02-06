@@ -324,13 +324,16 @@ public class SpectrumController {
     public ResponseEntity<?> downloadDoc(
             @ApiParam(value = "任务ID", required = true) @RequestParam String taskId,
             @ApiParam(value = "是否显示全部数据（true/false）", required = true) @RequestParam Boolean allDisplay,
-            @ApiParam(value = "筛选的analysisId列表（多个ID用逗号分隔，如123,456）", required = false) 
+            @ApiParam(value = "筛选的analysisId列表（多个ID用逗号分隔，如123,456）", required = false)
             @RequestParam(value = "analysisIds", required = false) List<String> analysisIds,
-            @ApiParam(value = "导出格式（word/excel/txt，默认word）", required = false) 
-            @RequestParam(required = false) String fileType) throws Exception {
+            @ApiParam(value = "导出格式（word/excel/txt，默认word）", required = false)
+            @RequestParam(required = false) String fileType,
+            // 新增 digit 参数（根据实际需求调整 required 和描述）
+            @ApiParam(value = "修约", required = false)
+            @RequestParam(value = "digit", required = false) Integer digit) throws Exception {
         
         // 调用 Service 层的多格式导出方法
-        R<File> result = spectrumService.downloadFile(taskId, allDisplay, fileType, analysisIds);
+        R<File> result = spectrumService.downloadFile(taskId, allDisplay, fileType, analysisIds, digit);
         
         if (result.getSuccess()) {
             File file = result.getData();

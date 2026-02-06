@@ -953,6 +953,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      */
     @Override
     public Result sampleListPort(String taskId, String type, Integer digit) {
+        System.out.println("sampleListPort实际参数：taskId=" + taskId + ", type=" + type + ", digit=" + digit);
         if (taskId == null) {
             //方法id不能为空,请创建方法
             return Result.fail(YamlMessageSource.getMessageStatic("00000021"));
@@ -2820,7 +2821,7 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @param fileType   导出格式（word/txt/xlsx）
      * @return 生成的文件对象
      */
-    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds) {
+    public R<File> downloadFile(String taskId, Boolean allDisplay, String fileType, List<String> analysisIds, Integer digit) {
         // log.info("===== 导出流程开始 =====");
         // log.info("开始导出，taskId: {}, fileType: {}, 需要筛选的analysisId数量: {}",
         //         taskId, fileType, analysisIds != null ? analysisIds.size() : 0);
@@ -2867,9 +2868,8 @@ public class SpectrumServiceImpl implements SpectrumService {
 
         // 2.1 获取两个来源的数据
         List<SampleListVo> allSamples = new ArrayList<>();
-
         // 处理sampleListPort数据
-        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, null);
+        Result<List<SampleListVo>> sampleListResult = sampleListPort(taskId, null, digit);
         if (sampleListResult.getCode().equals(ResultCodeEnum.SUCCESS.getCode()) && sampleListResult.getData() != null) {
             // log.info("【步骤2/5】sampleListPort查询成功，返回样品数量：{}", sampleListResult.getData().size());
             allSamples.addAll(sampleListResult.getData());
@@ -3754,8 +3754,8 @@ public class SpectrumServiceImpl implements SpectrumService {
      * @param analysisIds
      * @return
      */
-    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds) {
-        return downloadFile(taskId, allDisplay, "word", analysisIds);
+    public R<File> downloadWord(String taskId, Boolean allDisplay, List<String> analysisIds, Integer digit) {
+        return downloadFile(taskId, allDisplay, "word", analysisIds, digit);
     }
 
     /**
