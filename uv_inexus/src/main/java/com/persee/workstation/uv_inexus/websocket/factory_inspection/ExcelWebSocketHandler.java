@@ -62,6 +62,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -257,6 +258,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             this.latch = new CountDownLatch(1);
         }
     }
+
     // 提供添加会话的方法
     public void addSessionToTask(String taskId, WebSocketSession session) {
         sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
@@ -265,27 +267,39 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     private boolean sendToActiveSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
         try {
-            // 获取或创建任务的消息队列
-            BlockingQueue<QueuedMessage> queue = messageQueues.computeIfAbsent(taskId, k -> new LinkedBlockingQueue<>());
-
-            // 创建消息并加入队列
-            QueuedMessage queuedMessage = new QueuedMessage(originalSession, taskId, payload);
-            boolean offer = queue.offer(queuedMessage);
-
-            // 启动队列处理器（如果还没有运行）
-            startQueueProcessor(taskId);
-
-            // 等待发送完成（可选，可根据性能需求调整）
-            try {
-                // 设置合理的超时时间，避免永久阻塞
-                boolean completed = queuedMessage.getLatch().await(5, TimeUnit.SECONDS);
-                if (!completed) {
-                    log.warn("WebSocket消息发送超时: taskId={}, 消息类型={}", taskId, payload.get("type"));
+            HashSet<WebSocketSession> set = new HashSet<>();
+            set.add(originalSession);
+            Set<WebSocketSession> sessions = sessionTaskMap.getOrDefault(taskId, set);
+            if (CollectionUtils.isNotEmpty(sessions)) {
+                for (WebSocketSession session : sessions) {
+                    if (isSessionValid(session)) {
+                        session.sendMessage(new TextMessage(payload.toJSONString()));
+                    } else {
+                        log.warn("WebSocket消息发送失败: taskId={}, 源会话已关闭", taskId);
+                    }
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("等待消息发送完成时被中断: taskId={}", taskId);
             }
+//            // 获取或创建任务的消息队列
+//            BlockingQueue<QueuedMessage> queue = messageQueues.computeIfAbsent(taskId, k -> new LinkedBlockingQueue<>());
+//
+//            // 创建消息并加入队列
+//            QueuedMessage queuedMessage = new QueuedMessage(originalSession, taskId, payload);
+//            boolean offer = queue.offer(queuedMessage);
+//
+//            // 启动队列处理器（如果还没有运行）
+//            startQueueProcessor(taskId);
+//
+//            // 等待发送完成（可选，可根据性能需求调整）
+//            try {
+//                // 设置合理的超时时间，避免永久阻塞
+//                boolean completed = queuedMessage.getLatch().await(5, TimeUnit.SECONDS);
+//                if (!completed) {
+//                    log.warn("WebSocket消息发送超时: taskId={}, 消息类型={}", taskId, payload.get("type"));
+//                }
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt();
+//                log.warn("等待消息发送完成时被中断: taskId={}", taskId);
+//            }
 
             return true; // 消息已加入队列，不代表发送成功
         } catch (Exception e) {
@@ -316,110 +330,111 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     // 启动队列处理器
-    private void startQueueProcessor(String taskId) {
-        AtomicBoolean processing = queueProcessingFlags.computeIfAbsent(taskId, k -> new AtomicBoolean(false));
+//    private void startQueueProcessor(String taskId) {
+//        AtomicBoolean processing = queueProcessingFlags.computeIfAbsent(taskId, k -> new AtomicBoolean(false));
+//
+//        if (processing.compareAndSet(false, true)) {
+//            // 启动单独的线程处理队列
+//            CompletableFuture.runAsync(() -> processMessageQueue(taskId), taskExecutor);
+//        }
+//    }
 
-        if (processing.compareAndSet(false, true)) {
-            // 启动单独的线程处理队列
-            CompletableFuture.runAsync(() -> processMessageQueue(taskId), taskExecutor);
-        }
-    }
-
-    // 处理消息队列
-    private void processMessageQueue(String taskId) {
-        try {
-            BlockingQueue<QueuedMessage> queue = messageQueues.get(taskId);
-            if (queue == null) {
-                return;
-            }
-
-            QueuedMessage message;
-            while ((message = queue.poll()) != null) {
-                // 实际发送消息
-                boolean success = sendMessageToSession(message.getOriginalSession(), message.getTaskId(), message.getPayload());
-
-                // 通知等待线程发送完成
-                message.getLatch().countDown();
-
-                if (!success) {
-                    log.warn("消息发送失败: taskId={}, 消息类型={}", message.getTaskId(), message.getPayload().get("type"));
-                }
-
-                // 避免过于频繁的发送，可调节此延时
-                try {
-                    Thread.sleep(10); // 10ms间隔，可根据需要调整
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        } finally {
-            // 重置处理标志
-            AtomicBoolean processing = queueProcessingFlags.get(taskId);
-            if (processing != null) {
-                processing.set(false);
-            }
-
-            // 如果队列仍有消息，重新启动处理器
-            BlockingQueue<QueuedMessage> remainingQueue = messageQueues.get(taskId);
-            if (remainingQueue != null && !remainingQueue.isEmpty()) {
-                startQueueProcessor(taskId);
-            }
-        }
-    }
-
-    // 实际的消息发送逻辑
-    private boolean sendMessageToSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
-        log.debug("准备发送消息到 taskId: {}, 消息内容: {}", taskId, payload.toJSONString());
-
-        try {
-//            // 首先尝试使用原始session
-//            if (isSessionValid(originalSession)) {
+//    // 处理消息队列
+//    private void processMessageQueue(String taskId) {
+//        try {
+//            BlockingQueue<QueuedMessage> queue = messageQueues.get(taskId);
+//            if (queue == null) {
+//                return;
+//            }
+//
+//            QueuedMessage message;
+//            while ((message = queue.poll()) != null) {
+//                // 实际发送消息
+//                boolean success = sendMessageToSession(message.getOriginalSession(), message.getTaskId(), message.getPayload());
+//
+//                // 通知等待线程发送完成
+//                message.getLatch().countDown();
+//
+//                if (!success) {
+//                    log.warn("消息发送失败: taskId={}, 消息类型={}", message.getTaskId(), message.getPayload().get("type"));
+//                }
+//
+//                // 避免过于频繁的发送，可调节此延时
 //                try {
-//                    originalSession.sendMessage(new TextMessage(payload.toJSONString()));
-//                    log.info("通过原始session发送消息成功: taskId={}, 消息类型={}", taskId, payload.get("type"));
-//                    return true;
-//                } catch (IOException e) {
-//                    log.warn("原始session发送失败: {}", e.getMessage());
-//                } catch (IllegalStateException e) {
-//                    log.warn("原始session状态异常: {}", e.getMessage());
+//                    Thread.sleep(10); // 10ms间隔，可根据需要调整
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                    break;
 //                }
 //            }
+//        } finally {
+//            // 重置处理标志
+//            AtomicBoolean processing = queueProcessingFlags.get(taskId);
+//            if (processing != null) {
+//                processing.set(false);
+//            }
+//
+//            // 如果队列仍有消息，重新启动处理器
+//            BlockingQueue<QueuedMessage> remainingQueue = messageQueues.get(taskId);
+//            if (remainingQueue != null && !remainingQueue.isEmpty()) {
+//                startQueueProcessor(taskId);
+//            }
+//        }
+//    }
 
-            // 尝试使用sessionTaskMap中的session
-            Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
-            if (sessions != null) {
-                for (WebSocketSession mappedSession : sessions) {
-                    if (isSessionValid(mappedSession)) {
-                        try {
-                            mappedSession.sendMessage(new TextMessage(payload.toJSONString()));
-                            log.info("通过映射session发送消息成功: taskId={}, 消息类型={}", taskId, payload.toJSONString());
-                            return true;
-                        } catch (Exception e) {
-                            log.warn("映射session状态异常: {}", e);
-                            // 如果状态异常，清理该session
-                            // 移除 session
-                            Set<WebSocketSession> sessionSet = sessionTaskMap.get(taskId);
-                            if (sessionSet != null) {
-                                sessionSet.remove(mappedSession);
-                                if (sessionSet.isEmpty()) {
-                                    sessionTaskMap.remove(taskId);
-                                }
-                            }
-                        }
-                    }
-                }
-                log.warn("所有发送方式都失败: taskId={}", taskId);
-            } else {
-                log.warn("没有可用的session: taskId={}", taskId);
-            }
+    // 实际的消息发送逻辑
+//    private boolean sendMessageToSession(WebSocketSession originalSession, String taskId, JSONObject payload) {
+//        log.debug("准备发送消息到 taskId: {}, 消息内容: {}", taskId, payload.toJSONString());
+//
+//        try {
 
-            return false;
-        } catch (Exception e) {
-            log.error("发送消息时发生异常: {}", e.getMessage());
-            return false;
-        }
-    }
+    /// /            // 首先尝试使用原始session
+    /// /            if (isSessionValid(originalSession)) {
+    /// /                try {
+    /// /                    originalSession.sendMessage(new TextMessage(payload.toJSONString()));
+    /// /                    log.info("通过原始session发送消息成功: taskId={}, 消息类型={}", taskId, payload.get("type"));
+    /// /                    return true;
+    /// /                } catch (IOException e) {
+    /// /                    log.warn("原始session发送失败: {}", e.getMessage());
+    /// /                } catch (IllegalStateException e) {
+    /// /                    log.warn("原始session状态异常: {}", e.getMessage());
+    /// /                }
+    /// /            }
+//
+//            // 尝试使用sessionTaskMap中的session
+//            Set<WebSocketSession> sessions = sessionTaskMap.get(taskId);
+//            if (sessions != null) {
+//                for (WebSocketSession mappedSession : sessions) {
+//                    if (isSessionValid(mappedSession)) {
+//                        try {
+//                            mappedSession.sendMessage(new TextMessage(payload.toJSONString()));
+//                            log.info("通过映射session发送消息成功: taskId={}, 消息类型={}", taskId, payload.toJSONString());
+//                            return true;
+//                        } catch (Exception e) {
+//                            log.warn("映射session状态异常: {}", e);
+//                            // 如果状态异常，清理该session
+//                            // 移除 session
+//                            Set<WebSocketSession> sessionSet = sessionTaskMap.get(taskId);
+//                            if (sessionSet != null) {
+//                                sessionSet.remove(mappedSession);
+//                                if (sessionSet.isEmpty()) {
+//                                    sessionTaskMap.remove(taskId);
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//                log.warn("所有发送方式都失败: taskId={}", taskId);
+//            } else {
+//                log.warn("没有可用的session: taskId={}", taskId);
+//            }
+//
+//            return false;
+//        } catch (Exception e) {
+//            log.error("发送消息时发生异常: {}", e.getMessage());
+//            return false;
+//        }
+//    }
 
     // 获取测量状态的方法
     public boolean isTaskMeasuring(String taskId) {
@@ -681,6 +696,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        session = new ConcurrentWebSocketSessionDecorator(
+                session,
+                10 * 1000, // 发送超时时间（毫秒）
+                1024 * 1024 // 最大缓冲区大小（字节）
+        );
         // 更新最后活动时间
         lastActivityTime.put(session.getId(), System.currentTimeMillis());
 
@@ -1002,88 +1022,105 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (StringUtils.isBlank(device.getData())) {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("error", "请检查当前仪器是否连接");
-            sendToActiveSession(null,taskId,jsonObject);
+            sendToActiveSession(null, taskId, jsonObject);
             throw new BusinessException("请检查当前仪器是否连接！！！");
         }
         if (!StringUtils.equals(device.getData(), string)) {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("error", "设备已切换,请检查当前仪器与任务是否匹配！！！");
-            sendToActiveSession(null,taskId,jsonObject);
+            sendToActiveSession(null, taskId, jsonObject);
             throw new BusinessException("设备已切换,请检查当前仪器与任务是否匹配！！！");
         }
         halt.put(taskId, false);
         //得到所有的检测项
         if (CollectionUtils.isNotEmpty(list)) {
-            for (ExcelDataAsset asset : list) {
-                Map<String, Object> dataMap = asset.getDataMap();
-                if (!CollectionUtils.isEmpty(dataMap)) {
-                    //检测类别，也就是sheet页的名称
-                    String category = MapUtils.getString(dataMap, TEST_CATEGORY.getDescription());
-                    //检测项名称
-                    String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
-                    log.info("自动检测，开始检测项>>>>>>>>>>>>> 检测类别：{} , 检测项名称：{}", category, projectName);
-                    //告诉前端走到了哪个检测项
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("itemName", category + "--" + projectName);
-                    sendToActiveSession(null, taskId, jsonObject);
-
-                    JSONObject jsonObject1 = new JSONObject();
-                    jsonObject1.put("itemId", asset.getId());
-                    sendToActiveSession(null, taskId, jsonObject1);
-                }
-
-
-                request.setItemId(asset.getId());
-                try {
-
-                    sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
-                    if (halt.get(taskId)){
-                        log.info("任务已暂停，请检查任务是否暂停");
-                        setTaskMeasuring(taskId,false);
-                        return;
-                    }
-                    this.handleSingleItemInspection(session, request, taskId, updateBy, true);
-
-                    //同一个任务，同一时间只有一个检测项在跑
-                    Future<Boolean> future = taskFutures.get(taskId);
-                    if (future == null) {
-                        log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId());
-                    }
-//                    Future<?> future = taskFutures.get(taskId);
-                    if (future != null) {
+            CompletableFuture.runAsync(() -> {
+                for (ExcelDataAsset asset : list) {
+                    if (halt.get(taskId)) {
                         try {
-                            // 设置合理的超时时间，避免无限等待
-                            Boolean b = future.get();
-                            JSONObject object = new JSONObject();
-                            object.put("isCompleted", b);
-                            sendToActiveSession(null, taskId, object);
-                            if (b) {
-                                log.info("检测项: {},检测成功，进行下一个检测项测量>>>>>>>>>", asset.getId());
-                            } else {
-                                log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId());
-                            }
-                            if (halt.get(taskId)) {
-                                setTaskMeasuring(taskId, false);
-                                log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
-                                return;
-                            }
-                        } catch (Exception e) {
-                            log.error("任务执行异常: taskId={}", taskId, e.getCause());
-                            log.error("错误信息为{}", String.valueOf(e));
-                            continue;
+                            setTaskMeasuring(taskId, false);
+                        } catch (BusinessException e) {
+                            log.error("设置任务测量状态失败，任务ID: {}", taskId, e);
+                            // 可选：向前端发送错误信息
+                            JSONObject errorMsg = new JSONObject();
+                            errorMsg.put("error", "设置任务测量状态失败: " + e.getMessage());
+                            sendToActiveSession(session, taskId, errorMsg);
                         }
-                    } else {
-                        log.error("任务执行失败,future为空: taskId={}", taskId);
+                        log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
+                    }
+                    Map<String, Object> dataMap = asset.getDataMap();
+                    if (!CollectionUtils.isEmpty(dataMap)) {
+                        //检测类别，也就是sheet页的名称
+                        String category = MapUtils.getString(dataMap, TEST_CATEGORY.getDescription());
+                        //检测项名称
+                        String projectName = MapUtils.getString(dataMap, PROJECT_NAME.getDescription());
+                        log.info("自动检测，开始检测项>>>>>>>>>>>>> 检测类别：{} , 检测项名称：{}", category, projectName);
+                        //告诉前端走到了哪个检测项
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("itemName", category + "--" + projectName);
+                        sendToActiveSession(null, taskId, jsonObject);
+
+
+                        JSONObject jsonObject1 = new JSONObject();
+                        jsonObject1.put("itemId", asset.getId());
+                        sendToActiveSession(null, taskId, jsonObject1);
                     }
 
-                } catch (Exception e) {
-                    //检测项。。。跳过，进行下一项测量
-                    log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId(), e);
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("error", e.getMessage());
-                    sendToActiveSession(null,taskId,jsonObject);
+
+                    request.setItemId(asset.getId());
+                    try {
+
+                        sessionTaskMap.computeIfAbsent(taskId, k -> ConcurrentHashMap.newKeySet()).add(session);
+                        if (halt.get(taskId)) {
+                            log.info("任务已暂停，请检查任务是否暂停");
+                            setTaskMeasuring(taskId, false);
+                            return;
+                        }
+                        this.handleSingleItemInspection(session, request, taskId, updateBy, true);
+
+                        //同一个任务，同一时间只有一个检测项在跑
+                        Future<Boolean> future = taskFutures.get(taskId);
+                        if (future == null) {
+                            log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId());
+                        }
+//                    Future<?> future = taskFutures.get(taskId);
+                        if (future != null) {
+                            try {
+                                // 设置合理的超时时间，避免无限等待
+                                Boolean b = future.get();
+                                JSONObject object = new JSONObject();
+                                object.put("isCompleted", b);
+                                sendToActiveSession(null, taskId, object);
+                                if (b) {
+                                    log.info("检测项: {},检测成功，进行下一个检测项测量>>>>>>>>>", asset.getId());
+                                } else {
+                                    log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId());
+                                }
+                                if (halt.get(taskId)) {
+                                    setTaskMeasuring(taskId, false);
+                                    log.info("任务 {} 已被暂停，停止自动检测流程", taskId);
+                                    return;
+                                }
+                            } catch (Exception e) {
+                                log.error("任务执行异常: taskId={}", taskId, e.getCause());
+                                log.error("错误信息为{}", String.valueOf(e));
+                                continue;
+                            }
+                        } else {
+                            log.error("任务执行失败,future为空: taskId={}", taskId);
+                        }
+
+                    } catch (Exception e) {
+                        //检测项。。。跳过，进行下一项测量
+                        log.error("检测项: {},检测失败，进行下一个检测项测量>>>>>>>>>", asset.getId(), e);
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("error", e.getMessage());
+                        sendToActiveSession(null, taskId, jsonObject);
+                    }
                 }
-            }
+            });
+
+
         }
         setTaskMeasuring(taskId, false);
     }
@@ -2416,7 +2453,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         if (b) {
 
             if (isMultiProductPool) {
-                if (d==0) {
+                if (d == 0) {
                     //切换样品池到扫描物质
                     this.realTimeEcho(taskId, "光谱-切换样品池到扫描物质");
 
@@ -3362,7 +3399,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         R<OperationResultEntity> operation5 = new R<>();
         if (isMultiProductPool) {
-            if (d==0) {
+            if (d == 0) {
                 //切换样品池到测量物质
                 realTimeEcho(taskId, "时间扫描-切换样品池到测量物质");
 
@@ -3452,9 +3489,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         while (true) {
             try {
                 taskStopFlag.put(taskId, true);
-                if (halt.get(taskId)) {
-                    return R.fail(map);
-                }
+//                if (halt.get(taskId)) {
+//                    return R.fail(map);
+//                }
                 Object o = queue.pollMessage(deviceSerialNumber, T600ComIdEnums.Measure.getComId());
                 if (o instanceof SpectrumPoint || o == null) {
                     if (o != null) {
@@ -4217,6 +4254,13 @@ templateService.updateCellValue(sheet, excelCellLocator, excelCellEditor,
     // 在连接关闭时清理队列
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+        // 使用ConcurrentWebSocketSessionDecorator包装原始session
+        session = new ConcurrentWebSocketSessionDecorator(
+                session,
+                10 * 1000, // 发送超时时间（毫秒）
+                1024 * 1024 // 最大缓冲区大小（字节）
+        );
+
         String sessionId = session.getId();
         String taskId = getTaskIdFromSession(session);
 
