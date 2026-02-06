@@ -333,7 +333,9 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     public Result createMethodPort(MethodParamRequestDto methodDto) {
         // 根据方法名称去方法表中进行查询,查看是否有重复
         List<TMeasureMethod> list = tMeasureMethodService.list(Wrappers.lambdaQuery(TMeasureMethod.class)
-                .eq(TMeasureMethod::getMethodName, methodDto.getMethodName()));
+                .eq(TMeasureMethod::getMethodName, methodDto.getMethodName())
+                .eq(TMeasureMethod::getMeasurementType, methodDto.getMethodType())
+                .eq(TMeasureMethod::getProjectItemKey, methodDto.getProjectId()));
         if (list.size() > 0) {
             //方法名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("00301002"));
@@ -4066,14 +4068,15 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * @return
      */
     @Override
-    public Result nameDuplicationCheck(String projectId, String methodName) {
-        if (StringUtils.isEmpty(projectId) || StringUtils.isEmpty(methodName)) {
+    public Result nameDuplicationCheck(String projectId, String methodName, String measureType) {
+        if (StringUtils.isEmpty(projectId) || StringUtils.isEmpty(methodName) || StringUtils.isEmpty(measureType)) {
             //参数不能为空
             return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
         }
         QueryWrapper<TMeasureMethod> wrapper = new QueryWrapper<>();
         wrapper.eq("project_item_key", projectId)
                 .eq("method_name", methodName)
+                .eq("measurement_type", measureType)
                 .eq("is_delete", Constants.PARAM_ZERO);
         long count = tMeasureMethodService.count(wrapper);
         // 打印日志
