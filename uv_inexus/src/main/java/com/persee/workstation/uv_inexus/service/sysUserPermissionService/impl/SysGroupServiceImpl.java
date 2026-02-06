@@ -82,8 +82,8 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
     public Result<String> addGroup(GroupSaveDTO saveDTO) {
         // 1. 校验组名是否已存在
         QueryWrapper<SysGroupPO> nameCheckWrapper = new QueryWrapper<>();
-        nameCheckWrapper.eq("group_name", saveDTO.getGroupName());
-        Long count = baseMapper.selectCount(nameCheckWrapper);
+        nameCheckWrapper.eq("group_name", saveDTO.getGroupName())
+                .eq("role_id", saveDTO.getRoleId());Long count = baseMapper.selectCount(nameCheckWrapper);
         if (count > 0) {
             //小组名已存在，请更改
             return Result.fail(YamlMessageSource.getMessageStatic("00602001"));
@@ -104,7 +104,7 @@ public class SysGroupServiceImpl extends ServiceImpl<SysGroupMapper, SysGroupPO>
         // 3. 封装小组信息并保存
         SysGroupPO groupPO = new SysGroupPO();
         BeanUtils.copyProperties(saveDTO, groupPO);
-        groupPO.setCreateBy("admin");  // 修正拼写错误（原"amdin"）
+        groupPO.setCreateBy("admin");
         groupPO.setCreated(LocalDateTime.now());
         baseMapper.insert(groupPO);
         //小组创建成功，已关联角色
