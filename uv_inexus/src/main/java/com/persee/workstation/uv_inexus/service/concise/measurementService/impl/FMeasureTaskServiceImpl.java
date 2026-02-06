@@ -12,6 +12,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService.impl
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.constant.Constants;
@@ -72,15 +73,19 @@ public class FMeasureTaskServiceImpl extends ServiceImpl<FMeasureTaskMapper, FMe
         return i!=0;
     }
 
+
+
     @Override
-    public Result<Page<FMeasureTaskDTO>> querybyName(SelectTaskDto selectTaskDto) {
+    public Result<Page<FMeasureTaskDTO>> queryByName(SelectTaskDto selectTaskDto) {
+
         try {
+            //创建分页对象
             Page<FMeasureTaskDTO> page = new Page<>(selectTaskDto.getPageNum(), selectTaskDto.getPageSize());
-            List<FMeasureTaskDTO> list = fMeasureTaskMapper.querybyMethodName(selectTaskDto);
-            page.setRecords(list);
-            page.setTotal(list.size());
-            return Result.ok(page);
-        }catch (Exception e){
+
+            IPage<FMeasureTaskDTO> resultPage = fMeasureTaskMapper.queryByMethodName(page, selectTaskDto);
+
+            return Result.ok((Page<FMeasureTaskDTO>) resultPage);
+        } catch (Exception e) {
             return Result.fail();
         }
     }

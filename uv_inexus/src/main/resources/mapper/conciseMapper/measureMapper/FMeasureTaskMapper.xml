@@ -33,7 +33,7 @@
         </if>
     </select>
 
-    <select id="querybyMethodName"
+    <select id="queryByMethodName"
             resultType="com.persee.workstation.uv_inexus.dto.concise.common.FMeasureTaskDTO">
         select t1.id,
         t2.method_name as methodName,
@@ -49,14 +49,18 @@
         t1.end_save_time as endSaveTime,
         t1.device_serial_number as deviceSerialNumber,
         t1.image_data as imageData
-        from t800_uv_inexus_concise.f_t_measure_task t1 left join t800_uv_inexus_concise.f_t_measure_method t2 on
-        t1.method_key = t2.id where t1.is_delete = '0' and t1.user_id = #{updateBy} and t1.measure_type = #{methodType}
-        <if test="taskName != null and taskName != ''">
-            and t1.task_name like concat('%',#{taskName},'%')
+        from t800_uv_inexus_concise.f_t_measure_task t1
+        left join t800_uv_inexus_concise.f_t_measure_method t2 on t1.method_key = t2.id
+        where t1.is_delete = '0'
+        and t1.user_id = #{dto.updateBy}
+        and t1.measure_type = #{dto.methodType}
+        <if test="dto.taskName != null and dto.taskName != ''">
+            and t1.task_name like concat('%',#{dto.taskName},'%')
         </if>
-        <if test="methodName != null and methodName != ''">
-            and t2.method_name like concat('%',#{methodName},'%')
+        <if test="dto.methodName != null and dto.methodName != ''">
+            and t2.method_name like concat('%',#{dto.methodName},'%')
         </if>
-         order by t1.end_save_time desc
+        order by t1.end_save_time desc
     </select>
+
 </mapper>

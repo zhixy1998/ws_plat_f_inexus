@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.dao.concise.measurementDao;
 
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMeasureTaskDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.SelectTaskDto;
@@ -34,6 +35,7 @@ public interface FMeasureTaskMapper extends BaseMapper<FMeasureTask> {
 
     int delTask(String taskId);
 
-    List<FMeasureTaskDTO> querybyMethodName(SelectTaskDto selectTaskDto);
+    IPage<FMeasureTaskDTO> queryByMethodName(Page<FMeasureTaskDTO> page ,@Param("dto") SelectTaskDto selectTaskDto);
+
 }
 

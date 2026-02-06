@@ -26,6 +26,6 @@ public interface FMeasureTaskService extends IService<FMeasureTask> {
 
     boolean delTask(String taskId);
 
-    Result<Page<FMeasureTaskDTO>> querybyName(SelectTaskDto selectTaskDto);
+    Result<Page<FMeasureTaskDTO>> queryByName(SelectTaskDto selectTaskDto);
 }
 

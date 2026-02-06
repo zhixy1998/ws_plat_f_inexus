@@ -318,7 +318,8 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
         FMeasureTask task = fMeasureTaskService.getById(taskId);
         // 根据任务id和is_save字段为1的条件查询
         QueryWrapper<FMeasureData> wrapper = new QueryWrapper<>();
-        wrapper.eq("task_id", taskId).eq("task_status",Constants.PARAM_TWO);
+//        wrapper.eq("task_id", taskId).eq("task_status",Constants.PARAM_TWO);
+        wrapper.eq("task_id", taskId).eq("is_save",Constants.PARAM_ONE);
         List<FMeasureData> measureDataList = fMeasureDataService.list(wrapper);
         if (measureDataList != null) {
             for (FMeasureData measureData : measureDataList) {
@@ -437,18 +438,29 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     }
 
 
+//    @Override
+//    public Result<Page<FMeasureTaskDTO>> queryHistoryTask(SelectTaskDto selectTaskDto) {
+//
+//        String userName = selectTaskDto.getUpdateBy();
+//        SysUserPO sysUserPO = userMapper.selectByUsername(userName);
+//        if (sysUserPO == null) {
+//            //用户不存在
+//            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+//        }
+//        String userId = sysUserPO.getId();
+//        selectTaskDto.setUpdateBy(userId);
+//        return fMeasureTaskService.querybyName(selectTaskDto);
+//    }
     @Override
     public Result<Page<FMeasureTaskDTO>> queryHistoryTask(SelectTaskDto selectTaskDto) {
 
         String userName = selectTaskDto.getUpdateBy();
         SysUserPO sysUserPO = userMapper.selectByUsername(userName);
-        if (sysUserPO == null) {
-            //用户不存在
+        if (userName == null) {
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-        String userId = sysUserPO.getId();
-        selectTaskDto.setUpdateBy(userId);
-        return fMeasureTaskService.querybyName(selectTaskDto);
+        selectTaskDto.setUpdateBy(sysUserPO.getId());
+        return fMeasureTaskService.queryByName(selectTaskDto);
     }
 
     /**
