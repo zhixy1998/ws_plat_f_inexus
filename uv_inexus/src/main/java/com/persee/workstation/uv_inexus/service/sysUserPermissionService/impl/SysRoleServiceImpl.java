@@ -36,7 +36,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleQueryDTO;
@@ -63,7 +63,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
     private SysGroupMapper sysGroupMapper;
     
     @Autowired
-    private SysUserMapper sysUserMapper;
+    private SystemUserManageDAO systemUserManageDAO;
     
     @Autowired
     private SysPermissionMapper sysPermissionMapper;
@@ -282,7 +282,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRolePO> im
                     LambdaQueryWrapper<SysUserPO> userWrapper = new LambdaQueryWrapper<>();
                     userWrapper.in(SysUserPO::getId, userIds);
                     userWrapper.eq(SysUserPO::getStatus, 1); // 只查询启用的用户
-                    List<SysUserPO> users = sysUserMapper.selectList(userWrapper);
+                    List<SysUserPO> users = systemUserManageDAO.selectList(userWrapper);
                     
                     // 转换为UserTreeDTO
                     List<UserTreeDTO> userDTOs = users.stream().map(user -> {

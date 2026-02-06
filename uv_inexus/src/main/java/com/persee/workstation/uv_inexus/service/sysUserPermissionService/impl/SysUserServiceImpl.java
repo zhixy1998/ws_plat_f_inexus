@@ -18,7 +18,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserQueryDTO;
@@ -41,7 +41,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUserPO> implements SysUserService {
+public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUserPO> implements SysUserService {
 
     // @Autowired
     // private SysUserMapper sysUserMapper;

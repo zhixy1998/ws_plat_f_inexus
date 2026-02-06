@@ -23,8 +23,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.timesweep.TimeUseMethodDto;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumImageUpload;
@@ -149,7 +148,7 @@ public class TimeSweepConciseServiceImpl implements TimeSweepConciseService {
     private DeviceInfoService deviceInfoService;
 
     @Autowired
-    private SysUserMapper userManageDAO;
+    private com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO userManageDAO;
 
     @Autowired
     private DevMessageUtil devMessageUtil;

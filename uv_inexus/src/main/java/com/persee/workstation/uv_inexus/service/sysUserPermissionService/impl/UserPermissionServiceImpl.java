@@ -31,7 +31,7 @@ import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupPermiss
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysPermissionMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PermissionTreeDTO;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -47,7 +47,7 @@ import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPer
 public class UserPermissionServiceImpl implements UserPermissionService {
 
     @Autowired
-    private SysUserMapper sysUserMapper;
+    private SystemUserManageDAO systemUserManageDAO;
 
     @Autowired
     private SysUserGroupMapper sysUserGroupMapper;
@@ -67,7 +67,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
     @Override
     public Result<List<PermissionDTO>> getUserPermissions(String userId) {
         // 1. 校验用户是否存在
-        SysUserPO userPO = sysUserMapper.selectById(userId);
+        SysUserPO userPO = systemUserManageDAO.selectById(userId);
         if (userPO == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
@@ -240,7 +240,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
 
     @Override
     public Result<List<String>> getRootPermissionPaths(String userId) {
-        SysUserPO userPO = sysUserMapper.selectById(userId);
+        SysUserPO userPO = systemUserManageDAO.selectById(userId);
         if (userPO == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));

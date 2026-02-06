@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.deviceUtil;
 
+import com.persee.workstation.uv_inexus.constant.Constants;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -19,20 +20,20 @@ import java.util.Map;
 @Getter
 public enum OperationTypeEnums {
 
-    Find(1, "查找仪器", "deviceIp,connectType", "", 4),
-    Connect(2, "连接", "deviceIp,connectType", "",4),
-    Init(3, "初始化仪器", "deviceIp,connectType", "", 1),
-    Measure(4, "测量", "deviceIp,connectType", "",2),
-    SetParam(5, "设置参数", "deviceIp,connectType,setParam", "", 4),
-    ActionCmdEnum(6, "执行命令", "deviceIp,connectType,InputParam", "", 4),
-    GetValue(7, "读取值", "deviceIp,connectType,InputParam", "", 4),
-    Stop(8, "停止测量", "deviceIp,connectType", "", 4),
-    TimeMeasure(9, "定时测量", "deviceIp,connectType,InputParam", "", 4),
-    Zero(885, "零点校准", "deviceIp,connectType", "", 5),
-    Calibration(886, "校准", "deviceIp,connectType", "", 4),
-    LiveDetection(887, "实时检测", "deviceIp,connectType", "", 3),
-    Disconnect(888, "断开连接", "deviceIp,connectType", "", 4),
-    T800Connect(889, "T800连接", "deviceIp,connectType", "", 4),
+    Find(1, "查找仪器", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
+    Connect(2, "连接", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
+    Init(3, "初始化仪器", "deviceIp,connectType", "", Constants.DEVICE_STATUS_INIT),
+    Measure(4, "测量", "deviceIp,connectType", "", Constants.DEVICE_STATUS_MEASURE),
+    SetParam(5, "设置参数", "deviceIp,connectType,setParam", "", Constants.DEVICE_STATUS_OTHER),
+    ActionCmdEnum(6, "执行命令", "deviceIp,connectType,InputParam", "", Constants.DEVICE_STATUS_OTHER),
+    GetValue(7, "读取值", "deviceIp,connectType,InputParam", "", Constants.DEVICE_STATUS_OTHER),
+    Stop(8, "停止测量", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
+    TimeMeasure(9, "定时测量", "deviceIp,connectType,InputParam", "", Constants.DEVICE_STATUS_OTHER),
+    Zero(885, "零点校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ZERO),
+    Calibration(886, "校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
+    LiveDetection(887, "实时检测", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ECHO),
+    Disconnect(888, "断开连接", "deviceIp,connectType", "", Constants.DEVICE_STATUS_DisConnect),
+    T800Connect(889, "T800连接", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     End(999, "枚举最后标志量，不做操作，方便添加", "deviceIp,connectType", "", 999);
 
     // 操作类型

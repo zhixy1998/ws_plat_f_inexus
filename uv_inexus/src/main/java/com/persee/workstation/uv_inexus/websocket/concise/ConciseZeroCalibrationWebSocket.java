@@ -13,14 +13,14 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureMethod;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTask;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.FMeasureTaskAttachment;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FTimeSweepParamter;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskAttachmentService;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.FMeasureTaskService;
@@ -305,7 +305,7 @@ public class ConciseZeroCalibrationWebSocket extends TextWebSocketHandler {
         }else{
             task = new FMeasureTask();
             FMeasureMethod method = tMeasureMethodService.getById(methodId);
-            SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
+            SysUserPO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SysUserPO.class).eq("user_name", method.getMethodCreator()));
             task.setUserId(user.getId());
             String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             String collect = new Random().ints(8, 0, chars.length())

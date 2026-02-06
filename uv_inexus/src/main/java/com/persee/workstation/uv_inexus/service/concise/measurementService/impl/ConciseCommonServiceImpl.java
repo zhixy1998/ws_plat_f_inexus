@@ -17,7 +17,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
@@ -82,7 +82,7 @@ public class ConciseCommonServiceImpl implements ConciseCommonService {
     @Autowired
     private FMeasureMethodService fMeasureMethodService;
     @Autowired
-    private SysUserMapper userMapper;
+    private SystemUserManageDAO userMapper;
     @Autowired
     private FMeasureTaskService fMeasureTaskService;
     @Autowired

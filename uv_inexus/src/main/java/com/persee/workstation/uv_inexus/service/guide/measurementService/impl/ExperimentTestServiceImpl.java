@@ -20,7 +20,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureDataMapper;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
@@ -95,7 +95,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     @Autowired
     private TMeasureProjectService tMeasureProjectService;
     @Autowired
-    private SysUserMapper userConfigDAO;
+    private SystemUserManageDAO userConfigDAO;
     @Autowired
     private TMeasureTaskService tMeasureTaskService;
     @Autowired
@@ -151,7 +151,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private SysUserGroupMapper sysUserGroupMapper;
 
     @Autowired
-    private SysUserMapper sysUserMapper;
+    private SystemUserManageDAO systemUserManageDAO;
 
     @Autowired
     SystemBusinessParamService businessParamService;
@@ -166,7 +166,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
     private TMeasureProjectCollaboratorGroupService collaboratorGroupService;
 
     @Autowired
-    SysUserMapper userManageDAO;
+    SystemUserManageDAO userManageDAO;
 
 
     @Value("任务")
@@ -194,7 +194,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             return Result.fail(YamlMessageSource.getMessageStatic("00301001"));
         }
         // 根据用户名称查询用户
-        SysUserPO user = sysUserMapper.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername,paramDto.getUpdateBy()));
+        SysUserPO user = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername,paramDto.getUpdateBy()));
         // 根据用户id查询组id
         SysUserGroupPO userGroupPO = sysUserGroupMapper.selectOne(new QueryWrapper<SysUserGroupPO>().eq("user_id", user.getId()));
         // 创建项目表
@@ -395,7 +395,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             //任务名称重复
             return Result.fail(YamlMessageSource.getMessageStatic("0000004D"));
         }
-        SysUserPO sysUserPO = sysUserMapper.selectByUsername(paramDto.getUpdateBy());
+        SysUserPO sysUserPO = systemUserManageDAO.selectByUsername(paramDto.getUpdateBy());
         if (sysUserPO == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000005"));
@@ -1437,7 +1437,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
                     .apply("DATE(create_time) <= DATE({0})", queryTask.getEndTime());
         }
         // 根据用户名称查询用户id
-        SysUserPO sysUserPO = sysUserMapper.selectByUsername(queryTask.getUpdateBy());
+        SysUserPO sysUserPO = systemUserManageDAO.selectByUsername(queryTask.getUpdateBy());
         wrapper.eq("user_id", sysUserPO.getId());
         wrapper.eq("project_item_key", queryTask.getProjectId());
         wrapper.eq("measure_type", queryTask.getMeasurementType());
@@ -2798,7 +2798,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 ////            SpectralReportVo vo = new SpectralReportVo();
 //////            TMeasureTask task = tMeasureTaskService.getById(taskId);
 ////            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-////            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+////            SysUserPO user = userConfigDAO.selectById(task.getUserId());
 ////            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
 ////            SpectrumParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
 ////            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
@@ -2933,7 +2933,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 ////            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 ////            SpectralReportVo vo = new SpectralReportVo();
 ////            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
-////            SystemUserManagePO user = userConfigDAO.selectById(task.getUserId());
+////            SysUserPO user = userConfigDAO.selectById(task.getUserId());
 ////            TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
 ////            TimeSweepParamter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), TimeSweepParamter.class);
 ////            TMeasureData data = tMeasureDataService.getOne(new QueryWrapper<TMeasureData>().eq("task_id", taskId).orderByDesc("measurement_end_time").last("LIMIT 1"));
@@ -3094,7 +3094,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
             SpectralReportVo vo = new SpectralReportVo();
             TMeasureProject project =tMeasureProjectService.getById(task.getProjectItemKey());
-            SysUserPO user = sysUserMapper.selectById(task.getUserId());
+            SysUserPO user = systemUserManageDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             PhotometricParameter methodparam = JSON.parseObject(method.getMeasurementParamInfo(), PhotometricParameter.class);
             vo.setTaskName(task.getTaskName());
@@ -3216,7 +3216,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
             SpectralReportVo vo = new SpectralReportVo();
 //            TMeasureProject project =tMeasureProjectService.getById(task.getProjectItemKey());
             vo.setTaskName(task.getTaskName());
-            SysUserPO user = sysUserMapper.selectById(task.getUserId());
+            SysUserPO user = systemUserManageDAO.selectById(task.getUserId());
             TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
             FRationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), FRationParameter.class);
 
@@ -4304,5 +4304,108 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         }
 
         return Result.ok(true);
+    }
+
+    @Override
+    public Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType) {
+
+        MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
+
+        SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+
+        if (po == null) {
+            //用户不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+        }
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        if (measureTypeEnum == null) {
+            //暂不支持
+            return Result.fail(YamlMessageSource.getMessageStatic("0000002B"));
+        }
+
+        String id = po.getId();
+
+        LambdaQueryWrapper<TMeasureTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TMeasureTask::getUserId, id)
+                .eq(TMeasureTask::getMeasureType, measureType)
+                .eq(TMeasureTask::getIsDelete, createType)
+                .orderByDesc(TMeasureTask::getCreateTime).last("limit 1");
+
+        TMeasureTask task = tMeasureTaskService.getOne(wrapper);
+        if (task != null) {
+
+            vo.setTaskId(task.getId());
+            vo.setTaskName(task.getTaskName());
+            vo.setTaskStatus(task.getTaskStatus());
+            String projectItemKey = task.getProjectItemKey();
+            String methodKey = task.getMethodKey();
+            TMeasureMethod method = tMeasureMethodService.getById(methodKey);
+            if (method != null) {
+                vo.setMethodId(method.getId());
+                vo.setMethodName(method.getMethodName());
+            }
+
+            TMeasureProject project = tMeasureProjectService.getById(projectItemKey);
+            if (project != null) {
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+            }
+            return Result.ok(vo);
+        }
+
+        LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TMeasureMethod::getMethodCreator, updateBy)
+                .eq(TMeasureMethod::getMeasurementType, measureType)
+                .eq(TMeasureMethod::getIsDelete, createType)
+                .orderByDesc(TMeasureMethod::getMethodCreateTime).last("limit 1");
+        TMeasureMethod method = tMeasureMethodService.getOne(queryWrapper);
+
+        if (method != null) {
+            vo.setMethodId(method.getId());
+            vo.setMethodName(method.getMethodName());
+
+            wrapper.clear();
+            wrapper.eq(TMeasureTask::getMethodKey, method.getId())
+                    .eq(TMeasureTask::getIsDelete, createType)
+                    .orderByDesc(TMeasureTask::getCreateTime).last("limit 1");
+            task = tMeasureTaskService.getOne(wrapper);
+            if (task != null) {
+                vo.setTaskId(task.getId());
+                vo.setTaskName(task.getTaskName());
+                vo.setTaskStatus(task.getTaskStatus());
+            }
+
+            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+            if (project != null) {
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+            }
+            return Result.ok(vo);
+        }
+        wrapper.clear();
+        wrapper.eq(TMeasureTask::getTaskName, Constants.DEFAULT_TASK)
+                .eq(TMeasureTask::getMeasureType, measureType).orderByDesc(TMeasureTask::getCreateTime)
+                .last("limit 1");
+        task = tMeasureTaskService.getOne(wrapper);
+        if (task == null) {
+            //请创建方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
+        }
+        vo.setTaskId(task.getId());
+        vo.setTaskName(task.getTaskName());
+        vo.setTaskStatus(task.getTaskStatus());
+        method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+        }
+        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+        if (project == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
+        }
+        vo.setMethodId(method.getId());
+        vo.setMethodName(method.getMethodName());
+        vo.setProjectId(project.getId());
+        vo.setProjectName(project.getProjectName());
+        return Result.ok(vo);
     }
 }

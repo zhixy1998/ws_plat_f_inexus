@@ -20,8 +20,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.*;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
@@ -37,7 +37,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.ProjectQueryParam;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TMeasureProjectCollaboratorGroup;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserGroupPO;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.dataManagementService.DataManagementService;
@@ -684,10 +684,10 @@ public class DataManagementServiceImpl implements DataManagementService {
      */
     @Override
     public Result<MethodAndTasks> getMethodsAndTasksNum(String userKey) {
-        LambdaQueryWrapper<SystemUserManagePO> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SystemUserManagePO::getUserName, userKey);
-        SystemUserManagePO user = systemUserManageDAO.selectOne(queryWrapper);
-        String userName = user.getUserName();
+        LambdaQueryWrapper<SysUserPO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUserPO::getUsername, userKey);
+        SysUserPO user = systemUserManageDAO.selectOne(queryWrapper);
+        String userName = user.getUsername();
         Integer methodsNum = methodManagementMapper.getMethodsNum(userName);
         MethodAndTasks methodAndTasks = new MethodAndTasks();
         //总创建方法

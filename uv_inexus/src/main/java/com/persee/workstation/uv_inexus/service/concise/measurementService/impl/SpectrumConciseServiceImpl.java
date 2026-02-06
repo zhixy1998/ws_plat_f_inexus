@@ -23,8 +23,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FParameterValidationDto;
 import com.persee.workstation.uv_inexus.dto.concise.spectrum.FUseMethodDto;
@@ -141,7 +140,7 @@ public class SpectrumConciseServiceImpl implements SpectrumConciseService {
     private FMeasureTaskMapper fMeasureTaskMapper;
 
     @Autowired
-    private SysUserMapper userManageDAO;
+    private com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO userManageDAO;
 
 
     @Autowired

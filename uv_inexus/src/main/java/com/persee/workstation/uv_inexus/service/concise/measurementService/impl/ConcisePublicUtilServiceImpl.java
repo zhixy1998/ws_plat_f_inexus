@@ -11,7 +11,7 @@ package com.persee.workstation.uv_inexus.service.concise.measurementService.impl
 
 import com.alibaba.fastjson.JSON;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTypeEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -60,7 +60,7 @@ public class ConcisePublicUtilServiceImpl implements ConcisePublicUtilService {
     TMeasureSampleService tMeasureSampleService;
 
     @Autowired
-    SysUserMapper userManageDAO;
+    SystemUserManageDAO userManageDAO;
     @Autowired
     FMeasureTaskMapper fMeasureTaskMapper;
     @Autowired

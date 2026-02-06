@@ -126,5 +126,9 @@ public interface ExperimentTestService {
     // 查询样本默认表头
     Result querySampleDefaultHead(String measureType);
 
+    /**
+     * 获取当前信息
+     */
+    Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType);
 
 }

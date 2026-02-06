@@ -21,7 +21,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.CreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FMethodParamRequestDto;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
@@ -91,7 +91,7 @@ import java.util.stream.Collectors;
 public class RationServiceConciseImpl implements RationConciseService {
 
     @Autowired
-    SysUserMapper userManageDAO;
+    SystemUserManageDAO userManageDAO;
     @Autowired
     FMeasureTaskMapper fMeasureTaskMapper;
     @Autowired

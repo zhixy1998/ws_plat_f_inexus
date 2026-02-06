@@ -220,21 +220,23 @@ public class DeviceInfoServiceImpl implements DeviceInfoService {
             return R.fail(YamlMessageSource.getMessageStatic("00202007"));
         }
 
-        Integer isActivated = info.getIsActivated();
-        if (isActivated == null || isActivated == 0) {
-            //请先激活仪器
-            return R.fail(YamlMessageSource.getMessageStatic("00202001"));
-        }
-
-        if (!status.equals(Constants.DEVICE_STATUS_INIT) && !status.equals(Constants.CONNECT_DEVICE_STOP)) {
-            if (isInited == null || isInited == 0) {
-                log.info("未初始化");
-                //未初始化
-                return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+        if (!status.equals(Constants.DEVICE_STATUS_DisConnect)) {
+            Integer isActivated = info.getIsActivated();
+            if (isActivated == null || isActivated == 0) {
+                //请先激活仪器
+                return R.fail(YamlMessageSource.getMessageStatic("00202001"));
             }
 
-            if (!info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
-                return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+            if (!status.equals(Constants.DEVICE_STATUS_INIT) && !status.equals(Constants.CONNECT_DEVICE_STOP)) {
+                if (isInited == null || isInited == 0) {
+                    log.info("未初始化");
+                    //未初始化
+                    return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+                }
+
+                if (!info.getIsInited().equals(Constants.INIT_STATUS_SUCCESS)) {
+                    return R.fail(YamlMessageSource.getMessageStatic("00202004"));
+                }
             }
         }
 

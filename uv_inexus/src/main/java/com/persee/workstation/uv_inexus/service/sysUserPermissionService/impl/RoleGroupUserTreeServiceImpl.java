@@ -24,7 +24,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysRoleMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.GroupTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.RoleTreeDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserTreeDTO;
@@ -52,7 +52,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
     private SysUserGroupMapper sysUserGroupMapper;
 
     @Autowired
-    private SysUserMapper sysUserMapper;
+    private SystemUserManageDAO systemUserManageDAO;
 
     // 优化：返回类型改为 List<RoleTreeDTO>，支持多角色返回
     @Override
@@ -111,7 +111,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
         LambdaQueryWrapper<SysUserPO> userQuery = new LambdaQueryWrapper<>();
         userQuery.eq(SysUserPO::getId, userId)
                  .eq(SysUserPO::getStatus, 1); // 仅查启用用户
-        return sysUserMapper.selectOne(userQuery);
+        return systemUserManageDAO.selectOne(userQuery);
     }
 
     /**
@@ -211,7 +211,7 @@ public class RoleGroupUserTreeServiceImpl implements RoleGroupUserTreeService {
         userQuery.in(SysUserPO::getId, userIds)
 
                  .orderByAsc(SysUserPO::getRealName);
-        List<SysUserPO> userList = sysUserMapper.selectList(userQuery);
+        List<SysUserPO> userList = systemUserManageDAO.selectList(userQuery);
 
         // 转换为UserTreeDTO
         return userList.stream().map(user -> {

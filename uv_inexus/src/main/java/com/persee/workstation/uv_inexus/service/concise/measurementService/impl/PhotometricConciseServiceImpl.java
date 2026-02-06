@@ -19,7 +19,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.*;
 import com.persee.workstation.uv_inexus.dto.concise.photometricDto.NewPhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.concise.rationDto.FTaskHeadSnapshotDTO;
@@ -88,7 +88,7 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
     @Autowired
     FMeasureSampleService fMeasureSampleService;
     @Autowired
-    SysUserMapper userManageDAO;
+    SystemUserManageDAO userManageDAO;
     @Autowired
     FMeasureTaskMapper fMeasureTaskMapper;
     @Autowired

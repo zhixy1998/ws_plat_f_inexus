@@ -55,7 +55,7 @@ import java.util.*;
 public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
-    InsConfigDAO configDAO;
+    CalibrationTempDAO calibrationDAO;
 
     @Autowired
     DevConfigDAO devConfigDAO;
@@ -551,27 +551,10 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(deviceVO.getAttachmentType());
             LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, deviceVO.getDeviceSerialNumber());
-            InsConfigPO configPO = configDAO.selectOne(queryWrapper);
             if (attachmentInfo == null) {
                 attachmentInfo = new DeviceAttachmentTypeVO();
                 attachmentInfo.setAttachmentNum(12);
                 attachmentInfo.setAttachmentName("未识别");
-            }
-
-            if (configPO == null) {
-                configPO = new InsConfigPO();
-                configPO.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
-                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
-                configPO.setMessagePort(1);
-                configPO.setMessagePortChange(false);
-                configPO.setAnnexSettingChange(false);
-                configDAO.insert(configPO);
-            } else {
-                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
-                configPO.setMessagePort(1);
-                configPO.setMessagePortChange(false);
-                configPO.setAnnexSettingChange(false);
-                configDAO.updateById(configPO);
             }
 
             attachmentInfo.setDeviceSerialNumber(deviceVO.getDeviceSerialNumber());
@@ -627,37 +610,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public Boolean deviceActivation(String name) {
         return null;
-    }
-
-    @Override
-    public R<QueryDeviceConfigVO> queryDeviceConfig(String deviceSerialNumber) {
-        if (!StringUtils.hasText(deviceSerialNumber)) {
-            log.info("查询仪器配置--缺少序列号");
-            //缺少序列号
-            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
-        }
-
-        QueryDeviceConfigVO vo = new QueryDeviceConfigVO();
-
-        LambdaQueryWrapper<InsConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(InsConfigPO::getDeviceSerialNumber, deviceSerialNumber);
-        InsConfigPO po = configDAO.selectOne(query);
-        if (po == null) {
-            log.info("查询仪器配置--未找到配置，给默认值");
-            vo.setMessagePort(1);
-            vo.setAnnexSetting(1);
-            vo.setBandWidth(2.0);
-            vo.setAnnexSettingChange(false);
-            vo.setMessagePortChange(true);
-        } else {
-            vo.setMessagePort(po.getMessagePort());
-            vo.setAnnexSetting(po.getAnnexSetting());
-            vo.setBandWidth(po.getBandWidth());
-            vo.setAnnexSettingChange(false);
-            vo.setMessagePortChange(true);
-        }
-
-        return R.ok(vo);
     }
 
     /**
@@ -747,31 +699,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             result.add(Double.parseDouble(s));
         }
         return result;
-    }
-
-    @Override
-    public R<Boolean> deviceConfig(InsConfigPO po) {
-//        if (po.getRestoreFactorySetting()) {
-//            log.info("恢复出厂设置");
-//        }
-//        if (!StringUtils.hasText(po.getDeviceSerialNumber())) {
-//            log.info("设置系统配置--缺少序列号");
-//            //缺少序列号
-//            return R.fail(YamlMessageSource.getMessageStatic("00203003"));
-//        }
-        log.info("设置仪器配置");
-
-
-        log.info("设置仪器配置成功！");
-
-        LambdaQueryWrapper<InsConfigPO> query = new LambdaQueryWrapper<>();
-        query.eq(InsConfigPO::getDeviceSerialNumber, po.getDeviceSerialNumber());
-        if (configDAO.selectCount(query) == 0) {
-            configDAO.insert(po);
-        } else {
-            configDAO.update(po, query);
-        }
-        return R.ok(true);
     }
 
     @Override
@@ -908,16 +835,16 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
 
 
-        List<DeviceCalibrationVO> info = configDAO.getCalibrationInfo(type);
+        List<DeviceCalibrationVO> info = calibrationDAO.getCalibrationInfo(type);
         for (DeviceCalibrationVO vo : info) {
-            List<DeviceCalibrationParams> params = configDAO.getCalibrationParams(vo.getCalibrationType());
+            List<DeviceCalibrationParams> params = calibrationDAO.getCalibrationParams(vo.getCalibrationType());
             for (DeviceCalibrationParams param : params) {
 
                 if (param.getParamName().equals("光谱带宽")) {
                     param.setData(band);
                     param.setLastValue("2.0");
                 } else {
-                    List<DataNameValue> value = configDAO.getCalibrationValue(param.getId());
+                    List<DataNameValue> value = calibrationDAO.getCalibrationValue(param.getId());
                     param.setData(value);
                 }
 
@@ -1101,28 +1028,6 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             DeviceAttachmentTypeVO attachmentInfo = deviceInfoDAO.getAttachmentInfoByAttachmentNum(vo.getAttachmentType());
             LambdaQueryWrapper<InsConfigPO> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(InsConfigPO::getDeviceSerialNumber, vo.getDeviceSerialNumber());
-            InsConfigPO configPO = configDAO.selectOne(queryWrapper);
-            if (attachmentInfo == null) {
-                attachmentInfo = new DeviceAttachmentTypeVO();
-                attachmentInfo.setAttachmentNum(12);
-                attachmentInfo.setAttachmentName("未识别");
-            }
-
-            if (configPO == null) {
-                configPO = new InsConfigPO();
-                configPO.setDeviceSerialNumber(vo.getDeviceSerialNumber());
-                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
-                configPO.setMessagePort(1);
-                configPO.setMessagePortChange(false);
-                configPO.setAnnexSettingChange(false);
-                configDAO.insert(configPO);
-            } else {
-                configPO.setAnnexSetting(attachmentInfo.getAttachmentKind() == 0 ? -1 : attachmentInfo.getAttachmentKind());
-                configPO.setMessagePort(1);
-                configPO.setMessagePortChange(false);
-                configPO.setAnnexSettingChange(false);
-                configDAO.updateById(configPO);
-            }
 
             attachmentInfo.setDeviceSerialNumber(vo.getDeviceSerialNumber());
             FSampleAttachTypeSaveDTO dto = new FSampleAttachTypeSaveDTO();
@@ -1213,7 +1118,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             log.info("初始化启动失败: {}", operation.getMessage());
             info.setIsInited(Constants.INIT_STATUS_FALSE);
             infoService.saveOrUpdateInfo(info);
-            return R.fail("初始化启动失败");
+            return R.fail(operation.getMessage());
         } else {
 //            liveDetectionWebSocket.startMeasure(deviceSerialNumber);
 
@@ -1258,7 +1163,7 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
             info.setIsInited(Constants.INIT_STATUS_FALSE);
             infoService.saveOrUpdateInfo(info);
-            return R.fail("初始化启动失败");
+            return R.fail(operation.getMessage());
         } else {
             return R.ok(true);
         }

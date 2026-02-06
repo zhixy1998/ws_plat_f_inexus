@@ -16,7 +16,6 @@ import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceAutoInjectorPO;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InjectionTrayParamPO;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceAutoInjectorService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceManageService;
@@ -206,9 +205,9 @@ public class DeviceController {
     public Result<Boolean> initOneDevice(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.startInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
-            return Result.ok(true);
+            return Result.ok(r.getData());
         } else {
-            return Result.fail(false);
+            return Result.fail(r.getMessage());
         }
     }
 
@@ -217,9 +216,9 @@ public class DeviceController {
     public Result<Boolean> continueInit(@RequestParam String deviceSerialNumber, @RequestParam String updateBy) throws InterruptedException {
         R<Boolean> r = deviceManageService.continueInitDevice(deviceSerialNumber, updateBy);
         if (r.getSuccess()) {
-            return Result.ok(true);
+            return Result.ok(r.getData());
         } else {
-            return Result.fail(false);
+            return Result.fail(r.getMessage());
         }
     }
 
@@ -329,17 +328,6 @@ public class DeviceController {
         return null;
     }
 
-    @GetMapping("/getDeviceConfig")
-    @ApiOperation("查询仪器配置")
-    public Result<QueryDeviceConfigVO> getDeviceConfig(@RequestParam(required = false) String deviceSerialNumber) {
-        R<QueryDeviceConfigVO> r = deviceManageService.queryDeviceConfig(deviceSerialNumber);
-        if (r.getSuccess()){
-            return Result.ok(r.getData());
-        } else {
-            return Result.fail(r.getMessage());
-        }
-    }
-
     @GetMapping("/getDevConfig")
     @ApiOperation("新--查询仪器配置")
     public Result<DeviceConfigVO> getDevConfig() {
@@ -381,17 +369,7 @@ public class DeviceController {
         return Result.ok(bandWidth);
     }
 
-    @PostMapping("/deviceConfig")
-    @ApiOperation("仪器配置接口")
-    public Result<Boolean> deviceConfig(@RequestBody InsConfigPO po ){
-        R<Boolean> r = deviceManageService.deviceConfig(po);
-        if (r.getSuccess()) {
-            return Result.ok(r.getData());
-        } else {
-            return Result.fail(r.getMessage());
-        }
 
-    }
 
     @ApiOperation("设置进样器参数配置")
     @PostMapping("/setInjectorConf")

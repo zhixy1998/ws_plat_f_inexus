@@ -12,7 +12,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.SpectrumParameter;
 import com.persee.workstation.uv_inexus.enums.T600ComIdEnums;
 import com.persee.workstation.uv_inexus.model.R;
@@ -20,7 +20,7 @@ import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.SpectrumService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
@@ -467,8 +467,8 @@ public class BaseLineNewWebSocket {
                 }
             } else {
                 task = new TMeasureTask();
-                SystemUserManagePO user = systemUserManageDAO
-                        .selectOne(new QueryWrapper<SystemUserManagePO>().eq("user_name", method.getMethodCreator()));
+                SysUserPO user = systemUserManageDAO
+                        .selectOne(new QueryWrapper<SysUserPO>().eq("user_name", method.getMethodCreator()));
                 if (user != null) {
                     task.setUserId(user.getId());
                 }

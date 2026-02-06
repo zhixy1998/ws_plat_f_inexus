@@ -11,14 +11,14 @@ package com.persee.workstation.uv_inexus.websocket;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.persee.workstation.uv_inexus.dao.guide.systemUserManageDao.SystemUserManageDAO;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.TimeSweepParamter;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTask;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureTaskAttachment;
-import com.persee.workstation.uv_inexus.po.guide.systemUserManagePo.SystemUserManagePO;
+import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureMethodService;
 import com.persee.workstation.uv_inexus.service.guide.measurementService.TMeasureTaskAttachmentService;
@@ -239,7 +239,7 @@ public class ZeroCalibrationWebSocket extends TextWebSocketHandler {
         }else{
             task = new TMeasureTask();
             TMeasureMethod method = tMeasureMethodService.getById(methodId);
-            SystemUserManagePO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SystemUserManagePO.class).eq("user_name", method.getMethodCreator()));
+            SysUserPO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SysUserPO.class).eq("user_name", method.getMethodCreator()));
             task.setUserId(user.getId());
             String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             String collect = new Random().ints(8, 0, chars.length())

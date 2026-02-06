@@ -11,7 +11,7 @@ package com.persee.workstation.uv_inexus.util.tokenUtil;
 
 
 import com.alibaba.fastjson.JSONObject;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.utils.OperateLog.UserContext;
@@ -27,7 +27,7 @@ import javax.servlet.http.HttpServletResponse;
 public class TokenInterceptor implements HandlerInterceptor{
 
     @Autowired
-    SysUserMapper userMapper;
+    SystemUserManageDAO userMapper;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,Object handler)throws Exception {

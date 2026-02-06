@@ -21,7 +21,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.constant.PythonPathConstant;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.MeasureTypeEnum;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.SampleTableEnum;
@@ -117,7 +117,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
     @Autowired
     private DevMessageUtil devMessageUtil;
     @Autowired
-    private SysUserMapper sysUserMapper;
+    private SystemUserManageDAO systemUserManageDAO;
     @Autowired
     private TMeasureProjectService tMeasureProjectService;
     @Autowired
@@ -156,7 +156,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
      */
     @Override
     public Result queryProjectTaskMethod(String updateBy,String measureType) {
-        SysUserPO user = sysUserMapper.selectByUsername(updateBy);
+        SysUserPO user = systemUserManageDAO.selectByUsername(updateBy);
         if (user == null) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
@@ -320,7 +320,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         if (paramDto.getUpdateBy().isEmpty()){
             return Result.fail(YamlMessageSource.getMessageStatic("00000007"));
         }
-        SysUserPO sysUserPO = sysUserMapper.selectByUsername(paramDto.getUpdateBy());
+        SysUserPO sysUserPO = systemUserManageDAO.selectByUsername(paramDto.getUpdateBy());
 
         // 判断参数是否发生变化，如果没有变化，直接返回，不再执行后续操作
         TMeasureMethod currentMethod = tMeasureMethodService.getById(paramDto.getMethodId());
@@ -762,7 +762,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }else{
             task = new TMeasureTask();
             TMeasureMethod method = tMeasureMethodService.getById(methodId);
-            SysUserPO user = sysUserMapper.selectOne(new QueryWrapper<>(SysUserPO.class).eq("user_name", method.getMethodCreator()));
+            SysUserPO user = systemUserManageDAO.selectOne(new QueryWrapper<>(SysUserPO.class).eq("user_name", method.getMethodCreator()));
             task.setUserId(user.getId());
             String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             String collect = new Random().ints(8, 0, chars.length())
@@ -937,7 +937,7 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             TMeasureTask newTask = new TMeasureTask();
 
             TMeasureMethod method = tMeasureMethodService.getById(paramDto.getMethodId());
-            SysUserPO po = sysUserMapper.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, paramDto.getUpdateBy()));
+            SysUserPO po = systemUserManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, paramDto.getUpdateBy()));
             String id = po.getId();
             newTask.setUserId(id);
             newTask.setProjectItemKey(method.getProjectItemKey());

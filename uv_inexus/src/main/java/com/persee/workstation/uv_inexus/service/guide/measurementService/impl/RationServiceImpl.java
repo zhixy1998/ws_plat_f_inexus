@@ -19,7 +19,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
-import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
 import com.persee.workstation.uv_inexus.dto.concise.common.FQueryDataDTO;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.guide.SampleCreateHeadConf;
@@ -84,7 +84,7 @@ import java.util.stream.Collectors;
 public class RationServiceImpl implements RationService {
 
     @Autowired
-    SysUserMapper userManageDAO;
+    SystemUserManageDAO userManageDAO;
     @Autowired
     TMeasureTaskMapper tMeasureTaskMapper;
     @Autowired
@@ -323,60 +323,103 @@ public class RationServiceImpl implements RationService {
     @Override
     public Result<MeasurementCurrentInfoVO> getCurrentInfo(String updateBy, String measureType) {
 
+        MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
+
         SysUserPO po = userManageDAO.selectOne(Wrappers.lambdaQuery(SysUserPO.class).eq(SysUserPO::getUsername, updateBy));
+
+        if (po == null) {
+            //用户不存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
+        }
+        MeasureTypeEnum measureTypeEnum = MeasureTypeEnum.fromDescription(measureType);
+        if (measureTypeEnum == null) {
+            //暂不支持
+            return Result.fail(YamlMessageSource.getMessageStatic("0000002B"));
+        }
+
         String id = po.getId();
 
         LambdaQueryWrapper<TMeasureTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TMeasureTask::getUserId, id)
                 .eq(TMeasureTask::getMeasureType, measureType)
                 .eq(TMeasureTask::getIsDelete, createType)
-                .orderByDesc(TMeasureTask::getCreateTime);
-        List<TMeasureTask> taskList = tMeasureTaskService.list(wrapper);
-        if (taskList != null && !taskList.isEmpty()){
-            TMeasureTask task = taskList.get(0);
-            String projectItemKey = task.getProjectItemKey();
-            String methodKey = task.getMethodKey();
+                .orderByDesc(TMeasureTask::getCreateTime).last("limit 1");
 
-            TMeasureProject project = tMeasureProjectService.getById(projectItemKey);
-            TMeasureMethod method = tMeasureMethodService.getById(methodKey);
-            MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
+        TMeasureTask task = tMeasureTaskService.getOne(wrapper);
+        if (task != null) {
+
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
-            vo.setMethodId(method.getId());
-            vo.setMethodName(method.getMethodName());
-            vo.setProjectId(project.getId());
-            vo.setProjectName(project.getProjectName());
-            vo.setTaskStatus(task.getTaskStatus() == null ? TaskStatusEnum.UNTESTED.getCode() : task.getTaskStatus());
+            vo.setTaskStatus(task.getTaskStatus());
+            String projectItemKey = task.getProjectItemKey();
+            String methodKey = task.getMethodKey();
+            TMeasureMethod method = tMeasureMethodService.getById(methodKey);
+            if (method != null) {
+                vo.setMethodId(method.getId());
+                vo.setMethodName(method.getMethodName());
+            }
+
+            TMeasureProject project = tMeasureProjectService.getById(projectItemKey);
+            if (project != null) {
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+            }
             return Result.ok(vo);
         }
-
-        MeasurementCurrentInfoVO vo = new MeasurementCurrentInfoVO();
 
         LambdaQueryWrapper<TMeasureMethod> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TMeasureMethod::getMethodCreator, updateBy)
                 .eq(TMeasureMethod::getMeasurementType, measureType)
-                .orderByDesc(TMeasureMethod::getMethodCreateTime);
-        List<TMeasureMethod> list = tMeasureMethodService.list(queryWrapper);
-        if (list == null|| list.isEmpty()){
-            LambdaQueryWrapper<TMeasureProject> projectWrapper = new LambdaQueryWrapper<>();
-            projectWrapper.eq(TMeasureProject::getCreatorKey, updateBy)
-                    .orderByDesc(TMeasureProject::getCreateTime);
-            List<TMeasureProject> projectList = tMeasureProjectService.list(projectWrapper);
-            if (projectList == null || projectList.isEmpty()){
-                return Result.ok(vo);
+                .eq(TMeasureMethod::getIsDelete, createType)
+                .orderByDesc(TMeasureMethod::getMethodCreateTime).last("limit 1");
+        TMeasureMethod method = tMeasureMethodService.getOne(queryWrapper);
+
+        if (method != null) {
+            vo.setMethodId(method.getId());
+            vo.setMethodName(method.getMethodName());
+
+            wrapper.clear();
+            wrapper.eq(TMeasureTask::getMethodKey, method.getId())
+                    .eq(TMeasureTask::getIsDelete, createType)
+                    .orderByDesc(TMeasureTask::getCreateTime).last("limit 1");
+            task = tMeasureTaskService.getOne(wrapper);
+            if (task != null) {
+                vo.setTaskId(task.getId());
+                vo.setTaskName(task.getTaskName());
+                vo.setTaskStatus(task.getTaskStatus());
             }
-            vo.setProjectName(projectList.get(0).getProjectName());
-            vo.setProjectId(projectList.get(0).getId());
 
-        } else {
-            TMeasureMethod tMeasureMethod = list.get(0);
-            TMeasureProject tMeasureProject = tMeasureProjectService.getById(tMeasureMethod.getProjectItemKey());
-
-            vo.setMethodId(tMeasureMethod.getId());
-            vo.setMethodName(tMeasureMethod.getMethodName());
-            vo.setProjectId(tMeasureProject.getId());
-            vo.setProjectName(tMeasureProject.getProjectName());
+            TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+            if (project != null) {
+                vo.setProjectId(project.getId());
+                vo.setProjectName(project.getProjectName());
+            }
+            return Result.ok(vo);
         }
+        wrapper.clear();
+        wrapper.eq(TMeasureTask::getTaskName, Constants.DEFAULT_TASK)
+                .eq(TMeasureTask::getMeasureType, measureType).orderByDesc(TMeasureTask::getCreateTime)
+                .last("limit 1");
+        task = tMeasureTaskService.getOne(wrapper);
+        if (task == null) {
+            //请创建方法
+            return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
+        }
+        vo.setTaskId(task.getId());
+        vo.setTaskName(task.getTaskName());
+        vo.setTaskStatus(task.getTaskStatus());
+        method = tMeasureMethodService.getById(task.getMethodKey());
+        if (method == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00301010"));
+        }
+        TMeasureProject project = tMeasureProjectService.getById(method.getProjectItemKey());
+        if (project == null) {
+            return Result.fail(YamlMessageSource.getMessageStatic("00000011"));
+        }
+        vo.setMethodId(method.getId());
+        vo.setMethodName(method.getMethodName());
+        vo.setProjectId(project.getId());
+        vo.setProjectName(project.getProjectName());
         return Result.ok(vo);
     }
 

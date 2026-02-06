@@ -12,7 +12,6 @@ package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.model.R;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
@@ -63,12 +62,6 @@ public interface DeviceManageService {
      */
     Boolean deviceActivation(String name);
 
-    /**
-     * 查询仪器配置接口
-     * @param deviceSerialNumber
-     * @return
-     */
-    R<QueryDeviceConfigVO> queryDeviceConfig(String deviceSerialNumber);
 
     R<DeviceConfigVO> newQueryDeviceConfig();
 
@@ -81,13 +74,6 @@ public interface DeviceManageService {
      * @return
      */
     List<Double> getBandWidth(String deviceSerialNumber);
-
-    /**
-     * 仪器配置接口
-     * @param po
-     * @return
-     */
-    R<Boolean> deviceConfig(InsConfigPO po);
 
     /**
      * 自动进样器配置
