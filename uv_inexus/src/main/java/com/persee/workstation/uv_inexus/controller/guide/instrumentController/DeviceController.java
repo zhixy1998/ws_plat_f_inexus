@@ -153,29 +153,29 @@ public class DeviceController {
 
     }
 
-//    @GetMapping("/searchDevice")
-//    @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
-//    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
-//    public Result<List<SearchInfo>> searchDevice(@RequestParam Integer connectType) throws Exception {
-//        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
-//        if (!r.getSuccess()) {
-//            return Result.fail(r.getMessage());
-//        } else {
-//            return Result.ok(r.getData());
-//        }
-//    }
-
     @GetMapping("/searchDevice")
     @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
     @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
-    public Result<List<SearchInfo>> searchDevice() throws Exception {
-        R<List<SearchInfo>> r = deviceManageService.searchDevice();
+    public Result<List<SearchInfo>> searchDevice(@RequestParam(required = false) Integer connectType) {
+        R<List<SearchInfo>> r = deviceManageService.searchDevice(connectType);
         if (!r.getSuccess()) {
             return Result.fail(r.getMessage());
         } else {
             return Result.ok(r.getData());
         }
     }
+
+//    @GetMapping("/searchDevice")
+//    @ApiOperation(value = "新驱动-搜索仪器接口", notes = "连接方式(connectType)：0-串口，1-网口，2-Wifi")
+//    @LogPoint(value = "搜索仪器", module = "设备管理", recordParams = true,recordResult = true)
+//    public Result<List<SearchInfo>> searchDevice() throws Exception {
+//        R<List<SearchInfo>> r = deviceManageService.searchDevice();
+//        if (!r.getSuccess()) {
+//            return Result.fail(r.getMessage());
+//        } else {
+//            return Result.ok(r.getData());
+//        }
+//    }
 
     @PostMapping("/connect")
     @ApiOperation("新驱动-连接仪器")
@@ -331,7 +331,7 @@ public class DeviceController {
 
     @GetMapping("/getDeviceConfig")
     @ApiOperation("查询仪器配置")
-    public Result<QueryDeviceConfigVO> getDeviceConfig(@RequestParam String deviceSerialNumber) {
+    public Result<QueryDeviceConfigVO> getDeviceConfig(@RequestParam(required = false) String deviceSerialNumber) {
         R<QueryDeviceConfigVO> r = deviceManageService.queryDeviceConfig(deviceSerialNumber);
         if (r.getSuccess()){
             return Result.ok(r.getData());
@@ -339,6 +339,40 @@ public class DeviceController {
             return Result.fail(r.getMessage());
         }
     }
+
+    @GetMapping("/getDevConfig")
+    @ApiOperation("新--查询仪器配置")
+    public Result<DeviceConfigVO> getDevConfig() {
+        R<DeviceConfigVO> r = deviceManageService.newQueryDeviceConfig();
+        if (r.getSuccess()){
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @PostMapping("/devConfig")
+    @ApiOperation("新--仪器配置接口")
+    public Result<Boolean> devConfig(@RequestBody DevConfigDTO dto){
+        R<Boolean> r = deviceManageService.newDevConfig(dto);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
+    @GetMapping("/setMessagePort")
+    @ApiOperation("设置仪器通讯端口")
+    public Result<Boolean> setMessagePort(@RequestParam Integer messagePort, @RequestParam String updateBy){
+        R<Boolean> r = deviceManageService.setDevMessagePort(messagePort, updateBy);
+        if (r.getSuccess()) {
+            return Result.ok(r.getData());
+        } else {
+            return Result.fail(r.getMessage());
+        }
+    }
+
 
     @GetMapping("/getBandWidth")
     @ApiOperation("查询光谱带宽")

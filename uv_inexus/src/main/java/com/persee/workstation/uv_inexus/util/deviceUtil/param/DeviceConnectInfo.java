@@ -92,28 +92,28 @@ public class DeviceConnectInfo {
     /**
      * 设备是否空闲
      */
-    private Boolean isIdle = true; // 设备是否空闲
+    private Boolean isIdle = true;
 
     /**
      * 仪器具体状态
      */
     private Integer devCurrentStatus = 0;
     /**
-     * 校零结果
+     * 校零结果  键: 波长, 值: 校零参数 (保留 Map 结构！)
      */
-    private Map<String, ChangeParam> zeroResult = new HashMap<>(); // 键: 波长, 值: 校零参数 (保留 Map 结构！)
+    private Map<String, ChangeParam> zeroResult = new HashMap<>();
     /**
-     * 当前波长
+     * 当前校零波长
      */
-    private String zeroWavelength = ""; // 当前校零波长
+    private String zeroWavelength = "";
     /**
-     * 当前波长
+     *  当前波长
      */
-    private String currentWavelength = ""; // 当前波长
+    private String currentWavelength = "";
     /**
-     * 光度模式
+     *  光度模式
      */
-    private String luminosityMode = "1"; // 光度模式
+    private String luminosityMode = "1";
     /**
      * 仪器当前状态
      */

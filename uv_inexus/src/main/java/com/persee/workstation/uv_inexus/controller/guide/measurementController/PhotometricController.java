@@ -9,7 +9,10 @@
 
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
-import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.dto.measurementDto.AddOrDeleteSampleDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.PhotometricMethodParameterDto;
+import com.persee.workstation.uv_inexus.dto.measurementDto.QueryDataDTO;
+import com.persee.workstation.uv_inexus.dto.measurementDto.TaskHeadSnapshotDTO;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamMapTableHead;

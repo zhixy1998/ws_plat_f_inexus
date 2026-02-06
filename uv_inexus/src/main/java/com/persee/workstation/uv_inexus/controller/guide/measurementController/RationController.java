@@ -37,7 +37,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/quantitativeMeasurement/")
-@Api("定量测量")
+@Api("向导模式-定量测量")
 public class RationController {
     @Autowired
     private RationService rationService;

@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
+import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -48,11 +49,6 @@ public interface RationService {
      * 检查方法参数
      */
     Result<MethodChangeCheckVO> checkMethodParam(MethodParamsDto checkDTO);
-
-//    /**
-//     * 使用方法时检查参数
-//     */
-//    Result<MethodChangeCheckVO> checkTwoMethodParam(String currenntMethodId, String newMethodId);
 
     /**
      * 查询样品列表

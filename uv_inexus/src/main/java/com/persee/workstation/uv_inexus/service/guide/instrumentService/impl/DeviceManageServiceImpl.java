@@ -15,10 +15,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.*;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKindEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationInfoEnum;
 import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
@@ -44,6 +41,8 @@ import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionConstan
 import com.persee.workstation.uv_inexus.websocket.liveDetection.LiveDetectionWebSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -57,6 +56,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     InsConfigDAO configDAO;
+
+    @Autowired
+    DevConfigDAO devConfigDAO;
 
     @Autowired
     CalibrationTempDAO tempDao;
@@ -96,6 +98,13 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DevOperationUtilService operationUtilService;
+
+    @Value("${sys-manage-default.defaultId}")
+    String defaultId;
+
+    @Value("${sys-manage-default.userId}")
+    String userId;
+
 
     @Value("${device.default.sendPort}")
     Integer sendPort;
@@ -651,6 +660,75 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok(vo);
     }
 
+    /**
+     * 查询仪器配置
+     */
+    @Override
+    public R<DeviceConfigVO> newQueryDeviceConfig() {
+
+        DevConfigPO po = devConfigDAO.selectById(userId);
+        DevConfigPO defPo = devConfigDAO.selectById(defaultId);
+        DeviceConfigVO vo = new DeviceConfigVO();
+        BeanUtils.copyProperties(defPo, vo);
+        if (po != null) {
+            BeanUtils.copyProperties(po, vo, getNullPropertyNames(po));
+        }
+        return R.ok(vo);
+    }
+
+    @Override
+    public R<Boolean> newDevConfig(DevConfigDTO dto) {
+
+        DevConfigPO po = devConfigDAO.selectById(userId);
+        if (po == null) {
+            po = new DevConfigPO();
+            BeanUtils.copyProperties(dto, po);
+            po.setId(userId);
+
+            po.setCreateBy(dto.getUpdateBy());
+            po.setUpdateBy(dto.getUpdateBy());
+            boolean a = devConfigDAO.insert(po) > 0 ;
+            if (a) {
+                return R.ok();
+            }
+            return R.fail();
+        } else {
+
+            BeanUtils.copyProperties(dto, po);
+            po.setId(userId);
+
+            boolean a = devConfigDAO.updateById(po) > 0 ;
+            if (a) {
+                return R.ok();
+            }
+            return R.fail();
+        }
+    }
+
+    @Override
+    public R<Boolean> setDevMessagePort(Integer messagePort, String updateBy) {
+
+        DevConfigDTO dto = new DevConfigDTO();
+        dto.setMessagePort(messagePort);
+        dto.setUpdateBy(updateBy);
+        return newDevConfig(dto);
+    }
+
+
+    private static String[] getNullPropertyNames(Object source) {
+        final BeanWrapper src = new BeanWrapperImpl(source);
+        java.beans.PropertyDescriptor[] pds = src.getPropertyDescriptors();
+        Set<String> emptyNames = new HashSet<>();
+        for (java.beans.PropertyDescriptor pd : pds) {
+            Object srcValue = src.getPropertyValue(pd.getName());
+            if (srcValue == null) emptyNames.add(pd.getName());
+        }
+        return emptyNames.toArray(new String[0]);
+    }
+
+
+
+
     @Override
     public List<Double> getBandWidth(String deviceSerialNumber) {
         List<Double> result = new ArrayList<>();
@@ -923,6 +1001,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     @Override
     public R<List<SearchInfo>> searchDevice(Integer connectType) {
 
+        if (connectType == null) {
+            R<DeviceConfigVO> r = newQueryDeviceConfig();
+            if (r.getSuccess()) {
+                DeviceConfigVO data = r.getData();
+                connectType = data.getMessagePort();
+            }
+        }
+
         DevOperationInputParam inputParam = new DevOperationInputParam();
         inputParam.setOperationType(OperationTypeEnums.Find.getType());
         inputParam.setConnectType(connectType);
@@ -940,9 +1026,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
     public R<List<SearchInfo>> searchDevice() {
 
         Integer connectType = 1;
-        R<QueryDeviceConfigVO> r = queryDeviceConfig("");
+        R<DeviceConfigVO> r = newQueryDeviceConfig();
         if (r.getSuccess()) {
-            QueryDeviceConfigVO data = r.getData();
+            DeviceConfigVO data = r.getData();
             connectType = data.getMessagePort();
         }
 

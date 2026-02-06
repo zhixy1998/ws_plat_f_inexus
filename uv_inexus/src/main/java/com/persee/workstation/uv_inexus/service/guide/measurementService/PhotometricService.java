@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
 import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
+import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
@@ -41,6 +42,7 @@ public interface PhotometricService {
      * 检查方法参数
      */
     Result<MethodChangeCheckVO> checkMethodParam(PhotometricMethodParameterDto checkDTO);
+
 
     /**
      * 获取当前信息

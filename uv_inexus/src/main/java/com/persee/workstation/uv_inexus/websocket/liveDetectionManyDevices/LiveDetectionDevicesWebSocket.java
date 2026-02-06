@@ -429,6 +429,13 @@ public class LiveDetectionDevicesWebSocket {
                                 && StringUtils.hasText(device.getZeroWavelength())) {
                             statusInfo.setX(device.getZeroWavelength() + "nm");
                         }
+
+//                        if (Constants.DEVICE_STATUS_MEASURE.equals(deviceInfo.getDeviceCurrentStatus())) {
+//                            statusInfo.setLuminosity(WaveLengthEnum.getName(device.getLuminosityMode()));
+//                            statusInfo.setX(device.getCurrentWavelength() + "nm");
+//                            statusInfo.setY(device.);
+//                        }
+
                     }
 
                     WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();
@@ -613,9 +620,8 @@ public class LiveDetectionDevicesWebSocket {
 
                     if (!operation.getSuccess()) {
 
-
                         info = infoService.getInfo(deviceSerialNumber);
-                        if (info != null && !Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
+                        if (info != null && Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
                             log.info("设备状态非空闲，跳过本次测量: {}", deviceSerialNumber);
                         } else {
 

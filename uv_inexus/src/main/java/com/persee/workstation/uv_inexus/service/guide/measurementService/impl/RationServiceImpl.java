@@ -132,7 +132,7 @@ public class RationServiceImpl implements RationService {
     @Value("default")
     String defaultMethodProjectName;
 
-    @Value("文件数据")
+    @Value("任务")
     String newTaskName;
 
     @Value("默认方法")
@@ -346,6 +346,7 @@ public class RationServiceImpl implements RationService {
             vo.setMethodName(method.getMethodName());
             vo.setProjectId(project.getId());
             vo.setProjectName(project.getProjectName());
+            vo.setTaskStatus(task.getTaskStatus() == null ? TaskStatusEnum.UNTESTED.getCode() : task.getTaskStatus());
             return Result.ok(vo);
         }
 
@@ -435,6 +436,7 @@ public class RationServiceImpl implements RationService {
             tMeasureTaskService.updateById(task);
             vo.setTaskId(task.getId());
             vo.setTaskName(task.getTaskName());
+            vo.setTaskStatus(task.getTaskStatus());
             return Result.ok(vo);
         }
 
@@ -467,6 +469,7 @@ public class RationServiceImpl implements RationService {
                     //TODO 公式重算
                     vo.setTaskId(task.getId());
                     vo.setTaskName(task.getTaskName());
+                    vo.setTaskStatus(task.getTaskStatus());
                     return Result.ok(vo);
                 }
 
@@ -516,13 +519,14 @@ public class RationServiceImpl implements RationService {
 
         newTask.setTaskName(taskName);
         newTask.setProjectItemKey(newMethod.getProjectItemKey());
-        newTask.setTaskStatus("0");
+        newTask.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
         newTask.setMeasureType(newMethod.getMeasurementType());
         newTask.setTableInfo(StringUtils.hasText(task.getTableInfo())?task.getTableInfo() : null);
         tMeasureTaskService.save(newTask);
         generateTableInfo(newTask.getId(), newMethod.getId(), true);
         vo.setTaskId(newTask.getId());
         vo.setTaskName(newTask.getTaskName());
+        vo.setTaskStatus(newTask.getTaskStatus());
         return Result.ok(vo);
     }
 

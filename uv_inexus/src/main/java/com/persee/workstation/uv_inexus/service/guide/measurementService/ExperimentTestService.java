@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.guide.measurementService;
 
+import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureMethod;
@@ -106,6 +107,13 @@ public interface ExperimentTestService {
 
     // 方法名称重复性检查
     Result nameDuplicationCheck(String projectId, String methodName);
+
+    /**
+     * 使用新方法
+     */
+    Result<MeasurementCurrentInfoVO> useMethod(UseMethodDTO dto);
+
+    Result<String> getTaskStatus(String taskId);
 
     /**
      * 前端调用保存数据

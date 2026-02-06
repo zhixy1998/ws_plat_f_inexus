@@ -1206,10 +1206,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     if (!initDevice.getSuccess()) {
                         log.info("{}指令初始化失败", cmdId);
-                        failDeal(infoPO, recordPO);
-                        setInitStatus(deviceId, 0);
-                        infoService.newReleaseDevice(deviceSerialNumber);
 
+//                        setInitStatus(deviceId, 0);
+                        infoService.newReleaseDevice(deviceSerialNumber);
+                        failDeal(infoPO, recordPO);
                         return;
                     }
                     count++;

@@ -21,6 +21,7 @@ import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureDataMap
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserGroupMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysUserMapper;
+import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNameConfig;
 import com.persee.workstation.uv_inexus.dto.measurementDto.config.SampleNumConfig;
@@ -163,6 +164,13 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
 
     @Autowired
     private TMeasureProjectCollaboratorGroupService collaboratorGroupService;
+
+    @Autowired
+    SysUserMapper userManageDAO;
+
+
+    @Value("任务")
+    String newTaskName;
 
 
     @Value("1")
@@ -4132,6 +4140,84 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         T t = JSON.parseObject(jsonString, clazz);
         return t;
 
+    }
+
+    @Override
+    public Result<String> getTaskStatus(String taskId) {
+        TMeasureTask task = tMeasureTaskService.getById(taskId);
+        if (task != null && StringUtils.hasText(task.getTaskStatus())) {
+            return Result.ok(task.getTaskStatus());
+        }
+        return Result.ok("0");
+    }
+
+    @Override
+    public Result<MeasurementCurrentInfoVO> useMethod(UseMethodDTO dto) {
+
+        String taskId = dto.getTaskId();
+        String methodId = dto.getNewMethodId();
+        String updateBy = dto.getUpdateBy();
+        String taskName = dto.getTaskName();
+
+        MeasurementCurrentInfoVO infoVO = new MeasurementCurrentInfoVO();
+        infoVO.setMethodId(methodId);
+
+        boolean createNewTask = true;
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+
+        if (StringUtils.hasText(taskId)) {
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            if (task != null && task.getTaskStatus().equals(TaskStatusEnum.UNTESTED.getCode())) {
+                createNewTask = false;
+            }
+        }
+
+        if (createNewTask) {
+
+            String measurementType = method.getMeasurementType();
+
+            TMeasureTask task = new TMeasureTask();
+            task.setTaskStatus(TaskStatusEnum.UNTESTED.getCode());
+            task.setMethodKey(methodId);
+            task.setCreateTime(LocalDateTime.now());
+            SysUserPO sysUserPO = userManageDAO.selectByUsername(updateBy);
+            task.setUserId(sysUserPO.getId());
+            task.setIsDelete(createType);
+            task.setMeasureType(measurementType);
+
+            if (!StringUtils.hasText(taskName)) {
+                taskName = method.getMethodName() + "-" + newTaskName;
+            }
+            task.setTaskName(taskName);
+            task.setProjectItemKey(method.getProjectItemKey());
+            tMeasureTaskService.save(task);
+
+            infoVO.setTaskId(task.getId());
+            infoVO.setTaskName(task.getTaskName());
+            infoVO.setProjectId(task.getProjectItemKey());
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            infoVO.setProjectName(project.getProjectName());
+            infoVO.setTaskStatus(task.getTaskStatus());
+
+        } else {
+
+            TMeasureTask task = tMeasureTaskService.getById(taskId);
+            task.setMethodKey(methodId);
+            task.setCreateTime(LocalDateTime.now());
+            tMeasureTaskService.updateById(task);
+
+            infoVO.setTaskId(task.getId());
+            infoVO.setTaskName(task.getTaskName());
+            infoVO.setProjectId(task.getProjectItemKey());
+            TMeasureProject project = tMeasureProjectService.getById(task.getProjectItemKey());
+            infoVO.setProjectName(project.getProjectName());
+            infoVO.setTaskStatus(task.getTaskStatus());
+            infoVO.setMethodId(task.getMethodKey());
+            infoVO.setMethodName(method.getMethodName());
+
+        }
+
+        return Result.ok(infoVO);
     }
 
     @Override

@@ -21,6 +21,9 @@ public class MeasurementCurrentInfoVO {
     @ApiModelProperty("任务名称")
     private String taskName;
 
+    @ApiModelProperty("任务状态")
+    private String taskStatus;
+
     @ApiModelProperty("方法ID")
     private String methodId;
 

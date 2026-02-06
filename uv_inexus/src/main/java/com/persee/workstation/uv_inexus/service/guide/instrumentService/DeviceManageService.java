@@ -10,20 +10,14 @@
 package com.persee.workstation.uv_inexus.service.guide.instrumentService;
 
 
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceCalibrationDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceInitDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceSoftCloseDTO;
-import com.persee.workstation.uv_inexus.dto.instrumentDto.DeviceStartDTO;
+import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.guide.instrumentPo.InsConfigPO;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SearchInfo;
 import com.persee.workstation.uv_inexus.vo.concise.common.DeviceMeasureVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceInfoVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.FindDeviceVO;
-import com.persee.workstation.uv_inexus.vo.instrumentVo.QueryDeviceConfigVO;
+import com.persee.workstation.uv_inexus.vo.instrumentVo.*;
 
 import java.util.List;
 
@@ -75,6 +69,12 @@ public interface DeviceManageService {
      * @return
      */
     R<QueryDeviceConfigVO> queryDeviceConfig(String deviceSerialNumber);
+
+    R<DeviceConfigVO> newQueryDeviceConfig();
+
+    R<Boolean> newDevConfig(DevConfigDTO dto);
+
+    R<Boolean> setDevMessagePort(Integer messagePort, String updateBy);
 
     /**
      * 查询光谱带宽接口

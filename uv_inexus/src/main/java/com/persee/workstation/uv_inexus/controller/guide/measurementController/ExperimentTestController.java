@@ -10,6 +10,7 @@
 package com.persee.workstation.uv_inexus.controller.guide.measurementController;
 
 import com.persee.workstation.uv_inexus.dto.concise.common.FSamplePoolInfoChangeDto;
+import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
 import com.persee.workstation.uv_inexus.dto.measurementDto.experimentTest.MethodExportRequest;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.DatabaseEnum;
@@ -24,7 +25,7 @@ import com.persee.workstation.uv_inexus.vo.measurementVo.SampleTemplateVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.MeasurementCurrentInfoVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.SaveDataVO;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.TaskBaseVO;
-import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/experimenttest/sys/")
-@ApiModel("实验测试")
+@Api("向导模式-实验测试")
 public class ExperimentTestController {
     @Autowired
     private ExperimentTestService experimentTestService;
@@ -361,6 +362,18 @@ public class ExperimentTestController {
     @ApiOperation("名称重复性检查")
     public Result nameDuplicationCheck(@RequestParam String projectId, @RequestParam String methodName) {
         return experimentTestService.nameDuplicationCheck(projectId, methodName);
+    }
+
+    @PostMapping("useMethod")
+    @ApiOperation("使用方法接口")
+    public Result<MeasurementCurrentInfoVO> useMethod(@RequestBody UseMethodDTO dto) {
+        return experimentTestService.useMethod(dto);
+    }
+
+    @GetMapping("getTaskStatus")
+    @ApiOperation("获取任务状态")
+    public Result<String> getTaskStatus(@RequestParam String taskId) {
+        return experimentTestService.getTaskStatus(taskId);
     }
 
     @PostMapping("saveDataInfo")
