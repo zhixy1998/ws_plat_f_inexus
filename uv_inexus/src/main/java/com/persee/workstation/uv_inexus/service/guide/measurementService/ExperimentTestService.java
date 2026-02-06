@@ -106,7 +106,10 @@ public interface ExperimentTestService {
     Result querySaveState(String taskId);
 
     // 方法名称重复性检查
-    Result nameDuplicationCheck(String projectId, String methodName, String measureType);
+    Result methodDuplicationCheck(String projectId, String methodName, String measureType);
+
+    // 任务名称重复性检查
+    Result taskDuplicationCheck(String projectId, String taskName, String measureType);
 
     /**
      * 使用新方法
@@ -122,4 +125,6 @@ public interface ExperimentTestService {
 
     // 查询样本默认表头
     Result querySampleDefaultHead(String measureType);
+
+
 }

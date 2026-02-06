@@ -4068,7 +4068,7 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
      * @return
      */
     @Override
-    public Result nameDuplicationCheck(String projectId, String methodName, String measureType) {
+    public Result methodDuplicationCheck(String projectId, String methodName, String measureType) {
         if (StringUtils.isEmpty(projectId) || StringUtils.isEmpty(methodName) || StringUtils.isEmpty(measureType)) {
             //参数不能为空
             return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
@@ -4082,6 +4082,24 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 打印日志
         log.info("方法名称查重检查: projectId={}, methodName={}, count={}",
                 projectId, methodName, count);
+        return count > 0 ? Result.fail(YamlMessageSource.getMessageStatic("00301002")) : Result.ok();
+    }
+
+    @Override
+    public Result taskDuplicationCheck(String projectId, String taskName, String measureType) {
+        if (StringUtils.isEmpty(projectId) || StringUtils.isEmpty(taskName) || StringUtils.isEmpty(measureType)) {
+            //参数不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00000003"));
+        }
+        QueryWrapper<TMeasureTask> wrapper = new QueryWrapper<>();
+        wrapper.eq("project_item_key", projectId)
+                .eq("task_name", taskName)
+                .eq("measure_type", measureType)
+                .eq("is_delete", Constants.PARAM_ZERO);
+        long count = tMeasureTaskService.count(wrapper);
+        // 打印日志
+        log.info("任务名称查重检查: projectId={}, methodName={}, count={}",
+                projectId, taskName, count);
         return count > 0 ? Result.fail(YamlMessageSource.getMessageStatic("00301002")) : Result.ok();
     }
 
