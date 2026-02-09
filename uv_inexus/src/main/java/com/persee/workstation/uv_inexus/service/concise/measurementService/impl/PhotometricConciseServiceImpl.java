@@ -2997,70 +2997,42 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
         List<String> waveLength = photometricParameter.getWaveLength();
         // 通过序列号获取ip
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        List<ChangeParam> list = new ArrayList<>();
+
         String wave = "--";
-        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_ZERO);
-        if (!r.getSuccess()) {
-            return Result.fail(r.getMessage());
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam param = new SetParam();
+
+        param.setPhotoMode(Integer.valueOf(photometricParameter.getLuminosity()));
+        param.setResponseTime(Double.valueOf(photometricParameter.getResponseTime()));
+
+        if (photometricParameter.getGain() != null) {
+            param.setGain(photometricParameter.getGain());
         }
-        DetectionConstants.zeroWavelength = "";
-        try {
-            Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{photometricParameter.getLuminosity()});
-            devMessageUtil.wavelengthLocate(command, ip);
-            double maxValue = 0.0;
-            try {
-                maxValue = waveLength.stream()
-                        .mapToDouble(Double::parseDouble)
-                        .max()
-                        .orElse(Double.parseDouble(waveLength.get(0)));
-            } catch (Exception e) {
-                maxValue = Double.parseDouble(waveLength.get(0));
-            }
-
-            Double aDouble = formulaUtil.calculateStep(maxValue, deviceSerialNumber);
-            command = new Command(SetParamEnum.SetStartWl.getComId(), new Object[]{aDouble});
-            devMessageUtil.wavelengthLocate(command, ip);
-
-
-            for (String s : waveLength) {
-                Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
-                command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
-                DetectionConstants.zeroWavelength = s;
-                Boolean b = devMessageUtil.wavelengthLocate(command, ip);
-                if (!b) {
-                    return Result.fail(YamlMessageSource.getMessageStatic("00100028"));
-                }
-                DetectionConstants.currentWavelength = s;
-
-                command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-                R<ChangeParam> zero = null;
-                try {
-                    zero = devMessageUtil.zero(command, ip);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-                if (!zero.getSuccess()) {
-                    return Result.fail(zero.getMessage());
-                }
-                ChangeParam changeParam = zero.getData();
-//                Double zeroWave = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
-                changeParam.setWl(s);
-                list.add(changeParam);
-                wave = changeParam.getWl();
-                if (StringUtils.hasText(changeParam.getWl())) {
-//                    DetectionConstants.zeroResult.put(zeroWave, changeParam);
-                    DetectionConstants.zeroResult.put(s, changeParam);
-                }
-            }
-        } finally {
-            // 最终释放设备状态
-            deviceInfoService.releaseDevice(deviceSerialNumber); // 假设存在此接口
+        if (StringUtils.hasText(photometricParameter.getEnergyLamp())) {
+            param.setLampPos(Integer.valueOf(photometricParameter.getEnergyLamp()));
         }
-        task.setZeroParam(JSON.toJSONString(list));
+        param.setSlit1(Double.valueOf(photometricParameter.getSpectralBandwidth()));
+        inputParam.setParam(param);
 
+        R<OperationResultEntity> operation = devOperationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
+
+        inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+        inputParam.setWavelength(waveLength);
+        R<OperationResultEntity> zero = devOperationUtilService.operation(inputParam);
+        if (!zero.getSuccess()) {
+            return Result.fail(zero.getMessage());
+        }
+        OperationResultEntity data = zero.getData();
+        List<ChangeParam> zeroResult = data.getZeroResult();
+
+        task.setZeroParam(JSON.toJSONString(zeroResult));
         fMeasureTaskService.updateById(task);
-        deviceInfoService.releaseDevice(deviceSerialNumber);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("waveLength", wave + "nm");
         return Result.ok(jsonObject);

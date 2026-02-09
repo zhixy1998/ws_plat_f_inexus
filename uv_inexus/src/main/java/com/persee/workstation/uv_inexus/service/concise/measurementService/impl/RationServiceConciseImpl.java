@@ -4072,6 +4072,39 @@ public class RationServiceConciseImpl implements RationConciseService {
             return R.fail(YamlMessageSource.getMessageStatic("0030300F"));
         }
 
+        //修约
+        SystemBusinessParamVO  businessParamVO = businessParamService.queryBusinessParam();
+        Integer kDigits = businessParamVO.getKDigits();
+        Integer rSquareDigits = businessParamVO.getRSquareDigits();
+        List<Double> kList = new ArrayList<>();
+
+        if (info.getCoefficients() != null && !info.getCoefficients().isEmpty()) {
+            for (Double coefficient : info.getCoefficients()) {
+                Double v = DataCountUtil.formatValue(kDigits,coefficient);
+                kList.add(v);
+            }
+            info.setRoundCoefficient(kList);
+        }
+        if (info.getR() != null) {
+            Double r = Double.parseDouble(info.getR());
+            if (!r.isNaN() && !r.isInfinite()) {
+                Double value = DataCountUtil.formatValue(rSquareDigits, r);
+                info.setRoundR(DataCountUtil.addZero(value, rSquareDigits));
+            } else {
+                info.setRoundR(String.valueOf(Double.NaN));
+            }
+        }
+        if (info.getR2() != null){
+
+            Double r = Double.parseDouble(info.getR2());
+            if (!r.isNaN() && !r.isInfinite()) {
+                Double value = DataCountUtil.formatValue(rSquareDigits, r);
+                info.setRoundR2(DataCountUtil.addZero(value, rSquareDigits));
+            } else {
+                info.setRoundR2(String.valueOf(Double.NaN));
+            }
+        }
+
         if (RationCurveParamEnums.typeAbs.getIdentity().equals(parameter.getEquationType())) {
             info.setEquation(equation.replace("x", "Abs").replace("y", "C"));
         } else {
@@ -5186,58 +5219,46 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail(YamlMessageSource.getMessageStatic("0000001E"));
         }
         List<String> waveLength = parameter.getWaveLength();
-        // 通过序列号获取ip
-        String ip = deviceInfoService.getIp(deviceSerialNumber);
-        List<ChangeParam> list = new ArrayList<>();
-        String wave = "--";
-        R<Boolean> r = deviceInfoService.useDevice(deviceSerialNumber, Constants.DEVICE_STATUS_ZERO);
-        if (!r.getSuccess()) {
-            return Result.fail(r.getMessage());
+
+        DevOperationInputParam inputParam = new DevOperationInputParam();
+        inputParam.setDeviceSerialNumber(deviceSerialNumber);
+        inputParam.setOperationType(OperationTypeEnums.SetParam.getType());
+        SetParam param = new SetParam();
+
+        param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
+        param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+
+        if (parameter.getGain() != null) {
+            param.setGain(parameter.getGain());
         }
-        DetectionConstants.zeroWavelength = "";
-        for (String s : waveLength) {
-            Command command = new Command(SetParamEnum.SetPhotoMode.getComId(), new Object[]{WaveLengthEnum.abs.getCode()});
-            devMessageUtil.wavelengthLocate(command, ip);
-
-            Double step = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
-
-            command = new Command(SetParamEnum.SetWl.getComId(), new Object[]{step});
-            DetectionConstants.zeroWavelength = s;
-            Boolean b = devMessageUtil.wavelengthLocate(command, ip);
-            if (!b) {
-                return Result.fail(YamlMessageSource.getMessageStatic("00100028"));
-            }
-            DetectionConstants.currentWavelength = s;
-
-            command = new Command(SetParamEnum.Zero.getComId(), new Object[]{});
-            R<ChangeParam> zero = null;
-            try {
-                zero = devMessageUtil.zero(command, ip);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            if (!zero.getSuccess()) {
-                return Result.fail(zero.getMessage());
-            }
-            ChangeParam changeParam = zero.getData();
-//            Double zeroWave = formulaUtil.calculateWl(Double.parseDouble(changeParam.getWl()), deviceSerialNumber);
-            changeParam.setWl(s);
-            list.add(changeParam);
-            wave = changeParam.getWl();
-            if (StringUtils.hasText(changeParam.getWl())) {
-//                DetectionConstants.zeroResult.put(zeroWave, changeParam);
-                DetectionConstants.zeroResult.put(s, changeParam);
-            }
+        if (StringUtils.hasText(parameter.getEnergyLamp())) {
+            param.setLampPos(Integer.valueOf(parameter.getEnergyLamp()));
         }
-        task.setZeroParam(JSON.toJSONString(list));
+        Boolean needSetSit = deviceInfoService.isNeedSetSit(deviceSerialNumber);
+        if (needSetSit) {
+            param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
+        }
 
-        fMeasureTaskService.updateById(task);
+        inputParam.setParam(param);
 
-        deviceInfoService.releaseDevice(deviceSerialNumber);
+        R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
+        if (!operation.getSuccess()) {
+            return Result.fail(operation.getMessage());
+        }
 
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("waveLength", wave + "nm");
-        return Result.ok(jsonObject);
+        inputParam.setOperationType(OperationTypeEnums.Zero.getType());
+        inputParam.setWavelength(waveLength);
+        R<OperationResultEntity> zero = operationUtilService.operation(inputParam);
+        if (!zero.getSuccess()) {
+            return Result.fail(zero.getMessage());
+        }
+        OperationResultEntity data = zero.getData();
+        List<ChangeParam> zeroResult = data.getZeroResult();
+
+        task.setZeroParam(JSON.toJSONString(zeroResult));
+
+        boolean update = fMeasureTaskService.updateById(task);
+        return update ? Result.ok() : Result.fail();
     }
 
     @Override
