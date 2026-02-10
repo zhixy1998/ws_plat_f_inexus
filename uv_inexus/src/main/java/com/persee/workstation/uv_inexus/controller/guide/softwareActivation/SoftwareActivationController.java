@@ -122,7 +122,7 @@ public class SoftwareActivationController {
             activationPO.setActivationStatus(1);
             activationPO.setActivationTime(fullTime);  // 记录激活时间
             activationPO.setExpirationDate(expirationDateStr);  // 更新过期时间
-            activationPO.setFeatures(features);  // 更新过期时间
+            activationPO.setFeatures(features);  // 付费功能
             softwareActivationService.updateById(activationPO);
 
             deviceInfoService.activeDevice(codeDeviceNumber);
@@ -176,7 +176,12 @@ public class SoftwareActivationController {
         
         Page<SoftwareActivationPO> page = new Page<>(pageNum, pageSize);
         IPage<SoftwareActivationPO> resultPage = softwareActivationService.findPage(page, filteredParams);
-        
+        resultPage.getRecords().forEach(po -> {
+            // 判断features是否为null或空字符串（trim处理避免全空格的情况）
+            if (po.getFeatures() == null || po.getFeatures().trim().isEmpty()) {
+                po.setFeatures("/");
+            }
+        });
         return Result.ok(new PageView<>(resultPage));
     }
 
