@@ -384,7 +384,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         QueryWrapper<SysPermissionPO> queryWrapper = new QueryWrapper<>();
         queryWrapper.in("id", permIds)
                     .eq("status", 1)
-                    .ne("title", "首页")
+//                    .ne("title", "首页")
                     .orderByAsc("sort");
         
         // 按类型筛选（如无类型限制则查询所有）
@@ -462,7 +462,7 @@ public class UserPermissionServiceImpl implements UserPermissionService {
     @Override
     public Result<Boolean> updateGroupPermissions(String groupId, List<String> targetPermIds) {
         try {
-            // 1. 校验参数（原有逻辑不变）
+            // 1. 校验参数
             if (!StringUtils.hasText(groupId)) {
                 //小组ID不能为空
                 return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
