@@ -553,17 +553,20 @@ public class LiveDetectionDevicesWebSocket {
     /**
      * 调度测量执行（减少方法跳转，将多个方法合并）
      */
+    /// start
     private void scheduleMeasurementExecution(MeasureTaskInfo taskInfo, long delayMillis) {
         if (!taskInfo.isRunning || !hasSubscribers(taskInfo.deviceSerialNumber)) {
             taskInfo.isRunning = false;
             return;
         }
 
-        taskInfo.scheduledFuture = taskScheduler.schedule(() -> {
-            // 直接执行测量循环（减少方法调用链）
-            String deviceSerialNumber = taskInfo.deviceSerialNumber;
+        // 关键修复1：取消之前的调度，防止积累
+        if (taskInfo.scheduledFuture != null && !taskInfo.scheduledFuture.isDone()) {
+            taskInfo.scheduledFuture.cancel(false);
+        }
 
-            if (!taskInfo.isRunning || !hasSubscribers(deviceSerialNumber)) {
+        taskInfo.scheduledFuture = taskScheduler.schedule(() -> {
+            if (!taskInfo.isRunning || !hasSubscribers(taskInfo.deviceSerialNumber)) {
                 return;
             }
 
@@ -572,9 +575,9 @@ public class LiveDetectionDevicesWebSocket {
             measurementExecutor.execute(() -> {
                 try {
                     // 1. 检查设备状态
-                    DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+                    DeviceInfoPO info = infoService.getInfo(taskInfo.deviceSerialNumber);
                     if (info == null) {
-                        log.warn("设备信息不存在: {}", deviceSerialNumber);
+                        log.warn("设备信息不存在: {}", taskInfo.deviceSerialNumber);
                         taskInfo.isRunning = false;
                         return;
                     }
@@ -583,10 +586,9 @@ public class LiveDetectionDevicesWebSocket {
                     DeviceConnectInfo device = deviceManager.getDevice(deviceId);
 
                     if (!Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
-                        log.info("设备已断开，暂停测量: {}", deviceSerialNumber);
+                        log.info("设备已断开，暂停测量: {}", taskInfo.deviceSerialNumber);
                         taskInfo.isRunning = false;
-
-                        webSocketSendUtil.sendDeviceDisConnectMessage(deviceSerialNumber);
+                        webSocketSendUtil.sendDeviceDisConnectMessage(taskInfo.deviceSerialNumber);
                         if (device != null) {
                             deviceManager.removeDevice(deviceId);
                         }
@@ -594,42 +596,45 @@ public class LiveDetectionDevicesWebSocket {
                     }
 
                     if (!Constants.INIT_STATUS_SUCCESS.equals(info.getIsInited())) {
-                        log.warn("设备未初始化，跳过本次测量: {}", deviceSerialNumber);
+                        log.warn("设备未初始化，跳过本次测量: {}", taskInfo.deviceSerialNumber);
                         taskInfo.consecutiveFailures++;
+                        scheduleNextMeasurement(taskInfo, startTime);
                         return;
                     }
 
                     // 2. 检查设备是否空闲
-
                     if (device != null && Boolean.FALSE.equals(device.getIsIdle())) {
-                        log.info("设备正忙，跳过本次测量: {}", deviceSerialNumber);
+                        log.debug("设备正忙，跳过本次实时回显: {}", taskInfo.deviceSerialNumber);
+                        // 关键修复2：设备忙时等待固定间隔再重试，不立即重试
+                        scheduleNextMeasurement(taskInfo, startTime);
+                        return;
+                    }
+
+                    info = infoService.getInfo(taskInfo.deviceSerialNumber);
+                    if (!Constants.DEVICE_STATUS_IDLE.equals(info.getDeviceCurrentStatus())) {
+                        log.debug("设备状态非空闲，跳过本次测量: {}", taskInfo.deviceSerialNumber);
+                        scheduleNextMeasurement(taskInfo, startTime);
                         return;
                     }
 
                     // 3. 执行测量操作
                     DevOperationInputParam inputParam = new DevOperationInputParam();
-                    inputParam.setDeviceSerialNumber(deviceSerialNumber);
+                    inputParam.setDeviceSerialNumber(taskInfo.deviceSerialNumber);
                     inputParam.setOperationType(OperationTypeEnums.LiveDetection.getType());
 
-                    info = infoService.getInfo(deviceSerialNumber);
-                    if (!Constants.DEVICE_STATUS_IDLE.equals(info.getDeviceCurrentStatus())) {
-                        log.info("设备状态非空闲，跳过本次测量: {}", deviceSerialNumber);
-                        return;
-                    }
                     R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 
                     if (!operation.getSuccess()) {
-
-                        info = infoService.getInfo(deviceSerialNumber);
+                        info = infoService.getInfo(taskInfo.deviceSerialNumber);
                         if (info != null && Constants.CONNECT_DEVICE_SUCCESS.equals(info.getConnectStatus())) {
-                            log.info("设备状态非空闲，跳过本次测量: {}", deviceSerialNumber);
+                            log.info("设备状态非空闲，跳过本次测量: {}", taskInfo.deviceSerialNumber);
                         } else {
-
-                            log.warn("实时回显测量失败: {}, 错误: {}", deviceSerialNumber, operation.getMessage());
+                            log.warn("实时回显测量失败: {}, 错误: {}", taskInfo.deviceSerialNumber, operation.getMessage());
                             taskInfo.consecutiveFailures++;
                             taskInfo.isRunning = false;
-                            webSocketSendUtil.sendDeviceDisConnectMessage(deviceSerialNumber);
+                            webSocketSendUtil.sendDeviceDisConnectMessage(taskInfo.deviceSerialNumber);
                         }
+                        scheduleNextMeasurement(taskInfo, startTime);
                         return;
 
                     } else {
@@ -649,38 +654,55 @@ public class LiveDetectionDevicesWebSocket {
                         WebSocketResponseVO webSocketResponseVO = new WebSocketResponseVO();
                         webSocketResponseVO.setData(vo);
                         webSocketResponseVO.setOperation(WebSocketOperationEnum.LiveDetection.getOperation());
-                        webSocketSendUtil.sendMessage(deviceSerialNumber, webSocketResponseVO);
+                        webSocketSendUtil.sendMessage(taskInfo.deviceSerialNumber, webSocketResponseVO);
                     }
 
                     // 6. 更新最后活跃时间
                     taskInfo.lastActiveTime = System.currentTimeMillis();
 
+                    // 7. 调度下一次测量
+                    scheduleNextMeasurement(taskInfo, startTime);
+
                 } catch (Exception e) {
-                    log.error("测量执行异常: {}", deviceSerialNumber, e);
+                    log.error("测量执行异常: {}", taskInfo.deviceSerialNumber, e);
                     taskInfo.consecutiveFailures++;
 
                     if (taskInfo.consecutiveFailures >= maxRetryCount) {
-                        log.error("测量异常次数过多，暂停任务: {}", deviceSerialNumber);
+                        log.error("测量异常次数过多，暂停任务: {}", taskInfo.deviceSerialNumber);
                         taskInfo.isRunning = false;
-                    }
-                } finally {
-                    // 7. 调度下一次测量（测量完成后等待2.5秒）
-                    long executionTime = System.currentTimeMillis() - startTime;
-                    long waitTime = Math.max(0, measurementInterval);
-
-                    log.info("测量完成，耗时{}ms，等待{}ms后执行下一次", executionTime, waitTime);
-
-                    // 直接调度下一次（减少方法调用）
-                    if (taskInfo.isRunning && hasSubscribers(deviceSerialNumber)) {
-                        taskScheduler.schedule(() -> {
-                            scheduleMeasurementExecution(taskInfo, 0);
-                        }, waitTime, TimeUnit.MILLISECONDS);
+                    } else {
+                        // 异常后等待固定间隔再重试
+                        scheduleNextMeasurement(taskInfo, startTime);
                     }
                 }
             });
 
         }, delayMillis, TimeUnit.MILLISECONDS);
     }
+
+    /**
+     * 调度下一次测量（统一调度逻辑）
+     */
+    private void scheduleNextMeasurement(MeasureTaskInfo taskInfo, long startTime) {
+        if (!taskInfo.isRunning || !hasSubscribers(taskInfo.deviceSerialNumber)) {
+            return;
+        }
+
+        // 计算下一次执行的时间（固定间隔，避免累积）
+        long executionTime = System.currentTimeMillis() - startTime;
+        long waitTime = Math.max(0, measurementInterval);
+
+        // 关键修复3：使用统一的调度逻辑，避免递归调用scheduleMeasurementExecution
+        if (taskInfo.scheduledFuture != null && !taskInfo.scheduledFuture.isDone()) {
+            taskInfo.scheduledFuture.cancel(false);
+        }
+
+        taskInfo.scheduledFuture = taskScheduler.schedule(() -> {
+            scheduleMeasurementExecution(taskInfo, 0);
+        }, waitTime, TimeUnit.MILLISECONDS);
+    }
+
+    /// end
 
     /**
      * 停止测量（直接业务逻辑，减少跳转）
