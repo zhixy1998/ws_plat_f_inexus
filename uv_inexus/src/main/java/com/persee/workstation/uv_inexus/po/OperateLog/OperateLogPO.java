@@ -33,7 +33,7 @@ public class OperateLogPO {
     /**
      * 操作用户ID（关联sys_user.id）
      */
-    // private String userId;
+     private String userId;
 
     /**
      * 操作用户名（冗余存储，便于快速查询）
@@ -89,4 +89,9 @@ public class OperateLogPO {
      * 日志记录时间
      */
     private Date createTime;
+
+    /**
+     * 功能类型（1-收费功能，2-非收费功能）
+     */
+    private Integer logType;
 }

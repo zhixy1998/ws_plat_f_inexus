@@ -42,4 +42,9 @@ public @interface OperateLog {
      * 是否记录返回结果（默认不记录，避免敏感数据）
      */
     boolean recordResult() default false;
+
+    /**
+     * 功能类型：1-收费功能，2-非收费功能（默认2）
+     */
+    int logType() default 2;
 }

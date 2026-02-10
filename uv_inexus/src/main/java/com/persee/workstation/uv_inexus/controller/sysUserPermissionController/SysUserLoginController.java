@@ -43,7 +43,8 @@ public class SysUserLoginController {
      */
     @PostMapping("/login")
     @ApiOperation("用户登录接口")
-    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true)
+//    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true, logType = 1)
+    @OperateLog(module = "用户登录", description = "用户登录", recordParams = true) // 默认logType = 2
     public Result<LoginUserInfoVO> login(@RequestBody UserLoginDTO loginDTO) {
 
         if (loginDTO.getIsFastLogin() != null && loginDTO.getIsFastLogin() == 1) {
