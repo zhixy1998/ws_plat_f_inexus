@@ -58,7 +58,4 @@ public class DeviceModelInfoPO {
     @ApiModelProperty("初始化项")
     @TableField(value = "init_entry", typeHandler = JacksonTypeHandler.class)
     private List<DeviceInitEntryInfo> initEntry;
-
-
-
 }

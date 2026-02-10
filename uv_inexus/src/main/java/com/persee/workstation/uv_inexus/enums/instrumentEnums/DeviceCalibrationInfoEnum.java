@@ -27,7 +27,7 @@ import java.util.Map;
 public enum DeviceCalibrationInfoEnum {
 
     Wavelength(1,"CorrectWl", "波长校正"),
-    T800Dark(4, "Dark", "T800暗电流校正"),
+    T800Dark(3, "Dark", "T800暗电流校正"),
     Dark(2, "Dark", "暗电流校正");
 
 

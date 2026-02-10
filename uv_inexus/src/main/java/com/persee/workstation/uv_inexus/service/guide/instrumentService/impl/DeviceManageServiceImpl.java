@@ -16,10 +16,7 @@ import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.instrumentDao.*;
 import com.persee.workstation.uv_inexus.dto.concise.common.FSampleAttachTypeSaveDTO;
 import com.persee.workstation.uv_inexus.dto.instrumentDto.*;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceAttachmentKindEnum;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceCalibrationInfoEnum;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceConnectMessageEnum;
-import com.persee.workstation.uv_inexus.enums.instrumentEnums.DeviceInitPreCommandEnum;
+import com.persee.workstation.uv_inexus.enums.instrumentEnums.*;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.EnergyLampEnums;
 import com.persee.workstation.uv_inexus.enums.measurementEnums.WaveLengthEnum;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
@@ -55,9 +52,6 @@ import java.util.*;
 public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
-    CalibrationTempDAO calibrationDAO;
-
-    @Autowired
     DevConfigDAO devConfigDAO;
 
     @Autowired
@@ -89,6 +83,12 @@ public class DeviceManageServiceImpl implements DeviceManageService {
 
     @Autowired
     DeviceTypeInfoDAO deviceTypeInfoDAO;
+
+    @Autowired
+    DeviceCalibrationConfigDAO calibrationConfigDAO;
+
+    @Autowired
+    DeviceCalibrationParamDAO calibrationParamDAO;
 
 //    @Autowired
 //    LiveDetectionDevicesWebSocket liveDetectionManyDevicesWebSocket;
@@ -801,10 +801,20 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         return R.ok();
     }
 
-    @Override
-    public List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber) {
-        String type = "T600/T700";
-        if (StringUtils.hasText(deviceSerialNumber)) {
+    public List<DeviceCalibrationVO> newQueryCalibrationInfo(String deviceSerialNumber) {
+        String deviceType = "T600/T700";
+
+        DeviceTypeInfoPO typeInfoPO = new DeviceTypeInfoPO();
+        LambdaQueryWrapper<CalibrationTempPO> wrapper = new LambdaQueryWrapper<>();
+        DeviceModelInfoPO modelInfoPO = null;
+
+
+        if (!StringUtils.hasText(deviceSerialNumber)) {
+            LambdaQueryWrapper<DeviceTypeInfoPO> query = new LambdaQueryWrapper<>();
+            query.eq(DeviceTypeInfoPO::getDevType, deviceType);
+            typeInfoPO = deviceTypeInfoDAO.selectOne(query);
+
+        } else {
             //根据序列号，去查找仪器类型，根据仪器类型，去获取参数列表
             log.info("检测仪器类型");
             DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -812,64 +822,116 @@ public class DeviceManageServiceImpl implements DeviceManageService {
                 LambdaQueryWrapper<DeviceModelInfoPO> query = new LambdaQueryWrapper<>();
                 query.eq(DeviceModelInfoPO::getDevModel, info.getDeviceModel());
 
-                DeviceModelInfoPO deviceModelInfoPO = deviceModelInfoDAO.selectOne(query);
-                if (deviceModelInfoPO != null) {
-                    DeviceTypeInfoPO deviceTypeInfoPO = deviceTypeInfoDAO.selectById(deviceModelInfoPO.getDevTypeId());
-                    if (deviceTypeInfoPO != null && StringUtils.hasText(deviceTypeInfoPO.getDevType())) {
-                        type = deviceTypeInfoPO.getDevType();
+                modelInfoPO = deviceModelInfoDAO.selectOne(query);
+                if (modelInfoPO != null) {
+                    typeInfoPO = deviceTypeInfoDAO.selectById(modelInfoPO.getDevTypeId());
+                }
+            }
+
+        }
+
+        List<Integer> calibrationType = typeInfoPO.getCalibrationType();
+
+        List<DeviceCalibrationVO> ans = new ArrayList<>();
+
+
+        if (calibrationType != null && !calibrationType.isEmpty()) {
+            for (Integer type : calibrationType) {
+
+
+                DeviceCalibrationVO vo = new DeviceCalibrationVO();
+
+                DeviceCalibrationConfigPO configPO = calibrationConfigDAO.selectById(type);
+                List<Integer> paramList = configPO.getParamList();
+                List<DeviceCalibrationParams> params = new ArrayList<>();
+
+                vo.setCalibrationType(type);
+                vo.setCalibrationName(configPO.getCalibrationName());
+
+                for (Integer paramId : paramList) {
+
+                    DeviceCalibrationParamPO param = calibrationParamDAO.selectById(paramId);
+                    DeviceCalibrationParams paramVO = new DeviceCalibrationParams();
+                    paramVO.setId(param.getId());
+                    paramVO.setParamName(param.getParamName());
+                    paramVO.setParam(param.getParam());
+                    paramVO.setParamType(param.getParamType());
+
+
+                    wrapper.eq(CalibrationTempPO::getCalibrationType, type);
+                    wrapper.eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber);
+                    wrapper.eq(CalibrationTempPO::getParam, param.getParam());
+                    wrapper.orderByDesc(CalibrationTempPO::getUpdated).last("limit 1");
+                    CalibrationTempPO tempPO = tempDao.selectOne(wrapper);
+                    wrapper.clear();
+                    if (tempPO != null) {
+                        paramVO.setLastValue(tempPO.getParamValue());
                     }
+                    List<DataNameValue> dataNameValues = dealData(param, typeInfoPO, modelInfoPO);
+                    paramVO.setData(dataNameValues);
+                    params.add(paramVO);
                 }
+                vo.setParams(params);
+
+                ans.add(vo);
+            }
+
+        }
+
+        return ans;
+    }
+
+    public List<DataNameValue> dealData(DeviceCalibrationParamPO paramPO, DeviceTypeInfoPO po, DeviceModelInfoPO modelInfoPO) {
+
+        if (po == null) {
+            return paramPO.getDefaultValue();
+        }
+
+        String param = paramPO.getParam();
+        List<DataNameValue> ans = new ArrayList<>();
+        if (DeviceCalibrationParamEnum.ScanSpeed.getType().equals(param)) {
+            int i = 0;
+            for (String speed : po.getScanSpeed()) {
+                DataNameValue value = new DataNameValue();
+                value.setDataKey(speed);
+                value.setDataValue(String.valueOf(i));
+                ans.add(value);
+                i++;
+            }
+        }
+        if (DeviceCalibrationParamEnum.Start.getType().equals( param) || DeviceCalibrationParamEnum.End.getType().equals(param)){
+            DataNameValue min = new DataNameValue();
+            min.setDataKey("min");
+            min.setDataValue(po.getMinWavelength());
+            ans.add(min);
+
+            DataNameValue max = new DataNameValue();
+            max.setDataKey("max");
+            max.setDataValue(po.getMaxWavelength());
+            ans.add(max);
+        }
+
+        if (DeviceCalibrationParamEnum.WaveBrand.getType().equals(param)) {
+            for (String s : modelInfoPO.getSpacingWidth()) {
+                DataNameValue value = new DataNameValue();
+
+                value.setDataValue(s);
+                ans.add(value);
+            }
+        }
+        if (DeviceCalibrationParamEnum.Step.getType().equals(param)) {
+
+            for (String s : po.getScanInterval()) {
+                DataNameValue value = new DataNameValue();
+                value.setDataValue(s);
+                ans.add(value);
             }
         }
 
-        R<DeviceMeasureVO> deviceMeasureVOR = queryDeviceTypeInfo(deviceSerialNumber);
-        if (!deviceMeasureVOR.getSuccess()) {
-            log.info("查询仪器类型失败");
-            return null;
+        if (ans.isEmpty()) {
+            ans = paramPO.getDefaultValue();
         }
-        DeviceMeasureVO measureVO = deviceMeasureVOR.getData();
-        List<String> bandWidth = measureVO.getBandWidth();
-        List<DataNameValue> band = new ArrayList<>();
-        for (String s : bandWidth) {
-            band.add(new DataNameValue("", s));
-        }
-
-
-        List<DeviceCalibrationVO> info = calibrationDAO.getCalibrationInfo(type);
-        for (DeviceCalibrationVO vo : info) {
-            List<DeviceCalibrationParams> params = calibrationDAO.getCalibrationParams(vo.getCalibrationType());
-            for (DeviceCalibrationParams param : params) {
-
-                if (param.getParamName().equals("光谱带宽")) {
-                    param.setData(band);
-                    param.setLastValue("2.0");
-                } else {
-                    List<DataNameValue> value = calibrationDAO.getCalibrationValue(param.getId());
-                    param.setData(value);
-                }
-
-                if (param.getParamName().equals("扫描速度")) {
-                    param.setLastValue("1");
-                }
-
-                LambdaQueryWrapper<CalibrationTempPO> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(CalibrationTempPO::getCalibrationType, vo.getCalibrationType())
-                        .eq(CalibrationTempPO::getDeviceSerialNumber, deviceSerialNumber)
-                        .eq(CalibrationTempPO::getParam, param.getParam())
-                        .orderByDesc(CalibrationTempPO::getId);
-
-                CalibrationTempPO tempPO = tempDao.selectOne(queryWrapper);
-                if (tempPO != null) {
-                    param.setLastValue(tempPO.getParamValue());
-                }
-
-
-            }
-            vo.setParams(params);
-        }
-
-
-        return info;
+        return ans;
     }
 
     @Override
@@ -1313,9 +1375,9 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
 
         if (Objects.equals(dto.getCalibrationType(), DeviceCalibrationInfoEnum.T800Dark.getType())) {
-            Double start = 900.0;
-            Double end = 190.0;
-            Double step = 0.5;
+            double start = 900.0;
+            double end = 190.0;
+            double step = 0.5;
 
             int scanSpeed = 3;
             double darkBand = 2.0;
@@ -1323,20 +1385,20 @@ public class DeviceManageServiceImpl implements DeviceManageService {
             for (DataNameValue datum : dto.getData()) {
                 try {
 
-                    if (datum.getDataKey().equals("start")) {
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Start.getType())) {
                         start = Double.parseDouble(datum.getDataValue());
                     }
-                    if (datum.getDataKey().equals("end")) {
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.End.getType())) {
                         end = Double.parseDouble(datum.getDataValue());
                     }
-                    if (datum.getDataKey().equals("scanSpeed")) {
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.ScanSpeed.getType())) {
                         scanSpeed = Integer.parseInt(datum.getDataValue());
                     }
 
-                    if (datum.getDataKey().equals("darkband")) {
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.WaveBrand.getType())) {
                         darkBand = Double.parseDouble(datum.getDataValue());
                     }
-                    if (datum.getDataKey().equals("step")) {
+                    if (datum.getDataKey().equals(DeviceCalibrationParamEnum.Step.getType())) {
                         step = Double.parseDouble(datum.getDataValue());
                     }
                 } catch (Exception e) {

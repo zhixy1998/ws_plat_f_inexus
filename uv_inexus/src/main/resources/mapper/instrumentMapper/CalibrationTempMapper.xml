@@ -11,29 +11,4 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.persee.workstation.uv_inexus.dao.guide.instrumentDao.CalibrationTempDAO">
 
-    <select id="getCalibrationParams" resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationParams">
-
-        select id,
-        param_name as paramName,
-        param as param,
-        param_type as paramType
-        from t_ins_calibration_param
-        where calibration_type = #{calibration_type}
-
-    </select>
-    <select id="getCalibrationInfo" resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.DeviceCalibrationVO">
-        select calibration_name as calibrationName,
-        calibration_type as calibrationType
-        from t_ins_calibration_config
-        where device_type = #{device_type}
-    </select>
-    <select id="getCalibrationValue"
-            resultType="com.persee.workstation.uv_inexus.vo.instrumentVo.DataNameValue">
-        select param_key as dataKey,
-        param_value as dataValue
-        from t_ins_calibration_value
-        where param_id = #{param_id}
-    </select>
-
-
 </mapper>

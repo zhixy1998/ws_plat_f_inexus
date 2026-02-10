@@ -1469,7 +1469,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                         endBytes[i] = (byte) (intValue & 0xFF);
                     }
                 }
-                isDealOnTime = xmlKey.equals(DevXmlEnums.T800.getDevType());
+
+//                isDealOnTime = xmlKey.equals(DevXmlEnums.T800.getDevType());
+                isDealOnTime = inputParam.getCalibrationType().equals(DeviceCalibrationInfoEnum.T800Dark.getType());
 
                 calibration = udpSendUtil.unknownReceive(deviceId, cmdId, bytes, timeout, isDealOnTime, deviceSerialNumber, endBytes, headReceiveBytes);
 

@@ -82,4 +82,8 @@ public class DeviceTypeInfoPO {
     @TableField(value = "scan_interval", typeHandler = JacksonTypeHandler.class)
     private List<String> scanInterval;
 
+    @ApiModelProperty("校正方式")
+    @TableField(value = "calibration_type", typeHandler = JacksonTypeHandler.class)
+    private List<Integer> calibrationType;
+
 }

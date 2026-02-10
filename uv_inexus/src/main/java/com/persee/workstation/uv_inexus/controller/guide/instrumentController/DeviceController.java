@@ -419,7 +419,7 @@ public class DeviceController {
     @GetMapping("/getCalibrationInfo")
     @ApiOperation("查询仪器校准信息")
     public Result<List<DeviceCalibrationVO>> getCalibrationInfo(@RequestParam(required = false) String deviceSerialNumber) {
-        List<DeviceCalibrationVO> list = deviceManageService.queryCalibrationInfo(deviceSerialNumber);
+        List<DeviceCalibrationVO> list = deviceManageService.newQueryCalibrationInfo(deviceSerialNumber);
         return Result.ok(list);
 
     }

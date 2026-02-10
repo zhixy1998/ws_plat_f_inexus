@@ -100,7 +100,7 @@ public interface DeviceManageService {
      * @param deviceSerialNumber
      * @return
      */
-    List<DeviceCalibrationVO> queryCalibrationInfo(String deviceSerialNumber);
+    List<DeviceCalibrationVO> newQueryCalibrationInfo(String deviceSerialNumber);
 
     /**
      * 检查仪器状态
