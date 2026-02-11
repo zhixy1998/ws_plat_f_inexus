@@ -841,6 +841,7 @@ public class RationServiceImpl implements RationService {
                 Objects.equals(oldParam.getCurveCoefficient(), newParam.getCurveCoefficient()) &&
                 Objects.equals(oldParam.getUnit(), newParam.getUnit()) &&
                 Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
+                Objects.equals(oldParam.getPreProcessParameters(), newParam.getPreProcessParameters()) &&
                 Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
 
     }

@@ -529,6 +529,7 @@ public class PhotometricServiceImpl implements PhotometricService {
         return Objects.equals(oldParam.getSampleInputParams(), newParam.getSampleInputParams()) &&
                 Objects.equals(oldParam.getQcParams(), newParam.getQcParams()) &&
                 Objects.equals(oldParam.getResultParams(), newParam.getResultParams()) &&
+                Objects.equals(oldParam.getPreProcessParameters(), newParam.getPreProcessParameters()) &&
                 Objects.equals(oldParam.getApproxParams(), newParam.getApproxParams());
     }
 

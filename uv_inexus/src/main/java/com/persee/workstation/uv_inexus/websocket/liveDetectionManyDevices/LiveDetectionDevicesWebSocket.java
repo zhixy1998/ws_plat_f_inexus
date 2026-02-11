@@ -374,6 +374,9 @@ public class LiveDetectionDevicesWebSocket {
             webSocketSendUtil.sendErrorMessage(deviceSerialNumber, WebSocketOperationEnum.LiveDetection.getOperation(), "设备不存在");
             return;
         }
+        if (!info.getConnectStatus().equals(Constants.CONNECT_DEVICE_SUCCESS)) {
+            webSocketSendUtil.sendDeviceDisConnectMessage(deviceSerialNumber);
+        }
 
         int subscriptionCount = getDeviceSubscriptionCount(deviceSerialNumber);
         log.info("设备订阅数更新: 设备={}, 当前订阅会话数={}", deviceSerialNumber, subscriptionCount);
