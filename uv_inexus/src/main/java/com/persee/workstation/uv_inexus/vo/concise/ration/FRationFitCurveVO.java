@@ -14,6 +14,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class FRationFitCurveVO {
@@ -47,4 +48,7 @@ public class FRationFitCurveVO {
 
     @ApiModelProperty("未知样品点")
     private List<JSONObject> unknowPoints;
+    @ApiModelProperty
+    private Map<String, String> quality;
+
 }

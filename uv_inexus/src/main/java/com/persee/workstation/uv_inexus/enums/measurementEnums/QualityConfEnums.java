@@ -27,11 +27,22 @@ import lombok.Getter;
 @Getter
 public enum QualityConfEnums {
 
+    value_qc("0", "测量值质控"),
     slope_qc("1", "斜率质控"),
     intercept_qc("2", "截距质控"),
     curve_r_qc("3", "标曲R质控"),
     curve_r2_qc("4", "标曲R2质控"),
-    blank_sample_qc("5", "空白样品质控");
+    blank_sample_qc("5", "空白样品质控"),
+
+//    value_qc("1", "测量值质控"),
+//    slope_qc("2", "斜率质控"),
+//    intercept_qc("3", "截距质控"),
+//    curve_r_qc("4", "标曲R质控"),
+//    curve_r2_qc("5", "标曲R2质控"),
+//    blank_sample_qc("6", "空白样品质控"),
+
+    quality_high("higher", "偏高"),
+    quality_low("lower", "偏低");
 
     private final String code;
 

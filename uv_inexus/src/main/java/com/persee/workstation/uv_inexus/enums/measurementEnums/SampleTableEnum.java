@@ -24,6 +24,7 @@ public enum SampleTableEnum {
     NORMAL_CONCENTRATION("normalConcentration", "标准浓度"),
     FIT_CONCENTRATION("fitConcentration", "拟合浓度"),
     SAMPLE_LOCATION("sampleLocation", "样品位置"),
+    QUALITY("quality", "质控结果"),
     Abs("Abs", "Abs"),
     SUM_Abs("sumAbs", "ΔAbs"),
     REMARK("remark", "备注"),

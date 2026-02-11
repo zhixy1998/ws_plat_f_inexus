@@ -13,6 +13,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.guide.GuideCreateSampleDTO;
 import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.QualityConfEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
@@ -22,6 +23,7 @@ import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.InputParamM
 import com.persee.workstation.uv_inexus.util.pythonUtil.FittingReceiveInfo;
 import com.persee.workstation.uv_inexus.vo.concise.ration.FRationCountDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.InputParam;
+import com.persee.workstation.uv_inexus.vo.measurementVo.PhotometricOriginDataInfo;
 import com.persee.workstation.uv_inexus.vo.measurementVo.photometricAndRationVo.*;
 
 import java.io.File;
@@ -146,11 +148,6 @@ public interface RationService {
     Result zero2(String deviceSerialNumber, String methodId, String taskId, String updateBy);
 
     /**
-     * 质控判断
-     */
-    List<QualityCheckResultVO> qualityControl(String taskId, String methodId);
-
-    /**
      * 查询可绑定的方法参数
      */
     R<List<InputParam>> queryInputParam(String methodId);
@@ -164,6 +161,7 @@ public interface RationService {
      * 保存映射关系及表头信息
      */
     R<Boolean> saveInputParamMapTableHead(TaskHeadSnapshotDTO taskHeadSnapshot);
+
 
     /**
      * 导出到word

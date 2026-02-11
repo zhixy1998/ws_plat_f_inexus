@@ -17,6 +17,7 @@ import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.concise.measurementDao.FMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
@@ -37,7 +38,6 @@ import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.util.DataCountUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.ChangeParam;
-import com.persee.workstation.uv_inexus.util.changeUtil.Command;
 import com.persee.workstation.uv_inexus.util.changeUtil.DevMessageUtil;
 import com.persee.workstation.uv_inexus.util.changeUtil.FormulaUtil;
 import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationInputParam;
@@ -45,7 +45,6 @@ import com.persee.workstation.uv_inexus.util.deviceUtil.DevOperationUtilService;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationResultEntity;
 import com.persee.workstation.uv_inexus.util.deviceUtil.OperationTypeEnums;
 import com.persee.workstation.uv_inexus.util.deviceUtil.param.SetParam;
-import com.persee.workstation.uv_inexus.util.nettyUtil.SetParamEnum;
 import com.persee.workstation.uv_inexus.util.pythonUtil.RestUtil;
 import com.persee.workstation.uv_inexus.vo.concise.common.FSamplePoolInfoVO;
 import com.persee.workstation.uv_inexus.vo.concise.photometric.FPhotometricCountDataInfo;
@@ -2325,6 +2324,16 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
                                 formattedData.put(entry.getKey(), s);
                             }
                             map.putAll(formattedData);
+
+                            Map<String, String> qcAns = checkValueQuantity(parameter, wlData, QualityConfEnums.value_qc);
+                            Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
+                            if (object != null) {
+                                Map<String, String> quality = new ObjectMapper().convertValue(object,
+                                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+                                qcAns.putAll(quality);
+                            }
+                            map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
+
                             map.put("samplingTime", data.getSamplingTime());
                         }
 
@@ -2373,6 +2382,17 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
 
                             if (wlData.getIdentity().equals(DataIdentityEnums.result.getIdentity())) {
                                 map.putAll(wlData.getData());
+
+                                Map<String, String> qcAns = checkValueQuantity(parameter, wlData, QualityConfEnums.value_qc);
+                                Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
+                                if (object != null) {
+                                    Map<String, String> quality = new ObjectMapper().convertValue(object,
+                                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+                                    qcAns.putAll(quality);
+                                }
+                                map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
+
+
                                 Map<String, Map<String, String>> ch = extracted(option, wlData, sample);
                                 if (!ch.isEmpty()) {
                                     for (Map.Entry<String, Map<String, String>> entry : ch.entrySet()) {
@@ -2456,6 +2476,60 @@ public class PhotometricConciseServiceImpl implements PhotometricConciseService 
         }
 
         return Result.ok(ans);
+    }
+
+
+    /**
+     * 测量值质控
+     */
+    public Map<String, String> checkValueQuantity(FPhotometricParameter parameter, FPhotometricOriginDataInfo dataInfo, QualityConfEnums qcType) {
+
+        Map<String, String> result = new HashMap<>();
+        if (parameter == null || parameter.getQcParams() == null || parameter.getQcParams().isEmpty()) {
+            log.info("无质控参数");
+            return  result;
+        }
+        List<FQualityConfVO> qcParams = parameter.getQcParams();
+        String luminosity = parameter.getLuminosity();
+        Map<String, String> data = dataInfo.getData();
+
+
+        for (FQualityConfVO param : qcParams) {
+            String key = param.getWaveLength()+ "-"+ luminosity;
+
+            String s = data.get(key);
+            if (s == null) {
+                continue;
+            }
+            double v = Double.parseDouble(s);
+            if (param.getControlType().equals(qcType.getCode())) {
+
+                if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+                    if (v >= param.getUpperLimit()) {
+                        result.put(key, QualityConfEnums.quality_high.getCode());
+                    }
+                } else {
+                    if (v > param.getUpperLimit()) {
+                        result.put(key, QualityConfEnums.quality_high.getCode());
+                    }
+                }
+
+                if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+                    if (v <= param.getLowerLimit()) {
+                        result.put(key, QualityConfEnums.quality_low.getCode());
+
+                    }
+
+                } else {
+                    if (v < param.getLowerLimit()) {
+                        result.put(key, QualityConfEnums.quality_low.getCode());
+
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
     private boolean isNumeric(String str) {

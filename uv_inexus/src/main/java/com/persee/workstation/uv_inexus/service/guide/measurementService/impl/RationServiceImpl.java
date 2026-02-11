@@ -17,6 +17,7 @@ import com.alibaba.fastjson.TypeReference;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.persee.workstation.uv_inexus.constant.Constants;
 import com.persee.workstation.uv_inexus.dao.guide.measurementDao.TMeasureTaskMapper;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SystemUserManageDAO;
@@ -2674,6 +2675,10 @@ public class RationServiceImpl implements RationService {
 
         String sampleId = sample.getId();
         String taskId = task.getId();
+        QualityConfEnums qcType = QualityConfEnums.value_qc;
+        if (sample.getSampleType().equals(SampleTypeEnum.empty.getIdentity())) {
+            qcType = QualityConfEnums.blank_sample_qc;
+        }
         if (otherDigit == null) {
             otherDigit = Constants.DEFAULT_DECIMAL_NUM;
         }
@@ -2741,6 +2746,17 @@ public class RationServiceImpl implements RationService {
 
                         if (countData.getColValue() != null) {
                             map.put(countData.getIdentity(), countData.getColValue());
+
+                            if (countData.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                                Map<String, String> qcAns = checkValueQuantity(task.getMethodKey(), countData.getColValue(), qcType);
+                                Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
+                                if (object != null) {
+                                    Map<String, String> quality = new ObjectMapper().convertValue(object,
+                                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+                                    qcAns.putAll(quality);
+                                }
+                                map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
+                            }
                         }
                     }
                 }
@@ -2861,6 +2877,17 @@ public class RationServiceImpl implements RationService {
             for (RationCountDataInfo countData : countDataList) {
                 if (StringUtils.hasText(countData.getColValue())) {
                     map.put(countData.getIdentity(), DataCountUtil.addZero(Double.valueOf(countData.getColValue()), digit));
+
+                    if (countData.getIdentity().equals(SampleTableEnum.Abs.getIdentity())) {
+                        Map<String, String> qcAns = checkValueQuantity(task.getMethodKey(), countData.getColValue(), qcType);
+                        Object object = map.get(SampleTableEnum.QUALITY.getIdentity());
+                        if (object != null) {
+                            Map<String, String> quality = new ObjectMapper().convertValue(object,
+                                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+                            qcAns.putAll(quality);
+                        }
+                        map.put(SampleTableEnum.QUALITY.getIdentity(), qcAns);
+                    }
                 }
             }
         }
@@ -3634,8 +3661,11 @@ public class RationServiceImpl implements RationService {
                         }
                     }
                 }
+                Map<String, String> map = checkCurveQuantity(methodId, resultVo);
+                resultVo.setQuality(map);
             }
         }
+
         resultVo.setTaskId(taskId);
         resultVo.setEquationType(RationCurveParamEnums.getName(parameter.getEquationType()));
         resultVo.setCurveType(RationCurveParamEnums.getName(parameter.getCurveType()));
@@ -3968,7 +3998,7 @@ public class RationServiceImpl implements RationService {
         vo.setCoefficientList(list);
         vo.setDataList(dataList);
         vo.setEquation(info.getEquation());
-        vo.setCurveType(RationCurveParamEnums.getName(String.valueOf(info.getDegree())));
+        vo.setCurveType(String.valueOf(info.getDegree()));
 
         if (StringUtils.hasText(info.getRoundR())) {
             Double r = null;
@@ -4995,58 +5025,171 @@ public class RationServiceImpl implements RationService {
         return update ? Result.ok() : Result.fail();
     }
 
-    @Override
-    public List<QualityCheckResultVO> qualityControl(String taskId, String methodId) {
-        List<QualityCheckResultVO> result = new ArrayList<>();
 
-        if (!StringUtils.hasText(taskId) || !StringUtils.hasText(methodId)) {
-            log.info("缺少参数，无法进行质控管理");
-            return null;
+    /**
+     * 曲线相关质控
+     */
+    public Map<String, String> checkCurveQuantity(String methodId, RationFitCurveVO curve) {
+        Map<String, String> result = new HashMap<>();
+
+        if (!StringUtils.hasText(methodId)) {
+            log.info("缺少参数，无法进行测量值质控");
+            return result;
         }
         TMeasureMethod method = tMeasureMethodService.getById(methodId);
-        TMeasureTask task = tMeasureTaskService.getById(taskId);
-        if (method == null || task == null) {
-            log.info("没有找到该任务或方法");
-            return null;
+        if (method == null || method.getMeasurementParamInfo() == null) {
+            log.info("没有找到该方法");
+            return result;
         }
-
-        String paramInfo = method.getMeasurementParamInfo();
-        RationParameter parameter = JSON.parseObject(paramInfo, RationParameter.class);
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
         if (parameter == null || parameter.getQcParams() == null || parameter.getQcParams().isEmpty()) {
             log.info("没有质控参数");
-            return null;
-        }
-        if (!StringUtils.hasText(task.getSampleKey())) {
-            log.info("任务没有样品");
-            return null;
-        }
-
-        List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
-        if (taskSpecimen == null || taskSpecimen.isEmpty()) {
-            log.info("样品转换失败");
-            return null;
+            return result;
         }
         List<QualityConfVO> qcParams = parameter.getQcParams();
 
-        for (TaskSpecimen specimen : taskSpecimen) {
-            QualityCheckResultVO vo = new QualityCheckResultVO();
-            if (specimen.getDeleteType().equals(deleteType) || specimen.getIsTested().equals(noTested)) {
-                log.info("该样品已删除或未测试");
-                continue;
+        for (QualityConfVO param : qcParams) {
+            if (param.getControlType().equals(QualityConfEnums.slope_qc.getCode())) {
+
+                if (!curve.getCurveType().equals(RationCurveParamEnums.one.getIdentity())) {
+                    log.info("一次曲线，不处理斜率质控");
+                    continue;
+                }
+                List<Double> coefficientList = curve.getCoefficientList();
+                double k = 0;
+                if (coefficientList != null && coefficientList.size() <= 2) {
+                    k = coefficientList.get(1);
+                }
+
+                String s = checkQcValue(param, k);
+                result.put(param.getControlType(), s);
+
+
+            } else if (param.getControlType().equals(QualityConfEnums.intercept_qc.getCode())) {
+                if (!curve.getCurveType().equals(RationCurveParamEnums.one.getIdentity())) {
+                    log.info("一次曲线，不处理斜率质控");
+                    continue;
+                }
+                List<Double> coefficientList = curve.getCoefficientList();
+                double k = 0;
+                if (coefficientList != null && coefficientList.size() <= 2) {
+                    k = coefficientList.get(0);
+                }
+
+                String s = checkQcValue(param, k);
+                result.put(param.getControlType(), s);
+
+            } else if (param.getControlType().equals(QualityConfEnums.curve_r_qc.getCode())) {
+                if (StringUtils.hasText(curve.getR())) {
+                    double r = Double.parseDouble(curve.getR());
+                    if (!Double.isNaN(r) && !Double.isInfinite(r)) {
+                        String s = checkQcValue(param,r);
+                        result.put(param.getControlType(), s);
+                    }
+                }
+
+            } else if (param.getControlType().equals(QualityConfEnums.curve_r2_qc.getCode())) {
+
+                if (StringUtils.hasText(curve.getR2())) {
+                    double r = Double.parseDouble(curve.getR());
+                    if (!Double.isNaN(r) && !Double.isInfinite(r)) {
+                        String s = checkQcValue(param,r);
+                        result.put(param.getControlType(), s);
+                    }
+                }
             }
 
-
-            QualityConfEnums.slope_qc.getCode();
-
-
+        }
+        return result;
 
 
+    }
 
+    public String checkQcValue(QualityConfVO param, double v) {
+
+
+        if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+            if (v >= param.getUpperLimit()) {
+                return QualityConfEnums.quality_high.getCode();
+            }
+        } else {
+            if (v > param.getUpperLimit()) {
+                return QualityConfEnums.quality_high.getCode();
+            }
+        }
+
+        if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+            if (v <= param.getLowerLimit()) {
+                return QualityConfEnums.quality_low.getCode();
+            }
+
+        } else {
+            if (v < param.getLowerLimit()) {
+                return QualityConfEnums.quality_low.getCode();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 测量值质控，针对Abs
+     */
+    public Map<String, String> checkValueQuantity(String methodId, String value, QualityConfEnums qcType) {
+
+        Map<String, String> result = new HashMap<>();
+
+        if (!StringUtils.hasText(methodId)) {
+            log.info("缺少参数，无法进行测量值质控");
+            return result;
+        }
+        TMeasureMethod method = tMeasureMethodService.getById(methodId);
+        if (method == null || method.getMeasurementParamInfo() == null) {
+            log.info("没有找到该方法");
+            return result;
+        }
+        RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+        if (parameter == null || parameter.getQcParams() == null || parameter.getQcParams().isEmpty()) {
+            log.info("没有质控参数");
+            return result;
+        }
+        List<QualityConfVO> qcParams = parameter.getQcParams();
+
+        for (QualityConfVO param : qcParams) {
+            String key = SampleTableEnum.Abs.getIdentity();
+
+            double v = Double.parseDouble(value);
+            if (param.getControlType().equals(qcType.getCode())) {
+
+                if (param.getIsUpperLimitIncluded() != null && param.getIsUpperLimitIncluded()) {
+                    if (v >= param.getUpperLimit()) {
+                        result.put(key, QualityConfEnums.quality_high.getCode());
+                    }
+                } else {
+                    if (v > param.getUpperLimit()) {
+                        result.put(key, QualityConfEnums.quality_high.getCode());
+                    }
+                }
+
+                if (param.getIsLowerLimitIncluded() != null && param.getIsLowerLimitIncluded()) {
+                    if (v <= param.getLowerLimit()) {
+                        result.put(key, QualityConfEnums.quality_low.getCode());
+                    }
+
+                } else {
+                    if (v < param.getLowerLimit()) {
+                        result.put(key, QualityConfEnums.quality_low.getCode());
+
+                    }
+                }
+                return result;
+            }
         }
 
         return result;
-
     }
+
+
+
 
     @Override
     public R<List<InputParam>> queryInputParam(String methodId) {
