@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.util.changeUtil;
 
+import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,6 +34,23 @@ public class ChangeParam {
 
     // D0
     private String d;
+
+    @ApiModelProperty("当前光度模式")
+    private String mode;
+
+    @ApiModelProperty("当前光度模式测量值")
+    private String value;
+
+    @ApiModelProperty("其他值，abs和T%时需要")
+    private String otherData;
+
+    public ChangeParam(String wl, String step, String r, String s, String d) {
+        this.wl = wl;
+        this.step = step;
+        this.r = r;
+        this.s = s;
+        this.d = d;
+    }
 
     public boolean isEmpty() {
         return this.r == null && this.s == null && this.d == null;

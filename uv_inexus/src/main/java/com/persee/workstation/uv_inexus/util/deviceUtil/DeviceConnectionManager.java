@@ -18,7 +18,6 @@ import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionLampSta
 import com.persee.workstation.uv_inexus.websocket.liveDetection.DetectionResponseInfoVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -30,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 基于外部DeviceConnectInfo类，管理仪器连接生命周期
  */
 @Slf4j
-@Component
+
 public class DeviceConnectionManager {
 
     private static final DeviceConnectionManager INSTANCE = new DeviceConnectionManager();

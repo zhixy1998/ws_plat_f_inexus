@@ -1173,19 +1173,22 @@ public class RationMeasureNewWebSocket{
 
             machineData.add(changeParam);
 
-            ChangeParam originRsd = new ChangeParam();
-            if (StringUtils.hasText(task.getZeroParam())) {
-                List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                for (ChangeParam zeroParam : params) {
-                    if (zeroParam.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
-                    }
-                }
-            }
+//            ChangeParam originRsd = new ChangeParam();
+//            if (StringUtils.hasText(task.getZeroParam())) {
+//                List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+//                for (ChangeParam zeroParam : params) {
+//                    if (zeroParam.getWl().equals(waveLength)) {
+//                        BeanUtils.copyProperties(param, originRsd);
+//                        break;
+//                    }
+//                }
+//            }
+//
+//            String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, 1.0);
+//            String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
-            String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, 1.0);
-            String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+            String abs = changeParam.getValue();
+            String tPercent = changeParam.getOtherData();
 
             JSONObject currentInfo = new JSONObject();
 
@@ -1279,7 +1282,7 @@ public class RationMeasureNewWebSocket{
                 operation = operationUtilService.operation(inputParam);
 
                 if (!operation.getSuccess()) {
-                    log.info("设置样品池位x置出错");
+                    log.info("设置样品池位置出错");
                     return R.fail("设置样品池位置出错！");
                 }
 
@@ -1326,21 +1329,24 @@ public class RationMeasureNewWebSocket{
 
                     machineData.add(changeParam);
 
-                    ChangeParam originRsd = new ChangeParam();
-                    if (StringUtils.hasText(task.getZeroParam())) {
-                        List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                        for (ChangeParam zeroParam : params) {
-                            if (zeroParam.getWl().equals(waveLength)) {
-                                BeanUtils.copyProperties(param, originRsd);
-                                break;
-                            }
-                        }
-                    }
-                    String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, 1.0);
-                    String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+//                    ChangeParam originRsd = new ChangeParam();
+//                    if (StringUtils.hasText(task.getZeroParam())) {
+//                        List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+//                        for (ChangeParam zeroParam : params) {
+//                            if (zeroParam.getWl().equals(waveLength)) {
+//                                BeanUtils.copyProperties(param, originRsd);
+//                                break;
+//                            }
+//                        }
+//                    }
+//                    String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, 1.0);
+//                    String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+
+                    String abs = changeParam.getValue();
+                    String tPercent = changeParam.getOtherData();
 
                     RationWavelengthDataInfo originDataInfo = new RationWavelengthDataInfo();
-                    originDataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + i);
+                    originDataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
                     originDataInfo.setWavelength(waveLength);
 
                     originDataInfo.setAbsValue(abs);

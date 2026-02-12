@@ -18,7 +18,6 @@ import com.persee.workstation.uv_inexus.enums.measurementEnums.*;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.*;
 import com.persee.workstation.uv_inexus.po.concise.measurementPo.params.FRationParameter;
-import com.persee.workstation.uv_inexus.po.guide.instrumentPo.DeviceInfoPO;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.model.TaskSpecimen;
 import com.persee.workstation.uv_inexus.service.concise.measurementService.*;
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
@@ -215,6 +214,93 @@ public class ConciseRationMeasureNewWebSocket {
                                     specimen.getDeleteType() != null &&
                                     specimen.getDeleteType().equals("0")
                     );
+
+            if (StringUtils.hasText(oneSampleId)) {
+                FMeasureSample dealSample = tMeasureSampleService.getById(oneSampleId);
+                if (dealSample == null) {
+                    sendError(deviceSerialNumber, "样品不存在");
+                    return;
+                }
+                sampleKind = dealSample.getSampleKind();
+
+                R<Boolean> setParams = setPreMeasureParams(deviceSerialNumber, parameter);
+                if (!setParams.getSuccess()) {
+                    sendError(deviceSerialNumber, "参数设置异常！");
+                    return;
+                }
+
+                boolean repeat = parameter.getRepeatMode().equals("单池重复");
+                dealSample.setSampleLocation(null);
+                R<FRationDataVO> r;
+                if (repeat) {
+                    //重复测量，单独处理！
+                    r = singleSampleRepeatMeasure(dealSample, parameter, task, deviceSerialNumber);
+
+                } else {
+                    r = singleSampleSimpleMeasure(dealSample, parameter, task, deviceSerialNumber);
+                }
+
+                if (!r.getSuccess()) {
+                    sendError(deviceSerialNumber, r.getMessage());
+                    return;
+                }
+                FRationDataVO data = r.getData();
+
+                //保存数据
+                R<FRationSaveCountDataInfo> saved = rationService.saveSampleMeasureData(data);
+                if (!saved.getSuccess()) {
+                    log.info("数据保存异常");
+                    sendError(deviceSerialNumber, "数据保存异常");
+                    return;
+                }
+
+                for (TaskSpecimen speciman : taskSpecimen) {
+
+                    if (speciman.getSpecimenKey().equals(oneSampleId)) {
+                        speciman.setIsTested(right);
+                    }
+                }
+                task = tMeasureTaskService.getById(task.getId());
+                task.setSampleKey(JSON.toJSONString(taskSpecimen));
+                task.setDeviceSerialNumber(deviceSerialNumber);
+                tMeasureTaskService.updateById(task);
+
+
+                if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
+
+                    rationService.changeStandSampleDataDigit(taskId, digit);
+                    rationService.changeUnknowSampleDigit(taskId, digit);
+
+                    JSONObject message = new JSONObject();
+                    message.put("success", "测量完成");
+                    sendMessage(deviceSerialNumber, message);
+
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("result", "finish");
+                    sendMessage(deviceSerialNumber, jsonObject);
+
+                } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
+
+                    rationService.changeUnknowSampleDigit(taskId, digit);
+
+                    JSONObject message = new JSONObject();
+                    message.put("success", "测量完成");
+                    sendMessage(deviceSerialNumber, message);
+
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("result", "finish");
+                    sendMessage(deviceSerialNumber, jsonObject);
+
+                } else {
+                    log.info("未知的样品种类");
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("result", "finish");
+
+                    sendMessage(deviceSerialNumber, jsonObject);
+                }
+                infoService.updateDeviceCurrentStatus(deviceSerialNumber, Constants.DEVICE_STATUS_IDLE);
+                return;
+            }
 
             List<Integer> usefulLocation = fSamplePoolConfigService.getUsefulLocation(deviceSerialNumber);
             R<FSamplePoolInfoVO> poolInfo = fSamplePoolConfigService.querySamplePoolInfo(deviceSerialNumber);
@@ -1128,25 +1214,28 @@ public class ConciseRationMeasureNewWebSocket {
 
             machineData.add(changeParam);
 
-            ChangeParam originRsd = new ChangeParam();
-            if (StringUtils.hasText(task.getZeroParam())) {
-                List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                for (ChangeParam zeroParam : params) {
-                    if (zeroParam.getWl().equals(waveLength)) {
-                        BeanUtils.copyProperties(param, originRsd);
-                        break;
-                    }
-                }
-            }
+//            ChangeParam originRsd = new ChangeParam();
+//            if (StringUtils.hasText(task.getZeroParam())) {
+//                List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+//                for (ChangeParam zeroParam : params) {
+//                    if (zeroParam.getWl().equals(waveLength)) {
+//                        BeanUtils.copyProperties(param, originRsd);
+//                        break;
+//                    }
+//                }
+//            }
+//
+//            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+//            Map<String, String> darkInfo = info.getDarkInfo();
+//            double z = 1.0;
+//            if (darkInfo != null && darkInfo.containsKey(waveLength)) {
+//                z = Double.parseDouble(darkInfo.get(waveLength));
+//            }
+//            String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, z);
+//            String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
 
-            DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-            Map<String, String> darkInfo = info.getDarkInfo();
-            double z = 1.0;
-            if (darkInfo != null && darkInfo.containsKey(waveLength)) {
-                z = Double.parseDouble(darkInfo.get(waveLength));
-            }
-            String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, z);
-            String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+            String abs = changeParam.getValue();
+            String tPercent = changeParam.getOtherData();
 
             JSONObject currentInfo = new JSONObject();
 
@@ -1291,24 +1380,26 @@ public class ConciseRationMeasureNewWebSocket {
 
                 machineData.add(changeParam);
 
-                ChangeParam originRsd = new ChangeParam();
-                if (StringUtils.hasText(task.getZeroParam())) {
-                    List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
-                    for (ChangeParam zeroParam : params) {
-                        if (zeroParam.getWl().equals(waveLength)) {
-                            BeanUtils.copyProperties(param, originRsd);
-                            break;
-                        }
-                    }
-                }
-                DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
-                Map<String, String> darkInfo = info.getDarkInfo();
-                double z = 1.0;
-                if (darkInfo != null && darkInfo.containsKey(waveLength)) {
-                    z = Double.parseDouble(darkInfo.get(waveLength));
-                }
-                String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, z);
-                String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+//                ChangeParam originRsd = new ChangeParam();
+//                if (StringUtils.hasText(task.getZeroParam())) {
+//                    List<ChangeParam> params = JSON.parseArray(task.getZeroParam(), ChangeParam.class);
+//                    for (ChangeParam zeroParam : params) {
+//                        if (zeroParam.getWl().equals(waveLength)) {
+//                            BeanUtils.copyProperties(param, originRsd);
+//                            break;
+//                        }
+//                    }
+//                }
+//                DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+//                Map<String, String> darkInfo = info.getDarkInfo();
+//                double z = 1.0;
+//                if (darkInfo != null && darkInfo.containsKey(waveLength)) {
+//                    z = Double.parseDouble(darkInfo.get(waveLength));
+//                }
+//                String tPercent = DataCountUtil.countTPercent(originRsd, changeParam, z);
+//                String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+                String abs = changeParam.getValue();
+                String tPercent = changeParam.getOtherData();
 
                 FRationWavelengthDataInfo originDataInfo = new FRationWavelengthDataInfo();
                 originDataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
@@ -1428,14 +1519,14 @@ public class ConciseRationMeasureNewWebSocket {
 
         SetParam param = new SetParam();
         param.setPhotoMode(Integer.valueOf(WaveLengthEnum.abs.getCode()));
-        Double v = formulaUtil.calculateStep(Double.parseDouble(parameter.getChangeLampWaveLength()), deviceSerialNumber);
 
-        param.setChangeLampWl(v);
+
+        param.setChangeLampWl(Double.parseDouble(parameter.getChangeLampWaveLength()));
         if (StringUtils.hasText(parameter.getSpectralBandwidth()) && infoService.isNeedSetSit(deviceSerialNumber)) {
-            param.setSlit1(Double.valueOf(parameter.getSpectralBandwidth()));
+            param.setSlit1(Double.parseDouble(parameter.getSpectralBandwidth()));
         }
 
-        param.setResponseTime(Double.valueOf(parameter.getResponseTime()));
+        param.setResponseTime(Double.parseDouble(parameter.getResponseTime()));
         inputParam.setParam(param);
         R<OperationResultEntity> operation = operationUtilService.operation(inputParam);
 

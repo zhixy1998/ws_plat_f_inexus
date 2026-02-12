@@ -1188,6 +1188,18 @@ public class RationServiceImpl implements RationService {
                     JSONObject object = JSONObject.parseObject(measureSample.getNewColData());
                     jsonObject.putAll(object);
                 }
+
+                SystemBusinessParamVO businessParamVO = businessParamService.queryBusinessParam();
+                Integer concentrationDigits = businessParamVO.getConcentrationDigits();
+                if (jsonObject.containsKey(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+                    Object object = jsonObject.get(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity());
+                    if (object != null) {
+                        double v = Double.parseDouble(object.toString());
+                        String s = DataCountUtil.addZero(v, concentrationDigits);
+                        jsonObject.put(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity(), s);
+                    }
+                }
+
                 sampleVOList.add(jsonObject);
 
             }
@@ -1214,32 +1226,67 @@ public class RationServiceImpl implements RationService {
             //没有找到该任务
             return Result.fail(YamlMessageSource.getMessageStatic("00000004"));
         }
+        boolean isWeight = false;
+
+        String methodKey = task.getMethodKey();
+        if (StringUtils.hasText(methodKey)) {
+            TMeasureMethod method = tMeasureMethodService.getById(methodKey);
+            if (method != null && StringUtils.hasText(method.getMeasurementParamInfo())) {
+                RationParameter parameter = JSON.parseObject(method.getMeasurementParamInfo(), RationParameter.class);
+                if(parameter != null && Objects.equals(parameter.getSamplePoolWay(), RationWeightEnum.WEIGHT.getIdentity())) {
+                    isWeight = true;
+                }
+            }
+        }
 
         if (!StringUtils.hasText(task.getTableInfo())) {
             List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), sampleKind);
+            if (isWeight) {
+                for (HeadVO vo : preHead) {
+                    if (vo.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+                        vo.setName(RationWeightEnum.NORMAL_WEIGHT.getName());
+                    }
+                    if (vo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                        vo.setName(RationWeightEnum.FIT_WEIGHT.getName());
+                    }
+                }
+            }
             return Result.ok(preHead);
         } else {
+
+            List<HeadVO> ans = new ArrayList<>();
             RationTaskHeadSnapShot snapShot = JSON.parseObject(task.getTableInfo(), RationTaskHeadSnapShot.class);
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 TaskHeadSnapshot standHead = snapShot.getStandHead();
                 if (standHead != null && standHead.getSampleHeads()!=null && !standHead.getSampleHeads().isEmpty()) {
-                    return Result.ok(standHead.getSampleHeads());
+                    ans.addAll(standHead.getSampleHeads());
                 } else {
                     List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), sampleKind);
-                    return Result.ok(preHead);
+                    ans.addAll(preHead);
                 }
             } else if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
                 TaskHeadSnapshot unknownHead = snapShot.getUnknownHead();
                 if (unknownHead != null && unknownHead.getSampleHeads()!=null && !unknownHead.getSampleHeads().isEmpty()) {
-                    return Result.ok(unknownHead.getSampleHeads());
+                    ans.addAll(unknownHead.getSampleHeads());
                 } else {
                     List<HeadVO> preHead = tMeasureTaskMapper.getPreHead(MeasureTypeEnum.QUANTITATIVE_MEASUREMENT.getDescription(), sampleKind);
-                    return Result.ok(preHead);
+                    ans.addAll(preHead);
                 }
             } else {
                 //样品种类出错
                 return Result.fail(YamlMessageSource.getMessageStatic("00000024"));
             }
+            if (isWeight) {
+                for (HeadVO vo : ans) {
+                    if (vo.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+                        vo.setName(RationWeightEnum.NORMAL_WEIGHT.getName());
+                    }
+                    if (vo.getIdentity().equals(SampleTableEnum.FIT_CONCENTRATION.getIdentity())) {
+                        vo.setName(RationWeightEnum.FIT_WEIGHT.getName());
+                    }
+                }
+            }
+            return Result.ok(ans);
         }
 
     }
@@ -1848,7 +1895,7 @@ public class RationServiceImpl implements RationService {
         Map<String, HeadVO> analyzeMap = new HashMap<>();
 
         for (HeadVO head : heads) {
-            if (head.getIdentity().equals("remark")) {
+            if (SampleTableEnum.REMARK.getIdentity().equals(head.getIdentity())) {
                 head.setLocate(TableHeadILocateEnums.remark.getIdentity());
             }
 
@@ -1904,15 +1951,23 @@ public class RationServiceImpl implements RationService {
         }
         List<HeadVO> ans = new ArrayList<>();
         List<HeadVO> systemHeads = headsMap.get(TableHeadILocateEnums.system.getIdentity());
-        if (systemHeads !=null) ans.addAll(systemHeads);
+        if (systemHeads !=null) {
+            ans.addAll(systemHeads);
+        }
         for (HeadVO an : ans) {
             if (an.getIdentity().equals(SampleTableEnum.SAMPLE_LOCATION.getIdentity())) {
                 ans.remove(an);
                 break;
             }
 
-            if (an.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity()) && StringUtils.hasText(parameter.getUnit())) {
-                an.setName(an.getName() + "(" + parameter.getUnit() + ")");
+            if (an.getIdentity().equals(SampleTableEnum.NORMAL_CONCENTRATION.getIdentity())) {
+                if (parameter.getSamplePoolWay().equals(RationWeightEnum.WEIGHT.getIdentity())) {
+                    an.setName(RationWeightEnum.getName(an.getIdentity()));
+                }
+
+                if (StringUtils.hasText(parameter.getUnit())) {
+                    an.setName(an.getName() + "(" + parameter.getUnit() + ")");
+                }
                 break;
             }
         }
@@ -1932,15 +1987,23 @@ public class RationServiceImpl implements RationService {
         }
 
         List<HeadVO> sampleHeads = headsMap.get(TableHeadILocateEnums.sample.getIdentity());
-        if (sampleHeads !=null) ans.addAll(sampleHeads);
+        if (sampleHeads !=null) {
+            ans.addAll(sampleHeads);
+        }
         ans.addAll(allMeasureHeads);
         List<HeadVO> taskHeads = headsMap.get(TableHeadILocateEnums.data.getIdentity());
-        if (taskHeads !=null) ans.addAll(taskHeads);
+        if (taskHeads !=null) {
+            ans.addAll(taskHeads);
+        }
 
         if (sampleKind.equals(SampleTypeEnum.kind_unknown.getIdentity())) {
 
             String fitConcentrationName = SampleTableEnum.FIT_CONCENTRATION.getName();
             String fitConcentrationIdentity = SampleTableEnum.FIT_CONCENTRATION.getIdentity();
+
+            if (parameter.getSamplePoolWay().equals(RationWeightEnum.WEIGHT.getIdentity())) {
+                fitConcentrationName = RationWeightEnum.getName(fitConcentrationIdentity);
+            }
 
             if (StringUtils.hasText(parameter.getUnit())) {
                 fitConcentrationName = fitConcentrationName + "(" + parameter.getUnit() + ")";
