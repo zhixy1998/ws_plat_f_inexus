@@ -1460,7 +1460,7 @@ public class RationServiceConciseImpl implements RationConciseService {
             return Result.fail(YamlMessageSource.getMessageStatic("00000029"));
         }
 
-        for (Map<String, String> map : dto.getNewStandSamples()) {
+        for (Map<String, String> map : dto.getNewUnknowSamples()) {
             String jsonString = JSON.toJSONString(map);
             FSampleVO sampleDto = JSON.parseObject(jsonString, FSampleVO.class);
             if (sampleDto.getSampleNumber()!=null&&sampleDto.getSampleNumber().length()>256){
@@ -3185,6 +3185,12 @@ public class RationServiceConciseImpl implements RationConciseService {
         if (digit == null || digit < 0) {
             digit = Constants.DEFAULT_DECIMAL_NUM;
             queryDataDTO.setDigit(digit);
+        }
+        //其它小数位数修约
+
+        if (otherDigit==null || otherDigit <0) {
+            otherDigit = Constants.DEFAULT_DECIMAL_NUM;
+            queryDataDTO.setOtherDigit(otherDigit);
         }
 
         if(queryDataDTO.getAllDisplay() == null) {
