@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.dto.sysUserPermissionDto;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -31,10 +32,12 @@ public class QuickConfigSaveDTO {
     private String name;
 
     @ApiModelProperty(value = "绑定权限名称", required = true)
-    @NotBlank(message = "绑定权限名称不能为空")
-    private String permName;
+    private String permIds;
 
     @ApiModelProperty(value = "父级ID（0为一级配置）", required = true)
     @NotNull(message = "父级ID不能为空")
     private Long parentId;
+
+    @ApiModelProperty(value = "状态：0-普通用户，0-GMP", required = true)
+    private Integer quickConfigType;
 }

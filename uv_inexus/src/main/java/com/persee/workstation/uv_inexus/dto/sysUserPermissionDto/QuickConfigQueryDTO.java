@@ -24,8 +24,11 @@ public class QuickConfigQueryDTO {
     private String name;
 
     @ApiModelProperty(value = "配置名称（模糊查询）")
-    private String permName;
+    private String permIds;
 
     @ApiModelProperty(value = "父级ID（精确查询）")
     private Long parentId;
+
+    @ApiModelProperty(value = "状态：0-普通用户，0-GMP")
+    private Long quickConfigType;
 }

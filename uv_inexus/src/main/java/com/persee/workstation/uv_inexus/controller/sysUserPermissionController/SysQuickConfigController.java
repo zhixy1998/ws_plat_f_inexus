@@ -10,6 +10,8 @@
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.persee.workstation.uv_inexus.config.ButtonPermission;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
@@ -55,6 +57,7 @@ public class SysQuickConfigController {
 
     @PostMapping("/add")
     @ApiOperation("新增快捷配置")
+//    @ButtonPermission("revokeActivation")
     @OperateLog(module = "快捷配置管理", description = "新增快捷配置", recordParams = true)
     public Result<String> addQuickConfig(@RequestBody @Valid QuickConfigSaveDTO saveDTO) {
         return sysQuickConfigService.addQuickConfig(saveDTO);
@@ -90,4 +93,10 @@ public class SysQuickConfigController {
         return sysQuickConfigService.getQuickConfigTree();
     }
 
+    @PostMapping("/grant-group-perm")
+    @ApiOperation("快捷配置权限给小组")
+    @OperateLog(module = "快捷配置管理", description = "快捷配置权限给小组", recordParams = true)
+    public Result<Boolean> grantQuickConfigToGroup(@RequestBody @Valid QuickConfigGrantPermDTO grantDTO) {
+        return sysQuickConfigService.grantQuickConfigToGroup(grantDTO);
+    }
 }

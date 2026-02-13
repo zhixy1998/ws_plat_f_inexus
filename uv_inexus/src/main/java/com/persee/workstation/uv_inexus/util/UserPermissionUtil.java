@@ -128,8 +128,8 @@ public class UserPermissionUtil {
     private void extractCodesRecursively(List<PermissionDTO> permissions, List<String> codes) {
         for (PermissionDTO permission : permissions) {
             // 添加当前权限的权限码
-            if (permission.getPermCode() != null && !permission.getPermCode().trim().isEmpty()) {
-                codes.add(permission.getPermCode());
+            if (permission.getPermName() != null && !permission.getPermName().trim().isEmpty()) {
+                codes.add(permission.getPermName());
             }
 
             // 递归处理子权限

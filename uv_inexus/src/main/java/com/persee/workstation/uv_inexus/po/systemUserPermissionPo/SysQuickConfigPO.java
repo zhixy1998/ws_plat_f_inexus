@@ -38,11 +38,15 @@ public class SysQuickConfigPO extends BasePO {
     @ApiModelProperty("快捷配置名称")
     private String name;
 
-    @TableField("perm_name")
+    @TableField("perm_ids")
     @ApiModelProperty("绑定权限名称")
-    private String permName;
+    private String permIds;
 
     @TableField("parent_id")
     @ApiModelProperty("父级ID（0为一级配置）")
     private Long parentId;
+
+    @TableField("quick_config_type")
+    @ApiModelProperty("状态：0-普通用户，0-GMP")
+    private Integer quickConfigType;
 }

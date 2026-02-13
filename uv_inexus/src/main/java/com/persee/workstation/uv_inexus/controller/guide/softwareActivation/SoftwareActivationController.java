@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.service.guide.activationKeyService.Decry
 import com.persee.workstation.uv_inexus.service.guide.instrumentService.DeviceInfoService;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.DeviceDiscoveryService;
 import com.persee.workstation.uv_inexus.service.guide.softwareActivation.SoftwareActivationService;
+import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -56,6 +57,8 @@ public class SoftwareActivationController {
     /**
      * 软件激活接口：通过ID查询设备，验证激活码并更新状态
      */
+    @ButtonPermission("softwareActivationsoftwareActivationDevice")
+    @OperateLog(module = "激活仪器", description = "执行激活仪器", recordParams = true)
     @PostMapping("/activate")
     @ApiOperation("软件激活接口（通过ID查询设备，验证激活码并更新状态）")
     public Result<String> activateSoftware(

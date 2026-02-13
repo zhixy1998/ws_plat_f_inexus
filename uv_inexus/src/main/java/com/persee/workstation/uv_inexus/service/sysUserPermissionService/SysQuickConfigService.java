@@ -11,6 +11,7 @@ package com.persee.workstation.uv_inexus.service.sysUserPermissionService;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
@@ -56,4 +57,6 @@ public interface SysQuickConfigService extends IService<SysQuickConfigPO> {
     Result<String> deleteById(Long id);
 
     Result<List<QuickConfigTreeDTO>> getQuickConfigTree();
+
+    Result<Boolean> grantQuickConfigToGroup(QuickConfigGrantPermDTO grantDTO);
 }

@@ -41,7 +41,10 @@ public class QuickConfigTreeDTO {
     private String name;
 
     @ApiModelProperty("绑定权限名称")
-    private String permName;
+    private String permIds;
+
+    @ApiModelProperty("绑定权限名称")
+    private Integer quickConfigType;
 
     @ApiModelProperty("父级ID")
     private Long parentId;

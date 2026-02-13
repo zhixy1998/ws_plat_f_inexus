@@ -15,22 +15,25 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.persee.workstation.uv_inexus.dao.sysUserPermissionDao.SysQuickConfigMapper;
+import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigGrantPermDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigQueryDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigSaveDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.QuickConfigTreeDTO;
 import com.persee.workstation.uv_inexus.i18n.YamlMessageSource;
 import com.persee.workstation.uv_inexus.model.Result;
+import com.persee.workstation.uv_inexus.model.ResultCodeEnum;
 import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfigPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysQuickConfigService;
+import com.persee.workstation.uv_inexus.service.sysUserPermissionService.UserPermissionService;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +45,9 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
     @Autowired
     private YamlMessageSource yamlMessageSource;
 
+    @Autowired
+    private UserPermissionService userPermissionService;
+
     @Override
     public Result<PageView<SysQuickConfigPO>> getQuickConfigPage(Page<SysQuickConfigPO> page, QuickConfigQueryDTO queryDTO) {
         LambdaQueryWrapper<SysQuickConfigPO> queryWrapper = new LambdaQueryWrapper<>();
@@ -51,8 +57,8 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             queryWrapper.like(SysQuickConfigPO::getName, queryDTO.getName());
         }
 
-        if (queryDTO.getPermName() != null && !queryDTO.getPermName().isEmpty()) {
-            queryWrapper.like(SysQuickConfigPO::getPermName, queryDTO.getPermName());
+        if (queryDTO.getPermIds() != null && !queryDTO.getPermIds().isEmpty()) {
+            queryWrapper.like(SysQuickConfigPO::getPermIds, queryDTO.getPermIds());
         }
         // 条件查询：父级ID精确匹配
         if (queryDTO.getParentId() != null) {
@@ -74,7 +80,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             SysQuickConfigPO parentConfig = baseMapper.selectById(saveDTO.getParentId());
             if (parentConfig == null) {
                 return Result.fail("父级快捷配置不存在，请检查父级ID");
-                // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701001"));
             }
         }
 
@@ -84,7 +89,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         baseMapper.insert(configPO);
 
         return Result.ok("快捷配置新增成功");
-        // 若有国际化配置，可替换为：return Result.ok(YamlMessageSource.getMessageStatic("00701002"));
     }
 
     @Override
@@ -94,7 +98,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         SysQuickConfigPO configPO = baseMapper.selectById(saveDTO.getId());
         if (configPO == null) {
             return Result.fail("快捷配置不存在，修改失败");
-            // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701003"));
         }
 
         // 2. 校验父级配置是否存在（parentId≠0时）
@@ -102,7 +105,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             SysQuickConfigPO parentConfig = baseMapper.selectById(saveDTO.getParentId());
             if (parentConfig == null) {
                 return Result.fail("父级快捷配置不存在，请检查父级ID");
-                // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701001"));
             }
         }
 
@@ -111,7 +113,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         baseMapper.updateById(configPO);
 
         return Result.ok("快捷配置修改成功");
-        // 若有国际化配置，可替换为：return Result.ok(YamlMessageSource.getMessageStatic("00701004"));
     }
 
     @Override
@@ -119,7 +120,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
     public Result<String> deleteBatch(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Result.fail("请选择需要删除的快捷配置");
-            // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701005"));
         }
 
         // 校验是否有子级配置（有子级则不允许删除）
@@ -129,14 +129,12 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             long childCount = baseMapper.selectCount(childQuery);
             if (childCount > 0) {
                 return Result.fail("配置ID：" + id + " 存在子级配置，无法删除");
-                // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701006"));
             }
         }
 
         // 批量删除配置
         baseMapper.deleteBatchIds(ids);
         return Result.ok("快捷配置批量删除成功");
-        // 若有国际化配置，可替换为：return Result.ok(YamlMessageSource.getMessageStatic("00701007"));
     }
 
     @Override
@@ -144,7 +142,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         SysQuickConfigPO configPO = baseMapper.selectById(id);
         if (configPO == null) {
             return Result.fail("快捷配置不存在");
-            // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701003"));
         }
         return Result.ok(configPO);
     }
@@ -156,7 +153,6 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         SysQuickConfigPO configPO = baseMapper.selectById(id);
         if (configPO == null) {
             return Result.fail("快捷配置不存在，删除失败");
-            // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701003"));
         }
 
         // 2. 校验是否有子级配置
@@ -165,13 +161,11 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         long childCount = baseMapper.selectCount(childQuery);
         if (childCount > 0) {
             return Result.fail("该配置存在子级配置，无法删除");
-            // 若有国际化配置，可替换为：return Result.fail(YamlMessageSource.getMessageStatic("00701006"));
         }
 
         // 3. 删除配置
         baseMapper.deleteById(id);
         return Result.ok("快捷配置删除成功");
-        // 若有国际化配置，可替换为：return Result.ok(YamlMessageSource.getMessageStatic("00701008"));
     }
 
     @Override
@@ -197,8 +191,9 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
             dto.setCreateBy(po.getCreateBy() == null ? "" : po.getCreateBy());
             dto.setUpdateBy(po.getUpdateBy() == null ? "" : po.getUpdateBy());
             dto.setName(po.getName());
-            dto.setPermName(po.getPermName());
+            dto.setPermIds(po.getPermIds());
             dto.setParentId(po.getParentId());
+            dto.setQuickConfigType(po.getQuickConfigType());
             dto.setChildren(new ArrayList<>()); // 初始化空children
             return dto;
         }).collect(Collectors.toList());
@@ -221,5 +216,47 @@ public class SysQuickConfigServiceImpl extends ServiceImpl<SysQuickConfigMapper,
         }
 
         return rootList;
+    }
+
+    @Override
+    public Result<Boolean> grantQuickConfigToGroup(QuickConfigGrantPermDTO grantDTO) {
+        try {
+            // 1. 查询所有指定的快捷配置
+            List<SysQuickConfigPO> configList = this.list(
+                    new LambdaQueryWrapper<SysQuickConfigPO>()
+                            .in(SysQuickConfigPO::getId, grantDTO.getQuickConfigIds())
+            );
+            if (configList.isEmpty()) {
+                return Result.fail("快捷配置ID不存在");
+            }
+
+            // 2. 汇总所有perm_ids（去重、过滤空值）
+            Set<String> allPermIds = new HashSet<>();
+            for (SysQuickConfigPO configPO : configList) {
+                String permIds = configPO.getPermIds();
+                if (StringUtils.hasText(permIds)) {
+                    // 拆分perm_ids（逗号分隔）并加入集合去重
+                    String[] permIdArray = permIds.split(",");
+                    allPermIds.addAll(Arrays.asList(permIdArray));
+                }
+            }
+
+            if (allPermIds.isEmpty()) {
+                return Result.fail("快捷配置未绑定任何权限");
+            }
+
+            // 3. 调用更新小组权限方法
+            Result<Boolean> result = userPermissionService.updateGroupPermissions(grantDTO.getGroupId(), new ArrayList<>(allPermIds));
+
+            // 4. 根据Result的code和data判断结果
+            if (ResultCodeEnum.SUCCESS.getCode().equals(result.getCode()) && Boolean.TRUE.equals(result.getData())) {
+                return Result.ok(true).message("快捷配置权限给小组成功");
+            } else {
+                return Result.fail("更新小组权限失败：" + result.getMessage());
+            }
+        } catch (Exception e) {
+            log.error("快捷配置权限给小组失败", e);
+            return Result.fail("快捷配置权限给小组失败：" + e.getMessage());
+        }
     }
 }

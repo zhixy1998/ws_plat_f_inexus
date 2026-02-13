@@ -85,5 +85,9 @@ public class SysPermissionPO extends BasePO {
     // 补充 noAuth 字段，对应数据库表可能有的 no_auth 字段，若没有需确认是否要新增
     @TableField("no_auth") 
     @ApiModelProperty("是否无需权限：1-是，0-否")
-    private Integer noAuth; 
+    private Integer noAuth;
+
+    @TableField("quick_config_type")
+    @ApiModelProperty("状态：0-普通用户，1-GMP")
+    private Integer quickConfigType;
 }
