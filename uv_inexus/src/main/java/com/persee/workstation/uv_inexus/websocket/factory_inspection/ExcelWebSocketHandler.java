@@ -178,6 +178,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private FindMaxOffsetUVTestTool findMaxOffsetUVTestTool;
     @Autowired
     private SpectrumResultCalculator calculator;
+    private volatile Boolean autoSwitchSamplePool = true;
     private final UnknowCountMessageQueue queue = MessageOnTimeDeal.unknowCountMessageQueue;
     //用任务id做主键，任务当前测量的检测项为值，线程安全
     private final Map<String, String> currentMeasureItemMap = new ConcurrentHashMap<>();
@@ -273,7 +274,9 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             if (CollectionUtils.isNotEmpty(sessions)) {
                 for (WebSocketSession session : sessions) {
                     if (isSessionValid(session)) {
+                        log.info("dfdsfsfvvv " + payload.toJSONString());
                         session.sendMessage(new TextMessage(payload.toJSONString()));
+                        break;
                     } else {
                         log.warn("WebSocket消息发送失败: taskId={}, 源会话已关闭", taskId);
                     }
@@ -1803,19 +1806,19 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    public List<JSONObject> analysisProcess(List<Double> xList, List<Double> yList, List<Double> featurePoints, String methodType) throws BusinessException {
+    public List<JSONObject> analysisProcess(List<Double> xList, List<BigDecimal> yList, List<BigDecimal> featurePoints, String methodType) throws BusinessException {
         ArrayList<JSONObject> res = new ArrayList<>();
         AalysisMethodEnum anEnum = AalysisMethodEnum.getByMsg(methodType);
         if (anEnum != null) {
             log.info("分析方法是：{}", anEnum.getMsg());
             switch (anEnum) {
                 case FIND_PEAK:
-                    //寻峰找到点
+                    // 寻峰找到点
                     SystemAlgorithmConfVO confVO = systemAlgorithmConfService.queryAlgorithmConf();
                     Map<String, Object> body1 = new HashMap<>();
                     body1.put("x_data", xList);
                     body1.put("y_data", yList);
-                    double height = Double.parseDouble(confVO.getPeakValleyDiff()) / 100;
+                    BigDecimal height = new BigDecimal(confVO.getPeakValleyDiff()).divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
                     body1.put("height", height);
                     body1.put("distance", confVO.getPeakInterval());
                     log.info("寻峰入参：{}", body1);
@@ -1828,10 +1831,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         log.info("寻峰结果：{}", resultMap);
                         JSONObject jsonObject = new JSONObject();
 
-                        List<Double> xPeak = (List<Double>) resultMap.get("peak_x");
+                        List<BigDecimal> xPeak = (List<BigDecimal>) resultMap.get("peak_x");
                         List<String> yPeak = (List<String>) resultMap.get("peak_y");
-                        for (int j = 0; j < xPeak.size(); j++) {
-                            jsonObject.put("peak", xPeak.get(j));
+                        for (BigDecimal aBigDecimal : xPeak) {
+                            jsonObject.put("peak", aBigDecimal);
                             res.add(jsonObject);
                         }
 
@@ -1841,12 +1844,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     }
                     break;
                 case FIND_HALF_PEAK_WIDTH:
-                    //寻峰找到点
+                    // 寻峰找到点
                     SystemAlgorithmConfVO confVO1 = systemAlgorithmConfService.queryAlgorithmConf();
                     Map<String, Object> body2 = new HashMap<>();
                     body2.put("x_data", xList);
                     body2.put("y_data", yList);
-                    double height1 = Double.parseDouble(confVO1.getPeakValleyDiff()) / 100;
+                    BigDecimal height1 = new BigDecimal(confVO1.getPeakValleyDiff()).divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
                     body2.put("height", height1);
                     body2.put("distance", confVO1.getPeakInterval());
                     log.info("寻峰入参：{}", body2);
@@ -1859,26 +1862,26 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         log.info("寻峰结果：{}", resultMap1);
                         JSONObject jsonObject = new JSONObject();
 
-                        List<Double> xPeak = (List<Double>) resultMap1.get("peak_x");
+                        List<BigDecimal> xPeak = (List<BigDecimal>) resultMap1.get("peak_x");
                         // 安全地处理类型转换
-                        List<Double> yPeak = null;
+                        List<BigDecimal> yPeak = null;
                         Object peakYObj = resultMap1.get("peak_y");
                         if (peakYObj instanceof List) {
                             List<?> rawList = (List<?>) peakYObj;
                             yPeak = new ArrayList<>();
                             for (Object obj : rawList) {
-                                if (obj instanceof Double) {
-                                    yPeak.add((Double) obj);
+                                if (obj instanceof BigDecimal) {
+                                    yPeak.add((BigDecimal) obj);
                                 } else if (obj instanceof String) {
                                     try {
-                                        yPeak.add(Double.parseDouble((String) obj));
+                                        yPeak.add(new BigDecimal((String) obj));
                                     } catch (NumberFormatException e) {
-                                        log.warn("无法解析字符串为double: {}", obj);
+                                        log.warn("无法解析字符串为BigDecimal: {}", obj);
                                         // 可以选择跳过或使用默认值
                                         continue;
                                     }
                                 } else if (obj instanceof Number) {
-                                    yPeak.add(((Number) obj).doubleValue());
+                                    yPeak.add(new BigDecimal(((Number) obj).doubleValue()));
                                 } else {
                                     log.warn("未知的数据类型: {}", obj.getClass().getName());
                                 }
@@ -1886,11 +1889,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                         } else {
                             log.error("peak_y 不是列表类型: {}", peakYObj != null ? peakYObj.getClass().getName() : "null");
                         }
-
-                        List<Double> halfPeakWidths = calculateHalfPeakWidths(xList, yList, xPeak, yPeak);
+                        List<BigDecimal> bigDecimals = doubleListToBigDecimalList(xList);
+                        List<BigDecimal> halfPeakWidths = calculateHalfPeakWidths(bigDecimals, yList, xPeak, yPeak);
 
                         if (CollectionUtils.isNotEmpty(halfPeakWidths)) {
-                            for (Double width : halfPeakWidths) {
+                            for (BigDecimal width : halfPeakWidths) {
                                 JSONObject jsonObject1 = new JSONObject();
                                 jsonObject1.put("peak", width);
                                 res.add(jsonObject1);
@@ -1899,65 +1902,98 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             // 如果无法计算半峰宽，返回0或空值
                             for (int j = 0; j < xPeak.size(); j++) {
                                 JSONObject jsonObject2 = new JSONObject();
-                                jsonObject2.put("peak", 0.0);
+                                jsonObject2.put("peak", BigDecimal.ZERO);
                                 res.add(jsonObject2);
                             }
                         }
                     } catch (Exception e) {
                         log.error("Python服务调用异常：", e);
-
                         throw new BusinessException("Python服务调用异常");
                     }
                     break;
                 case FIND_MAX_OFFSET:
-                    List<Double> calcResult = getMaxDistanceUVTestTool.calcResult(xList, yList, featurePoints);
+                    List<BigDecimal> bigDecimals = doubleListToBigDecimalList(xList);
+                    List<BigDecimal> calcResult = getMaxDistanceUVTestTool.calcResult(bigDecimals, yList, featurePoints);
                     if (CollectionUtils.isNotEmpty(calcResult)) {
-                        for (Double aDouble : calcResult) {
+                        for (BigDecimal aBigDecimal : calcResult) {
                             JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("peak", aDouble);
+                            jsonObject.put("peak", aBigDecimal);
                             res.add(jsonObject);
                         }
                     }
+                    break;
                 case FIND_MAX_MIN_DIFFERENCE:
-                    List<Double> doubles = findMaxOffsetUVTestTool.calcResult(xList, yList, featurePoints);
+                    List<BigDecimal> bigDecimalList = doubleListToBigDecimalList(xList);
+
+                    List<BigDecimal> doubles = findMaxOffsetUVTestTool.calcResult(bigDecimalList, yList, featurePoints);
                     if (CollectionUtils.isNotEmpty(doubles)) {
-                        for (Double aDouble : doubles) {
+                        for (BigDecimal aBigDecimal : doubles) {
                             JSONObject jsonObject = new JSONObject();
-                            jsonObject.put("peak", aDouble);
+                            jsonObject.put("peak", aBigDecimal);
                             res.add(jsonObject);
                         }
                     }
+                    break;
                 default:
                     break;
             }
         }
         if (CollectionUtils.isNotEmpty(res)) {
             for (JSONObject re : res) {
-                Double peak = (Double) re.get("peak");
+                BigDecimal peak = (BigDecimal) re.get("peak");
                 if (peak != null) {
                     // 使用BigDecimal进行科学修约到两位小数
-                    BigDecimal bd = new BigDecimal(peak);
-                    bd = bd.setScale(2, RoundingMode.HALF_UP);
-                    re.put("peak", bd.toString());
+                    peak = peak.setScale(2, RoundingMode.HALF_UP);
+                    re.put("peak", peak.toString());
                 }
-
             }
         }
 
         return res;
     }
 
-    private List<Double> calculateHalfPeakWidths(List<Double> xData, List<Double> yData,
-                                                 List<Double> peakX, List<?> peakYRaw) {
-        List<Double> peakY = convertToDoubleList(peakYRaw);
-        List<Double> fwhmList = new ArrayList<>();
+
+    //写一个方法用来把double的list入参转化为bigdecimal的list出参
+    private List<BigDecimal> doubleListToBigDecimalList(List<Double> doubleList) {
+        List<BigDecimal> bigDecimalList = new ArrayList<>();
+        for (Double d : doubleList) {
+            bigDecimalList.add(new BigDecimal(d));
+        }
+        return bigDecimalList;
+    }
+
+
+
+
+
+    private List<BigDecimal> calculateHalfPeakWidths(List<BigDecimal> xData, List<BigDecimal> yData,
+                                                     List<BigDecimal> peakX, List<?> peakYRaw) {
+        // 将 peakYRaw 转换为 BigDecimal 列表
+        List<BigDecimal> peakY = new ArrayList<>();
+        for (Object obj : peakYRaw) {
+            if (obj instanceof Number) {
+                peakY.add(new BigDecimal(((Number) obj).doubleValue()));
+            } else if (obj instanceof String) {
+                try {
+                    peakY.add(new BigDecimal((String) obj));
+                } catch (NumberFormatException e) {
+                    log.warn("无法解析字符串为 BigDecimal: {}", obj);
+                    peakY.add(BigDecimal.ZERO); // 默认值
+                }
+            } else {
+                log.warn("未知的数据类型: {}", obj.getClass().getName());
+                peakY.add(BigDecimal.ZERO); // 默认值
+            }
+        }
+
+        List<BigDecimal> fwhmList = new ArrayList<>();
 
         for (int i = 0; i < peakX.size(); i++) {
-            Double peakXVal = peakX.get(i);
-            Double peakYVal = peakY.get(i);
+            BigDecimal peakXVal = peakX.get(i);
+            BigDecimal peakYVal = peakY.get(i);
 
             // 计算半峰高
-            Double halfHeight = peakYVal / 2.0;
+            BigDecimal halfHeight = peakYVal.divide(BigDecimal.valueOf(2.0), 10, RoundingMode.HALF_UP);
 
             // 找到峰值点在数据中的索引
             int peakIndex = findNearestIndex(xData, peakXVal);
@@ -1970,13 +2006,13 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
                 if (leftIndex != -1 && rightIndex != -1) {
                     // 使用绝对值确保结果为正
-                    Double fwhm = Math.abs(xData.get(rightIndex) - xData.get(leftIndex));
+                    BigDecimal fwhm = xData.get(rightIndex).subtract(xData.get(leftIndex)).abs();
                     fwhmList.add(fwhm);
                 } else {
-                    fwhmList.add(0.0);
+                    fwhmList.add(BigDecimal.ZERO);
                 }
             } else {
-                fwhmList.add(0.0);
+                fwhmList.add(BigDecimal.ZERO);
             }
         }
 
@@ -1984,16 +2020,20 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
+
     /**
      * 找到最接近目标值的索引
      */
-    private int findNearestIndex(List<Double> xData, Double target) {
+    private int findNearestIndex(List<BigDecimal> xData, BigDecimal target) {
         int nearestIndex = -1;
-        double minDiff = Double.MAX_VALUE;
+        BigDecimal minDiff = new BigDecimal(Double.MAX_VALUE); // 使用 BigDecimal 替代 double
 
         for (int i = 0; i < xData.size(); i++) {
-            double diff = Math.abs(xData.get(i) - target);
-            if (diff < minDiff) {
+            // 使用 BigDecimal 的 subtract 和 abs 方法进行计算
+            BigDecimal diff = xData.get(i).subtract(target).abs();
+
+            // 比较 BigDecimal 类型的差值
+            if (diff.compareTo(minDiff) < 0) {
                 minDiff = diff;
                 nearestIndex = i;
             }
@@ -2002,15 +2042,16 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         return nearestIndex;
     }
 
+
     /**
      * 向左寻找半峰高点
      */
-    private int findLeftHalfMaximum(List<Double> xData, List<Double> yData, int peakIndex, Double halfHeight) {
+    private int findLeftHalfMaximum(List<BigDecimal> xData, List<BigDecimal> yData, int peakIndex, BigDecimal halfHeight) {
         // 从峰值点向左搜索
         for (int i = peakIndex; i >= 0; i--) {
-            if (yData.get(i) <= halfHeight) {
+            if (yData.get(i).compareTo(halfHeight) <= 0) {
                 // 找到最接近半峰高的点
-                if (i + 1 < yData.size() && yData.get(i + 1) >= halfHeight) {
+                if (i + 1 < yData.size() && yData.get(i + 1).compareTo(halfHeight) >= 0) {
                     // 线性插值找到精确的半峰高点
                     return interpolateHalfMaximumIndex(xData, yData, i, i + 1, halfHeight);
                 }
@@ -2023,12 +2064,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     /**
      * 向右寻找半峰高点
      */
-    private int findRightHalfMaximum(List<Double> xData, List<Double> yData, int peakIndex, Double halfHeight) {
+    private int findRightHalfMaximum(List<BigDecimal> xData, List<BigDecimal> yData, int peakIndex, BigDecimal halfHeight) {
         // 从峰值点向右搜索
         for (int i = peakIndex; i < yData.size(); i++) {
-            if (yData.get(i) <= halfHeight) {
+            if (yData.get(i).compareTo(halfHeight) <= 0) {
                 // 找到最接近半峰高的点
-                if (i - 1 >= 0 && yData.get(i - 1) >= halfHeight) {
+                if (i - 1 >= 0 && yData.get(i - 1).compareTo(halfHeight) >= 0) {
                     // 线性插值找到精确的半峰高点
                     return interpolateHalfMaximumIndex(xData, yData, i - 1, i, halfHeight);
                 }
@@ -2041,27 +2082,29 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     /**
      * 线性插值找到精确的半峰高点索引
      */
-    private int interpolateHalfMaximumIndex(List<Double> xData, List<Double> yData,
-                                            int index1, int index2, Double targetY) {
+    private int interpolateHalfMaximumIndex(List<BigDecimal> xData, List<BigDecimal> yData,
+                                            int index1, int index2, BigDecimal targetY) {
         // 使用线性插值计算更精确的半峰高点
-        Double x1 = xData.get(index1);
-        Double y1 = yData.get(index1);
-        Double x2 = xData.get(index2);
-        Double y2 = yData.get(index2);
+        BigDecimal x1 = xData.get(index1);
+        BigDecimal y1 = yData.get(index1);
+        BigDecimal x2 = xData.get(index2);
+        BigDecimal y2 = yData.get(index2);
 
-        if (Math.abs(y2 - y1) < 1e-10) {
+        BigDecimal yDiff = y2.subtract(y1);
+        if (yDiff.abs().compareTo(new BigDecimal("1e-10")) < 0) {
             // 避免除零错误
-            return y1 >= targetY ? index1 : index2;
+            return y1.compareTo(targetY) >= 0 ? index1 : index2;
         }
 
         // 线性插值公式：x = x1 + (targetY - y1) * (x2 - x1) / (y2 - y1)
-        Double interpolatedX = x1 + (targetY - y1) * (x2 - x1) / (y2 - y1);
+        BigDecimal interpolatedX = x1.add(targetY.subtract(y1).multiply(x2.subtract(x1)).divide(yDiff, 10, RoundingMode.HALF_UP));
 
         // 找到最接近插值点的索引
         int nearestIndex = index1;
-        double minDiff = Math.abs(xData.get(index1) - interpolatedX);
+        BigDecimal minDiff = xData.get(index1).subtract(interpolatedX).abs();
 
-        if (Math.abs(xData.get(index2) - interpolatedX) < minDiff) {
+        BigDecimal diffAtIndex2 = xData.get(index2).subtract(interpolatedX).abs();
+        if (diffAtIndex2.compareTo(minDiff) < 0) {
             nearestIndex = index2;
         }
 
@@ -2116,7 +2159,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         //x轴list
         ArrayList<Double> xList = new ArrayList<>();
         //y轴list liveEcho
-        ArrayList<Double> yList = new ArrayList<>();
+        ArrayList<BigDecimal> yList = new ArrayList<>();
         HashMap<String, List<JSONObject>> map = new HashMap<>();
 
         //光度模式
@@ -2636,12 +2679,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             return R.fail(map);
 //            stopTask(taskId);
         }
-        List<Double> doubleList = new ArrayList<>();
+        List<BigDecimal> bigDecimalList = new ArrayList<>();
         if (CollectionUtils.isNotEmpty(stringList)) {
             for (String str : stringList) {
                 if (str != null) {
                     try {
-                        doubleList.add(Double.parseDouble(str));
+                        bigDecimalList.add(new BigDecimal(str));
                     } catch (NumberFormatException e) {
                         log.warn("无法解析为数字: {}", str);
                     }
@@ -2649,7 +2692,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
             }
         }
         try {
-            res = analysisProcess(xList, yList, doubleList, methodType);
+            res = analysisProcess(xList, yList, bigDecimalList, methodType);
         } catch (Exception e) {
             log.error("任务执行失败：", e);
             JSONObject jsonObject = new JSONObject();
@@ -2690,7 +2733,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     //根据不同的光度模式得到点
-    private void getPointsByLuminosityMode(String luminosityMode, SpectrumPoint p, List<Double> xList, List<Double> yList, String taskId, Integer i, List<JSONObject> cachedDataPoints, List<JSONObject> list, Map<String, Object> dataMap) throws BusinessException {
+    private void getPointsByLuminosityMode(String luminosityMode, SpectrumPoint p, List<Double> xList, List<BigDecimal> yList, String taskId, Integer i, List<JSONObject> cachedDataPoints, List<JSONObject> list, Map<String, Object> dataMap) throws BusinessException {
 // 将时间戳转换为相对于第一个点的秒数
 //        long aaTimestamp = waveformCache.getOrDefault(taskId, new ArrayList<>()).stream()
 //                .findFirst()
@@ -2730,12 +2773,12 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
                     double wavelength = p.getAbsResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getAbsResult().getAbs()), 4);
+                    BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), 4);
                     point.put("x", relativeTimeInSeconds);
-                    yList.add(aDouble);
-                    point.put("y", aDouble);
+                    yList.add(new BigDecimal(p.getAbsResult().getAbs()));
+                    point.put("y", p.getAbsResult().getAbs());
 
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + aDouble + " Abs");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength +"nm "+bigDecimal + " Abs");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2744,10 +2787,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     double wavelength = p.getAbsResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getAbsResult().getAbs()), 4);
-                    point.put("y", aDouble);
-                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + aDouble + " Abs");
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), 4);
+                    point.put("y", p.getAbsResult().getAbs());
+                    yList.add(new BigDecimal(p.getAbsResult().getAbs()));
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength +"nm "+ aDouble + " Abs");
 
                 }
 //                    point.put("roundOffY", valueY);
@@ -2789,10 +2832,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
                     double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getTResult().getTPercent()), 4);
+                    BigDecimal bigDecimal = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), 4);
                     point.put("x", relativeTimeInSeconds);
-                    yList.add(aDouble);
-                    point.put("y", aDouble);
+                    yList.add(new BigDecimal(p.getTResult().getTPercent()));
+                    point.put("y", p.getTResult().getTPercent());
 
 //
 //
@@ -2806,7 +2849,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getTResult().getTPercent());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + aDouble + " T%");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength +"nm "+ bigDecimal + " T%");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2815,10 +2858,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     double wavelength = p.getTResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getTResult().getTPercent()), 4);
-                    point.put("y", aDouble);
-                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + aDouble + " T%");
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), 4);
+                    point.put("y", p.getTResult().getTPercent());
+                    yList.add(new BigDecimal(p.getTResult().getTPercent()));
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: "+ wavelength +"nm " + aDouble + " T%");
 
                 }
                 points.add(point);
@@ -2855,10 +2898,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
 //                    double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getEsResult().getEs()), 4);
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), 4);
                     point.put("x", relativeTimeInSeconds);
-                    yList.add(aDouble);
-                    point.put("y", aDouble);
+                    yList.add(new BigDecimal(p.getEsResult().getEs()));
+                    point.put("y", p.getEsResult().getEs());
+                    double wavelength = p.getEsResult().getWavelength();
 //
 //                    payload.put("timestamp", p.getTimestamp());
 //                    payload.put("totalPoints", scanCount);
@@ -2870,7 +2914,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getEsResult().getEs());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + aDouble + " Es");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength +"nm "+ aDouble + " Es");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2879,10 +2923,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     double wavelength = p.getEsResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getEsResult().getEs()), 4);
-                    point.put("y", aDouble);
-                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + aDouble + " Es");
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), 4);
+                    point.put("y", p.getEsResult().getEs());
+                    yList.add(new BigDecimal(p.getEsResult().getEs()));
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength +"nm "+ aDouble + " Es");
 
                 }
                 points.add(point);
@@ -2919,10 +2963,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     point.put("xType", "秒(s)");
 //                    double wavelength = p.getTResult().getWavelength();
                     xList.add(relativeTimeInSeconds);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getErResult().getEr()), 4);
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), 4);
                     point.put("x", relativeTimeInSeconds);
-                    yList.add(aDouble);
-                    point.put("y", aDouble);
+                    yList.add(new BigDecimal(p.getErResult().getEr()));
+                    point.put("y", p.getErResult().getEr());
+                    double wavelength = p.getErResult().getWavelength();
 //
 //                    payload.put("timestamp", p.getTimestamp());
 //                    payload.put("totalPoints", scanCount);
@@ -2934,7 +2979,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getErResult().getEr());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + aDouble + " Er");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: "+ wavelength +"nm " + aDouble + " Er");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2943,10 +2988,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     double wavelength = p.getErResult().getWavelength();
                     point.put("x", wavelength);
                     xList.add(wavelength);
-                    Double aDouble = roundToDecimalPlaces(new Double(p.getErResult().getEr()), 4);
-                    point.put("y", aDouble);
-                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + aDouble + " Er");
+                    BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), 4);
+                    point.put("y", p.getErResult().getEr());
+                    yList.add(new BigDecimal(p.getErResult().getEr()));
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength +"nm "+ aDouble + " Er");
 
                 }
                 points.add(point);
@@ -2969,21 +3014,19 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
-     * 对给定的Double数值进行四舍五入，保留指定的小数位数
+     * 对给定的BigDecimal数值进行四舍五入，保留指定的小数位数
      *
-     * @param value 需要处理的Double数值
+     * @param value 需要处理的BigDecimal数值
      * @param scale 保留的小数位数
-     * @return 四舍五入后的Double结果
+     * @return 四舍五入后的BigDecimal结果
      */
-    private Double roundToDecimalPlaces(Double value, Integer scale) {
+    private BigDecimal roundToDecimalPlaces(BigDecimal value, Integer scale) {
         if (value == null || scale == null) {
             return value;
         }
 
         try {
-            BigDecimal bd = new BigDecimal(value);
-            bd = bd.setScale(scale, RoundingMode.HALF_UP);
-            return bd.doubleValue();
+            return value.setScale(scale, RoundingMode.HALF_UP);
         } catch (Exception e) {
             log.warn("数值四舍五入处理失败: value={}, scale={}", value, scale, e);
             return value;
@@ -3116,7 +3159,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         // X轴数据列表
         ArrayList<Double> xList = new ArrayList<>();
         // Y轴数据列表
-        ArrayList<Double> yList = new ArrayList<>();
+        ArrayList<BigDecimal> yList = new ArrayList<>();
 
         // 增益
         Integer gain = MapUtils.getInteger(dataMap, GAIN.getDescription());
@@ -3546,9 +3589,10 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
         // 最终分析结果
         try {
             if (!xList.isEmpty() && !yList.isEmpty()) {
-                List<Double> analysisResult = findMaxOffsetUVTestTool.calcResult(xList, yList, null);
+                List<BigDecimal> bigDecimals = doubleListToBigDecimalList(xList);
+                List<BigDecimal> analysisResult = findMaxOffsetUVTestTool.calcResult(bigDecimals, yList, null);
                 if (CollectionUtils.isNotEmpty(analysisResult)) {
-                    for (Double value : analysisResult) {
+                    for (BigDecimal value : analysisResult) {
                         JSONObject resultObj = new JSONObject();
                         resultObj.put("peak", value.toString());
                         res.add(resultObj);

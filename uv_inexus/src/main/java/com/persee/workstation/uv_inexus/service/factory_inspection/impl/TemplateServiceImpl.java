@@ -1254,12 +1254,23 @@ public class TemplateServiceImpl extends ServiceImpl<TemplateMapper, ExcelTempla
     public Result<Page<TemplateResponseDto>> getTemplateList(TemplateQeqDto templateQeqDto) {
         Page<ExcelTemplate> page = new Page<>(templateQeqDto.getPageNum(), templateQeqDto.getPageSize());
         LambdaQueryWrapper<ExcelTemplate> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery())
-                .and(wrapper -> wrapper
-                        .like(ExcelTemplate::getCreateBy, templateQeqDto.getUpdateBy())
-                        .or()
-                        .isNull(ExcelTemplate::getCreateBy)
-                );
+        if ("asc".equals(templateQeqDto.getSort())) {
+            queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery())
+                    .and(wrapper -> wrapper
+                            .like(ExcelTemplate::getCreateBy, templateQeqDto.getUpdateBy())
+                            .or()
+                            .isNull(ExcelTemplate::getCreateBy)
+                    )
+                    .orderByAsc(ExcelTemplate::getLastUsed);
+        }else {
+            queryWrapper.like(ExcelTemplate::getTemplateName, templateQeqDto.getQuery())
+                    .and(wrapper -> wrapper
+                            .like(ExcelTemplate::getCreateBy, templateQeqDto.getUpdateBy())
+                            .or()
+                            .isNull(ExcelTemplate::getCreateBy)
+                    )
+                    .orderByDesc(ExcelTemplate::getLastUsed);
+        }
         // 获取分页结果
         Page<ExcelTemplate> pageResult = this.page(page, queryWrapper);
         // 转换为TemplateResponseDto

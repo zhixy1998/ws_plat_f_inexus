@@ -2,6 +2,8 @@ package com.persee.workstation.uv_inexus.component;
 
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,23 +13,23 @@ import java.util.List;
 @Component
 public class FindMaxOffsetUVTestTool extends IAlgorithm {
     @Override
-    public List<Double> calcResult(List<Double> X, List<Double> Y, List<Double> featurePoints) {
-        List<Double> result = new ArrayList<>();
+    public List<BigDecimal> calcResult(List<BigDecimal> X, List<BigDecimal> Y, List<BigDecimal> featurePoints) {
+        List<BigDecimal> result = new ArrayList<>();
         if (!X.isEmpty() && X.size() == Y.size()) {
-            double minimum = Double.MAX_VALUE;
-            double maximum = Double.MIN_VALUE;
-            for (double item : Y) {
-                if (minimum > item) {
+            BigDecimal minimum = new BigDecimal(Double.MAX_VALUE);
+            BigDecimal maximum = new BigDecimal(Double.MIN_VALUE);
+            for (BigDecimal item : Y) {
+                if (item.compareTo(minimum) < 0) {
                     minimum = item;
                 }
-                if (maximum < item) {
+                if (item.compareTo(maximum) > 0) {
                     maximum = item;
                 }
             }
-            double diff = maximum - minimum;
-            // 使用BigDecimal进行四舍五入到小数点后两位
-            java.math.BigDecimal bd = new java.math.BigDecimal(diff).setScale(2, java.math.RoundingMode.HALF_UP);
-            result.add(bd.doubleValue());
+            BigDecimal diff = maximum.subtract(minimum);
+            // 四舍五入到小数点后两位
+            BigDecimal roundedDiff = diff.setScale(2, RoundingMode.HALF_UP);
+            result.add(roundedDiff);
         }
         return result;
     }
