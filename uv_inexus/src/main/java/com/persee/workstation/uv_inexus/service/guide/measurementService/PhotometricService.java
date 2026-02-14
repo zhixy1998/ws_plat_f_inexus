@@ -13,6 +13,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.persee.workstation.uv_inexus.dto.guide.PhotometricMethodParamCheckDTO;
 import com.persee.workstation.uv_inexus.dto.guide.UseMethodDTO;
 import com.persee.workstation.uv_inexus.dto.measurementDto.*;
+import com.persee.workstation.uv_inexus.enums.measurementEnums.QualityConfEnums;
 import com.persee.workstation.uv_inexus.model.R;
 import com.persee.workstation.uv_inexus.model.Result;
 import com.persee.workstation.uv_inexus.po.guide.measurementPo.TMeasureSample;
@@ -154,4 +155,7 @@ public interface PhotometricService {
     List<PhotometricCountDataInfo> dataRounding(List<PhotometricCountDataInfo> dataVO, PhotometricParameter parameter);
 
     R<Boolean> createSample(String taskId, String updateBy, String deviceSerialNumber);
+
+    Map<String, String> checkValueQuantity(PhotometricParameter parameter, PhotometricOriginDataInfo dataInfo, QualityConfEnums qcType);
+
 }

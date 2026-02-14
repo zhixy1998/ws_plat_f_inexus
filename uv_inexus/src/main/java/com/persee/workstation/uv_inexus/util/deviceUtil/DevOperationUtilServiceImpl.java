@@ -60,8 +60,6 @@ import java.util.concurrent.Executors;
 @Service("DevOperationUtilService")
 @Slf4j
 public class DevOperationUtilServiceImpl implements DevOperationUtilService {
-    @Autowired
-    DeviceConnectionManager deviceConnectionManager;
 
     @Autowired
     DeviceInfoService infoService;
@@ -981,7 +979,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 R<String> r = udpSendUtil.deviceNewIp(deviceInfo.getDeviceId(), comId, bytes, ReplyNumber, Timeout, connectType, newIp.toString(), headReceiveBytes);
                 if (!r.getSuccess()) {
-                    deviceConnectionManager.removeDevice(deviceInfo.getDeviceId());
+                    deviceManager.removeDevice(deviceInfo.getDeviceId());
                     return R.fail("当前仪器无法连接！");
                 }
                 sendIp = newIp.toString();
@@ -1049,7 +1047,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 }
                 if (!r.getSuccess()) {
 
-                    deviceConnectionManager.removeDevice(deviceId);
+                    deviceManager.removeDevice(deviceId);
 
                     return R.fail("当前仪器无法连接！");
                 }
@@ -1573,7 +1571,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         List<String> wavelength = inputParam.getWavelength();
 
         if (wavelength == null || wavelength.isEmpty()) {
-            return R.fail("请选择要零点的波长");
+            return R.fail("请选择测量的波长");
         }
 
         DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
@@ -1586,7 +1584,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
 
         byte[] bytes;
-        R<Object> zero = new R<>();
+        R<Object> mesure = new R<>();
         List<ChangeParam> changeParamList = new ArrayList<>();
 
         if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
@@ -1596,17 +1594,17 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 cmdId = T600ComIdEnums.SetWl.getComId();
                 Transition transition = xml.get(cmdId);
-                int ReplyNumber = transition.getReplyNumber();
-                int Timeout = transition.getTimeout();
+                int replyNumber = transition.getReplyNumber();
+                int timeout = transition.getTimeout();
                 List<String> headReceiveBytes = transition.getHeadReceiveBytes();
 
                 Double v = formulaUtil.calculateStep(Double.parseDouble(s), deviceSerialNumber);
                 param = new Object[]{v};
                 bytes = protocolItemUtil.calcSendBytes(param, transition);
 
-                zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
+                mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
 
-                if (!zero.getSuccess()) {
+                if (!mesure.getSuccess()) {
                     return R.fail("零点失败");
                 }
 
@@ -1614,18 +1612,46 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                 cmdId = T600ComIdEnums.Measure.getComId();
                 transition = xml.get(cmdId);
-                ReplyNumber = transition.getReplyNumber();
-                Timeout = transition.getTimeout();
+                replyNumber = transition.getReplyNumber();
+                timeout = transition.getTimeout();
                 param = new Object[]{};
                 bytes = protocolItemUtil.calcSendBytes(param, transition);
                 headReceiveBytes = transition.getHeadReceiveBytes();
-                zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
-                if (!zero.getSuccess()) {
+                mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+                if (!mesure.getSuccess()) {
                     return R.fail("零点失败");
                 } else {
-                    Object data = zero.getData();
+                    Object data = mesure.getData();
                     resultEntity = (OperationResultEntity) data;
                     ChangeParam measureResult = resultEntity.getMeasureResult();
+
+
+                    ChangeParam zeroResult = device.getZeroResult(s);
+
+                    String mode = device.getLuminosityMode();
+
+                    if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
+
+                        String value = DataCountUtil.countErOrEs(measureResult, mode);
+                        measureResult.setValue(value);
+
+                    } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
+                        Map<String, String> darkInfo = info.getDarkInfo();
+                        String z = darkInfo.get(s);
+                        if (z == null) {
+                            z = "1";
+                        }
+                        String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+                        String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+                        if (mode.equals(WaveLengthEnum.abs.getCode())) {
+                            measureResult.setValue(abs);
+                            measureResult.setOtherData(tPercent);
+                        } else {
+                            measureResult.setValue(tPercent);
+                            measureResult.setOtherData(abs);
+                        }
+                    }
+
                     measureResult.setWl(s);
                     changeParamList.add(measureResult);
                 }

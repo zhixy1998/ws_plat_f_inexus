@@ -912,11 +912,14 @@ public class DeviceManageServiceImpl implements DeviceManageService {
         }
 
         if (DeviceCalibrationParamEnum.WaveBrand.getType().equals(param)) {
-            for (String s : modelInfoPO.getSpacingWidth()) {
-                DataNameValue value = new DataNameValue();
 
-                value.setDataValue(s);
-                ans.add(value);
+            if (modelInfoPO != null && modelInfoPO.getSpacingWidth() != null) {
+                for (String s : modelInfoPO.getSpacingWidth()) {
+                    DataNameValue value = new DataNameValue();
+
+                    value.setDataValue(s);
+                    ans.add(value);
+                }
             }
         }
         if (DeviceCalibrationParamEnum.Step.getType().equals(param)) {

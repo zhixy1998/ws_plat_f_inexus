@@ -86,7 +86,8 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
             calStdCats.setIsDelete(NOT_DELETED.getCode());
             calStdCats.setCreateBy(cats.getUpdateBy());
             LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(CalStdCats::getName, calStdCats.getName());
+            wrapper.eq(CalStdCats::getName, calStdCats.getName())
+                    .eq(CalStdCats::getIsDelete, NOT_DELETED.getCode());
             long count = this.count(wrapper);
             if (count > 0) {
                 throw new RuntimeException("标准物名称已存在");
@@ -102,25 +103,31 @@ public class CalStdCatsServiceImpl extends ServiceImpl<CalStdCatsMapper, CalStdC
     public Result delCalStdCats(String id) {
         LambdaQueryWrapper<CalArtifacts> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CalArtifacts::getCategoryId, id);
+
+        LambdaQueryWrapper<CalStdCats> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CalStdCats::getId, id)
+                .eq(CalStdCats::getIsDelete, NOT_DELETED.getCode())
+                .eq(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode());
         if (0 != calArtifactsMapper.selectCount(queryWrapper)) {
             return Result.fail("请先删除该标准物下的所有标准实体物!!!");
-        }else {
+        } else if (count(wrapper) > 0) {
+            return Result.fail("该标准物质类型为内置，不可删除!!!");
+        } else {
             LambdaUpdateWrapper<CalStdCats> wrapper1 = new LambdaUpdateWrapper<>();
             wrapper1.eq(CalStdCats::getId, id)
                     .notIn(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode())
                     .set(CalStdCats::getIsDelete, DELETED.getCode());
             boolean b = update(wrapper1);
-            if (b){
-                return Result.ok();
-            }
+            return b ? Result.ok() : calArtifactsService.delCalArtifacts(id) ? Result.ok() : Result.fail();
         }
 
-        LambdaUpdateWrapper<CalStdCats> wrapper = new LambdaUpdateWrapper<>();
-//        UpdateChainWrapper<CalStdCats> wrapper = new UpdateChainWrapper<>(calStdCatsMapper);
-        wrapper.set(CalStdCats::getIsDelete, DELETED.getCode())
-                .eq(CalStdCats::getId, id);
-        boolean update = update(wrapper);
-        return update ? Result.ok() : calArtifactsService.delCalArtifacts(id) ? Result.ok() : Result.fail();
+//        LambdaUpdateWrapper<CalStdCats> wrapper = new LambdaUpdateWrapper<>();
+////        UpdateChainWrapper<CalStdCats> wrapper = new UpdateChainWrapper<>(calStdCatsMapper);
+//        wrapper.set(CalStdCats::getIsDelete, DELETED.getCode())
+//                .notIn(CalStdCats::getMaterialType, BASE_FIXED_SUBSTANCE.getCode())
+//                .eq(CalStdCats::getId, id);
+//        boolean update = update(wrapper);
+//
     }
 
     @Override

@@ -20,6 +20,10 @@ public class FQualityConfVO {
     @ApiModelProperty("质控类型")
     private String controlType;
 
+    @ApiModelProperty("光度波长值")
+    private String waveLength;
+
+
     @ApiModelProperty("质控描述")
     private String controlDesc;
 

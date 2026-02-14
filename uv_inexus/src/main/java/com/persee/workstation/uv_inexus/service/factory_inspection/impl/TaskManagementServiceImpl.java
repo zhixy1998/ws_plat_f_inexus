@@ -379,7 +379,28 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
         wrapper.eq(ExcelDataAsset::getTemplateCode, excelTemplate.getTemplateCode());
         List<ExcelDataAsset> dataAssetList = dataAssetService.list(wrapper);
         List<TaskExecutionDetail> list = new ArrayList<>();
-
+        if (CollectionUtils.isNotEmpty(dataAssetList)){
+            for (ExcelDataAsset asset : dataAssetList) {
+//
+//            }
+//            dataAssetList.forEach(asset -> {
+                Map<String, Object> dataMap = asset.getDataMap();
+                String string = MapUtils.getString(dataMap, "暗电流物质");
+                if(StringUtils.isNotBlank(string)){
+                    LambdaQueryWrapper<CalStdCats> queryWrapper = new LambdaQueryWrapper<>();
+                    queryWrapper.eq(CalStdCats::getName, string);
+                    List<CalStdCats> list1 = catsService.list(queryWrapper);
+                    if (CollectionUtils.isNotEmpty(list1)){
+                        CalStdCats cats = list1.get(0);
+                        TaskCheckItemDto.Standard standard = new TaskCheckItemDto.Standard();
+                        standard.setStandardId(cats.getId());
+                        standard.setStandardName(cats.getName());
+                        standards.add(standard);
+                        break;
+                    }
+                }
+            }
+        }
         // 使用stream的filter方法优化嵌套循环，提高性能
         list = details.stream()
                 .filter(detail -> dataAssetList.stream()
@@ -408,7 +429,16 @@ public class TaskManagementServiceImpl extends ServiceImpl<TaskMgrMapper, TaskMa
                 standards.add(standard);
             });
         }
-        return Result.ok(standards);
+        // 对 standards 列表进行去重处理，根据 standardId 去重
+        List<TaskCheckItemDto.Standard> distinctStandards = new ArrayList<>(standards.stream()
+                .collect(Collectors.toMap(
+                        TaskCheckItemDto.Standard::getStandardId,
+                        standard -> standard,
+                        (existing, replacement) -> existing
+                ))
+                .values());
+        return Result.ok(distinctStandards);
+//        return Result.ok(standards);
     }
 
     @Override

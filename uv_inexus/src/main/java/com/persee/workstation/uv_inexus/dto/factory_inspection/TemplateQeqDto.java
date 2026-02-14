@@ -22,4 +22,9 @@ public class TemplateQeqDto {
      */
     @ApiModelProperty(value = "修改者字段")
     private String updateBy;
+    /**
+     * 排序方式
+     */
+    @ApiModelProperty(value = "排序方式")
+    private String sort;
 }

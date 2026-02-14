@@ -635,7 +635,7 @@ public class ConcisePhotometricNewWebSocket {
                 JSONObject object = new JSONObject();
                 object.put("sampleId", sampleKey);
                 object.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
-                object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
+                object.put("identity", DataIdentityEnums.middle.getIdentity() + "-" + i);
                 object.put("value", repeatMiddleTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 sendMessage(deviceSerialNumber, object);
             }
