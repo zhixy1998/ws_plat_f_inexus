@@ -22,11 +22,13 @@ import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 快捷配置Controller
@@ -88,9 +90,11 @@ public class SysQuickConfigController {
      * 查询快捷配置树形结构（一级+二级）
      */
     @GetMapping("/tree")
-    @ApiOperation("查询快捷配置树形结构")
-    public Result<List<QuickConfigTreeDTO>> getQuickConfigTree() {
-        return sysQuickConfigService.getQuickConfigTree();
+    @ApiOperation("查询快捷配置树形结构（按小组ID匹配拥有状态）")
+    public Result<List<Map<String, Object>>> getQuickConfigTree(
+            @ApiParam(value = "小组ID", required = false)
+            @RequestParam(required = false) String groupId) {
+        return sysQuickConfigService.getQuickConfigTree(groupId);
     }
 
     @PostMapping("/grant-group-perm")

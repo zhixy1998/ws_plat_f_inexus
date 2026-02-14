@@ -20,6 +20,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysQuickConfig
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 快捷配置Service接口
@@ -56,7 +57,7 @@ public interface SysQuickConfigService extends IService<SysQuickConfigPO> {
      */
     Result<String> deleteById(Long id);
 
-    Result<List<QuickConfigTreeDTO>> getQuickConfigTree();
+    Result<List<Map<String, Object>>> getQuickConfigTree(String groupId);
 
     Result<Boolean> grantQuickConfigToGroup(QuickConfigGrantPermDTO grantDTO);
 }

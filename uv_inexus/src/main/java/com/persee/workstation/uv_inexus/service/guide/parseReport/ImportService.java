@@ -238,7 +238,7 @@ public class ImportService {
         return errorMessages; // 返回当前表的所有错误
     }
 
-    // 主表哈希（原有逻辑不变）
+    // 主表哈希
     private String generateDetectionHash(Detection detection) {
         String combined = 
             detection.getStandardIdentity() + "|" +
@@ -360,7 +360,7 @@ public class ImportService {
         return errorMessages; // 返回当前表错误
     }
 
-    // 前处理表哈希（原有逻辑不变）
+    // 前处理表哈希
     private String generatePretreatmentHash(StandardPretreatment pretreatment) {
         String combined = 
             (pretreatment.getId() != null ? pretreatment.getId().toString() : "") + "|" +
@@ -694,7 +694,7 @@ public class ImportService {
     //     }
     // }
 
-    // 计算公式表哈希（原有逻辑不变）
+    // 计算公式表哈希
     private String generateFormulaHash(CalculationFormula formula) {
         String combined = 
             (formula.getId() != null ? formula.getId().toString() : "") + "|" +
@@ -823,7 +823,7 @@ public class ImportService {
         return errorMessages; // 返回当前表错误
     }
 
-    // 质量控制表哈希（原有逻辑不变）
+    // 质量控制表哈希
     private String generateControlHash(QualityControl control) {
         String combined = 
             (control.getId() != null ? control.getId().toString() : "") + "|" +
@@ -1043,7 +1043,7 @@ public class ImportService {
         }
         return errorMessages; // 返回当前表错误
     }
-    // 修约表哈希（原有逻辑不变）
+    // 修约表哈希
     private String generateRoundingHash(RoundingRules rules) {
         // ID 不参与内容哈希计算，只比较业务字段
         String combined = 
@@ -1057,7 +1057,7 @@ public class ImportService {
 
 
     // --------------------------- 公共工具方法 ---------------------------
-    // 通用哈希生成方法（原有逻辑不变）
+    // 通用哈希生成方法
     private String generateHash(String data) {
         try {
             MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
@@ -1068,7 +1068,7 @@ public class ImportService {
         }
     }
 
-    // 获取主表ID（原有逻辑不变）
+    // 获取主表ID
     private Integer getDetectionId(String identityName, Map<String, Integer> cache) {
         if (cache.containsKey(identityName)) {
             return cache.get(identityName);
@@ -1080,7 +1080,7 @@ public class ImportService {
         return detectionId;
     }
 
-    // 通过主表ID获取标准标识（原有逻辑不变）
+    // 通过主表ID获取标准标识
     private String getIdentityNameById(String detectionId) {
         return detectionMapper.findStandardIdentityById(Integer.parseInt(detectionId));
     }
