@@ -392,14 +392,14 @@ public class MessageOnTimeDeal {
                                     SpectrumPoint sp = pointStore.getOrCreate(wl);
 
                                     if (isDark) {
-                                        handleDarkRsdT1960(temp, deviceSerialNumber, sp);
+                                        handleDarkRsd(temp, deviceSerialNumber, sp);
                                         tempMap.remove(deviceSerialNumber);
                                     }
 
                                     if (isScan) {
                                         sp.setScanRsd(fittedParam);
-                                        SpectrumCalcResult absResult = calculator.calculate(5, sp, RANGE, deviceSerialNumber);
-                                        SpectrumCalcResult tResult   = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
 
@@ -437,12 +437,12 @@ public class MessageOnTimeDeal {
                                 SpectrumPoint sp = pointStore.getOrCreate(constrainedWl);
 
                                 if (isDark) {
-                                    handleDarkRsd(temp, deviceSerialNumber, sp);
+                                    handleDarkRsdT1960(temp, deviceSerialNumber, sp);
                                     tempMap.remove(deviceSerialNumber);
                                 } else if (isScan) {
                                     sp.setScanRsd(temp);
-                                    SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
-                                    SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult absResult = calculator.calculate(5, sp, RANGE, deviceSerialNumber);
+                                    SpectrumCalcResult tResult   = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
                                     SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
                                     SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
 

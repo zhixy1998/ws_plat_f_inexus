@@ -31,7 +31,7 @@ public enum DevXmlEnums {
             new byte[]{(byte) 0xFF, (byte) 0x65, (byte) 0xFF, (byte) 0x07,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A},
-            true),
+            false),
 
     T600AndT700("T600/T700", "newFile/T600.1.xml", "T600/T700", 5000,
             new byte[]{(byte) 0xFF, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
@@ -40,7 +40,7 @@ public enum DevXmlEnums {
             new byte[]{(byte) 0xFE, (byte) 0xB5, (byte) 0xFF, (byte) 0x07,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
                     (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xB9},
-            false);
+            true);
 
     // 仪器型号
     private final String devType;
