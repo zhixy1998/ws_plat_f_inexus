@@ -574,7 +574,7 @@ public class GuidePhotometricWebSocket {
                         }
                     }
                     //处理数据
-                    PhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, null, sample.getSampleNumber());
+                    PhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, DataIdentityEnums.middle.getIdentity() + "-" + i, sample.getSampleNumber());
                     dataInfo.setMeasureTime(time);
                     dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
 

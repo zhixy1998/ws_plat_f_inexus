@@ -355,8 +355,14 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             case Zero:
                 result = zero(inputParam);
                 break;
+            case SingWaveLengthZero:
+                result = singleWavelengthZero(inputParam);
+                break;
             case Measure:
                 result = measure(inputParam);
+                break;
+            case SingWaveLengthMeasure:
+                result = singWaveLengthMeasure(inputParam);
                 break;
             case Stop:
                 actionExecutor.submit(() -> stop(inputParam));
@@ -780,6 +786,10 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
             }
             if (setParam.getPhotoMode() != null) {
                 deviceManager.setLuminosityMode(deviceId, String.valueOf(setParam.getPhotoMode()));
+            }
+
+            if (setParam.getSetWl() != null) {
+                deviceManager.setCurrentWavelength(deviceId, String.valueOf(setParam.getSetWl()));
             }
         }
 
@@ -1396,6 +1406,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                 resultEntity.setY(DataCountUtil.formatValueWithBigDecimal(Constants.DEFAULT_DECIMAL_NUM, s));
             }
         }
+        deviceManager.setMeasureValue(deviceId, resultEntity.getY());
 
         resultEntity.setLampPos(EnergyLampEnums.getName(resultEntity.getLampPos()));
 
@@ -1565,6 +1576,73 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         return R.ok(resultEntity);
     }
 
+    private R<OperationResultEntity> singleWavelengthZero(DevOperationInputParam inputParam) {
+
+        OperationResultEntity resultEntity = new OperationResultEntity();
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        String wavelength = inputParam.getSingleWavelength();
+
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+        Object[] param;
+        String cmdId = "";
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+
+        byte[] bytes;
+        R<Object> zero = new R<>();
+        ChangeParam measureResult = new ChangeParam();
+
+        if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+            log.info("串口零点");
+        } else {
+
+
+            cmdId = T600ComIdEnums.SetWl.getComId();
+            Transition transition = xml.get(cmdId);
+            int ReplyNumber = transition.getReplyNumber();
+            int Timeout = transition.getTimeout();
+            List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+            Double v = formulaUtil.calculateStep(Double.parseDouble(wavelength), deviceSerialNumber);
+            param = new Object[]{v};
+            bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+            zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
+
+            if (!zero.getSuccess()) {
+                return R.fail("零点失败");
+            }
+
+            deviceManager.setZeroWavelength(deviceId, wavelength);
+            deviceManager.setCurrentWavelength(deviceId, wavelength);
+
+            cmdId = T600ComIdEnums.Zero.getComId();
+            transition = xml.get(cmdId);
+            ReplyNumber = transition.getReplyNumber();
+            Timeout = transition.getTimeout();
+            param = new Object[]{};
+            bytes = protocolItemUtil.calcSendBytes(param, transition);
+            headReceiveBytes = transition.getHeadReceiveBytes();
+            zero = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, ReplyNumber, Timeout, connectType, headReceiveBytes);
+            if (!zero.getSuccess()) {
+                return R.fail("零点失败");
+            } else {
+                Object data = zero.getData();
+                resultEntity = (OperationResultEntity) data;
+                measureResult = resultEntity.getMeasureResult();
+                measureResult.setWl(wavelength);
+                deviceManager.addZeroResult(deviceId, wavelength, measureResult);
+            }
+        }
+        resultEntity.setSingZeroResult(measureResult);
+
+        return R.ok(resultEntity);
+    }
+
     private R<OperationResultEntity> measure(DevOperationInputParam inputParam) {
         OperationResultEntity resultEntity = new OperationResultEntity();
         String deviceSerialNumber = inputParam.getDeviceSerialNumber();
@@ -1637,9 +1715,9 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
 
                     } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
                         Map<String, String> darkInfo = info.getDarkInfo();
-                        String z = darkInfo.get(s);
-                        if (z == null) {
-                            z = "1";
+                        String z = "1";
+                        if (darkInfo != null && StringUtils.hasText(darkInfo.get(s))) {
+                            z = darkInfo.get(s);
                         }
                         String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
                         String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
@@ -1651,6 +1729,7 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
                             measureResult.setOtherData(abs);
                         }
                     }
+                    deviceManager.setMeasureValue(deviceId, measureResult.getValue());
 
                     measureResult.setWl(s);
                     changeParamList.add(measureResult);
@@ -1662,6 +1741,100 @@ public class DevOperationUtilServiceImpl implements DevOperationUtilService {
         return R.ok(resultEntity);
     }
 
+
+    private R<OperationResultEntity> singWaveLengthMeasure(DevOperationInputParam inputParam) {
+        OperationResultEntity resultEntity = new OperationResultEntity();
+        String deviceSerialNumber = inputParam.getDeviceSerialNumber();
+        String wavelength = inputParam.getSingleWavelength();
+
+
+        DeviceInfoPO info = infoService.getInfo(deviceSerialNumber);
+        String deviceId = info.getDeviceId();
+        DeviceConnectInfo device = deviceManager.getDevice(deviceId);
+        String xmlKey = device.getXmlKey();
+        Integer connectType = device.getConnectType();
+        Object[] param;
+        String cmdId = "";
+        Map<String, Transition> xml = xmlManage.getXmlInfo(xmlKey);
+
+        byte[] bytes;
+        R<Object> mesure = new R<>();
+
+        ChangeParam measureResult = new ChangeParam();
+
+        if (connectType.equals(DeviceConnectTypeEnum.SERIAL.getConnectType())) {
+            log.info("串口零点");
+        } else {
+
+            cmdId = T600ComIdEnums.SetWl.getComId();
+            Transition transition = xml.get(cmdId);
+            int replyNumber = transition.getReplyNumber();
+            int timeout = transition.getTimeout();
+            List<String> headReceiveBytes = transition.getHeadReceiveBytes();
+
+            Double v = formulaUtil.calculateStep(Double.parseDouble(wavelength), deviceSerialNumber);
+            param = new Object[]{v};
+            bytes = protocolItemUtil.calcSendBytes(param, transition);
+
+            mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+
+            if (!mesure.getSuccess()) {
+                return R.fail("测量失败");
+            }
+
+            deviceManager.setCurrentWavelength(deviceId, wavelength);
+
+            cmdId = T600ComIdEnums.Measure.getComId();
+            transition = xml.get(cmdId);
+            replyNumber = transition.getReplyNumber();
+            timeout = transition.getTimeout();
+            param = new Object[]{};
+            bytes = protocolItemUtil.calcSendBytes(param, transition);
+            headReceiveBytes = transition.getHeadReceiveBytes();
+            mesure = udpSendUtil.knowTotalReceiveSend(deviceId, cmdId, bytes, replyNumber, timeout, connectType, headReceiveBytes);
+            if (!mesure.getSuccess()) {
+                return R.fail("测量失败");
+            } else {
+                Object data = mesure.getData();
+                resultEntity = (OperationResultEntity) data;
+                measureResult = resultEntity.getMeasureResult();
+
+
+                ChangeParam zeroResult = device.getZeroResult(wavelength);
+
+                String mode = device.getLuminosityMode();
+
+                if (mode.equals(WaveLengthEnum.es.getCode()) || mode.equals(WaveLengthEnum.er.getCode())) {
+
+                    String value = DataCountUtil.countErOrEs(measureResult, mode);
+                    measureResult.setValue(value);
+
+                } else if (mode.equals(WaveLengthEnum.abs.getCode()) || mode.equals(WaveLengthEnum.tPercent.getCode())){
+                    Map<String, String> darkInfo = info.getDarkInfo();
+                    String z = "1";
+                    if (darkInfo != null && StringUtils.hasText(darkInfo.get(wavelength))) {
+                        z = darkInfo.get(wavelength);
+                    }
+                    String tPercent = DataCountUtil.countTPercent(zeroResult, measureResult, Double.parseDouble(z));
+                    String abs = DataCountUtil.changeTPercentOrAbs(null, tPercent);
+                    if (mode.equals(WaveLengthEnum.abs.getCode())) {
+                        measureResult.setValue(abs);
+                        measureResult.setOtherData(tPercent);
+                    } else {
+                        measureResult.setValue(tPercent);
+                        measureResult.setOtherData(abs);
+                    }
+                }
+
+                measureResult.setWl(wavelength);
+                deviceManager.setMeasureValue(deviceId, measureResult.getValue());
+
+            }
+        }
+        resultEntity.setSingMeasureResult(measureResult);
+
+        return R.ok(resultEntity);
+    }
 //private R<OperationResultEntity> executeTimeMeasure(DevOperationInputParam inputParam) throws InterruptedException {
 //
 //    OperationResultEntity resultEntity = new OperationResultEntity();

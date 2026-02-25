@@ -322,7 +322,6 @@ public class RationMeasureNewWebSocket{
             }
 
             //后续添加仪器状态检测
-            String ip = infoService.getIp(deviceSerialNumber);
 
             if (sampleKind.equals(SampleTypeEnum.kind_stand.getIdentity())) {
                 boolean repeat = parameter.getRepeatMode().equals("单池重复");
@@ -449,11 +448,7 @@ public class RationMeasureNewWebSocket{
                         r = singleSampleRepeatMeasure(sample, parameter, task, deviceSerialNumber);
 
                     } else {
-                        try {
-                            r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
+                        r = singleSampleSimpleMeasure(sample, parameter, task, deviceSerialNumber);
                     }
 
                     if (!r.getSuccess()) {

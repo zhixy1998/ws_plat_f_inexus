@@ -29,6 +29,8 @@ public enum OperationTypeEnums {
     GetValue(7, "读取值", "deviceIp,connectType,InputParam", "", Constants.DEVICE_STATUS_OTHER),
     Stop(8, "停止测量", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     TimeMeasure(9, "定时测量", "deviceIp,connectType,InputParam", "", Constants.DEVICE_STATUS_OTHER),
+    SingWaveLengthMeasure(10, "单波长测量", "deviceIp,connectType", "", Constants.DEVICE_STATUS_MEASURE),
+    SingWaveLengthZero(11, "单波长校零", "deviceIp,connectType", "", Constants.DEVICE_STATUS_MEASURE),
     Zero(885, "零点校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ZERO),
     Calibration(886, "校准", "deviceIp,connectType", "", Constants.DEVICE_STATUS_OTHER),
     LiveDetection(887, "实时检测", "deviceIp,connectType", "", Constants.DEVICE_STATUS_ECHO),

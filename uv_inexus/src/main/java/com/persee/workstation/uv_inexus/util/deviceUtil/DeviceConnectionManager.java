@@ -593,6 +593,39 @@ public class DeviceConnectionManager {
         return cfg;
     }
 
+    /**
+     * 设置当前测量值
+     * @param deviceId 设备ID
+     * @param currentMeasureValue 当前波长
+     * @return 是否成功
+     */
+    public boolean setMeasureValue(String deviceId, String currentMeasureValue) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("设置当前波长失败: 设备不存在 %s", deviceId);
+            return false;
+        }
+
+        device.setCurrentMeasureValue(currentMeasureValue);
+        device.updateLastUseTime();
+        logInfo("设置当前波长: %s -> %s", deviceId, currentMeasureValue);
+        return true;
+    }
+
+    public String getCurrentMeasureValue(String deviceId) {
+        DeviceConnectInfo device = deviceMap.get(deviceId);
+        if (device == null) {
+            logWarning("获取当前波长失败: 设备不存在 %s", deviceId);
+            return null;
+        }
+
+        device.updateLastUseTime();
+        String currentMeasureValue = device.getCurrentMeasureValue();
+
+        logInfo("获取当前波长: %s -> %s", deviceId, currentMeasureValue);
+        return currentMeasureValue;
+    }
+
 
 
     /**

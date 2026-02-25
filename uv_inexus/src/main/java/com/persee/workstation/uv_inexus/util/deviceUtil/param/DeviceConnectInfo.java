@@ -135,6 +135,8 @@ public class DeviceConnectInfo {
      */
     private Boolean descending;
 
+    private String currentMeasureValue = "";
+
     /** 当前扫描波长配置（前端下发） */
     private ScanWavelengthConfig scanWavelengthConfig;
     // ====== 校零结果管理方法 ======

@@ -139,8 +139,14 @@ public class OperationResultEntity {
     @ApiModelProperty("校零结果")
     private List<ChangeParam> zeroResult;
 
+    @ApiModelProperty("单波长校零结果")
+    private ChangeParam singZeroResult;
+
     @ApiModelProperty("测量原始结果")
     private List<ChangeParam> originalMeasureResult;
+
+    @ApiModelProperty("测量结果")
+    private ChangeParam singMeasureResult;
 
     @ApiModelProperty("获取仪器及灯的使用时间")
     private float useTime;

@@ -59,6 +59,9 @@ public class DevOperationInputParam {
     @ApiModelProperty("波长信息")
     private List<String> wavelength;
 
+    @ApiModelProperty("单波长")
+    private String singleWavelength;
+
     @ApiModelProperty("操作人")
     private String updateBy;
 
