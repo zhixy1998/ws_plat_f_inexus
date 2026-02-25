@@ -2724,7 +2724,11 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     private void promptUserToPlaceMaterial(String taskId, String stdMaterialName) throws BusinessException {
         // 发送提示信息
         JSONObject noticeMsg = new JSONObject();
-        noticeMsg.put("notice", "请放入 " + stdMaterialName);
+        if (AIR.getDescription().equals(stdMaterialName)){
+            noticeMsg.put("notice", "请保持样品池为空！");
+        }else {
+            noticeMsg.put("notice", "请放入 " + stdMaterialName);
+        }
         sendToActiveSession(null, taskId, noticeMsg);
         // 设置等待状态
         pauseTask(taskId);
