@@ -115,7 +115,8 @@ import static com.persee.workstation.uv_inexus.util.deviceUtil.param.ActionCmdEn
 public class ExcelWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private WorkbookCacheManager workbookCacheManager;
-
+    @Autowired
+    DeviceInfoService infoService;
     // 会话存储：sessionId -> SessionInfo
     private final Map<String, SessionInfo> sessionMap = new ConcurrentHashMap<>();
     private final Map<String, Integer> operationCount = new ConcurrentHashMap<>();
@@ -756,7 +757,8 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                             R<String> device = deviceManageService.getConnectDevice(updateBy);
                             if (device.getSuccess()) {
                                 ConcurrentMap<String, Boolean> timeMeasureIsStop = UdpSendUtil.timeMeasureIsStop;
-                                Boolean put = timeMeasureIsStop.put(device.getData(), true);
+                                DeviceInfoPO info = infoService.getInfo(device.getData());
+                                Boolean put = timeMeasureIsStop.put(info.getDeviceId(), true);
                                 stopTask(taskId);
                                 // 发送确认消息
                                 JSONObject confirmMsg = new JSONObject();
@@ -1963,9 +1965,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
     }
 
 
-
-
-
     private List<BigDecimal> calculateHalfPeakWidths(List<BigDecimal> xData, List<BigDecimal> yData,
                                                      List<BigDecimal> peakX, List<?> peakYRaw) {
         // 将 peakYRaw 转换为 BigDecimal 列表
@@ -2018,7 +2017,6 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 
         return fwhmList;
     }
-
 
 
     /**
@@ -2778,7 +2776,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     yList.add(new BigDecimal(p.getAbsResult().getAbs()));
                     point.put("y", p.getAbsResult().getAbs());
 
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength +"nm "+bigDecimal + " Abs");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + bigDecimal + " Abs");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2790,7 +2788,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getAbsResult().getAbs()), 4);
                     point.put("y", p.getAbsResult().getAbs());
                     yList.add(new BigDecimal(p.getAbsResult().getAbs()));
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength +"nm "+ aDouble + " Abs");
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " Abs");
 
                 }
 //                    point.put("roundOffY", valueY);
@@ -2849,7 +2847,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getTResult().getTPercent());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength +"nm "+ bigDecimal + " T%");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + bigDecimal + " T%");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2861,7 +2859,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getTResult().getTPercent()), 4);
                     point.put("y", p.getTResult().getTPercent());
                     yList.add(new BigDecimal(p.getTResult().getTPercent()));
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: "+ wavelength +"nm " + aDouble + " T%");
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " T%");
 
                 }
                 points.add(point);
@@ -2914,7 +2912,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getEsResult().getEs());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength +"nm "+ aDouble + " Es");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + aDouble + " Es");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2926,7 +2924,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getEsResult().getEs()), 4);
                     point.put("y", p.getEsResult().getEs());
                     yList.add(new BigDecimal(p.getEsResult().getEs()));
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength +"nm "+ aDouble + " Es");
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " Es");
 
                 }
                 points.add(point);
@@ -2979,7 +2977,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
 //                    Double aDouble = new Double(p.getErResult().getEr());
 //                    point.put("x", aDouble);
 //                    yList.add(aDouble);
-                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: "+ wavelength +"nm " + aDouble + " Er");
+                    this.realTimeEcho(taskId, "时间扫描-正在时间扫描: " + wavelength + "nm " + aDouble + " Er");
 
                 } else {
                     payload.put("totalPoints", (startWavelength - endWavelength) / scanInterval);
@@ -2991,7 +2989,7 @@ public class ExcelWebSocketHandler extends TextWebSocketHandler {
                     BigDecimal aDouble = roundToDecimalPlaces(new BigDecimal(p.getErResult().getEr()), 4);
                     point.put("y", p.getErResult().getEr());
                     yList.add(new BigDecimal(p.getErResult().getEr()));
-                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength +"nm "+ aDouble + " Er");
+                    this.realTimeEcho(taskId, "光谱-正在光谱扫描: " + wavelength + "nm " + aDouble + " Er");
 
                 }
                 points.add(point);
