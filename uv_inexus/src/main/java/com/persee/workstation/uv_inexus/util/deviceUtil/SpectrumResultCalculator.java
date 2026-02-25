@@ -69,6 +69,15 @@ public class SpectrumResultCalculator {
                 result.setEr(calcEr(real));
                 break;
 
+            case 5:
+                String tPercent1960 = calcTPercent1960(origin, real, point, deviceSerialNumber);
+                result.setAbs(calcAbsFromTPercent(tPercent1960));
+                break;
+
+            case 6:
+                result.setTPercent(calcTPercent1960(origin, real, point, deviceSerialNumber));
+                break;
+
             default:
                 throw new IllegalArgumentException("未知 Luminosity=" + luminosity);
         }
@@ -106,6 +115,46 @@ public class SpectrumResultCalculator {
             }
 
             double v1 = Z * d1;
+            double a2 = (s1 - v1) / (r1 - v1);
+
+            double ans = a2 / a1 * 100.0;
+            return BigDecimal.valueOf(ans)
+                    .setScale(Constants.DEFAULT_DECIMAL_NUM_MAX, RoundingMode.HALF_UP)
+                    .toPlainString();
+
+        } catch (Exception e) {
+            log.error("T% 计算异常, origin={}, real={}, sp={}", origin, real, sp, e);
+            return "0";
+        }
+    }
+
+    public String calcTPercent1960(ChangeParam origin, ChangeParam real,SpectrumPoint sp,String deviceSerialNumber) {
+        try {
+            double d1 = Double.parseDouble(real.getD());
+            double r1 = Double.parseDouble(real.getR());
+            double s1 = Double.parseDouble(real.getS());
+            String wl = String.valueOf(sp.getWavelength());
+
+//            Double Zobj = sp.getDarkZ();
+//            double Z = (Zobj == null) ? 1.0 : Zobj;
+
+            Double Z = getZFromDatabase(deviceSerialNumber, wl);
+            Z = (Z == null) ? 1.0 : Z;
+
+
+            double a1;
+            if (origin == null || origin.isEmpty()) {
+                a1 = 1.0;
+            } else {
+                double r0 = Double.parseDouble(origin.getR());
+                double s0 = Double.parseDouble(origin.getS());
+                double d0 = Double.parseDouble(origin.getD());
+
+                double v0 = (d0 - Z * d1) / (1 - Z);
+                a1 = (s0 - v0) / (r0 - v0);
+            }
+
+            double v1 =  (d1 - Z * d1) / (1 - Z);
             double a2 = (s1 - v1) / (r1 - v1);
 
             double ans = a2 / a1 * 100.0;

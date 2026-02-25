@@ -1518,6 +1518,29 @@
             <string>32</string>
         </HeadReceiveBytes>
     </ProtocolItem>
+    <ProtocolItem>
+        <ID>DebugSend</ID>
+        <Describe>调试发送</Describe>
+        <Timeout>3000</Timeout>
+        <ACK>N</ACK>
+        <InputString>
+            <string/>
+        </InputString>
+        <OutputString>
+            <string>步数:AJ131:7</string>
+            <string>能量:AJ132:7</string>
+        </OutputString>
+        <SendBytes>
+            <string>101:255:32:48:1:0:0:0:0:0:0:Check</string>
+        </SendBytes>
+        <ReadBytes>
+            <string>255:101:32:48:1:0:AJ131:AJ131:AJ132:AJ132:AJ132:Check</string>
+        </ReadBytes>
+        <ReplyNumber>24</ReplyNumber>
+        <HeadReceiveBytes>
+            <string>255:101:32:48</string>
+        </HeadReceiveBytes>
+    </ProtocolItem>
 </Protocols>
 
 

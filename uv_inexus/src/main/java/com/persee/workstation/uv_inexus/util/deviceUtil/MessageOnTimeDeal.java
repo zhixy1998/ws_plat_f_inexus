@@ -383,7 +383,7 @@ public class MessageOnTimeDeal {
                                 log.info("[光谱扫描]:跳过最后一条");
                                 break;
                             }
-//                            DeviceInfoPO type = infoService.getInfo(device.getXmlKey());
+
                             DevXmlEnums dev = DevXmlEnums.getEnum(device.getXmlKey());
                             if (dev.isNeedFit()) {
                                 // 拟合实时处理，每生成一个拟合点就回调
@@ -392,14 +392,14 @@ public class MessageOnTimeDeal {
                                     SpectrumPoint sp = pointStore.getOrCreate(wl);
 
                                     if (isDark) {
-                                        handleDarkRsd(temp, deviceSerialNumber, sp);
+                                        handleDarkRsdT1960(temp, deviceSerialNumber, sp);
                                         tempMap.remove(deviceSerialNumber);
                                     }
 
                                     if (isScan) {
                                         sp.setScanRsd(fittedParam);
-                                        SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
-                                        SpectrumCalcResult tResult   = calculator.calculate(2, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult absResult = calculator.calculate(5, sp, RANGE, deviceSerialNumber);
+                                        SpectrumCalcResult tResult   = calculator.calculate(6, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult esResult  = calculator.calculate(3, sp, RANGE, deviceSerialNumber);
                                         SpectrumCalcResult erResult  = calculator.calculate(4, sp, RANGE, deviceSerialNumber);
 
@@ -439,7 +439,6 @@ public class MessageOnTimeDeal {
                                 if (isDark) {
                                     handleDarkRsd(temp, deviceSerialNumber, sp);
                                     tempMap.remove(deviceSerialNumber);
-                                    continue;
                                 } else if (isScan) {
                                     sp.setScanRsd(temp);
                                     SpectrumCalcResult absResult = calculator.calculate(1, sp, RANGE, deviceSerialNumber);
@@ -508,6 +507,7 @@ public class MessageOnTimeDeal {
                                 cmdId,
                                 EndMarker.NormalStop(deviceSerialNumber, cmdId)
                         );
+                        log.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
                     } else{
                         unknowCountMessageQueue.putMessage(
                                 deviceSerialNumber,
@@ -582,6 +582,37 @@ public class MessageOnTimeDeal {
 
         log.info("[Dark] device={},wl={}, d={}, s={}, Z={}",
                 deviceSerialNumber, sp.getWavelength(),dStr, sStr, z);
+    }
+
+    private void handleDarkRsdT1960(ChangeParam rsd, String deviceSerialNumber, SpectrumPoint sp) {
+        String dStr = rsd.getD();
+        String sStr = rsd.getS();
+        String rStr = rsd.getR();
+        String wlStr = String.valueOf(sp.getWavelength());
+
+        // 任一字符串为空则直接返回
+        if (!StringUtils.hasText(dStr) || !StringUtils.hasText(sStr) || !StringUtils.hasText(rStr)) {
+            return;
+        }
+
+        double D = Double.parseDouble(dStr);
+        double S = Double.parseDouble(sStr);
+        double R = Double.parseDouble(rStr);
+
+        double f;
+        double diffRS = R - S;
+        if (Math.abs(diffRS) > 1.0e-10) {
+            f = (D - S) / diffRS;
+        } else {
+            f = (D - S) / 1.0e-10;
+        }
+        double z = Math.min(f, 0.1);
+
+        darkCache.computeIfAbsent(deviceSerialNumber, k -> new ConcurrentHashMap<>())
+                .put(wlStr, String.valueOf(z));
+
+        log.info("[Dark] device={}, wl={}, D={}, S={}, R={}, Z={}",
+                deviceSerialNumber, sp.getWavelength(), dStr, sStr, rStr, z);
     }
 
     private void clearDarkZ(SpectrumPointStore store, String deviceSerialNumber) {
