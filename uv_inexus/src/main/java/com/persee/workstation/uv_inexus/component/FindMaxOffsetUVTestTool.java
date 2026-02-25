@@ -3,6 +3,7 @@ package com.persee.workstation.uv_inexus.component;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +27,13 @@ public class FindMaxOffsetUVTestTool extends IAlgorithm {
                     maximum = item;
                 }
             }
+//            BigDecimal diff = maximum.subtract(minimum);
             BigDecimal diff = maximum.subtract(minimum);
+            MathContext mc = new MathContext(1, RoundingMode.HALF_UP);
+            diff = diff.round(mc);
             // 四舍五入到小数点后两位
-            BigDecimal roundedDiff = diff.setScale(2, RoundingMode.HALF_UP);
-            result.add(roundedDiff);
+//            BigDecimal roundedDiff = diff.setScale(2, RoundingMode.HALF_UP);
+            result.add(diff);
         }
         return result;
     }
