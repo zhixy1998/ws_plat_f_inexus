@@ -1,0 +1,1 @@
+ALTER TABLE t800_uv_inexus.t_sys_user ADD quick_navigation json NULL;
