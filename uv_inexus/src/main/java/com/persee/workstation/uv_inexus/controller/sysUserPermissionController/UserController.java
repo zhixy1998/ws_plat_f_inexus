@@ -9,21 +9,7 @@
 
 package com.persee.workstation.uv_inexus.controller.sysUserPermissionController;
 
-import java.util.List;
-
-import javax.validation.Valid;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
+import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.UserDetailDTO;
@@ -34,9 +20,15 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.utils.OperateLog.OperateLog;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.apache.ibatis.annotations.Param;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/com/persee/workstation/uv-inexus/user")
@@ -105,5 +97,22 @@ public class UserController {
     @OperateLog(module = "用户管理", description = "重置用户密码", recordParams = true)
     public Result<String> resetPassword(@RequestParam String userId) {
         return sysUserService.resetPassword(userId);
+    }
+
+    @PostMapping("/addQuickNavigation")
+    @ApiOperation("添加快捷导航")
+    public Result<String> addQuickNavigation(@RequestBody Map<String, Object> quickNavigation) {
+        if (sysUserService.addQuickNavigation(quickNavigation)) {
+            return Result.ok("快捷导航添加成功");
+        } else {
+            return Result.fail("快捷导航添加失败");
+        }
+    }
+
+    //查找快捷导航
+    @GetMapping("/getQuickNavigation")
+    @ApiOperation("查找快捷导航")
+    public Result<JSONArray> getQuickNavigation(@Param("updateBy") String updateBy) {
+        return sysUserService.getQuickNavigation(updateBy);
     }
 }

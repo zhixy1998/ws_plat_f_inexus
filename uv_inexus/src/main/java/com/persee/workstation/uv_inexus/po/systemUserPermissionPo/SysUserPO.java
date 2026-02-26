@@ -77,4 +77,8 @@ public class SysUserPO extends BasePO {
     @TableField("last_login_time")
     @ApiModelProperty("最后登录时间")
     private LocalDateTime lastLoginTime;
+
+    @TableField("quick_navigation")
+    @ApiModelProperty("快捷导航")
+    private String quickNavigation;
 }

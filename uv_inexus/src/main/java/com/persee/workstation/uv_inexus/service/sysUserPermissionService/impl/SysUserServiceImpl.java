@@ -10,6 +10,8 @@
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService.impl;
 
 import com.alibaba.excel.util.StringUtils;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -32,6 +34,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.service.sysUserPermissionService.SysUserService;
 import com.persee.workstation.uv_inexus.utils.AESencryption.HmacMD5Util;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUserPO> implements SysUserService {
@@ -74,57 +78,57 @@ public class SysUserServiceImpl extends ServiceImpl<SystemUserManageDAO, SysUser
     }
 
 
-@Override
-@Transactional
-public Result<String> addUser(UserSaveDTO saveDTO) {
-    // 1. 检查用户名是否已存在
-    QueryWrapper<SysUserPO> queryWrapper = new QueryWrapper<>();
-    queryWrapper.eq("username", saveDTO.getUsername());
-    if (baseMapper.selectCount(queryWrapper) > 0) {
-        //用户名已存在
-        return Result.fail(YamlMessageSource.getMessageStatic("00601001"));
-    }
+    @Override
+    @Transactional
+    public Result<String> addUser(UserSaveDTO saveDTO) {
+        // 1. 检查用户名是否已存在
+        QueryWrapper<SysUserPO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("username", saveDTO.getUsername());
+        if (baseMapper.selectCount(queryWrapper) > 0) {
+            //用户名已存在
+            return Result.fail(YamlMessageSource.getMessageStatic("00601001"));
+        }
 
-    saveDTO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
-    // 2. 校验小组是否存在
-    String groupId = saveDTO.getGroupId();
-    if (groupId == null || groupId.isEmpty()) {
-        //小组ID不能为空
-        return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
-    }
-    SysGroupPO groupPO = sysGroupMapper.selectById(groupId);
-    if (groupPO == null) {
-        //该小组不存在，请刷新重试！
-        return Result.fail(YamlMessageSource.getMessageStatic("00601002"));
-    }
+        saveDTO.setPassword(HmacMD5Util.hmacMD5(saveDTO.getPassword()));
+        // 2. 校验小组是否存在
+        String groupId = saveDTO.getGroupId();
+        if (groupId == null || groupId.isEmpty()) {
+            //小组ID不能为空
+            return Result.fail(YamlMessageSource.getMessageStatic("00500001"));
+        }
+        SysGroupPO groupPO = sysGroupMapper.selectById(groupId);
+        if (groupPO == null) {
+            //该小组不存在，请刷新重试！
+            return Result.fail(YamlMessageSource.getMessageStatic("00601002"));
+        }
 
-    // 3. 封装用户信息并保存
-    SysUserPO userPO = new SysUserPO();
-    BeanUtils.copyProperties(saveDTO, userPO);
+        // 3. 封装用户信息并保存
+        SysUserPO userPO = new SysUserPO();
+        BeanUtils.copyProperties(saveDTO, userPO);
 
-    // 单独处理 roleId 字段，将其从 Integer 转换为 String 后设置到 DTO 中
-    if (saveDTO.getRoleId() != null) {
-        userPO.setRoleId(Integer.valueOf(saveDTO.getRoleId()));
-    }
+        // 单独处理 roleId 字段，将其从 Integer 转换为 String 后设置到 DTO 中
+        if (saveDTO.getRoleId() != null) {
+            userPO.setRoleId(Integer.valueOf(saveDTO.getRoleId()));
+        }
 
-    // 密码加密
+        // 密码加密
 //    userPO.setPassword(MD5Util.md5(saveDTO.getPassword()));
-    userPO.setCreateBy("admin");
-    userPO.setCreated(LocalDateTime.now());
-    baseMapper.insert(userPO);  // 保存用户，生成用户ID
+        userPO.setCreateBy("admin");
+        userPO.setCreated(LocalDateTime.now());
+        baseMapper.insert(userPO);  // 保存用户，生成用户ID
 
 //    // 4.检验所属小组是否为禁用
 //    if (groupPO.getStatus() != null && groupPO.getStatus() == 0) {
 //        userPO.setStatus(0);  // 设置用户状态为禁用
 //    }
-    // 5. 添加用户-小组关联
-    SysUserGroupPO userGroupPO = new SysUserGroupPO();
-    userGroupPO.setUserId(userPO.getId());  // 绑定用户ID
-    userGroupPO.setGroupId(groupId);  // 绑定小组ID
-    sysUserGroupMapper.insert(userGroupPO);  // 保存关联关系
-    //用户创建成功，已关联小组
-    return Result.ok(YamlMessageSource.getMessageStatic("00601003"));
-}
+        // 5. 添加用户-小组关联
+        SysUserGroupPO userGroupPO = new SysUserGroupPO();
+        userGroupPO.setUserId(userPO.getId());  // 绑定用户ID
+        userGroupPO.setGroupId(groupId);  // 绑定小组ID
+        sysUserGroupMapper.insert(userGroupPO);  // 保存关联关系
+        //用户创建成功，已关联小组
+        return Result.ok(YamlMessageSource.getMessageStatic("00601003"));
+    }
 
 
     @Override
@@ -212,8 +216,8 @@ public Result<String> addUser(UserSaveDTO saveDTO) {
 
         // 3. 查询用户关联的小组（用户-小组关联表）
         List<SysUserGroupPO> userGroups = sysUserGroupMapper.selectList(
-            new LambdaQueryWrapper<SysUserGroupPO>()
-                .eq(SysUserGroupPO::getUserId, id)
+                new LambdaQueryWrapper<SysUserGroupPO>()
+                        .eq(SysUserGroupPO::getUserId, id)
         );
 
         // 4. 若有小组，查询小组信息
@@ -221,7 +225,7 @@ public Result<String> addUser(UserSaveDTO saveDTO) {
             // 取第一个关联的小组（若需多组，可循环处理）
             SysUserGroupPO firstUserGroup = userGroups.get(0);
             SysGroupPO groupPO = sysGroupMapper.selectById(firstUserGroup.getGroupId());
-            
+
             if (groupPO != null) {
                 // 复制小组信息到DTO
                 userDetail.setGroupId(groupPO.getId());
@@ -273,12 +277,12 @@ public Result<String> addUser(UserSaveDTO saveDTO) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-        
+
         // 2. 验证旧密码是否正确
         if (!StringUtils.equals(HmacMD5Util.hmacMD5(updateDTO.getOldPassword()), userPO.getPassword())) {
-          return Result.fail(YamlMessageSource.getMessageStatic("00601008"));
+            return Result.fail(YamlMessageSource.getMessageStatic("00601008"));
         }
-        
+
         // 3. 检查新密码是否与旧密码相同
         if (StringUtils.equals(HmacMD5Util.hmacMD5(updateDTO.getNewPassword()), userPO.getPassword())) {
             //新密码不能与旧密码相同
@@ -290,7 +294,7 @@ public Result<String> addUser(UserSaveDTO saveDTO) {
             //新密码与确认密码不一致，请重新输入
             return Result.fail(YamlMessageSource.getMessageStatic("0060100A"));
         }
-        
+
         // 5. 更新密码
         userPO.setPassword(HmacMD5Util.hmacMD5(updateDTO.getNewPassword()));
         userPO.setUpdateBy("admin"); // 实际应用中应该是当前登录用户
@@ -309,16 +313,16 @@ public Result<String> addUser(UserSaveDTO saveDTO) {
             //用户不存在
             return Result.fail(YamlMessageSource.getMessageStatic("00000001"));
         }
-        
+
         // 2. 定义默认密码
         String defaultPassword = "123456";
-        
+
         // 3. 检查默认密码是否与当前密码相同
         if (StringUtils.equals(HmacMD5Util.hmacMD5(defaultPassword), userPO.getPassword())) {
-          //当前密码已是默认密码，无需重置
+            //当前密码已是默认密码，无需重置
             return Result.fail(YamlMessageSource.getMessageStatic("0060100C"));
         }
-        
+
         // 4. 更新密码（加密存储）
         userPO.setPassword(HmacMD5Util.hmacMD5(defaultPassword));
         userPO.setUpdateBy("admin"); // 实际应用中应该是当前登录用户
@@ -333,14 +337,43 @@ public Result<String> addUser(UserSaveDTO saveDTO) {
         if (userIds == null || userIds.isEmpty() || status == null) {
             return false;
         }
-        
+
         // 批量更新用户状态
         SysUserPO updateUser = new SysUserPO();
         updateUser.setStatus(status);
-        
+
         LambdaQueryWrapper<SysUserPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(SysUserPO::getId, userIds);
-        
+
         return this.update(updateUser, queryWrapper);
+    }
+
+    @Override
+    public boolean addQuickNavigation(Map<String, Object> map) {
+        String userName = MapUtils.getString(map, "updateBy");
+        Object menuObj = map.get("menu");
+        if (menuObj instanceof List) {
+            List<?> menu = (List<?>) menuObj;
+            // 根据用户名查询用户信息
+            SysUserPO userPO = baseMapper.selectOne(new LambdaQueryWrapper<SysUserPO>().eq(SysUserPO::getUsername, userName));
+            if (userPO != null) {
+                // 更新用户的快捷导航菜单
+                userPO.setQuickNavigation(JSONObject.toJSONString(menu));
+                userPO.setUpdateBy(userName);
+                userPO.setUpdated(LocalDateTime.now());
+                return this.updateById(userPO);
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public Result<JSONArray> getQuickNavigation(String userName) {
+        SysUserPO userPO = baseMapper.selectOne(new LambdaQueryWrapper<SysUserPO>().eq(SysUserPO::getUsername, userName));
+        if (userPO != null) {
+            return Result.ok(JSONArray.parseArray(userPO.getQuickNavigation()));
+        }
+        return null;
     }
 }

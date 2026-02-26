@@ -9,6 +9,7 @@
 
 package com.persee.workstation.uv_inexus.service.sysUserPermissionService;
 
+import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.persee.workstation.uv_inexus.dto.sysUserPermissionDto.PasswordUpdateDTO;
@@ -20,6 +21,7 @@ import com.persee.workstation.uv_inexus.po.systemUserPermissionPo.SysUserPO;
 import com.persee.workstation.uv_inexus.utils.Pagination.PageView;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SysUserService extends IService<SysUserPO> {
 
@@ -66,4 +68,9 @@ public interface SysUserService extends IService<SysUserPO> {
     Result<String> resetPassword(String userId);
 
     boolean updateUserStatusByGroupStatus(List<String> userIds, Integer status);
+
+    boolean addQuickNavigation(Map<String, Object> quickNavigation);
+
+    Result<JSONArray> getQuickNavigation(String userName);
+
 }
