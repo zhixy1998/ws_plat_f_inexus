@@ -596,6 +596,7 @@ public class ConcisePhotometricNewWebSocket {
 
                 inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
                 for (String waveLength : waveLengths) {
+                    inputParam.setSingleWavelength(waveLength);
 
                     operation = operationUtilService.operation(inputParam);
 
