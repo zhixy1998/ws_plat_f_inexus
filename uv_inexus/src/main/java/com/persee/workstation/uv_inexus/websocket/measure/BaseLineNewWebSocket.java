@@ -418,6 +418,10 @@ public class BaseLineNewWebSocket {
                     break;
                 }
                 SpectrumPoint message = (SpectrumPoint) result;
+                if (message.getWavelength()>startWl||message.getWavelength()<endWl){
+                    log.info("当前波长不在测量范围内，跳过该波长: "+message.getWavelength());
+                    continue;
+                }
                 // 推送单个数据点
                 pushBaselineDataPoint(message.getWavelength());
                 dataList.add(message.getBaselineRsd());

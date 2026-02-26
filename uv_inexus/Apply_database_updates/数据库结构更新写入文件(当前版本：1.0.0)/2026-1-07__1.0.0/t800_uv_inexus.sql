@@ -7,6 +7,19 @@
  *
  */
 
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- 2026-02-03 新增付费功能字段
+-- ----------------------------
+ALTER TABLE `t_software_activation`
+ADD COLUMN `features` VARCHAR(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '付费功能';
+-- ----------------------------
+-- Table structure for aerich
+-- ----------------------------
+
 ALTER TABLE `t800_uv_inexus`.`t_measure_method`
     CHANGE COLUMN `field2` `method_use_time` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '预留字段2' AFTER `method_creator`;
 

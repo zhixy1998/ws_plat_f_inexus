@@ -4082,7 +4082,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 打印日志
         log.info("方法名称查重检查: projectId={}, methodName={}, count={}",
                 projectId, methodName, count);
-        return count > 0 ? Result.fail(YamlMessageSource.getMessageStatic("00301002")) : Result.ok();
+        if (count>0){
+            return Result.ok(true);
+        }else{
+            return Result.ok(false);
+        }
     }
 
     @Override
@@ -4100,7 +4104,11 @@ public class ExperimentTestServiceImpl implements ExperimentTestService {
         // 打印日志
         log.info("任务名称查重检查: projectId={}, methodName={}, count={}",
                 projectId, taskName, count);
-        return count > 0 ? Result.fail(YamlMessageSource.getMessageStatic("00301002")) : Result.ok();
+        if (count>0){
+            return Result.ok(true);
+        }else{
+            return Result.ok(false);
+        }
     }
 
     /**

@@ -1525,48 +1525,26 @@ public class TimeSweepServiceImpl implements TimeSweepService {
         }
         // 根据任务的方法key查询方法参数
         TMeasureMethod method = tMeasureMethodService.getById(task.getMethodKey());
-        SpectrumParameter spectrumParameter = JSON.parseObject(method.getMeasurementParamInfo(), SpectrumParameter.class);
         List<TaskSpecimen> taskSpecimen = JSON.parseArray(task.getSampleKey(), TaskSpecimen.class);
         List<Map<String, String>> list = new ArrayList<>();
-        // 判断是否是重复模式
-        if ("不重复".equals(spectrumParameter.getRepetitionPattern())) {
-            for (TaskSpecimen taskSpeciman : taskSpecimen) {
-                if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
-                    TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>()
-                            .eq("task_id", taskId)
-                            .eq("sample_key", taskSpeciman.getSpecimenKey())
-                            .eq("analysis_type", "5")
-                            .eq("is_delete", "0")
-                            .eq("analysis_number", 1)
-                            .last("limit 1"));
-                    TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-                    if (one == null) {
-                        one = new TMeasureAnalysisData();
-                    }
-                    if (one.getAnalysisResult() != null) {
-                        Map<String, String> map = new HashMap<>();
-                        map.put("measureId", one.getId());
-                        map.put("sampleName", byId.getSampleName());
-                        list.add(map);
-                    }
+        for (TaskSpecimen taskSpeciman : taskSpecimen) {
+            if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
+                TMeasureAnalysisData one = tMeasureAnalysisDataService.getOne(new QueryWrapper<TMeasureAnalysisData>()
+                        .eq("task_id", taskId)
+                        .eq("sample_key", taskSpeciman.getSpecimenKey())
+                        .eq("analysis_type", "5")
+                        .eq("is_delete", "0")
+                        .eq("analysis_number", 1)
+                        .last("limit 1"));
+                TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
+                if (one == null) {
+                    one = new TMeasureAnalysisData();
                 }
-            }
-        } else {
-            for (TaskSpecimen taskSpeciman : taskSpecimen) {
-                if (taskSpeciman.getIsTested().equals("1") && taskSpeciman.getDeleteType().equals("0")) {
-                    List<TMeasureAnalysisData> measureDataList = tMeasureAnalysisDataService.list(new QueryWrapper<TMeasureAnalysisData>()
-                            .eq("task_id", taskId)
-                            .eq("sample_key", taskSpeciman.getSpecimenKey())
-                            .orderByAsc("analysis_number"));
-                    TMeasureSample byId = tMeasureSampleService.getById(taskSpeciman.getSpecimenKey());
-                    for (TMeasureAnalysisData tMeasureData : measureDataList) {
-                        if (tMeasureData.getAnalysisResult() != null) {
-                            Map<String, String> map = new HashMap<>();
-                            map.put("measureId", tMeasureData.getId());
-                            map.put("sampleName", byId.getSampleName() + "-" + tMeasureData.getAnalysisNumber());
-                            list.add(map);
-                        }
-                    }
+                if (one.getAnalysisResult() != null) {
+                    Map<String, String> map = new HashMap<>();
+                    map.put("measureId", one.getId());
+                    map.put("sampleName", byId.getSampleName());
+                    list.add(map);
                 }
             }
         }

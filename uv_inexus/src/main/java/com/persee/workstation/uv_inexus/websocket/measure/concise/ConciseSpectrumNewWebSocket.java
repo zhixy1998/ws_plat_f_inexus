@@ -57,7 +57,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import java.util.stream.Collectors;//
 
 @Component
 public class ConciseSpectrumNewWebSocket {
@@ -376,7 +376,7 @@ public class ConciseSpectrumNewWebSocket {
             try {
                 if (!repeatMode) {
                     // 不重复
-                    for (int i = 0; i < newSampleData.size(); i++) {
+                    for (int i = 0; i < newSampleData.size()&&Constants.measureStopStatus.get(deviceSerialNumber); i++) {
 
 
                         // 预留: 设置样品池位置
@@ -404,7 +404,7 @@ public class ConciseSpectrumNewWebSocket {
                         doOneMeasurementSerial(finalParam, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), ip, 1);
                         newSampleData.get(i).setIsTested("1");
 
-                        if (configPO.getIsAutoChangePool().equals(true)) {
+                        if (configPO.getIsAutoChangePool().equals(true)&&Constants.measureStopStatus.get(deviceSerialNumber)) {
                             if ((i + 1) != newSampleData.size() && !sample.getSampleLocation().equals(finalMaxLocation)) {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
@@ -416,7 +416,7 @@ public class ConciseSpectrumNewWebSocket {
                     }
                 } else {
                     // 单池重复
-                    for (int i = 0; i < newSampleData.size(); i++) {
+                    for (int i = 0; i < newSampleData.size()&&Constants.measureStopStatus.get(deviceSerialNumber); i++) {
                         // 预留: 设置样品池位置
                         FMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
                         if (configPO.getIsAutoChangePool()) {
@@ -1018,6 +1018,12 @@ public class ConciseSpectrumNewWebSocket {
                         }
 
                         SpectrumPoint message = (SpectrumPoint) result;
+                        Double startWaveLength = Double.valueOf(spectrumParameter.getStartWaveLength());
+                        Double endWaveLength = Double.valueOf(spectrumParameter.getEndWaveLength());
+                        if (message.getWavelength()>startWaveLength||message.getWavelength()<endWaveLength){
+                            log.info("当前波长不在测量范围内，跳过该波长: "+message.getWavelength());
+                            continue;
+                        }
                         x.add(message.getWavelength());
                         if (spectrumParameter.getLuminosity().equals("1")) {
                             y.add(Double.valueOf(message.getAbsResult().getAbs()));
@@ -1319,6 +1325,12 @@ public class ConciseSpectrumNewWebSocket {
                     break;
                 }
                 SpectrumPoint message = (SpectrumPoint) result;
+                Double startWaveLength = Double.valueOf(spectrumParameter.getStartWaveLength());
+                Double endWaveLength = Double.valueOf(spectrumParameter.getEndWaveLength());
+                if (message.getWavelength()>startWaveLength||message.getWavelength()<endWaveLength){
+                    log.info("当前波长不在测量范围内，跳过该波长: "+message.getWavelength());
+                    continue;
+                }
                 processedX.add(message.getWavelength());
                 if (spectrumParameter.getLuminosity().equals("1")) {
                     processedY.add(Double.valueOf(message.getAbsResult().getAbs()));

@@ -386,7 +386,7 @@ public class SpectrumNewWebSocket {
             try {
                 if (!repeatMode) {
                     // 不重复
-                    for (int i = 0; i < newSampleData.size(); i++) {
+                    for (int i = 0; i < newSampleData.size()&&Constants.measureStopStatus.get(deviceSerialNumber); i++) {
 
 
                         // 预留: 设置样品池位置
@@ -418,7 +418,7 @@ public class SpectrumNewWebSocket {
                         doOneMeasurementSerial(finalParam, spectrumParameter, task, taskId, newSampleData.get(i).getSpecimenKey(), ip, 1);
                         newSampleData.get(i).setIsTested("1");
 
-                        if (configPO.getIsAutoChangePool().equals(true)) {
+                        if (configPO.getIsAutoChangePool().equals(true)&&Constants.measureStopStatus.get(deviceSerialNumber)) {
                             if ((i + 1) != newSampleData.size() && !sample.getSampleLocation().equals(finalMaxLocation)) {
                                 JSONObject payload = new JSONObject();
                                 payload.put("result", "finish");
@@ -430,7 +430,7 @@ public class SpectrumNewWebSocket {
                     }
                 } else {
                     // 单池重复
-                    for (int i = 0; i < newSampleData.size(); i++) {
+                    for (int i = 0; i < newSampleData.size()&&Constants.measureStopStatus.get(deviceSerialNumber); i++) {
                         // 预留: 设置样品池位置
                         TMeasureSample sample = tMeasureSampleService.getById(newSampleData.get(i).getSpecimenKey());
                         if (configPO.getIsAutoChangePool()) {
@@ -489,7 +489,7 @@ public class SpectrumNewWebSocket {
                             if (r < repetitionTime - 1) {
                                 try {
                                     // 检查停止请求的时间间隔等待
-                                    if (waitWithStopCheck( spectrumParameter.getTimeInterval())) {
+                                    if (waitWithStopCheck( spectrumParameter.getTimeInterval())&&Constants.measureStopStatus.get(deviceSerialNumber)) {
                                         log.info("等待期间收到停止请求，退出循环");
                                         break;
                                     }
@@ -990,6 +990,12 @@ public class SpectrumNewWebSocket {
                         }
 
                         SpectrumPoint message = (SpectrumPoint) result;
+                        Double startWaveLength = Double.valueOf(spectrumParameter.getStartWaveLength());
+                        Double endWaveLength = Double.valueOf(spectrumParameter.getEndWaveLength());
+                        if (message.getWavelength()>startWaveLength||message.getWavelength()<endWaveLength){
+                            log.info("当前波长不在测量范围内，跳过该波长: "+message.getWavelength());
+                            continue;
+                        }
                         x.add(message.getWavelength());
                         if (spectrumParameter.getLuminosity().equals("1")) {
                             y.add(Double.valueOf(message.getAbsResult().getAbs()));
@@ -1301,6 +1307,12 @@ public class SpectrumNewWebSocket {
                     break;
                 }
                 SpectrumPoint message = (SpectrumPoint) result;
+                Double startWaveLength = Double.valueOf(spectrumParameter.getStartWaveLength());
+                Double endWaveLength = Double.valueOf(spectrumParameter.getEndWaveLength());
+                if (message.getWavelength()>startWaveLength||message.getWavelength()<endWaveLength){
+                    log.info("当前波长不在测量范围内，跳过该波长: "+message.getWavelength());
+                    continue;
+                }
                 processedX.add(message.getWavelength());
                 if (spectrumParameter.getLuminosity().equals("1")) {
                     processedY.add(Double.valueOf(message.getAbsResult().getAbs()));

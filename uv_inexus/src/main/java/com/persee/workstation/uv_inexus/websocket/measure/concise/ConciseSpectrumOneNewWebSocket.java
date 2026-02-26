@@ -860,6 +860,12 @@ public class ConciseSpectrumOneNewWebSocket {
                         }
 
                         SpectrumPoint message = (SpectrumPoint) result;
+                        Double startWaveLength = Double.valueOf(spectrumParameter.getStartWaveLength());
+                        Double endWaveLength = Double.valueOf(spectrumParameter.getEndWaveLength());
+                        if (message.getWavelength()>startWaveLength||message.getWavelength()<endWaveLength){
+                            log.info("当前波长不在测量范围内，跳过该波长: "+message.getWavelength());
+                            continue;
+                        }
                         x.add(message.getWavelength());
                         if (spectrumParameter.getLuminosity().equals("1")) {
                             y.add(Double.valueOf(message.getAbsResult().getAbs()));
@@ -1240,6 +1246,12 @@ public class ConciseSpectrumOneNewWebSocket {
                     break;
                 }
                 SpectrumPoint message = (SpectrumPoint) result;
+                Double startWaveLength = Double.valueOf(spectrumParameter.getStartWaveLength());
+                Double endWaveLength = Double.valueOf(spectrumParameter.getEndWaveLength());
+                if (message.getWavelength()>startWaveLength||message.getWavelength()<endWaveLength){
+                    log.info("当前波长不在测量范围内，跳过该波长: "+message.getWavelength());
+                    continue;
+                }
                 processedX.add(message.getWavelength());
                 if (spectrumParameter.getLuminosity().equals("1")) {
                     processedY.add(Double.valueOf(message.getAbsResult().getAbs()));
