@@ -440,20 +440,19 @@ public class GuidePhotometricWebSocket {
                 return R.fail("设置样品池位置出错！");
             }
         }
-
-        inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-        inputParam.setWavelength(waveLengths);
         LocalDateTime startTime = LocalDateTime.now();
-        operation = operationUtilService.operation(inputParam);
-        if (!operation.getSuccess()) {
-            log.info("测量出错");
-            return R.fail("测量出错！");
-        }
-        OperationResultEntity data = operation.getData();
-        List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
+        inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
+        for (String waveLength : waveLengths) {
+            inputParam.setSingleWavelength(waveLength);
 
-        for (ChangeParam changeParam : originalMeasureResult) {
-            String waveLength = changeParam.getWl();
+            operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                log.info("测量出错");
+                return R.fail("测量出错！");
+            }
+            OperationResultEntity data = operation.getData();
+            ChangeParam changeParam = data.getSingMeasureResult();
+
 
             machineData.add(changeParam);
             ChangeParam originRsd = new ChangeParam();
@@ -474,7 +473,9 @@ public class GuidePhotometricWebSocket {
             dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
 
             originDataList.add(dataInfo);
+
         }
+
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sampleKey);
         jsonObject.put("key", "samplingTime");
@@ -545,19 +546,20 @@ public class GuidePhotometricWebSocket {
                 jsonObject.put("value", sample.getSampleNumber() + "-" + (i + 1));
                 sendMessage(deviceSerialNumber, jsonObject);
 
-                inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-                inputParam.setWavelength(waveLengths);
-                operation = operationUtilService.operation(inputParam);
+                inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
 
-                if (!operation.getSuccess()) {
-                    log.info("测量出错");
-                    return R.fail("测量出错！");
-                }
-                OperationResultEntity data = operation.getData();
-                List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
+                for (String waveLength : waveLengths) {
+                    inputParam.setSingleWavelength(waveLength);
+                    operation = operationUtilService.operation(inputParam);
 
-                for (ChangeParam changeParam : originalMeasureResult) {
-                    String waveLength = changeParam.getWl();
+                    if (!operation.getSuccess()) {
+                        log.info("测量出错");
+                        return R.fail("测量出错！");
+                    }
+                    OperationResultEntity data = operation.getData();
+
+                    ChangeParam changeParam = data.getSingMeasureResult();
+
 
                     machineData.add(changeParam);
                     ChangeParam originRsd = new ChangeParam();
@@ -579,7 +581,9 @@ public class GuidePhotometricWebSocket {
                     dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
 
                     originDataList.add(dataInfo);
+
                 }
+
                 repeatMiddleTime = LocalDateTime.now();
 
                 JSONObject object = new JSONObject();

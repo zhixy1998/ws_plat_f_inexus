@@ -279,7 +279,7 @@ public class LiveDetectionDevicesWebSocket {
                     JSONObject rationData = input.getData();
                     PhotoAndRationMetricWebsocketParam param = rationData.toJavaObject(PhotoAndRationMetricWebsocketParam.class);
 
-                    rationMeasureNewWebSocket.afterConnectionEstablished(param);
+                    rationMeasureNewWebSocket.guideRationMeasure(param);
                     break;
                 }
                 case Spectrum:{

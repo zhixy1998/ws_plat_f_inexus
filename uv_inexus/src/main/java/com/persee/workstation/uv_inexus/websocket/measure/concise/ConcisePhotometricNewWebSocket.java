@@ -479,24 +479,23 @@ public class ConcisePhotometricNewWebSocket {
                 return R.fail("设置样品池位置出错！");
             }
         }
-
-
-        inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-        inputParam.setWavelength(waveLengths);
         LocalDateTime startTime = LocalDateTime.now();
-        operation = operationUtilService.operation(inputParam);
-        if (!operation.getSuccess()) {
-            log.info("测量出错");
-            return R.fail("测量出错！");
-        }
-        OperationResultEntity data = operation.getData();
-        List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
 
-        for (ChangeParam changeParam : originalMeasureResult) {
+        for (String length : waveLengths) {
+            inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
+            inputParam.setSingleWavelength(length);
 
-            String waveLength = changeParam.getWl();
+            operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                log.info("测量出错");
+                return R.fail("测量出错！");
+            }
+            OperationResultEntity data = operation.getData();
+            ChangeParam singMeasureResult = data.getSingMeasureResult();
 
-            machineData.add(changeParam);
+            String waveLength = singMeasureResult.getWl();
+
+            machineData.add(singMeasureResult);
             ChangeParam originRsd = new ChangeParam();
             List<ChangeParam> params = new ArrayList<>();
             if (StringUtils.hasText(task.getZeroParam())) {
@@ -511,11 +510,12 @@ public class ConcisePhotometricNewWebSocket {
                 }
             }
             //处理数据
-            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, null, sample.getSampleNumber());
+            FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), singMeasureResult, params, null, sample.getSampleNumber());
             dataInfo.setIdentity(DataIdentityEnums.result.getIdentity());
 
             originDataList.add(dataInfo);
         }
+
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("sampleId", sampleKey);
@@ -594,22 +594,20 @@ public class ConcisePhotometricNewWebSocket {
                 jsonObject.put("value", sample.getSampleNumber() + "-" + (i + 1));
                 sendMessage(deviceSerialNumber, jsonObject);
 
-                inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-                inputParam.setWavelength(waveLengths);
-                operation = operationUtilService.operation(inputParam);
+                inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
+                for (String waveLength : waveLengths) {
 
-                if (!operation.getSuccess()) {
-                    log.info("测量出错");
-                    return R.fail("测量出错！");
-                }
-                OperationResultEntity data = operation.getData();
-                List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
+                    operation = operationUtilService.operation(inputParam);
 
-                for (ChangeParam changeParam : originalMeasureResult) {
+                    if (!operation.getSuccess()) {
+                        log.info("测量出错");
+                        return R.fail("测量出错！");
+                    }
+                    OperationResultEntity data = operation.getData();
+                    ChangeParam measureResult = data.getSingMeasureResult();
 
-                    String waveLength = changeParam.getWl();
 
-                    machineData.add(changeParam);
+                    machineData.add(measureResult);
                     ChangeParam originRsd = new ChangeParam();
                     List<ChangeParam> params = new ArrayList<>();
                     if (StringUtils.hasText(task.getZeroParam())) {
@@ -624,12 +622,14 @@ public class ConcisePhotometricNewWebSocket {
                         }
                     }
                     //处理数据
-                    FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), changeParam, params, null, sample.getSampleNumber());
+                    FPhotometricOriginDataInfo dataInfo = dealAndSendMessage(deviceSerialNumber, waveLength, sampleKey, parameter.getLuminosity(), measureResult, params, DataIdentityEnums.middle.getIdentity() + "-" + i, sample.getSampleNumber());
                     dataInfo.setMeasureTime(time);
                     dataInfo.setIdentity(DataIdentityEnums.middle.getIdentity() + "-" + (i + 1));
 
                     originDataList.add(dataInfo);
+
                 }
+
                 repeatMiddleTime = LocalDateTime.now();
 
                 JSONObject object = new JSONObject();

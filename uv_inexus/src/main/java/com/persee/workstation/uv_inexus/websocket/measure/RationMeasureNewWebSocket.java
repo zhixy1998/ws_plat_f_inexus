@@ -122,7 +122,7 @@ public class RationMeasureNewWebSocket{
 
     private static LocalDateTime repeatMiddleTime;
 
-    public void afterConnectionEstablished(PhotoAndRationMetricWebsocketParam param) {
+    public void guideRationMeasure(PhotoAndRationMetricWebsocketParam param) {
 
 
         initParams();
@@ -1151,20 +1151,21 @@ public class RationMeasureNewWebSocket{
             }
         }
 
-        inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-        inputParam.setWavelength(waveLengths);
+        inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
         LocalDateTime startTime = LocalDateTime.now();
-        operation = operationUtilService.operation(inputParam);
-        if (!operation.getSuccess()) {
-            log.info("测量出错");
-            return R.fail("测量出错！");
-        }
 
-        OperationResultEntity data = operation.getData();
-        List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
+        for (String waveLength : waveLengths) {
 
-        for (ChangeParam changeParam : originalMeasureResult) {
-            String waveLength = changeParam.getWl();
+            inputParam.setSingleWavelength(waveLength);
+            operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                log.info("测量出错");
+                return R.fail("测量出错！");
+            }
+
+            OperationResultEntity data = operation.getData();
+            ChangeParam changeParam = data.getSingMeasureResult();
+
 
             machineData.add(changeParam);
 
@@ -1211,7 +1212,9 @@ public class RationMeasureNewWebSocket{
             jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue()));
             sendMessage(deviceSerialNumber, jsonObject);
 
+
         }
+
         LocalDateTime endTime = LocalDateTime.now();
         dataInfo.setMachineData(machineData);
         dataInfo.setWavelengthData(originDataList);
@@ -1307,20 +1310,20 @@ public class RationMeasureNewWebSocket{
                 numObject.put("value", sample.getSampleNumber() + "-" + (i + 1));
                 sendMessage(deviceSerialNumber, numObject);
 
-                inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-                inputParam.setWavelength(waveLengths);
-                operation = operationUtilService.operation(inputParam);
+                inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
 
-                if (!operation.getSuccess()) {
-                    log.info("测量出错");
-                    return R.fail("测量出错！");
-                }
+                for (String waveLength : waveLengths) {
+                    inputParam.setSingleWavelength(waveLength);
+                    operation = operationUtilService.operation(inputParam);
 
-                OperationResultEntity data = operation.getData();
-                List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
+                    if (!operation.getSuccess()) {
+                        log.info("测量出错");
+                        return R.fail("测量出错！");
+                    }
 
-                for (ChangeParam changeParam : originalMeasureResult) {
-                    String waveLength = changeParam.getWl();
+                    OperationResultEntity data = operation.getData();
+                    ChangeParam changeParam = data.getSingMeasureResult();
+
 
                     machineData.add(changeParam);
 
@@ -1366,7 +1369,10 @@ public class RationMeasureNewWebSocket{
                     jsonObject.put("key", SampleTableEnum.SAMPLING_TIME.getIdentity());
                     jsonObject.put("value", originDataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                     sendMessage(deviceSerialNumber, jsonObject);
+
                 }
+
+
             }
             //重复测完，开始计算平均值
 

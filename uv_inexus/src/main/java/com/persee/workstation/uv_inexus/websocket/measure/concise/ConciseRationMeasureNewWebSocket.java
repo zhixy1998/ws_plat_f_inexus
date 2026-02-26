@@ -1198,19 +1198,22 @@ public class ConciseRationMeasureNewWebSocket {
             }
         }
 
-        inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-        inputParam.setWavelength(waveLengths);
+        inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
         LocalDateTime startTime = LocalDateTime.now();
-        operation = operationUtilService.operation(inputParam);
-        if (!operation.getSuccess()) {
-            log.info("测量出错");
-            return R.fail("测量出错！");
-        }
+        for (String waveLength : waveLengths) {
 
-        OperationResultEntity data = operation.getData();
-        List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
-        for (ChangeParam changeParam : originalMeasureResult) {
-            String waveLength = changeParam.getWl();
+            inputParam.setSingleWavelength(waveLength);
+
+            operation = operationUtilService.operation(inputParam);
+            if (!operation.getSuccess()) {
+                log.info("测量出错");
+                return R.fail("测量出错！");
+            }
+
+            OperationResultEntity data = operation.getData();
+
+            ChangeParam changeParam = data.getSingMeasureResult();
+
 
             machineData.add(changeParam);
 
@@ -1262,8 +1265,9 @@ public class ConciseRationMeasureNewWebSocket {
             jsonObject.put("key", waveLength + "-" + WaveLengthEnum.tPercent.getCode());
             jsonObject.put("value", DataCountUtil.formatValueWithBigDecimal(digit, originDataInfo.getTPercentValue()));
             sendMessage(deviceSerialNumber, jsonObject);
-
         }
+
+
         LocalDateTime endTime = LocalDateTime.now();
         dataInfo.setMachineData(machineData);
         dataInfo.setWavelengthData(originDataList);
@@ -1362,21 +1366,20 @@ public class ConciseRationMeasureNewWebSocket {
             R<ChangeParam> res = null;
 
 
-            inputParam.setOperationType(OperationTypeEnums.Measure.getType());
-            inputParam.setWavelength(waveLengths);
-            operation = operationUtilService.operation(inputParam);
+            inputParam.setOperationType(OperationTypeEnums.SingWaveLengthMeasure.getType());
 
-            if (!operation.getSuccess()) {
-                log.info("测量出错");
-                return R.fail("测量出错！");
-            }
+            for (String waveLength : waveLengths) {
+                inputParam.setSingleWavelength(waveLength);
+                operation = operationUtilService.operation(inputParam);
 
-            OperationResultEntity data = operation.getData();
-            List<ChangeParam> originalMeasureResult = data.getOriginalMeasureResult();
+                if (!operation.getSuccess()) {
+                    log.info("测量出错");
+                    return R.fail("测量出错！");
+                }
 
+                OperationResultEntity data = operation.getData();
+                ChangeParam changeParam = data.getSingMeasureResult();
 
-            for (ChangeParam changeParam : originalMeasureResult) {
-                String waveLength = changeParam.getWl();
 
                 machineData.add(changeParam);
 
@@ -1427,7 +1430,10 @@ public class ConciseRationMeasureNewWebSocket {
                 jsonObject.put("value", originDataInfo.getMeasureTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 sendMessage(deviceSerialNumber, jsonObject);
 
+
             }
+
+
         }
         //重复测完，开始计算平均值
 
