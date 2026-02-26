@@ -227,7 +227,9 @@ public class TimeSweepServiceImpl implements TimeSweepService {
             return Result.ok(vo);
         }
         // 根据默认任务名称查询默认任务
-        TMeasureTask defaultTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("task_name", Constants.DEFAULT_TASK));
+        TMeasureTask defaultTask = tMeasureTaskService.getOne(new QueryWrapper<TMeasureTask>().eq("task_name", Constants.DEFAULT_TASK)
+                .eq("measure_type", measureType)
+                .last("LIMIT 1"));
         if (defaultTask == null) {
             return Result.fail(YamlMessageSource.getMessageStatic("00101006"));
         }

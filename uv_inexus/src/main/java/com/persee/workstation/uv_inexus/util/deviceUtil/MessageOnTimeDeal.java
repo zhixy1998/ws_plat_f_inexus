@@ -358,7 +358,7 @@ public class MessageOnTimeDeal {
                         byte[] useMessage = store.getMessage(deviceId);
 
                         recvCount++;
-                        if (recvCount >= 2) currentTimeout = 10000L;
+                        if (recvCount >= 2) currentTimeout = 15000L;
                         startTime = System.currentTimeMillis();
 
                         // ----------------- 2. 解析报文 -----------------
